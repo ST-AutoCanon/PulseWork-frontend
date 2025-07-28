@@ -1,5 +1,5 @@
-
 import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import './EmployeeLogin.css';
 import { Eye } from 'lucide-react';
 import axios from 'axios';
@@ -30,8 +30,8 @@ const EmployeeCardWithHover = ({ employeePunches }) => {
   const role = latest.role || localStorage.getItem('userRole') || 'Employee';
   const gender = latest.gender || localStorage.getItem('userGender') || 'Male';
   const API_KEY = process.env.REACT_APP_API_KEY;
-  const meId = JSON.parse(localStorage.getItem("dashboardData") || "{}").employeeId;
-  const headers = { "x-api-key": API_KEY, "x-employee-id": meId };
+  const meId = JSON.parse(localStorage.getItem('dashboardData') || '{}').employeeId;
+  const headers = { 'x-api-key': API_KEY, 'x-employee-id': meId };
 
   const isOfficeHQ =
     (latest.punchin_location &&
@@ -40,10 +40,7 @@ const EmployeeCardWithHover = ({ employeePunches }) => {
     (latest.punchout_location &&
       typeof latest.punchout_location === 'string' &&
       latest.punchout_location.trim().toLowerCase().includes('office hq'));
-  console.log(`isOfficeHQ for ${firstName} ${lastName}:`, isOfficeHQ, {
-    punchin_location: latest.punchin_location,
-    punchout_location: latest.punchout_location,
-  });
+
   const cardClass = isOfficeHQ
     ? 'employee-card-hover bg-office-hq'
     : 'employee-card-hover bg-default';
@@ -54,7 +51,6 @@ const EmployeeCardWithHover = ({ employeePunches }) => {
 
     if (photoUrl) {
       const url = `${process.env.REACT_APP_BACKEND_URL}/${photoUrl}`;
-      console.log('Fetching image from:', url);
       axios
         .get(url, {
           headers,
@@ -214,7 +210,6 @@ const TimeSlotGroup = ({ time, slotKey, employeesData = [], isOpen, setSlotOpen 
     setSlotOpen(slotKey, !isOpen);
   };
 
-  // Format the time slot (e.g., "0-1" to "00:00 - 01:00")
   const formatTimeSlot = (slot) => {
     const [startHour] = slot.split('-').map(Number);
     const endHour = startHour + 1;
@@ -251,11 +246,18 @@ const EmployeeLogin = () => {
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
   const [dateError, setDateError] = useState(null);
+  const navigate = useNavigate();
+
+  const orgId = localStorage.getItem('orgId') || '';
 
   const validateDateRange = (from, to) => {
     if (!from || !to) return { valid: true };
     const fromDateObj = new Date(from);
     const toDateObj = new Date(to);
+
+    if (isNaN(fromDateObj.getTime()) || isNaN(toDateObj.getTime())) {
+      return { valid: false, error: 'Invalid date format.' };
+    }
 
     if (toDateObj < fromDateObj) {
       return { valid: false, error: "'To' date must be on or after 'From' date." };
@@ -264,105 +266,11 @@ const EmployeeLogin = () => {
     const diffTime = toDateObj - fromDateObj;
     const diffDays = diffTime / (1000 * 60 * 60 * 24);
     if (diffDays > 5) {
-      return { valid: false, error: "Date range must not exceed 5 days." };
+      return { valid: false, error: 'Date range must not exceed 5 days.' };
     }
 
     return { valid: true };
   };
-
-  useEffect(() => {
-    const fetchPunchData = async () => {
-      if (activeTab === 'select' && (!fromDate || !toDate)) {
-        setPunchData([]);
-        setLoading(false);
-        setError(null);
-        return;
-      }
-
-      if (activeTab === 'select') {
-        const validation = validateDateRange(fromDate, toDate);
-        if (!validation.valid) {
-          setError(validation.error);
-          setPunchData([]);
-          setLoading(false);
-          return;
-        }
-      }
-
-      setLoading(true);
-      setError(null);
-      setDateError(null);
-
-      try {
-        const API_KEY = process.env.REACT_APP_API_KEY;
-        const backendUrl = process.env.REACT_APP_BACKEND_URL;
-        const meId = JSON.parse(localStorage.getItem("dashboardData") || "{}").employeeId;
-        const headers = { "x-api-key": API_KEY, "x-employee-id": meId };
-
-        if (!API_KEY) throw new Error('API Key is missing.');
-        if (!backendUrl) throw new Error('Backend URL is missing.');
-        if (!meId) throw new Error('Employee ID is missing.');
-
-        let url = `${backendUrl}/api/employeelogin/today-yesterday-punches`;
-        if (activeTab === 'select') {
-          url = `${backendUrl}/api/employeelogin/punches?from=${fromDate}&to=${toDate}`;
-        }
-
-        console.log('Fetching punch data from:', url, { headers });
-        const response = await axios.get(url, {
-          headers,
-          withCredentials: true,
-        });
-
-        console.log('Punch data response:', response.data);
-
-        const data = Array.isArray(response.data)
-          ? response.data
-          : Array.isArray(response.data.data)
-          ? response.data.data
-          : [];
-
-        setPunchData(data);
-
-        const grouped = groupByDayAndEmployee(data, activeTab);
-        const activeGroup = activeTab === 'today' ? grouped.Today : activeTab === 'yesterday' ? grouped.Yesterday : grouped[fromDate] || {};
-        const slots = groupByHourSlots(activeGroup);
-        const slotKeys = Object.keys(slots);
-        const newSlotStates = slotKeys.reduce(
-          (acc, slot, idx) => ({
-            ...acc,
-            [slot]: idx === 0,
-          }),
-          {}
-        );
-        setSlotStates((prev) => ({
-          ...prev,
-          [activeTab]: newSlotStates,
-        }));
-      } catch (err) {
-        console.error('Error fetching punch data:', {
-          message: err.message,
-          status: err.response?.status,
-          data: err.response?.data,
-        });
-        let errorMessage = err.response?.data?.message || err.message || 'Error fetching punch data.';
-        if (err.response?.data instanceof Blob) {
-          try {
-            const text = await err.response.data.text();
-            const parsed = JSON.parse(text);
-            errorMessage = parsed.message || errorMessage;
-          } catch (parseErr) {
-            console.warn('Could not parse error response:', parseErr);
-          }
-        }
-        setError(errorMessage);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchPunchData();
-  }, [activeTab, fromDate, toDate]);
 
   const groupByDayAndEmployee = (data, tab) => {
     const grouped = { Today: {}, Yesterday: {} };
@@ -424,19 +332,143 @@ const EmployeeLogin = () => {
     return slotMap;
   };
 
-const setSlotOpen = (slot, isOpen) => {
-  setSlotStates((prev) => ({
-    ...prev,
-    [activeTab]: {
-      ...prev[activeTab],
-      [slot]: isOpen,
-    },
-  }));
-};
+  useEffect(() => {
+    const fetchPunchData = async () => {
+      if (!orgId) {
+        setError('Organization ID is missing in localStorage. Please log in again.');
+        setPunchData([]);
+        setLoading(false);
+        navigate('/login');
+        return;
+      }
+
+      if (activeTab === 'select' && (!fromDate || !toDate)) {
+        setPunchData([]);
+        setLoading(false);
+        setError(null);
+        return;
+      }
+
+      if (activeTab === 'select') {
+        const validation = validateDateRange(fromDate, toDate);
+        if (!validation.valid) {
+          setError(validation.error);
+          setPunchData([]);
+          setLoading(false);
+          return;
+        }
+      }
+
+      setLoading(true);
+      setError(null);
+      setDateError(null);
+
+      try {
+        const API_KEY = process.env.REACT_APP_API_KEY;
+        const backendUrl = process.env.REACT_APP_BACKEND_URL;
+        const meId = JSON.parse(localStorage.getItem('dashboardData') || '{}').employeeId;
+        const headers = { 'x-api-key': API_KEY, 'x-employee-id': meId };
+
+        if (!API_KEY) throw new Error('API Key is missing.');
+        if (!backendUrl) throw new Error('Backend URL is missing.');
+        if (!meId) throw new Error('Employee ID is missing.');
+
+        let url = `${backendUrl}/api/employeelogin/today-yesterday-punches?org_id=${encodeURIComponent(orgId)}`;
+        if (activeTab === 'select') {
+          url = `${backendUrl}/api/employeelogin/punches?from=${encodeURIComponent(fromDate)}&to=${encodeURIComponent(toDate)}&org_id=${encodeURIComponent(orgId)}`;
+        }
+
+        console.log('Fetching punch data from:', url, { headers });
+        const response = await axios.get(url, {
+          headers,
+          withCredentials: true,
+        });
+
+        console.log('Punch data response:', response.data);
+
+        let data = [];
+        if (Array.isArray(response.data)) {
+          data = response.data;
+        } else if (Array.isArray(response.data.data)) {
+          data = response.data.data;
+        } else {
+          console.warn('Unexpected response format:', response.data);
+          data = [];
+        }
+
+        setPunchData(data);
+
+        if (data.length === 0 && activeTab === 'select') {
+          setError('No punch data available for the selected date range and organization.');
+        } else if (data.length === 0) {
+          setError('No punch data available for the selected organization.');
+        }
+
+        const grouped = groupByDayAndEmployee(data, activeTab);
+        const activeGroup = activeTab === 'today' ? grouped.Today : activeTab === 'yesterday' ? grouped.Yesterday : grouped[fromDate] || {};
+        const slots = groupByHourSlots(activeGroup);
+        const slotKeys = Object.keys(slots);
+        const newSlotStates = slotKeys.reduce(
+          (acc, slot, idx) => ({
+            ...acc,
+            [slot]: idx === 0,
+          }),
+          {}
+        );
+        setSlotStates((prev) => ({
+          ...prev,
+          [activeTab]: newSlotStates,
+        }));
+      } catch (err) {
+        console.error('Error fetching punch data:', {
+          message: err.message,
+          status: err.response?.status,
+          data: err.response?.data,
+        });
+        let errorMessage = err.response?.data?.message || err.message || 'Error fetching punch data.';
+        if (err.response?.status === 400) {
+          errorMessage = 'Invalid request. Check date range or organization ID.';
+        } else if (err.response?.status === 404) {
+          errorMessage = activeTab === 'select' ? 'No punch data available for the selected date range and organization.' : 'No punch data available for the selected organization.';
+        }
+        if (err.response?.data instanceof Blob) {
+          try {
+            const text = await err.response.data.text();
+            const parsed = JSON.parse(text);
+            errorMessage = parsed.message || errorMessage;
+          } catch (parseErr) {
+            console.warn('Could not parse error response:', parseErr);
+          }
+        }
+        setError(errorMessage);
+        setPunchData([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchPunchData();
+  }, [activeTab, fromDate, toDate, orgId, navigate]);
+
+  const setSlotOpen = (slot, isOpen) => {
+    setSlotStates((prev) => ({
+      ...prev,
+      [activeTab]: {
+        ...prev[activeTab],
+        [slot]: isOpen,
+      },
+    }));
+  };
 
   const handleDownload = async () => {
     if (!fromDate || !toDate) {
-      setError('Please select both "From" and "To" dates to download punch data.');
+      setError('Please select both "From" and "To" dates.');
+      return;
+    }
+
+    if (!orgId) {
+      setError('Organization ID is missing in localStorage. Please log in again.');
+      navigate('/login');
       return;
     }
 
@@ -446,43 +478,39 @@ const setSlotOpen = (slot, isOpen) => {
       return;
     }
 
-    setError(null);
     setLoading(true);
+    setError(null);
 
     try {
       const API_KEY = process.env.REACT_APP_API_KEY;
       const backendUrl = process.env.REACT_APP_BACKEND_URL;
-      const meId = JSON.parse(localStorage.getItem("dashboardData") || "{}").employeeId;
-      const headers = { "x-api-key": API_KEY, "x-employee-id": meId };
+      const meId = JSON.parse(localStorage.getItem('dashboardData') || '{}').employeeId;
 
       if (!API_KEY) throw new Error('API Key is missing.');
       if (!backendUrl) throw new Error('Backend URL is missing.');
       if (!meId) throw new Error('Employee ID is missing.');
 
-      const url = `${backendUrl}/emp-excelsheet?from=${fromDate}&to=${toDate}`;
-      console.log('Downloading Excel from:', url, { headers, employeeId: meId });
+      const url = `${backendUrl}/api/emp-excelsheet?from=${encodeURIComponent(fromDate)}&to=${encodeURIComponent(toDate)}&org_id=${encodeURIComponent(orgId)}`;
+
+      console.log('Initiating Excel download:', { url, fromDate, toDate, orgId, meId });
 
       const response = await axios.get(url, {
-        headers,
-        withCredentials: true,
+        headers: {
+          'x-api-key': API_KEY,
+          'x-employee-id': meId,
+        },
         responseType: 'blob',
-      });
-
-      console.log('Download response:', {
-        status: response.status,
-        headers: response.headers,
-        contentType: response.headers['content-type'],
       });
 
       const contentType = response.headers['content-type'];
       if (!contentType.includes('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')) {
         const text = await response.data.text();
-        let errorMessage = 'Unexpected response format';
+        let errorMessage = 'Unexpected response format. Expected an Excel file.';
         try {
           const parsed = JSON.parse(text);
           errorMessage = parsed.message || errorMessage;
         } catch (parseErr) {
-          console.warn('Could not parse error response:', parseErr, 'Response text:', text);
+          console.warn('Could not parse error response:', parseErr);
         }
         throw new Error(errorMessage);
       }
@@ -495,25 +523,28 @@ const setSlotOpen = (slot, isOpen) => {
       link.click();
       document.body.removeChild(link);
       window.URL.revokeObjectURL(downloadUrl);
+
+      console.log('Excel download successful');
     } catch (err) {
-      console.error('Error downloading punch data:', {
+      console.error('Error downloading Excel:', {
         message: err.message,
         status: err.response?.status,
         headers: err.response?.headers,
       });
-
       let errorMessage = err.message || 'Failed to download punch data.';
       if (err.response?.data instanceof Blob) {
         try {
           const text = await err.response.data.text();
-          console.log('Error response text:', text);
           const parsed = JSON.parse(text);
           errorMessage = parsed.message || errorMessage;
         } catch (parseErr) {
           console.warn('Could not parse error response:', parseErr);
         }
+      } else if (err.response?.status === 400) {
+        errorMessage = 'Invalid request. Check date range or organization ID.';
+      } else if (err.response?.status === 404) {
+        errorMessage = 'No punch data available for the selected date range and organization.';
       }
-
       setError(errorMessage);
     } finally {
       setLoading(false);
@@ -572,6 +603,7 @@ const setSlotOpen = (slot, isOpen) => {
               value={fromDate}
               onChange={handleFromDateChange}
               style={{ padding: '8px', fontSize: '16px' }}
+              max={new Date().toISOString().split('T')[0]}
             />
           </div>
           <div>
@@ -582,18 +614,19 @@ const setSlotOpen = (slot, isOpen) => {
               value={toDate}
               onChange={handleToDateChange}
               style={{ padding: '8px', fontSize: '16px' }}
+              max={new Date().toISOString().split('T')[0]}
             />
           </div>
           <button
             onClick={handleDownload}
-            disabled={loading || dateError || !fromDate || !toDate}
+            disabled={loading || dateError || !fromDate || !toDate || !orgId}
             style={{
               padding: '8px 16px',
-              backgroundColor: loading || dateError || !fromDate || !toDate ? '#ccc' : '#007bff',
+              backgroundColor: loading || dateError || !fromDate || !toDate || !orgId ? '#ccc' : '#007bff',
               color: 'white',
               border: 'none',
               borderRadius: '4px',
-              cursor: loading || dateError || !fromDate || !toDate ? 'not-allowed' : 'pointer',
+              cursor: loading || dateError || !fromDate || !toDate || !orgId ? 'not-allowed' : 'pointer',
             }}
           >
             {loading ? 'Downloading...' : 'Download Excel'}
@@ -602,11 +635,15 @@ const setSlotOpen = (slot, isOpen) => {
       )}
 
       {dateError && <p style={{ color: 'red', fontWeight: 'bold' }}>{dateError}</p>}
-      {loading && <p>Loading...</p>}
       {error && <p style={{ color: 'red', fontWeight: 'bold' }}>{error}</p>}
+      {loading && <p>Loading...</p>}
 
-      {!loading && !error && activeTab === 'select' && (!fromDate || !toDate) ? (
+      {!loading && !error && !orgId ? (
+        <p>Organization ID is missing in localStorage. Please log in again.</p>
+      ) : !loading && !error && activeTab === 'select' && (!fromDate || !toDate) ? (
         <p>Please select both "From" and "To" dates to view punch data.</p>
+      ) : !loading && !error && Object.keys(slotGroupedData).length === 0 && punchData.length === 0 ? (
+        <p>No punch data available for the selected date range and organization.</p>
       ) : !loading && !error && Object.keys(slotGroupedData).length > 0 ? (
         Object.entries(slotGroupedData)
           .sort(([slotA], [slotB]) => {

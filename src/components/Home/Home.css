@@ -1,334 +1,197 @@
-/* Hero Section Styling */
-.hero-image {
-  position: relative;
-  width: 100%;
-  height: 100vh; /* Full screen height */
-  background-color: #f0f0f0; /* Fallback color */
-  overflow: hidden;
+/* Background */
+.login-container {
+  height: 100vh;
+  background-color: #2A7C85; /* Matches the background color in the image */
   display: flex;
   justify-content: center;
   align-items: center;
+  font-family: 'Segoe UI', sans-serif;
+  position: relative;
+  overflow: hidden;
 }
 
-.hero-card-title3 {
-  font-size: 20px;
-  font-size: 15px;
-  
-  color:#77DD0D ; /* Dark text */
-  margin-bottom: 20px;
-  text-align:left;
-  padding: 2%
+/* Card */
+.login-card {
+  background: white;
+  width: 900px;
+  max-width: 95%;
+  border-radius: 20px;
+  display: flex;
+  overflow: hidden;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+  position: relative;
+  z-index: 1;
 }
-.hero-card {
+
+/* Background circles (decorative elements from the image) */
+.login-container::before,
+.login-container::after {
+  content: '';
   position: absolute;
-  top: 50%;
-  left: 20%;
-  transform: translate(-50%, -50%);
+  background: linear-gradient(to bottom right, #A3E4D7, #48C9B0);
+  border-radius: 50%;
+  z-index: 0;
+}
+
+.login-container::before {
   width: 300px;
   height: 300px;
-  background-color: #001D4A;
-  opacity: 100%;
-  border-radius: 0px;
-  padding: 20px;
-  text-align: center;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+  top: 10%;
+  left: 5%;
+  opacity: 0.7;
 }
 
-.hero-card-title1 {
-  font-size: 20px;
-  color: #77DD0D; /* Dark text */
-  margin-bottom: 20px;
-  text-align: left;
-  padding: 2%;
+.login-container::after {
+  width: 400px;
+  height: 400px;
+  bottom: -10%;
+  left: 15%;
+  opacity: 0.5;
 }
 
-.hero-card-title {
-  font-size: 45px;
-  font-weight: bold;
-  color: white;
-  margin-bottom: 10px;
-  text-align: left;
-  margin-top: -10px;
-}
-
-.hero-card-description {
-  font-size: 18px;
-  color: white;
-  margin-bottom: 90px;
-  margin-left: -20px;
-}
-
-.learn-moree-btn {
-  background-color: #77DD0D;
-  color: white;
-  padding: 10px 110px;
-  top: -10%;
-  border-radius: 5px;
-  font-weight: bold;
-  border: none;
-  cursor: pointer;
-  position: relative;
-}
-
-.learn-moree-btn:hover {
-  background-color: #005c00;
-}
-
-.scroll-btn {
-  width: 20px !important;
-  height: 20px !important;
-  background-color: #90f011;
-  border-radius: 50%;
-  border: none;
-  cursor: pointer;
-  transition: transform 0.2s ease, opacity 0.2s ease;
-}
-
-.scroll-btn.active {
-  transform: scale(1.2) !important;
-  opacity: 1 !important;
-}
-
-.scroll-btn:hover {
-  transform: scale(1.3) !important;
-  background-color: #007e01 !important;
-}
-
-.scrolling-buttons {
-  position: absolute;
-  margin-bottom: -90px;
+/* Left Section */
+.login-left {
+  flex: 1;
+  background: linear-gradient(to bottom right, #A3E4D7, #48C9B0); /* Gradient from the image */
+  color: #1A3C34;
+  padding: 60px 40px;
   display: flex;
-  gap: 15px;
-  left: 50%;
-  transform: translateX(-50%);
-  flex-direction: row;
+  flex-direction: column;
+  justify-content: center;
+  border-radius: 20px 0 0 20px;
+  position: relative;
+  overflow: hidden;
 }
 
-/* Dynamic Content Box */
-/* Dynamic Content Box */
-.dynamic-box {
+/* Additional circle in the left section */
+.login-left::before {
+  content: '';
   position: absolute;
-  bottom: 15%;
-  left: 70.7%; /* Move box to the left side */
-  width: 300px;
-  background-color: #001D4A;
-  opacity:100%;
-  color: white;
- 
-  padding: 20px;
-  border-radius: 10px;
-  /* box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3); */
-}
-.dynamic-box-1 {
-  background-color: #cbffef9e; /* Light red background */
-  color: #001D4A; /* Dark red text */
+  width: 200px;
+  height: 200px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 50%;
+  top: -10%;
+  right: -10%;
 }
 
-.dynamic-box-2 {
-  background-color: #1140da49; /* Light green background */
-  color: white;; /* Dark green text */
+.login-left h1 {
+  font-size: 36px;
+  margin-bottom: 10px;
+  color: #1A3C34;
+  font-weight: bold;
 }
 
-.dynamic-box-3 {
-  background-color: #020b0f5d; /* Light blue background */
-  color: white;; /* Dark blue text */
+.login-left h2 {
+  font-size: 36px;
+  font-weight: bold;
+  margin-bottom: 20px;
+  color: #1A3C34;
 }
 
-.dynamic-box-4 {
-  background-color: #dbdb296a; /* Light yellow background */
-  color: white;; /* Dark yellow text */
-}
-
-.box-content {
-  font-size: 25px;
+.login-left p {
+  font-size: 14px;
   line-height: 1.5;
+  color: #1A3C34;
 }
 
-.HomeServices{
-  margin-top: -60px;
-}
-.HomeServices3{
-  margin-bottom: -80px;
-  margin-top: -100px;
+/* Right Section */
+.login-right {
+  flex: 1;
+  padding: 60px 40px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  background: white;
+  border-radius: 0 20px 20px 0;
 }
 
-
-/* .box-content {
-  font-size: 16px;
-  font-family: 'Arial', sans-serif;
+.login-right h2 {
+  font-size: 28px;
+  margin-bottom: 30px;
+  color: #1A3C34;
   text-align: center;
-  color: #f1f1f1;
-  line-height: 1.4;
-} */
+}
 
-/* Mobile View */
-/* Mobile View of hero card */
-@media screen and (max-width: 1200px) {
-  .hero-card {
-    width: 1100px;
-    max-width: 350px;
-    height: 200px;
-    padding: 80px 20px;
-    bottom: 10%; /* Move the card to the right by 10% */
-    top:auto;
-    left: 5%;
-    bottom: 0%;
-    transform: translateX(-5%);
+/* Form */
+.input-group {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 20px;
+}
 
-  }
-  .hero-image {
-    
-    position: relative;
-    padding: 10px 10px;
-    width: 100%;
-    height: 100vh; /* Full screen height */
-    background-color: #f0f0f0; /* Fallback color */
-    overflow: hidden;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    text-align: center;
-    margin-bottom: 40%;
-    
-  }
-  
+.input-group input {
+  padding: 12px;
+  border: 1px solid #D5DBDB;
+  border-radius: 25px;
+  font-size: 14px;
+  background-color: #F8F9F9;
+  color: #1A3C34;
+  outline: none;
+  transition: border-color 0.3s ease;
+}
 
-  .hero-card-title3 {
-    font-size: 20px;
-    font-size: 15px;
-    
-    color:#77DD0D ; /* Dark text */
-    margin-bottom: 20px;
-    text-align:left;
-    padding: 2%
-  }
-  .hero-card-title1
-  {
-    font-size: 15px;
-    
-    color:#77DD0D ; /* Dark text */
-    margin-bottom: 20px;
-    text-align:left;
-    padding: 2%;
-  }
-  .hero-card-title {
-    font-size: 30px;
-    font-weight: bold;
-    color: white; /* Dark text */
-    margin-bottom: 20px;
-    text-align: left;
-  }
-  
-  .hero-card-description {
-    font-size: 18px;
-    color: white; /* Neutral text color */
-    margin-bottom: 90px;
-  }
-  .hero-card-description {
-    font-size: 18px;
-    margin-bottom: 15px;
-  }
+.input-group input:focus {
+  border-color: #48C9B0;
+}
 
-/*mobile view of scrolling section*/
+/* Options */
+.form-options {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+}
 
-  .learn-moree-btn {
-    font-size: 16px;
-    font-weight: 200%;
-    padding: 10px 115px;
-    height: 25%;
-    margin-top: 50px;
-    margin-left:-20px ;
-    z-index: 100%;
-  }
+.form-options label {
+  font-size: 14px;
+  color: #1A3C34;
+  display: flex;
+  align-items: center;
+}
 
-  /* Scrolling Buttons Styling */
-  @media screen and (max-width: 1200px) {
-    .scrolling-buttons {
-      top: 5px; /* Position at the top of the hero image */
-      bottom: auto; /* Lower position for smaller screens */
-      gap: 8px;
-    }
-  
-    .scroll-btn {
-      width: 8px !important; /* Smaller dots for mobile */
-      height: 8px !important;
-    }
-  
-    .scroll-btn.active {
-      transform: scale(1.1);
-    }
-  
-    .scroll-btn:hover {
-      transform: scale(1.2);
-    }
-    @media (max-width: 768px) 
-    {
-      .dynamic-box {
-        display: none;
-        position: relative; /* Change from absolute to relative for better stacking */
-        bottom: 0; /* Reset bottom positioning */
-        left: 50%; /* Center horizontally */
-        transform: translateX(-50%); /* Adjust for centering */
-        width: 90%; /* Reduce width for smaller screens */
-        font-size: 18px; /* Adjust font size for readability */
-        padding: 15px; /* Reduce padding */
-        border-radius: 8px; /* Slightly reduce border radius */
-      }
-    
-      .dynamic-box-1,
-      .dynamic-box-2,
-      .dynamic-box-3,
-      .dynamic-box-4 {
-        font-size: 16px; /* Adjust font size for all box variations */
-      }
-    
-      .box-content {
-        font-size: 20px; /* Adjust content font size */
-        line-height: 1.4; /* Adjust line height */
-      }
-    
-      .HomeServices {
-        margin-top: -230px; /* Adjust margin for better spacing */
-      }
-    
-      .HomeServices3 {
-        margin-bottom: -40px; /* Adjust margin for better spacing */
-        margin-top: -100px; /* Adjust top margin */
-      }
-    
-      .hero-card-title1 {
-       
-        margin-bottom: -50px;
-       
-      }
-      .hero-card {
-        position: absolute;
-        top: 65%;
-       padding-top:30px;
-       
-      }
-    
-      
+.form-options input[type="checkbox"] {
+  margin-right: 8px;
+}
 
-    .learn-moree-btn {
-      background-color: #77DD0D;
-      color: white;
-      padding: 10px 110px;
-      top: 0%;
-      border-radius: 5px;
-      font-weight: bold;
-      border: none;
-      cursor: pointer;
-      position: relative;
-      margin-top:10px;
-    }
-    
-    .learn-moree-btn:hover {
-      background-color: #005c00;
-    }
-    
-    
-    }
-  }
-  
+.form-options a {
+  font-size: 14px;
+  color: #48C9B0;
+  text-decoration: none;
+}
+
+.form-options a:hover {
+  text-decoration: underline;
+}
+
+/* Button */
+.login-btn {
+  background: #2A7C85;
+  color: white;
+  padding: 12px;
+  border: none;
+  width: 100%;
+  font-size: 16px;
+  border-radius: 25px;
+  cursor: pointer;
+  transition: background 0.3s ease;
+}
+
+.login-btn:hover {
+  background: #1A3C34;
+}
+
+/* Error and Success Messages */
+.error-msg {
+  color: #E74C3C;
+  font-size: 14px;
+  margin-bottom: 15px;
+  text-align: center;
+}
+
+.success-msg {
+  color: #48C9B0;
+  font-size: 14px;
+  margin-bottom: 15px;
+  text-align: center;
 }

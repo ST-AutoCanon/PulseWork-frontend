@@ -3,7 +3,7 @@
   display: flex;
   justify-content: space-between; /* Space between profile and icons */
   align-items: center; /* Vertically align items */
-  height: 2.5%; /* Fixed height */
+  height: 2%; /* Fixed height */
 
   padding: 20px; /* Horizontal padding */
   background-color: white;
@@ -25,6 +25,7 @@
   align-items: center; /* Align profile items vertically */
   margin-left: 7%;
   margin-bottom: 1%;
+  
 }
 
 .profile-img {
@@ -36,7 +37,6 @@
 
 .profile-info {
   margin-left: 10%;
-
   gap: 5px;
   white-space: nowrap;
   display: flex;
@@ -88,16 +88,17 @@
   position: absolute;
   top: 0;
   right: 0;
-  background: none;
+  background: #00468c;
+  color: white;
   border: none;
   padding: 2% 3%;
   border-radius: 50%;
   cursor: pointer;
-  font-size: large;
+  font-size: small;
   z-index: 10;
 }
 .close-btn:hover {
-  color: red;
+  background: darkred;
 }
 
 /* Apply interactive effects to Font Awesome icons */
@@ -120,10 +121,29 @@
   transform: scale(0.95);
 }
 
+/* ... (keep existing CSS) ... */
+.org-name-section {
+  flex-grow: 1;
+  text-align: center;
+  padding: 0 20px;
+}
+
+.org-name-gradient {
+  font-size: 24px;
+  font-weight: 700;
+  background: linear-gradient(to right, #10677A, #6EBA35);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  display: inline-block;
+  white-space: nowrap; /* Prevents text wrapping if you want it all on one line */
+}
+
+
 .notification-icon {
   position: relative;
   display: inline-block;
   cursor: pointer;
+  z-index: 1000;
 }
 
 .notification-badge {
@@ -137,7 +157,9 @@
   font-size: 12px;
 }
 
+/* ... (keep existing CSS) ... */
 /* Mobile view adjustments */
+
 @media screen and (max-width: 768px) {
   .topbar1 {
     padding: 0px; /* Reduce padding */
@@ -146,9 +168,22 @@
     flex-direction: column; /* Stack items vertically */
     align-items: center;
     margin-top: 0%;
-    background-color: #001d4a;
+    background-color: #ffffff;
   }
-
+.org-name-section {
+  flex-grow: 1;
+  text-align: center;
+  padding: 10px;
+}
+.org-name-gradient {
+  font-size: 24px;
+  font-weight: 700;
+  background: linear-gradient(to right, #10677A, #6EBA35);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  display: inline-block;
+  white-space: nowrap; /* Prevents text wrapping if you want it all on one line */
+}
   .profile-section {
     flex-direction: column;
     text-align: left;
@@ -160,14 +195,14 @@
   .profile-img {
     width: 50px;
     height: 50px;
-    margin-right: 140px;
+    margin-right :140px; 
+    
   }
 
   .profile-info {
     margin-left: 40px;
-
     margin-top: -40px;
-    color: aliceblue;
+    color: rgb(10, 22, 32);
   }
 
   .icon-section {
@@ -177,9 +212,9 @@
     gap: 20px; /* Reduce space between icons */
     font-size: 120%; /* Reduce icon size */
     /* Make sure it's above everything */
-    background: #001d4a; /* Optional: Prevent text overlap */
+    background: #fdfdfdef; /* Optional: Prevent text overlap */
     padding: 5px; /* Adjust padding */
-    color: aliceblue;
+    color: rgb(0, 0, 0);
     border-radius: 5px; /* Smooth look */
   }
 
@@ -198,12 +233,5 @@
   .close-btn {
     font-size: 12px;
     padding: 5px 8px;
-  }
-
-  .notification-badge {
-    top: -4px; /* tweak positioning */
-    right: -4px;
-    padding: 2px 4px; /* adjust size */
-    font-size: 10px; /* slightly smaller text */
   }
 }

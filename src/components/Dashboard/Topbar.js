@@ -1,97 +1,4 @@
-// import React, { useEffect, useState } from "react";
-// import { Link, useNavigate } from "react-router-dom";
-// import HolidayCalendar from "../HolidayCalendar/HolidayCalendar";
-// import "./Topbar.css";
-// import axios from "axios";
 
-// const Topbar = () => {
-//     const navigate = useNavigate();
-//     const [userName, setUserName] = useState("User");
-//     const [userRole, setUserRole] = useState("Role");
-//     const [avatar, setAvatar] = useState("");
-//     const [showCalendar, setShowCalendar] = useState(false);
-
-//     const API_KEY = process.env.REACT_APP_API_KEY;
-
-//     useEffect(() => {
-//         const storedName = localStorage.getItem("userName") || "User";
-//         const storedRole = localStorage.getItem("userRole") || "Role";
-//         const dashboardData = JSON.parse(localStorage.getItem("dashboardData")) || {};
-//         const photoUrl = dashboardData.photoUrl || null;
-//         const storedGender = localStorage.getItem("userGender");
-
-//         setUserName(storedName);
-//         setUserRole(storedRole);
-
-//         if (photoUrl) {
-//             // If photoUrl exists, fetch the image as a blob and set as avatar
-//             axios
-//                 .get(`${process.env.REACT_APP_BACKEND_URL}/${photoUrl}`, {
-//                     headers: {
-//                         'x-api-key': API_KEY,
-//                     },
-//                     responseType: 'blob', // Get image as a blob
-//                 })
-//                 .then((response) => {
-//                     const imageUrl = URL.createObjectURL(response.data);
-//                     setAvatar(imageUrl);
-//                 })
-//                 .catch((err) => {
-//                     console.error('Error fetching photo:', err);
-//                     // Fallback to default avatar if fetching fails
-//                     setAvatar(storedRole === "Admin"
-//                         ? "/images/admin-avatar.png"
-//                         : storedGender === "Female"
-//                             ? "/images/female-avatar.png"
-//                             : "/images/male-avatar.png"
-//                     );
-//                 });
-//         } else {
-//             // If no photoUrl, use default avatars based on role and gender
-//             if (storedRole === "Admin") {
-//                 setAvatar("/images/admin-avatar.png");
-//             } else {
-//                 const avatarPath =
-//                     storedGender === "Female"
-//                         ? "/images/female-avatar.png"
-//                         : "/images/male-avatar.png";
-//                 setAvatar(avatarPath);
-//             }
-//         }
-//     }, []);
-
-//     return (
-//         <div className="topbar1">
-//             <div className="profile-section">
-//                 <img src={avatar} alt="Profile" className="profile-img" />
-//                 <div className="profile-info">
-//                     <span className="profile-namedash">{userName}</span>
-//                     <span className="profile-designation">{userRole}</span>
-//                 </div>
-//             </div>
-//             <div className="icon-section">
-//                 <i className="fas fa-bell"></i>
-
-//                 {/* Calendar Icon */}
-//                 <i
-//                     className="fas fa-calendar-alt"
-//                     onClick={() => setShowCalendar(!showCalendar)}
-//                 ></i>
-
-//                 {/* Holiday Calendar Dropdown */}
-//                 {showCalendar && (
-//                     <div className="calendar-dropdown">
-//                         <HolidayCalendar closeCalendar={() => setShowCalendar(false)} />
-//                     </div>
-//                 )}
-
-//                 <i className="fas fa-power-off" onClick={() => navigate('/login')}></i>
-//             </div>
-//         </div>
-//     );
-// };
-
-// export default Topbar;
 
 import React, { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
@@ -109,7 +16,7 @@ const Topbar = () => {
   const [showCalendar, setShowCalendar] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [notificationCount, setNotificationCount] = useState(0);
-
+const [orgName, setOrgName] = useState("Loading...");
   const API_KEY = process.env.REACT_APP_API_KEY;
   const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
   const meId = JSON.parse(
@@ -138,11 +45,10 @@ const Topbar = () => {
   useEffect(() => {
     const storedName = localStorage.getItem("userName") || "User";
     const storedRole = localStorage.getItem("userRole") || "Role";
-    const dashboardData =
-      JSON.parse(localStorage.getItem("dashboardData")) || {};
+    const dashboardData = JSON.parse(localStorage.getItem("dashboardData")) || {};
     const photoUrl = dashboardData.photoUrl || null;
     const storedGender = localStorage.getItem("userGender");
-
+    const orgId = localStorage.getItem("orgId");
     setUserName(storedName);
     setUserRole(storedRole);
 
@@ -182,7 +88,33 @@ const Topbar = () => {
         setAvatar(avatarPath);
       }
     }
-  }, []);
+
+
+ const testOrgId = orgId || "1";
+    const employeeId = storedName || "default-employee";
+    console.log("Using orgId for fetch:", testOrgId, "with employeeId:", employeeId);
+
+    axios
+      .get(`${BACKEND_URL}/org/${testOrgId}`, {
+        headers: {
+          "x-api-key": API_KEY,
+          "x-employee-id": employeeId,
+        },
+      })
+      .then((response) => {
+        console.log("API Response:", response.data);
+        setOrgName(response.data.Name || "Unknown Organization");
+      })
+      .catch((err) => {
+        console.error("Error fetching organization name:", err.response?.data || err.message);
+        setOrgName("Unknown Organization");
+      });
+  }, [BACKEND_URL, API_KEY]);
+
+  // Split orgName into two parts (first word and rest)
+  const [firstPart, secondPart] = orgName.includes(" ")
+    ? [orgName.split(" ")[0], orgName.split(" ").slice(1).join(" ")]
+    : [orgName, ""];
 
   return (
     <div className="topbar1">
@@ -193,6 +125,11 @@ const Topbar = () => {
           <span className="profile-designation">{userRole}</span>
         </div>
       </div>
+         <div className="org-name-section">
+  <span className="org-name-gradient">
+    {orgName.toUpperCase()}
+  </span>
+</div>
       <div className="icon-section">
         {/* Notification Icon with badge */}
         <div

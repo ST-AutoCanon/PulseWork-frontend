@@ -1,17 +1,14 @@
-import React, { useEffect, useState } from "react";
-import "./EmployeeLogin.css";
-import { Eye } from "lucide-react";
-import axios from "axios";
+import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import './EmployeeLogin.css';
+import { Eye } from 'lucide-react';
+import axios from 'axios';
 
 const EmployeeCardWithHover = ({ employeePunches }) => {
   const [hovered, setHovered] = useState(false);
-  const [avatar, setAvatar] = useState("/images/smily.png"); // Default avatar
+  const [avatar, setAvatar] = useState('/images/smily.png'); // Default avatar
 
-  if (
-    !employeePunches ||
-    !Array.isArray(employeePunches) ||
-    employeePunches.length === 0
-  ) {
+  if (!employeePunches || !Array.isArray(employeePunches) || employeePunches.length === 0) {
     return <div className="employee-card-hover">No punch data available</div>;
   }
 
@@ -27,69 +24,59 @@ const EmployeeCardWithHover = ({ employeePunches }) => {
   const latestPunchOut = sortedByPunchOut[0]?.punchout_time;
 
   const latest = employeePunches[employeePunches.length - 1];
-  const firstName = latest.first_name || "Unknown";
-  const lastName = latest.last_name || "";
+  const firstName = latest.first_name || 'Unknown';
+  const lastName = latest.last_name || '';
   const photoUrl = latest.photo_url || null;
-  const role = latest.role || localStorage.getItem("userRole") || "Employee";
-  const gender = latest.gender || localStorage.getItem("userGender") || "Male";
+  const role = latest.role || localStorage.getItem('userRole') || 'Employee';
+  const gender = latest.gender || localStorage.getItem('userGender') || 'Male';
   const API_KEY = process.env.REACT_APP_API_KEY;
-  const meId = JSON.parse(
-    localStorage.getItem("dashboardData") || "{}"
-  ).employeeId;
-  const headers = { "x-api-key": API_KEY, "x-employee-id": meId };
+  const meId = JSON.parse(localStorage.getItem('dashboardData') || '{}').employeeId;
+  const headers = { 'x-api-key': API_KEY, 'x-employee-id': meId };
 
   const isOfficeHQ =
     (latest.punchin_location &&
-      typeof latest.punchin_location === "string" &&
-      latest.punchin_location.trim().toLowerCase().includes("office hq")) ||
+      typeof latest.punchin_location === 'string' &&
+      latest.punchin_location.trim().toLowerCase().includes('office hq')) ||
     (latest.punchout_location &&
-      typeof latest.punchout_location === "string" &&
-      latest.punchout_location.trim().toLowerCase().includes("office hq"));
-  console.log(`isOfficeHQ for ${firstName} ${lastName}:`, isOfficeHQ, {
-    punchin_location: latest.punchin_location,
-    punchout_location: latest.punchout_location,
-  });
+      typeof latest.punchout_location === 'string' &&
+      latest.punchout_location.trim().toLowerCase().includes('office hq'));
+
   const cardClass = isOfficeHQ
-    ? "employee-card-hover bg-office-hq"
-    : "employee-card-hover bg-default";
+    ? 'employee-card-hover bg-office-hq'
+    : 'employee-card-hover bg-default';
 
   useEffect(() => {
-    console.log(`Avatar setup for ${firstName} ${lastName}:`, {
-      photoUrl,
-      role,
-      gender,
-    });
+    console.log(`Avatar setup for ${firstName} ${lastName}:`, { photoUrl, role, gender });
     let imageUrl = null;
 
     if (photoUrl) {
       const url = `${process.env.REACT_APP_BACKEND_URL}/${photoUrl}`;
-      console.log("Fetching image from:", url);
       axios
         .get(url, {
           headers,
-          responseType: "blob",
+          responseType: 'blob',
         })
         .then((response) => {
           imageUrl = URL.createObjectURL(response.data);
           setAvatar(imageUrl);
         })
         .catch((err) => {
-          console.error("Error fetching photo:", err);
+          console.error('Error fetching photo:', err);
           setAvatar(
-            role === "Admin"
-              ? "/images/smily.png"
-              : gender === "Female"
-              ? "/images/female-avatar.jpeg"
-              : "/images/male-avatar.jpeg"
+            role === 'Admin'
+              ? '/images/smily.png'
+              : gender === 'Female'
+              ? '/images/female-avatar.jpeg'
+              : '/images/male-avatar.jpeg'
           );
         });
     } else {
       setAvatar(
-        role === "Admin"
-          ? "/images/smily.png"
-          : gender === "Female"
-          ? "/images/female-avatar.jpeg"
-          : "/images/male-avatar.jpeg"
+        role === 'Admin'
+          ? '/images/smily.png'
+          : gender === 'Female'
+          ? '/images/female-avatar.jpeg'
+          : '/images/male-avatar.jpeg'
       );
     }
 
@@ -101,25 +88,22 @@ const EmployeeCardWithHover = ({ employeePunches }) => {
   }, [photoUrl, role, gender, firstName, lastName]);
 
   const formatTime = (time) => {
-    if (!time) return "—";
+    if (!time) return '—';
     try {
-      if (
-        typeof time === "string" &&
-        time.match(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/)
-      ) {
+      if (typeof time === 'string' && time.match(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/)) {
         return time.slice(11, 16);
       }
       const date = new Date(time);
-      if (isNaN(date.getTime())) return "—";
+      if (isNaN(date.getTime())) return '—';
       const istDate = new Date(date.getTime() + 5.5 * 60 * 60 * 1000);
-      return istDate.toLocaleTimeString("en-IN", {
-        hour: "2-digit",
-        minute: "2-digit",
+      return istDate.toLocaleTimeString('en-IN', {
+        hour: '2-digit',
+        minute: '2-digit',
         hour12: false,
       });
     } catch (error) {
-      console.error("Error formatting time:", time, error);
-      return "—";
+      console.error('Error formatting time:', time, error);
+      return '—';
     }
   };
 
@@ -129,9 +113,7 @@ const EmployeeCardWithHover = ({ employeePunches }) => {
     punches.forEach((punch, index) => {
       if (punch.punchin_time) {
         const start = new Date(punch.punchin_time);
-        const end = punch.punchout_time
-          ? new Date(punch.punchout_time)
-          : new Date();
+        const end = punch.punchout_time ? new Date(punch.punchout_time) : new Date();
 
         if (!isNaN(start.getTime()) && !isNaN(end.getTime()) && end >= start) {
           totalMs += end - start;
@@ -145,9 +127,7 @@ const EmployeeCardWithHover = ({ employeePunches }) => {
     const hours = Math.floor(totalMinutes / 60);
     const minutes = totalMinutes % 60;
 
-    return `${hours.toString().padStart(2, "0")}:${minutes
-      .toString()
-      .padStart(2, "0")}`;
+    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
   };
 
   const totalWorkHours = calculateTotalWorkHours(employeePunches);
@@ -193,34 +173,26 @@ const EmployeeCardWithHover = ({ employeePunches }) => {
             {employeePunches.map((entry, idx) => (
               <div
                 className="punch-entry"
-                key={`${entry.punchin_time || idx}-${
-                  entry.punchout_time || idx
-                }`}
+                key={`${entry.punchin_time || idx}-${entry.punchout_time || idx}`}
               >
                 <div className="punch-details-grid">
                   <div className="punch-detail">
-                    <strong>Punch In Time:</strong>{" "}
-                    {formatTime(entry.punchin_time)}
+                    <strong>Punch In Time:</strong> {formatTime(entry.punchin_time)}
                   </div>
                   <div className="punch-detail">
-                    <strong>Punch Out Time:</strong>{" "}
-                    {formatTime(entry.punchout_time)}
+                    <strong>Punch Out Time:</strong> {formatTime(entry.punchout_time)}
                   </div>
                   <div className="punch-detail">
-                    <strong>Punch In Device:</strong>{" "}
-                    {entry.punchin_device || "—"}
+                    <strong>Punch In Device:</strong> {entry.punchin_device || '—'}
                   </div>
                   <div className="punch-detail">
-                    <strong>Punch Out Device:</strong>{" "}
-                    {entry.punchout_device || "—"}
+                    <strong>Punch Out Device:</strong> {entry.punchout_device || '—'}
                   </div>
                   <div className="punch-detail">
-                    <strong>Punch In Location:</strong>{" "}
-                    {entry.punchin_location || "—"}
+                    <strong>Punch In Location:</strong> {entry.punchin_location || '—'}
                   </div>
                   <div className="punch-detail">
-                    <strong>Punch Out Location:</strong>{" "}
-                    {entry.punchout_location || "—"}
+                    <strong>Punch Out Location:</strong> {entry.punchout_location || '—'}
                   </div>
                 </div>
                 <hr />
@@ -233,39 +205,25 @@ const EmployeeCardWithHover = ({ employeePunches }) => {
   );
 };
 
-const TimeSlotGroup = ({
-  time,
-  slotKey,
-  employeesData = [],
-  isOpen,
-  setSlotOpen,
-}) => {
+const TimeSlotGroup = ({ time, slotKey, employeesData = [], isOpen, setSlotOpen }) => {
   const handleToggle = () => {
     setSlotOpen(slotKey, !isOpen);
   };
 
-  // Format the time slot (e.g., "0-1" to "00:00 - 01:00")
   const formatTimeSlot = (slot) => {
-    const [startHour] = slot.split("-").map(Number);
+    const [startHour] = slot.split('-').map(Number);
     const endHour = startHour + 1;
-    return `${startHour.toString().padStart(2, "0")}:00 - ${endHour
-      .toString()
-      .padStart(2, "0")}:00`;
+    return `${startHour.toString().padStart(2, '0')}:00 - ${endHour.toString().padStart(2, '0')}:00`;
   };
 
   return (
     <div className="time-group">
       <div className="time-header" onClick={handleToggle}>
         <h3>
-          {formatTimeSlot(slotKey)} ({employeesData.length}{" "}
-          {employeesData.length === 1 ? "employee" : "employees"})
-          {time.includes("(Today)")
-            ? " (Today)"
-            : time.includes("(Yesterday)")
-            ? " (Yesterday)"
-            : ` (${time.split("(")[1]}`}
+          {formatTimeSlot(slotKey)} ({employeesData.length} {employeesData.length === 1 ? 'employee' : 'employees'})
+          {time.includes('(Today)') ? ' (Today)' : time.includes('(Yesterday)') ? ' (Yesterday)' : ` (${time.split('(')[1]}`}
         </h3>
-        <span className="expand-icon">{isOpen ? "˄" : "˅"}</span>
+        <span className="expand-icon">{isOpen ? '˄' : '˅'}</span>
       </div>
       {isOpen && (
         <div className="card-row">
@@ -280,153 +238,49 @@ const TimeSlotGroup = ({
 };
 
 const EmployeeLogin = () => {
-  const [activeTab, setActiveTab] = useState("today");
+  const [activeTab, setActiveTab] = useState('today');
   const [punchData, setPunchData] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [slotStates, setSlotStates] = useState({
-    today: {},
-    yesterday: {},
-    select: {},
-  });
-  const [fromDate, setFromDate] = useState("");
-  const [toDate, setToDate] = useState("");
+  const [slotStates, setSlotStates] = useState({ today: {}, yesterday: {}, select: {} });
+  const [fromDate, setFromDate] = useState('');
+  const [toDate, setToDate] = useState('');
   const [dateError, setDateError] = useState(null);
+  const navigate = useNavigate();
+
+  const orgId = localStorage.getItem('orgId') || '';
 
   const validateDateRange = (from, to) => {
     if (!from || !to) return { valid: true };
     const fromDateObj = new Date(from);
     const toDateObj = new Date(to);
 
+    if (isNaN(fromDateObj.getTime()) || isNaN(toDateObj.getTime())) {
+      return { valid: false, error: 'Invalid date format.' };
+    }
+
     if (toDateObj < fromDateObj) {
-      return {
-        valid: false,
-        error: "'To' date must be on or after 'From' date.",
-      };
+      return { valid: false, error: "'To' date must be on or after 'From' date." };
     }
 
     const diffTime = toDateObj - fromDateObj;
     const diffDays = diffTime / (1000 * 60 * 60 * 24);
     if (diffDays > 5) {
-      return { valid: false, error: "Date range must not exceed 5 days." };
+      return { valid: false, error: 'Date range must not exceed 5 days.' };
     }
 
     return { valid: true };
   };
-
-  useEffect(() => {
-    const fetchPunchData = async () => {
-      if (activeTab === "select" && (!fromDate || !toDate)) {
-        setPunchData([]);
-        setLoading(false);
-        setError(null);
-        return;
-      }
-
-      if (activeTab === "select") {
-        const validation = validateDateRange(fromDate, toDate);
-        if (!validation.valid) {
-          setError(validation.error);
-          setPunchData([]);
-          setLoading(false);
-          return;
-        }
-      }
-
-      setLoading(true);
-      setError(null);
-      setDateError(null);
-
-      try {
-        const API_KEY = process.env.REACT_APP_API_KEY;
-        const backendUrl = process.env.REACT_APP_BACKEND_URL;
-        const meId = JSON.parse(
-          localStorage.getItem("dashboardData") || "{}"
-        ).employeeId;
-        const headers = { "x-api-key": API_KEY, "x-employee-id": meId };
-
-        if (!API_KEY) throw new Error("API Key is missing.");
-        if (!backendUrl) throw new Error("Backend URL is missing.");
-        if (!meId) throw new Error("Employee ID is missing.");
-
-        let url = `${backendUrl}/api/employeelogin/today-yesterday-punches`;
-        if (activeTab === "select") {
-          url = `${backendUrl}/api/employeelogin/punches?from=${fromDate}&to=${toDate}`;
-        }
-
-        console.log("Fetching punch data from:", url, { headers });
-        const response = await axios.get(url, {
-          headers,
-          withCredentials: true,
-        });
-
-        console.log("Punch data response:", response.data);
-
-        const data = Array.isArray(response.data)
-          ? response.data
-          : Array.isArray(response.data.data)
-          ? response.data.data
-          : [];
-
-        setPunchData(data);
-
-        const grouped = groupByDayAndEmployee(data, activeTab);
-        const activeGroup =
-          activeTab === "today"
-            ? grouped.Today
-            : activeTab === "yesterday"
-            ? grouped.Yesterday
-            : grouped[fromDate] || {};
-        const slots = groupByHourSlots(activeGroup);
-        const slotKeys = Object.keys(slots);
-        const newSlotStates = slotKeys.reduce(
-          (acc, slot, idx) => ({
-            ...acc,
-            [slot]: idx === 0,
-          }),
-          {}
-        );
-        setSlotStates((prev) => ({
-          ...prev,
-          [activeTab]: newSlotStates,
-        }));
-      } catch (err) {
-        console.error("Error fetching punch data:", {
-          message: err.message,
-          status: err.response?.status,
-          data: err.response?.data,
-        });
-        let errorMessage =
-          err.response?.data?.message ||
-          err.message ||
-          "Error fetching punch data.";
-        if (err.response?.data instanceof Blob) {
-          try {
-            const text = await err.response.data.text();
-            const parsed = JSON.parse(text);
-            errorMessage = parsed.message || errorMessage;
-          } catch (parseErr) {
-            console.warn("Could not parse error response:", parseErr);
-          }
-        }
-        setError(errorMessage);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchPunchData();
-  }, [activeTab, fromDate, toDate]);
 
   const groupByDayAndEmployee = (data, tab) => {
     const grouped = { Today: {}, Yesterday: {} };
 
     if (!Array.isArray(data)) return grouped;
 
-    if (tab === "select") {
+    if (tab === 'select') {
       data.forEach((record) => {
         if (!record.punchin_time || !record.employee_id) return;
-        const date = new Date(record.punchin_time).toISOString().split("T")[0];
+        const date = new Date(record.punchin_time).toISOString().split('T')[0];
         const empId = record.employee_id;
 
         if (!grouped[date]) grouped[date] = {};
@@ -445,7 +299,7 @@ const EmployeeLogin = () => {
       });
     }
 
-    console.log("Grouped by Day and Employee:", grouped);
+    console.log('Grouped by Day and Employee:', grouped);
     return grouped;
   };
 
@@ -453,24 +307,17 @@ const EmployeeLogin = () => {
     const slotMap = {};
 
     Object.entries(activeGroup).forEach(([empId, punches]) => {
-      const sorted = [...punches].sort(
-        (a, b) => new Date(a.punchin_time) - new Date(b.punchin_time)
-      );
+      const sorted = [...punches].sort((a, b) => new Date(a.punchin_time) - new Date(b.punchin_time));
       const firstPunch = sorted[0];
 
       if (!firstPunch || !firstPunch.punchin_time) {
-        console.warn(
-          `Skipping punches for employee ${empId}: invalid punchin_time`
-        );
+        console.warn(`Skipping punches for employee ${empId}: invalid punchin_time`);
         return;
       }
 
       const punchDate = new Date(firstPunch.punchin_time);
       if (isNaN(punchDate.getTime())) {
-        console.warn(
-          `Invalid punchin_time for employee ${empId}:`,
-          firstPunch.punchin_time
-        );
+        console.warn(`Invalid punchin_time for employee ${empId}:`, firstPunch.punchin_time);
         return;
       }
 
@@ -481,9 +328,129 @@ const EmployeeLogin = () => {
       slotMap[slotLabel].push(sorted);
     });
 
-    console.log("Grouped by Hour Slots:", slotMap);
+    console.log('Grouped by Hour Slots:', slotMap);
     return slotMap;
   };
+
+  useEffect(() => {
+    const fetchPunchData = async () => {
+      if (!orgId) {
+        setError('Organization ID is missing in localStorage. Please log in again.');
+        setPunchData([]);
+        setLoading(false);
+        navigate('/login');
+        return;
+      }
+
+      if (activeTab === 'select' && (!fromDate || !toDate)) {
+        setPunchData([]);
+        setLoading(false);
+        setError(null);
+        return;
+      }
+
+      if (activeTab === 'select') {
+        const validation = validateDateRange(fromDate, toDate);
+        if (!validation.valid) {
+          setError(validation.error);
+          setPunchData([]);
+          setLoading(false);
+          return;
+        }
+      }
+
+      setLoading(true);
+      setError(null);
+      setDateError(null);
+
+      try {
+        const API_KEY = process.env.REACT_APP_API_KEY;
+        const backendUrl = process.env.REACT_APP_BACKEND_URL;
+        const meId = JSON.parse(localStorage.getItem('dashboardData') || '{}').employeeId;
+        const headers = { 'x-api-key': API_KEY, 'x-employee-id': meId };
+
+        if (!API_KEY) throw new Error('API Key is missing.');
+        if (!backendUrl) throw new Error('Backend URL is missing.');
+        if (!meId) throw new Error('Employee ID is missing.');
+
+        let url = `${backendUrl}/api/employeelogin/today-yesterday-punches?org_id=${encodeURIComponent(orgId)}`;
+      
+// if (activeTab === 'select') {
+//   url = `${backendUrl}/api/emp-excelsheet?from=${encodeURIComponent(fromDate)}&to=${encodeURIComponent(toDate)}&org_id=${encodeURIComponent(orgId)}`;
+// }
+        
+
+        console.log('Fetching punch data from:', url, { headers });
+        const response = await axios.get(url, {
+          headers,
+          withCredentials: true,
+        });
+
+        console.log('Punch data response:', response.data);
+
+        let data = [];
+        if (Array.isArray(response.data)) {
+          data = response.data;
+        } else if (Array.isArray(response.data.data)) {
+          data = response.data.data;
+        } else {
+          console.warn('Unexpected response format:', response.data);
+          data = [];
+        }
+
+        setPunchData(data);
+
+        if (data.length === 0 && activeTab === 'select') {
+          // setError('No punch data available for the selected date range and organization.');
+        } else if (data.length === 0) {
+          // setError('No punch data available for the selected organization.');
+        }
+
+        const grouped = groupByDayAndEmployee(data, activeTab);
+        const activeGroup = activeTab === 'today' ? grouped.Today : activeTab === 'yesterday' ? grouped.Yesterday : grouped[fromDate] || {};
+        const slots = groupByHourSlots(activeGroup);
+        const slotKeys = Object.keys(slots);
+        const newSlotStates = slotKeys.reduce(
+          (acc, slot, idx) => ({
+            ...acc,
+            [slot]: idx === 0,
+          }),
+          {}
+        );
+        setSlotStates((prev) => ({
+          ...prev,
+          [activeTab]: newSlotStates,
+        }));
+      } catch (err) {
+        console.error('Error fetching punch data:', {
+          message: err.message,
+          status: err.response?.status,
+          data: err.response?.data,
+        });
+        let errorMessage = err.response?.data?.message || err.message || 'Error fetching punch data.';
+        if (err.response?.status === 400) {
+          errorMessage = 'Invalid request. Check date range or organization ID.';
+        } else if (err.response?.status === 404) {
+          errorMessage = activeTab === 'select' ? 'No punch data available for the selected date range and organization.' : 'No punch data available for the selected organization.';
+        }
+        if (err.response?.data instanceof Blob) {
+          try {
+            const text = await err.response.data.text();
+            const parsed = JSON.parse(text);
+            errorMessage = parsed.message || errorMessage;
+          } catch (parseErr) {
+            console.warn('Could not parse error response:', parseErr);
+          }
+        }
+        setError(errorMessage);
+        setPunchData([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchPunchData();
+  }, [activeTab, fromDate, toDate, orgId, navigate]);
 
   const setSlotOpen = (slot, isOpen) => {
     setSlotStates((prev) => ({
@@ -497,9 +464,13 @@ const EmployeeLogin = () => {
 
   const handleDownload = async () => {
     if (!fromDate || !toDate) {
-      setError(
-        'Please select both "From" and "To" dates to download punch data.'
-      );
+      setError('Please select both "From" and "To" dates.');
+      return;
+    }
+
+    if (!orgId) {
+      setError('Organization ID is missing in localStorage. Please log in again.');
+      navigate('/login');
       return;
     }
 
@@ -509,88 +480,73 @@ const EmployeeLogin = () => {
       return;
     }
 
-    setError(null);
     setLoading(true);
+    setError(null);
 
     try {
       const API_KEY = process.env.REACT_APP_API_KEY;
       const backendUrl = process.env.REACT_APP_BACKEND_URL;
-      const meId = JSON.parse(
-        localStorage.getItem("dashboardData") || "{}"
-      ).employeeId;
-      const headers = { "x-api-key": API_KEY, "x-employee-id": meId };
+      const meId = JSON.parse(localStorage.getItem('dashboardData') || '{}').employeeId;
 
-      if (!API_KEY) throw new Error("API Key is missing.");
-      if (!backendUrl) throw new Error("Backend URL is missing.");
-      if (!meId) throw new Error("Employee ID is missing.");
+      if (!API_KEY) throw new Error('API Key is missing.');
+      if (!backendUrl) throw new Error('Backend URL is missing.');
+      if (!meId) throw new Error('Employee ID is missing.');
 
-      const url = `${backendUrl}/api/emp-excelsheet?from=${fromDate}&to=${toDate}`;
-      console.log("Downloading Excel from:", url, {
-        headers,
-        employeeId: meId,
-      });
+      const url = `${backendUrl}/api/emp-excelsheet?from=${encodeURIComponent(fromDate)}&to=${encodeURIComponent(toDate)}&org_id=${encodeURIComponent(orgId)}`;
+
+      console.log('Initiating Excel download:', { url, fromDate, toDate, orgId, meId });
 
       const response = await axios.get(url, {
-        headers,
-        withCredentials: true,
-        responseType: "blob",
+        headers: {
+          'x-api-key': API_KEY,
+          'x-employee-id': meId,
+        },
+        responseType: 'blob',
       });
 
-      console.log("Download response:", {
-        status: response.status,
-        headers: response.headers,
-        contentType: response.headers["content-type"],
-      });
-
-      const contentType = response.headers["content-type"];
-      if (
-        !contentType.includes(
-          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-        )
-      ) {
+      const contentType = response.headers['content-type'];
+      if (!contentType.includes('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')) {
         const text = await response.data.text();
-        let errorMessage = "Unexpected response format";
+        let errorMessage = 'Unexpected response format. Expected an Excel file.';
         try {
           const parsed = JSON.parse(text);
           errorMessage = parsed.message || errorMessage;
         } catch (parseErr) {
-          console.warn(
-            "Could not parse error response:",
-            parseErr,
-            "Response text:",
-            text
-          );
+          console.warn('Could not parse error response:', parseErr);
         }
         throw new Error(errorMessage);
       }
 
       const downloadUrl = window.URL.createObjectURL(new Blob([response.data]));
-      const link = document.createElement("a");
+      const link = document.createElement('a');
       link.href = downloadUrl;
-      link.setAttribute("download", `punch-data-${fromDate}-to-${toDate}.xlsx`);
+      link.setAttribute('download', `punch-data-${fromDate}-to-${toDate}.xlsx`);
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
       window.URL.revokeObjectURL(downloadUrl);
+
+      console.log('Excel download successful');
     } catch (err) {
-      console.error("Error downloading punch data:", {
+      console.error('Error downloading Excel:', {
         message: err.message,
         status: err.response?.status,
         headers: err.response?.headers,
       });
-
-      let errorMessage = err.message || "Failed to download punch data.";
+      let errorMessage = err.message || 'Failed to download punch data.';
       if (err.response?.data instanceof Blob) {
         try {
           const text = await err.response.data.text();
-          console.log("Error response text:", text);
           const parsed = JSON.parse(text);
           errorMessage = parsed.message || errorMessage;
         } catch (parseErr) {
-          console.warn("Could not parse error response:", parseErr);
+          console.warn('Could not parse error response:', parseErr);
         }
+      } else if (err.response?.status === 400) {
+        errorMessage = 'Invalid request. Check date range or organization ID.';
+      } else if (err.response?.status === 404) {
+        errorMessage = 'No punch data available for the selected date range and organization.';
       }
-
       setError(errorMessage);
     } finally {
       setLoading(false);
@@ -620,12 +576,7 @@ const EmployeeLogin = () => {
   };
 
   const groupedData = groupByDayAndEmployee(punchData, activeTab);
-  const activeGroup =
-    activeTab === "today"
-      ? groupedData.Today
-      : activeTab === "yesterday"
-      ? groupedData.Yesterday
-      : groupedData[fromDate] || {};
+  const activeGroup = activeTab === 'today' ? groupedData.Today : activeTab === 'yesterday' ? groupedData.Yesterday : groupedData[fromDate] || {};
   const slotGroupedData = groupByHourSlots(activeGroup);
 
   return (
@@ -633,111 +584,79 @@ const EmployeeLogin = () => {
       <h2 className="heading">Employee Punch Records</h2>
 
       <div className="tab-buttons">
-        <button
-          className={activeTab === "today" ? "active" : ""}
-          onClick={() => setActiveTab("today")}
-        >
+        <button className={activeTab === 'today' ? 'active' : ''} onClick={() => setActiveTab('today')}>
           Today
         </button>
-        <button
-          className={activeTab === "yesterday" ? "active" : ""}
-          onClick={() => setActiveTab("yesterday")}
-        >
+        <button className={activeTab === 'yesterday' ? 'active' : ''} onClick={() => setActiveTab('yesterday')}>
           Yesterday
         </button>
-        <button
-          className={activeTab === "select" ? "active" : ""}
-          onClick={() => setActiveTab("select")}
-        >
+        <button className={activeTab === 'select' ? 'active' : ''} onClick={() => setActiveTab('select')}>
           Select
         </button>
       </div>
 
-      {activeTab === "select" && (
-        <div
-          className="date-selection"
-          style={{
-            margin: "20px 0",
-            display: "flex",
-            gap: "10px",
-            alignItems: "center",
-          }}
-        >
+      {activeTab === 'select' && (
+        <div className="date-selection" style={{ margin: '20px 0', display: 'flex', gap: '10px', alignItems: 'center' }}>
           <div>
-            <label htmlFor="fromDate" style={{ marginRight: "8px" }}>
-              From:
-            </label>
+            <label htmlFor="fromDate" style={{ marginRight: '8px' }}>From:</label>
             <input
               id="fromDate"
               type="date"
               value={fromDate}
               onChange={handleFromDateChange}
-              style={{ padding: "8px", fontSize: "16px" }}
+              style={{ padding: '8px', fontSize: '16px' }}
+              max={new Date().toISOString().split('T')[0]}
             />
           </div>
           <div>
-            <label htmlFor="toDate" style={{ marginRight: "8px" }}>
-              To:
-            </label>
+            <label htmlFor="toDate" style={{ marginRight: '8px' }}>To:</label>
             <input
               id="toDate"
               type="date"
               value={toDate}
               onChange={handleToDateChange}
-              style={{ padding: "8px", fontSize: "16px" }}
+              style={{ padding: '8px', fontSize: '16px' }}
+              max={new Date().toISOString().split('T')[0]}
             />
           </div>
           <button
             onClick={handleDownload}
-            disabled={loading || dateError || !fromDate || !toDate}
+            disabled={loading || dateError || !fromDate || !toDate || !orgId}
             style={{
-              padding: "8px 16px",
-              backgroundColor:
-                loading || dateError || !fromDate || !toDate
-                  ? "#ccc"
-                  : "#007bff",
-              color: "white",
-              border: "none",
-              borderRadius: "4px",
-              cursor:
-                loading || dateError || !fromDate || !toDate
-                  ? "not-allowed"
-                  : "pointer",
+              padding: '8px 16px',
+              backgroundColor: loading || dateError || !fromDate || !toDate || !orgId ? '#ccc' : '#007bff',
+              color: 'white',
+              border: 'none',
+              borderRadius: '4px',
+              cursor: loading || dateError || !fromDate || !toDate || !orgId ? 'not-allowed' : 'pointer',
             }}
           >
-            {loading ? "Downloading..." : "Download Excel"}
+            {loading ? 'Downloading...' : 'Download Excel'}
           </button>
         </div>
       )}
 
-      {dateError && (
-        <p style={{ color: "red", fontWeight: "bold" }}>{dateError}</p>
-      )}
+      {dateError && <p style={{ color: 'red', fontWeight: 'bold' }}>{dateError}</p>}
+      {error && <p style={{ color: 'red', fontWeight: 'bold' }}>{error}</p>}
       {loading && <p>Loading...</p>}
-      {error && <p style={{ color: "red", fontWeight: "bold" }}>{error}</p>}
 
-      {!loading &&
-      !error &&
-      activeTab === "select" &&
-      (!fromDate || !toDate) ? (
+      {!loading && !error && !orgId ? (
+        <p>Organization ID is missing in localStorage. Please log in again.</p>
+      ) : !loading && !error && activeTab === 'select' && (!fromDate || !toDate) ? (
         <p>Please select both "From" and "To" dates to view punch data.</p>
+      ) : !loading && !error && Object.keys(slotGroupedData).length === 0 && punchData.length === 0 ? (
+        <p>No punch data available for the selected date range and organization.</p>
       ) : !loading && !error && Object.keys(slotGroupedData).length > 0 ? (
         Object.entries(slotGroupedData)
           .sort(([slotA], [slotB]) => {
-            const hourA = parseInt(slotA.split("-")[0], 10) || 0;
-            const hourB = parseInt(slotB.split("-")[0], 10) || 0;
+            const hourA = parseInt(slotA.split('-')[0], 10) || 0;
+            const hourB = parseInt(slotB.split('-')[0], 10) || 0;
             return hourA - hourB;
           })
           .map(([slot, empPunchesArr]) => (
             <TimeSlotGroup
               key={slot}
-              time={`${slot} ${
-                activeTab === "today"
-                  ? "(Today)"
-                  : activeTab === "yesterday"
-                  ? "(Yesterday)"
-                  : `(${fromDate})`
-              }`}
+              time={`${slot} ${activeTab === 'today' ? '(Today)' : activeTab === 'yesterday' ? '(Yesterday)' : `(${fromDate})`}`}
               slotKey={slot}
               employeesData={empPunchesArr}
               isOpen={slotStates[activeTab][slot] || false}

@@ -70,6 +70,7 @@ import SalaryStatement from "./components/Salary_statement/Salary_Statement.js";
 import FacePunch from "./components/FacePunch/FacePunch.js";
 
 import GeneratePayslip from "./components/generate_payslip/generate_payslip.js";
+import CreateOrganization from "./components/CreateOrganization/CreateOrganization.js";
 
 
 // import EMobilitySolutions from "./components/EMobilitySolutions/EMobilitySolutions";
@@ -78,11 +79,11 @@ function App() {
     <Router>
       <div className="App">
         {/* Navbar */}
-        <Navbar />
+        {/* <Navbar /> */}
         <ScrollToTop />
         {/* Routes */}
         <Routes>
-          <Route path="/" element={<Home />} />
+          <Route path="/" element={<Login />} />
           <Route path="/About" element={<About />} />
           <Route path="/ScrollTop" element={<ScrollToTop />} />
           <Route path="/Services" element={<Services />} />
@@ -152,6 +153,7 @@ function App() {
           <Route path="/Salary_Statement" element={<SalaryStatement />} />
                      <Route path="/FacePunch" element={<FacePunch />} />
           <Route path="/generate_payslip" element={<GeneratePayslip/>} />
+           <Route path="/CreateOrganization" element={<CreateOrganization/>} />
 
           <Route
             path="/EngineeringServices"
@@ -167,7 +169,7 @@ function App() {
         </Routes>
         {/* Footer */}
         {/* <HomologationFirst /> */}
-        <Footer />
+        {/* <Footer /> */}
       </div>
     </Router>
   );

@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Reimbursement — Approval Flow</title>
+    <style>
+      @page {
+        size: A4;
+        margin: 0;
+      }
+      body {
+        margin: 0;
+        font-family: Arial, sans-serif;
+        color: #222;
+      }
+      .page {
+        width: 210mm;
+        height: 297mm;
+        padding: 20mm;
+        box-sizing: border-box;
+      }
+      .header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 8mm;
+      }
+      .logo {
+        max-width: 120px;
+      }
+      .title {
+        font-size: 18px;
+        color: #0b5ed7;
+      }
+      .flow {
+        display: flex;
+        justify-content: space-between;
+        margin-top: 12px;
+      }
+      .flow .step {
+        width: 30%;
+        text-align: center;
+        border: 1px dashed #ddd;
+        padding: 8px;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 10px;
+      }
+      th,
+      td {
+        border: 1px solid #eee;
+        padding: 8px;
+        font-size: 13px;
+      }
+      .in-footer {
+        position: absolute;
+        left: 20mm;
+        right: 20mm;
+        bottom: 18mm;
+        font-size: 11px;
+        color: #666;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="page" data-template="reimbursement_approval_flow">
+      <div class="header">
+        <div class="logo" data-field="logo">
+          <img src="" alt="logo" style="max-width: 100%" />
+        </div>
+        <div style="text-align: right" data-field="company_name">
+          Company Name
+        </div>
+      </div>
+
+      <div class="title">Reimbursement Claim — Approval Workflow</div>
+
+      <div style="margin-top: 8px">
+        <strong>Claimant:</strong>
+        <span data-field="employee_name">N. Kumar</span> |
+        <strong>Claim ID:</strong> <span data-field="claim_id">CL-2025-01</span>
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Expense</th>
+            <th>Category</th>
+            <th>Amount</th>
+          </tr>
+        </thead>
+        <tbody data-field="line_items">
+          <tr>
+            <td>2025-01-04</td>
+            <td>Client lunch</td>
+            <td>Meal</td>
+            <td data-field="amount_1">₹ 1,200</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div style="margin-top: 12px" class="flow">
+        <div class="step" data-field="step_1">
+          Submitted<br /><small data-field="step_1_date">2025-01-05</small>
+        </div>
+        <div class="step" data-field="step_2">
+          Manager Approved<br /><small data-field="step_2_date">—</small>
+        </div>
+        <div class="step" data-field="step_3">
+          Finance Processed<br /><small data-field="step_3_date">—</small>
+        </div>
+      </div>
+
+      <div style="margin-top: 12px; text-align: right">
+        <strong>Total:</strong> <span data-field="total_amount">₹ 1,200</span>
+      </div>
+
+      <div class="in-footer">
+        Workflow comments:
+        <span data-field="workflow_notes" class="placeholder"
+          >Approval notes...</span
+        >
+      </div>
+    </div>
+  </body>
+</html>

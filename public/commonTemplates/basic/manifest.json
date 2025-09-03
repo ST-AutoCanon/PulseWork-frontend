@@ -1,0 +1,282 @@
+[
+  {
+    "id": "invoice_top_left",
+    "name": "Invoice \u2014 Top Left Logo",
+    "description": "Logo on top-left, company info top-right, centered footer.",
+    "file": "invoice_top_left.html",
+    "thumbnail": "../thumbnails/invoice_top_left.svg",
+    "category": "invoices"
+  },
+  {
+    "id": "invoice_top_center",
+    "name": "Invoice \u2014 Top Center Logo",
+    "description": "Logo centered on top with company name below, footer left.",
+    "file": "invoice_top_center.html",
+    "thumbnail": "../thumbnails/invoice_top_center.svg",
+    "category": "invoices"
+  },
+  {
+    "id": "invoice_top_right",
+    "name": "Invoice \u2014 Top Right Logo",
+    "description": "Logo on top-right, company details on left, footer right.",
+    "file": "invoice_top_right.html",
+    "thumbnail": "../thumbnails/invoice_top_right.svg",
+    "category": "invoices"
+  },
+  {
+    "id": "invoice_sidebar_left",
+    "name": "Invoice \u2014 Left Sidebar Logo",
+    "description": "Vertical left sidebar with logo + company details, content on right.",
+    "file": "invoice_sidebar_left_logo.html",
+    "thumbnail": "../thumbnails/invoice_sidebar_left.svg",
+    "category": "invoices"
+  },
+  {
+    "id": "invoice_logo_over_name",
+    "name": "Invoice \u2014 Logo Over Name",
+    "description": "Logo above company name and contact, footer centered.",
+    "file": "invoice_logo_over_name.html",
+    "thumbnail": "../thumbnails/invoice_logo_over_name.svg",
+    "category": "invoices"
+  },
+  {
+    "id": "invoice_split_header",
+    "name": "Invoice \u2014 Split Header",
+    "description": "Left logo + name, right invoice meta block, footer left.",
+    "file": "invoice_split_header.html",
+    "thumbnail": "../thumbnails/invoice_split_header.svg",
+    "category": "invoices"
+  },
+  {
+    "id": "invoice_centered_large_logo",
+    "name": "Invoice \u2014 Centered Large Logo",
+    "description": "Large centered logo and company name; footer as a strip.",
+    "file": "invoice_centered_large_logo.html",
+    "thumbnail": "../thumbnails/invoice_centered_large_logo.svg",
+    "category": "invoices"
+  },
+  {
+    "id": "invoice_footer_center",
+    "name": "Invoice \u2014 Footer Centered",
+    "description": "Small top-left company; large centered footer for legal/bank details.",
+    "file": "invoice_footer_center.html",
+    "thumbnail": "../thumbnails/invoice_footer_center.svg",
+    "category": "invoices"
+  },
+  {
+    "id": "invoice_footer_left",
+    "name": "Invoice \u2014 Footer Left Signature",
+    "description": "Company top-right small; footer left with signature area.",
+    "file": "invoice_footer_left.html",
+    "thumbnail": "../thumbnails/invoice_footer_left.svg",
+    "category": "invoices"
+  },
+  {
+    "id": "invoice_sidebar_right",
+    "name": "Invoice \u2014 Right Sidebar Logo",
+    "description": "Right sidebar vertical logo with company centered top; footer right.",
+    "file": "invoice_sidebar_right_logo.html",
+    "thumbnail": "../thumbnails/invoice_sidebar_right.svg",
+    "category": "invoices"
+  },
+  {
+    "id": "letterhead_top_left",
+    "name": "Letterhead \u2014 Top Left Logo",
+    "description": "Classic letterhead with logo top-left and company info top-right.",
+    "file": "letterhead_top_left.html",
+    "thumbnail": "../thumbnails/letterhead_top_left.svg",
+    "category": "letterheads"
+  },
+  {
+    "id": "letterhead_top_center",
+    "name": "Letterhead \u2014 Top Center",
+    "description": "Centered logo and company name at the top.",
+    "file": "letterhead_top_center.html",
+    "thumbnail": "../thumbnails/letterhead_top_center.svg",
+    "category": "letterheads"
+  },
+  {
+    "id": "letterhead_top_right",
+    "name": "Letterhead \u2014 Top Right Logo",
+    "description": "Company info on left and logo on top-right.",
+    "file": "letterhead_top_right.html",
+    "thumbnail": "../thumbnails/letterhead_top_right.svg",
+    "category": "letterheads"
+  },
+  {
+    "id": "letterhead_sidebar_left",
+    "name": "Letterhead \u2014 Left Sidebar",
+    "description": "Vertical left sidebar with logo and company details.",
+    "file": "letterhead_sidebar_left.html",
+    "thumbnail": "../thumbnails/letterhead_sidebar_left.svg",
+    "category": "letterheads"
+  },
+  {
+    "id": "letterhead_sidebar_right",
+    "name": "Letterhead \u2014 Right Sidebar",
+    "description": "Right sidebar logo and centered company header.",
+    "file": "letterhead_sidebar_right.html",
+    "thumbnail": "../thumbnails/letterhead_sidebar_right.svg",
+    "category": "letterheads"
+  },
+  {
+    "id": "letterhead_watermark",
+    "name": "Letterhead \u2014 Watermark",
+    "description": "Subtle watermark image in page center, small header.",
+    "file": "letterhead_watermark.html",
+    "thumbnail": "../thumbnails/letterhead_watermark.svg",
+    "category": "letterheads"
+  },
+  {
+    "id": "letterhead_minimal",
+    "name": "Letterhead \u2014 Minimal",
+    "description": "Ultra minimal header for formal business correspondence.",
+    "file": "letterhead_minimal.html",
+    "thumbnail": "../thumbnails/letterhead_minimal.svg",
+    "category": "letterheads"
+  },
+  {
+    "id": "letterhead_boxed_header",
+    "name": "Letterhead \u2014 Boxed Header",
+    "description": "Boxed header with contact bar \u2014 corporate look.",
+    "file": "letterhead_boxed_header.html",
+    "thumbnail": "../thumbnails/letterhead_boxed_header.svg",
+    "category": "letterheads"
+  },
+  {
+    "id": "letterhead_social_header",
+    "name": "Letterhead \u2014 Social Header",
+    "description": "Header with social/contact area and logo.",
+    "file": "letterhead_social_header.html",
+    "thumbnail": "../thumbnails/letterhead_social_header.svg",
+    "category": "letterheads"
+  },
+  {
+    "id": "letterhead_two_line",
+    "name": "Letterhead \u2014 Two Line Header",
+    "description": "Thin top contact bar + second line with logo and company name.",
+    "file": "letterhead_two_line_header.html",
+    "thumbnail": "../thumbnails/letterhead_two_line.svg",
+    "category": "letterheads"
+  },
+  {
+    "id": "reimbursement_basic",
+    "name": "Reimbursement \u2014 Basic",
+    "description": "Simple claim form with totals and signatures.",
+    "file": "reimbursement_basic.html",
+    "thumbnail": "../thumbnails/reimbursement_basic.svg",
+    "category": "reimbursements"
+  },
+  {
+    "id": "reimbursement_expense_report",
+    "name": "Reimbursement \u2014 Expense Report",
+    "description": "Expense report style with summary and multiple approvals.",
+    "file": "reimbursement_expense_report.html",
+    "thumbnail": "../thumbnails/reimbursement_expense_report.svg",
+    "category": "reimbursements"
+  },
+  {
+    "id": "reimbursement_itemized",
+    "name": "Reimbursement \u2014 Itemized",
+    "description": "Itemized claim with qty/rate columns.",
+    "file": "reimbursement_itemized.html",
+    "thumbnail": "../thumbnails/reimbursement_itemized.svg",
+    "category": "reimbursements"
+  },
+  {
+    "id": "reimbursement_travel",
+    "name": "Reimbursement \u2014 Travel",
+    "description": "Travel-specific claim with itinerary fields.",
+    "file": "reimbursement_travel.html",
+    "thumbnail": "../thumbnails/reimbursement_travel.svg",
+    "category": "reimbursements"
+  },
+  {
+    "id": "reimbursement_perdiem",
+    "name": "Reimbursement \u2014 Per Diem",
+    "description": "Per-diem claim layout and approval.",
+    "file": "reimbursement_perdiem.html",
+    "thumbnail": "../thumbnails/reimbursement_perdiem.svg",
+    "category": "reimbursements"
+  },
+  {
+    "id": "reimbursement_receipt_backed",
+    "name": "Reimbursement \u2014 Receipt-backed",
+    "description": "Claims requiring original receipts (receipt details area).",
+    "file": "reimbursement_receipt_backed.html",
+    "thumbnail": "../thumbnails/reimbursement_receipt_backed.svg",
+    "category": "reimbursements"
+  },
+  {
+    "id": "reimbursement_multi_currency",
+    "name": "Reimbursement \u2014 Multi-currency",
+    "description": "Supports foreign currency and conversion details.",
+    "file": "reimbursement_multi_currency.html",
+    "thumbnail": "../thumbnails/reimbursement_multi_currency.svg",
+    "category": "reimbursements"
+  },
+  {
+    "id": "reimbursement_approval_flow",
+    "name": "Reimbursement \u2014 Approval Flow",
+    "description": "Shows progressive approval stages (submitted/manager/finance).",
+    "file": "reimbursement_approval_flow.html",
+    "thumbnail": "../thumbnails/reimbursement_approval_flow.svg",
+    "category": "reimbursements"
+  },
+  {
+    "id": "reimbursement_petty_cash",
+    "name": "Reimbursement \u2014 Petty Cash",
+    "description": "Petty cash claim format for small amounts.",
+    "file": "reimbursement_petty_cash.html",
+    "thumbnail": "../thumbnails/reimbursement_petty_cash.svg",
+    "category": "reimbursements"
+  },
+  {
+    "id": "reimbursement_detailed",
+    "name": "Reimbursement \u2014 Detailed",
+    "description": "Detailed claim including attachments and line-level cols.",
+    "file": "reimbursement_detailed.html",
+    "thumbnail": "../thumbnails/reimbursement_detailed.svg",
+    "category": "reimbursements"
+  },
+  {
+    "id": "receipt_simple",
+    "name": "Receipt - Simple",
+    "description": "Compact simple receipt for payments.",
+    "file": "receipt_simple.html",
+    "thumbnail": "../thumbnails/receipt_simple.svg",
+    "category": "receipts"
+  },
+  {
+    "id": "receipt_itemized",
+    "name": "Receipt - Itemized",
+    "description": "Itemized receipt with qty and unit price.",
+    "file": "receipt_itemized.html",
+    "thumbnail": "../thumbnails/receipt_itemized.svg",
+    "category": "receipts"
+  },
+  {
+    "id": "receipt_payment_confirmation",
+    "name": "Receipt - Payment Confirmation",
+    "description": "Confirmatory receipt for bank / online payments.",
+    "file": "receipt_payment_confirmation.html",
+    "thumbnail": "../thumbnails/receipt_payment_confirmation.svg",
+    "category": "receipts"
+  },
+  {
+    "id": "receipt_pos_compact",
+    "name": "Receipt - POS Compact",
+    "description": "Fast-store POS style compact receipt.",
+    "file": "receipt_pos_compact.html",
+    "thumbnail": "../thumbnails/receipt_pos_compact.svg",
+    "category": "receipts"
+  },
+  {
+    "id": "receipt_credit_note",
+    "name": "Receipt - Credit Note",
+    "description": "Credit note / refund receipt layout.",
+    "file": "receipt_credit_note.html",
+    "thumbnail": "../thumbnails/receipt_credit_note.svg",
+    "category": "receipts"
+  }
+]

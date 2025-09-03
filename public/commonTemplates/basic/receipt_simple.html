@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Receipt — Simple</title>
+    <style>
+      @page {
+        size: A4;
+        margin: 0;
+      }
+      body {
+        margin: 0;
+        font-family: Arial, Helvetica, sans-serif;
+        color: #111;
+      }
+      .page {
+        width: 210mm;
+        height: 297mm;
+        padding: 20mm;
+        box-sizing: border-box;
+      }
+      .header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 12px;
+      }
+      .logo {
+        max-width: 140px;
+      }
+      .company {
+        text-align: right;
+      }
+      .title {
+        font-size: 20px;
+        color: #0b5ed7;
+        margin: 6px 0;
+      }
+      .meta {
+        margin: 12px 0;
+        font-size: 13px;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 8px;
+      }
+      th,
+      td {
+        border: 1px solid #e6e9ef;
+        padding: 8px;
+        font-size: 13px;
+      }
+      th {
+        background: #f6f9ff;
+        text-align: left;
+      }
+      .totals {
+        margin-top: 12px;
+        text-align: right;
+        font-weight: 700;
+      }
+      .in-footer {
+        margin-top: 18px;
+        font-size: 12px;
+        color: #666;
+      }
+      .placeholder {
+        color: #6b7280;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="page" data-template="receipt_simple">
+      <div class="header">
+        <div class="logo" data-field="logo">
+          <img src="" alt="Logo" style="max-width: 100%" />
+        </div>
+        <div class="company">
+          <div data-field="company_name">Company Name</div>
+          <div class="placeholder" data-field="company_address">
+            Address · Contact
+          </div>
+        </div>
+      </div>
+
+      <div class="title">Receipt</div>
+
+      <div class="meta">
+        <div>
+          <strong>Receipt #:</strong>
+          <span data-field="receipt_no">RCPT-1001</span>
+        </div>
+        <div>
+          <strong>Date:</strong> <span data-field="date">2025-01-01</span>
+        </div>
+        <div>
+          <strong>Received From:</strong>
+          <span data-field="payer">Customer Name</span>
+        </div>
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Description</th>
+            <th>Amount</th>
+          </tr>
+        </thead>
+        <tbody data-field="line_items">
+          <tr>
+            <td data-field="desc_1">Payment for services</td>
+            <td data-field="amount_1">₹ 1,000</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="totals">
+        Total Paid: <span data-field="total_amount">₹ 1,000</span>
+      </div>
+
+      <div class="in-footer">
+        <div data-field="payment_method">Payment Method: Cash</div>
+        <div data-field="notes" class="placeholder">Notes / Terms</div>
+      </div>
+    </div>
+  </body>
+</html>

@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Reimbursement — Multi-currency</title>
+    <style>
+      @page {
+        size: A4;
+        margin: 0;
+      }
+      body {
+        margin: 0;
+        font-family: Arial, sans-serif;
+        color: #111;
+      }
+      .page {
+        width: 210mm;
+        height: 297mm;
+        padding: 18mm;
+        box-sizing: border-box;
+      }
+      .header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 8mm;
+      }
+      .logo {
+        max-width: 120px;
+      }
+      h2 {
+        margin: 0;
+        color: #0b5ed7;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 8px;
+      }
+      th,
+      td {
+        border: 1px solid #e6e9ef;
+        padding: 8px;
+        font-size: 13px;
+      }
+      th {
+        background: #f5f8ff;
+        text-align: left;
+      }
+      .summary {
+        margin-top: 10px;
+        text-align: right;
+      }
+      .in-footer {
+        position: absolute;
+        left: 18mm;
+        right: 18mm;
+        bottom: 18mm;
+        color: #666;
+        font-size: 11px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="page" data-template="reimbursement_multi_currency">
+      <div class="header">
+        <div class="logo" data-field="logo">
+          <img src="" alt="logo" style="max-width: 100%" />
+        </div>
+        <div style="text-align: right">
+          <div data-field="company_name">Global Co</div>
+          <div class="placeholder" data-field="company_contact">
+            Intl Finance · finance@globalco.com
+          </div>
+        </div>
+      </div>
+
+      <h2>Expense Reimbursement (Multi-currency)</h2>
+
+      <div style="margin-bottom: 6px">
+        <strong>Employee:</strong>
+        <span data-field="employee_name">L. Gomez</span> |
+        <strong>Base Currency:</strong>
+        <span data-field="base_currency">INR</span>
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Date</th>
+            <th>Description</th>
+            <th>Amount</th>
+            <th>Currency</th>
+            <th>Converted (INR)</th>
+          </tr>
+        </thead>
+        <tbody data-field="line_items">
+          <tr>
+            <td>1</td>
+            <td>2025-01-12</td>
+            <td>Taxi abroad</td>
+            <td>50</td>
+            <td>USD</td>
+            <td data-field="converted_1">₹ 4,250</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="summary">
+        <div>
+          <strong>Total (INR):</strong>
+          <span data-field="total_amount">₹ 4,250</span>
+        </div>
+      </div>
+
+      <div style="margin-top: 12px">
+        <strong>Exchange rate used:</strong>
+        <span data-field="exchange_rate">1 USD = ₹85</span>
+      </div>
+
+      <div class="in-footer">
+        Include currency proof / card statement where applicable.
+      </div>
+    </div>
+  </body>
+</html>

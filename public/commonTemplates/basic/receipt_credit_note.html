@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Receipt — Credit Note / Refund</title>
+    <style>
+      @page {
+        size: A4;
+        margin: 0;
+      }
+      body {
+        margin: 0;
+        font-family: Arial, sans-serif;
+        color: #111;
+      }
+      .page {
+        width: 210mm;
+        height: 297mm;
+        padding: 20mm;
+        box-sizing: border-box;
+      }
+      .header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 12px;
+      }
+      .logo {
+        max-width: 140px;
+      }
+      .title {
+        font-size: 20px;
+        color: #c43d3d;
+        margin: 0;
+      }
+      .meta {
+        font-size: 13px;
+        margin: 8px 0;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 8px;
+      }
+      th,
+      td {
+        border: 1px solid #eee;
+        padding: 8px;
+      }
+      th {
+        background: #fff5f5;
+      }
+      .totals {
+        margin-top: 10px;
+        text-align: right;
+        font-weight: 700;
+      }
+      .in-footer {
+        margin-top: 14px;
+        font-size: 12px;
+        color: #666;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="page" data-template="receipt_credit_note">
+      <div class="header">
+        <div class="logo" data-field="logo">
+          <img src="" alt="logo" style="max-width: 100%" />
+        </div>
+        <div style="text-align: right">
+          <div data-field="company_name">Company Name</div>
+          <div class="placeholder" data-field="company_address">
+            Address · Contact
+          </div>
+        </div>
+      </div>
+
+      <div class="title">Credit Note / Refund Receipt</div>
+      <div class="meta">
+        <div>
+          <strong>Credit Note #:</strong>
+          <span data-field="credit_no">CN-2025-01</span>
+        </div>
+        <div>
+          <strong>Date:</strong> <span data-field="date">2025-01-20</span>
+        </div>
+        <div>
+          <strong>Customer:</strong>
+          <span data-field="customer">Client Name</span>
+        </div>
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Description</th>
+            <th>Qty</th>
+            <th>Amount</th>
+          </tr>
+        </thead>
+        <tbody data-field="line_items">
+          <tr>
+            <td data-field="desc_1">Refund for returned product</td>
+            <td data-field="qty_1">1</td>
+            <td data-field="amount_1">₹ 2,500</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="totals">
+        Refund Amount: <span data-field="total_amount">₹ 2,500</span>
+      </div>
+
+      <div class="in-footer">
+        Processed by: <span data-field="processed_by">Finance</span> |
+        <span data-field="notes" class="placeholder"
+          >Bank transfer reference etc.</span
+        >
+      </div>
+    </div>
+  </body>
+</html>

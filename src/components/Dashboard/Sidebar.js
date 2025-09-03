@@ -1,6 +1,3 @@
-
-
-
 import React, { useState, useEffect } from "react";
 import "./Sidebar.css";
 import * as MdIcons from "react-icons/md";
@@ -25,6 +22,7 @@ import Chat from "../Chat/ChatPage";
 import EmployeeLogin from "../EmployeeLogin/EmployeeLogin";
 import SalaryStatementWrapper from "../Salary_statement/SalaryStatementWrapper";
 import CreateOrganization from "../CreateOrganization/CreateOrganization";
+import TemplateBuilder from "../TemplateBuilder/TemplateBuilder";
 
 const Sidebar = ({ setActiveContent }) => {
   const [menuItems, setMenuItems] = useState([]);
@@ -32,7 +30,9 @@ const Sidebar = ({ setActiveContent }) => {
   const [showProfile, setShowProfile] = useState(false);
   const employeeId = localStorage.getItem("employeeId");
   const userRole = localStorage.getItem("userRole") || "Employee";
-  const dashboardData = JSON.parse(localStorage.getItem("dashboardData") || "{}");
+  const dashboardData = JSON.parse(
+    localStorage.getItem("dashboardData") || "{}"
+  );
   const userPosition = dashboardData.position;
   const [activeNav, setActiveNav] = useState("/dashboard");
   const [showMobileMenu, setShowMobileMenu] = useState(false);
@@ -44,33 +44,85 @@ const Sidebar = ({ setActiveContent }) => {
       { label: "Employee Details", path: "/employeeDetails", icon: "MdPeople" },
       { label: "Add Department", path: "/addDepartment", icon: "MdBusiness" },
       { label: "Update Projects", path: "/updateProjects", icon: "MdWork" },
-      { label: "Leave Queries", path: "/leaveQueries", icon: "MdOutlineCommentBank" },
-      { label: "Payroll Summary", path: "/payrollSummary", icon: "MdOutlinePayment" },
-      { label: "Reimbursement", path: "/reimbursement", icon: "MdCurrencyRupee" },
-      { label: "Employee Queries", path: "/employeeQueries", icon: "MdOutlineContactPhone" },
+      {
+        label: "Leave Queries",
+        path: "/leaveQueries",
+        icon: "MdOutlineCommentBank",
+      },
+      {
+        label: "Payroll Summary",
+        path: "/payrollSummary",
+        icon: "MdOutlinePayment",
+      },
+      {
+        label: "Reimbursement",
+        path: "/reimbursement",
+        icon: "MdCurrencyRupee",
+      },
+      {
+        label: "Employee Queries",
+        path: "/employeeQueries",
+        icon: "MdOutlineContactPhone",
+      },
       { label: "Assets", path: "/assets", icon: "MdOutlineInventory" },
       { label: "Vendors", path: "/vendors", icon: "MdOutlineStore" },
       { label: "Messenger", path: "/messenger", icon: "MdChat" },
     ],
     Employee: [
       { label: "Dashboard", path: "/dashboard", icon: "MdOutlineDashboard" },
-      { label: "Leave Request", path: "/leaveQueries", icon: "MdOutlineCommentBank" },
-      { label: "Reimbursement", path: "/reimbursement", icon: "MdCurrencyRupee" },
-      { label: "Employee Queries", path: "/employeeQueries", icon: "MdOutlineContactPhone" },
-      { label: "Salary Statement", path: "/Salary_Statement", icon: "MdOutlinePayment" },
+      {
+        label: "Leave Request",
+        path: "/leaveQueries",
+        icon: "MdOutlineCommentBank",
+      },
+      {
+        label: "Reimbursement",
+        path: "/reimbursement",
+        icon: "MdCurrencyRupee",
+      },
+      {
+        label: "Employee Queries",
+        path: "/employeeQueries",
+        icon: "MdOutlineContactPhone",
+      },
+      {
+        label: "Salary Statement",
+        path: "/Salary_Statement",
+        icon: "MdOutlinePayment",
+      },
       { label: "Messenger", path: "/messenger", icon: "MdChat" },
     ],
     Manager: [
       { label: "Dashboard", path: "/dashboard", icon: "MdOutlineDashboard" },
-      { label: "Leave Request", path: "/leaveQueries", icon: "MdOutlineCommentBank" },
-      { label: "Reimbursement", path: "/reimbursement", icon: "MdCurrencyRupee" },
-      { label: "Employee Queries", path: "/employeeQueries", icon: "MdOutlineContactPhone" },
-      { label: "Salary Statement", path: "/Salary_Statement", icon: "MdOutlinePayment" },
+      {
+        label: "Leave Request",
+        path: "/leaveQueries",
+        icon: "MdOutlineCommentBank",
+      },
+      {
+        label: "Reimbursement",
+        path: "/reimbursement",
+        icon: "MdCurrencyRupee",
+      },
+      {
+        label: "Employee Queries",
+        path: "/employeeQueries",
+        icon: "MdOutlineContactPhone",
+      },
+      {
+        label: "Salary Statement",
+        path: "/Salary_Statement",
+        icon: "MdOutlinePayment",
+      },
       { label: "Messenger", path: "/messenger", icon: "MdChat" },
       { label: "Update Projects", path: "/updateProjects", icon: "MdWork" },
     ],
     SuperAdmin: [
-      { label: "Create Organization", path: "/CreateOrganization", icon: "MdOutlineBusiness" },
+      {
+        label: "Create Organization",
+        path: "/CreateOrganization",
+        icon: "MdOutlineBusiness",
+      },
     ],
   };
 
@@ -87,7 +139,8 @@ const Sidebar = ({ setActiveContent }) => {
       }
     } else {
       // Set default menu items based on role and store in localStorage
-      const defaultItems = defaultMenuItems[userRole] || defaultMenuItems.Employee;
+      const defaultItems =
+        defaultMenuItems[userRole] || defaultMenuItems.Employee;
       setMenuItems(defaultItems);
       localStorage.setItem("sidebarMenu", JSON.stringify(defaultItems));
     }
@@ -162,6 +215,9 @@ const Sidebar = ({ setActiveContent }) => {
         setActiveContent(
           userRole === "Admin" ? <AdminQuery /> : <EmployeeQuery />
         );
+      case "/TemplateBuilder":
+        setActiveContent(<TemplateBuilder />);
+        break;
         break;
       case "/assets":
         setActiveContent(<Assets />);
@@ -251,9 +307,7 @@ const Sidebar = ({ setActiveContent }) => {
         >
           <MdIcons.MdCurrencyRupee />
         </button>
-        <button
-          onClick={() => setShowMobileMenu(true)}
-        >
+        <button onClick={() => setShowMobileMenu(true)}>
           <MdIcons.MdMenu />
         </button>
       </div>

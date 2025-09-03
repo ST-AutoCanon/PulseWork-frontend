@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Invoice — Centered Large Logo</title>
+    <style>
+      @page {
+        size: A4;
+        margin: 0;
+      }
+      body {
+        margin: 0;
+        font-family: Arial, sans-serif;
+      }
+      .page {
+        width: 210mm;
+        height: 297mm;
+        padding: 20mm;
+        box-sizing: border-box;
+      }
+      .hero {
+        text-align: center;
+        margin-bottom: 8px;
+      }
+      .logo {
+        max-width: 260px;
+        margin: 0 auto;
+      }
+      .company h1 {
+        margin: 10px 0 0;
+        font-size: 22px;
+        color: #0b5ed7;
+      }
+      .meta {
+        display: flex;
+        justify-content: space-between;
+        margin-top: 14px;
+      }
+      .items {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 16px;
+      }
+      .items th,
+      .items td {
+        border: 1px solid #e6e9ef;
+        padding: 8px;
+        font-size: 13px;
+      }
+      .totals {
+        display: flex;
+        justify-content: flex-end;
+        margin-top: 12px;
+      }
+      .in-footer {
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: 8mm;
+        text-align: center;
+        background: #f8f9fb;
+        padding: 6px 0;
+        font-size: 12px;
+        color: #666;
+      }
+      .placeholder {
+        color: #6b7280;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="page" data-template="invoice_centered_large_logo">
+      <div class="hero">
+        <div class="logo" data-field="logo">
+          <img src="" alt="logo" style="max-width: 100%" />
+        </div>
+        <div class="company">
+          <h1 data-field="company_name">Company Name</h1>
+        </div>
+        <div data-field="company_tag" class="placeholder">
+          Address · Phone · Email
+        </div>
+      </div>
+
+      <div class="meta">
+        <div>
+          <strong>Bill To</strong>
+          <div data-field="client_name" class="placeholder">Client</div>
+        </div>
+        <div style="text-align: right">
+          <div>
+            <strong>Invoice</strong>
+            <span data-field="invoice_no">INV-0007</span>
+          </div>
+          <div>
+            <strong>Date</strong>
+            <span data-field="invoice_date">2025-07-01</span>
+          </div>
+        </div>
+      </div>
+
+      <table class="items">
+        <thead>
+          <tr>
+            <th>S.No</th>
+            <th>Description</th>
+            <th>Qty</th>
+            <th>Rate</th>
+            <th>Amount</th>
+          </tr>
+        </thead>
+        <tbody data-field="line_items">
+          <tr>
+            <td>1</td>
+            <td>Design</td>
+            <td>1</td>
+            <td>₹ 3,000</td>
+            <td>₹ 3,000</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="totals">
+        <div style="width: 320px">
+          <table style="width: 100%; border-collapse: collapse">
+            <tr>
+              <td style="padding: 6px">Subtotal</td>
+              <td style="padding: 6px; text-align: right" data-field="subtotal">
+                ₹ 3,000
+              </td>
+            </tr>
+            <tr>
+              <td style="padding: 6px">Tax</td>
+              <td style="padding: 6px; text-align: right" data-field="tax">
+                ₹ 540
+              </td>
+            </tr>
+            <tr>
+              <td style="padding: 6px; font-weight: bold">Total</td>
+              <td
+                style="padding: 6px; text-align: right; font-weight: bold"
+                data-field="total"
+              >
+                ₹ 3,540
+              </td>
+            </tr>
+          </table>
+        </div>
+      </div>
+
+      <div class="in-footer">
+        <div data-field="footer_strip" class="placeholder">
+          Footer strip — Company | GST | Bank
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

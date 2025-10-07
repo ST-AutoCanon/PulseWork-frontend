@@ -1,0 +1,158 @@
+.calendar-container {
+  width: 350px;
+  height: 330px;
+  text-align: center;
+  background: #ffffff;
+  border-radius: 10px;
+  box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
+  position: relative;
+}
+
+.calendar-wrapper {
+  position: relative;
+  height: 100%;
+  background: #f2f2f2;
+  border-radius: 8px;
+}
+
+.react-calendar {
+  height: 100%;
+  background: #ffffff;
+}
+
+.react-calendar__navigation {
+  height: 20%;
+  background: #79c42b;
+}
+.react-calendar__navigation__arrow {
+  width: 20%;
+  font-size: xx-large;
+  color: #fff;
+}
+
+.react-calendar__navigation button:enabled:hover,
+.react-calendar__navigation button:enabled:focus {
+  background-color: #79c42b;
+}
+
+.react-calendar__navigation__label {
+  font-size: 1.5rem;
+  font-weight: bold;
+  pointer-events: none;
+  color: #fff;
+}
+
+.react-calendar__month-view__weekdays {
+  font-size: 0.9rem;
+  border: none;
+  color: #79c42b;
+  margin-top: 2%;
+}
+
+.react-calendar__tile {
+  position: relative;
+  padding: 3%;
+  font-size: medium;
+  font-weight: lighter;
+}
+
+.tile-tooltip-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: transparent;
+  z-index: 3;
+  cursor: pointer;
+}
+
+.react-calendar__tile abbr {
+  position: relative;
+  z-index: 5;
+  pointer-events: none;
+  color: #000;
+  font-weight: bold;
+}
+
+.sunday-dot {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  position: absolute;
+  top: 2px;
+  right: 10px;
+  background-color: #d32f2f;
+  z-index: 4;
+}
+
+.holiday-dot {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  position: absolute;
+  top: 2px;
+  right: 10px;
+  z-index: 4;
+}
+
+.optional-dot {
+  background-color: #d32f2f;
+}
+
+.company-dot {
+  background-color: #9090fd;
+}
+
+.react-tooltip {
+  z-index: 9999 !important;
+  background-color: #000000e6 !important;
+  color: white !important;
+  padding: 6px 10px !important;
+  border-radius: 5px !important;
+  font-size: 14px !important;
+}
+
+.react-calendar__tile--active {
+  background-color: #fae5a4 !important;
+  border-radius: 5px;
+}
+
+.react-calendar__tile--range {
+  background-color: #fae5a4 !important;
+}
+.react-calendar__tile--rangeStart,
+.react-calendar__tile--rangeEnd {
+  background-color: #fae5a4 !important;
+}
+
+.holiday-legend-top {
+  position: absolute;
+  top: 72px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 1rem;
+  background-color: transparent;
+  border-radius: 5px;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.color-box {
+  width: 12px;
+  height: 12px;
+  border-radius: 2px;
+}
+
+.color-box.optional {
+  background-color: #d32f2f;
+}
+
+.color-box.company {
+  background-color: #9090fd;
+}

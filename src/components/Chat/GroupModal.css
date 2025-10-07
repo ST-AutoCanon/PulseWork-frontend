@@ -1,0 +1,113 @@
+/* container */
+.modal-content {
+  width: 400px;
+  background: #fff;
+  border-radius: 8px;
+  padding: 20px;
+}
+
+/* chips */
+.selected-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+.chip {
+  display: flex;
+  align-items: center;
+  background: #e5f1fb;
+  border-radius: 16px;
+  padding: 4px 8px;
+}
+.chip-avatar {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  margin-right: 6px;
+  object-fit: cover;
+}
+.chip-name {
+  margin-right: 6px;
+  font-size: 14px;
+}
+.chip-remove {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-size: 16px;
+  line-height: 1;
+  color: #555;
+}
+
+/* inputs */
+.group-name-input,
+.msg-search {
+  width: 95%;
+  padding: 8px;
+  margin-bottom: 8px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+/* suggestions */
+.suggestions-list {
+  max-height: 180px;
+  overflow-y: auto;
+  border: 1px solid #ddd;
+  background: #fff;
+  border-radius: 4px;
+  margin-bottom: 12px;
+}
+.suggestion-item {
+  display: flex;
+  align-items: center;
+  padding: 6px 10px;
+  cursor: pointer;
+}
+.suggestion-item.selected {
+  background: #0078d4;
+  color: white;
+}
+.suggestion-item:hover {
+  background: #f0f0f0;
+}
+.chat-avatar-small {
+  width: 28px;
+  height: 28px;
+  margin-right: 8px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+.no-results {
+  padding: 8px;
+  color: #888;
+  text-align: center;
+}
+
+/* buttons */
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.create-btn {
+  padding: 6px 12px;
+  background: #0078d4;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.create-btn:disabled {
+  background: #aaa;
+  cursor: not-allowed;
+}
+.cancel-btn {
+  padding: 6px 12px;
+  background: #ddd;
+  color: #333;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}

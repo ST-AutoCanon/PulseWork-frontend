@@ -1,0 +1,153 @@
+/* Employee Leave Tracker Styles */
+.empleavetracker-container {
+  width: 100%;
+  margin: 20px auto;
+  font-family: Arial, sans-serif;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
+}
+
+.empleavetracker-header {
+  background-color: white;
+  color: black;
+  text-align: left;
+  font-size: 20px;
+  padding: 10px;
+  font-weight: bold;
+}
+
+.empleavetracker-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.empleavetracker-table th,
+.empleavetracker-table td {
+  border: 1px solid #ddd;
+  padding: 10px;
+  text-align: center;
+  
+}
+@media (min-width: 1200px) {
+  .empleavetracker-container {
+    max-width: 1100px; /* Limit max width on larger screens */
+  }
+}
+.empleavetracker-table th {
+  background-color: #bebdbd;
+  color: black;
+}
+
+.empleavetracker-table tbody tr {
+  background-color: white;
+}
+
+.empleavetracker-status-approved {
+  background-color: #d7f2ce;
+  color: #155724;
+
+  text-align: center;
+  padding: 6px 6px;
+ 
+ display: block;
+  border-radius: 20px;
+  min-width: 80px;
+}
+
+.empleavetracker-status-rejected {
+  background-color: #ffe5d2;
+  color: #721c24;
+  text-align: center;
+  padding: 6px 6px;
+ 
+ display: block;
+  border-radius: 20px;
+  min-width: 80px;
+}
+
+.empleavetracker-status-pending {
+  background-color: #fff3cd;
+  color: #856404;
+  text-align: center;
+  padding: 6px 6px;
+ 
+ display: block;
+  border-radius: 20px;
+  min-width: 80px;
+}
+
+.empleavetracker-status-default {
+  background-color: #e2e3e5;
+  color: #6c757d;
+  font-weight: bold;
+  text-align: center;
+  padding: 5px;
+  border-radius: 4px;
+}
+/* Ensures text is truncated */
+.reason-cell {
+  max-width: 150px; /* Adjust width as needed */
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  cursor: pointer; /* Show pointer on hover */
+}
+
+/* Optional: Add a tooltip effect */
+.reason-cell:hover {
+  position: relative;
+}
+
+.reason-cell:hover::after {
+  content: attr(title); /* Show full text */
+  position: absolute;
+  background-color: rgba(0, 0, 0, 0.8);
+  color: #fff;
+  padding: 5px;
+  border-radius: 4px;
+  white-space: normal;
+  width: 200px; /* Adjust width */
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10;
+}
+/* Truncate text and show tooltip on hover */
+.tooltip-cell {
+  max-width: 150px; /* Adjust width */
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  cursor: pointer; /* Show pointer on hover */
+}
+
+/* Tooltip effect */
+.tooltip-cell:hover {
+  position: relative;
+}
+
+.tooltip-cell:hover::after {
+  content: attr(title); /* Show full text */
+  position: absolute;
+  background-color: rgba(0, 0, 0, 0.8);
+  color: #fff;
+  padding: 5px;
+  border-radius: 4px;
+  white-space: normal;
+  max-width: 250px; /* Adjust width */
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10;
+}
+
+@media (max-width: 768px) 
+{
+  .empleavetracker-container {
+    overflow-x: auto;
+    padding: 30px;
+    width: 88%;
+    display: none;
+  }
+}

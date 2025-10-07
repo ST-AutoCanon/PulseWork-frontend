@@ -1,0 +1,205 @@
+/* Profile.css - Updated styles matching palette */
+
+/* Variables for palette */
+:root {
+  --green-light: #77dd0d;
+  --green-dark: #698b0e;
+  --teal-light: #0f6679;
+  --teal-dark: #074857;
+  --black: #000000;
+  --gray-dark: #727272;
+  --gray-medium: #d9d9d9;
+  --gray-light: #ebebeb;
+}
+
+.profile-popup {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.profile-content {
+  position: relative;
+  background: var(--gray-light);
+  border: 3px solid var(--teal-dark);
+  border-radius: 8px;
+  width: 100%;
+  max-width: 450px;
+  padding: 16px;
+  margin-top: 6%;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.profile-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  color: var(--teal-dark);
+  font-size: 1.5rem;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+.profile-close:hover {
+  color: var(--green-dark);
+}
+
+.profile-header {
+  display: flex;
+  align-items: center;
+  border-bottom: 2px solid var(--green-light);
+  padding-bottom: 12px;
+  margin-bottom: 16px;
+}
+
+.profile-photo {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  border: 2px solid var(--green-dark);
+  object-fit: cover;
+  margin-right: 16px;
+}
+
+.profile-name h3 {
+  margin: 0;
+  color: var(--teal-dark);
+}
+.profile-name .info-secondary {
+  margin: 4px 0;
+  color: var(--gray-dark);
+  font-size: 0.9rem;
+}
+
+.tabs {
+  display: flex;
+  border-bottom: 2px solid var(--green-light);
+  margin-bottom: 16px;
+}
+.tab-btn {
+  flex: 1;
+  background: transparent;
+  border: none;
+  padding: 8px 0;
+  font-weight: bold;
+  color: var(--teal-light);
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+}
+.tab-btn.active {
+  background: var(--green-light);
+  color: var(--black);
+}
+
+.tab-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-height: 350px;
+  overflow-y: auto;
+}
+
+.personal-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.field-pair {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.update-profile-btn-wrapper {
+  text-align: center;
+}
+
+.update-profile-btn {
+  background-color: var(--green-light);
+  border: none;
+  padding: 8px 16px;
+  color: #fff;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.update-profile-btn:hover {
+  background-color: var(--green-dark);
+}
+
+.field-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px;
+  background: #fff;
+  border: 1px solid var(--gray-medium);
+  border-radius: 4px;
+  text-align: right;
+}
+.field-label {
+  font-weight: 600;
+  color: var(--teal-dark);
+}
+
+.documents {
+  margin: 20% 40%;
+  font-weight: 600;
+  color: var(--teal-dark);
+}
+
+.field-value {
+  color: var(--black);
+}
+
+.docs-row .doc-actions {
+  display: flex;
+  gap: 8px;
+}
+.docs-row .doc-actions button {
+  background: var(--teal-light);
+  border: none;
+  padding: 4px 8px;
+  border-radius: 4px;
+  color: #fff;
+  cursor: pointer;
+  font-size: 0.85rem;
+  transition: background 0.2s;
+}
+.docs-row .doc-actions button:hover {
+  background: var(--teal-dark);
+}
+
+.assets-row .assets-list {
+  color: var(--black);
+  font-style: italic;
+}
+
+/* Modal override */
+.modal-content {
+  border: 2px solid var(--teal-dark) !important;
+}
+.modal-content p {
+  color: var(--black) !important;
+}
+
+.missing-fields {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.missing-bubble {
+  background-color: #ffe6e6;
+  color: #b30000;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  border: 1px solid #ffcccc;
+  white-space: nowrap;
+}

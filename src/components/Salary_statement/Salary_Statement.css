@@ -1,0 +1,592 @@
+.salary-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+  margin-top: 20px;
+}
+.error-message-for-uploadfile {
+  white-space: pre-wrap;
+  max-height: 150px;
+  overflow-y: auto;
+  color: red;
+  font-size: 14px;
+}
+.upload-box-payslip {
+  width: 250px;  /* Set width */
+  height: 50px;  /* Set height */
+  display: flex;
+  align-items: center;
+  background: #ffffff;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+  padding: 10px;
+  cursor: pointer;
+  margin-right:630px;
+  margin-top:20px;
+}
+
+
+.file-label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  cursor: pointer;
+}
+
+.upload-text {
+  display: flex;
+  flex-direction: column;
+  font-size: 14px;
+  color: #333;
+  text-align: left;
+}
+
+.upload-title {
+  font-weight: bold;
+  font-size: 14px;
+}
+
+.file-name {
+  font-size: 12px;
+  color: #777;
+  margin-top: 4px;
+}
+
+.upload-icon {
+  width: 30px;
+  height: 30px;
+  margin-right: 20px;  /* Ensures proper spacing */
+}
+
+.error-message {
+  color: red;
+  font-size: 14px;
+  font-weight: bold;
+}
+/* Table wrapper to ensure scrollbar starts from the first column */
+.salary-table-container {
+  width: 100%; 
+  max-width: 900px;
+  max-height: 500px;
+  border: 1px solid #ddd;
+  padding: 10px;
+  background: #fff;
+  box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
+  border-radius: 8px;
+  overflow: hidden; /* Prevents double scrollbars */
+  margin-top:-50px;
+}
+
+.admin-table-container{
+  width: 100%; 
+  max-width: 900px;
+  max-height: 500px;
+  border: 1px solid #ddd;
+  padding: 10px;
+  background: #fff;
+  box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
+  border-radius: 8px;
+  margin: 0 auto; 
+  overflow-y: auto; /* Prevents double scrollbars */
+  margin-top:-30px;
+}
+
+/* New wrapper to manage scrolling */
+.table-scroll-wrapper {
+  width: 100%;
+}
+
+/* Table styling */
+.salary-table {
+  width: max-content; /* Ensures table expands based on content */
+  border-collapse: collapse;
+  min-width: 800px; 
+  table-layout: auto;
+
+  border-collapse: collapse; /* FIX: Prevents overlap issues */
+  border-spacing: 0; /* Ensures no gaps */
+}
+.salary-table-wrapper {
+  max-height: 400px;  /* or any height you prefer */
+  overflow-y: auto;
+  overflow-x: auto;
+  border: 1px solid #ccc;
+}
+
+/* Header and cell styling */
+.salary-table th {
+  min-width: 120px; /* Ensure each column is at least 120px wide */
+  text-align: left;
+  height:40px;
+  font-weight: bold;
+  background-color: #c0bebe;
+  border-color:#f8f9fa
+  
+}
+.salary-table thead {
+  position: sticky;
+  top: 0;
+  padding: 10px;
+
+  background-color: #f8f9fa; /* Light background for visibility */
+  z-index: 2;
+}
+.salary-table td {
+  border: 1px solid #ddd;
+  padding: 10px;
+  text-align: left;
+  white-space: nowrap; /* Prevent text wrapping */
+}
+.salary-table tfoot {
+  position: sticky;
+  bottom: 0;
+  background: #ddd; /* Light grey background for footer */
+  font-weight: bold;
+  z-index: 2;
+}
+/* Sticky Header (top row) */
+.salary-table thead th {
+  position: sticky;
+  top: 0;
+  background: #c0bebe;
+  z-index: 10; /* High enough to stay above content */
+}
+
+
+.salary-table tfoot {
+  position: sticky;
+  bottom: 0;
+  background-color: #fff; /* Match table background */
+  z-index: 2;
+}
+.invalid-cell {
+  background-color: #ffcccc !important;  /* Light red */
+  border: 1px solid #ff0000;
+}
+
+.updated-cell {
+  background-color: #ccffcc !important;  /* Light green */
+  border: 1px solid #00cc00;
+}
+
+.sticky-footer {
+  font-weight: bold;
+  text-align: right;
+  padding: 10px;
+  background-color: #f1f1f1; /* Light gray background */
+  border-top: 2px solid #ddd;
+}
+
+
+/* Alternate row colors */
+.salary-table tbody tr:nth-child(even) {
+  background: white;
+}
+
+
+/* Sticky first column only */
+
+
+/* ✅ Row Hover Effect for Full Row */
+.salary-table tbody tr:hover {
+  background-color: #e4ebf1d0;
+}
+
+/* ✅ Ensure Sticky Columns Also Change on Hover */
+.salary-table tbody tr:hover td:first-child,
+.salary-table tbody tr:hover td:nth-child(2) {
+  background-color: #e4ebf1d0; /* Same color as row hover */
+}
+
+
+/* Alternate Row Colors */
+/* .salary-table tbody tr:nth-child(even) {
+  background-color: #f2f2f2; */
+/* Ensure table adjusts to content */
+.salary-table th {
+  text-align: left;
+  font-weight: bold;
+  
+}
+
+.salary-table th:nth-child(1),
+.salary-table th:nth-child(2) {
+  background: #c0bebe; /* Ensure consistency with header background */
+  border-right: 2px solid #ddd; /* Light blue border */
+}
+
+
+
+
+
+
+/* Upload Button */
+.table-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+  left: 0; /* Ensures it sticks while scrolling horizontally */
+margin-left:15px;
+  position: sticky;
+
+}
+
+.table-heading {
+  margin: 0;
+}
+
+.salary-search-box {
+  padding: 6px 10px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 14px;
+  outline: none;
+  width: 200px; /* Adjust width as needed */
+  transition: all 0.3s ease-in-out;
+}
+
+.salary-search-box:focus {
+  border-color: #007bff; /* Blue border on focus */
+  box-shadow: 0 0 5px rgba(0, 123, 255, 0.3);
+}
+
+
+
+
+
+
+
+.upload-btn {
+  padding: 8px 12px;
+  background-color: #007bff;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.upload-btn:hover {
+  background-color: #0056b3;
+}
+
+
+.upload-btn:hover {
+  background-color: #0056b3;
+}
+
+
+/* Highlight updated rows */
+.updated-row {
+  background-color: #ffeb3b !important; /* Yellow highlight */
+  font-weight: bold;
+  transition: background 0.5s ease-in-out;
+}
+
+
+
+/* Search Input */
+
+/* .salary-table th {
+  background-color: #4CAF50;
+  color: white;
+  padding: 8px;
+  text-align: left;
+} */
+/* Upload Button */
+.upload-btn {
+  padding: 8px 12px;
+  font-size: 14px;
+  background-color: #007bff;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background 0.3s;
+}
+
+.upload-btn:hover {
+  background-color: #0056b3;
+}
+
+.updated-row {
+  background-color: #ffeb3b !important; /* Yellow highlight */
+  transition: background-color 0.5s ease;
+}
+.updated-cell {
+  background-color: #ffeb3b !important; /* Yellow highlight */
+  font-weight: bold;
+  transition: background-color 0.5s ease;
+}
+
+
+.no-updates-message {
+  color: green;
+  font-size: 16px;
+  font-weight: bold;
+  margin-top: 10px;
+}
+
+
+
+.error-message {
+  color: red;
+  font-weight: bold;
+  margin-top: 10px;
+}
+
+.invalid-cell {
+  background-color: #ffcccc !important;
+  color: red;
+  font-weight: bold;
+}
+
+
+.salary-month-year-selector-box{
+  width: 250px;  /* Set width */
+  height: 50px;  /* Set height */
+  display: flex;
+  align-items: center;
+  background: #ffffff;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+  padding: 10px;
+  cursor: pointer;
+  margin-left:320px;
+  margin-top:-75px;
+}
+
+.salary-month-year-selector {
+  margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-top:-7%;
+}
+
+.salary-month-year-dropdown {
+  padding: 4px;
+  font-size: 14px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  cursor: pointer;
+  width: 220px;
+}
+
+
+
+.error-message-for-uploadfile{
+  
+  color: red;
+  font-weight: bold;
+  margin: 5px ;
+  min-height: 20px; /* Ensures space is reserved for the error message */
+}
+.error-cell {
+  background-color: #ffcccc !important; /* Light red background */
+  border: 2px solid red !important;
+  color: red !important;
+  font-weight: bold;
+}
+.error-cell {
+  background-color: #ffcccc; /* Light red background for errors */
+  border: 2px solid red;
+}
+
+.updated-cell {
+  background-color: #ccffcc; /* Light green for updated cells */
+}
+/* Scrollable container */
+/* Scrollable container */
+.adminsalary-table-container {
+  width: 100% !important;
+  max-width: 1400px; /* Limit table width */
+  padding: 8px;
+  max-height: 200px; /* Adjust height for scrolling */
+  position: relative; /* Ensure correct positioning of sticky header */
+}
+
+/* Table Styling */
+.adminsalary-table {
+  width: 100%;
+  min-width: 600px; /* Ensure table does not shrink too much */
+  border-collapse: collapse;
+  text-align: left;
+}
+
+/* Table Header */
+.adminsalary-table th {
+  padding: 8px;
+  background: #c0bebe;
+  white-space: nowrap; /* Prevent header text from wrapping */
+  border: 1px solid #ddd;
+  z-index: 3;
+  height: 30px;
+  position: sticky;
+  top: 0;  /* Make header stick at the top of the container */
+  background-color: #c0bebe;
+}
+
+/* Table Data Cells */
+.adminsalary-table td {
+  padding: 8px;
+  white-space: nowrap; /* Prevent wrapping */
+  border: 1px solid #ddd;
+}
+
+
+/* Alternate Row Styling */
+.adminsalary-table tbody tr:nth-child(even) {
+  background: #f9f9f9;
+}
+
+/* Hover Effect */
+.adminsalary-table tbody tr:hover {
+  background: #f1f1f1;
+}
+
+
+.adminsalary-table tbody tr:hover {
+  background: #e0e0e0 !important;
+}
+
+/* Sticky Footer */
+.adminsalary-table tfoot {
+  position: sticky;
+  bottom: 0;
+  background-color: #fff;
+  z-index: 2;
+  text-align: right; /* Align the total amount to the right */
+  padding: 8px;
+  font-weight: bold;
+}
+
+.adminsalary-sticky-footer {
+  position: sticky;
+  bottom: 0;
+  background-color: #fff;
+  text-align: right;
+  font-weight: bold;
+  padding: 10px;
+  border-top: 2px solid #ccc;
+  z-index: 1;
+}
+
+.footer-cell {
+  display: inline-block;
+  padding-right: 20px;
+}
+
+
+.net-salary-row {
+  position: sticky;
+  bottom: 0;
+  background-color: #f1f1f1;
+  font-weight: bold;
+  z-index: 2;
+  height: 30px;
+  text-align: left;
+}
+
+/* Ensure footer content has a similar background as header */
+
+
+/* Make footer sticky and always visible */
+.adminsalary-sticky-footer {
+  position: sticky;
+  bottom: 0;
+  width: 100%;
+  background-color: #c0bebe;
+  color: black;
+  padding: 10px 16px;
+  font-weight: bold;
+  text-align: right;
+  border-top: 2px solid #ccc;
+  z-index: 10; /* higher than sticky first/second columns */
+  display: flex;
+  justify-content: flex-end;
+  box-shadow: 0 -2px 5px rgba(0, 0, 0, 0.1); /* Optional shadow */
+}
+
+.footer-cell {
+  flex: 1;
+}
+
+
+.reference-container {
+  display: flex;
+  justify-content: center; /* Centers the elements */
+  align-items: center;
+  flex-wrap: wrap; /* Prevents overlap on smaller screens */
+  gap: 20px; /* Adds spacing between elements */
+  width: 100%;
+  margin-top: 20px;
+}
+.reference-box {
+  width: 250px;  /* Set width */
+  height: 50px;  /* Set height */
+  display: flex;
+  align-items: center;
+  background: #ffffff;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+  padding: 10px;
+  cursor: pointer;
+  margin-left:630px;
+  margin-top:-210px;
+  position: relative;
+  z-index: 1;
+}
+
+.reference-text {
+  font-size: 14px;
+  color: #131010;
+  margin-bottom: 8px;
+}
+
+.download-template-btn {
+  background-color: #007bff;
+  color: white;
+  padding: 8px 10px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 10px;
+}
+
+.download-template-btn:hover {
+  background-color: #0056b3;
+}
+
+.adminsalary-table-header {
+  text-align: center;
+  font-size: 20px;
+  font-weight: bold;
+  padding: 10px;
+  color: black;
+}
+.admin-search-box {
+  width: 100px; /* Adjust the width */
+  padding: 6px;
+  font-size: 13px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  margin-left: -45%;
+  outline: none;
+}
+.admin-search-box::placeholder {
+  color: #888;
+  font-size: 12px;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .table-container {
+    max-height: 400px;
+  }
+}

@@ -1,0 +1,127 @@
+/* Dashboard container */
+.dashboard {
+  display: flex;
+
+  flex-direction: column; /* Topbar on top, Sidebar + Content below */
+  height: 100%; /* Full viewport height */
+  overflow: hidden; /* Prevent scrollbars outside the layout */
+}
+
+/* Topbar styles */
+
+.conentcontainerdeisgn {
+  background-color: #e8e9ea;
+}
+
+/* Content container (Sidebar + Main Content) */
+.content-container {
+  display: flex;
+  border-radius: 5px;
+  scrollbar-width: none; /* Hides scrollbar in Firefox */
+  -ms-overflow-style: none;
+  background-color: #ddd;
+  flex: 1; /* Fills the remaining space below the Topbar */
+  margin-bottom: 0px; /* Push Sidebar and Main Content below the Topbar */
+  overflow: auto; /* Prevents overflow in the layout */
+}
+
+/* Sidebar styles */
+.sidebar {
+  width: 250px; /* Fixed width */
+  background-color: white;
+  overflow-y: auto; /* Sidebar scrolls if content overflows */
+  scrollbar-width: none; /* Hides scrollbar in Firefox */
+  -ms-overflow-style: none;
+  /* height: calc(100vh - 60px); Full height minus Topbar height */
+  position: sticky; /* Sticks in place during scrolling */
+  top: 10px; /* Push below the Topbar */
+  margin-top: 13px;
+  z-index: 1; /* Keep Sidebar below the Topbar */
+}
+
+/* Main content styles */
+.main-content {
+  flex: 1; /* Main content takes the remaining space */
+  /* overflow-y: auto; Enable scrolling for the main content */
+  background-color: #ddd;
+
+  height: 0%; /* Full height minus Topbar height */
+  box-sizing: border-box; /* Include padding in width/height */
+}
+
+.main-content h1 {
+  background-color: #ddd;
+}
+
+.Dashboarddesign {
+  height: 95vh;
+  padding: 0px;
+  padding-top: 10px;
+  border-radius: 5px;
+  background-color: white;
+}
+.Dashboard123 {
+  height: auto;
+  margin-top: 2%;
+  padding: 0px;
+  background-color: #e8e9ea;
+}
+
+/* ///////////////////////////////////////// */
+
+@media screen and (max-width: 768px) {
+  /* STACK CONTENT IN COLUMN */
+  .content-container {
+    flex-direction: column;
+    width: 100%;
+  }
+
+  /* MAKE SIDEBAR ABSOLUTE TO AVOID SHIFTING CONTENT */
+  .sidebar {
+    position: relative;
+    top: 0;
+    left: 0;
+    width: 50%;
+    height: auto;
+    background-color: white;
+    display: none;
+    box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
+    /* transition: transform 0.3s ease-in-out; */
+    /* transform: translateY(-100%); */
+    margin-left: 0%;
+    z-index: 100; /* Above overlay */
+  }
+
+  /* SHOW SIDEBAR WHEN TOGGLED */
+  .sidebar.sidebar-open {
+    transform: translateY(0);
+  }
+
+  .Dashboarddesign {
+    height: 100vh;
+    padding: 0px;
+
+    border-radius: 5px;
+    background-color: white;
+  }
+
+  /* MAIN CONTENT FULL WIDTH */
+  .main-content {
+    width: 100%;
+    flex: 1;
+  }
+
+  /* ADD SPACE IN TOPBAR FOR HAMBURGER */
+  .topbar {
+    margin-top: -20%;
+    position: relative;
+    padding-left: 30%;
+    padding: 0;
+    background-color: #001d4a;
+  }
+  .Dashboard123 {
+    margin-top: -5%;
+    padding: 0px;
+    background-color: #e8e9ea;
+  }
+}

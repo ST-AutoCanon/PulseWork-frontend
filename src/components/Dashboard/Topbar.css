@@ -1,0 +1,232 @@
+/* Topbar container */
+.topbar1 {
+  display: flex;
+  justify-content: space-between; /* Space between profile and icons */
+  align-items: center; /* Vertically align items */
+  height: 2%; /* Fixed height */
+
+  padding: 20px; /* Horizontal padding */
+  background-color: white;
+  color: black;
+  position: sticky; /* Sticky position */
+  top: 2%; /* Ensure it stays below the Navbar */
+  left: 0; /* Ensure it stays aligned to the left */
+  right: 0; /* Ensure it stays aligned to the right */
+  width: 100%; /* Ensure full width */
+  flex-shrink: 0; /* Prevent shrinking */
+  margin-left: -20%;
+
+  /* margin-top: 6%; */
+}
+
+/* Profile section styling */
+.profile-section {
+  display: flex;
+  align-items: center; /* Align profile items vertically */
+  margin-left: 7%;
+  margin-bottom: 1%;
+}
+
+.profile-img {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  margin-left: -15%;
+}
+
+.profile-info {
+  margin-left: 10%;
+  gap: 5px;
+  white-space: nowrap;
+  display: flex;
+  flex-direction: column;
+}
+.profile-namedash {
+  font-size: 16px;
+  white-space: nowrap;
+  font-weight: bold;
+  display: inline-block;
+  max-width: 100%;
+}
+.profile-designation {
+  font-size: 14px;
+  color: #777;
+  margin-right: 30%;
+  display: inline-block;
+}
+
+.icon-section {
+  display: flex;
+  gap: 40%;
+  margin-right: 5%;
+  font-size: 200%;
+  margin-bottom: 2%;
+}
+
+.icon {
+  font-size: 20px;
+  cursor: pointer;
+  transition: transform 0.3s ease;
+}
+
+.icon:hover {
+  transform: scale(1.1);
+}
+
+.calendar-dropdown {
+  position: absolute;
+  top: 95px;
+  right: 0.1%;
+  font-size: small;
+  background: white;
+  border-radius: 10px;
+  box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.2);
+  z-index: 1000;
+}
+
+.close-btn {
+  position: absolute;
+  top: 0;
+  right: 0;
+  background: none;
+  border: none;
+  padding: 2% 3%;
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: large;
+  z-index: 10;
+}
+.close-btn:hover {
+  color: red;
+}
+
+.fa-icon {
+  cursor: pointer;
+  transition: transform 0.1s ease, color 0.3s ease;
+}
+
+.fa-icon:hover {
+  transform: scale(1.1);
+  color: #ffca28; /* adjust this color as desired */
+}
+
+/* Active: scale down slightly */
+.fas.fa-calendar-alt:active,
+.fas.fa-power-off:active {
+  transform: scale(0.95);
+}
+
+/* ... (keep existing CSS) ... */
+.org-name-section {
+  flex-grow: 1;
+  text-align: center;
+  padding: 0 20px;
+}
+
+.org-name-gradient {
+  font-size: 24px;
+  font-weight: 700;
+  background: linear-gradient(to right, #10677a, #6eba35);
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  display: inline-block;
+  white-space: nowrap; /* Prevents text wrapping if you want it all on one line */
+}
+
+.notification-icon {
+  position: relative;
+  display: inline-block;
+  cursor: pointer;
+  z-index: 1000;
+}
+
+.notification-badge {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  background: #0078ce;
+  color: white;
+  border-radius: 50%;
+  padding: 2px 4px;
+  font-size: 12px;
+}
+
+/* ... (keep existing CSS) ... */
+/* Mobile view adjustments */
+
+@media screen and (max-width: 768px) {
+  .topbar1 {
+    padding: 0px; /* Reduce padding */
+    height: 15%; /* Allow height to adjust */
+    margin-left: 0; /* Remove negative margin */
+    flex-direction: column; /* Stack items vertically */
+    align-items: center;
+    margin-top: 0%;
+    background-color: #ffffff;
+  }
+  .org-name-section {
+    flex-grow: 1;
+    text-align: center;
+    padding: 10px;
+  }
+  .org-name-gradient {
+    font-size: 24px;
+    font-weight: 700;
+    background: linear-gradient(to right, #10677a, #6eba35);
+    background-clip: text;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    display: inline-block;
+    white-space: nowrap; /* Prevents text wrapping if you want it all on one line */
+  }
+  .profile-section {
+    flex-direction: column;
+    text-align: left;
+    margin-left: -30%;
+    margin-top: 10%;
+    z-index: 1000;
+  }
+
+  .profile-img {
+    width: 50px;
+    height: 50px;
+    margin-right: 140px;
+  }
+
+  .profile-info {
+    margin-left: 40px;
+    margin-top: -40px;
+    color: rgb(10, 22, 32);
+  }
+
+  .icon-section {
+    position: absolute; /* Take it out of normal flow */
+    top: 50px; /* Move it further upwards */
+    right: 0%; /* Align it to the right */
+    gap: 20px; /* Reduce space between icons */
+    font-size: 120%; /* Reduce icon size */
+    /* Make sure it's above everything */
+    background: #fdfdfdef; /* Optional: Prevent text overlap */
+    padding: 5px; /* Adjust padding */
+    color: rgb(0, 0, 0);
+    border-radius: 5px; /* Smooth look */
+  }
+
+  .icon {
+    font-size: 80%;
+  }
+
+  .calendar-dropdown {
+    top: 0px; /* Adjust dropdown position */
+    margin-top: 60%;
+    font-size: small;
+    margin-right: 2%;
+    /* Make it more mobile-friendly */
+  }
+
+  .close-btn {
+    font-size: 12px;
+    padding: 5px 8px;
+  }
+}

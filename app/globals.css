@@ -1,0 +1,120 @@
+@import "@fortawesome/fontawesome-free/css/all.min.css";
+
+/* Reset & App Layout */
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  font-family: Arial, sans-serif;
+  overflow-x: hidden;
+}
+
+/* Keep CRA App styles */
+#root,
+.App {
+  display: flex;
+  flex-direction: column;
+  height: 80vh !important;
+}
+
+main {
+  flex: 1;
+}
+
+/* Custom sections */
+.about123 {
+  padding-top: 90px;
+  padding-bottom: 0;
+}
+
+.service123 {
+  padding-top: 50px;
+  padding-bottom: -40px;
+}
+
+.homologation123 {
+  padding-top: 70px;
+}
+
+.dashboard123,
+.services123 {
+  padding-top: 50%;
+  padding-bottom: 70px;
+}
+
+.circular123 {
+  padding: 0;
+}
+
+.ITNetworkFirst123 {
+  padding: auto;
+  padding-bottom: 0;
+}
+
+/* Navbar */
+.Navbar {
+  position: sticky;
+  top: 0;
+  background-color: #fff;
+  z-index: 10;
+  text-align: center;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+/* Scrolling Buttons */
+.scrolling-buttons {
+  position: absolute;
+  bottom: 140px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 20px;
+}
+
+.scroll-btn {
+  width: 30px;
+  height: 30px;
+  background-color: #90f011;
+  color: white;
+  border: none;
+  border-radius: 50%;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+  opacity: 0.5;
+}
+
+.scroll-btn.active {
+  background-color: #90f011;
+  transform: scale(1.2);
+  opacity: 1;
+}
+
+.scroll-btn:hover {
+  background-color: #085521e3;
+  transform: scale(1.2);
+}
+
+.scroll-btn:hover ~ .scroll-btn,
+.scroll-btn:hover + .scroll-btn {
+  opacity: 0.2;
+}
+
+/* Footer */
+.Footer {
+  position: fixed;
+  bottom: 0;
+  background-color: #fff;
+  z-index: 10;
+  text-align: center;
+  box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
+  padding: 0;
+  width: 100%;
+}

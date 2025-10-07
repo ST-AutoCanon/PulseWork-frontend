@@ -1,0 +1,256 @@
+.emp-dash-cards {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top:50px;
+}
+
+.emp-card {
+  width: 240px;
+  display: flex;
+  align-items: center;
+  background: white;
+  padding: 12px;
+  border-radius: 8px;
+  box-shadow: 0px 3px 5px rgba(0, 0, 0, 0.1);
+  transition: background 0.3s ease-in-out, color 0.3s ease-in-out;
+  border: none; /* Removes any border */
+}
+
+/* First Card Background - Default */
+.emp-punch-in {
+  background: #4caf50; /* Green background */
+  color: white;
+}
+
+/* First Card Background - After Clicking */
+.emp-punched-out {
+  background: #DE7921; /* Red background after Punch Out */
+  color: white;
+}
+
+/* Ensure the first card icon is white when active */
+.emp-punch-in .emp-icon,
+.emp-punched-out .emp-icon {
+  color: white;
+}
+
+/* Next three cards (Login Time, Location, Device) */
+.emp-card:not(.emp-punch-in):not(.emp-punched-out) .emp-icon {
+  color: black; /* Set icon color to black */
+}
+
+.emp-card:not(.emp-punch-in):not(.emp-punched-out) .emp-text {
+  color: #004DC6; /* Set text color to blue */
+}
+
+
+
+.emp-card-content {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  gap: 20px; /* Increased gap between icon and text */
+}
+
+.emp-icon {
+  font-size: 1.6rem;
+  
+  background: rgba(200, 200, 200, 0.2); /* Light grey background */
+  padding: 10px; /* Space around the icon */
+  border-radius: 8px; /* Rounded corners */
+  display: inline-flex; /* Keep it centered */
+  align-items: center; /* Vertical alignment */
+  justify-content: center; /* Horizontal alignment */
+ 
+}
+
+.emp-text {
+  font-size: 1rem;
+  font-weight: bold;
+}
+
+.emp-label {
+  font-size: 0.8rem;
+  color: #555;
+  display: block;
+}
+
+/* Add this to your EmpDashCards.css */
+
+/* Blink animation */
+@keyframes blink {
+  0% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+.emp-blink {
+  animation: blink 1s ease-in-out infinite;
+}
+
+
+
+
+.camera-popup {
+  position: fixed;
+  top: 55%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background-color: #ffffff;
+  border-radius: 20px;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.15);
+  padding: 25px 22px;
+  z-index: 1000;
+  width: 550px;
+  max-width: 95%;
+  text-align: center;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  animation: fadeIn 0.3s ease-in-out;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
+}
+
+/* Title */
+.camera-title {
+  font-size: 1.8rem;
+  font-weight: 600;
+  color: #222;
+  margin: 0;
+}
+
+/* Video */
+.camera-video {
+  width: 100%;
+  height: auto;
+  max-height: 320px;
+  border-radius: 16px;
+  object-fit: cover;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+}
+
+/* Status */
+.camera-status {
+  font-size: 1.05rem;
+  color: #444;
+  margin-top: 12px;
+  letter-spacing: 0.5px;
+}
+
+.location-link
+{
+  color: #004DC6;
+  font-size: 10px;
+}
+
+
+
+/* Smooth Fade In Animation */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -55%);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%);
+  }
+}
+
+
+
+@media (max-width: 768px) {
+  .emp-dash-cards {
+    flex-direction: column; /* Stack cards vertically */
+    align-items: center; /* Center align cards */
+    gap: 20px; /* Increase gap for better spacing */
+    width: 100%;
+  }
+
+  .emp-card {
+    width: 100%; /* Make cards take most of the screen width */
+    max-width: 380px; /* Prevent excessive width */
+    padding: 20px; /* Slightly increase padding for better touch experience */
+    width: 300px;
+  }
+  emp-card emp-punch-in
+  {
+    width: 120%;
+  }
+  .emp-card-content {
+    flex-direction: row; /* Keep content inline */
+    gap: 15px; /* Reduce gap slightly */
+  }
+ 
+  .emp-punch-button {
+    font-weight: bold;
+    cursor: pointer;
+    width: 120%;
+    transition: transform 0.2s ease-in-out;
+  }
+  
+  .emp-punch-button:active {
+    transform: scale(0.95);
+  }
+  .emp-icon {
+    font-size: 1.6rem; /* Slightly reduce icon size */
+  }
+
+  .emp-text {
+    font-size: 0.9rem; /* Slightly reduce text size */
+    text-align: center;
+    
+  }
+
+  .emp-label {
+    font-size: 0.75rem; /* Adjust label size */
+  }
+
+ 
+
+  @media (max-width: 768px) {
+    .emp-punch-in,
+    .emp-punched-out {
+      width: 340px; /* Make the first card bigger */
+      height: 80px; /* Increase height */
+      font-size: 1.2rem; /* Increase text size */
+    }
+  
+    .emp-punch-in .emp-icon,
+    .emp-punched-out .emp-icon {
+      font-size: 2rem; /* Make the icon slightly bigger */
+    }
+  }
+ 
+    .camera-popup {
+      top: 50%;
+      width: 90%;
+      padding: 20px 18px;
+      border-radius: 18px;
+      gap: 20px;
+    }
+  
+    .camera-title {
+      font-size: 1.6rem;
+    }
+  
+    .camera-video {
+      max-height: 260px;
+      border-radius: 14px;
+    }
+  
+    .camera-status {
+      font-size: 1rem;
+    
+  }
+  
+}

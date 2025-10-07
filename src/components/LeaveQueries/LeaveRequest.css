@@ -1,0 +1,1345 @@
+/* entire CSS from start up to (but not including) the .admin-container block */
+.leave-container {
+  margin: 1% 3%;
+  padding: 0%;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Header */
+.leave-header {
+  width: 100%;
+  margin: 2%;
+  font-size: large;
+  display: flex;
+  justify-content: flex-start;
+}
+
+/* Filters Section */
+.leave-filters {
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+  width: 100%;
+  gap: 2%;
+}
+
+.leave-filters label {
+  font-size: medium;
+}
+
+/* Date Inputs */
+.date-filter-input {
+  margin: 2% 0;
+  padding: 1%;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  width: 15%;
+  font-size: large;
+}
+
+/* Buttons: Filter & Leave Form */
+.filter-button,
+.leave-form-button {
+  margin-left: auto;
+  padding: 1%;
+  font-size: 100%;
+  cursor: pointer;
+  width: 15%;
+  background-color: #00468c;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  transition: background-color 0.3s ease, transform 0.1s ease,
+    box-shadow 0.3s ease;
+}
+
+.filter-button:hover,
+.leave-form-button:hover {
+  background-color: #003366;
+  opacity: 0.9;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+}
+
+.filter-button:active,
+.leave-form-button:active {
+  transform: scale(0.98);
+}
+
+.filter-button:focus,
+.leave-form-button:focus {
+  outline: 2px solid #ffca28;
+  outline-offset: 2px;
+}
+
+/* Save Button */
+.leave-save {
+  background-color: #7ac142;
+  color: white;
+  font-size: medium;
+  padding: 1%;
+  border: none;
+  cursor: pointer;
+  border-radius: 5px;
+  transition: background-color 0.3s ease, transform 0.1s ease,
+    box-shadow 0.3s ease;
+  width: 25%;
+}
+
+.leave-save:hover {
+  background-color: #69a535;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+}
+
+.leave-save:active {
+  transform: scale(0.98);
+}
+
+.leave-save:focus {
+  outline: 2px solid #ffca28;
+  outline-offset: 2px;
+}
+
+/* Cancel Button */
+.leave-cancel {
+  border: 1px solid #7ac142;
+  background-color: white;
+  color: #7ac142;
+  font-size: medium;
+  padding: 1%;
+  cursor: pointer;
+  border-radius: 5px;
+  transition: background-color 0.3s ease, transform 0.1s ease,
+    box-shadow 0.3s ease;
+  width: 25%;
+}
+
+.leave-cancel:hover {
+  background-color: #f2f2f2;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+}
+
+.leave-cancel:active {
+  transform: scale(0.98);
+}
+
+.leave-cancel:focus {
+  outline: 2px solid #ffca28;
+  outline-offset: 2px;
+}
+
+.leave-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.leave-modal-content {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  background-color: #7b7a7a;
+  max-height: 84vh;
+  width: 60%;
+  padding: 0%;
+  box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
+  box-sizing: border-box;
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+/* Form */
+.leave-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  background-color: #e8e9ea;
+  padding: 0;
+  border: 1px solid #ccc;
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+}
+
+.leave-form-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: white;
+  background-color: #00468c;
+  padding: 1% 2%;
+}
+
+.leave-form-header h2 {
+  margin: 1%;
+  text-align: left;
+  color: #ffffff;
+}
+
+.leave-form-header .icon {
+  cursor: pointer;
+  font-size: 150%;
+}
+
+.leave-form-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(30%, 1fr));
+  gap: 2%;
+  padding: 2%;
+  margin: 0;
+}
+
+.leave-form-group {
+  margin-top: 2%;
+  padding: 5%;
+}
+
+.leave-form label {
+  display: block;
+  margin-bottom: 2%;
+  font-size: medium;
+  font-weight: bold;
+}
+
+.leave-form input {
+  padding: 5%;
+  margin: 2%;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  width: 80%;
+  font-size: large;
+}
+
+.leave-form select {
+  padding: 5%;
+  margin: 2%;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  width: 80%;
+  font-size: medium;
+}
+
+.leave-form label:after {
+  content: " *";
+  color: red;
+  font-size: large;
+}
+
+/* Buttons - Bottom Right */
+.leave-form-actions {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 10%;
+  padding: 5%;
+  grid-column: span 3;
+}
+
+/* Table Container */
+.leave-request-table {
+  height: 500px;
+  overflow-y: auto;
+  overflow-x: auto;
+  margin-bottom: 5%;
+  width: 100%;
+}
+
+.leave-requests {
+  table-layout: fixed;
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.my-leaves {
+  width: 100%;
+  text-align: left;
+  margin: 1%;
+}
+
+/* Table */
+.leave-requests th {
+  border: 2px solid #cccbce;
+  height: 5%;
+  padding: 1%;
+  background-color: #f2f2f2;
+  font-size: medium;
+  font-weight: bold;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.leave-requests td {
+  border: 1px solid #cccbce;
+  padding: 0.5% 1%;
+  text-align: center;
+  font-size: medium;
+}
+
+.leave-requests tr {
+  background-color: #fff;
+}
+
+.leave-status-label {
+  padding: 6px 12px;
+  border-radius: 12px;
+  display: inline-block;
+  text-align: center;
+  min-width: 80px;
+}
+
+.lv-policy-header {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+  margin: 2% 0;
+}
+
+.leave-approved {
+  background-color: #d7f2ce;
+}
+
+.leave-rejected {
+  background-color: #ffe5d2;
+}
+
+.action-button {
+  font-size: x-large;
+  margin: 0 5%;
+}
+
+/* Edit & Delete Buttons */
+.button-edit,
+.button-delete {
+  font-size: x-large;
+  cursor: pointer;
+  transition: transform 0.1s ease, box-shadow 0.3s ease;
+}
+
+.button-edit {
+  margin-right: 5%;
+}
+
+.button-edit:hover,
+.button-delete:hover {
+  transform: scale(1.05);
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+}
+
+.button-edit:active,
+.button-delete:active {
+  transform: scale(0.95);
+}
+
+.button-edit:focus,
+.button-delete:focus {
+  outline: 2px solid #ffca28;
+  outline-offset: 2px;
+}
+
+/* Disabled styling for any element with .disabled */
+.disabled {
+  color: lightgray !important;
+  pointer-events: none;
+  cursor: not-allowed;
+}
+
+/* Hide table on mobile */
+@media (max-width: 768px) {
+  .desktop-view {
+    display: none;
+  }
+  .mobile-view {
+    display: block;
+  }
+}
+
+/* Hide cards on desktop */
+@media (min-width: 769px) {
+  .mobile-view {
+    display: none;
+  }
+}
+
+/* Card Layout Styling */
+.leave-card {
+  background: #fff;
+  border-radius: 5px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+  margin: 10px 0;
+  padding: 15px;
+  transition: 0.3s;
+  margin-bottom: 25px;
+}
+
+.leave-header {
+  display: flex;
+  justify-content: space-between;
+  font-weight: bold;
+  margin-bottom: 10px;
+}
+
+.leave-type {
+  font-size: 16px;
+  color: #333;
+}
+
+.leave-approved {
+  background: #d7f2ce;
+  color: #2e7d32;
+}
+
+.leave-rejected {
+  background: #ffe5d2;
+  color: #d32f2f;
+}
+
+.leave-details p {
+  margin: 5px 0;
+  font-size: 14px;
+  color: #555;
+}
+
+.leave-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.action-button {
+  font-size: 20px;
+  cursor: pointer;
+  color: #333;
+}
+
+.action-button.disabled {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+/* Mobile View */
+@media (max-width: 768px) {
+  /* Container */
+  .leave-container {
+    margin: 8%;
+    align-items: stretch;
+  }
+
+  /* Header */
+  .leave-header {
+    font-size: medium;
+    text-align: start;
+  }
+
+  /* Filters Section */
+  .leave-filters {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 5px;
+  }
+
+  .leave-filters label {
+    font-size: small;
+  }
+
+  /* Date Inputs */
+  .date-filter-input {
+    width: 94%;
+    font-size: medium;
+    padding: 10px;
+  }
+
+  /* Buttons */
+  .filter-button,
+  .leave-form-button {
+    width: 100%;
+    font-size: medium;
+    padding: 10px;
+  }
+
+  /* Leave Modal */
+  .leave-modal-content {
+    width: 90%;
+    max-height: 90vh;
+  }
+
+  /* Leave Form */
+  .leave-form {
+    padding: 5%;
+  }
+
+  .leave-form-header {
+    flex-direction: column;
+    text-align: center;
+  }
+
+  /* Grid Adjustments */
+  .leave-form-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .leave-form-group {
+    width: 100%;
+    padding: 0;
+  }
+
+  .leave-form label {
+    font-size: small;
+  }
+
+  .leave-form input,
+  .leave-form select {
+    width: 100%;
+    padding: 10px;
+    font-size: small;
+  }
+
+  /* Buttons - Bottom Section */
+  .leave-form-actions {
+    flex-direction: column;
+    gap: 10px;
+    align-items: stretch;
+  }
+
+  .leave-save,
+  .leave-cancel {
+    width: 100%;
+    font-size: medium;
+  }
+
+  /* Table */
+  .leave-request-table {
+    height: auto;
+    overflow-x: scroll;
+    width: 100%;
+  }
+
+  .leave-requests {
+    font-size: small;
+  }
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  /* Header Section */
+  .leave-form-header {
+    align-items: flex-start;
+    color: white;
+    background-color: #00468c;
+    padding: 10px 15px;
+  }
+
+  .leave-form-header h2 {
+    font-size: 1.2rem;
+    margin: 0;
+    margin-top: 4%;
+  }
+
+  .leave-form-header .icon {
+    cursor: pointer;
+    font-size: 1.5rem;
+    margin-left: auto;
+    margin-top: -8%;
+  }
+
+  /* Leave Form Grid */
+  .leave-form-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    padding: 15px;
+    margin-left: 0;
+  }
+
+  .leave-form-group {
+    margin-top: 0;
+    padding: 0;
+    width: 100%;
+  }
+
+  /* Form Actions */
+  .leave-form-actions {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px 10px;
+    gap: 85px;
+    width: 90%;
+  }
+
+  /* Leave Table */
+  .leave-requests th,
+  .leave-requests td {
+    font-size: 0.9rem;
+    padding: 10px;
+    text-align: left;
+  }
+
+  /* Label Adjustments */
+  .leave-status-label {
+    margin-left: 50%;
+  }
+
+  /* My Leaves Section */
+  .my-leaves {
+    width: 100%;
+    text-align: left;
+    margin: 4%;
+  }
+
+  /* Buttons (Equal Size) */
+  .filter-button,
+  .leave-form-button,
+  .leave-save,
+  .leave-cancel {
+    width: 100%; /* Equal width for buttons */
+    padding: 12px;
+    font-size: 1rem;
+    margin-bottom: 10px;
+    text-align: center; /* Align text in center */
+    box-sizing: border-box;
+  }
+
+  /* Responsive Input/Select (Equal Size) */
+  .leave-form input,
+  .leave-form select {
+    width: 100%;
+    padding: 12px;
+    font-size: 1rem;
+    margin: 0;
+    box-sizing: border-box;
+  }
+
+  /* Date Filter Inputs (Equal Size) */
+  .date-filter-input {
+    width: 100%;
+    padding: 12px;
+    font-size: 1rem;
+    margin: 0;
+    box-sizing: border-box;
+  }
+
+  /* Modal */
+  .leave-modal-content {
+    width: 95%;
+    padding: 10px;
+    box-sizing: border-box;
+  }
+
+  .leave-container {
+    height: 100vh;
+  }
+}
+/* ---------- Compact balance row & mini cards ---------- */
+.balance-row-compact {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: nowrap; /* try to keep single-line; will overflow horizontally on small screens */
+  overflow-x: auto;
+  padding: 6px 2px;
+}
+
+/* base mini card used for each leave type */
+.balance-mini-card {
+  background: #f7f7f7;
+  border-radius: 8px;
+  padding: 6px 12px;
+  min-width: 110px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  font-family: var(--ui-font, Arial, Helvetica, sans-serif);
+  color: #222;
+  white-space: nowrap;
+}
+
+/* leave type label on mini-card */
+.balance-mini-card > div:first-child {
+  font-size: 16px;
+  color: #333;
+  text-transform: capitalize;
+}
+
+/* used/remaining numbers row */
+.balance-mini-card .balance-numbers-row,
+.balance-mini-card > div:nth-child(2) {
+  font-size: 16px;
+  display: flex;
+  gap: 8px;
+  padding: 5% 0;
+  align-items: baseline;
+  font-weight: 500;
+}
+
+.balance-mini-card .balance-numbers-row strong,
+.balance-mini-card > div:nth-child(2) strong {
+  font-weight: 700;
+  font-size: 16px;
+}
+
+/* muted " / remaining" text */
+.balance-mini-card .balance-remaining,
+.balance-mini-card > div:nth-child(2) span {
+  color: #666;
+  font-weight: 500;
+  margin-left: 6px;
+  font-size: 13px;
+}
+
+/* ---------- Total LOP card (distinct style) ---------- */
+.balance-mini-card.total-lop-card {
+  background: linear-gradient(180deg, #fff8f8, #fff3f3);
+  border: 1px solid rgba(204, 0, 0, 0.08);
+  color: #8a0000;
+  min-width: 150px;
+  padding: 8px 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* top row with arrows + month text */
+.total-lop-card .lop-top {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  justify-content: center;
+}
+
+/* arrow buttons - small round clickable icons */
+.total-lop-card button {
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-size: 16px;
+  line-height: 1;
+  padding: 4px;
+  border-radius: 6px;
+  color: #8a0000;
+  transition: background-color 0.12s ease, opacity 0.12s ease;
+  margin-top: 2px;
+}
+
+/* hover/focus affordance */
+.total-lop-card button:hover,
+.total-lop-card button:focus {
+  background: #8a00000f;
+  outline: none;
+}
+
+/* disabled/blocked next button look */
+.total-lop-card button[aria-disabled="true"],
+.total-lop-card button.disabled {
+  opacity: 0.4;
+  cursor: default;
+  pointer-events: none;
+}
+
+/* month label */
+.total-lop-card .lop-month {
+  text-align: center;
+  font-size: 12px;
+  color: #333;
+}
+
+/* month + year (bolder) */
+.total-lop-card .lop-month .lop-month-name {
+  display: block;
+  font-weight: 700;
+  font-size: 13px;
+  color: #6b1b1b;
+}
+
+/* big LOP number */
+.total-lop-card .lop-value {
+  font-size: 20px;
+  text-align: center;
+  font-weight: 800;
+  color: #cc0000;
+  line-height: 1;
+}
+
+/* "days" label */
+.total-lop-card .lop-days-label {
+  font-size: 11px;
+  color: #666;
+  margin-top: -2px;
+}
+
+/* keep entire compact row accessible on tiny screens */
+@media (max-width: 720px) {
+  .balance-row-compact {
+    gap: 8px;
+  }
+  .balance-mini-card {
+    min-width: 100px;
+    padding: 6px 8px;
+  }
+  .balance-mini-card.total-lop-card {
+    min-width: 150px;
+  }
+}
+
+/* ensure focus outlines for keyboard users */
+.balance-mini-card button:focus {
+  box-shadow: 0 0 0 3px rgba(204, 0, 0, 0.12);
+  border-radius: 6px;
+}
+
+.policy-modal-content {
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.policy-dates {
+  display: flex;
+  justify-content: space-around;
+  margin: 12px;
+}
+
+.date-label {
+  font-weight: bold;
+  color: #555;
+  margin-right: 4px;
+}
+
+.date-value {
+  padding: 3px 6px;
+  border-radius: 4px;
+}
+
+.policy-note {
+  background: #f9f9f9;
+  padding: 4px 8px;
+  margin-bottom: 15px;
+  font-size: 13px;
+}
+
+.policy-note .carry-forward {
+  color: green;
+  font-weight: bold;
+}
+
+.policy-note .lapse {
+  color: red;
+  font-weight: bold;
+}
+
+.leave-policy-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 10px;
+}
+
+.leave-policy-table th,
+.leave-policy-table td {
+  border: 1px solid #ddd;
+  padding: 8px;
+  text-align: center;
+}
+
+.leave-policy-table th {
+  background-color: #007bff;
+  color: white;
+}
+
+.lv-title {
+  margin: 0.5% 0;
+}
+
+.lv-filter-button {
+  padding: 0 1%;
+  font-size: 100%;
+  cursor: pointer;
+  background-color: #00468c;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  transition: background-color 0.3s ease, transform 0.1s ease,
+    box-shadow 0.3s ease;
+}
+
+/* ---------- VENN DIAGRAM STYLES (add to LeaveRequest.css) ---------- */
+
+/* Card that wraps each Venn diagram (was venn-card-fixed) */
+.venn-card.venn-card-fixed {
+  min-width: 200px; /* matches previous minWidth */
+  flex: 0 0 auto; /* keep a fixed card in the horizontal row */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 8px 10px;
+  border-radius: 8px;
+  box-sizing: border-box;
+  height: auto; /* or set a min-height */
+  overflow: visible;
+}
+
+/* small label above each diagram */
+.venn-label {
+  font-weight: 700;
+  font-size: 14px;
+  color: #1f2d3d;
+  text-transform: capitalize;
+  width: 100%;
+  text-align: center;
+}
+
+/* responsive SVG sizing — use viewBox for perfect scaling */
+.venn-svg {
+  width: 100%;
+  height: auto;
+  max-width: 200px;
+  display: block;
+
+  overflow: visible;
+}
+
+/* Horizontal row wrapper for Venn diagrams (legacy scrollable layout) */
+.venn-grid.horizontal {
+  display: flex;
+  gap: 18px;
+  overflow-x: auto;
+  padding: 12px 4px;
+  align-items: flex-start;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* header row near the Venn area (keeps LOP card aligned) */
+.venn-header.venn-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+/* tiny explanatory note under the section title */
+.venn-note {
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: #555;
+}
+
+/* legend under each diagram */
+.venn-legend {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  font-size: 13px;
+  color: #333;
+}
+
+/* colored swatches used in legend */
+.legend-swatch {
+  width: 12px;
+  height: 12px;
+  display: inline-block;
+  border-radius: 3px;
+  margin-right: 6px;
+  vertical-align: middle;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.03) inset;
+}
+
+.legend-swatch.used {
+  background: rgba(220, 53, 69, 0.6);
+}
+
+.legend-swatch.remaining {
+  background: rgba(25, 135, 84, 0.6);
+}
+
+/* ---------- NEW: VENN NAVIGATION LAYOUT (replaces x-axis scroll) ---------- */
+
+/* top-level section wrapper containing policy period + venn area */
+.venn-balance-section {
+  margin-top: 8px;
+  margin-bottom: 12px;
+  width: 100%;
+}
+
+/* Layout: LOP card | left nav | cards | right nav */
+.venn-grid-with-nav {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  width: 100%;
+  /* hide any accidental overflow to avoid showing horizontal scrollbar */
+  overflow: hidden;
+  box-sizing: border-box;
+  padding: 8px 4px;
+}
+
+/* The column used for the small prev/next nav buttons */
+.venn-nav-column {
+  width: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 4% 0;
+}
+
+.policy-period-row {
+  display: flex;
+  justify-content: space-between;
+}
+
+/* Primary nav button styling (circular icon) */
+.venn-nav-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  border: none;
+  background: #f2f4f7;
+  color: #333;
+  cursor: pointer;
+  font-size: 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.12s ease, transform 0.08s ease,
+    box-shadow 0.12s ease, opacity 0.12s ease;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+.venn-nav-btn:hover {
+  background: #e6e9ee;
+  transform: translateY(-1px);
+}
+
+.venn-nav-btn:active {
+  transform: translateY(0);
+}
+
+.venn-nav-btn:focus {
+  outline: none;
+  box-shadow: 0 0 0 4px rgba(0, 70, 140, 0.08);
+  border-radius: 8px;
+}
+
+/* Disabled state: visually subdued and not interactive */
+.venn-nav-btn[disabled],
+.venn-nav-btn[aria-disabled="true"],
+.venn-nav-btn.disabled {
+  opacity: 0.35;
+  cursor: default;
+  transform: none;
+  pointer-events: none;
+  background: #f7f7f7;
+}
+
+/* Container for visible venn cards (JS controls which are rendered) */
+.venn-cards-container {
+  display: flex;
+  align-items: flex-start;
+
+  /* keep content left-aligned */
+  justify-content: flex-start;
+  /* ensure consistent height */
+
+  box-sizing: border-box;
+}
+
+/* wrapper around each Venn card — helps spacing/placeholder sizing */
+.venn-card-wrapper {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: stretch;
+  justify-content: center;
+  width: 180px;
+}
+
+/* placeholder boxes to keep layout stable when fewer cards than slots */
+.venn-card-placeholder {
+  min-width: 200px;
+  height: 160px;
+  border-radius: 8px;
+  background: transparent;
+  box-sizing: border-box;
+  flex: 0 0 auto;
+}
+
+/* small pager under the venn area */
+.venn-pager {
+  margin-top: 8px;
+  font-size: 13px;
+  color: #444;
+  text-align: left;
+  padding-left: 6px;
+}
+
+/* make LOP card visually attached to the venn area */
+.venn-grid-with-nav .total-lop-card {
+  align-self: flex-start;
+  margin-right: 4px;
+}
+
+/* Accessibility: visible focus ring for card wrappers (keyboard users) */
+.venn-card-wrapper:focus-within,
+.venn-card-wrapper:focus {
+  outline: 3px solid rgba(0, 70, 140, 0.08);
+  border-radius: 6px;
+}
+
+/* a11y helper for nav tooltip look */
+.venn-nav-btn[title] {
+  position: relative;
+}
+
+/* a little responsive resizing */
+@media (max-width: 900px) {
+  .venn-nav-column {
+    width: 36px;
+  }
+  .venn-nav-btn {
+    width: 32px;
+    height: 32px;
+    font-size: 14px;
+  }
+  .venn-card-placeholder,
+  .venn-card.venn-card-fixed {
+    min-width: 180px;
+  }
+  .venn-cards-container {
+    min-height: 140px;
+  }
+}
+
+@media (max-width: 600px) {
+  .venn-grid-with-nav {
+    gap: 8px;
+    padding: 6px 2px;
+  }
+  .venn-nav-column {
+    width: 32px;
+  }
+  .venn-nav-btn {
+    width: 30px;
+    height: 30px;
+    font-size: 12px;
+  }
+  .venn-card-placeholder,
+  .venn-card.venn-card-fixed {
+    min-width: 160px;
+  }
+  .venn-cards-container {
+    gap: 12px;
+  }
+}
+
+/* a bit of breathing room on small screens */
+@media (max-width: 520px) {
+  .venn-card.venn-card-fixed {
+    min-width: 200px;
+    padding: 6px 8px;
+  }
+  .venn-svg {
+    max-width: 200px;
+  }
+}
+
+/* ensure focus outlines for keyboard users */
+.venn-card.venn-card-fixed button:focus {
+  box-shadow: 0 0 0 3px rgba(204, 0, 0, 0.12);
+  border-radius: 6px;
+}
+
+.show-lop-btn {
+  margin: 0 8px;
+  padding: 6px 8px;
+  background: #00468c;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 400;
+}
+.show-lop-btn:hover {
+  background: #005494;
+}
+.show-lop-btn:active {
+  transform: translateY(1px);
+}
+.show-lop-btn:focus {
+  outline: 3px solid rgba(0, 102, 179, 0.18);
+}
+
+/* ---------- LOP Modal (LeaveRequest.js) ---------- */
+
+.lop-modal-content {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 320px; /* modal inner width */
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  align-items: center;
+  background: transparent; /* keep actual modal background handled by Modal component */
+}
+
+/* Month navigation row */
+.lop-month-row {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+
+.lop-month-row button {
+  background: none;
+  border: 1px solid #d0d7de;
+  border-radius: 8px;
+  padding: 6px 10px;
+  min-width: 40px;
+  height: 36px;
+  cursor: pointer;
+  font-size: 15px;
+  line-height: 1;
+  transition: transform 120ms ease, box-shadow 120ms ease;
+}
+
+.lop-month-row button:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgba(16, 24, 40, 0.06);
+}
+
+.lop-month-row button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.lop-month-title {
+  font-weight: 800;
+  padding: 6px 10px;
+  border-radius: 8px;
+  min-width: 160px;
+  text-align: center;
+  font-size: 20px;
+  color: #004680;
+}
+
+/* Big LOP number */
+.lop-value-big {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial;
+  font-size: 30px;
+  font-weight: 800;
+  line-height: 1;
+  margin-top: 4px;
+  color: #ef5862; /* dark text */
+  text-align: center;
+  width: 100%;
+}
+
+/* Actions row (buttons under value) */
+.lop-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  margin-top: 6px;
+}
+
+/* Recompute button style */
+.recompute-button {
+  appearance: none;
+  border: none;
+  background: #fbc7c7; /* primary blue - change to match your theme */
+  color: #f45f5f;
+  padding: 8px 14px;
+  border-radius: 10px;
+  font-weight: 700;
+  cursor: pointer;
+  min-height: 40px;
+}
+
+.recompute-button:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 24px rgba(13, 110, 253, 0.14);
+}
+
+.recompute-button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+/* Small helper note under modal */
+.lop-note {
+  font-size: 13px;
+  color: #6b7280; /* muted gray */
+  text-align: center;
+  margin-top: 4px;
+  max-width: 420px;
+}
+
+/* Responsive adjustments */
+@media (max-width: 480px) {
+  .lop-modal-content {
+    padding: 14px;
+    max-width: 360px;
+  }
+  .lop-value-big {
+    font-size: 28px;
+  }
+  .lop-month-title {
+    min-width: 120px;
+    font-size: 14px;
+  }
+  .recompute-button {
+    padding: 8px 10px;
+    min-height: 36px;
+    font-size: 14px;
+  }
+}
+
+.lop-title {
+  margin: 0;
+  font-size: 25px;
+  margin-top: 2%;
+  color: #ed363f;
+}
+
+.team-search-input {
+  display: flex;
+  align-items: center;
+  white-space: nowrap;
+  margin: 0px;
+  padding: 12px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  width: 100px;
+}
+
+.team-search-input label {
+  font-size: medium;
+  font-weight: bold;
+  white-space: nowrap;
+  margin: 0px;
+}
+
+.team-search-input input {
+  flex: 1;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  width: 160px;
+  margin-bottom: 0px;
+}

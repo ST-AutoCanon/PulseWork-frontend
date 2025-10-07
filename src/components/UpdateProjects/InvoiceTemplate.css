@@ -1,0 +1,291 @@
+@font-face {
+  font-family: "Insignia Roman";
+  src: url("./Insignia Roman/Insignia Roman.ttf") format("truetype");
+  font-weight: normal;
+  font-style: normal;
+}
+
+.emp-inv-container {
+  width: 100%;
+  max-width: 100%;
+  height: auto;
+  margin: 0 auto;
+  padding: 2rem;
+  font-family: Arial, sans-serif;
+  background-color: #fff;
+  color: #000;
+  box-sizing: border-box;
+}
+
+/* Header */
+.emp-inv-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  background-color: #0f6679;
+}
+
+.emp-inv-name {
+  margin: 0.5% 0;
+  font-size: 40px;
+  font-family: "Insignia Roman", serif;
+}
+
+.emp-inv-address {
+  color: #fff;
+  text-align: right;
+  margin: 0 2% 0 0;
+}
+
+.emp-inv-address p {
+  font-size: medium;
+  margin: 1.7% 0;
+}
+
+.emp-inv-logo {
+  height: 100%;
+  background-color: #fff;
+  border: 1px solid #000;
+}
+
+.emp-inv-logo img {
+  width: 256px;
+}
+
+/* Invoice Details */
+.emp-inv-details p {
+  display: flex;
+  gap: 0.5rem;
+  margin: 10% 0;
+  align-items: center;
+}
+
+.temp-label {
+  min-width: 120px;
+  display: inline-block;
+  color: #000;
+  font-size: medium;
+  margin: 0;
+}
+
+.emp-inv-title-block {
+  color: #0f6679;
+  text-align: center;
+  font-weight: bold;
+  font-size: 30px;
+  margin: 3%;
+}
+
+.emp-bill-header {
+  display: flex;
+  justify-content: space-between;
+  background-color: #0f6679;
+  color: #fff;
+}
+
+.emp-bill-header h4 {
+  margin: 1% 2%;
+}
+
+.emp-bill-data {
+  display: flex;
+  justify-content: space-between;
+  margin: 0 2%;
+}
+
+.emp-bill-to {
+  margin: 1% 0;
+  text-align: left;
+}
+
+.emp-project-address {
+  width: 80%;
+}
+
+/* Table */
+.emp-inv-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 0.5%;
+}
+
+.emp-inv-table th {
+  background-color: #0f6679;
+  color: #fff;
+  border: 2px solid #7e7e7e;
+  padding: 8px;
+  text-align: right;
+}
+
+.emp-inv-table td {
+  width: 150px;
+  border: 2px solid #7e7e7e;
+  padding: 8px;
+  text-align: right;
+}
+
+.emp-inv-table th:nth-child(2),
+.emp-inv-table td:nth-child(2) {
+  width: 500px;
+  text-align: left;
+}
+
+.emp-inv-table td:nth-child(1),
+.emp-inv-table th:nth-child(1),
+.emp-inv-table th:nth-child(3),
+.emp-inv-table td:nth-child(3) {
+  text-align: center;
+}
+
+/* Totals Row */
+.emp-totals-row {
+  font-weight: bold;
+  background-color: #f2f2f2;
+}
+
+/* Tax Section */
+.emp-tax-section {
+  display: flex;
+  justify-content: space-between;
+}
+
+.emp-partition {
+  width: 49%;
+  margin: 1% 0;
+}
+
+.emp-amount-in-words {
+  background-color: #0f6679;
+  color: #fff;
+  padding: 2%;
+  margin: 1% 0;
+}
+
+.emp-amount-in-words-text {
+  height: 40px;
+  margin: 0 2% 2% 2%;
+  font-style: italic;
+}
+
+.emp-amounts {
+  background-color: #0f6679;
+  color: #fff;
+  padding: 2%;
+  margin: 1% 0 0 1%;
+}
+
+.emp-amounts-section {
+  margin: 0 2%;
+  border-bottom: 2px solid #ccc;
+}
+
+.emp-amounts-section p {
+  margin: 1%;
+}
+
+.emp-total-block {
+  display: flex;
+  justify-content: space-between;
+}
+
+.emp-bold {
+  font-weight: bold;
+}
+
+/* Footer */
+.emp-inv-footer {
+  display: flex;
+  gap: 15%;
+}
+
+.emp-footer-partition {
+  width: 49%;
+}
+
+.emp-seal img {
+  width: 200px;
+  height: 150px;
+}
+
+.emp-no-seal {
+  width: 200px;
+  height: 150px;
+}
+
+.emp-seal-sign {
+  width: 49%;
+  text-align: center;
+  margin: 0;
+}
+
+.emp-seal-sign p {
+  font-size: small;
+  margin: 0%;
+}
+
+.emp-authorized {
+  text-align: center;
+  margin: 0;
+}
+
+.emp-bank-details {
+  display: flex;
+  justify-content: space-between;
+}
+
+.emp-bank-details p {
+  font-size: medium;
+}
+
+.emp-qr-code {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin: 1% 1% 0 0;
+}
+
+.emp-qr-code img {
+  width: 150px;
+  height: 150px;
+}
+
+/* Note */
+.emp-note {
+  font-size: medium;
+  font-style: italic;
+  text-align: center;
+  color: #3b87fa;
+  margin: 5%;
+}
+
+.emp-tax-box {
+  display: flex;
+  justify-content: space-between;
+  background-color: #0f6679;
+  color: #fff;
+  font-weight: bold;
+  margin: 1% 0;
+}
+
+.emp-tax-box p {
+  margin: 2%;
+}
+
+.emp-tax-box-body {
+  display: flex;
+  justify-content: space-between;
+  margin: 0 2%;
+}
+
+.emp-tax-box-body p {
+  margin: 1%;
+}
+
+.emp-terms {
+  height: 200px;
+  margin: 0 2%;
+  white-space: pre-line;
+}
+.emp-tax-label {
+  margin: 0;
+}

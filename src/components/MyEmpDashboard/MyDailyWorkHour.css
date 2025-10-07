@@ -1,0 +1,108 @@
+.work-hour-container {
+  width: 80%;
+  background-color: #fff;
+  padding: 20px;
+  border-radius: 8px;
+  margin-top: 20px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.work-hour-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-evenly;
+  margin-bottom: 10px;
+  background-color: #fff;
+}
+
+.work-hour-header h3 {
+  font-size: 1.4rem;
+  text-align: start;
+  font-weight: bold;
+  color: #333;
+}
+
+.work-hour-header span {
+  font-size: 1rem;
+  color: #999;
+}
+
+.work-hour-view-options {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  margin-top: 10px;
+}
+
+.work-hour-view-options button {
+  background: none;
+  border: none;
+  font-size: 12px;
+  cursor: pointer;
+  padding: 5px 0px;
+  position: relative;
+  transition: color 0.3s ease;
+  color: black;
+}
+
+.work-hour-view-options button.active {
+  color: #0033cc;
+  font-weight: bold;
+}
+
+.work-hour-view-options button:not(:last-child)::after {
+  content: "";
+  width: 2px;
+  height: 20px;
+  background-color: #ccc;
+  position: absolute;
+  right: -10px;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.work-hour-legend {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 15px;
+  margin-left: 20px;
+}
+
+.work-hour-legend-item {
+  display: flex;
+  align-items: center;
+  font-size: 0.9rem;
+  color: #555;
+  margin-right: 10px;
+}
+
+.work-hour-legend-item .work-hour-box {
+  width: 12px;
+  height: 12px;
+
+  background-color: #0033cc;
+  margin-right: 5px;
+}
+
+.work-hour-box.light-blue {
+  background-color: #99ccff;
+}
+
+.work-hour-box.gray {
+  background-color: #d3d3d3;
+}
+
+.work-hour-box.red {
+  background-color: #ff4d4d;
+}
+@media (max-width: 768px) {
+  .work-hour-container {
+    background-color: #fff;
+    padding: 20px;
+    border-radius: 8px;
+    margin-top: 20px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    display: none;
+  }
+}

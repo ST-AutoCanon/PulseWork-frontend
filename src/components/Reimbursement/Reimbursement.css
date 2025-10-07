@@ -1,0 +1,877 @@
+.reimbursement-container {
+  width: 95%;
+  margin: 3%;
+  border-radius: 10px;
+}
+
+.reimbursement-table-scroll {
+  margin-top: 2%;
+  height: 400px;
+  overflow-y: auto;
+  overflow-x: auto;
+  border: 1px solid #ddd;
+  margin-bottom: 3%;
+}
+
+.rb-form-header {
+  text-align: left;
+  margin: 3% 0;
+}
+
+.filter-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: 5% 0;
+}
+
+.filter-container label {
+  font-weight: bold;
+  text-align: center;
+}
+
+.filter-container input {
+  padding: 1% 2%;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  font-size: medium;
+}
+
+.filter-container select {
+  padding: 0.9% 2%;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  font-size: medium;
+}
+
+.search-btn,
+.apply-btn {
+  background-color: #79c42b;
+  color: white;
+  border: none;
+  padding: 1% 2%;
+  font-size: medium;
+  cursor: pointer;
+  border-radius: 5px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.search-btn:hover,
+.apply-btn:hover {
+  background-color: #0056b3;
+}
+
+.reimbursement-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: white;
+  border-radius: 5px;
+  overflow: hidden;
+}
+
+.reimbursement-table th,
+.reimbursement-table td {
+  border: 2px solid #d9d9d9;
+  padding: 0.5%;
+  text-align: center;
+}
+
+.reimbursement-table td:nth-child(5) {
+  text-align: right;
+}
+
+.reimbursement-table th {
+  background-color: #f2f2f2;
+}
+
+.reimbursement-table td {
+  background-color: #fff;
+}
+
+.rbcomments-column {
+  max-width: 200px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.rbcomments-column:hover {
+  white-space: normal;
+  overflow-y: auto;
+  text-overflow: unset;
+  max-height: 500px;
+}
+
+.status {
+  padding: 6px 12px;
+  border-radius: 12px;
+  display: inline-block;
+  text-align: center;
+  min-width: 100px;
+}
+
+.status.approved {
+  background-color: #d7f2ce;
+}
+
+.status.rejected {
+  background-color: #ffe5d2;
+}
+
+.edit-icon,
+.delete-icon {
+  cursor: pointer;
+  margin: 0 5px;
+  font-size: x-large;
+}
+
+.edit-icon:hover {
+  color: #007bff;
+}
+
+.delete-icon:hover {
+  color: red;
+}
+
+.rb-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.rb-modal-content {
+  background: #e8e9ea;
+  padding: 0%;
+  width: 70%;
+  box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.2);
+}
+
+.claim-form-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background-color: #00468c;
+  color: #fff;
+  padding: 0 2%;
+}
+
+.claim-form-title {
+  color: #fff;
+}
+
+.claim-form-close {
+  font-size: x-large;
+}
+
+.rb-form-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(20%, 1fr));
+  gap: 3%;
+  padding: 2%;
+}
+
+.rb-form1-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(20%, 1fr));
+  gap: 3%;
+  padding: 2%;
+}
+.rb-form2-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(20%, 1fr));
+  gap: 3%;
+  padding: 2%;
+}
+
+.claim-type {
+  display: flex;
+  margin: 2%;
+  max-width: 100%;
+  overflow-x: auto; /* Allows horizontal scrolling if needed */
+  flex-wrap: wrap; /* Ensures wrapping in smaller screens */
+}
+
+.claim-type label {
+  margin: 1%;
+  font-weight: bold;
+}
+
+.rb-tabs {
+  width: 100%;
+  display: flex;
+  flex-wrap: wrap; /* Allows tabs to wrap if they don't fit */
+  border-bottom: none;
+  max-width: 100%;
+  overflow: hidden;
+}
+
+.rb-tab {
+  flex: 1; /* Ensures tabs resize proportionally */
+  min-width: 120px; /* Prevents tabs from becoming too small */
+  padding: 0.5%;
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: bold;
+  background-color: #dadada;
+  border-radius: 5px 5px 0 0;
+  border: 1px solid #949494;
+  transition: background-color 0.3s;
+  text-align: center; /* Centers text */
+  white-space: nowrap; /* Prevents text breaking mid-word */
+}
+
+.rb-tab.active {
+  background-color: #e8e9ea;
+  border-bottom: none;
+}
+
+.claim-icons {
+  font-size: 20px;
+}
+
+.claim-type select {
+  width: 300px;
+  padding: 0.9% 2%;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  font-size: medium;
+  margin-bottom: 2%;
+}
+
+.rb-groups {
+  margin-bottom: 10%;
+}
+
+.rb-groups label {
+  font-weight: bold;
+  margin-bottom: 5%;
+}
+
+.rb-groups input {
+  padding: 2%;
+  border: 1px solid #ccc;
+  background-color: #fff;
+  border-radius: 5px;
+  width: 95%;
+}
+
+.rb-groups select {
+  padding: 2%;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  width: 99%;
+}
+
+.reimbursement-form-button {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10%;
+  margin: 2% 5%;
+}
+
+.rb-submit {
+  background-color: #7fbd2c;
+  color: white;
+  padding: 1% 6%;
+  border: 1px solid #7fbd2c;
+  cursor: pointer;
+  border-radius: 5px;
+}
+
+.rb-close {
+  color: #000;
+  padding: 1% 6%;
+  border: 1px solid #7fbd2c;
+  cursor: pointer;
+  border-radius: 5px;
+}
+
+.radio-group {
+  display: flex;
+  gap: 4%;
+  margin-top: 5px;
+}
+
+.radio-label {
+  display: flex;
+  align-items: center;
+  gap: 2%;
+  cursor: pointer;
+  font-weight: bold;
+}
+
+.sub-tabs {
+  display: flex;
+  gap: 2%;
+  margin: 2%;
+  padding: 0 2%;
+  color: #000;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.sub-tab.active {
+  color: #004dc6;
+  border-bottom: 2px solid #004dc6;
+}
+
+.rb-radio {
+  display: flex;
+  margin: 2%;
+  padding: 1%;
+  font-weight: bold;
+  font-size: medium;
+}
+
+.rb-radio label {
+  display: flex;
+  align-items: center;
+  margin-right: 5%;
+}
+
+.rb-radio-options {
+  display: flex;
+  gap: 20px;
+}
+
+.rb-radio-options label {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.rb-status-label {
+  padding: 6px;
+  border-radius: 12px;
+  display: inline-block;
+  text-align: center;
+  min-width: 80px;
+}
+
+.rb-approved {
+  background-color: #d7f2ce;
+}
+
+.rb-rejected {
+  background-color: #ffe5d2;
+}
+
+.eye-icon {
+  color: #949494;
+  font-size: x-large;
+}
+
+.attachments-btn {
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  padding: 3%;
+  width: 90px;
+  border: none;
+  border-radius: 50px;
+  background-color: #f2f2f2;
+}
+
+.att-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.att-modal-content {
+  background: #e8e9ea;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  min-width: 300px;
+}
+
+.att-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 5%;
+  background-color: #00468c;
+  color: #fff;
+}
+
+.att-close {
+  font-size: xx-large;
+}
+
+.att-close-btn {
+  background-color: #79c42b;
+  color: white;
+  border: none;
+  padding: 3% 10%;
+  font-size: medium;
+  cursor: pointer;
+  border-radius: 5px;
+  display: flex;
+  align-items: center;
+  margin: 5%;
+  margin-left: 60%;
+}
+
+.att-files {
+  padding: 2%;
+  margin: 2% 5%;
+}
+
+.asterisk {
+  color: red;
+}
+
+.purpose-attachment {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(20%, 1fr));
+  gap: 0.1%;
+}
+
+.pa-groups {
+  padding: 4%;
+}
+
+.pa-groups label {
+  font-weight: bold;
+  margin-bottom: 5%;
+}
+
+.pa-groups textarea {
+  padding: 2%;
+  border: 1px solid #ccc;
+  background-color: #fff;
+  border-radius: 5px;
+  width: 96%;
+  height: 80px;
+}
+
+.attachment-wrapper {
+  display: flex;
+  background-color: #fff;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  height: 80px;
+  width: 95%;
+  padding: 2%;
+}
+
+.file-links {
+  width: 80%;
+  color: #00468c;
+  text-decoration: none;
+  font-size: 14px;
+  overflow-x: auto;
+  overflow-y: auto;
+}
+
+.attachment-upload {
+  display: flex;
+  align-items: center;
+}
+
+.hidden-file-input {
+  display: none;
+}
+
+.custom-file-upload {
+  background: #79c42b;
+  color: #fff;
+  padding: 10% 20%;
+  cursor: pointer;
+  border-radius: 5px;
+  font-size: 16px;
+  display: inline-block;
+}
+
+.rb-error-message {
+  color: red;
+  font-weight: bold;
+  margin-top: 10px;
+  text-align: center;
+}
+
+.disabled-icon {
+  color: grey;
+  pointer-events: none; /* Prevents clicking */
+  opacity: 0.5; /* Makes it look disabled */
+}
+
+.actions-column {
+  min-width: 75px;
+}
+
+.rb-reimbursement-cards {
+  display: none;
+}
+
+/* Responsive Mobile View */
+@media (max-width: 768px) {
+  .reimbursement-table {
+    display: none;
+  }
+
+  .filter-container {
+    flex-direction: column;
+
+    margin: 4%;
+    gap: 10px;
+    padding: 15px;
+  }
+  .rb-form-header {
+    margin: 8%;
+  }
+  .filter-container label {
+    font-size: 13px;
+    margin-right: 80%;
+  }
+
+  .filter-container select {
+    width: 100%;
+    font-size: medium;
+    padding: 10px;
+  }
+  .filter-container input {
+    width: 94%;
+    font-size: medium;
+    padding: 10px;
+  }
+
+  .search-btn,
+  .apply-btn {
+    width: 100%;
+    font-size: 13px;
+    padding: 12px;
+  }
+}
+
+@media (max-width: 768px) {
+  .reimbursement-table-wrapper {
+    display: none;
+  }
+
+  .rb-reimbursement-cards {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    margin: 8%;
+  }
+
+  .rb-reimbursement-card {
+    background: white;
+    padding: 30px;
+    border-radius: 10px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    display: flex;
+    flex-direction: column;
+  }
+
+  .rb-card-header {
+    display: flex;
+    flex-direction: column; /* Arrange items in a row */
+    justify-content: space-between; /* Push items apart */
+    align-items: center; /* Align items properly */
+    font-weight: bold;
+    border-bottom: 1px solid #ddd;
+    padding-bottom: 5px;
+    margin-left: 70%;
+  }
+
+  .rb-status {
+    font-size: 14px;
+    font-weight: bold;
+    color: green; /* Change based on status */
+  }
+
+  .rb-card-body {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+  }
+
+  .rb-form-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 5px; /* Reduce gap for better UX */
+  }
+  .rb-form1-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 5px; /* Reduce gap for better UX */
+  }
+  .rb-form2-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 5px; /* Reduce gap for better UX */
+  }
+  .rb-form3-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 5px; /* Reduce gap for better UX */
+  }
+  .rb-groups {
+    flex-direction: column; /* Stack elements in a column */
+    align-items: stretch; /* Ensure full width */
+    gap: 10px; /* Spacing between fields */
+  }
+
+  .rb-groups label {
+    display: block; /* Place label above input */
+    margin-bottom: 5px; /* Spacing between label and input */
+    font-size: 15px;
+  }
+
+  .rb-groups input {
+    width: 95%;
+    padding: 10px;
+  }
+  .rb-groups select {
+    padding: 10px;
+    width: 100%; /* Make inputs/selects full width */
+    display: block; /* Ensure they stack */
+  }
+
+  .hidden-file-input {
+    display: none;
+  }
+
+  .purpose-attachment {
+    display: flex;
+    flex-direction: column !important;
+    gap: 5px;
+  }
+  .pa-groups {
+    flex-direction: column !important; /* Stack elements in a column */
+    align-items: stretch; /* Ensure full width */
+    gap: 10px; /* Spacing between fields */
+  }
+
+  .pa-groups label {
+    display: block; /* Place label above input */
+    margin-bottom: 5px; /* Spacing between label and input */
+    font-size: 15px;
+  }
+
+  .pa-groups input {
+    padding: 2%;
+    border: 1px solid #ccc;
+    background-color: #fff;
+    border-radius: 5px;
+    width: 96%;
+    height: 80px;
+  }
+  .custom-file-upload {
+    margin-left: -40px;
+    padding: 10px;
+  }
+  .hidden-file-input {
+    display: none !important;
+  }
+
+  .rb-card-body p {
+    margin: 5px 0;
+  }
+
+  .rb-card-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .rb-card-actions {
+    display: flex;
+    gap: 10px;
+  }
+
+  .rb-edit-icon,
+  .rb-delete-icon {
+    cursor: pointer;
+    font-size: 20px;
+  }
+}
+
+/* Mobile View */
+@media (max-width: 768px) {
+  .rb-modal {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0px;
+  }
+
+  .rb-modal-content {
+    width: 92%;
+    max-width: 100%;
+    padding: 20px;
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+    overflow-y: auto;
+    max-height: 90vh;
+  }
+
+  .claim-form-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-bottom: 12px;
+    border-bottom: 1px solid #ddd;
+  }
+
+  .claim-form-title {
+    font-size: 18px;
+    font-weight: 600;
+  }
+
+  .claim-form-close {
+    font-size: 24px;
+    cursor: pointer;
+    color: #fff;
+  }
+
+  .rb-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: center;
+    margin-top: 12px;
+  }
+
+  .rb-tab {
+    font-size: 14px;
+    padding: 10px;
+    border-radius: 8px;
+    background: #f3f3f3;
+    transition: all 0.3s ease;
+  }
+
+  .rb-tab.active {
+    background: #79c42b;
+    color: white;
+    font-weight: 600;
+  }
+
+  .reimbursement-form {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-top: 15px;
+  }
+
+  .reimbursement-form input {
+    display: flex;
+    flex-direction: column;
+  }
+  .reimbursement-form select {
+    width: 60%;
+
+    padding: 12px;
+    font-size: 14px;
+    border-radius: 6px;
+    border: 1px solid #ccc;
+    background: #f9f9f9;
+    transition: border 0.3s ease;
+  }
+
+  .reimbursement-form input:focus {
+    width: 95%;
+  }
+  .reimbursement-form select:focus {
+    border-color: #79c42b;
+    background: white;
+  }
+
+  .reimbursement-form-button {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-top: 15px;
+  }
+
+  .rb-radio {
+    padding: 0%;
+    font-weight: bold;
+    font-size: 20%;
+  }
+  .rb-radio-options {
+    font-size: 20%;
+  }
+  .rb-radio label {
+    font-size: medium;
+  }
+
+  .rb-close,
+  .rb-submit {
+    width: 100%;
+    font-size: 14px;
+    padding: 14px;
+
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    align-items: stretch;
+  }
+
+  .rb-close {
+    background: #ddd;
+    color: #333;
+  }
+
+  .rb-submit {
+    background: #79c42b;
+    color: white;
+  }
+
+  .rb-close:hover {
+    background: #bbb;
+  }
+
+  .rb-submit:hover {
+    background: #79c42b;
+  }
+}
+
+@media (max-width: 768px) {
+  .sub-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 10px;
+    padding: 10px;
+  }
+
+  .sub-tab {
+    flex: 1;
+    max-width: 140px;
+    background-color: white;
+    color: black;
+    padding: 12px;
+    border: 2px solid #79c42b;
+    border-radius: 6px;
+    font-weight: bold;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s ease-in-out;
+  }
+
+  .sub-tab.active {
+    background-color: #79c42b;
+    color: white;
+    border-color: #79c42b;
+  }
+}

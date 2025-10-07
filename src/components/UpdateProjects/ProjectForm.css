@@ -1,0 +1,860 @@
+.pj-form-container {
+  width: 100%;
+  background: #e8e9ea;
+}
+
+.pj-form-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 5%;
+  background: #00468c;
+  color: #fff;
+}
+
+.pj-form-title {
+  margin: 1.5%;
+  color: #fff;
+}
+
+.pj-close-btn {
+  font-size: xx-large;
+}
+
+.pj-step-navigation {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  position: relative;
+  margin: 2% 0;
+  padding: 0 5%;
+}
+
+.pj-step-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+  width: 100%;
+}
+
+/* Step Circle */
+.pj-step-circle {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: lightgray;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: bold;
+  color: #fff;
+  z-index: 1;
+  margin-bottom: 2%;
+}
+
+/* Active step (current step) */
+.pj-step-circle.active {
+  background: #00468c; /* Blue */
+}
+
+/* Completed step */
+.pj-step-circle.completed {
+  background: #7ac127;
+}
+
+/* Gray background line */
+.pj-step-bg {
+  position: absolute;
+  top: 18%;
+  left: var(--step-line-left);
+  width: var(--step-line-total-width);
+  height: 4px;
+  background: lightgray;
+  z-index: 0;
+}
+
+/* Green progress line */
+.pj-step-line {
+  position: absolute;
+  top: 18%;
+  left: var(--step-line-left);
+  width: var(--step-progress-width);
+  height: 4px;
+  background: #7ac127;
+  z-index: 1;
+  transition: width 0.3s ease-in-out;
+}
+
+.pj-step-label {
+  margin-top: 5%;
+  font-size: small;
+  font-weight: bold;
+  color: rgb(198, 197, 197);
+}
+
+.pj-step-item.active .pj-step-label {
+  color: black;
+}
+
+.pj-step-item.completed .pj-step-label {
+  color: black;
+}
+
+.pj-form-grid {
+  display: grid;
+  justify-content: center;
+  grid-template-columns: repeat(4, minmax(20%, 1fr));
+  gap: 2%;
+  padding: 1%;
+}
+
+.pj-form-group {
+  margin-bottom: 4%;
+}
+
+.pj-form-group label {
+  font-size: small;
+  font-weight: bold;
+  padding: 0%;
+  margin: 0 0 0 10%;
+}
+
+/* Form Inputs */
+.pj-form-grid input {
+  margin: 0 0 0 10%;
+  padding: 2%;
+  border: 1px solid #cccbce;
+  border-radius: 5px;
+  width: 76%;
+  background-color: #ffffff;
+}
+
+.pj-form-grid select {
+  margin: 0 0 0 10%;
+  padding: 2%;
+  border: 1px solid #cccbce;
+  border-radius: 5px;
+  width: 81%;
+  background-color: #ffffff;
+}
+
+.pj-form-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 2%;
+  margin: 0 3.2%;
+}
+
+.pj-description {
+  flex: 1;
+}
+.pj-description label {
+  font-size: small;
+  font-weight: bold;
+}
+
+.pj-description textarea {
+  width: 95%;
+  height: 60px;
+  resize: none;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  padding: 8px;
+}
+
+.pj-attachment {
+  flex: 1; /* Attachment section smaller */
+  display: flex;
+  flex-direction: column;
+}
+
+.pj-attachment label {
+  font-size: small;
+  font-weight: bold;
+}
+
+.pj-attachment-wrapper {
+  display: flex;
+  justify-content: space-around;
+  background-color: #fff;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  height: 75px;
+  width: 100%;
+}
+
+.pj-file-links {
+  width: 80%;
+  text-decoration: none;
+  overflow-x: auto;
+  overflow-y: auto;
+}
+
+.pj-file-name {
+  color: #00468c;
+  font-size: medium;
+}
+
+.pj-attachment-upload {
+  display: flex;
+  align-items: center;
+}
+
+.pj-hidden-file-input {
+  display: none;
+}
+
+.pj-custom-file-upload {
+  background: #79c42b;
+  color: #fff;
+  padding: 6px 15px;
+  cursor: pointer;
+  border-radius: 5px;
+  font-size: 14px;
+  display: inline-block;
+}
+
+.pj-form-buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 5%;
+  margin: 1% 5%;
+}
+
+.pj-next-btn {
+  background: #79c42b;
+  color: white;
+  padding: 1% 5%;
+  border: 1px solid #79c42b;
+  cursor: pointer;
+  border-radius: 5px;
+  font-size: small;
+  font-weight: bold;
+  transition: background-color 0.3s ease, transform 0.1s ease,
+    box-shadow 0.3s ease;
+}
+
+.pj-next-btn:hover {
+  background: #68a822; /* Slightly darker */
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+}
+
+.pj-next-btn:active {
+  transform: scale(0.98);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.pj-next-btn:focus {
+  outline: 2px solid #ffca28;
+  outline-offset: 2px;
+}
+
+.pj-cancel-btn {
+  color: #000;
+  padding: 1% 5%;
+  cursor: pointer;
+  border-radius: 5px;
+  border: 1px solid #79c42b;
+  background-color: #fff;
+  font-size: small;
+  font-weight: bold;
+  transition: background-color 0.3s ease, transform 0.1s ease,
+    box-shadow 0.3s ease;
+}
+
+.pj-cancel-btn:hover {
+  background-color: #f2f2f2;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+}
+
+.pj-cancel-btn:active {
+  transform: scale(0.98);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.pj-cancel-btn:focus {
+  outline: 2px solid #ffca28;
+  outline-offset: 2px;
+}
+
+.step-two-grid {
+  display: grid;
+  justify-content: center;
+  grid-template-columns: repeat(2, minmax(20%, 1fr));
+  gap: 2%;
+  padding: 0 2%;
+}
+
+.pj-form-group2 {
+  margin-bottom: 5%;
+}
+
+.pj-form-group2 label {
+  width: 90%;
+  display: flex;
+  justify-content: space-between;
+  font-size: small;
+  font-weight: bold;
+  padding: 0%;
+  margin: 0 0 0 5%;
+}
+
+/* Form Inputs */
+.step-two-grid input {
+  margin: 0 0 0 5%;
+  padding: 2%;
+  border: 1px solid #cccbce;
+  border-radius: 5px;
+  width: 85%;
+  background-color: #ffffff;
+}
+
+.step-two-grid select {
+  margin: 0 0 0 5%;
+  padding: 2%;
+  border: 1px solid #cccbce;
+  border-radius: 5px;
+  width: 90%;
+  background-color: #ffffff;
+}
+
+.pj-input {
+  height: 100px;
+}
+
+.employee-list-box {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(20%, 1fr));
+  width: 85%;
+  border: 1px solid #ccc;
+  padding: 2%;
+  height: 100px;
+  overflow-y: auto;
+  background: #fff;
+  margin-left: 5%;
+  margin-top: 2%;
+  border-radius: 5px;
+}
+
+.selected-employee {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: small;
+  background: #f3f3f3;
+  padding: 2%;
+  border-radius: 5px;
+  margin: 2% 5%;
+}
+
+.remove-employee {
+  cursor: pointer;
+  color: red;
+  margin-left: 10px;
+  font-weight: bold;
+}
+
+.placeholder-text {
+  display: flex;
+  width: 90%;
+  color: #888;
+  font-style: italic;
+}
+
+.key-input {
+  margin: 0 4.5%;
+}
+
+.key-point {
+  display: flex;
+  align-items: center;
+  margin-bottom: 5px;
+}
+
+.key-point input {
+  border: none;
+  outline: none;
+  flex: 1;
+  font-size: 16px;
+}
+
+.key-input label {
+  font-size: small;
+  font-weight: bold;
+}
+
+.key-considerations-box {
+  width: 99%;
+  height: 100px;
+  padding: 1% 0 0 1%;
+  border: 1px solid #cccbce;
+  border-radius: 5px;
+  background-color: #fff;
+  overflow-y: auto;
+}
+
+.pj-step-three {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+}
+
+.milestone-table-container {
+  width: 98%;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.milestone-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.milestone-table thead th {
+  position: sticky;
+  top: 0;
+  background-color: #e8e9ea;
+  z-index: 10;
+  font-weight: bold;
+  font-size: 12px;
+  padding: 1%;
+}
+
+.milestone-table td {
+  padding: 10px;
+  text-align: center;
+}
+
+.milestone-table th:nth-child(1) {
+  min-width: 60px;
+  text-align: center;
+}
+
+.milestone-table input {
+  width: 80%;
+  padding: 5px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  text-align: center;
+}
+
+.milestone-table select {
+  width: 80%;
+  padding: 6px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  text-align: left;
+  background-color: #f7f7f7;
+  color: #333;
+}
+
+/* Style options based on their value */
+select option[value="Active"] {
+  background-color: #d1ecf1;
+}
+
+select option[value="Pending"] {
+  background-color: #fff3cd;
+}
+
+select option[value="Completed"] {
+  background-color: #d4edda;
+}
+
+.add-milestone-btn {
+  margin: 2%;
+  margin-left: 80%;
+  background-color: #79c42b;
+  color: white;
+  border: none;
+  padding: 1% 2%;
+  font-size: 14px;
+  cursor: pointer;
+  border-radius: 5px;
+}
+
+.add-milestone-btn:hover {
+  background-color: #79c42b;
+}
+
+.pj-step-four {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.project-finance-main {
+  width: 100%;
+}
+
+.project-finance {
+  display: flex;
+  justify-content: flex-start;
+  width: 100%;
+  padding: 0 6%;
+}
+
+.project-finance-group {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  width: 15%;
+}
+
+.project-finance-group label {
+  font-weight: bold;
+  font-size: small;
+}
+
+.project-finance-group input {
+  width: 80%;
+  padding: 5px;
+  text-align: center;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+.main-finance {
+  width: 100%;
+}
+
+.payout-details {
+  width: 100%;
+  display: flex;
+  text-align: left;
+  padding-left: 1%;
+  font-size: medium;
+}
+
+.finance-table-container {
+  width: 98%;
+  max-height: 280px;
+  overflow-y: auto;
+  padding: 0 0 0 1%;
+}
+
+.finance-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.finance-table th {
+  position: sticky;
+  top: 0;
+  background-color: #e8e9ea;
+  z-index: 10;
+  font-weight: bold;
+  font-size: 12px;
+  padding: 1%;
+  font-weight: bold;
+}
+
+.finance-table td {
+  padding: 0.5%;
+  text-align: center;
+  font-size: 12px;
+  align-items: center;
+}
+
+.finance-table th:nth-child(1) {
+  min-width: 43px;
+  text-align: center;
+}
+
+.finance-table input {
+  width: 80%;
+  padding: 3%;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  text-align: center;
+}
+
+.finance-table select {
+  padding: 5%;
+  border-radius: 4px;
+  text-align: center;
+}
+
+.completed-date {
+  display: flex;
+  width: 90px;
+  font-size: small;
+  color: #000;
+  padding: 8%;
+  background-color: #d4edda;
+  border-radius: 40px;
+}
+
+.finance-table tfoot .summary-row {
+  position: sticky;
+  bottom: 0;
+  background-color: #fff;
+  font-weight: bold;
+  padding: 10px;
+  border: 1px solid #ccc;
+  z-index: 10;
+}
+
+.finance-table tfoot .summary-row span {
+  margin: 0 4%;
+}
+
+.step-four-group {
+  display: flex;
+  justify-content: space-between;
+  background-color: #fff;
+  padding: 2%;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  width: 150px;
+}
+
+.step-four-group input {
+  background-color: #ccc;
+  padding: 1%;
+  width: 50%;
+}
+
+.small-input input {
+  background-color: #ccc;
+  padding: 1%;
+  width: 40px;
+}
+
+.step-four-group2 {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background-color: #fff;
+  padding: 2%;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  width: 150px;
+}
+
+.step-four-group2 input {
+  background-color: #ccc;
+  padding: 1%;
+  width: 50%;
+}
+
+.step-four-group2 span {
+  font-size: medium;
+}
+
+.small-input2 input {
+  background-color: #ccc;
+  padding: 1%;
+  width: 50px;
+  margin-top: 1%;
+}
+
+input[type="checkbox"] {
+  appearance: none; /* Remove default styling */
+  width: 15px;
+  height: 15px;
+  margin: 0;
+  border: 2px solid #79c42b;
+  background-color: white;
+  border-radius: 4px;
+  cursor: pointer;
+  display: inline-block;
+  position: relative;
+}
+
+input[type="checkbox"]:checked {
+  background-color: #79c42b;
+  border: 2px solid #79c42b;
+}
+
+input[type="checkbox"]::after {
+  content: "";
+  position: absolute;
+  width: 8px;
+  height: 4px;
+  border: 2px solid white;
+  border-top: none;
+  border-right: none;
+  transform: rotate(-45deg);
+  top: 1px;
+  left: 1px;
+  display: none;
+}
+
+input[type="checkbox"]:checked::after {
+  display: block; /* Show tick when checked */
+}
+
+.custom-dropdown {
+  position: relative;
+  margin: 0 0 0 10%;
+  padding: 1.7%;
+  border: 1px solid #cccbce;
+  border-radius: 5px;
+  width: 77%;
+  background-color: #ffffff;
+}
+
+.dropdown-header {
+  background: #fff;
+  border-radius: 4px;
+  font-size: small;
+  padding: 2%;
+  width: 98%;
+  height: 10px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dropdown-header:hover {
+  white-space: normal; /* Allow full text to be seen on hover */
+  height: auto;
+  max-height: 200px; /* Prevent too much expansion */
+}
+
+.dropdown-menu {
+  position: absolute;
+  background: white;
+  border: 1px solid #ddd;
+  width: 95%;
+  max-height: 200px;
+  overflow-y: auto;
+  z-index: 10;
+}
+
+.dropdown-item {
+  display: flex;
+  align-items: center;
+  padding: 6px;
+  margin: 0;
+  font-size: small;
+}
+
+.dropdown-item input {
+  margin-right: 8px;
+}
+
+.project-category {
+  font-size: small;
+  font-weight: bold;
+  padding: 0%;
+  margin: 0 0 0 10%;
+}
+
+.employee-list {
+  list-style-type: none;
+  padding: 0;
+  margin: 0;
+  height: 120px;
+  overflow-y: auto;
+  border: 1px solid #ddd;
+  border-radius: 5px;
+  background-color: #fff;
+}
+
+.employee-item {
+  padding: 8px;
+  cursor: pointer;
+  border-bottom: 1px solid #ddd;
+  font-size: small;
+}
+
+.employee-item:hover {
+  background-color: #f0f0f0;
+}
+
+.no-employees {
+  padding: 8px;
+  color: gray;
+  text-align: center;
+}
+
+.add-employee {
+  margin: 0 0 0 5%;
+  padding: 0;
+  border: 1px solid #cccbce;
+  border-radius: 5px;
+  width: 90%;
+  background-color: #ffffff;
+}
+
+.pj-search-box {
+  position: relative;
+  display: flex;
+  width: 50%;
+  margin-bottom: 0.5%;
+}
+
+.pj-search-icon {
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #999;
+  font-size: 1.2em;
+  margin-left: 80%;
+}
+
+.pj-download {
+  font-size: x-large;
+  color: #00468c;
+  transition: transform 0.1s ease, color 0.1s ease;
+}
+
+.pj-download:active {
+  transform: scale(0.95);
+  color: #003366;
+}
+
+.pj-file-name.disabled {
+  pointer-events: none;
+  color: grey;
+  text-decoration: none;
+  cursor: default;
+}
+
+.pj-custom-file-upload.disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.required {
+  color: red;
+  font-size: larger;
+}
+
+/* radio group: keep inline, center vertically and space nicely */
+.sp2-radio {
+  display: inline-flex; /* inline group so it sits next to search box */
+  align-items: center; /* vertically center radio and label text */
+  gap: 12px; /* spacing between radio options */
+  margin-left: 6px; /* small left gap from the search box */
+  vertical-align: middle;
+  flex-wrap: nowrap;
+}
+
+/* make each option's label align items and provide gap */
+.sp2-radio label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px; /* space between dot and text */
+  cursor: pointer;
+  font-weight: 600; /* match other labels (optional) */
+  font-size: 0.95rem;
+  margin: 0;
+}
+
+.sp2-radio input[type="radio"] {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  padding: 0;
+  vertical-align: middle;
+  accent-color: #79c42b;
+}

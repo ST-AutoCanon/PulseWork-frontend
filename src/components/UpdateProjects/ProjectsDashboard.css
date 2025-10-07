@@ -1,0 +1,270 @@
+.project-dashboard {
+  padding: 20px;
+  min-height: 100vh;
+  font-family: Arial, sans-serif;
+}
+
+.project-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.project-header h2 {
+  font-size: 24px;
+  font-weight: bold;
+}
+
+.add-project-button {
+  background-color: #79c42b;
+  font-size: medium;
+  font-weight: bold;
+  color: white;
+  padding: 8px 15px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.3s ease, transform 0.1s ease,
+    box-shadow 0.3s ease;
+}
+
+.add-project-button:hover {
+  background-color: #68a822; /* slightly darker for hover */
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+}
+
+.add-project-button:active {
+  transform: scale(0.98);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.add-project-button:focus {
+  outline: 2px solid #ffca28;
+  outline-offset: 2px;
+}
+
+/* For the update icon, you can add a hover effect if needed */
+.pj-update-icon {
+  font-size: xx-large;
+  color: #004dc6;
+  transition: transform 0.1s ease;
+  cursor: pointer;
+}
+
+.pj-update-icon:hover {
+  transform: scale(1.05);
+}
+
+.pj-update-icon:active {
+  transform: scale(0.95);
+}
+
+.pj-update-icon:focus {
+  outline: 2px solid #ffca28;
+  outline-offset: 2px;
+}
+
+.project-tabs {
+  display: flex;
+  gap: 25px;
+  margin-top: 15px;
+  color: #777;
+  font-weight: bold;
+}
+
+.project-tabs span {
+  cursor: pointer;
+}
+
+.active-tab {
+  color: #004dc6;
+  border-bottom: 2px solid #004dc6;
+}
+
+.project-cards-container {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 20px;
+  margin-top: 20px;
+}
+
+.add-project-card {
+  background-color: white;
+  border-radius: 10px;
+  padding: 0% 5%;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  position: relative;
+}
+
+.company {
+  display: flex;
+  justify-content: space-between;
+  margin: 2% 0 0 0;
+}
+
+.company h3 {
+  width: 70%;
+  margin: 2% 0 5% 0;
+}
+
+.project-label {
+  color: #888;
+  margin: 0 0 1% 0;
+  font-size: medium;
+}
+
+.project-value {
+  font-size: medium;
+  font-weight: bold;
+  margin: 0 0 6% 0;
+}
+
+.pj-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.pj-modal-content {
+  background-color: #e8e9ea;
+  padding: 0;
+  width: 90%;
+  position: relative;
+}
+
+.pj-close-button {
+  position: absolute;
+  top: 10px;
+  right: 15px;
+  font-size: 20px;
+  cursor: pointer;
+}
+
+/* Container for the entire set of controls in the General Templates tab */
+.template-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1rem;
+  padding: 2rem;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  margin-bottom: 1rem;
+}
+
+/* Style for the dropdown label */
+.template-controls label {
+  font-weight: bold;
+  margin-right: 0.5rem;
+}
+
+/* Style for the dropdown select element */
+.template-controls select {
+  padding: 0.5rem;
+  font-size: 1rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  background-color: #fff;
+}
+
+.template-controls .download-form-button,
+.template-controls .view-template-button,
+.template-controls .download-template-button {
+  display: flex;
+  padding: 0.5rem 1rem;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 1rem;
+  transition: background-color 0.2s ease-in-out;
+  align-items: center;
+}
+
+/* Specific style for the View Template button */
+.template-controls .view-template-button {
+  background-color: #b2b3b3;
+  border: 1px solid #848585;
+  color: #fff;
+}
+
+.template-controls .view-template-button:hover {
+  background-color: #a8a9a9;
+}
+
+.template-controls .download-form-button,
+.template-controls .download-template-button {
+  background-color: #b2b3b3;
+  border: 1px solid #848585;
+  color: #fff;
+}
+
+.template-controls .download-form-button:hover,
+.template-controls .download-template-button:hover {
+  background-color: #a8a9a9;
+}
+
+.template-icons {
+  font-size: 20px;
+  margin: 0 0 0 5%;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .project-dashboard {
+    padding: 30px;
+  }
+  .project-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .project-header h2 {
+    font-size: 40px;
+    margin-bottom: 10px;
+  }
+
+  .add-project-button {
+    width: 100%;
+    text-align: center;
+  }
+
+  .project-tabs {
+    gap: 10px;
+    flex-wrap: wrap;
+    font-size: 14px;
+  }
+
+  .project-cards-container {
+    grid-template-columns: repeat(auto-fit, minmax(100%, 1fr));
+  }
+
+  .add-project-card {
+    padding: 5%;
+  }
+}
+
+@media (max-width: 480px) {
+  .project-header h2 {
+    font-size: 18px;
+  }
+
+  .project-tabs {
+    font-size: 12px;
+    gap: 8px;
+  }
+
+  .project-cards-container {
+    grid-template-columns: 1fr;
+  }
+
+  .pj-modal-content {
+    width: 95%;
+  }
+}

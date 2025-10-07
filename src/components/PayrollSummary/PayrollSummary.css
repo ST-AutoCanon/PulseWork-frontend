@@ -1,0 +1,136 @@
+.payroll-container {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 20px;
+  font-family: Arial, sans-serif;
+  background: #f9f9f9;
+  border-radius: 10px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  margin-top:50px;
+}
+
+.payroll-title {
+  text-align: center;
+  font-size: 24px;
+  color: #131111;
+  margin-bottom: 20px;
+  background-color: transparent!important;
+}
+
+.payroll-controls {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: 20px;
+  margin-left:55%;
+}
+
+.payroll-label {
+  font-size: 16px;
+  font-weight: bold;
+  margin-right: 10px;
+  
+}
+
+.payroll-select {
+  padding: 8px;
+  font-size: 16px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+ 
+}
+
+.payslip {
+  background: #fff;
+  padding: 20px;
+  border-radius: 10px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.payslip h2 {
+  text-align: center;
+  font-size: 20px;
+  color: #0c0b0b;
+  margin-bottom: 15px;
+}
+
+.payslip-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 10px;
+}
+
+.payslip-table th, 
+.payslip-table td {
+  border: 1px solid #ddd;
+  padding: 10px;
+  text-align: left;
+}
+
+.payslip-table th {
+  background: grey;
+  color: #fff;
+  font-weight: bold;
+}
+
+.payslip-table tr:nth-child(even) {
+  background: white;
+}
+
+.payslip-table tr.total-row {
+  background: white;
+  font-weight: bold;
+}
+
+.payslip-table tr.net-salary-row {
+  font-weight: bold;
+}
+
+.payroll-download-btn {
+  display: block;
+  margin-left:80%;
+  width: 20%;
+  padding: 12px;
+  margin-top: 20px;
+  font-size: 16px;
+  font-weight: bold;
+  color: white;
+  background: #28a745;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background 0.3s ease;
+}
+
+.payroll-download-btn:hover {
+  background: #218838;
+}
+
+.error {
+  color: red;
+  text-align: center;
+  font-size: 16px;
+  margin-top: 10px;
+}
+
+
+
+.advance-section {
+  margin-top: 2rem;
+}
+
+.advance-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.advance-table th,
+.advance-table td {
+  border: 1px solid #ddd;
+  padding: 8px;
+  text-align: center;
+}
+
+.advance-table th {
+  background-color: #f2f2f2;
+}

@@ -1,0 +1,316 @@
+.department-container {
+  display: flex;
+  flex-direction: column;
+  height: 100vh; /* Adjust as needed */
+  width: 100%;
+}
+
+/* Header */
+.dp-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 2%;
+  text-align: left;
+  font-weight: bold;
+}
+
+.add-dp {
+  display: flex;
+  width: 16%;
+  background-color: #79c42b;
+  text-align: center;
+  color: #fff;
+  gap: 1%;
+  font-size: medium;
+  border-radius: 5px;
+  height: 60%;
+  border: none;
+  cursor: pointer;
+  transition: background-color 0.3s ease, transform 0.1s ease,
+    box-shadow 0.3s ease;
+}
+
+.add-dp:hover {
+  background-color: #68a822; /* Slightly darker */
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+}
+
+.add-dp:active {
+  transform: scale(0.98);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.add-dp:focus {
+  outline: 2px solid #ffca28;
+  outline-offset: 2px;
+}
+
+.add-new {
+  padding: 2% 0 0 0;
+  text-align: center;
+  margin-bottom: 10%;
+  border-radius: 8px;
+  box-shadow: 2px 2px 8px rgba(0, 0, 0, 0.1);
+  transition: transform 0.3s ease-in-out, background-color 0.3s ease,
+    box-shadow 0.3s ease;
+  color: #949494;
+  background-color: #f2f2f2;
+  border: 2px dashed #000;
+  cursor: pointer;
+}
+
+.add-new:hover {
+  background-color: #e0e0e0; /* Slightly darker */
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+}
+
+.add-new:active {
+  transform: scale(0.98);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.add-new:focus {
+  outline: 2px solid #ffca28;
+  outline-offset: 2px;
+}
+
+.add-dp span {
+  display: flex;
+  margin: 6%;
+}
+
+.add-icon {
+  font-size: xx-large;
+}
+
+/* Department List */
+.department-section {
+  margin-bottom: 5%;
+}
+
+.department-list {
+  display: grid;
+  justify-content: center;
+  grid-template-columns: repeat(4, minmax(20%, 1fr));
+  gap: 2%;
+  padding: 2%;
+}
+
+.department-card {
+  display: flex;
+  background: #00a1da;
+  color: #fff;
+  padding: 5%;
+  margin-bottom: 10%;
+  border-radius: 8px;
+  box-shadow: 2px 2px 8px rgba(0, 0, 0, 0.1);
+  transition: transform 0.3s ease-in-out;
+}
+
+.department-card:hover {
+  transform: scale(1.05);
+}
+
+.department-icon {
+  width: 32px;
+  height: 32px;
+  margin: 4% 0 0 5%;
+}
+
+.dp-name {
+  font-size: x-large;
+  text-align: center;
+  margin: 5%;
+}
+
+.dp-icon {
+  font-size: x-large;
+}
+
+.add-new:hover {
+  background-color: #e0e0e0;
+}
+
+.addDp-name {
+  font-size: x-large;
+}
+
+/* 🔹 Pop-up Overlay */
+.popup-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+/* 🔹 Pop-up Content */
+.popup-content {
+  background: #e8e9ea;
+  width: 30%;
+  box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.2);
+  text-align: center;
+  position: relative;
+}
+
+.popup-header {
+  display: flex;
+  justify-content: space-between;
+  background-color: #00468c;
+  color: #fff;
+  padding: 1% 4%;
+  text-align: left;
+  align-items: center;
+}
+
+.dp-form {
+  padding: 5%;
+}
+
+/* 🔹 Close Button */
+.close-popup {
+  background: none;
+  border: none;
+  font-size: x-large;
+  cursor: pointer;
+}
+
+.custom-file-button {
+  position: absolute;
+  right: 2%; /* Adjusted to the right */
+  top: 50%;
+  transform: translateY(-50%);
+  cursor: pointer;
+  background-color: #79c42b;
+  color: white;
+  padding: 2% 3% 0 3%;
+  border-radius: 5px;
+  font-size: small;
+  font-weight: bold;
+  border: none;
+  height: 50%;
+  transition: background-color 0.3s ease, transform 0.1s ease,
+    box-shadow 0.3s ease;
+}
+
+.custom-file-button:hover {
+  background-color: #68a822; /* slightly darker */
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+}
+
+.custom-file-button:active {
+  transform: translateY(-50%) scale(0.98);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.custom-file-button:focus {
+  outline: 2px solid #ffca28;
+  outline-offset: 2px;
+}
+
+/* 🔹 Add Button */
+.add-button {
+  background: #79c42b;
+  color: white;
+  padding: 2% 4%;
+  border: 1px solid #79c42b;
+  cursor: pointer;
+  border-radius: 5px;
+  margin-left: 10%;
+  transition: background-color 0.3s ease, transform 0.1s ease,
+    box-shadow 0.3s ease;
+}
+
+.add-button:hover {
+  background: #68a822; /* slightly darker */
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+}
+
+.add-button:active {
+  transform: scale(0.98);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.add-button:focus {
+  outline: 2px solid #ffca28;
+  outline-offset: 2px;
+}
+
+/* DP Cancel Button */
+.dp-cancel {
+  color: #000;
+  padding: 2% 4%;
+  cursor: pointer;
+  border-radius: 5px;
+  border: 1px solid #79c42b;
+  background-color: #fff;
+  margin-left: 50%;
+  transition: background-color 0.3s ease, transform 0.1s ease,
+    box-shadow 0.3s ease;
+}
+
+.dp-cancel:hover {
+  background-color: #f2f2f2;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+}
+
+.dp-cancel:active {
+  transform: scale(0.98);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.dp-cancel:focus {
+  outline: 2px solid #ffca28;
+  outline-offset: 2px;
+}
+
+.file-upload {
+  margin-bottom: 10%;
+}
+
+.file-input-container {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+  margin-bottom: 2%;
+}
+
+.file-name-input {
+  width: 100%;
+  height: 30px;
+  padding: 2%;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  font-size: medium;
+  background-color: #f8f9fa;
+  padding-right: 100px; /* Space for the button */
+}
+
+.input-group {
+  gap: 2%;
+  width: 100%;
+  margin-bottom: 5%;
+}
+
+.ad-label {
+  display: flex;
+  text-align: left;
+  margin: 2%;
+}
+
+.name-input {
+  width: 95%;
+  padding: 2%;
+}
+
+.size {
+  font-style: italic;
+  color: blue;
+}

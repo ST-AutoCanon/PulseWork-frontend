@@ -1,0 +1,428 @@
+/* the admin-specific styles (starts from .admin-container) */
+.admin-container {
+  padding: 2%;
+  font-family: Arial, sans-serif;
+}
+
+.admin-container h2 {
+  padding: 1% 0;
+  color: #333;
+  text-align: left;
+  margin: 0;
+}
+
+.policy-header {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+  margin: 0 0 2% 0;
+}
+
+.filters {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: nowrap;
+  margin-bottom: 2%;
+  overflow-x: auto;
+}
+
+.filters > div,
+.filters > button {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.date-filter {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.date-filter label {
+  font-size: medium;
+  font-weight: bold;
+  margin: 0px;
+}
+
+.date-filter input {
+  max-width: 150px;
+  padding: 2%;
+  border-radius: 5px;
+}
+
+.search-bar {
+  display: flex;
+  align-items: center;
+  gap: 2%;
+  white-space: nowrap;
+  margin: 0px;
+  padding: 0px;
+}
+
+.search-bar label {
+  font-size: medium;
+  font-weight: bold;
+  white-space: nowrap;
+  margin: 0px;
+}
+
+.search-bar input {
+  flex: 1;
+  padding: 3%;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  width: 160px;
+  margin-bottom: 0px;
+}
+
+.status-filter {
+  display: flex;
+  align-items: center;
+  gap: 1%;
+}
+
+.status-filter label {
+  margin-top: 5px;
+  text-align: center;
+  font-size: medium;
+  font-weight: bold;
+}
+
+.status-filter select {
+  width: 100px;
+  padding: 4%;
+  font-size: small;
+  font-weight: bold;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  margin-top: 5px;
+}
+
+.leave-table-container {
+  display: flex;
+  justify-content: center;
+  max-height: 600px;
+  overflow-y: auto;
+  overflow-x: auto;
+  margin: 2% 0;
+}
+
+.leave-table {
+  table-layout: fixed;
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.leave-table td {
+  border: 1px solid #cccbce;
+  background-color: #fff;
+  padding: 0.5%;
+  text-align: left;
+  font-size: 15px;
+}
+
+.leave-table th:nth-child(7),
+.leave-table td:nth-child(7) {
+  min-width: 50px;
+  text-align: center;
+}
+
+.leave-table th {
+  top: 0;
+  border: 2px solid #cccbce;
+  background-color: #f2f2f2;
+  padding: 1% 0;
+  font-weight: bold;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.leave-table tr:hover {
+  background-color: #f1f1f1;
+}
+
+.status-dropdown {
+  padding: 4%;
+  border-radius: 4px;
+  border: 2px solid #ccc;
+  font-size: small;
+  color: #000;
+  text-align: center;
+  cursor: pointer;
+}
+
+.status-dropdown option[value="Approved"],
+.status-dropdown[value="Approved"] {
+  background-color: #d7f2ce;
+  color: #000;
+}
+
+.status-dropdown option[value="Rejected"],
+.status-dropdown[value="Rejected"] {
+  background-color: #ffe5d2;
+  color: #000;
+}
+
+.status-approved {
+  background-color: #d7f2ce;
+  color: #000;
+}
+
+.status-rejected {
+  background-color: #ffe5d2;
+  color: #000;
+}
+
+.search-button {
+  padding: 0.6%;
+  width: 200px;
+  font-size: medium;
+  cursor: pointer;
+  background-color: #00468c;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  transition: background-color 0.3s ease, transform 0.1s ease,
+    box-shadow 0.3s ease;
+}
+
+.search-button:hover {
+  background-color: #003a70; /* Slightly darker */
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+}
+
+.search-button:active {
+  transform: scale(0.98);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.search-button:focus {
+  outline-offset: 2px;
+}
+
+.update-button {
+  background-color: #7fbd2c;
+  color: white;
+  border: none;
+  padding: 5px 15px;
+  font-size: small;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.3s ease, transform 0.1s ease,
+    box-shadow 0.3s ease;
+  height: 30px;
+}
+
+.update-button.row-updated {
+  background-color: #d3d3d3;
+  color: #555;
+}
+
+.update-button:hover {
+  background-color: #218838;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+}
+
+.update-button:active {
+  transform: scale(0.98);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.update-button:focus {
+  outline: 2px solid #ffca28;
+  outline-offset: 2px;
+}
+
+.disabled-button {
+  background-color: #d3d3d3 !important;
+  color: #000 !important;
+  cursor: not-allowed !important;
+  pointer-events: none !important;
+  border: none !important;
+}
+
+.leave-table th.comments-col,
+.leave-table td.comments-col {
+  width: 200px;
+  vertical-align: top;
+}
+
+.comment-preview input {
+  width: 85%;
+  padding: 4%;
+}
+
+.comment-preview {
+  max-height: 35px;
+  overflow: hidden;
+  transition: max-height 0.3s ease;
+  white-space: normal;
+  text-overflow: ellipsis;
+  word-wrap: break-word;
+  font-size: medium;
+}
+
+.comments-col:hover .comment-preview {
+  max-height: 1000px;
+}
+
+.policy-form {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+  align-items: end;
+}
+
+.policy-form input[type="text"],
+.policy-form input[type="date"],
+.policy-form input[type="number"] {
+  padding: 0.6rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 1rem;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.policy-form label {
+  font-weight: bold;
+  font-size: 0.9rem;
+}
+
+.policy-form input[type="checkbox"] {
+  margin-right: 0.4rem;
+  transform: scale(1.1);
+}
+
+.policy-form button {
+  grid-column: span 2;
+  justify-self: start;
+  padding: 0.6rem 1.2rem;
+  background-color: #00468c;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background-color 0.2s, transform 0.1s;
+}
+
+.policy-form button:hover {
+  background-color: #003a70;
+}
+
+.policy-form button:active {
+  transform: scale(0.98);
+}
+
+/* ——— Policy Table ——— */
+.policy-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 3rem;
+}
+
+.policy-table th,
+.policy-table td {
+  padding: 0.8rem;
+  border: 1px solid #ddd;
+  text-align: center;
+  font-size: 0.95rem;
+}
+
+.policy-table th {
+  background-color: #f2f2f2;
+  font-weight: bold;
+}
+
+.policy-table td {
+  background-color: #fff;
+}
+
+.policy-table tr:hover td {
+  background-color: #f9f9f9;
+}
+
+/* make the “Actions” column narrower */
+.policy-table th:last-child,
+.policy-table td:last-child {
+  width: 120px;
+}
+
+/* Edit / Delete buttons in table */
+.policy-table button {
+  margin: 0 0.2rem;
+  padding: 0.4rem 0.8rem;
+  font-size: 0.85rem;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.policy-table button:first-child {
+  background-color: #7fbd2c;
+  color: #fff;
+}
+
+.policy-table button:first-child:hover {
+  opacity: 0.9;
+}
+
+.policy-table button:last-child {
+  background-color: #dc3545;
+  color: #fff;
+}
+
+.policy-table button:last-child:hover {
+  opacity: 0.9;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .container {
+    padding: 10px;
+  }
+
+  .search-bar {
+    flex-wrap: wrap;
+  }
+
+  .search-bar select,
+  .search-bar input,
+  .search-bar button {
+    margin-bottom: 10px;
+    width: 100%;
+  }
+
+  table th,
+  table td {
+    font-size: 12px;
+  }
+
+  .policy-form {
+    grid-template-columns: 1fr;
+  }
+
+  .policy-table th,
+  .policy-table td {
+    font-size: 0.8rem;
+    padding: 0.6rem;
+  }
+}
+
+.manage-button {
+  height: 40px;
+  width: 200px;
+  font-size: medium;
+  cursor: pointer;
+  background-color: #00468c;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  transition: background-color 0.3s ease, transform 0.1s ease,
+    box-shadow 0.3s ease;
+}

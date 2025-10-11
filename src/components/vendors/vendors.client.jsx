@@ -1,13 +1,15 @@
+"use client";
+
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import "./vendors.css";
 import { FaEye, FaPencilAlt } from "react-icons/fa";
 import { Eye, Download } from "react-feather";
 import Modal from "../Modal/Modal.client";
-
-const API_KEY = process.env.REACT_APP_API_KEY;
+import { useAuth } from "../../context/AuthProvider.client";
 
 const Vendors = () => {
+  const { user, hydrated } = useAuth(); // get user from context
   const [showForm, setShowForm] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editingVendorId, setEditingVendorId] = useState(null);
@@ -73,10 +75,14 @@ const Vendors = () => {
   const [mobileErrors, setMobileErrors] = useState(["", "", ""]);
   const [emailErrors, setEmailErrors] = useState(["", "", ""]);
   const [error, setError] = useState("");
-  const meId = JSON.parse(
-    localStorage.getItem("dashboardData") || "{}"
-  ).employeeId;
-  const headers = { "x-api-key": API_KEY, "x-employee-id": meId };
+
+  // Only create headers once user is hydrated
+  const headers = user
+    ? {
+        "x-api-key": process.env.NEXT_PUBLIC_API_KEY || "",
+        "x-employee-id": user.employeeId || user.id || "0",
+      }
+    : null;
 
   const showAlert = (message, title = "") => {
     setAlertModal({ isVisible: true, title, message });
@@ -138,397 +144,27 @@ const Vendors = () => {
     setEmailErrors(["", "", ""]);
   };
 
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    // Update form data immediately
-    setFormData({ ...formData, [name]: value });
-
-    // Only validate Years of Experience during typing
-    if (name === "years_of_experience") {
-      if (/[^0-9]/.test(value)) {
-        setError("Years of Experience must contain only numbers");
-      } else if (value && parseInt(value) <= 0) {
-        setError("Years of Experience must be a positive number");
-      } else {
-        setError("");
-      }
-    }
-  };
-
-  // New function to validate mobile and email on blur
-  const validateField = (name, value, index) => {
-    // Mobile number validation
-    if (
-      name === "contact1_mobile" ||
-      name === "contact2_mobile" ||
-      name === "contact3_mobile"
-    ) {
-      const mobileIndex =
-        parseInt(name.replace("contact", "").replace("_mobile", "")) - 1;
-      if (value && !/^[0-9]{10}$/.test(value)) {
-        setMobileErrors((prev) => {
-          const newErrors = [...prev];
-          newErrors[mobileIndex] = "Enter a 10-digit mobile number";
-          return newErrors;
-        });
-      } else {
-        setMobileErrors((prev) => {
-          const newErrors = [...prev];
-          newErrors[mobileIndex] = "";
-          return newErrors;
-        });
-      }
-    }
-
-    // Email validation
-    if (
-      name === "contact1_email" ||
-      name === "contact2_email" ||
-      name === "contact3_email"
-    ) {
-      const emailIndex =
-        parseInt(name.replace("contact", "").replace("_email", "")) - 1;
-      if (value && !/^[^@]+@[^@]+\.[^@]+$/.test(value)) {
-        setEmailErrors((prev) => {
-          const newErrors = [...prev];
-          newErrors[emailIndex] = "Enter a valid email address";
-          return newErrors;
-        });
-      } else {
-        setEmailErrors((prev) => {
-          const newErrors = [...prev];
-          newErrors[emailIndex] = "";
-          return newErrors;
-        });
-      }
-    }
-  };
-
-  const handleFileChange = (e) => {
-    const { name, files: fileList } = e.target;
-    setFiles({ ...files, [name]: fileList[0] });
-  };
-
-  const fetchVendors = async () => {
-    try {
-      const response = await axios.get(
-        `${process.env.REACT_APP_BACKEND_URL}/vendors/list`,
-        { headers }
-      );
-      if (response.data.success) {
-        setVendors(response.data.data);
-      }
-    } catch (error) {
-      console.error("Error fetching vendors:", error);
-      showAlert("Failed to fetch vendors");
-    }
-  };
-
+  // Fetch vendors after hydration
   useEffect(() => {
+    if (!hydrated || !user) return;
+
+    const fetchVendors = async () => {
+      try {
+        const response = await axios.get(
+          `${process.env.NEXT_PUBLIC_BACKEND_URL}/vendors/list`,
+          { headers }
+        );
+        if (response.data.success) {
+          setVendors(response.data.data);
+        }
+      } catch (error) {
+        console.error("Error fetching vendors:", error);
+        showAlert("Failed to fetch vendors");
+      }
+    };
+
     fetchVendors();
-  }, []);
-
-  const handleEdit = (vendor) => {
-    setIsEditing(true);
-    setEditingVendorId(vendor.vendor_id);
-    setFormData({
-      name: vendor.name || "",
-      contact_person: vendor.contact_person || "",
-      email: vendor.email || "",
-      phone: vendor.phone || "",
-      address: vendor.address || "",
-      company_name: vendor.company_name || "",
-      registered_address: vendor.registered_address || "",
-      branch_address: vendor.branch_address || "",
-      city: vendor.city || "",
-      state: vendor.state || "",
-      pin_code: vendor.pin_code || "",
-      gst_number: vendor.gst_number || "",
-      pan_number: vendor.pan_number || "",
-      company_type: vendor.company_type || "",
-      msme_status: vendor.msme_status || "Not Applicable",
-      contact1_name: vendor.contact1_name || "",
-      contact1_designation: vendor.contact1_designation || "",
-      contact1_mobile: vendor.contact1_mobile || "",
-      contact1_email: vendor.contact1_email || "",
-      contact2_name: vendor.contact2_name || "",
-      contact2_designation: vendor.contact2_designation || "",
-      contact2_mobile: vendor.contact2_mobile || "",
-      contact2_email: vendor.contact2_email || "",
-      contact3_name: vendor.contact3_name || "",
-      contact3_designation: vendor.contact3_designation || "",
-      contact3_mobile: vendor.contact3_mobile || "",
-      contact3_email: vendor.contact3_email || "",
-      bank_name: vendor.bank_name || "",
-      branch: vendor.branch || "",
-      account_number: vendor.account_number || "",
-      ifsc_code: vendor.ifsc_code || "",
-      nature_of_business: vendor.nature_of_business || "",
-      product_category: vendor.product_category || "",
-      years_of_experience: vendor.years_of_experience || "",
-    });
-    setFiles({
-      gst_certificate: null,
-      pan_card: null,
-      cancelled_cheque: null,
-      msme_certificate: null,
-      incorporation_certificate: null,
-    });
-    setShowForm(true);
-    setError("");
-    setMobileErrors(["", "", ""]);
-    setEmailErrors(["", "", ""]);
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-
-    // Validate Company Name
-    if (!formData.company_name || formData.company_name.trim() === "") {
-      showAlert("Company name is required and cannot be empty");
-      return;
-    }
-
-    // Validate Years of Experience
-    const years = formData.years_of_experience;
-    if (!years) {
-      setError("Years of Experience is required");
-      return;
-    }
-    if (/[^0-9]/.test(years)) {
-      setError("Years of Experience must contain only numbers");
-      return;
-    }
-    if (parseInt(years) <= 0) {
-      setError("Years of Experience must be a positive number");
-      return;
-    }
-
-    // Validate Contact Details - 1
-    if (!formData.contact1_name || formData.contact1_name.trim() === "") {
-      showAlert("Contact 1 Name is required and cannot be empty");
-      return;
-    }
-    if (
-      !formData.contact1_designation ||
-      formData.contact1_designation.trim() === ""
-    ) {
-      showAlert("Contact 1 Designation is required and cannot be empty");
-      return;
-    }
-    if (!formData.contact1_mobile || formData.contact1_mobile.trim() === "") {
-      showAlert("Contact 1 Mobile Number is required and cannot be empty");
-      return;
-    }
-    if (!formData.contact1_email || formData.contact1_email.trim() === "") {
-      showAlert("Contact 1 Email ID is required and cannot be empty");
-      return;
-    }
-
-    // Validate mobile numbers and emails on submit
-    ["contact1_mobile", "contact2_mobile", "contact3_mobile"].forEach(
-      (name, index) => {
-        if (formData[name]) {
-          validateField(name, formData[name], index);
-        }
-      }
-    );
-    ["contact1_email", "contact2_email", "contact3_email"].forEach(
-      (name, index) => {
-        if (formData[name]) {
-          validateField(name, formData[name], index);
-        }
-      }
-    );
-
-    // Check if there are any errors
-    if (mobileErrors.some((err) => err) || emailErrors.some((err) => err)) {
-      showAlert(
-        "Please correct the errors in mobile numbers or email addresses."
-      );
-      return;
-    }
-
-    const data = new FormData();
-    for (const key in formData) {
-      data.append(key, formData[key]);
-    }
-    for (const key in files) {
-      if (files[key]) {
-        data.append(key, files[key]);
-      }
-    }
-
-    try {
-      let response;
-      if (isEditing) {
-        data.append("vendor_id", editingVendorId);
-        response = await axios.put(
-          `${process.env.REACT_APP_BACKEND_URL}/vendors/update/${editingVendorId}`,
-          data,
-          { headers }
-        );
-        showAlert("Vendor updated successfully!");
-      } else {
-        response = await axios.post(
-          `${process.env.REACT_APP_BACKEND_URL}/vendors/add`,
-          data,
-          { headers }
-        );
-        showAlert("Vendor registered successfully!");
-      }
-      togglePopup();
-      fetchVendors();
-    } catch (error) {
-      const errorMessage = error.response?.data?.error || error.message;
-      showAlert(
-        `Failed to ${isEditing ? "update" : "register"} vendor: ${errorMessage}`
-      );
-    }
-  };
-
-  const handleSearchChange = (e) => {
-    setSearchTerm(e.target.value);
-  };
-
-  const normalizeFilePath = (filePath) => {
-    if (!filePath) {
-      console.warn("normalizeFilePath: Empty filePath received");
-      return null;
-    }
-    console.log("Original filePath:", filePath);
-    let normalized = filePath.replace(/\\/g, "/");
-    normalized = normalized.replace(/^\.\//, "").replace(/\/+/g, "/");
-    normalized = normalized.replace(/^uploads\//i, "Uploads/");
-    if (!normalized.startsWith("Uploads/")) {
-      normalized = `Uploads/${normalized}`;
-    }
-    console.log("Normalized filePath:", normalized);
-    return normalized;
-  };
-
-  const handleViewDocument = async (documentPath) => {
-    if (!documentPath) {
-      showAlert("No document available.");
-      return;
-    }
-
-    try {
-      const fileName = documentPath.split(/[/\\]/).pop();
-      const fileUrl = `${
-        process.env.REACT_APP_BACKEND_URL
-      }/vendors/download/${encodeURIComponent(fileName)}`;
-
-      const response = await axios.get(fileUrl, {
-        headers,
-        responseType: "blob",
-      });
-
-      const extension = fileName.split(".").pop().toLowerCase();
-      let mimeType = "application/octet-stream";
-
-      if (extension === "pdf") mimeType = "application/pdf";
-      else if (["jpg", "jpeg"].includes(extension)) mimeType = "image/jpeg";
-      else if (extension === "png") mimeType = "image/png";
-
-      const fileBlob = new Blob([response.data], { type: mimeType });
-      const fileURL = window.URL.createObjectURL(fileBlob);
-      window.open(fileURL, "_blank");
-    } catch (error) {
-      console.error(
-        "Error viewing vendor document:",
-        error.response?.data || error.message
-      );
-      showAlert("Failed to open vendor document.");
-    }
-  };
-
-  const handleDownloadDocument = async (documentPath) => {
-    if (!documentPath) {
-      showAlert("No document available.");
-      return;
-    }
-
-    try {
-      const fileName = documentPath.split(/[/\\]/).pop();
-      const response = await axios.get(
-        `${process.env.REACT_APP_BACKEND_URL}/vendors/download/${fileName}`,
-        { headers, responseType: "blob" }
-      );
-
-      const blob = new Blob([response.data]);
-      const url = window.URL.createObjectURL(blob);
-
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = fileName;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      window.URL.revokeObjectURL(url);
-    } catch (error) {
-      console.error("Error downloading document:", error);
-      showAlert("Failed to download file.");
-    }
-  };
-
-  const handleDownloadAll = (vendorFiles) => {
-    const fileKeys = [
-      "gst_certificate",
-      "pan_card",
-      "cancelled_cheque",
-      "msme_certificate",
-      "incorporation_certificate",
-    ];
-
-    fileKeys.forEach((key) => {
-      if (vendorFiles[key]) {
-        handleDownloadDocument(vendorFiles[key]);
-      }
-    });
-  };
-
-  const handleShowDocuments = (vendor) => {
-    setSelectedVendorFiles({
-      gst_certificate: vendor.gst_certificate,
-      pan_card: vendor.pan_card,
-      cancelled_cheque: vendor.cancelled_cheque,
-      msme_certificate: vendor.msme_certificate,
-      incorporation_certificate: vendor.incorporation_certificate,
-    });
-    setShowDocumentsPopup(true);
-  };
-
-  const handleShowDownloadPopup = (vendor) => {
-    setSelectedVendorFiles({
-      gst_certificate: vendor.gst_certificate,
-      pan_card: vendor.pan_card,
-      cancelled_cheque: vendor.cancelled_cheque,
-      msme_certificate: vendor.msme_certificate,
-      incorporation_certificate: vendor.incorporation_certificate,
-    });
-    setShowDownloadPopup(true);
-  };
-
-  const handleShowCompanyDetails = (vendor) => {
-    setSelectedVendor(vendor);
-    setShowCompanyDetailsPopup(true);
-  };
-
-  const handleShowContactDetails = (vendor) => {
-    setSelectedVendor(vendor);
-    setShowContactDetailsPopup(true);
-  };
-
-  const handleShowBankDetails = (vendor) => {
-    setSelectedVendor(vendor);
-    setShowBankDetailsPopup(true);
-  };
-
-  const handleShowBusinessInfo = (vendor) => {
-    setSelectedVendor(vendor);
-    setShowBusinessInfoPopup(true);
-  };
+  }, [hydrated, user, headers]);
 
   const filteredVendors = vendors.filter((vendor) =>
     vendor.company_name.toLowerCase().includes(searchTerm.toLowerCase())

@@ -35,7 +35,7 @@
   /* height: calc(100vh - 60px); Full height minus Topbar height */
   position: sticky; /* Sticks in place during scrolling */
   top: 10px; /* Push below the Topbar */
-  margin-top: 13px;
+  margin-top: 10px;
   z-index: 1; /* Keep Sidebar below the Topbar */
 }
 

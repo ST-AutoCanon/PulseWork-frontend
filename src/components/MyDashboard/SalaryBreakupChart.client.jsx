@@ -96,6 +96,7 @@ export default function EmployeeSalaryBreakup() {
 
         const res = await fetch(`${BACKEND}/salary-ranges`, {
           method: "GET",
+          credentials: "include",
           headers,
           signal: controller.signal,
         });

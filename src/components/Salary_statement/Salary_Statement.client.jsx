@@ -10,7 +10,7 @@ import "./Salary_Statement.css";
 const Salary_Statement = () => {
   const { dashboardData } = useAuth();
   const meId = dashboardData?.employeeId;
-
+  const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
   const API_KEY = process.env.NEXT_PUBLIC_API_KEY;
   const headers = { "x-api-key": API_KEY, "x-employee-id": meId };
 
@@ -450,7 +450,7 @@ const Salary_Statement = () => {
       console.log("📤 Sending FormData with file:", file.name);
 
       const response = await axios.post(
-        `${process.env.REACT_APP_BACKEND_URL}/salary/upload`,
+        `${BACKEND_URL}/salary/upload`,
         formData,
         { headers: { ...headers, "Content-Type": "multipart/form-data" } }
       );
@@ -574,9 +574,7 @@ const Salary_Statement = () => {
     if (!month || !year) return;
     try {
       const response = await axios.get(
-        `${
-          process.env.REACT_APP_BACKEND_URL
-        }/api/salary-statement/${month.toLowerCase()}/${year}`,
+        `${BACKEND_URL}/api/salary-statement/${month.toLowerCase()}/${year}`,
         { headers }
       );
       console.log("Salary statement response:", response.data);
@@ -627,9 +625,7 @@ const Salary_Statement = () => {
   const fetchSalaryData = async () => {
     console.log("Fetching Salary Data for:", selectedMonth, selectedYear);
     try {
-      const apiUrl = `${
-        process.env.REACT_APP_BACKEND_URL
-      }/api/salary-statement/${selectedMonth.toLowerCase()}/${year}`;
+      const apiUrl = `${BACKEND_URL}/api/salary-statement/${selectedMonth.toLowerCase()}/${year}`;
       console.log("API Request URL:", apiUrl);
       const response = await axios.get(apiUrl, { headers });
       console.log("Full API Response:", response.data);

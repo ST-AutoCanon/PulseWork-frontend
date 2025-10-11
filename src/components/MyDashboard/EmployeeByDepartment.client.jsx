@@ -89,6 +89,7 @@ export default function EmployeeByDepartment() {
       try {
         const res = await fetch(`${BACKEND}/employee-count-by-department`, {
           method: "GET",
+          credentials: "include",
           headers,
           signal: controller.signal,
         });

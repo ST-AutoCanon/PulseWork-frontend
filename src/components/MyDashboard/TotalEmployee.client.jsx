@@ -95,6 +95,7 @@ export default function TotalEmployee() {
 
         const res = await fetch(`${BACKEND}/attendance-status`, {
           method: "GET",
+          credentials: "include",
           headers,
           signal: controller.signal,
         });
@@ -180,28 +181,41 @@ export default function TotalEmployee() {
   const centerTextPlugin = {
     id: "centerText",
     beforeDraw: (chart) => {
-      const { width, height, ctx } = chart;
+      const { ctx, chartArea } = chart;
+      if (!chartArea) return; // defensive: chartArea may be undefined early
+
       ctx.save();
-      const fontSize = Math.max(Math.round(Math.min(width, height) / 16), 12);
+
+      // compute center of the actual chart area (the donut itself)
+      const centerX = (chartArea.left + chartArea.right) / 2;
+      const centerY = (chartArea.top + chartArea.bottom) / 2;
+
+      // base font size on the chart-area inner dimension so it scales nicely
+      const innerWidth = chartArea.right - chartArea.left;
+      const innerHeight = chartArea.bottom - chartArea.top;
+      const fontSize = Math.max(
+        Math.round(Math.min(innerWidth, innerHeight) / 10),
+        14
+      );
+
       ctx.font = `${fontSize}px Arial`;
       ctx.fillStyle = "#000";
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
 
-      const offsetX = 0;
-      const offsetY = -6;
+      ctx.fillText(`${totalEmployees} Employees`, centerX, centerY);
 
-      ctx.fillText(
-        `${totalEmployees} Employees`,
-        width / 2 + offsetX,
-        height / 2 + offsetY
-      );
       ctx.restore();
     },
   };
 
   const options = {
     cutout: "70%",
+    layout: {
+      padding: {
+        bottom: 30,
+      },
+    },
     plugins: {
       legend: {
         position: "bottom",
@@ -231,12 +245,9 @@ export default function TotalEmployee() {
       datalabels: {
         display: true,
         color: "black",
-        anchor: "end",
-        align: "end",
-        font: {
-          size: 12,
-          weight: "bold",
-        },
+        anchor: "center",
+        align: "center",
+        font: { size: 12, weight: "bold" },
         formatter: (value) =>
           Number.isFinite(Number(value)) ? Number(value) : value,
         clip: false,

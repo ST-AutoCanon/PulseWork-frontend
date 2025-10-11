@@ -2,14 +2,22 @@
 
 import React, { useState, useEffect, useRef, useContext } from "react";
 import axios from "axios";
-import dynamic from "next/dynamic";
+import Portal from "./Portal.client";
 import { ContentContext } from "./Context.client";
-import { useAuth } from "../../context/AuthProvider.client"; // <-- adjust path as needed
+import { useAuth } from "../../context/AuthProvider.client";
+import Admin from "../LeaveQueries/Admin.client";
+import Profile from "../Profile/Profile.client";
 import "./Notifications.css";
 
-export default function Notifications({ visible, onClose, onRead }) {
+export default function Notifications({
+  visible,
+  onClose,
+  onRead,
+  anchorRef = null,
+}) {
   const [notifications, setNotifications] = useState([]);
   const dropdownRef = useRef(null);
+  const [pos, setPos] = useState(null);
   const { setActiveContent } = useContext(ContentContext);
   const { user } = useAuth();
   const meId = user?.employeeId ?? user?.employee_id ?? user?.id ?? null;
@@ -41,7 +49,6 @@ export default function Notifications({ visible, onClose, onRead }) {
 
         if (!mounted) return;
 
-        // normalize several possible server response shapes
         if (res?.data?.success && Array.isArray(res.data.notifications)) {
           setNotifications(res.data.notifications);
         } else if (Array.isArray(res?.data)) {
@@ -67,8 +74,20 @@ export default function Notifications({ visible, onClose, onRead }) {
       mounted = false;
       controller.abort();
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visible, meId]);
+
+  useEffect(() => {
+    const onExternalMarkRead = (e) => {
+      const id = e?.detail?.id;
+      if (!id) return;
+      setNotifications((prev) => prev.filter((n) => n.id !== id));
+      if (typeof onRead === "function") onRead();
+    };
+
+    window.addEventListener("notification-read", onExternalMarkRead);
+    return () =>
+      window.removeEventListener("notification-read", onExternalMarkRead);
+  }, [onRead]);
 
   useEffect(() => {
     function handleClick(e) {
@@ -98,69 +117,157 @@ export default function Notifications({ visible, onClose, onRead }) {
   };
 
   const handleClickNotification = async (note) => {
-    // optimistic: mark read locally and notify parent
-    await markRead(note.id);
-    onClose?.();
-
-    // try to open NoteDashboard dynamically; fallback to a simple view
     try {
-      setActiveContent(
-        <NoteDashboard
-          key={note.meeting_id ?? note.id}
-          highlightedId={note.meeting_id ?? note.id}
-        />
-      );
+      if (note.policy_id) {
+        setActiveContent(
+          <Admin
+            key={`admin-policy-${note.policy_id}`}
+            openPolicyId={note.policy_id}
+          />
+        );
+        onClose?.();
+        return;
+      }
+
+      if (note.meeting_id) {
+        try {
+          setActiveContent(
+            <NoteDashboard
+              key={note.meeting_id}
+              highlightedId={note.meeting_id}
+            />
+          );
+        } catch (err) {
+          console.warn("Could not load NoteDashboard dynamically:", err);
+          setActiveContent(
+            <div>
+              <h3>Note</h3>
+              <p>Meeting ID: {note.meeting_id}</p>
+            </div>
+          );
+        }
+        onClose?.();
+        return;
+      }
+
+      const msg = (note.message || "").toLowerCase();
+      const isProfileMissing =
+        msg.includes("profile") &&
+        (msg.includes("incomplete") ||
+          msg.includes("missing") ||
+          msg.includes("update"));
+
+      if (isProfileMissing) {
+        setActiveContent(
+          <Profile
+            key={`profile-notif-${note.id}`}
+            onClose={() => setActiveContent(null)}
+            notificationId={note.id}
+          />
+        );
+        onClose?.();
+        return;
+      }
+
+      await markRead(note.id);
+      onClose?.();
     } catch (err) {
-      console.warn("Could not load NoteDashboard dynamically:", err);
-      setActiveContent(
-        <div>
-          <h3>Note</h3>
-          <p>Meeting ID: {note.meeting_id ?? note.id}</p>
-        </div>
-      );
+      console.error("Error handling notification click:", err);
     }
   };
 
+  useEffect(() => {
+    if (!visible) return;
+
+    if (anchorRef?.current) {
+      const rect = anchorRef.current.getBoundingClientRect();
+      const width = 320;
+      const gap = 8;
+      const top = rect.bottom + gap;
+      const left = Math.min(
+        Math.max(8, rect.right - width),
+        window.innerWidth - width - 8
+      );
+      setPos({ top: Math.round(top), left: Math.round(left) });
+    } else {
+      setPos(null);
+    }
+  }, [visible, anchorRef]);
+
   if (!visible) return null;
 
-  return (
-    <div className="notifications-dropdown" ref={dropdownRef}>
-      <h4>Notifications</h4>
+  const style = pos
+    ? {
+        position: "fixed",
+        top: `${pos.top}px`,
+        left: `${pos.left}px`,
+        zIndex: 999999,
+      }
+    : { position: "fixed", top: "48px", right: "0", zIndex: 999999 };
 
-      {notifications.length === 0 ? (
-        <p className="empty">No new notifications</p>
-      ) : (
-        notifications.map((note) => (
-          <div
-            key={note.id}
-            className="notification-item"
-            onClick={() => handleClickNotification(note)}
-            role="button"
-            tabIndex={0}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" || e.key === " ")
-                handleClickNotification(note);
-            }}
-          >
-            <p className="n_message">{note.message}</p>
-            <small className="n_time">
-              {note.triggered_at
-                ? new Date(note.triggered_at).toLocaleString()
-                : ""}
-            </small>
-            <button
-              className="mark-read"
-              onClick={(e) => {
-                e.stopPropagation();
-                markRead(note.id);
-              }}
-              aria-label="Mark as read"
-            >
-              ✓
-            </button>
-          </div>
-        ))
-      )}
-    </div>
+  return (
+    <Portal>
+      <div className="notifications-dropdown" ref={dropdownRef} style={style}>
+        <h4>Notifications</h4>
+        {notifications.length === 0 ? (
+          <p className="empty">No new notifications</p>
+        ) : (
+          notifications.map((note) => {
+            const msg = (note.message || "").toLowerCase();
+            const isProfileMissing =
+              msg.includes("profile") &&
+              (msg.includes("incomplete") ||
+                msg.includes("missing") ||
+                msg.includes("update"));
+
+            return (
+              <div
+                key={note.id}
+                className="notification-item"
+                onClick={() => handleClickNotification(note)}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ")
+                    handleClickNotification(note);
+                }}
+                aria-label={`Notification: ${note.message}`}
+              >
+                <div className="notification-main">
+                  <p className="n_message">{note.message}</p>
+                  <small className="n_time">
+                    {note.triggered_at
+                      ? new Date(note.triggered_at).toLocaleString()
+                      : ""}
+                  </small>
+                </div>
+
+                {isProfileMissing ? (
+                  <button
+                    className="mark-read disabled"
+                    aria-disabled="true"
+                    title="This notification is cleared after you update your profile"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    ✓
+                  </button>
+                ) : (
+                  <button
+                    className="mark-read"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      markRead(note.id);
+                    }}
+                    aria-label="Mark as read"
+                  >
+                    ✓
+                  </button>
+                )}
+              </div>
+            );
+          })
+        )}
+      </div>
+    </Portal>
   );
 }

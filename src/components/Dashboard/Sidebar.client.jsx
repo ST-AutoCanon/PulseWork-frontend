@@ -17,11 +17,11 @@ import MyDashboard from "../MyDashboard/MyDashboard.client";
 import MyEmpDashboard from "../MyEmpDashboard/MyEmpDashboard.client";
 import SalaryStatementWrapper from "../Salary_statement/SalaryStatementWrapper.client";
 import PayrollSummary from "../PayrollSummary/PayrollSummary.client";
-import Reimbursement from "../Reimbursement/Reimbursement";
+import Reimbursement from "../Reimbursement/Reimbursement.client";
 import RbAdmin from "../Reimbursement/RbAdmin.client";
 import RbTeamLead from "../Reimbursement/RbTeamLead.client";
 import Assets from "../Assets/Assets.client";
-import Vendors from "../vendors/vendors";
+import Vendors from "../vendors/vendors.client";
 import Chat from "../Chat/ChatPage.client";
 import EmployeeLogin from "../EmployeeLogin/EmployeeLogin.client";
 import CreateOrganization from "../CreateOrganization/CreateOrganization.client";
@@ -113,12 +113,15 @@ const Sidebar = ({ setActiveContent }) => {
     }
 
     if (setActiveContent) {
-      const defaultComp = (
-        pathToComponent["/dashboard"] || (() => <MyEmpDashboard />)
-      )(role);
+      // <-- CHANGED: pick CreateOrganization as the default when role is SuperAdmin
+      const defaultPath =
+        role === "SuperAdmin" ? "/CreateOrganization" : "/dashboard";
+      const resolver =
+        pathToComponent[defaultPath] || (() => <MyEmpDashboard />);
+      const defaultComp = resolver(role);
       setActiveContent(defaultComp);
-      setActiveItem("/dashboard");
-      setActiveNav("/dashboard");
+      setActiveItem(defaultPath);
+      setActiveNav(defaultPath);
     }
   }, [user]);
 
@@ -151,7 +154,7 @@ const Sidebar = ({ setActiveContent }) => {
   return (
     <>
       <div className="sidebar">
-        {user?.role !== "Admin" && (
+        {user?.role !== "Admin" && user?.role !== "SuperAdmin" && (
           <div className="view-profile">
             <span
               onClick={() => setShowProfile((s) => !s)}

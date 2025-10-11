@@ -14,25 +14,24 @@
 }
 
 .emp-reimbursement h3 {
- 
   font-weight: bold;
   margin-right: 30%;
-  margin-top: -3%;
-  
+  margin-top: 1%;
 }
 
 .emp-reimbursement p {
-  margin-top: -7%;
+  margin-top: -2%;
   color: #686868;
   font-size: small;
- 
+
   margin-right: 70%;
 }
 
 .chart-container-reimbursement {
-  width: 60%;
-  height: 160px;
-  margin-top: -20%;
+  width: 50%;
+  height: 100px;
+  margin-top: -30%;
+  margin-bottom: -10%;
 }
 
 .reimbursement-tabs {
@@ -60,7 +59,3 @@
   border-bottom: 3px solid #3498db;
   color: #3498db;
 }
-
-
-
-

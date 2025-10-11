@@ -34,7 +34,13 @@ const Assets = () => {
       "Content-Type": "application/json",
     };
     const actorId = user?.employeeId ?? user?.id ?? null;
-    const orgId = user?.orgId ?? user?.raw?.org_id ?? null;
+    // expanded org-id fallbacks
+    const orgId =
+      user?.orgId ||
+      user?.raw?.org_id ||
+      user?.org_id ||
+      user?.organization_id ||
+      null;
     if (actorId) base["x-employee-id"] = String(actorId);
     if (orgId) base["x-org-id"] = String(orgId);
     // allow overrides (for example to remove Content-Type for form data)
@@ -648,11 +654,13 @@ const Assets = () => {
 
   const submitAssignments = async () => {
     try {
+      const headersForSubmit = {
+        ...getHeaders(),
+        "Content-Type": "application/json",
+      };
       const response = await fetch("/api/assets/assign", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: headersForSubmit,
         body: JSON.stringify(assignments),
       });
 
@@ -718,7 +726,9 @@ const Assets = () => {
 
   useEffect(() => {
     if (assetId) {
-      fetch(`${BACKEND}/api/assets/assigned/${assetId}`)
+      fetch(`${BACKEND}/api/assets/assigned/${assetId}`, {
+        headers: getHeaders(),
+      })
         .then((res) => res.json())
         .then((data) => {
           if (data.length > 0 && Array.isArray(data[0].assignments)) {
@@ -748,7 +758,7 @@ const Assets = () => {
           console.error("Error fetching assigned by assetId", err)
         );
     }
-  }, [assetId]);
+  }, [assetId, user]);
 
   const handleBlur2 = () => {
     setTimeout(() => {

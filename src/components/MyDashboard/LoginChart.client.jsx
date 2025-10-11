@@ -131,6 +131,7 @@ export default function LoginChart() {
 
         const res = await fetch(`${BACKEND}/login-data-count`, {
           method: "GET",
+          credentials: "include",
           headers,
           signal: controller.signal,
         });

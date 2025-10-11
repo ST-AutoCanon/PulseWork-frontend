@@ -7,7 +7,7 @@ import { FaFileInvoice } from "react-icons/fa6";
 import { MdOutlineCancel, MdOutlineRemoveRedEye } from "react-icons/md";
 import axios from "axios";
 
-import Reimbursement from "./Reimbursement"; // Self reimbursement component
+import Reimbursement from "./Reimbursement.client"; // Self reimbursement component
 import "./RbTeamLead.css"; // Keep the same CSS file
 import Modal from "../Modal/Modal.client"; // Custom alert modal
 import { useAuth } from "../../context/AuthProvider.client";
@@ -40,6 +40,9 @@ const RbTeamLead = () => {
     message: "",
   });
 
+  const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
+  const API_KEY = process.env.NEXT_PUBLIC_API_KEY;
+
   const formatDisplayDate = (raw) => {
     if (!raw) return "N/A";
     const d = raw instanceof Date ? raw : new Date(raw);
@@ -61,14 +64,11 @@ const RbTeamLead = () => {
   useEffect(() => {
     const fetchProjects = async () => {
       try {
-        const response = await axios.get(
-          `${process.env.NEXT_PUBLIC_BACKEND_URL}/projectdrop`,
-          {
-            headers: {
-              "x-api-key": process.env.NEXT_PUBLIC_API_KEY,
-            },
-          }
-        );
+        const response = await axios.get(`${BACKEND_URL}/projectdrop`, {
+          headers: {
+            "x-api-key": API_KEY,
+          },
+        });
         setProjects(response.data);
       } catch (error) {
         console.error("Error fetching projects:", error);
@@ -85,11 +85,11 @@ const RbTeamLead = () => {
     if (!teamLeadId) return;
     try {
       const response = await axios.get(
-        `${process.env.NEXT_PUBLIC_BACKEND_URL}/team/${teamLeadId}/reimbursements`,
+        `${BACKEND_URL}/team/${teamLeadId}/reimbursements`,
         {
           headers: {
             "Content-Type": "application/json",
-            "x-api-key": process.env.NEXT_PUBLIC_API_KEY,
+            "x-api-key": API_KEY,
             Authorization: `Bearer ${user?.token}`,
           },
           params: {
@@ -135,10 +135,10 @@ const RbTeamLead = () => {
           const match = file.filename.match(/^(\d{4})-(\d{2})-\d{2}/);
           if (!match) return null;
           const [year, month] = match.slice(1, 3);
-          const fileUrl = `${process.env.NEXT_PUBLIC_BACKEND_URL}/reimbursement/${year}/${month}/${claim.employee_id}/${file.filename}`;
+          const fileUrl = `${BACKEND_URL}/reimbursement/${year}/${month}/${claim.employee_id}/${file.filename}`;
           const response = await axios.get(fileUrl, {
             headers: {
-              "x-api-key": process.env.NEXT_PUBLIC_API_KEY,
+              "x-api-key": API_KEY,
               Authorization: `Bearer ${user?.token}`,
             },
             responseType: "blob",
@@ -176,7 +176,7 @@ const RbTeamLead = () => {
 
     try {
       await axios.put(
-        `${process.env.NEXT_PUBLIC_BACKEND_URL}/reimbursement/status/${id}`,
+        `${BACKEND_URL}/reimbursement/status/${id}`,
         {
           status: updatedStatus,
           approver_comments: comments?.[id] || "",
@@ -185,7 +185,7 @@ const RbTeamLead = () => {
         },
         {
           headers: {
-            "x-api-key": process.env.NEXT_PUBLIC_API_KEY,
+            "x-api-key": API_KEY,
           },
         }
       );
@@ -201,12 +201,12 @@ const RbTeamLead = () => {
     if (!selectedPaymentOption) return showAlert("Please select an option.");
     try {
       await axios.put(
-        `${process.env.NEXT_PUBLIC_BACKEND_URL}/reimbursement/payment-status/${selectedPaymentClaim.id}`,
+        `${BACKEND_URL}/reimbursement/payment-status/${selectedPaymentClaim.id}`,
         {
           payment_status: selectedPaymentOption === "paid" ? "paid" : "pending",
           user_role: "Manager",
         },
-        { headers: { "x-api-key": process.env.NEXT_PUBLIC_API_KEY } }
+        { headers: { "x-api-key": API_KEY } }
       );
       showAlert("Payment status updated successfully.");
       setIsPaymentModalOpen(false);
@@ -219,13 +219,10 @@ const RbTeamLead = () => {
 
   const handleDownloadPDF = async (claim) => {
     try {
-      const response = await axios.get(
-        `${process.env.NEXT_PUBLIC_BACKEND_URL}/download/${claim.id}`,
-        {
-          headers: { "x-api-key": process.env.NEXT_PUBLIC_API_KEY },
-          responseType: "blob",
-        }
-      );
+      const response = await axios.get(`${BACKEND_URL}/download/${claim.id}`, {
+        headers: { "x-api-key": API_KEY },
+        responseType: "blob",
+      });
       let filename = `Reimbursement_${claim.id}.pdf`;
       const cd = response.headers["content-disposition"];
       if (cd) {
@@ -637,7 +634,7 @@ const RbTeamLead = () => {
                 }
                 try {
                   await axios.put(
-                    `${process.env.REACT_APP_BACKEND_URL}/reimbursement/payment-status/${selectedPaymentClaim.id}`,
+                    `${BACKEND_URL}/reimbursement/payment-status/${selectedPaymentClaim.id}`,
                     {
                       payment_status:
                         selectedPaymentOption === "paid" ? "paid" : "pending",
@@ -645,7 +642,7 @@ const RbTeamLead = () => {
                     },
                     {
                       headers: {
-                        "x-api-key": process.env.REACT_APP_API_KEY,
+                        "x-api-key": API_KEY,
                       },
                     }
                   );

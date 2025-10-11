@@ -23,7 +23,7 @@
 
 .generatePayslip-create-btn {
   padding: 12px 24px;
-  background-color: #7FBD2C;
+  background-color: #7fbd2c;
   color: white;
   border: none;
   border-radius: 6px;
@@ -105,7 +105,6 @@
   font-size: 14px;
   table-layout: auto;
   border: 1px solid #e0e0e0; /* Add border to table */
- 
 
 /* .generatePayslip-table-header {
   position: sticky;
@@ -145,7 +144,7 @@
   margin-top: 20px;
 }
 .generatePayslip-popup-box {
-  margin-top:70px;
+  margin-top: 70px;
   position: relative;
   background-color: #ffffff;
   border-radius: 12px;
@@ -159,7 +158,7 @@
 }
 
 .generatePayslip-popup-title {
-  background-color: #00468C;
+  background-color: #00468c;
   color: white;
   padding: 15px;
   margin: -20px -20px 20px -20px;
@@ -175,8 +174,8 @@
   top: 12px;
   right: 12px;
   background-color: #ffffff;
-  color: #00468C;
-  border: 2px solid #00468C;
+  color: #00468c;
+  border: 2px solid #00468c;
   border-radius: 50%;
   width: 32px;
   height: 32px;
@@ -190,7 +189,7 @@
 }
 
 .generatePayslip-popup-close-btn:hover {
-  background-color: #00468C;
+  background-color: #00468c;
   color: white;
   transform: scale(1.1);
 }
@@ -233,7 +232,7 @@
 }
 
 .generatePayslip-popup-input:focus {
-  border-color: #00468C;
+  border-color: #00468c;
   outline: none;
 }
 
@@ -266,7 +265,7 @@
 
 .generatePayslip-save-btn,
 .generatePayslip-preview-btn {
-  background-color: #00468C;
+  background-color: #00468c;
   color: white;
 }
 
@@ -318,7 +317,7 @@
 }
 
 .generatePayslip-preview-table th {
-  background-color: #00468C;
+  background-color: #00468c;
   color: white;
   font-weight: 600;
 }
@@ -390,7 +389,7 @@
 
 .generatePayslip-table-header {
   position: sticky;
-  
+
   top: 0;
   background-color: #f8f9fa;
   padding: 12px 8px;
@@ -420,7 +419,7 @@
   align-items: center;
   position: relative; /* For positioning the search icon */
   max-width: 270px;
-  margin-left:-20px;
+  margin-left: -20px;
 }
 
 /* Search input */
@@ -435,7 +434,7 @@
 }
 
 .generatePayslip-search-input:focus {
-  border-color: #00468C;
+  border-color: #00468c;
   outline: none;
 }
 
@@ -486,32 +485,40 @@
   border-right: none;
 }
 /* Specific column widths to minimize horizontal scrolling */
-.generatePayslip-table-cell:nth-child(1) { /* Employee Name */
+.generatePayslip-table-cell:nth-child(1) {
+  /* Employee Name */
   max-width: 120px;
 }
-.generatePayslip-table-cell:nth-child(2) { /* Employee ID */
+.generatePayslip-table-cell:nth-child(2) {
+  /* Employee ID */
   max-width: 100px;
 }
-.generatePayslip-table-cell:nth-child(3) { /* Gender */
+.generatePayslip-table-cell:nth-child(3) {
+  /* Gender */
   max-width: 80px;
 }
-.generatePayslip-table-cell:nth-child(4) { /* Designation */
+.generatePayslip-table-cell:nth-child(4) {
+  /* Designation */
   max-width: 100px;
 }
-.generatePayslip-table-cell:nth-child(5) { /* Date of Joining */
+.generatePayslip-table-cell:nth-child(5) {
+  /* Date of Joining */
   max-width: 100px;
 }
-.generatePayslip-table-cell:nth-child(6) { /* Account No */
+.generatePayslip-table-cell:nth-child(6) {
+  /* Account No */
   max-width: 100px;
 }
 .generatePayslip-table-cell:nth-child(7), /* Working Days */
-.generatePayslip-table-cell:nth-child(8) { /* Leaves Taken */
+.generatePayslip-table-cell:nth-child(8) {
+  /* Leaves Taken */
   max-width: 80px;
 }
 .generatePayslip-table-cell:nth-child(9), /* UIN No */
 .generatePayslip-table-cell:nth-child(10), /* PAN Number */
 .generatePayslip-table-cell:nth-child(11), /* ESI Number */
-.generatePayslip-table-cell:nth-child(12) { /* PF Number */
+.generatePayslip-table-cell:nth-child(12) {
+  /* PF Number */
   max-width: 100px;
 }
 .generatePayslip-table-cell:nth-child(13), /* Basic */
@@ -523,13 +530,16 @@
 .generatePayslip-table-cell:nth-child(19), /* TDS */
 .generatePayslip-table-cell:nth-child(20), /* Gross Earnings */
 .generatePayslip-table-cell:nth-child(21), /* Total Deductions */
-.generatePayslip-table-cell:nth-child(22) { /* Net Salary */
+.generatePayslip-table-cell:nth-child(22) {
+  /* Net Salary */
   max-width: 90px;
 }
-.generatePayslip-table-cell:nth-child(23) { /* Created At */
+.generatePayslip-table-cell:nth-child(23) {
+  /* Created At */
   max-width: 120px;
 }
-.generatePayslip-table-cell:nth-child(24) { /* Edit Data */
+.generatePayslip-table-cell:nth-child(24) {
+  /* Edit Data */
   max-width: 60px;
   text-align: center;
 }
@@ -570,7 +580,7 @@
   }
 }
 .generatePayslip-table-cell .generatePayslip-download-btn {
-  background-color: #7FBD2C;
+  background-color: #7fbd2c;
   color: white;
   border: none;
   padding: 5px 10px;
@@ -588,7 +598,7 @@
   cursor: not-allowed;
 }
 .generatePayslip-table-cell .generatePayslip-view-btn {
-  background-color: #7FBD2C;
+  background-color: #7fbd2c;
   color: rgb(247, 243, 243);
   border: none;
   padding: 6px 12px;

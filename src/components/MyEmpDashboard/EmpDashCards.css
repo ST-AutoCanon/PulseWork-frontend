@@ -1,9 +1,9 @@
 .emp-dash-cards {
   display: flex;
   justify-content: center;
-  gap: 10px;
+  gap: 18px;
   flex-wrap: wrap;
-  margin-top:50px;
+  margin-top: 50px;
 }
 
 .emp-card {
@@ -26,7 +26,7 @@
 
 /* First Card Background - After Clicking */
 .emp-punched-out {
-  background: #DE7921; /* Red background after Punch Out */
+  background: #de7921; /* Red background after Punch Out */
   color: white;
 }
 
@@ -42,10 +42,8 @@
 }
 
 .emp-card:not(.emp-punch-in):not(.emp-punched-out) .emp-text {
-  color: #004DC6; /* Set text color to blue */
+  color: #004dc6; /* Set text color to blue */
 }
-
-
 
 .emp-card-content {
   display: flex;
@@ -56,14 +54,13 @@
 
 .emp-icon {
   font-size: 1.6rem;
-  
+
   background: rgba(200, 200, 200, 0.2); /* Light grey background */
   padding: 10px; /* Space around the icon */
   border-radius: 8px; /* Rounded corners */
   display: inline-flex; /* Keep it centered */
   align-items: center; /* Vertical alignment */
   justify-content: center; /* Horizontal alignment */
- 
 }
 
 .emp-text {
@@ -96,9 +93,6 @@
   animation: blink 1s ease-in-out infinite;
 }
 
-
-
-
 .camera-popup {
   position: fixed;
   top: 55%;
@@ -112,7 +106,7 @@
   width: 550px;
   max-width: 95%;
   text-align: center;
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
   animation: fadeIn 0.3s ease-in-out;
   display: flex;
   flex-direction: column;
@@ -146,13 +140,10 @@
   letter-spacing: 0.5px;
 }
 
-.location-link
-{
-  color: #004DC6;
+.location-link {
+  color: #004dc6;
   font-size: 10px;
 }
-
-
 
 /* Smooth Fade In Animation */
 @keyframes fadeIn {
@@ -165,8 +156,6 @@
     transform: translate(-50%, -50%);
   }
 }
-
-
 
 @media (max-width: 768px) {
   .emp-dash-cards {
@@ -182,22 +171,21 @@
     padding: 20px; /* Slightly increase padding for better touch experience */
     width: 300px;
   }
-  emp-card emp-punch-in
-  {
+  emp-card emp-punch-in {
     width: 120%;
   }
   .emp-card-content {
     flex-direction: row; /* Keep content inline */
     gap: 15px; /* Reduce gap slightly */
   }
- 
+
   .emp-punch-button {
     font-weight: bold;
     cursor: pointer;
     width: 120%;
     transition: transform 0.2s ease-in-out;
   }
-  
+
   .emp-punch-button:active {
     transform: scale(0.95);
   }
@@ -208,14 +196,11 @@
   .emp-text {
     font-size: 0.9rem; /* Slightly reduce text size */
     text-align: center;
-    
   }
 
   .emp-label {
     font-size: 0.75rem; /* Adjust label size */
   }
-
- 
 
   @media (max-width: 768px) {
     .emp-punch-in,
@@ -224,33 +209,31 @@
       height: 80px; /* Increase height */
       font-size: 1.2rem; /* Increase text size */
     }
-  
+
     .emp-punch-in .emp-icon,
     .emp-punched-out .emp-icon {
       font-size: 2rem; /* Make the icon slightly bigger */
     }
   }
- 
-    .camera-popup {
-      top: 50%;
-      width: 90%;
-      padding: 20px 18px;
-      border-radius: 18px;
-      gap: 20px;
-    }
-  
-    .camera-title {
-      font-size: 1.6rem;
-    }
-  
-    .camera-video {
-      max-height: 260px;
-      border-radius: 14px;
-    }
-  
-    .camera-status {
-      font-size: 1rem;
-    
+
+  .camera-popup {
+    top: 50%;
+    width: 90%;
+    padding: 20px 18px;
+    border-radius: 18px;
+    gap: 20px;
   }
-  
+
+  .camera-title {
+    font-size: 1.6rem;
+  }
+
+  .camera-video {
+    max-height: 260px;
+    border-radius: 14px;
+  }
+
+  .camera-status {
+    font-size: 1rem;
+  }
 }

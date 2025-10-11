@@ -103,6 +103,7 @@ export default function Dashboardcard() {
       try {
         const res = await fetch(`${BACKEND}/salary/last-month-total`, {
           method: "GET",
+          credentials: "include",
           headers,
           signal: controller.signal,
         });
@@ -141,6 +142,7 @@ export default function Dashboardcard() {
           `${BACKEND}/approved-reimbursement-last-month`,
           {
             method: "GET",
+            credentials: "include",
             headers,
             signal: controller.signal,
           }
@@ -189,26 +191,28 @@ export default function Dashboardcard() {
   };
 
   return (
-    <div className="dashboard-card-containers">
-      {cards.map((item, index) => {
-        const IconComp = iconComponentMap[item.icon] || (() => <GiWallet />);
-        return (
-          <div className="card" key={index}>
-            <div className="icon">
-              <IconComp />
-            </div>
-            <div className="content">
-              <div className="label">{item.label}</div>
-              <div className="value">
-                {item.key === "credit" &&
-                  (item.value ? formatValue(item.value) : "Coming soon!")}
-                {item.key === "reimbursement" && formatValue(item.value)}
-                {item.key === "salary" && formatValue(item.value)}
+    <div>
+      <div className="dashboard-card-containers">
+        {cards.map((item, index) => {
+          const IconComp = iconComponentMap[item.icon] || (() => <GiWallet />);
+          return (
+            <div className="card" key={index}>
+              <div className="icon">
+                <IconComp />
+              </div>
+              <div className="content">
+                <div className="label">{item.label}</div>
+                <div className="value">
+                  {item.key === "credit" &&
+                    (item.value ? formatValue(item.value) : "Coming soon!")}
+                  {item.key === "reimbursement" && formatValue(item.value)}
+                  {item.key === "salary" && formatValue(item.value)}
+                </div>
               </div>
             </div>
-          </div>
-        );
-      })}
+          );
+        })}
+      </div>
       {error && <p className="error">Error: {error}</p>}
     </div>
   );

@@ -36,7 +36,8 @@ const claimTypes = [
 
 const Reimbursement = () => {
   const { user } = useAuth();
-  const role = user?.role || "Employee";
+  const orgId = user?.orgId || user?.org_id || null;
+  const role = user?.role || " ";
   const authToken = user?.token;
   const employeeId = user?.employeeId;
   const departmentId = user?.department_id;
@@ -130,6 +131,7 @@ const Reimbursement = () => {
             "x-api-key": API_KEY,
             "Content-Type": "application/json",
             Authorization: `Bearer ${authToken}`,
+            "x-org-id": orgId,
           },
         }
       );
@@ -150,6 +152,7 @@ const Reimbursement = () => {
                 headers: {
                   "x-api-key": API_KEY,
                   Authorization: `Bearer ${authToken}`,
+                  "x-org-id": orgId,
                 },
               }
             );
@@ -157,17 +160,37 @@ const Reimbursement = () => {
             attachmentsData[claimId] = (
               attachmentResponse.data.attachments || []
             ).map((file) => {
+              // robustly extract org/year/month/empId from file_path
               const pathParts = (file.file_path || "")
                 .split("/")
                 .filter(Boolean);
-              const year = pathParts[pathParts.length - 4] || "";
-              const month = pathParts[pathParts.length - 3] || "";
-              const empId =
-                pathParts[pathParts.length - 2] ||
-                claim.employee_id ||
-                claim.employeeId ||
-                "";
-              return { ...file, year, month, employeeId: empId };
+              let orgSeg = "";
+              let year = "";
+              let month = "";
+              let empId = claim.employee_id || claim.employeeId || "";
+              const idx = pathParts.findIndex((p) => p === "reimbursement");
+              if (idx !== -1 && pathParts.length >= idx + 5) {
+                orgSeg = pathParts[idx + 1];
+                year = pathParts[idx + 2];
+                month = pathParts[idx + 3];
+                empId = pathParts[idx + 4] || empId;
+              } else {
+                // fallback to older layout (no orgId)
+                year = pathParts[pathParts.length - 4] || "";
+                month = pathParts[pathParts.length - 3] || "";
+                empId =
+                  pathParts[pathParts.length - 2] ||
+                  claim.employee_id ||
+                  claim.employeeId ||
+                  empId;
+              }
+              return {
+                ...file,
+                orgId: orgSeg,
+                year,
+                month,
+                employeeId: empId,
+              };
             });
           } catch (err) {
             console.error(
@@ -190,21 +213,21 @@ const Reimbursement = () => {
         error?.response?.data?.message || "Error fetching reimbursements."
       );
     }
-  }, [employeeId, authToken]);
+  }, [employeeId, authToken, orgId]);
 
   const fetchProjects = useCallback(async () => {
     try {
       const res = await axios.get(`${BACKEND_URL}/projectdrop`, {
-        headers: { "x-api-key": API_KEY },
+        headers: { "x-api-key": API_KEY, "x-org-id": orgId },
       });
       setProjects(res.data || []);
     } catch (err) {
       console.error("Error fetching projects:", err);
     }
-  }, []);
+  }, [orgId]);
 
   useEffect(() => {
-    if (!employeeId) return; // wait until employeeId is available
+    if (!employeeId) return;
     fetchReimbursements();
     fetchProjects();
   }, [fetchReimbursements, fetchProjects, employeeId]);
@@ -510,7 +533,11 @@ const Reimbursement = () => {
         const val = formData[k];
         if (val !== null && val !== undefined) fd.append(k, val);
       });
+
+      // append role + orgId
       fd.append("role", role);
+      if (orgId) fd.append("orgId", orgId);
+
       if (formData.attachments && formData.attachments.length > 0) {
         formData.attachments.forEach((file) => {
           if (file instanceof File) {
@@ -523,6 +550,7 @@ const Reimbursement = () => {
           "x-api-key": API_KEY,
           "Content-Type": "multipart/form-data",
           Authorization: `Bearer ${authToken}`,
+          "x-org-id": orgId,
         },
       };
       let response;
@@ -585,6 +613,7 @@ const Reimbursement = () => {
           headers: {
             "Content-Type": "application/json",
             "x-api-key": API_KEY,
+            "x-org-id": orgId,
             Authorization: `Bearer ${authToken}`,
           },
         }
@@ -618,6 +647,7 @@ const Reimbursement = () => {
             {
               headers: {
                 "x-api-key": API_KEY,
+                "x-org-id": orgId,
                 Authorization: `Bearer ${authToken}`,
               },
             }
@@ -640,21 +670,43 @@ const Reimbursement = () => {
     try {
       const fetchedFiles = await Promise.all(
         (files || []).map(async (file) => {
-          if (!file?.file_name) return null;
-          const match = file.file_name.match(/^(\d{4})-(\d{2})/);
+          if (!file?.file_name && !file?.file_name) return null;
+          const fname = file.file_name || file.fileName || file.name;
+          const match = fname.match(/^(\d{4})-(\d{2})/);
           if (!match) return null;
           const [, year, month] = match;
+
+          // org/year/month/emp/file_name layout: pick org from file.orgId if available,
+          // otherwise try extracting from file_path similarly
+          let fileOrg = file.orgId || "";
+          if (!fileOrg && file.file_path) {
+            const parts = (file.file_path || "").split("/").filter(Boolean);
+            const idx = parts.findIndex((p) => p === "reimbursement");
+            if (idx !== -1 && parts.length >= idx + 5) {
+              fileOrg = parts[idx + 1];
+            } else if (parts.length >= 5) {
+              // fallback heuristic: org may be at -5
+              fileOrg = parts[parts.length - 5] || "";
+            }
+          }
+          // prefer the orgId we have in the client context if nothing extracted
+          if (!fileOrg) fileOrg = orgId || "";
+
           const empId = claim.employee_id || claim.employeeId || "";
-          const url = `${BACKEND_URL}/reimbursement/${year}/${month}/${empId}/${file.file_name}`;
+          const url = `${BACKEND_URL}/reimbursement/${fileOrg}/${year}/${month}/${empId}/${fname}`;
+
           const response = await axios.get(url, {
             headers: {
               "x-api-key": API_KEY,
               Authorization: `Bearer ${authToken}`,
+              "x-org-id": fileOrg || orgId,
+              "x-employee-id": employeeId,
             },
             responseType: "blob",
           });
+
           return {
-            name: file.file_name,
+            name: fname,
             url: URL.createObjectURL(
               new Blob([response.data], {
                 type: response.headers["content-type"],

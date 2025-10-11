@@ -100,6 +100,9 @@ export default function TemplateBuilder() {
   const bodyRef = useRef();
   const footerRef = useRef();
 
+  const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
+  const API_KEY = process.env.NEXT_PUBLIC_API_KEY;
+
   useEffect(() => {
     const raw = localStorage.getItem("orgId");
     const parsed = raw ? parseInt(raw, 10) : NaN;
@@ -112,19 +115,17 @@ export default function TemplateBuilder() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const saveUrl = orgId
-    ? `${process.env.REACT_APP_BACKEND_URL}/api/orgs/${orgId}/templates`
-    : null;
+  const saveUrl = orgId ? `${BACKEND_URL}/api/orgs/${orgId}/templates` : null;
 
   async function fetchBasicTemplates(org) {
     setLoading(true);
     const localBase = (process.env.PUBLIC_URL || "") + "/commonTemplates/basic";
     try {
       const res = await fetch(
-        `${process.env.REACT_APP_BACKEND_URL}/api/orgs/${org}/templates/basic`,
+        `${BACKEND_URL}/api/orgs/${org}/templates/basic`,
         {
           method: "GET",
-          headers: { "x-api-key": process.env.REACT_APP_API_KEY },
+          headers: { "x-api-key": API_KEY },
           credentials: "include",
         }
       );
@@ -216,14 +217,11 @@ export default function TemplateBuilder() {
     if (!org) return;
     setLoading(true);
     try {
-      const res = await fetch(
-        `${process.env.REACT_APP_BACKEND_URL}/api/orgs/${org}/templates`,
-        {
-          method: "GET",
-          headers: { "x-api-key": process.env.REACT_APP_API_KEY || "" },
-          credentials: "include",
-        }
-      );
+      const res = await fetch(`${BACKEND_URL}/api/orgs/${org}/templates`, {
+        method: "GET",
+        headers: { "x-api-key": API_KEY || "" },
+        credentials: "include",
+      });
       if (!res.ok) {
         console.warn("Failed to fetch saved templates", res.status);
         return;
@@ -248,10 +246,7 @@ export default function TemplateBuilder() {
         let thumbnail = entry.thumbnail_url || entry.thumbnail || null;
         if (thumbnail && !thumbnail.startsWith("http")) {
           try {
-            const base = (process.env.REACT_APP_BACKEND_URL || "").replace(
-              /\/$/,
-              ""
-            );
+            const base = (BACKEND_URL || "").replace(/\/$/, "");
             thumbnail = `${base}/api/orgs/${org}/uploads/${thumbnail}`;
           } catch (e) {
             // leave as-is
@@ -293,10 +288,10 @@ export default function TemplateBuilder() {
 
     try {
       const res = await fetch(
-        `${process.env.REACT_APP_BACKEND_URL}/api/orgs/${orgId}/templates/upload-scan`,
+        `${BACKEND_URL}/api/orgs/${orgId}/templates/upload-scan`,
         {
           method: "POST",
-          headers: { "x-api-key": process.env.REACT_APP_API_KEY },
+          headers: { "x-api-key": API_KEY },
           body: fd,
           credentials: "include",
         }
@@ -375,7 +370,7 @@ export default function TemplateBuilder() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "x-api-key": process.env.REACT_APP_API_KEY || "",
+          "x-api-key": API_KEY || "",
         },
         credentials: "include",
         body: JSON.stringify(bodyPayload),

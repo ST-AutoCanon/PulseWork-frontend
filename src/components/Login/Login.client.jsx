@@ -1,11 +1,12 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { FaEye, FaEyeSlash } from "react-icons/fa";
 import "./Login.css";
 import Modal from "../Modal/Modal.client";
 import { useAuth } from "../../context/AuthProvider.client";
+
 const logoUrl = "/images/sukalpa_logo.png";
 
 export default function Login({ onClose }) {
@@ -17,24 +18,12 @@ export default function Login({ onClose }) {
   const [showPassword, setShowPassword] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(true);
-  const [idleModalVisible, setIdleModalVisible] = useState(false);
-
   const [alertModal, setAlertModal] = useState({
     isVisible: false,
     title: "",
     message: "",
   });
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    try {
-      if (sessionStorage.getItem("loggedOutDueToInactivity")) {
-        setIdleModalVisible(true);
-      }
-    } catch (err) {
-      console.warn("sessionStorage unavailable:", err);
-    }
-  }, []);
+  const [isSubmitting, setIsSubmitting] = useState(false); // <<< NEW
 
   const toggleShowPassword = () => setShowPassword((p) => !p);
 
@@ -47,16 +36,6 @@ export default function Login({ onClose }) {
   const closeModal = () => {
     setIsModalOpen(false);
     if (onClose) onClose();
-  };
-
-  const handleIdleModalOk = () => {
-    try {
-      sessionStorage.setItem("lastActivity", String(Date.now()));
-      sessionStorage.removeItem("loggedOutDueToInactivity");
-    } catch (err) {
-      console.warn("sessionStorage write failed:", err);
-    }
-    setIdleModalVisible(false);
   };
 
   const handleForgotPassword = async (e) => {
@@ -81,11 +60,8 @@ export default function Login({ onClose }) {
       );
 
       const data = await response.json();
-      if (response.ok) {
-        showAlert("Password reset email sent!");
-      } else {
-        setErrorMessage(data.message || "Request failed");
-      }
+      if (response.ok) showAlert("Password reset email sent!");
+      else setErrorMessage(data.message || "Request failed");
     } catch (err) {
       console.error("forgot-password error", err);
       setErrorMessage("An unexpected error occurred.");
@@ -96,11 +72,15 @@ export default function Login({ onClose }) {
     e.preventDefault();
     setErrorMessage("");
 
+    // prevent double submission
+    if (isSubmitting) return; // <<< guard
+
     if (!username || !password) {
       setErrorMessage("Username and password are required.");
       return;
     }
 
+    setIsSubmitting(true); // <<< start submit state
     try {
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_BACKEND_URL}/login`,
@@ -116,13 +96,11 @@ export default function Login({ onClose }) {
       );
 
       const data = await response.json();
-
       if (!response.ok) {
         setErrorMessage(data.message || "Invalid credentials.");
         return;
       }
 
-      // Normalize server payload to a safe client user object
       const payload = data.message || {};
       const serverUser = {
         id: payload.id ?? payload.employeeId ?? payload.employee_id ?? null,
@@ -142,21 +120,9 @@ export default function Login({ onClose }) {
         raw: payload,
       };
 
-      // Before changing auth state, reset lastActivity + clear idle flag so the ProtectedLayout check does not immediately log out.
-      try {
-        sessionStorage.setItem("lastActivity", String(Date.now()));
-        sessionStorage.removeItem("loggedOutDueToInactivity");
-      } catch (err) {
-        console.warn("sessionStorage set failed:", err);
-      }
-
-      // update client auth state (server has already set session cookie)
       await login(serverUser);
-
-      // close modal then redirect
       closeModal();
 
-      // route based on role/username logic you had
       if (
         username.toLowerCase() === "manish.p@yopmail.com" &&
         (serverUser.role || "").toLowerCase() === "general"
@@ -168,6 +134,8 @@ export default function Login({ onClose }) {
     } catch (err) {
       console.error("login error", err);
       setErrorMessage("An unexpected error occurred.");
+    } finally {
+      setIsSubmitting(false); // <<< always re-enable
     }
   };
 
@@ -250,8 +218,14 @@ export default function Login({ onClose }) {
 
               {errorMessage && <p className="error-msg">{errorMessage}</p>}
 
-              <button type="submit" className="login-btn">
-                Log In
+              <button
+                type="submit"
+                className="login-btn"
+                disabled={isSubmitting}
+                aria-busy={isSubmitting}
+                aria-disabled={isSubmitting}
+              >
+                {isSubmitting ? "Logging in..." : "Log In"}
               </button>
             </form>
 
@@ -264,28 +238,6 @@ export default function Login({ onClose }) {
         <div className="footer-text">
           © 2022 Sukalpa Tech. All Rights Reserved.
         </div>
-
-        {idleModalVisible && (
-          <Modal
-            isVisible={idleModalVisible}
-            onClose={() => {
-              // ensure we clear the flag even if user clicks the modal close
-              try {
-                sessionStorage.removeItem("loggedOutDueToInactivity");
-                sessionStorage.setItem("lastActivity", String(Date.now()));
-              } catch (err) {}
-              setIdleModalVisible(false);
-            }}
-            buttons={[
-              {
-                label: "OK",
-                onClick: handleIdleModalOk,
-              },
-            ]}
-          >
-            <p>You have been logged out due to inactivity.</p>
-          </Modal>
-        )}
 
         {alertModal.isVisible && (
           <Modal

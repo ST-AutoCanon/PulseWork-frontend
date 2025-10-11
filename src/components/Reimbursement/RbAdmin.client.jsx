@@ -7,12 +7,13 @@ import { FaSearch, FaChevronDown, FaChevronUp } from "react-icons/fa";
 import { FiDownload } from "react-icons/fi";
 import { FaFileInvoice } from "react-icons/fa6";
 import axios from "axios";
-import Reimbursement from "./Reimbursement";
+import Reimbursement from "./Reimbursement.client";
 import Modal from "../Modal/Modal.client";
-import { useAuth } from "../../context/AuthProvider.client"; // Adjust path
+import { useAuth } from "../../context/AuthProvider.client";
 
 const RbAdmin = () => {
-  const { user } = useAuth(); // logged-in employee
+  const { user } = useAuth();
+  const orgId = user?.orgId || user?.org_id || null;
   const employeeId = user?.employeeId;
 
   const [employees, setEmployees] = useState([]);
@@ -84,8 +85,12 @@ const RbAdmin = () => {
   useEffect(() => {
     const fetchProjects = async () => {
       try {
+        const headers = {
+          "x-api-key": API_KEY,
+          ...(orgId ? { "x-org-id": orgId } : {}),
+        };
         const response = await axios.get(`${BACKEND_URL}/projectdrop`, {
-          headers: { "x-api-key": API_KEY },
+          headers,
         });
         setProjects(response.data);
       } catch (error) {
@@ -108,16 +113,23 @@ const RbAdmin = () => {
   useEffect(() => {
     if (!employeeId) return;
     fetchEmployees();
-  }, [employeeId, submittedFrom, submittedTo]);
+  }, [employeeId, submittedFrom, submittedTo, orgId, user]);
 
   const fetchEmployees = async () => {
     try {
+      const params = {
+        submittedFrom: submittedFrom || null,
+        submittedTo: submittedTo || null,
+        ...(orgId ? { orgId } : {}),
+      };
+      const headers = {
+        "x-api-key": API_KEY,
+        ...(orgId ? { "x-org-id": orgId } : {}),
+      };
+
       const response = await axios.get(`${BACKEND_URL}/reimbursements`, {
-        headers: { "x-api-key": API_KEY },
-        params: {
-          submittedFrom: submittedFrom || null,
-          submittedTo: submittedTo || null,
-        },
+        headers,
+        params,
       });
       setEmployees(response.data);
 
@@ -215,7 +227,6 @@ const RbAdmin = () => {
       return;
     }
 
-    // Retrieve the selected project for this claim from projectSelections
     const project = projectSelections[id] || "";
     if (!project) {
       showAlert("Please select a project.");
@@ -228,21 +239,20 @@ const RbAdmin = () => {
 
     try {
       await axios.put(
-        `${process.env.REACT_APP_BACKEND_URL}/reimbursement/status/${id}`,
+        `${BACKEND_URL}/reimbursement/status/${id}`,
         {
           status: updatedStatus,
           approver_comments: approverComment,
           approver_id: employeeId,
-          project, // Send the project specific to this claim
+          project,
         },
         {
           headers: {
-            "x-api-key": process.env.REACT_APP_API_KEY,
+            "x-api-key": API_KEY,
           },
         }
       );
       showAlert(`Reimbursement ${updatedStatus} successfully.`);
-      // Optionally update local state for this claim
       setEmployees((prevEmployees) =>
         prevEmployees.map((emp) => ({
           ...emp,
@@ -271,14 +281,14 @@ const RbAdmin = () => {
     const updatedPaymentStatus = paymentStatusUpdates[id];
     try {
       await axios.put(
-        `${process.env.REACT_APP_BACKEND_URL}/reimbursement/payment-status/${id}`,
+        `${BACKEND_URL}/reimbursement/payment-status/${id}`,
         {
           payment_status: updatedPaymentStatus,
-          user_role: "admin", // hardcoded here; adjust if using authentication middleware
+          user_role: "admin",
         },
         {
           headers: {
-            "x-api-key": process.env.REACT_APP_API_KEY,
+            "x-api-key": API_KEY,
           },
         }
       );
@@ -301,18 +311,15 @@ const RbAdmin = () => {
 
   const handleDownloadPDF = async (claim) => {
     try {
-      const response = await axios.get(
-        `${process.env.REACT_APP_BACKEND_URL}/download/${claim.id}`,
-        {
-          headers: {
-            "x-api-key": process.env.REACT_APP_API_KEY,
-          },
-          responseType: "blob",
-        }
-      );
+      const response = await axios.get(`${BACKEND_URL}/download/${claim.id}`, {
+        headers: {
+          "x-api-key": API_KEY,
+        },
+        responseType: "blob",
+      });
 
       const cd = response.headers["content-disposition"];
-      console.log("Content-Disposition:", cd); // DEBUGGING
+      console.log("Content-Disposition:", cd);
 
       let filename = "";
 
@@ -324,12 +331,10 @@ const RbAdmin = () => {
         }
       }
 
-      // Fallback if backend doesn't set it
       if (!filename) {
         filename = `Reimbursement_${claim.id}.pdf`;
       }
 
-      // Ensure .pdf extension
       if (!filename.toLowerCase().endsWith(".pdf")) {
         filename += ".pdf";
       }
@@ -349,26 +354,27 @@ const RbAdmin = () => {
     }
   };
 
-  // Handler for slider toggle change
   const handleToggleChange = (e) => {
     setView(e.target.checked ? "self" : "all");
   };
 
-  // inside your RbAdmin component, above return
   const downloadExcel = async () => {
     try {
-      const resp = await axios.get(
-        `${process.env.REACT_APP_BACKEND_URL}/reimbursements/export`,
-        {
-          headers: { "x-api-key": process.env.REACT_APP_API_KEY },
-          params: {
-            submittedFrom: submittedFrom || null,
-            submittedTo: submittedTo || null,
-          },
-          responseType: "blob", // important!
-        }
-      );
-      // figure out filename from headers or fallback
+      const params = {
+        submittedFrom: submittedFrom || null,
+        submittedTo: submittedTo || null,
+        ...(orgId ? { orgId } : {}),
+      };
+      const headers = {
+        "x-api-key": API_KEY,
+        ...(orgId ? { "x-org-id": orgId } : {}),
+      };
+
+      const resp = await axios.get(`${BACKEND_URL}/reimbursements/export`, {
+        headers,
+        params,
+        responseType: "blob",
+      });
       const cd = resp.headers["content-disposition"];
       let filename = "reimbursements.xlsx";
       if (cd) {
@@ -461,7 +467,6 @@ const RbAdmin = () => {
               <FiDownload /> Export
             </button>
           </div>
-          {/* Employee List */}
           <div className="rb-atable-container">
             {filteredEmployees.map((employee) => {
               const filteredClaims = employee.claims;
@@ -513,7 +518,6 @@ const RbAdmin = () => {
                       )}
                     </div>
                   </div>
-                  {/* Expanded Reimbursement Table */}
                   {expandedRows[employee.employee_id] && (
                     <div className="reimbursement-table-scroll">
                       <div className="rb-sub-container">
@@ -611,7 +615,6 @@ const RbAdmin = () => {
                                         claim.project}
                                     </div>
                                   ) : (
-                                    // When status is pending, render the dropdown
                                     <select
                                       className="rb-status-dropdown"
                                       value={projectSelections[claim.id] || ""}
@@ -665,7 +668,7 @@ const RbAdmin = () => {
                                         className="pending-payment-btn"
                                         onClick={() => {
                                           setSelectedPaymentClaim(claim);
-                                          setSelectedPaymentOption(""); // Reset selection
+                                          setSelectedPaymentOption("");
                                           setIsPaymentModalOpen(true);
                                         }}
                                       >
@@ -747,7 +750,6 @@ const RbAdmin = () => {
         <Reimbursement />
       )}
 
-      {/* Payment Modal */}
       {isPaymentModalOpen && (
         <Modal
           isVisible={isPaymentModalOpen}
@@ -807,20 +809,20 @@ const RbAdmin = () => {
                 }
                 try {
                   await axios.put(
-                    `${process.env.REACT_APP_BACKEND_URL}/reimbursement/payment-status/${selectedPaymentClaim.id}`,
+                    `${BACKEND_URL}/reimbursement/payment-status/${selectedPaymentClaim.id}`,
                     {
                       payment_status: selectedPaymentOption,
                       user_role: "admin",
                     },
                     {
                       headers: {
-                        "x-api-key": process.env.REACT_APP_API_KEY,
+                        "x-api-key": API_KEY,
                       },
                     }
                   );
                   showAlert("Payment status updated successfully.");
                   setIsPaymentModalOpen(false);
-                  fetchEmployees(); // Refresh data
+                  fetchEmployees();
                 } catch (error) {
                   console.error("Error updating payment status:", error);
                   showAlert(
@@ -835,7 +837,6 @@ const RbAdmin = () => {
         </Modal>
       )}
 
-      {/* Modal for Attachments */}
       {isModalOpen && (
         <div className="att-modal-overlay">
           <div className="att-modal-content">
@@ -872,7 +873,6 @@ const RbAdmin = () => {
         </div>
       )}
 
-      {/* Alert Modal for displaying messages */}
       <Modal
         isVisible={alertModal.isVisible}
         onClose={closeAlert}

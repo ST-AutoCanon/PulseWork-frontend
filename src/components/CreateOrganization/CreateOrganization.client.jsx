@@ -1,13 +1,12 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { FaEye, FaTrash } from "react-icons/fa";
 import { MdEdit } from "react-icons/md";
-import Modal from "../Modal/Modal.client"; // Import the Modal component
+import Modal from "../Modal/Modal.client";
 import "./CreateOrganization.css";
-import { useAuth } from "../../context/AuthProvider.client"; // <- added
+import { useAuth } from "../../context/AuthProvider.client";
 
-// Custom debounce hook (unchanged)
 const useDebounce = (value, delay) => {
   const [debouncedValue, setDebouncedValue] = useState(value);
   useEffect(() => {
@@ -21,14 +20,21 @@ const useDebounce = (value, delay) => {
   return debouncedValue;
 };
 
-// MultiSelectCheckbox component (unchanged)
+// MultiSelectCheckbox now supports both controlled and uncontrolled modes.
+// - Controlled: pass `isOpen` (boolean) and `onToggle` (fn) from parent.
+// - Uncontrolled: omit them and it uses internal state (backwards compatible).
 const MultiSelectCheckbox = ({
   options,
   selectedValues,
   onChange,
   disabled,
+  isOpen: controlledIsOpen,
+  onToggle,
 }) => {
-  const [isOpen, setIsOpen] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(false);
+  const isControlled = typeof controlledIsOpen === "boolean" && !!onToggle;
+  const isOpen = isControlled ? controlledIsOpen : internalOpen;
+  const ref = useRef(null);
 
   const toggleOption = (option) => {
     const newValues = selectedValues.includes(option)
@@ -37,17 +43,44 @@ const MultiSelectCheckbox = ({
     onChange(newValues);
   };
 
+  const handleToggle = () => {
+    if (disabled) return;
+    if (isControlled) {
+      onToggle();
+    } else {
+      setInternalOpen((v) => !v);
+    }
+  };
+
+  // Close when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (!isOpen) return;
+      if (ref.current && !ref.current.contains(e.target)) {
+        if (isControlled) {
+          // parent provided onToggle - call it to close
+          onToggle();
+        } else {
+          setInternalOpen(false);
+        }
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [isOpen, isControlled, onToggle]);
+
   return (
     <div
+      ref={ref}
       className={`orgprefix-multi-select-container ${
         disabled ? "orgprefix-disabled" : ""
       }`}
     >
       <div
         className="orgprefix-multi-select-header"
-        onClick={() => !disabled && setIsOpen(!isOpen)}
+        onClick={handleToggle}
         tabIndex={0}
-        onKeyDown={(e) => !disabled && e.key === "Enter" && setIsOpen(!isOpen)}
+        onKeyDown={(e) => !disabled && e.key === "Enter" && handleToggle()}
       >
         {selectedValues.length > 0 ? selectedValues.join(", ") : "Select Roles"}
       </div>
@@ -73,10 +106,8 @@ const MultiSelectCheckbox = ({
 const CreateOrganization = ({ employeeId: propEmployeeId = null }) => {
   const { user } = useAuth();
 
-  // prefer prop employeeId (from a higher-level prop). fallback to user from useAuth()
   const employeeId = useMemo(() => {
     if (propEmployeeId) return propEmployeeId;
-    // user may be null while hydrating — that's ok
     return user?.employeeId ?? user?.id ?? null;
   }, [propEmployeeId, user]);
 
@@ -110,7 +141,7 @@ const CreateOrganization = ({ employeeId: propEmployeeId = null }) => {
   const [endDate, setEndDate] = useState("");
   const [sidebarItems, setSidebarItems] = useState([]);
   const [sidebarAccess, setSidebarAccess] = useState([]);
-  const [message, setMessage] = useState(""); // For form validation errors
+  const [message, setMessage] = useState("");
   const [orgTableData, setOrgTableData] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [filteredOrgData, setFilteredOrgData] = useState([]);
@@ -118,17 +149,20 @@ const CreateOrganization = ({ employeeId: propEmployeeId = null }) => {
   const [popupData, setPopupData] = useState(null);
   const [errors, setErrors] = useState({});
   const [shouldValidate, setShouldValidate] = useState(false);
-  // New state for alert modal
   const [alertModal, setAlertModal] = useState({
     isVisible: false,
     title: "",
     message: "",
   });
 
-  const roles = ["Admin", "Manager", "Employee", "General", "SuperAdmin"];
+  // NEW: track which dropdown (by sidebar item id) is currently open
+  const [openDropdownId, setOpenDropdownId] = useState(null);
+  // NEW: prevent multiple submits
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const roles = ["Admin", "Manager", "Employee", "General"];
   const debouncedSearchTerm = useDebounce(searchTerm, 300);
 
-  // Validation functions (unchanged)
   const validateEmail = (email) => {
     const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     return email
@@ -280,12 +314,10 @@ const CreateOrganization = ({ employeeId: propEmployeeId = null }) => {
     setErrors((prev) => ({ ...prev, [field]: error }));
   };
 
-  // Show alert modal
   const showAlert = (message, title = "") => {
     setAlertModal({ isVisible: true, title, message });
   };
 
-  // Close alert modal
   const closeAlert = () => {
     setAlertModal({ isVisible: false, title: "", message: "" });
   };
@@ -310,10 +342,10 @@ const CreateOrganization = ({ employeeId: propEmployeeId = null }) => {
       setMessage("");
       setCurrentOrgId(null);
       setShouldValidate(false);
+      setOpenDropdownId(null); // close any open dropdowns
     }
   }, [showForm, isEditing]);
 
-  // Fetch sidebar menu items
   useEffect(() => {
     const fetchSidebarItems = async () => {
       try {
@@ -345,10 +377,8 @@ const CreateOrganization = ({ employeeId: propEmployeeId = null }) => {
     if (showForm && (step === 2 || isEditing)) {
       fetchSidebarItems();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showForm, step, isEditing, employeeId, headers, BASE_URL]);
 
-  // Fetch sidebar access for editing
   useEffect(() => {
     const fetchSidebarAccess = async () => {
       if (isEditing && currentOrgId && sidebarItems.length > 0) {
@@ -385,10 +415,8 @@ const CreateOrganization = ({ employeeId: propEmployeeId = null }) => {
     };
 
     fetchSidebarAccess();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isEditing, currentOrgId, sidebarItems, employeeId, headers, BASE_URL]);
 
-  // Fetch organizations
   useEffect(() => {
     const fetchOrganizations = async () => {
       try {
@@ -407,10 +435,8 @@ const CreateOrganization = ({ employeeId: propEmployeeId = null }) => {
     };
 
     fetchOrganizations();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [employeeId, headers, BASE_URL]);
 
-  // Filter organizations based on search term
   useEffect(() => {
     const lowerCaseSearchTerm = debouncedSearchTerm.toLowerCase();
     const filtered = orgTableData.filter((org) => {
@@ -482,7 +508,6 @@ const CreateOrganization = ({ employeeId: propEmployeeId = null }) => {
         headers,
       });
 
-      // Check if the response is JSON
       const contentType = response.headers.get("content-type");
       if (!contentType || !contentType.includes("application/json")) {
         const text = await response.text();
@@ -537,6 +562,7 @@ const CreateOrganization = ({ employeeId: propEmployeeId = null }) => {
     setErrors({});
     setMessage("");
     setShouldValidate(false);
+    setOpenDropdownId(null);
   };
 
   const handleNextStep = (e) => {
@@ -555,12 +581,15 @@ const CreateOrganization = ({ employeeId: propEmployeeId = null }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (isSubmitting) return; // prevent double submit
     setMessage("");
     setShouldValidate(true);
 
     if (!validateForm(1) || !validateForm(2)) {
       return;
     }
+
+    setIsSubmitting(true);
 
     const orgData = {
       Name: name,
@@ -641,6 +670,7 @@ const CreateOrganization = ({ employeeId: propEmployeeId = null }) => {
         setErrors({});
         setMessage("");
         setShouldValidate(false);
+        setOpenDropdownId(null);
       } else {
         showAlert(
           data.error ||
@@ -654,6 +684,8 @@ const CreateOrganization = ({ employeeId: propEmployeeId = null }) => {
         error
       );
       showAlert(`Server error: ${error.message}`, "Error");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -677,6 +709,7 @@ const CreateOrganization = ({ employeeId: propEmployeeId = null }) => {
       setErrors({});
       setMessage("");
       setShouldValidate(false);
+      setOpenDropdownId(null);
     }
   };
 
@@ -1005,6 +1038,13 @@ const CreateOrganization = ({ employeeId: propEmployeeId = null }) => {
                                   disabled={alertModal.message.includes(
                                     "Failed to fetch sidebar menu items"
                                   )}
+                                  // Controlled open state so only one dropdown is open at a time
+                                  isOpen={openDropdownId === item.id}
+                                  onToggle={() =>
+                                    setOpenDropdownId((prev) =>
+                                      prev === item.id ? null : item.id
+                                    )
+                                  }
                                 />
                                 {selectedRoles.length > 0 && (
                                   <span className="orgprefix-selected-role-indicator">
@@ -1042,11 +1082,20 @@ const CreateOrganization = ({ employeeId: propEmployeeId = null }) => {
                     <button
                       type="submit"
                       className="orgprefix-save-btn"
-                      disabled={alertModal.message.includes(
-                        "Failed to fetch sidebar menu items"
-                      )}
+                      disabled={
+                        isSubmitting ||
+                        alertModal.message.includes(
+                          "Failed to fetch sidebar menu items"
+                        )
+                      }
                     >
-                      {isEditing ? "Update" : "Save"}
+                      {isSubmitting
+                        ? isEditing
+                          ? "Updating..."
+                          : "Saving..."
+                        : isEditing
+                        ? "Update"
+                        : "Save"}
                     </button>
                   </div>
                 </div>
@@ -1108,6 +1157,8 @@ const CreateOrganization = ({ employeeId: propEmployeeId = null }) => {
           </div>
         </div>
       )}
+
+      {/* Org list / table (unchanged) */}
 
       {filteredOrgData.length > 0 ? (
         <>

@@ -86,7 +86,6 @@ export default function Topbar() {
       user?.gender ?? user?.dashboard?.gender
     );
 
-    // normalizeInputUrl handles stringified JSON arrays, arrays, objects, encoded strings etc.
     const normalizeInputUrl = (maybe) => {
       if (maybe === undefined || maybe === null) return null;
 
@@ -110,9 +109,7 @@ export default function Topbar() {
         const s = maybe.trim();
         if (!s) return null;
 
-        // If string starts like JSON array or encoded JSON array -> try parse
         if (s.startsWith("[") || s.startsWith("%5B") || s.startsWith("%5b")) {
-          // try decodeURIComponent then JSON.parse, then fallback to JSON.parse raw
           try {
             const decoded = decodeURIComponent(s);
             const parsed = JSON.parse(decoded);
@@ -125,13 +122,10 @@ export default function Topbar() {
               if (Array.isArray(parsed) && parsed.length > 0)
                 return normalizeInputUrl(parsed[0]);
               if (typeof parsed === "string") return normalizeInputUrl(parsed);
-            } catch (err) {
-              // fallthrough to return raw string
-            }
+            } catch (err) {}
           }
         }
 
-        // If it looks like an encoded JSON (has %22 quotes), attempt decode and JSON.parse
         if (s.includes("%22") || s.includes("%5C%22")) {
           try {
             const decoded = decodeURIComponent(s);
@@ -139,9 +133,7 @@ export default function Topbar() {
             if (Array.isArray(parsed) && parsed.length > 0)
               return normalizeInputUrl(parsed[0]);
             if (typeof parsed === "string") return normalizeInputUrl(parsed);
-          } catch (e) {
-            // ignore
-          }
+          } catch (e) {}
         }
 
         return s;
@@ -158,17 +150,14 @@ export default function Topbar() {
       const u = normalizeInputUrl(maybeUrl);
       if (!u) return null;
 
-      // absolute URLs -> use as-is
       if (/^https?:\/\//i.test(u)) return u;
 
       if (!BACKEND_URL) return null;
 
       const base = BACKEND_URL.replace(/\/+$/g, "");
-      // If already starts with /docs, keep it
       if (u.startsWith("/docs")) {
         return `${base}${u}`;
       }
-      // If starts with '/', but not /docs, put under /docs
       const path = u.startsWith("/") ? u : `/${u}`;
       return `${base}/docs${path}`;
     };
@@ -194,9 +183,6 @@ export default function Topbar() {
         return;
       }
 
-      // debug resolved URL while testing
-      // console.debug("[Topbar] resolved photoUrl", { photoUrl, fetchUrl });
-
       try {
         const resp = await axios.get(fetchUrl, {
           headers,
@@ -204,7 +190,6 @@ export default function Topbar() {
         });
 
         if (!mounted) return;
-        // revoke previous object URL
         if (objectUrl) {
           try {
             URL.revokeObjectURL(objectUrl);
@@ -214,7 +199,6 @@ export default function Topbar() {
         objectUrl = URL.createObjectURL(resp.data);
         setAvatar(objectUrl);
       } catch (err) {
-        // If fetch fails (404 or other), fallback to default
         if (mounted) setAvatar(defaultPath);
       }
     };

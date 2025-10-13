@@ -96,7 +96,11 @@ export default function Notifications({
       }
     }
     document.addEventListener("mousedown", handleClick);
-    return () => document.removeEventListener("mousedown", handleClick);
+    document.addEventListener("touchstart", handleClick);
+    return () => {
+      document.removeEventListener("mousedown", handleClick);
+      document.removeEventListener("touchstart", handleClick);
+    };
   }, [onClose]);
 
   const markRead = async (id) => {
@@ -194,6 +198,15 @@ export default function Notifications({
     }
   }, [visible, anchorRef]);
 
+  // accessibility: focus dropdown when visible
+  useEffect(() => {
+    if (visible && dropdownRef.current) {
+      try {
+        dropdownRef.current.focus();
+      } catch (e) {}
+    }
+  }, [visible]);
+
   if (!visible) return null;
 
   const style = pos
@@ -207,8 +220,25 @@ export default function Notifications({
 
   return (
     <Portal>
-      <div className="notifications-dropdown" ref={dropdownRef} style={style}>
+      <div
+        className="notifications-dropdown"
+        ref={dropdownRef}
+        style={style}
+        role="dialog"
+        aria-modal="true"
+        tabIndex={-1}
+      >
+        {/* Mobile-only close button (visible via CSS on small screens) */}
+        <button
+          className="mobile-close-btn"
+          onClick={() => onClose?.()}
+          aria-label="Close notifications"
+        >
+          ✕
+        </button>
+
         <h4>Notifications</h4>
+
         {notifications.length === 0 ? (
           <p className="empty">No new notifications</p>
         ) : (

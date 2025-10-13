@@ -533,7 +533,7 @@
     padding: 15px;
   }
   .rb-form-header {
-    margin: 8%;
+    margin: 10%;
   }
   .filter-container label {
     font-size: 13px;
@@ -716,7 +716,6 @@
   .rb-modal-content {
     width: 92%;
     max-width: 100%;
-    padding: 20px;
     background: #fff;
     border-radius: 12px;
     box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
@@ -753,7 +752,7 @@
 
   .rb-tab {
     font-size: 14px;
-    padding: 10px;
+    padding: 10px 0;
     border-radius: 8px;
     background: #f3f3f3;
     transition: all 0.3s ease;

@@ -1,28 +1,24 @@
-/* Topbar container */
 .topbar1 {
   display: flex;
-  justify-content: space-between; /* Space between profile and icons */
-  align-items: center; /* Vertically align items */
-  height: 2%; /* Fixed height */
+  justify-content: space-between;
+  align-items: center;
+  height: 2%;
 
-  padding: 20px; /* Horizontal padding */
+  padding: 20px;
   background-color: white;
   color: black;
-  position: sticky; /* Sticky position */
-  top: 2%; /* Ensure it stays below the Navbar */
-  left: 0; /* Ensure it stays aligned to the left */
-  right: 0; /* Ensure it stays aligned to the right */
-  width: 100%; /* Ensure full width */
-  flex-shrink: 0; /* Prevent shrinking */
+  position: sticky;
+  top: 2%;
+  left: 0;
+  right: 0;
+  width: 100%;
+  flex-shrink: 0;
   margin-left: -20%;
-
-  /* margin-top: 6%; */
 }
 
-/* Profile section styling */
 .profile-section {
   display: flex;
-  align-items: center; /* Align profile items vertically */
+  align-items: center;
   margin-left: 7%;
   margin-bottom: 1%;
 }
@@ -107,16 +103,14 @@
 
 .fa-icon:hover {
   transform: scale(1.1);
-  color: #ffca28; /* adjust this color as desired */
+  color: #ffca28;
 }
 
-/* Active: scale down slightly */
 .fas.fa-calendar-alt:active,
 .fas.fa-power-off:active {
   transform: scale(0.95);
 }
 
-/* ... (keep existing CSS) ... */
 .org-name-section {
   flex-grow: 1;
   text-align: center;
@@ -131,7 +125,7 @@
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   display: inline-block;
-  white-space: nowrap; /* Prevents text wrapping if you want it all on one line */
+  white-space: nowrap;
 }
 
 .notification-icon {
@@ -152,15 +146,12 @@
   font-size: 12px;
 }
 
-/* ... (keep existing CSS) ... */
-/* Mobile view adjustments */
-
 @media screen and (max-width: 768px) {
   .topbar1 {
-    padding: 0px; /* Reduce padding */
-    height: 15%; /* Allow height to adjust */
-    margin-left: 0; /* Remove negative margin */
-    flex-direction: column; /* Stack items vertically */
+    padding: 0px;
+    height: 15%;
+    margin-left: 0;
+    flex-direction: column;
     align-items: center;
     margin-top: 0%;
     background-color: #ffffff;
@@ -168,7 +159,7 @@
   .org-name-section {
     flex-grow: 1;
     text-align: center;
-    padding: 10px;
+    padding: 15px;
   }
   .org-name-gradient {
     font-size: 24px;
@@ -178,7 +169,7 @@
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     display: inline-block;
-    white-space: nowrap; /* Prevents text wrapping if you want it all on one line */
+    white-space: nowrap;
   }
   .profile-section {
     flex-direction: column;
@@ -201,16 +192,15 @@
   }
 
   .icon-section {
-    position: absolute; /* Take it out of normal flow */
-    top: 50px; /* Move it further upwards */
-    right: 0%; /* Align it to the right */
-    gap: 20px; /* Reduce space between icons */
-    font-size: 120%; /* Reduce icon size */
-    /* Make sure it's above everything */
-    background: #fdfdfdef; /* Optional: Prevent text overlap */
-    padding: 5px; /* Adjust padding */
+    position: absolute;
+    top: 50px;
+    right: 0%;
+    gap: 20px;
+    font-size: 120%;
+    background: #fdfdfdef;
+    padding: 5px;
     color: rgb(0, 0, 0);
-    border-radius: 5px; /* Smooth look */
+    border-radius: 5px;
   }
 
   .icon {
@@ -218,11 +208,10 @@
   }
 
   .calendar-dropdown {
-    top: 0px; /* Adjust dropdown position */
+    top: 0px;
     margin-top: 60%;
     font-size: small;
     margin-right: 2%;
-    /* Make it more mobile-friendly */
   }
 
   .close-btn {

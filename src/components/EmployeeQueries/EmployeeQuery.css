@@ -15,7 +15,7 @@
 .emp-query-content {
   display: flex;
   flex: 1; /* Takes up full height */
-  padding: 0 2%;
+  padding: 0;
   gap: 2%;
 }
 
@@ -121,7 +121,6 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 5px;
 }
 
 .emp-name {
@@ -150,7 +149,6 @@
   top: 5px;
   right: 10px;
   width: 15px;
-  height: 15px;
   margin: 0%;
   padding: 0;
   font-size: small;
@@ -220,18 +218,19 @@
 .emp-message {
   max-width: 60%;
   padding: 0.5%;
-  border-radius: 10px 10px 10px 0;
   word-wrap: break-word;
   white-space: pre-wrap;
 }
 
 .left .emp-message {
   background: #dbeafe;
+  border-radius: 10px 10px 10px 0;
   align-self: flex-start;
 }
 
 .right .emp-message {
   background: #001f3f;
+  border-radius: 10px 10px 0 10px;
   color: white;
   align-self: flex-end;
 }
@@ -586,322 +585,574 @@
 }
 
 @media (max-width: 768px) {
-  /* Container Adjustments */
   .emp-query-container {
-    height: 100%; /* Full height to fit screen */
+    height: 100vh;
+    width: 100%;
     display: flex;
-    height: 125vh;
-    width: 98%;
-
-    border-radius: 10px 30px 30px 10px;
-
     flex-direction: column;
-    overflow: hidden; /* Prevent unnecessary scroll */
+    overflow: hidden;
+    background: #fff;
+  }
+
+  .emp-query-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px;
+    width: 100%;
+    box-sizing: border-box;
+    background: #fff;
+    z-index: 5;
+  }
+
+  .compose-button {
+    padding: 8px 10px;
+    font-size: 14px;
+    margin: 0;
   }
 
   .emp-query-content {
-    flex-direction: column; /* Stack sidebar & chat */
-    gap: 10px;
     display: flex;
-    flex-wrap: wrap;
-    flex-grow: 0; /* Allow it to take full space */
+    flex-direction: column;
+    width: 100%;
+    flex: 1 1 auto;
+    overflow: hidden;
   }
 
-  /* Sidebar Adjustments */
   .emp-sidebar {
-    width: 96%; /* Full width */
-
-    /* overflow-x: auto; */
-    /* padding: 10px 0; */
-    /* white-space: nowrap;
-    background: #f8f9fa; /* Light background */
-
-    border-bottom: 1px solid #ddd;
+    width: 100%;
+    padding: 8px;
+    background-color: #fff;
+    border-radius: 0;
+    box-sizing: border-box;
+    border-bottom: 1px solid #eee;
+    overflow: hidden;
   }
 
-  /* Query List Adjustments */
   .emp-query-list {
-    height: auto; /* Dynamic height */
-    overflow-x: auto; /* Enable horizontal scrolling */
-    overflow-y: hidden; /* Remove vertical scroll */
     display: flex;
-    flex-wrap: nowrap; /* Keep items in one row */
-    gap: 10px;
-    padding: 5px;
-    margin-top: -5%;
+    flex-direction: column;
+    gap: 0;
+    max-height: calc(100vh - 120px);
+    overflow-y: auto;
+    padding: 4px 0;
+    box-sizing: border-box;
+  }
+
+  .emp-query-item {
+    display: flex;
     align-items: center;
+    padding: 12px 16px;
+    margin: 0;
+    cursor: pointer;
+    transition: background 0.15s ease;
+    border-bottom: 1px solid #f0f0f0;
+    background: #fff;
   }
 
-  .emp-query-list::-webkit-scrollbar {
-    height: 5px; /* Slightly larger for usability */
+  .emp-query-item:hover {
+    background: #fbfbfb;
   }
 
-  .emp-query-list::-webkit-scrollbar-thumb {
-    background: rgba(0, 0, 0, 0.3); /* More visible scrollbar */
-    border-radius: 10px;
+  .profile-pic,
+  .emp-profile-pic {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    margin-right: 12px;
+    flex-shrink: 0;
   }
 
-  /* Chat Section */
+  .emp-query-info {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .emp-query-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+  }
+
+  .emp-name {
+    font-weight: 600;
+    margin: 0;
+    font-size: 15px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .emp-message-preview {
+    font-size: 13px;
+    color: #666;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: calc(100%);
+  }
+
+  .emp-unread-dot {
+    min-width: 24px;
+    height: 24px;
+    padding: 0 6px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    margin-left: 8px;
+    background-color: #0078ce;
+    color: #fff;
+    border-radius: 999px;
+  }
+
   .emp-chat-container {
     width: 100%;
-    /* flex-grow: 1; /* Expand to fill space */
+    flex: 1 1 auto;
     display: flex;
-    /* height: 50%; */
-    height: 84vh;
     flex-direction: column;
-    border-radius: 10px 30px 30px 10px;
+    background: #ffffff;
+    overflow: hidden;
+  }
 
-    justify-content: space-between;
+  .mobile-chat-topbar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 12px;
+    border-bottom: 1px solid #eee;
+    background: #fff;
+    z-index: 100;
+  }
+  .mobile-back-btn {
+    border: none;
+    background: transparent;
+    font-size: 20px;
+    padding: 6px;
+    cursor: pointer;
+  }
+  .mobile-chat-title {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    min-width: 0;
+  }
+  .mobile-chat-name {
+    font-weight: 700;
+    font-size: 15px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .mobile-chat-sub {
+    font-size: 13px;
+    color: #666;
+  }
+
+  .emp-chat-header {
+    display: none;
   }
 
   .emp-chat-messages {
-    max-height: calc(100vh - 300px); /* Adjust for screen space */
+    padding: 12px;
     overflow-y: auto;
-    padding: 10px;
-  }
-
-  /* Input Field */
-  .input-container {
-    display: flex;
-    gap: 5px;
-    margin-top: 0%;
-    margin-right: -2%;
-    padding: 10px;
-    align-items: center;
-    background: white;
-  }
-
-  .input-container input {
-    flex-grow: 1; /* Fill available space */
-    font-size: 14px;
-    padding: 10px;
-    border: 1px solid #ccc;
-    border-radius: 5px;
-  }
-
-  /* Submit Button */
-  .emp-submit-btn {
-    width: auto;
-    padding: 10px 15px;
-    font-size: 14px;
-    background: #7fbd2c;
-    color: white;
-    margin-right: 9%;
-    border-radius: 5px;
-    border: none;
-  }
-
-  /* Modal */
-  @media (max-width: 768px) {
-    .employee-query-modal {
-      width: 80%; /* Adjust modal width */
-      top: 5%;
-      padding: 3%;
-    }
-
-    .employee-query-textarea,
-    .employee-query-input,
-    .employee-query-select {
-      font-size: 0.9rem;
-      padding: 8px;
-    }
-
-    .emp-form-header {
-      padding: 5%;
-      font-size: 1rem;
-    }
-
-    .emp-close-button {
-      font-size: 6vw !important; /* Increase close button size */
-    }
-
-    .employee-query-form {
-      width: 100%;
-      padding: 5%;
-      margin-left: -4%;
-    }
-
-    .employee-query-button {
-      width: 100%; /* Full width for better tapability */
-      font-size: 1rem;
-      padding: 10px;
-      margin: 10px 0px 10px 0px;
-    }
-
-    .empform-cancel-button {
-      width: 100%;
-      margin: 10px 0;
-      font-size: 1rem;
-      padding: 10px;
-    }
-
-    .stars-container {
-      font-size: 20px;
-      justify-content: center;
-      gap: 5px;
-    }
-
-    .feedback-options {
-      padding: 3%;
-    }
-
-    .thank-you {
-      font-size: 1rem;
-    }
-
-    .thank-button {
-      flex-direction: column;
-    }
-
-    .thank-close {
-      width: 100%;
-      padding: 10px;
-      font-size: 1rem;
-    }
-  }
-
-  /* Profile Picture */
-  .emp-profile-pic {
-    width: 45px;
-    height: 45px;
-    flex-shrink: 0;
-    border-radius: 50%;
-  }
-
-  /* Cancel Button */
-  .empform-cancel-button {
-    width: auto;
-    margin: 0 auto;
-  }
-
-  /* Stars Rating */
-  .stars-container {
-    font-size: 20px;
-  }
-  .attachment-icon {
-    margin-right: 5%;
-  }
-  .end {
-    display: flex;
-    justify-content: flex-end;
-    margin-right: 8%;
-    gap: 2%;
+    -webkit-overflow-scrolling: touch;
   }
 
   .emp-message-container {
+    margin-bottom: 10px;
     display: flex;
     flex-direction: column;
   }
 
-  .emp-message-header {
-    font-weight: bold;
-    margin-bottom: 5px;
-    font-size: 8px;
-    color: #555;
-    text-align: left; /* Default alignment for left */
-  }
-  .message-time {
-    font-size: 65%;
-  }
-
-  .emp-message-container.right .emp-message-header {
-    text-align: right; /* Align to the right for 'You' */
-  }
-
-  .emp-message-container.left .emp-message-header {
-    text-align: left; /* Align to the left for others' names */
-  }
-
   .emp-message {
-    max-width: 60%;
-    padding: 10px;
-
-    border-radius: 10px;
+    max-width: 80%;
+    padding: 10px 12px;
+    border-radius: 18px;
+    word-wrap: break-word;
   }
 
   .left .emp-message {
     background: #dbeafe;
+    border-radius: 10px 10px 10px 0;
     align-self: flex-start;
   }
 
   .right .emp-message {
     background: #001f3f;
-    color: white;
-
+    border-radius: 10px 10px 0 10px;
+    color: #fff;
     align-self: flex-end;
   }
-  .emp-name {
-    font-size: 70%;
-    margin-top: 20%;
+
+  .emp-message-header {
+    font-size: 12px;
+    color: #444;
+    margin-bottom: 6px;
   }
-  .emp-message-time {
-    font-size: 3px;
-    color: gray;
+
+  .message-text {
+    margin: 0;
+    font-size: 14px;
+  }
+
+  .message-time {
     display: block;
-    margin-top: 10px;
-  }
-  .emp-message-preview {
-    color: gray;
-    font-size: 10px;
-    margin-left: 0%;
-    margin-top: 5%;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    font-size: 11px;
+    color: #888;
+    margin-top: 6px;
   }
 
-  .compose-button {
-    background-color: #0078ce;
-    padding: 1% 2%;
-    color: #fff;
+  .emp-chat-input {
+    display: flex;
+    gap: 8px;
+    padding: 10px;
+    margin-bottom: 2%;
+    border-top: 1px solid #eee;
+    background: #fff;
     align-items: center;
-    border-radius: 5px;
-    font-size: 15px;
-    border: none;
-    margin-right: 20px;
-    margin-top: 17px;
-  }
-  .compose-icon {
-    padding: 0;
-    font-size: medium;
-    margin-bottom: -3%;
-  }
-  .toggle-switch {
-    width: 45%;
-  }
-  .emp-message {
-    padding: -20%;
+    box-sizing: border-box;
   }
 
-  .emp-message p {
-    padding-bottom: -40px;
-    font-size: 80%;
+  .input-container {
+    flex: 1;
+    display: flex;
+    align-items: center;
   }
-  emp-message-header {
-    padding-top: 10px;
+
+  .message-input {
+    width: 90%;
+    padding: 10px 12px;
+    border-radius: 20px;
+    border: 1px solid #ddd;
+    font-size: 14px;
   }
-  emp-message-sender {
-    padding: 0px;
+
+  .attachment-icon {
+    margin-left: 8px;
+    font-size: 18px;
   }
-  .empform-cancel-button {
-    width: auto;
-    margin: 0 auto;
-  }
-  .emp-close-button {
-    font-size: 100%;
+
+  .emp-submit-btn {
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    margin-right: 4%;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: #7fbd2c;
+    color: #fff;
+    border: none;
+    font-weight: 600;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
     cursor: pointer;
   }
 
-  .emp-unread-dot {
-    top: 5px;
-    right: 10px;
-    width: 25px;
-    height: 15px;
-    margin-top: 0%;
-    padding: 0;
-    font-size: small;
+  .emp-select-query {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 30px;
+    color: #777;
+    font-size: 16px;
+  }
+
+  .employee-query-modal {
+    width: 92%;
+    max-width: 480px;
+    margin: 0 auto;
+    border-radius: 8px;
+  }
+
+  .emp-chat-container,
+  .emp-query-list {
+    padding-bottom: env(safe-area-inset-bottom, 16px);
+  }
+
+  /* =========================
+   Mobile modal / form fixes
+   Paste inside or after your @media (max-width: 768px) block
+   ========================= */
+
+  /* make overlay sit above everything */
+  .employee-query-modal-overlay {
+    z-index: 4000; /* stronger than other UI elements */
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* modal becomes a scrollable panel so dropdowns/keyboard don't clip */
+  .employee-query-modal {
+    position: fixed; /* keep it fixed so keyboard/resizing behaves well */
+    left: 50%;
+    top: 10%;
+    transform: translateX(-50%);
+    width: 92%;
+    max-width: 480px;
+    max-height: 80vh; /* keep room for keyboard */
+    overflow-y: auto; /* let content scroll inside modal */
+    background-color: #e8e9ea;
+    padding-bottom: env(safe-area-inset-bottom, 16px);
+    border-radius: 12px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+    box-sizing: border-box;
+  }
+
+  /* header: keep title centered; close button absolute so it doesn't move layout */
+  .emp-form-header {
+    position: relative;
+    padding: 12px 48px 12px 16px; /* space for close button on right */
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 8px;
+    background-color: #00468c;
     color: #fff;
-    text-align: center;
-    background-color: #0078ce;
-    border-radius: 50%;
+    border-top-left-radius: 12px;
+    border-top-right-radius: 12px;
+  }
+
+  /* make icon behave like a real button and sit at top-right */
+  .emp-close-button {
+    position: absolute;
+    right: 8px;
+    top: 8px;
+    background: transparent;
+    border: none;
+    color: #fff;
+    font-size: 22px; /* big enough for touch */
+    padding: 6px;
+    border-radius: 6px;
+    cursor: pointer;
+    line-height: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .emp-close-button:active {
+    transform: scale(0.96);
+  }
+  .emp-close-button:focus {
+    outline: 2px solid rgba(255, 255, 255, 0.25);
+  }
+
+  /* make form spacing comfortable on mobile */
+  .employee-query-form {
+    padding: 14px;
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  /* inputs & select: large touch targets and full width */
+  .employee-query-select,
+  .employee-query-input,
+  .employee-query-textarea {
+    width: 100%;
+    font-size: 16px;
+    padding: 12px;
+    border-radius: 8px;
+    box-sizing: border-box;
+  }
+
+  /* improve native select tapability (appearance left to browser) */
+  .employee-query-select {
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    background-image: linear-gradient(45deg, transparent 50%, #666 50%),
+      linear-gradient(135deg, #666 50%, transparent 50%);
+    background-position: calc(100% - 20px) calc(1em + 2px),
+      calc(100% - 15px) calc(1em + 2px);
+    background-size: 6px 6px, 6px 6px;
+    background-repeat: no-repeat;
+    padding-right: 40px;
+  }
+
+  /* action buttons: stack vertically, full width, large tappable areas */
+  .emp-form-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 8px;
+    padding-bottom: 8px;
+  }
+
+  .empform-cancel-button,
+  .employee-query-button {
+    width: 100%;
+    padding: 12px;
+    font-size: 16px;
+    border-radius: 8px;
+    box-sizing: border-box;
+  }
+
+  /* visual treatment: secondary cancel, primary submit */
+  .empform-cancel-button {
+    background: transparent;
+    border: 1px solid #cddc39; /* greenish border to match theme */
+    color: #333;
+    order: 2; /* show cancel below submit if you want reversed, change if needed */
+    margin: 0;
+  }
+
+  .employee-query-button {
+    background: #79c42b;
+    color: #fff;
+    border: 1px solid #79c42b;
+    order: 1; /* primary on top */
+    margin: 0;
+  }
+
+  /* make buttons respond */
+  .empform-cancel-button:active,
+  .employee-query-button:active {
+    transform: translateY(1px);
+  }
+  .empform-cancel-button:focus,
+  .employee-query-button:focus {
+    outline: 2px solid rgba(0, 0, 0, 0.08);
+  }
+
+  /* if you want Cancel visually lighter */
+  .empform-cancel-button {
+    opacity: 0.95;
+  }
+
+  /* ensure any dropdown popup is visible above overlay (some browsers use native popups) */
+  .employee-query-modal * {
+    z-index: 1;
+  }
+
+  /* avoid the phone's bottom safe area covering controls */
+  @supports (padding: env(safe-area-inset-bottom)) {
+    .employee-query-modal {
+      padding-bottom: calc(env(safe-area-inset-bottom) + 16px);
+    }
+  }
+
+  /* Mobile: end-button on topbar */
+  .mobile-end-btn {
+    margin-left: auto;
+    background: transparent;
+    border: none;
+    color: #0078ce;
+    font-size: 20px;
+    padding: 8px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    border-radius: 8px;
+  }
+  .mobile-end-btn:active {
+    transform: scale(0.98);
+  }
+  .mobile-end-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  /* Make feedback modal behave well on mobile (fixed, scrollable, safe area) */
+  .employee-query-modal-overlay {
+    z-index: 4000;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Feedback / End Query modal panel */
+  .employee-query-modal {
+    position: fixed;
+    left: 50%;
+    top: 12%;
+    transform: translateX(-50%);
+    width: 92%;
+    max-width: 480px;
+    max-height: 78vh;
+    overflow-y: auto;
+    background-color: #e8e9ea;
+    border-radius: 12px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.18);
+    padding-bottom: env(safe-area-inset-bottom, 16px);
+    box-sizing: border-box;
+  }
+
+  /* Keep header compact and close button tappable */
+  .emp-form-header {
+    position: relative;
+    padding: 12px 48px 12px 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background-color: #00468c;
+    color: #fff;
+    border-top-left-radius: 12px;
+    border-top-right-radius: 12px;
+  }
+
+  /* close icon (X) */
+  .emp-close-button {
+    position: absolute;
+    right: 8px;
+    top: 8px;
+    background: transparent;
+    border: none;
+    color: #fff;
+    font-size: 22px;
+    padding: 6px;
+    border-radius: 6px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .emp-close-button:focus {
+    outline: 2px solid rgba(255, 255, 255, 0.2);
+  }
+
+  /* stars larger for touch */
+  .stars-container {
+    font-size: 26px;
+    gap: 10px;
+  }
+
+  /* textarea and label spacing */
+  .employee-query-form {
+    padding: 14px;
+  }
+  .employee-query-textarea {
+    min-height: 120px;
+  }
+
+  /* Stack form actions vertically on mobile and make them full-width */
+  .emp-form-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 12px;
+  }
+  .empform-cancel-button,
+  .employee-query-button {
+    width: 100%;
+    padding: 12px;
+    font-size: 16px;
+    border-radius: 8px;
+    box-sizing: border-box;
+  }
+  .employee-query-button {
+    background: #79c42b;
+    color: #fff;
+    border: 1px solid #79c42b;
+  }
+  .empform-cancel-button {
+    background: transparent;
+    border: 1px solid #cddc39;
+    color: #333;
+  }
+
+  /* safe area bottom so the End button isn't hidden by the iOS bar */
+  .emp-chat-container,
+  .emp-query-list,
+  .employee-query-modal {
+    padding-bottom: env(safe-area-inset-bottom, 16px);
   }
 }

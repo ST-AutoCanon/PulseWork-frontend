@@ -1,57 +1,46 @@
-
-.EmpDashCards1234
-{
+.EmpDashCards1234 {
   margin-top: 30px;
 }
 
-
 .EmpLeaveTracker123 {
-    padding: 0;
-    flex-grow: 0;
-    margin-top:3%;
-    padding: 0%;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-   
-    
-  }
+  padding: 0;
+  flex-grow: 0;
+  margin-top: 3%;
+  padding: 0%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
 
-  .EmpLeaveTracker123 h2
-  {
-    margin-right: 74%;
-    margin-bottom: -2%;
-    
-  }
+.EmpLeaveTracker123 h2 {
+  margin-right: 74%;
+  margin-bottom: -2%;
+}
 
-  .empcardcharts123 {
-    
-    display: flex;
-    gap: 34px; /* Space between charts */
-    margin-top: 5%;
-    align-items: center;
-    flex-wrap: wrap; /* Allows wrapping on smaller screens */
-    justify-content: center; /* Centers items properly */
-    width: 100%; /* Ensures it takes full width */
-    padding: 0 0%; /* Adds padding to avoid touching edges */
-  }
- 
-  .mydailyworkhour123
-  {
-    display: flex;  
-      justify-content: space-evenly; /* Adjust as needed */
-      /* Adds space between the charts */
-      /* Ensures responsiveness */
-    
-  }
+.empcardcharts123 {
+  display: flex;
+  gap: 34px; /* Space between charts */
+  margin: 5% 0 6% 0;
+  align-items: center;
+  flex-wrap: wrap; /* Allows wrapping on smaller screens */
+  justify-content: center; /* Centers items properly */
+  width: 100%; /* Ensures it takes full width */
+  padding: 0 0%; /* Adds padding to avoid touching edges */
+}
 
-  .EmpProjectTable
-  {
-    display: flex;
-    margin-top: 3%;
-  }
+.mydailyworkhour123 {
+  display: flex;
+  justify-content: space-evenly; /* Adjust as needed */
+  /* Adds space between the charts */
+  /* Ensures responsiveness */
+}
 
-  /* Overlay background */
+.EmpProjectTable {
+  display: flex;
+  margin-top: 3%;
+}
+
+/* Overlay background */
 .reg-popup-overlay {
   position: fixed;
   top: 0;
@@ -67,12 +56,12 @@
 
 /* Popup box */
 .reg-popup-content {
- padding: 10px;
+  padding: 10px;
   border-radius: 12px;
   max-width: 600px;
   width: 90%;
   text-align: center;
- 
+
   animation: scaleIn 0.25s ease-in-out;
 }
 
@@ -97,7 +86,6 @@
   }
 
   .reg-popup-overlay {
-    
     padding-top: 0px; /* allows popup to show lower on small screens */
   }
 }

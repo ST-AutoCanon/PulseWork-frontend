@@ -473,11 +473,6 @@
     max-height: 90vh;
   }
 
-  /* Leave Form */
-  .leave-form {
-    padding: 5%;
-  }
-
   .leave-form-header {
     flex-direction: column;
     text-align: center;

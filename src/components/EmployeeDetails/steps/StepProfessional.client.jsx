@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from "react";
 import { MdOutlineCancel } from "react-icons/md";
 import FileInput from "../FileInput.client";
+import { useAuth } from "../../../context/AuthProvider.client";
 
 export default function StepProfessional({ data, onChange, departments = [] }) {
   const [roleOptions, setRoleOptions] = useState([]);
@@ -11,8 +12,26 @@ export default function StepProfessional({ data, onChange, departments = [] }) {
   const [prevSupervisor, setPrevSupervisor] = useState(null);
   const [historyFetched, setHistoryFetched] = useState(false);
 
-  const API_KEY = process.env.NEXT_PUBLIC_API_KEY;
   const BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
+
+  const { user } = useAuth();
+  const orgId =
+    user?.orgId ??
+    user?.org_id ??
+    user?.organizationId ??
+    user?.organization_id ??
+    null;
+
+  function getHeaders() {
+    const headers = {};
+    if (process.env.NEXT_PUBLIC_API_KEY) {
+      headers["x-api-key"] = process.env.NEXT_PUBLIC_API_KEY;
+    }
+    if (orgId) {
+      headers["x-org-id"] = orgId;
+    }
+    return headers;
+  }
 
   const formatDate = (iso) => {
     if (!iso) return "";
@@ -29,11 +48,11 @@ export default function StepProfessional({ data, onChange, departments = [] }) {
     setHistoryFetched(false);
 
     fetch(`${BASE_URL}/supervisor/history/${data.employee_id}`, {
-      headers: { "x-api-key": API_KEY },
+      headers: getHeaders(),
     })
       .then((res) => res.json())
       .then((json) => {
-        console.log("supervisor history response:", json);
+        // console.log("supervisor history response:", json);
 
         const entries =
           json && json.data && Array.isArray(json.data.history)
@@ -87,14 +106,14 @@ export default function StepProfessional({ data, onChange, departments = [] }) {
         setPrevSupervisor(null);
         setHistoryFetched(true);
       });
-  }, [data.employee_id, BASE_URL, API_KEY]);
+  }, [data.employee_id, BASE_URL, orgId]);
 
   useEffect(() => {
-    fetch(`${BASE_URL}/user_roles`, { headers: { "x-api-key": API_KEY } })
+    fetch(`${BASE_URL}/user_roles`, { headers: getHeaders() })
       .then((r) => r.json())
       .then((json) => setRoleOptions(json.data || []))
       .catch(() => setRoleOptions([]));
-  }, [BASE_URL, API_KEY]);
+  }, [BASE_URL, orgId]);
 
   useEffect(() => {
     if (!data.role) {
@@ -106,12 +125,12 @@ export default function StepProfessional({ data, onChange, departments = [] }) {
       `${BASE_URL}/positions?role=${encodeURIComponent(
         data.role
       )}&department_id=${deptParam}`,
-      { headers: { "x-api-key": API_KEY } }
+      { headers: getHeaders() }
     )
       .then((res) => res.json())
       .then((json) => setPositionsList(json.data || []))
       .catch(() => setPositionsList([]));
-  }, [data.role, data.department_id, BASE_URL, API_KEY]);
+  }, [data.role, data.department_id, BASE_URL, orgId]);
 
   useEffect(() => {
     if (!data.position) {
@@ -123,12 +142,12 @@ export default function StepProfessional({ data, onChange, departments = [] }) {
       `${BASE_URL}/positions/supervisors?position=${encodeURIComponent(
         data.position
       )}&department_id=${deptParam}`,
-      { headers: { "x-api-key": API_KEY } }
+      { headers: getHeaders() }
     )
       .then((res) => res.json())
       .then((json) => setSupervisorsList(json.data || []))
       .catch(() => setSupervisorsList([]));
-  }, [data.position, data.department_id, BASE_URL, API_KEY]);
+  }, [data.position, data.department_id, BASE_URL, orgId]);
 
   const expList = Array.isArray(data.experience) ? data.experience : [];
   const isAdmin = (data.role || "").toLowerCase() === "admin";
@@ -335,7 +354,7 @@ export default function StepProfessional({ data, onChange, departments = [] }) {
         <div className="total-experience">
           <strong>
             Total Experience:{" "}
-            {years > 0 && `${years} yr${years > 1 ? "s" : ""} `}{" "}
+            {years > 0 && `${years} yr${years > 1 ? "s" : ""} `}
             {months > 0 && `${months} mo${months > 1 ? "s" : ""}`}
             {years === 0 && months === 0 && "0"}
           </strong>

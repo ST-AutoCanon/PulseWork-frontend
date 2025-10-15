@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import * as MdIcons from "react-icons/md";
 import { useAuth } from "../../context/AuthProvider.client";
 import "./Sidebar.css";
@@ -27,14 +27,8 @@ import EmployeeLogin from "../EmployeeLogin/EmployeeLogin.client";
 import CreateOrganization from "../CreateOrganization/CreateOrganization.client";
 import TemplateBuilder from "../TemplateBuilder/TemplateBuilder";
 
-/**
- * Sidebar
- *
- * Props:
- * - setActiveContent(fn): parent callback to set the active content area component
- */
 const Sidebar = ({ setActiveContent }) => {
-  const { user } = useAuth();
+  const { user, hydrated } = useAuth();
   const [menuItems, setMenuItems] = useState([]);
   const [activeItem, setActiveItem] = useState("/dashboard");
   const [showProfile, setShowProfile] = useState(false);
@@ -99,6 +93,8 @@ const Sidebar = ({ setActiveContent }) => {
   );
 
   useEffect(() => {
+    if (!hydrated) return;
+
     const role = user?.role ?? "Employee";
 
     if (Array.isArray(user?.sidebarMenu) && user.sidebarMenu.length > 0) {
@@ -113,7 +109,6 @@ const Sidebar = ({ setActiveContent }) => {
     }
 
     if (setActiveContent) {
-      // <-- CHANGED: pick CreateOrganization as the default when role is SuperAdmin
       const defaultPath =
         role === "SuperAdmin" ? "/CreateOrganization" : "/dashboard";
       const resolver =
@@ -123,7 +118,7 @@ const Sidebar = ({ setActiveContent }) => {
       setActiveItem(defaultPath);
       setActiveNav(defaultPath);
     }
-  }, [user]);
+  }, [user, hydrated, defaultMenuItems, pathToComponent, setActiveContent]);
 
   const handleMenuClick = (item) => {
     setActiveItem(item.path);

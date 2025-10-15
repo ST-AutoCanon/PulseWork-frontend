@@ -60,7 +60,7 @@
   width: 90%;
   font-size: 14px;
   color: #e0e0e0;
-  margin: 0 0 8px 0;
+  margin: 15px 0 0;
   word-break: break-word;
 }
 
@@ -76,7 +76,7 @@
 
 .notification-item .mark-read {
   position: absolute;
-  top: 50px;
+  top: 35px;
   right: 24px;
   background: rgba(255, 255, 255, 0.1);
   border: none;

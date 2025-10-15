@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import axios from "axios";
 import "./vendors.css";
 import { FaEye, FaPencilAlt } from "react-icons/fa";
@@ -9,7 +9,7 @@ import Modal from "../Modal/Modal.client";
 import { useAuth } from "../../context/AuthProvider.client";
 
 const Vendors = () => {
-  const { user, hydrated } = useAuth(); // get user from context
+  const { user } = useAuth();
   const [showForm, setShowForm] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editingVendorId, setEditingVendorId] = useState(null);
@@ -76,13 +76,44 @@ const Vendors = () => {
   const [emailErrors, setEmailErrors] = useState(["", "", ""]);
   const [error, setError] = useState("");
 
-  // Only create headers once user is hydrated
-  const headers = user
-    ? {
-        "x-api-key": process.env.NEXT_PUBLIC_API_KEY || "",
-        "x-employee-id": user.employeeId || user.id || "0",
-      }
-    : null;
+  const headers = useMemo(() => {
+    if (!user) return null;
+    const orgId =
+      user.orgId ||
+      user.org_id ||
+      (user.org && user.org.id) ||
+      (user.organization && user.organization.id) ||
+      null;
+
+    return {
+      "x-api-key": process.env.NEXT_PUBLIC_API_KEY || "",
+      "x-employee-id": user.employeeId || user.id || "0",
+      ...(orgId ? { "x-org-id": String(orgId) } : {}),
+    };
+  }, [
+    user?.employeeId,
+    user?.id,
+    user?.orgId,
+    user?.organizationId,
+    user?.org?.id,
+    user?.organization?.id,
+  ]);
+
+  useEffect(() => {
+    if (!headers) return;
+
+    const interceptor = axios.interceptors.request.use((config) => {
+      config.headers = {
+        ...(config.headers || {}),
+        ...headers,
+      };
+      return config;
+    });
+
+    return () => {
+      axios.interceptors.request.eject(interceptor);
+    };
+  }, [headers]);
 
   const showAlert = (message, title = "") => {
     setAlertModal({ isVisible: true, title, message });
@@ -144,9 +175,10 @@ const Vendors = () => {
     setEmailErrors(["", "", ""]);
   };
 
-  // Fetch vendors after hydration
   useEffect(() => {
-    if (!hydrated || !user) return;
+    if (!headers) return;
+
+    let cancelled = false;
 
     const fetchVendors = async () => {
       try {
@@ -154,21 +186,263 @@ const Vendors = () => {
           `${process.env.NEXT_PUBLIC_BACKEND_URL}/vendors/list`,
           { headers }
         );
-        if (response.data.success) {
+        if (cancelled) return;
+        if (response.data && response.data.success) {
           setVendors(response.data.data);
         }
-      } catch (error) {
-        console.error("Error fetching vendors:", error);
+      } catch (err) {
+        if (cancelled) return;
+        console.error("Error fetching vendors:", err);
         showAlert("Failed to fetch vendors");
       }
     };
 
     fetchVendors();
-  }, [hydrated, user, headers]);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [headers]);
 
   const filteredVendors = vendors.filter((vendor) =>
     vendor.company_name.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  const handleSearchChange = (e) => {
+    setSearchTerm(e.target.value);
+  };
+
+  const handleShowCompanyDetails = (vendor) => {
+    setSelectedVendor(vendor);
+    setShowCompanyDetailsPopup(true);
+  };
+
+  const handleShowContactDetails = (vendor) => {
+    setSelectedVendor(vendor);
+    setShowContactDetailsPopup(true);
+  };
+
+  const handleShowBankDetails = (vendor) => {
+    setSelectedVendor(vendor);
+    setShowBankDetailsPopup(true);
+  };
+
+  const handleShowBusinessInfo = (vendor) => {
+    setSelectedVendor(vendor);
+    setShowBusinessInfoPopup(true);
+  };
+
+  const handleShowDocuments = (vendor) => {
+    setSelectedVendorFiles({
+      gst_certificate: vendor.gst_certificate || null,
+      pan_card: vendor.pan_card || null,
+      cancelled_cheque: vendor.cancelled_cheque || null,
+      msme_certificate: vendor.msme_certificate || null,
+      incorporation_certificate: vendor.incorporation_certificate || null,
+    });
+    setShowDocumentsPopup(true);
+  };
+
+  const handleShowDownloadPopup = (vendor) => {
+    setSelectedVendorFiles({
+      gst_certificate: vendor.gst_certificate || null,
+      pan_card: vendor.pan_card || null,
+      cancelled_cheque: vendor.cancelled_cheque || null,
+      msme_certificate: vendor.msme_certificate || null,
+      incorporation_certificate: vendor.incorporation_certificate || null,
+    });
+    setShowDownloadPopup(true);
+  };
+
+  const handleViewDocument = (url) => {
+    if (!url) return;
+    window.open(url, "_blank", "noopener,noreferrer");
+  };
+
+  const handleDownloadDocument = (url) => {
+    if (!url) return;
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  };
+
+  const handleDownloadAll = (filesObj) => {
+    if (!filesObj) return;
+    const fileUrls = Object.values(filesObj).filter(Boolean);
+    if (fileUrls.length === 0) return;
+    fileUrls.forEach((u) => handleDownloadDocument(u));
+  };
+
+  const handleEdit = (vendor) => {
+    setIsEditing(true);
+    const id = vendor.vendor_id || vendor.id || null;
+    setEditingVendorId(id);
+    setFormData((prev) => ({
+      ...prev,
+      name: vendor.name || "",
+      contact_person: vendor.contact_person || "",
+      email: vendor.email || "",
+      phone: vendor.phone || "",
+      address: vendor.address || "",
+      company_name: vendor.company_name || "",
+      registered_address: vendor.registered_address || "",
+      branch_address: vendor.branch_address || "",
+      city: vendor.city || "",
+      state: vendor.state || "",
+      pin_code: vendor.pin_code || "",
+      gst_number: vendor.gst_number || "",
+      pan_number: vendor.pan_number || "",
+      company_type: vendor.company_type || "",
+      msme_status: vendor.msme_status || "Not Applicable",
+      contact1_name: vendor.contact1_name || "",
+      contact1_designation: vendor.contact1_designation || "",
+      contact1_mobile: vendor.contact1_mobile || "",
+      contact1_email: vendor.contact1_email || "",
+      contact2_name: vendor.contact2_name || "",
+      contact2_designation: vendor.contact2_designation || "",
+      contact2_mobile: vendor.contact2_mobile || "",
+      contact2_email: vendor.contact2_email || "",
+      contact3_name: vendor.contact3_name || "",
+      contact3_designation: vendor.contact3_designation || "",
+      contact3_mobile: vendor.contact3_mobile || "",
+      contact3_email: vendor.contact3_email || "",
+      bank_name: vendor.bank_name || "",
+      branch: vendor.branch || "",
+      account_number: vendor.account_number || "",
+      ifsc_code: vendor.ifsc_code || "",
+      nature_of_business: vendor.nature_of_business || "",
+      product_category: vendor.product_category || "",
+      years_of_experience: vendor.years_of_experience || "",
+    }));
+    setFiles({
+      gst_certificate: vendor.gst_certificate || null,
+      pan_card: vendor.pan_card || null,
+      cancelled_cheque: vendor.cancelled_cheque || null,
+      msme_certificate: vendor.msme_certificate || null,
+      incorporation_certificate: vendor.incorporation_certificate || null,
+    });
+    setShowForm(true);
+  };
+
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleFileChange = (e) => {
+    const { name, files: newFiles } = e.target;
+    setFiles((prev) => ({
+      ...prev,
+      [name]: newFiles && newFiles[0] ? newFiles[0] : null,
+    }));
+  };
+
+  const validateField = (name, value, index) => {
+    if (name.includes("mobile")) {
+      const mobileRegex = /^\d{10}$/;
+      const errorText = mobileRegex.test(value)
+        ? ""
+        : "Enter a valid 10-digit mobile number";
+      setMobileErrors((prev) => {
+        const copy = [...prev];
+        copy[index] = errorText;
+        return copy;
+      });
+      return !errorText;
+    }
+
+    if (name.includes("email")) {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      const errorText = emailRegex.test(value)
+        ? ""
+        : "Enter a valid email address";
+      setEmailErrors((prev) => {
+        const copy = [...prev];
+        copy[index] = errorText;
+        return copy;
+      });
+      return !errorText;
+    }
+
+    return true;
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (
+      formData.years_of_experience &&
+      Number(formData.years_of_experience) < 1
+    ) {
+      setError("Years of experience must be at least 1");
+      return;
+    }
+    setError("");
+
+    const formPayload = new FormData();
+    Object.keys(formData).forEach((k) => {
+      if (formData[k] !== undefined && formData[k] !== null) {
+        formPayload.append(k, formData[k]);
+      }
+    });
+
+    Object.keys(files).forEach((k) => {
+      if (files[k]) formPayload.append(k, files[k]);
+    });
+
+    try {
+      const base = process.env.NEXT_PUBLIC_BACKEND_URL;
+      if (!base) {
+        showAlert("Backend URL not configured");
+        return;
+      }
+
+      if (isEditing && editingVendorId) {
+        const url = `${base}/vendors/update/${editingVendorId}`;
+        const resp = await axios.put(url, formPayload, {
+          headers: {
+            ...(headers || {}),
+            "Content-Type": "multipart/form-data",
+          },
+        });
+        if (resp.data && resp.data.success) {
+          setVendors((prev) =>
+            prev.map((v) =>
+              v.vendor_id === editingVendorId || v.id === editingVendorId
+                ? resp.data.data || resp.data.vendor || { ...v, ...formData }
+                : v
+            )
+          );
+          showAlert("Vendor updated successfully");
+          togglePopup();
+        } else {
+          showAlert("Failed to update vendor");
+        }
+      } else {
+        const url = `${base}/vendors/add`;
+        const resp = await axios.post(url, formPayload, {
+          headers: {
+            ...(headers || {}),
+            "Content-Type": "multipart/form-data",
+          },
+        });
+        if (resp.data && resp.data.success) {
+          const newVendor = resp.data.data ||
+            resp.data.vendor || { ...formData };
+          setVendors((prev) => [newVendor, ...prev]);
+          showAlert("Vendor added successfully");
+          togglePopup();
+        } else {
+          showAlert("Failed to add vendor");
+        }
+      }
+    } catch (err) {
+      console.error("Vendor submit error:", err);
+      showAlert("Error while submitting vendor");
+    }
+  };
 
   return (
     <div className="vendors-container">

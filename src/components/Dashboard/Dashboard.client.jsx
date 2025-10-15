@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import Sidebar from "./Sidebar.client";
 import Topbar from "./Topbar.client";
 import "./Dashboard.css";
@@ -11,7 +11,7 @@ import { ContentContext } from "./Context.client";
 import { useAuth } from "../../context/AuthProvider.client";
 
 const Dashboard = () => {
-  const { user } = useAuth();
+  const { user, hydrated } = useAuth();
   const [activeContent, setActiveContent] = useState(null);
   const [showBirthday, setShowBirthday] = useState(false);
   const [employeeName, setEmployeeName] = useState("");
@@ -30,6 +30,7 @@ const Dashboard = () => {
   useEffect(() => {
     let cancelled = false;
     const fetchBirthday = async () => {
+      if (!hydrated) return;
       if (!email) return;
       try {
         const response = await axios.get(
@@ -52,7 +53,7 @@ const Dashboard = () => {
     return () => {
       cancelled = true;
     };
-  }, [email, BACKEND_URL, headers]);
+  }, [email, BACKEND_URL, headers, hydrated]);
 
   const renderContent = () => (
     <div className="content-container-design">

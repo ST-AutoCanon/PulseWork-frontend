@@ -18,6 +18,7 @@ import { useAuth } from "../../context/AuthProvider.client";
 export default function Topbar() {
   const router = useRouter();
   const { user, logout, hydrated } = useAuth();
+
   const [userName, setUserName] = useState("User");
   const [userRole, setUserRole] = useState("Role");
   const [notificationCount, setNotificationCount] = useState(0);
@@ -26,12 +27,13 @@ export default function Topbar() {
   const [pendingNotifications, setPendingNotifications] = useState(false);
   const [avatar, setAvatar] = useState(null);
   const [orgName, setOrgName] = useState("Loading...");
+
   const API_KEY = process.env.NEXT_PUBLIC_API_KEY;
   const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
 
   useEffect(() => {
-    console.log("[Topbar] user from context:", user, "hydrated:", hydrated);
-  }, [user, hydrated]);
+    console.log("[Topbar] hydrated:", hydrated, "user:", user);
+  }, [hydrated, user]);
 
   const meId = user?.employeeId ?? user?.id ?? null;
 
@@ -40,6 +42,7 @@ export default function Topbar() {
     : { "x-api-key": API_KEY || "" };
 
   useEffect(() => {
+    if (!hydrated) return;
     if (user) {
       setUserName(user.name || "User");
       setUserRole(user.role || "Role");
@@ -47,9 +50,10 @@ export default function Topbar() {
       setUserName("User");
       setUserRole("Role");
     }
-  }, [user]);
+  }, [hydrated, user]);
 
   const fetchNotificationCount = useCallback(() => {
+    if (!hydrated) return;
     if (!BACKEND_URL || !meId) return;
     axios
       .get(`${BACKEND_URL}/api/notifications`, { headers })
@@ -62,15 +66,22 @@ export default function Topbar() {
       .catch((err) => {
         console.error("Error fetching notification count", err);
       });
-  }, [BACKEND_URL, meId, headers]);
+  }, [BACKEND_URL, meId, headers, hydrated]);
 
   useEffect(() => {
+    if (!hydrated) return;
     fetchNotificationCount();
     const interval = setInterval(fetchNotificationCount, 60000);
     return () => clearInterval(interval);
-  }, [fetchNotificationCount]);
+  }, [fetchNotificationCount, hydrated]);
 
   useEffect(() => {
+    if (!hydrated) {
+      setAvatar(null);
+      setOrgName("Loading...");
+      return;
+    }
+
     let mounted = true;
     let objectUrl = null;
 
@@ -88,12 +99,10 @@ export default function Topbar() {
 
     const normalizeInputUrl = (maybe) => {
       if (maybe === undefined || maybe === null) return null;
-
       if (Array.isArray(maybe)) {
         if (maybe.length === 0) return null;
         return normalizeInputUrl(maybe[0]);
       }
-
       if (typeof maybe === "object") {
         if (!maybe) return null;
         if (typeof maybe.url === "string" && maybe.url) return maybe.url;
@@ -104,11 +113,9 @@ export default function Topbar() {
         }
         return null;
       }
-
       if (typeof maybe === "string") {
         const s = maybe.trim();
         if (!s) return null;
-
         if (s.startsWith("[") || s.startsWith("%5B") || s.startsWith("%5b")) {
           try {
             const decoded = decodeURIComponent(s);
@@ -125,7 +132,6 @@ export default function Topbar() {
             } catch (err) {}
           }
         }
-
         if (s.includes("%22") || s.includes("%5C%22")) {
           try {
             const decoded = decodeURIComponent(s);
@@ -135,10 +141,8 @@ export default function Topbar() {
             if (typeof parsed === "string") return normalizeInputUrl(parsed);
           } catch (e) {}
         }
-
         return s;
       }
-
       try {
         return String(maybe);
       } catch {
@@ -149,11 +153,8 @@ export default function Topbar() {
     const buildFetchUrl = (maybeUrl) => {
       const u = normalizeInputUrl(maybeUrl);
       if (!u) return null;
-
       if (/^https?:\/\//i.test(u)) return u;
-
       if (!BACKEND_URL) return null;
-
       const base = BACKEND_URL.replace(/\/+$/g, "");
       if (u.startsWith("/docs")) {
         return `${base}${u}`;
@@ -163,11 +164,11 @@ export default function Topbar() {
     };
 
     const dashboard = user?.dashboard ?? {};
-    const storedGender = user?.gender ?? dashboard.gender;
     const photoUrl = dashboard.photoUrl ?? dashboard.photo_url ?? null;
 
     if (!user) {
       setAvatar(defaultPath);
+      setOrgName("Unknown Organization");
       return () => {};
     }
 
@@ -232,7 +233,7 @@ export default function Topbar() {
         objectUrl = null;
       }
     };
-  }, [user, BACKEND_URL, API_KEY, meId]);
+  }, [hydrated, user, BACKEND_URL, API_KEY, meId]);
 
   const portalRoot =
     typeof document !== "undefined"

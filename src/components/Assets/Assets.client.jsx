@@ -27,23 +27,15 @@ const Assets = () => {
   const API_KEY = process.env.NEXT_PUBLIC_API_KEY || "";
   const BACKEND = process.env.NEXT_PUBLIC_BACKEND_URL || "";
 
-  // helper to build headers per request using auth context
   const getHeaders = (opts = {}) => {
     const base = {
       "x-api-key": API_KEY,
       "Content-Type": "application/json",
     };
     const actorId = user?.employeeId ?? user?.id ?? null;
-    // expanded org-id fallbacks
-    const orgId =
-      user?.orgId ||
-      user?.raw?.org_id ||
-      user?.org_id ||
-      user?.organization_id ||
-      null;
+    const orgId = user?.orgId || user?.org_id || null;
     if (actorId) base["x-employee-id"] = String(actorId);
     if (orgId) base["x-org-id"] = String(orgId);
-    // allow overrides (for example to remove Content-Type for form data)
     return { ...base, ...opts };
   };
 
@@ -92,7 +84,6 @@ const Assets = () => {
     message: "",
   });
   const handleSelectSuggestion = (item) => {
-    // item can be object or string; we support both shapes
     if (typeof item === "string") {
       setAssignedTo(item);
     } else {
@@ -104,8 +95,6 @@ const Assets = () => {
   useEffect(() => {
     setAssignedTo("");
     fetchAssets();
-    fetchAssignedAssets();
-    // include user so headers update when auth changes
   }, [user]);
 
   const params = useParams();
@@ -135,7 +124,6 @@ const Assets = () => {
           console.error("Error fetching assignment data:", error)
         );
     }
-    // assetId and user as deps
   }, [assetId, user]);
 
   const defaultLocationSuggestions = [
@@ -177,6 +165,50 @@ const Assets = () => {
     }
   };
 
+  const handleAssignedToInputChange = async (e, index) => {
+    const value = e.target.value;
+    updateAssignment(index, "assignedTo", value);
+    if (!value || value.trim().length === 0) {
+      setPopupSuggestions((prev) => ({
+        ...prev,
+        [index]: defaultLocationSuggestions,
+      }));
+      return;
+    }
+
+    try {
+      const response = await axios.get(
+        `${BACKEND}/api/assets/search-employees?q=${encodeURIComponent(value)}`,
+        { headers: getHeaders() }
+      );
+
+      const suggestions = (response.data.data || []).map((emp) => ({
+        name: emp.name,
+        employeeId: emp.employee_id || emp.employeeId || emp.employeeId,
+      }));
+
+      setPopupSuggestions((prev) => ({
+        ...prev,
+        [index]: [...defaultLocationSuggestions, ...suggestions],
+      }));
+    } catch (err) {
+      console.error("Popup suggestion error:", err);
+      setPopupSuggestions((prev) => ({
+        ...prev,
+        [index]: defaultLocationSuggestions,
+      }));
+    }
+  };
+
+  const handleSuggestionSelect = (emp, index) => {
+    const name = typeof emp === "string" ? emp : emp.name;
+    const empId =
+      typeof emp === "string" ? "" : emp.employeeId || emp.employee_id || "";
+    updateAssignment(index, "assignedTo", name);
+    updateAssignment(index, "employeeId", empId);
+    setPopupSuggestions((prev) => ({ ...prev, [index]: [] }));
+  };
+
   const handleCategoryChange = (category) => {
     setSelectedCategory(category);
     setSelectedSubCategory("");
@@ -190,10 +222,7 @@ const Assets = () => {
     const fetchAssignments = async () => {
       try {
         const [assetsResponse, assignmentsResponse] = await Promise.all([
-          axios.get(`${BACKEND}/assets/list`, {
-            headers: getHeaders(),
-          }),
-          axios.get(`${BACKEND}/api/assignments`, {
+          axios.get(`${BACKEND}/api/assets/list`, {
             headers: getHeaders(),
           }),
         ]);
@@ -208,7 +237,7 @@ const Assets = () => {
 
   const fetchAssets = async () => {
     try {
-      const response = await axios.get(`${BACKEND}/assets/list`, {
+      const response = await axios.get(`${BACKEND}/api/assets/list`, {
         headers: getHeaders(),
       });
       setAssets(response.data || []);
@@ -400,7 +429,7 @@ const Assets = () => {
       const fileName = documentPath.split("/").pop();
 
       const response = await axios.get(
-        `${BACKEND}/assets/download/${encodeURIComponent(fileName)}`,
+        `${BACKEND}/api/assets/download/${encodeURIComponent(fileName)}`,
         {
           headers: getHeaders(),
           responseType: "blob",
@@ -499,11 +528,10 @@ const Assets = () => {
     }
 
     try {
-      // remove Content-Type so browser sets multipart boundary
       const headersForForm = { ...getHeaders() };
       delete headersForForm["Content-Type"];
 
-      const response = await axios.post(`${BACKEND}/assets/add`, formData, {
+      const response = await axios.post(`${BACKEND}/api/assets/add`, formData, {
         headers: headersForForm,
       });
       showAlert("Asset saved successfully!");
@@ -516,29 +544,6 @@ const Assets = () => {
         `Failed to save asset: ${
           error.response?.data?.message || error.message || "Unknown error"
         }`
-      );
-    }
-  };
-
-  useEffect(() => {
-    fetchAssignedAssets();
-  }, [user]);
-
-  const fetchAssignedAssets = async () => {
-    try {
-      const response = await axios.get(`${BACKEND}/api/assets/assigned`, {
-        headers: getHeaders(),
-      });
-
-      if (response.data && response.data.length > 0) {
-        setAssignedAssets(response.data);
-      } else {
-        setAssignedAssets([]);
-      }
-    } catch (error) {
-      console.error(
-        "Error fetching assigned assets:",
-        error.response?.data || error.message
       );
     }
   };
@@ -638,7 +643,7 @@ const Assets = () => {
   const [assetCounts, setAssetCounts] = useState([]);
 
   useEffect(() => {
-    fetch(`${BACKEND}/assets/counts`, {
+    fetch(`${BACKEND}/api/assets/counts`, {
       headers: getHeaders(),
     })
       .then((response) => response.json())
@@ -698,6 +703,7 @@ const Assets = () => {
 
     const newRow = {
       assignedTo: "",
+      employeeId: "",
       startDate: "",
       returnDate: "",
       assigningStatus: "Pending",
@@ -1046,7 +1052,6 @@ const Assets = () => {
                     placeholder="Enter Assignee Name"
                     value={assignedTo?.name || assignedTo || ""}
                     onChange={handleAssignedToChange2}
-                    // onBlur={handleBlur}
                     onBlur={handleBlur2}
                     autoComplete="off"
                   />
@@ -1072,7 +1077,10 @@ const Assets = () => {
                       {employeeSuggestions.map((emp, index) => (
                         <li
                           key={index}
-                          onClick={() => handleSelectSuggestion(emp)}
+                          onMouseDown={(e) => {
+                            e.preventDefault();
+                            handleSelectSuggestion(emp);
+                          }}
                           style={{
                             padding: "8px",
                             cursor: "pointer",
@@ -1124,18 +1132,15 @@ const Assets = () => {
               <tr>
                 <th>Asset_ID</th>
                 <th>Asset Code</th>
-
                 <th>Asset Name</th>
                 <th>Configuration</th>
                 <th>Purchased Date</th>
                 <th>Assigned To</th>
                 <th>Category</th>
-
                 <th>Status</th>
                 <th>Document</th>
               </tr>
             </thead>
-
             <tbody>
               {(filteredAssets.length > 0 ? filteredAssets : sortedAssets)
                 .length > 0 ? (
@@ -1460,7 +1465,10 @@ const Assets = () => {
                           {popupSuggestions[index].map((emp, i) => (
                             <li
                               key={i}
-                              onClick={() => handleSuggestionSelect(emp, index)}
+                              onMouseDown={(e) => {
+                                e.preventDefault();
+                                handleSuggestionSelect(emp, index);
+                              }}
                               style={{
                                 padding: "8px",
                                 cursor: "pointer",
@@ -1533,9 +1541,12 @@ const Assets = () => {
                   <input
                     type="text"
                     name="assetId"
-                    value={formData.assetId}
+                    value={formDataLocal.assetId}
                     onChange={(e) =>
-                      setFormData({ ...formData, assetId: e.target.value })
+                      setFormDataLocal({
+                        ...formDataLocal,
+                        assetId: e.target.value,
+                      })
                     }
                     maxLength={50}
                   />
@@ -1545,8 +1556,13 @@ const Assets = () => {
                   <input
                     type="text"
                     name="employeeName"
-                    value={formData.employeeName}
-                    onChange={handleInputChange}
+                    value={formDataLocal.employeeName}
+                    onChange={(e) =>
+                      setFormDataLocal({
+                        ...formDataLocal,
+                        employeeName: e.target.value,
+                      })
+                    }
                   />
                 </div>
                 <div>
@@ -1554,8 +1570,13 @@ const Assets = () => {
                   <input
                     type="date"
                     name="returnDate"
-                    value={formData.returnDate}
-                    onChange={handleInputChange}
+                    value={formDataLocal.returnDate}
+                    onChange={(e) =>
+                      setFormDataLocal({
+                        ...formDataLocal,
+                        returnDate: e.target.value,
+                      })
+                    }
                     required
                   />
                 </div>

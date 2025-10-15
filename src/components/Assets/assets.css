@@ -1,31 +1,22 @@
-/* .asset-summary-buttons2 {
-  display: flex;
-  gap: 20px;
-  flex-wrap: wrap;
-  justify-content: flex-start; /* Aligns items to the left 
-  margin-top: 30px;
-  padding: 0;         /* Removes internal space 
-  margin-top: 30px;
-  margin-left:60px; 
-} */
 .assets-required-asterisk {
   color: red !important;
   font-weight: lighter;
   margin-left: 2px;
 }
+
 .error-message {
   color: red !important;
   font-size: 12px;
   margin-top: 4px;
   display: block;
 }
+
 .asset-summary-buttons2 {
   display: flex;
-  justify-content: space-between; /* Left group + right button */
+  justify-content: space-between;
   align-items: center;
   flex-wrap: wrap;
   gap: 20px;
-  margin: 30px 60px 0 0px;
   padding: 0;
 }
 .assetsmain-close-btn-addasset {
@@ -79,15 +70,14 @@
   justify-content: flex-end;
   align-items: center;
   margin-top: 5%;
-  padding: 10px 12px;
 }
 .add-assets-btn {
   background-color: #7fbd2c;
   color: white;
-  padding: 10px 12px;
+  padding: 12px 14px;
   border: none;
   cursor: pointer;
-  font-size: 13px;
+  font-size: 16px;
   border-radius: 6px;
   height: 34px;
   display: flex;

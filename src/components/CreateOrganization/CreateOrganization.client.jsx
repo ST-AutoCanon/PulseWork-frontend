@@ -20,9 +20,6 @@ const useDebounce = (value, delay) => {
   return debouncedValue;
 };
 
-// MultiSelectCheckbox now supports both controlled and uncontrolled modes.
-// - Controlled: pass `isOpen` (boolean) and `onToggle` (fn) from parent.
-// - Uncontrolled: omit them and it uses internal state (backwards compatible).
 const MultiSelectCheckbox = ({
   options,
   selectedValues,
@@ -52,13 +49,11 @@ const MultiSelectCheckbox = ({
     }
   };
 
-  // Close when clicking outside
   useEffect(() => {
     const handleClickOutside = (e) => {
       if (!isOpen) return;
       if (ref.current && !ref.current.contains(e.target)) {
         if (isControlled) {
-          // parent provided onToggle - call it to close
           onToggle();
         } else {
           setInternalOpen(false);
@@ -135,6 +130,10 @@ const CreateOrganization = ({ employeeId: propEmployeeId = null }) => {
   const [adminEmail, setAdminEmail] = useState("");
   const [adminFirstName, setAdminFirstName] = useState("");
   const [adminLastName, setAdminLastName] = useState("");
+  const [adminDob, setAdminDob] = useState("");
+  const [adminAadharNo, setAdminAadharNo] = useState("");
+  const [adminPanNo, setAdminPanNo] = useState("");
+  const [adminMobileNo, setAdminMobileNo] = useState("");
   const [contactEmail, setContactEmail] = useState("");
   const [contactPhone, setContactPhone] = useState("");
   const [startDate, setStartDate] = useState("");
@@ -155,12 +154,16 @@ const CreateOrganization = ({ employeeId: propEmployeeId = null }) => {
     message: "",
   });
 
-  // NEW: track which dropdown (by sidebar item id) is currently open
+  // NEW: confirmation modal state for delete
+  const [confirmDelete, setConfirmDelete] = useState({
+    isVisible: false,
+    orgId: null,
+  });
+
   const [openDropdownId, setOpenDropdownId] = useState(null);
-  // NEW: prevent multiple submits
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const roles = ["Admin", "Manager", "Employee", "General"];
+  const roles = ["Admin", "Manager", "Supervisor", "Employee", "General"];
   const debouncedSearchTerm = useDebounce(searchTerm, 300);
 
   const validateEmail = (email) => {
@@ -239,6 +242,10 @@ const CreateOrganization = ({ employeeId: propEmployeeId = null }) => {
             adminEmail: "Admin Email ID",
             adminFirstName: "Admin First Name",
             adminLastName: "Admin Last Name",
+            adminDob: "Admin Date of Birth",
+            adminAadharNo: "Admin Aadhaar No",
+            adminPanNo: "Admin Pan No",
+            adminMobileNo: "Admin Mobile No",
             contactEmail: "Contact Email ID",
             contactPhone: "Contact Phone No",
             startDate: "Start Date",
@@ -333,6 +340,10 @@ const CreateOrganization = ({ employeeId: propEmployeeId = null }) => {
       setAdminEmail("");
       setAdminFirstName("");
       setAdminLastName("");
+      setAdminDob("");
+      setAdminAadharNo("");
+      setAdminPanNo("");
+      setAdminMobileNo("");
       setContactEmail("");
       setContactPhone("");
       setStartDate("");
@@ -342,7 +353,7 @@ const CreateOrganization = ({ employeeId: propEmployeeId = null }) => {
       setMessage("");
       setCurrentOrgId(null);
       setShouldValidate(false);
-      setOpenDropdownId(null); // close any open dropdowns
+      setOpenDropdownId(null);
     }
   }, [showForm, isEditing]);
 
@@ -487,6 +498,12 @@ const CreateOrganization = ({ employeeId: propEmployeeId = null }) => {
     setCompanyAddress(org.company_address || "");
     setCPanNo(org.c_pan_no || "");
     setAdminEmail(org.admin_email || "");
+    setAdminFirstName(org.first_name || "");
+    setAdminLastName(org.last_name || "");
+    setAdminDob(org.dob || "");
+    setAdminAadharNo(org.aadhaar_number || "");
+    setAdminPanNo(org.pan_number || "");
+    setAdminMobileNo(org.phone_number || "");
     setContactEmail(org.contact_email_id || "");
     setContactPhone(org.contact_phone_no || "");
     setStartDate(org.start_date ? org.start_date.split("T")[0] : "");
@@ -498,9 +515,13 @@ const CreateOrganization = ({ employeeId: propEmployeeId = null }) => {
     setShowForm(true);
   };
 
-  const handleDelete = async (orgId) => {
-    if (!window.confirm("Are you sure you want to delete this organization?"))
-      return;
+  const handleDelete = (orgId) => {
+    setConfirmDelete({ isVisible: true, orgId });
+  };
+
+  const performDelete = async () => {
+    const orgId = confirmDelete.orgId;
+    setConfirmDelete({ isVisible: false, orgId: null });
 
     try {
       const response = await fetch(`${BASE_URL}/api/organizations/${orgId}`, {
@@ -581,7 +602,7 @@ const CreateOrganization = ({ employeeId: propEmployeeId = null }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (isSubmitting) return; // prevent double submit
+    if (isSubmitting) return;
     setMessage("");
     setShouldValidate(true);
 
@@ -604,6 +625,10 @@ const CreateOrganization = ({ employeeId: propEmployeeId = null }) => {
       end_date: endDate,
       first_name: adminFirstName,
       last_name: adminLastName,
+      dob: adminDob,
+      aadhaar_number: adminAadharNo,
+      pan_number: adminPanNo,
+      phone_number: adminMobileNo,
     };
 
     const sidebarAccessData = sidebarAccess.flatMap((access) =>
@@ -625,7 +650,13 @@ const CreateOrganization = ({ employeeId: propEmployeeId = null }) => {
         body: JSON.stringify({ orgData, sidebarAccess: sidebarAccessData }),
       });
 
-      const data = await response.json();
+      let data;
+      try {
+        data = await response.json();
+      } catch (err) {
+        data = null;
+      }
+
       if (response.ok) {
         showAlert(
           `Organization ${isEditing ? "updated" : "created"} successfully.`,
@@ -672,11 +703,11 @@ const CreateOrganization = ({ employeeId: propEmployeeId = null }) => {
         setShouldValidate(false);
         setOpenDropdownId(null);
       } else {
-        showAlert(
-          data.error ||
-            `Failed to ${isEditing ? "update" : "create"} organization.`,
-          "Error"
-        );
+        const errorMsg =
+          (data && (data.message || data.error)) ||
+          `Failed to ${isEditing ? "update" : "create"} organization.`;
+        showAlert(errorMsg, "Error");
+        setMessage(`❌ ${errorMsg}`);
       }
     } catch (error) {
       console.error(
@@ -783,10 +814,11 @@ const CreateOrganization = ({ employeeId: propEmployeeId = null }) => {
             <form className="orgprefix-org-form" onSubmit={handleSubmit}>
               {step === 1 && (
                 <div className="orgprefix-form-section">
-                  <h3>Organization Details</h3>
                   <div className="orgprefix-form-row">
                     <div className="orgprefix-form-field">
-                      <label>Organization Name *</label>
+                      <label>
+                        Organization Name<span className="red">*</span>
+                      </label>
                       <input
                         type="text"
                         value={name}
@@ -802,7 +834,9 @@ const CreateOrganization = ({ employeeId: propEmployeeId = null }) => {
                       )}
                     </div>
                     <div className="orgprefix-form-field">
-                      <label>Display Name *</label>
+                      <label>
+                        Display Name<span className="red">*</span>
+                      </label>
                       <input
                         type="text"
                         value={subdomain}
@@ -818,7 +852,9 @@ const CreateOrganization = ({ employeeId: propEmployeeId = null }) => {
                       )}
                     </div>
                     <div className="orgprefix-form-field">
-                      <label>Number of Employees *</label>
+                      <label>
+                        Number of Employees<span className="red">*</span>
+                      </label>
                       <input
                         type="number"
                         value={noEmployees}
@@ -835,7 +871,9 @@ const CreateOrganization = ({ employeeId: propEmployeeId = null }) => {
                     </div>
 
                     <div className="orgprefix-form-field">
-                      <label>Company Address *</label>
+                      <label>
+                        Company Address<span className="red">*</span>
+                      </label>
                       <input
                         type="text"
                         value={companyAddress}
@@ -851,7 +889,9 @@ const CreateOrganization = ({ employeeId: propEmployeeId = null }) => {
                       )}
                     </div>
                     <div className="orgprefix-form-field">
-                      <label>Company PAN No *</label>
+                      <label>
+                        Company PAN No<span className="red">*</span>
+                      </label>
                       <input
                         type="text"
                         value={cPanNo}
@@ -869,58 +909,11 @@ const CreateOrganization = ({ employeeId: propEmployeeId = null }) => {
                         </span>
                       )}
                     </div>
-                    <div className="orgprefix-form-field">
-                      <label>Admin Email ID *</label>
-                      <input
-                        type="email"
-                        value={adminEmail}
-                        onChange={(e) => {
-                          setAdminEmail(e.target.value);
-                          updateFieldError("adminEmail", e.target.value);
-                        }}
-                      />
-                      {errors.adminEmail && (
-                        <span className="orgprefix-error-message">
-                          {errors.adminEmail}
-                        </span>
-                      )}
-                    </div>
 
                     <div className="orgprefix-form-field">
-                      <label>Admin First Name *</label>
-                      <input
-                        type="text"
-                        value={adminFirstName}
-                        onChange={(e) => {
-                          setAdminFirstName(e.target.value);
-                          updateFieldError("adminFirstName", e.target.value);
-                        }}
-                      />
-                      {errors.adminFirstName && (
-                        <span className="orgprefix-error-message">
-                          {errors.adminFirstName}
-                        </span>
-                      )}
-                    </div>
-                    <div className="orgprefix-form-field">
-                      <label>Admin Last Name*</label>
-                      <input
-                        type="text"
-                        value={adminLastName}
-                        onChange={(e) => {
-                          setAdminLastName(e.target.value);
-                          updateFieldError("adminLastName", e.target.value);
-                        }}
-                      />
-                      {errors.adminLastName && (
-                        <span className="orgprefix-error-message">
-                          {errors.adminLastName}
-                        </span>
-                      )}
-                    </div>
-
-                    <div className="orgprefix-form-field">
-                      <label>Contact Email ID *</label>
+                      <label>
+                        Contact Email ID<span className="red">*</span>
+                      </label>
                       <input
                         type="email"
                         value={contactEmail}
@@ -936,7 +929,9 @@ const CreateOrganization = ({ employeeId: propEmployeeId = null }) => {
                       )}
                     </div>
                     <div className="orgprefix-form-field">
-                      <label>Contact Phone No *</label>
+                      <label>
+                        Contact Phone No<span className="red">*</span>
+                      </label>
                       <input
                         type="tel"
                         value={contactPhone}
@@ -952,7 +947,9 @@ const CreateOrganization = ({ employeeId: propEmployeeId = null }) => {
                       )}
                     </div>
                     <div className="orgprefix-form-field orgprefix-date-field">
-                      <label>Start Date *</label>
+                      <label>
+                        Start Date<span className="red">*</span>
+                      </label>
                       <div className="orgprefix-date-input-container">
                         <input
                           type="date"
@@ -971,7 +968,9 @@ const CreateOrganization = ({ employeeId: propEmployeeId = null }) => {
                       )}
                     </div>
                     <div className="orgprefix-form-field orgprefix-date-field">
-                      <label>End Date *</label>
+                      <label>
+                        End Date<span className="red">*</span>
+                      </label>
                       <div className="orgprefix-date-input-container">
                         <input
                           type="date"
@@ -985,6 +984,133 @@ const CreateOrganization = ({ employeeId: propEmployeeId = null }) => {
                       {errors.endDate && (
                         <span className="orgprefix-error-message">
                           {errors.endDate}
+                        </span>
+                      )}
+                    </div>
+                    <div className="orgprefix-form-field">
+                      <label>
+                        Admin Email ID<span className="red">*</span>
+                      </label>
+                      <input
+                        type="email"
+                        value={adminEmail}
+                        onChange={(e) => {
+                          setAdminEmail(e.target.value);
+                          updateFieldError("adminEmail", e.target.value);
+                        }}
+                      />
+                      {errors.adminEmail && (
+                        <span className="orgprefix-error-message">
+                          {errors.adminEmail}
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="orgprefix-form-field">
+                      <label>
+                        Admin First Name<span className="red">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={adminFirstName}
+                        onChange={(e) => {
+                          setAdminFirstName(e.target.value);
+                          updateFieldError("adminFirstName", e.target.value);
+                        }}
+                      />
+                      {errors.adminFirstName && (
+                        <span className="orgprefix-error-message">
+                          {errors.adminFirstName}
+                        </span>
+                      )}
+                    </div>
+                    <div className="orgprefix-form-field">
+                      <label>
+                        Admin Last Name<span className="red">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={adminLastName}
+                        onChange={(e) => {
+                          setAdminLastName(e.target.value);
+                          updateFieldError("adminLastName", e.target.value);
+                        }}
+                      />
+                      {errors.adminLastName && (
+                        <span className="orgprefix-error-message">
+                          {errors.adminLastName}
+                        </span>
+                      )}
+                    </div>
+                    <div className="orgprefix-form-field">
+                      <label>
+                        Admin Date of Birth<span className="red">*</span>
+                      </label>
+                      <input
+                        type="date"
+                        value={adminDob}
+                        onChange={(e) => {
+                          setAdminDob(e.target.value);
+                          updateFieldError("adminDob", e.target.value);
+                        }}
+                      />
+                      {errors.adminDob && (
+                        <span className="orgprefix-error-message">
+                          {errors.adminDob}
+                        </span>
+                      )}
+                    </div>
+                    <div className="orgprefix-form-field">
+                      <label>
+                        Admin Aadhaar No<span className="red">*</span>
+                      </label>
+                      <input
+                        type="number"
+                        value={adminAadharNo}
+                        onChange={(e) => {
+                          setAdminAadharNo(e.target.value);
+                          updateFieldError("adminAadharNo", e.target.value);
+                        }}
+                      />
+                      {errors.adminAadharNo && (
+                        <span className="orgprefix-error-message">
+                          {errors.adminAadharNo}
+                        </span>
+                      )}
+                    </div>
+                    <div className="orgprefix-form-field">
+                      <label>
+                        Admin Pan No<span className="red">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={adminPanNo}
+                        onChange={(e) => {
+                          setAdminPanNo(e.target.value);
+                          updateFieldError("adminPanNo", e.target.value);
+                        }}
+                      />
+                      {errors.adminPanNo && (
+                        <span className="orgprefix-error-message">
+                          {errors.adminPanNo}
+                        </span>
+                      )}
+                    </div>
+                    <div className="orgprefix-form-field">
+                      <label>
+                        Admin Mobile No<span className="red">*</span>
+                      </label>
+                      <input
+                        type="number"
+                        value={adminMobileNo}
+                        onChange={(e) => {
+                          setAdminMobileNo(e.target.value);
+                          updateFieldError("adminMobileNo", e.target.value);
+                        }}
+                      />
+                      {errors.adminMobileNo && (
+                        <span className="orgprefix-error-message">
+                          {errors.adminMobileNo}
                         </span>
                       )}
                     </div>
@@ -1013,7 +1139,10 @@ const CreateOrganization = ({ employeeId: propEmployeeId = null }) => {
                   <div className="orgprefix-right-section">
                     <h3>Sidebar Menu Access</h3>
                     <div className="orgprefix-sidebar-access-group">
-                      <label>Assign Roles to Sidebar Items *</label>
+                      <label>
+                        Assign Roles to Sidebar Items
+                        <span className="red">*</span>
+                      </label>
                       {sidebarItems.length > 0 ? (
                         <div className="orgprefix-sidebar-list">
                           {sidebarItems.map((item) => {
@@ -1038,7 +1167,6 @@ const CreateOrganization = ({ employeeId: propEmployeeId = null }) => {
                                   disabled={alertModal.message.includes(
                                     "Failed to fetch sidebar menu items"
                                   )}
-                                  // Controlled open state so only one dropdown is open at a time
                                   isOpen={openDropdownId === item.id}
                                   onToggle={() =>
                                     setOpenDropdownId((prev) =>
@@ -1117,6 +1245,24 @@ const CreateOrganization = ({ employeeId: propEmployeeId = null }) => {
         </Modal>
       )}
 
+      {/* NEW: confirmation modal uses existing Modal component */}
+      {confirmDelete.isVisible && (
+        <Modal
+          isVisible={confirmDelete.isVisible}
+          onClose={() => setConfirmDelete({ isVisible: false, orgId: null })}
+          buttons={[
+            {
+              label: "Cancel",
+              onClick: () =>
+                setConfirmDelete({ isVisible: false, orgId: null }),
+            },
+            { label: "Delete", onClick: performDelete },
+          ]}
+        >
+          <p>Are you sure you want to delete this organization?</p>
+        </Modal>
+      )}
+
       {showDetailsPopup && popupData && (
         <div
           className="orgprefix-modal-overlay"
@@ -1157,8 +1303,6 @@ const CreateOrganization = ({ employeeId: propEmployeeId = null }) => {
           </div>
         </div>
       )}
-
-      {/* Org list / table (unchanged) */}
 
       {filteredOrgData.length > 0 ? (
         <>

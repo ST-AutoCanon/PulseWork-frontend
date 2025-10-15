@@ -64,7 +64,7 @@
 }
 
 .orgprefix-create-org-container {
-  background-color: #EFEFEF;
+  background-color: #efefef;
   padding: 0; /* Removed padding to allow header to touch top, left, right */
   width: 100%;
   max-width: 1000px;
@@ -85,16 +85,13 @@
   box-sizing: border-box; /* Prevent padding from affecting width */
 }
 .orgprefix-details-container {
-  padding: 30px;
   max-width: 600px;
   max-height: 80vh;
   background-color: #fff;
-  border-radius: 8px;
 }
 .orgprefix-form-header h2 {
   color: white;
   margin: 2px; /* Remove default margin for h2 */
-  
 }
 
 .orgprefix-close-icon {
@@ -125,17 +122,15 @@
 }
 
 .orgprefix-form-section h3 {
-  
   margin-top: -10px; /* Reduced gap for tighter arrangement */
 }
-.orgprefix-right-section h3
-{
-margin-top: -10px; 
+.orgprefix-right-section h3 {
+  margin-top: -10px;
 }
 .orgprefix-form-row {
   display: flex;
   flex-wrap: wrap;
-  gap: 50px; /* Restored gap as per provided CSS */
+  gap: 40px; /* Restored gap as per provided CSS */
   width: 100%; /* Consistent width across all form rows */
 }
 
@@ -157,7 +152,6 @@ margin-top: -10px;
 
 .orgprefix-form-field label {
   margin-bottom: 5px;
-  
 }
 
 .orgprefix-form-field input {
@@ -230,7 +224,6 @@ margin-top: -10px;
   flex-wrap: wrap;
 }
 
-
 .orgprefix-right-section {
   flex: 1;
   min-width: 300px;
@@ -240,6 +233,10 @@ margin-top: -10px;
   padding: 10px;
   background-color: #f9f9f9;
   border-radius: 5px;
+}
+
+.orgprefix-details-content p {
+  margin: 15px 25px;
 }
 
 .orgprefix-review-details p {
@@ -449,7 +446,8 @@ button.orgprefix-delete-btn {
   border-radius: 5px;
   background-color: #fff;
   color: #68a822;
-  transition: background-color 0.3s ease, transform 0.1s ease, box-shadow 0.3s ease;
+  transition: background-color 0.3s ease, transform 0.1s ease,
+    box-shadow 0.3s ease;
 }
 
 /* Hover states for action buttons */
@@ -518,7 +516,6 @@ button.orgprefix-delete-btn:disabled {
   color: #666;
   margin-top: 20px;
 }
-
 
 /* Mobile-specific styles */
 @media (max-width: 768px) {

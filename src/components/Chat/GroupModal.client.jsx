@@ -3,12 +3,20 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { useSocket } from "./SocketContext.client";
+import { useAuth } from "../../context/AuthProvider.client";
 import UserAvatar from "../EmployeeQueries/UserAvatar.client";
 import "./GroupModal.css";
 
-export default function GroupModal({ onCreate, onClose, employeeId, apiKey }) {
+export default function GroupModal({ onCreate, onClose, employeeId }) {
+  const { user } = useAuth();
   const socket = useSocket();
-  const headers = { "x-api-key": apiKey, "x-employee-id": employeeId };
+  const meId = employeeId || user?.employeeId || null;
+  const orgId = user?.orgId || null;
+  const headers = {
+    "x-api-key": process.env.NEXT_PUBLIC_API_KEY,
+    "x-employee-id": meId,
+    "x-org-id": orgId,
+  };
 
   const [employees, setEmployees] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");

@@ -5,7 +5,7 @@ import axios from "axios";
 import UserAvatar from "../EmployeeQueries/UserAvatar.client";
 import Modal from "../Modal/Modal.client";
 import "./MemberListModal.css";
-import { useAuth } from "../../context/AuthProvider.client"; // ✅ useAuth hook
+import { useAuth } from "../../context/AuthProvider.client";
 
 export default function MemberListModal({
   roomId,

@@ -11,7 +11,29 @@ import {
   FaDesktop,
   FaMobileAlt,
 } from "react-icons/fa";
-import { useAuth } from "../../context/AuthProvider.client"; // adjust path if needed
+import { useAuth } from "../../context/AuthProvider.client";
+
+const parseServerTimestampToLocalString = (ts) => {
+  if (!ts) return "NA";
+  const isoLike = String(ts).trim();
+
+  if (/\d{4}-\d{2}-\d{2}T.*(Z|[+\-]\d{2}:\d{2})$/i.test(isoLike)) {
+    return new Date(isoLike).toLocaleString();
+  }
+
+  let normalized = isoLike.replace(" ", "T");
+
+  if (!/[Zz]|[+\-]\d{2}:\d{2}$/.test(normalized)) {
+    normalized = normalized + "Z";
+  }
+
+  const d = new Date(normalized);
+  if (isNaN(d.getTime())) {
+    const fallback = new Date(isoLike);
+    return isNaN(fallback.getTime()) ? "NA" : fallback.toLocaleString();
+  }
+  return d.toLocaleString();
+};
 
 export default function EmpDashCards() {
   const { user } = useAuth();
@@ -29,7 +51,6 @@ export default function EmpDashCards() {
   const [showCamera, setShowCamera] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
 
-  // load initial punch data periodically
   useEffect(() => {
     if (!employeeId) return;
 
@@ -54,9 +75,9 @@ export default function EmpDashCards() {
         if (latestPunch) {
           setPunchData({
             time: latestPunch.punchout_time
-              ? new Date(latestPunch.punchout_time).toLocaleString()
+              ? parseServerTimestampToLocalString(latestPunch.punchout_time)
               : latestPunch.punchin_time
-              ? new Date(latestPunch.punchin_time).toLocaleString()
+              ? parseServerTimestampToLocalString(latestPunch.punchin_time)
               : "NA",
             location:
               latestPunch.punchout_location ||
@@ -72,7 +93,6 @@ export default function EmpDashCards() {
       }
     };
 
-    // initial fetch and periodic refresh
     fetchPunchData();
     intervalId = setInterval(fetchPunchData, 10000);
 
@@ -82,12 +102,10 @@ export default function EmpDashCards() {
     };
   }, [employeeId, API_KEY, BACKEND_URL]);
 
-  // load face-api models once on client
   useEffect(() => {
     let mounted = true;
     const loadModels = async () => {
       try {
-        // models should be placed in the public/models directory
         const MODEL_URL = "/models";
         await Promise.all([
           faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
@@ -174,7 +192,6 @@ export default function EmpDashCards() {
     }
   };
 
-  // verifies face using face-api and descriptors stored on backend
   const verifyFace = async () => {
     setShowCamera(true);
     let stream = null;
@@ -184,10 +201,8 @@ export default function EmpDashCards() {
         videoRef.current.srcObject = stream;
       }
 
-      // give the camera some warm-up time
       await new Promise((r) => setTimeout(r, 1500));
 
-      // try multiple times to detect a face
       let detection = null;
       for (let i = 0; i < 10 && !detection; i++) {
         detection = await faceapi
@@ -202,7 +217,6 @@ export default function EmpDashCards() {
 
       if (!detection) return { success: false, error: "Face not detected" };
 
-      // fetch stored face descriptors for this employee
       const headers = {};
       if (API_KEY) headers["x-api-key"] = API_KEY;
       if (employeeId) headers["x-employee-id"] = employeeId;
@@ -221,7 +235,6 @@ export default function EmpDashCards() {
           try {
             parsed = JSON.parse(desc);
           } catch {
-            // sometimes descriptor may be stringified floats separated by commas
             parsed = desc.split(",").map(Number);
           }
         } else if (Array.isArray(desc)) {
@@ -238,7 +251,6 @@ export default function EmpDashCards() {
           detection.descriptor,
           new Float32Array(parsed)
         );
-        // 0.4 is a commonly used threshold — tune as needed
         if (distance < 0.4) {
           return { success: true };
         }
@@ -252,7 +264,6 @@ export default function EmpDashCards() {
         error: err?.message || "Face verification error",
       };
     } finally {
-      // stop camera
       try {
         if (videoRef.current?.srcObject) {
           const s = videoRef.current.srcObject;
@@ -325,10 +336,7 @@ export default function EmpDashCards() {
       }
 
       setIsPunchedIn(!isPunchedIn);
-      // refresh punch data
-      // small delay to allow backend to persist
       setTimeout(() => {
-        // reuse axios to fetch latest punch
         (async () => {
           try {
             const headers = {};
@@ -344,9 +352,9 @@ export default function EmpDashCards() {
             if (latestPunch) {
               setPunchData({
                 time: latestPunch.punchout_time
-                  ? new Date(latestPunch.punchout_time).toLocaleString()
+                  ? parseServerTimestampToLocalString(latestPunch.punchout_time)
                   : latestPunch.punchin_time
-                  ? new Date(latestPunch.punchin_time).toLocaleString()
+                  ? parseServerTimestampToLocalString(latestPunch.punchin_time)
                   : "NA",
                 location:
                   latestPunch.punchout_location ||

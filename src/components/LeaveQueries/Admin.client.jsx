@@ -1,4 +1,3 @@
-// src/components/LeaveQueries/Admin.client.jsx
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
@@ -42,11 +41,9 @@ const API_BASE = process.env.NEXT_PUBLIC_BACKEND_URL;
 export default function Admin({ openPolicyId = null }) {
   const { user } = useAuth();
 
-  // state
   const [leaveQueries, setLeaveQueries] = useState([]);
   const [policies, setPolicies] = useState([]);
   const [search, setSearch] = useState("");
-  // Use capitalized status values to match DB conventions ("Pending", "Approved", "Rejected")
   const [statusFilter, setStatusFilter] = useState("Pending");
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
@@ -55,7 +52,6 @@ export default function Admin({ openPolicyId = null }) {
   const [showPolicyModal, setShowPolicyModal] = useState(false);
   const [leaveBalances, setLeaveBalances] = useState({});
 
-  // centralized alert modal state
   const [alertModal, setAlertModal] = useState({
     isVisible: false,
     title: "",
@@ -65,7 +61,6 @@ export default function Admin({ openPolicyId = null }) {
   const [policyAlerts, setPolicyAlerts] = useState([]);
   const [showPolicyAlertsModal, setShowPolicyAlertsModal] = useState(false);
 
-  // LOP modal state (keeps handlers and numeric fields)
   const [lopModal, setLopModal] = useState({
     isVisible: false,
     leaveId: null,
@@ -84,7 +79,6 @@ export default function Admin({ openPolicyId = null }) {
   });
 
   const showAlert = (message, title = "") => {
-    // force-close popup immediately (parent state)
     setLopModal((m) => ({ ...m, isVisible: false }));
     setTimeout(() => {
       setAlertModal({ isVisible: true, title, message });
@@ -93,7 +87,6 @@ export default function Admin({ openPolicyId = null }) {
   const closeAlert = () =>
     setAlertModal({ isVisible: false, title: "", message: "" });
 
-  // ---------- POLICY ALERTS HELPERS ----------
   const daysUntil = (dateStr) => {
     if (!dateStr) return Infinity;
     const today = new Date();
@@ -109,7 +102,7 @@ export default function Admin({ openPolicyId = null }) {
     return policyList
       .map((p) => {
         const daysLeft = daysUntil(p.year_end);
-        if (daysLeft < 0) return null; // already ended
+        if (daysLeft < 0) return null;
 
         let severity = null;
         if (daysLeft <= 5) severity = "critical";
@@ -133,7 +126,6 @@ export default function Admin({ openPolicyId = null }) {
       });
   };
 
-  // helper to build headers per-request using useAuth user info
   const buildHeaders = useCallback(() => {
     const h = {
       "x-api-key": process.env.NEXT_PUBLIC_API_KEY || "",
@@ -170,14 +162,12 @@ export default function Admin({ openPolicyId = null }) {
   }, [policies]);
 
   useEffect(() => {
-    // initial load + when filters change or user changes
     console.log(
       "[Admin] Initial/follow-up load: statusFilter, fromDate, toDate, search, user",
       { statusFilter, fromDate, toDate, search, user }
     );
     fetchPolicies();
     fetchLeaveQueries();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [statusFilter, fromDate, toDate, search, user?.employeeId, user?.orgId]);
 
   useEffect(() => {
@@ -189,7 +179,6 @@ export default function Admin({ openPolicyId = null }) {
 
   const fetchLeaveQueries = useCallback(async () => {
     try {
-      // Only include status param if set (prevents sending empty param)
       const paramsObj = {};
       if (search) paramsObj.search = search;
       if (statusFilter) paramsObj.status = statusFilter;
@@ -298,12 +287,8 @@ export default function Admin({ openPolicyId = null }) {
     }
   };
 
-  /**
-   * doUpdate - sends normalized payload and logs request/response for debugging.
-   */
   const doUpdate = async (leaveId, payload = {}, query = null) => {
     try {
-      // Normalize numeric fields
       let compensatedRaw;
       if (payload.hasOwnProperty("compensated_days"))
         compensatedRaw = payload.compensated_days;
@@ -355,10 +340,8 @@ export default function Admin({ openPolicyId = null }) {
       else if (payload.hasOwnProperty("comment")) comments = payload.comment;
       else comments = null;
 
-      // actorId fallback from authenticated user
       const actorId = user?.employeeId || user?.id || null;
 
-      // handle is_defaulted flag (accept both snake and camel and strings)
       const isDefaulted =
         payload.is_defaulted === true ||
         payload.isDefaulted === true ||
@@ -367,27 +350,22 @@ export default function Admin({ openPolicyId = null }) {
           ? true
           : false;
 
-      // Build robust payload with synonyms
       const fullPayload = {
         status,
         comments,
 
-        // compensated synonyms
         compensated_days: compensated,
         compensatedDays: compensated,
         compensated: compensated,
 
-        // deducted synonyms
         deducted_days: deducted,
         deductedDays: deducted,
         deducted: deducted,
 
-        // loss-of-pay synonyms
         loss_of_pay_days: lop,
         lopDays: lop,
         loss_of_pay: lop,
 
-        // preserved synonyms
         preserved_leave_days:
           preserved === undefined || preserved === null ? null : preserved,
         preservedLeaveDays:
@@ -395,7 +373,6 @@ export default function Admin({ openPolicyId = null }) {
         preserved:
           preserved === undefined || preserved === null ? null : preserved,
 
-        // total days fields if caller provided them (pass through if present)
         total_days:
           payload &&
           (payload.total_days ??
@@ -411,12 +388,10 @@ export default function Admin({ openPolicyId = null }) {
 
         actorId,
 
-        // new flag for server to mark defaulted cases (both forms)
         is_defaulted: isDefaulted,
         isDefaulted: isDefaulted,
       };
 
-      // build headers and include x-employee-id header when available
       const headersForReq = { ...buildHeaders() };
       if (actorId) headersForReq["x-employee-id"] = actorId;
 
@@ -429,7 +404,6 @@ export default function Admin({ openPolicyId = null }) {
         body: JSON.stringify(fullPayload),
       });
 
-      // Try parse JSON, fallback to raw text
       let json = null;
       let text = null;
       try {

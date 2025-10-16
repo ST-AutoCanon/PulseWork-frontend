@@ -3,7 +3,7 @@
 import React, { useEffect, useState, useMemo } from "react";
 import axios from "axios";
 import { useSocket } from "./SocketContext.client";
-import { useAuth } from "../../context/AuthProvider.client"; // <-- useAuth
+import { useAuth } from "../../context/AuthProvider.client";
 import UserAvatar from "../EmployeeQueries/UserAvatar.client";
 import GroupModal from "./GroupModal.client";
 import { FaTrash } from "react-icons/fa";
@@ -12,17 +12,23 @@ import Modal from "../Modal/Modal.client";
 
 export default function ChatList({ onSelect }) {
   const socket = useSocket();
-  const { user } = useAuth(); // get authenticated user
+  const { user } = useAuth();
 
   const API_KEY = process.env.NEXT_PUBLIC_API_KEY;
   const BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
 
   const meId = user?.employeeId ?? null;
+  const orgId = user?.orgId ?? user?.org_id ?? null;
 
-  const headers = useMemo(
-    () => ({ "x-api-key": API_KEY, "x-employee-id": meId }),
-    [API_KEY, meId]
-  );
+  const headers = useMemo(() => {
+    const h = {
+      "x-api-key": API_KEY,
+      "x-employee-id": meId,
+      "x-org-id": orgId,
+    };
+    if (user?.orgId) h["x-org-id"] = String(user.orgId);
+    return h;
+  }, [API_KEY, meId, user?.orgId]);
 
   const [rooms, setRooms] = useState([]);
   const [tab, setTab] = useState("private");
@@ -50,9 +56,8 @@ export default function ChatList({ onSelect }) {
       onConfirm: null,
     });
 
-  // Fetch rooms + socket listener
   useEffect(() => {
-    if (!meId) return; // wait until user is loaded
+    if (!meId) return;
     let mounted = true;
 
     axios
@@ -72,17 +77,14 @@ export default function ChatList({ onSelect }) {
       setActiveId(id);
       if (typeof onSelect === "function") onSelect(newRoom);
     };
-
     socket.on("room_created", onRoomCreated);
 
     return () => {
       mounted = false;
       socket.off("room_created", onRoomCreated);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [socket, BASE_URL, headers, onSelect, meId]);
 
-  // Fetch employees for private search
   useEffect(() => {
     if (!meId || tab !== "private") return;
     let mounted = true;
@@ -103,7 +105,6 @@ export default function ChatList({ onSelect }) {
     };
   }, [tab, BASE_URL, headers, meId]);
 
-  // Filtering
   const filteredRooms = rooms.filter((r) =>
     r.is_group ? tab === "group" : tab === "private"
   );
@@ -132,7 +133,6 @@ export default function ChatList({ onSelect }) {
 
   return (
     <div className="chat-list">
-      {/* Tabs */}
       <div className="chat-tabs">
         <button
           className={tab === "private" ? "active" : ""}
@@ -156,7 +156,6 @@ export default function ChatList({ onSelect }) {
         </button>
       </div>
 
-      {/* Private search OR New Group */}
       <div className="new-chat-area">
         {tab === "private" ? (
           <>
@@ -174,11 +173,49 @@ export default function ChatList({ onSelect }) {
                       key={u.employee_id}
                       className="suggestion-item"
                       onClick={() => {
-                        socket.emit("create_room", {
-                          name: "",
-                          isGroup: false,
-                          members: [u.employee_id],
-                        });
+                        if (!socket) {
+                          console.warn("Socket not ready — cannot create room");
+                          return;
+                        }
+                        if (!socket.connected) {
+                          console.warn(
+                            "Socket not connected — cannot create room"
+                          );
+                          return;
+                        }
+
+                        socket.emit(
+                          "create_room",
+                          {
+                            name: "",
+                            isGroup: false,
+                            members: [u.employee_id],
+                          },
+                          (resp) => {
+                            if (resp && resp.success && resp.room) {
+                              const newRoom = resp.room;
+                              setRooms((rs) => {
+                                if (
+                                  rs.some(
+                                    (r) => String(r.id) === String(newRoom.id)
+                                  )
+                                )
+                                  return rs;
+                                return [newRoom, ...rs];
+                              });
+
+                              setActiveId(newRoom.id);
+                              if (typeof onSelect === "function")
+                                onSelect(newRoom);
+                            } else {
+                              console.error(
+                                "Failed to create room:",
+                                resp && resp.error
+                              );
+                            }
+                          }
+                        );
+
                         setSearchTerm("");
                       }}
                     >
@@ -205,7 +242,6 @@ export default function ChatList({ onSelect }) {
         )}
       </div>
 
-      {/* Room list */}
       <div className="rooms-container">
         {filteredRooms.map((r) => (
           <div key={r.id} className="chat-list-item-wrapper">
@@ -213,7 +249,7 @@ export default function ChatList({ onSelect }) {
               className={`chat-list-item ${activeId === r.id ? "active" : ""}`}
               onMouseDown={(e) => e.preventDefault()} // prevent focus scroll
               onClick={(e) => {
-                e.preventDefault(); // prevent default scrolling
+                e.preventDefault();
                 setActiveId(r.id);
                 if (typeof onSelect === "function") onSelect(r);
               }}
@@ -250,7 +286,6 @@ export default function ChatList({ onSelect }) {
         )}
       </div>
 
-      {/* Group Modal */}
       {mode === "group" && (
         <GroupModal
           onCreate={() => setMode(null)}

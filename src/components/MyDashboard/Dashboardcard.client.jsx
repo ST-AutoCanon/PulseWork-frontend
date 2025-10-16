@@ -34,11 +34,7 @@ export default function Dashboardcard() {
     []
   );
 
-  const iconComponentMap = {
-    GiWallet,
-    IoBagSharp,
-    GrMoney,
-  };
+  const iconComponentMap = { GiWallet, IoBagSharp, GrMoney };
 
   const [cards, setCards] = useState(baseCards);
   const [loading, setLoading] = useState(true);
@@ -48,36 +44,7 @@ export default function Dashboardcard() {
   const API_KEY = process.env.NEXT_PUBLIC_API_KEY || "";
 
   const meId = user?.employeeId ?? user?.id ?? null;
-
-  useEffect(() => {
-    if (!user?.dashboard) return;
-
-    const dash = user.dashboard || {};
-    const pre = baseCards.map((c) => {
-      if (c.key === "salary") {
-        const val =
-          Number(
-            dash.total_previous_month_salary ?? dash.previous_month_salary ?? 0
-          ) || 0;
-        return { ...c, value: val };
-      }
-      if (c.key === "reimbursement") {
-        const val =
-          Number(
-            dash.totalApprovedReimbursement ??
-              dash.previous_month_reimbursement ??
-              0
-          ) || 0;
-        return { ...c, value: val };
-      }
-      if (c.key === "credit") {
-        const val = Number(dash.previous_month_credit ?? 0) || 0;
-        return { ...c, value: val };
-      }
-      return c;
-    });
-    setCards(pre);
-  }, [user?.dashboard]);
+  const orgId = user?.orgId ?? user?.org_id ?? null; // ✅ get orgId from user context
 
   useEffect(() => {
     if (!BACKEND) {
@@ -89,6 +56,7 @@ export default function Dashboardcard() {
     const controller = new AbortController();
     const headers = { "x-api-key": API_KEY };
     if (meId) headers["x-employee-id"] = meId;
+    if (orgId) headers["x-org-id"] = orgId; // ✅ add orgId header
 
     let finished = { payroll: false, reimbursement: false };
     const markDone = (k) => {
@@ -99,6 +67,7 @@ export default function Dashboardcard() {
     setLoading(true);
     setError(null);
 
+    // === Fetch previous month's salary ===
     (async () => {
       try {
         const res = await fetch(`${BACKEND}/salary/last-month-total`, {
@@ -112,6 +81,7 @@ export default function Dashboardcard() {
           throw new Error(
             `Payroll fetch failed: ${res.status} ${res.statusText}`
           );
+
         const json = await res.json();
         const total =
           Number(
@@ -136,6 +106,7 @@ export default function Dashboardcard() {
       }
     })();
 
+    // === Fetch previous month's reimbursement ===
     (async () => {
       try {
         const res = await fetch(
@@ -152,6 +123,7 @@ export default function Dashboardcard() {
           throw new Error(
             `Reimbursement fetch failed: ${res.status} ${res.statusText}`
           );
+
         const json = await res.json();
         const totalApproved =
           Number(
@@ -180,7 +152,7 @@ export default function Dashboardcard() {
     })();
 
     return () => controller.abort();
-  }, [BACKEND, API_KEY, meId]);
+  }, [BACKEND, API_KEY, meId, orgId]); // ✅ added orgId dependency
 
   if (loading) return <p>Loading...</p>;
 

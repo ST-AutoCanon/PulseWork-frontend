@@ -27,6 +27,12 @@ const Assets = () => {
   const API_KEY = process.env.NEXT_PUBLIC_API_KEY || "";
   const BACKEND = process.env.NEXT_PUBLIC_BACKEND_URL || "";
 
+  const isReadyForApi = () => {
+    return (
+      !!BACKEND && !!(process.env.NEXT_PUBLIC_API_KEY || API_KEY) && !!user
+    );
+  };
+
   const getHeaders = (opts = {}) => {
     const base = {
       "x-api-key": API_KEY,
@@ -100,6 +106,17 @@ const Assets = () => {
   const params = useParams();
   const assetId = params?.assetId || null;
   const [selectedAssetId, setSelectedAssetId] = useState(null);
+
+  useEffect(() => {
+    if (!isReadyForApi()) return;
+    axios.defaults.headers.common["x-api-key"] = API_KEY;
+    if (user?.employeeId)
+      axios.defaults.headers.common["x-employee-id"] = String(user.employeeId);
+    if (user?.orgId || user?.org_id)
+      axios.defaults.headers.common["x-org-id"] = String(
+        user.orgId || user.org_id
+      );
+  }, [user, API_KEY, BACKEND]);
 
   useEffect(() => {
     if (assetId) {
@@ -219,21 +236,26 @@ const Assets = () => {
   };
 
   useEffect(() => {
-    const fetchAssignments = async () => {
+    if (!isReadyForApi()) return;
+
+    const fetchAssetsAndAssignments = async () => {
       try {
-        const [assetsResponse, assignmentsResponse] = await Promise.all([
-          axios.get(`${BACKEND}/api/assets/list`, {
-            headers: getHeaders(),
-          }),
-        ]);
-        setAssets(assetsResponse.data || []);
-        setAssignedAssets(assignmentsResponse.data || []);
+        const assetsResponse = await axios.get(`${BACKEND}/api/assets/list`, {
+          headers: getHeaders(),
+        });
+
+        const assetsData =
+          assetsResponse.data?.data ?? assetsResponse.data ?? [];
+        setAssets(Array.isArray(assetsData) ? assetsData : []);
+
+        setAssignedAssets((prev) => prev ?? []);
       } catch (error) {
-        console.error("Error fetching data:", error);
+        console.error("Error fetching assets:", error);
       }
     };
-    fetchAssignments();
-  }, [user]);
+
+    fetchAssetsAndAssignments();
+  }, [user, BACKEND]);
 
   const fetchAssets = async () => {
     try {

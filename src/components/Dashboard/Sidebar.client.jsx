@@ -237,6 +237,7 @@ const Sidebar = ({ setActiveContent }) => {
             >
               ✖
             </button>
+            {/* inside the mobile-menu JSX */}
             <ul>
               {menuItems && menuItems.length > 0 ? (
                 menuItems.map((item, index) => {
@@ -246,11 +247,15 @@ const Sidebar = ({ setActiveContent }) => {
                       key={index}
                       className={activeItem === item.path ? "active" : ""}
                       onClick={() => handleMenuClick(item)}
+                      role="button"
+                      tabIndex={0}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") handleMenuClick(item);
+                      }}
                     >
-                      <span className="menu-text">
-                        <IconComponent className="icon" />
-                        {item.label}
-                      </span>
+                      {/* icon above, label below */}
+                      <IconComponent className="icon" />
+                      <span className="label">{item.label}</span>
                     </li>
                   );
                 })

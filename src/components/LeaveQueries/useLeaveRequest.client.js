@@ -26,6 +26,7 @@ const rolesWithTeamView = new Set([
 export default function useLeaveRequest() {
   const { user } = useAuth(); // user object from your AuthProvider
   const employeeId = user?.employeeId;
+  const orgId = user?.orgId || user?.org_id;
   const employeeName = user?.name;
   const roleNormalized = String(user?.role || "")
     .toLowerCase()
@@ -37,6 +38,7 @@ export default function useLeaveRequest() {
     "x-api-key": API_KEY,
     "Content-Type": "application/json",
     "x-employee-id": employeeId,
+    "x-org-id": orgId,
   };
 
   // ----- UI state -----

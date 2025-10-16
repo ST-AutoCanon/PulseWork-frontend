@@ -3,7 +3,7 @@
 import React, { useEffect, useState, useRef } from "react";
 import axios from "axios";
 import { useSocket } from "./SocketContext.client";
-import { useAuth } from "../../context/AuthProvider.client"; // <-- useAuth
+import { useAuth } from "../../context/AuthProvider.client";
 import {
   FaArrowLeft,
   FaPaperclip,
@@ -21,7 +21,6 @@ import Modal from "../Modal/Modal.client";
 import { getDateLabel } from "./DateLabels";
 import "./ChatWindow.css";
 
-// helper: get geolocation + reverse geocode
 async function getLocationAndAddress() {
   return new Promise((resolve) => {
     if (!navigator.geolocation) {
@@ -77,7 +76,7 @@ async function getLocationAndAddress() {
 export default function ChatWindow({ room, onBack }) {
   const { user } = useAuth();
   const meId = user?.employeeId ?? null;
-
+  const orgId = user?.orgId ?? user?.org_id ?? null;
   const socket = useSocket();
   const messagesRef = useRef(null);
 
@@ -107,9 +106,9 @@ export default function ChatWindow({ room, onBack }) {
   const headers = {
     "x-api-key": process.env.NEXT_PUBLIC_API_KEY,
     "x-employee-id": meId,
+    "x-org-id": orgId,
   };
 
-  // warm up geolocation prompt
   useEffect(() => {
     if (typeof navigator !== "undefined" && navigator.permissions) {
       navigator.permissions
@@ -125,7 +124,6 @@ export default function ChatWindow({ room, onBack }) {
     }
   }, []);
 
-  // load message history
   useEffect(() => {
     if (!room || room.isNew) return;
     axios
@@ -154,7 +152,6 @@ export default function ChatWindow({ room, onBack }) {
       .catch(console.error);
   }, [room, meId]);
 
-  // socket listener
   useEffect(() => {
     const handler = (m) => {
       if (m.roomId !== room?.id) return;
@@ -179,7 +176,6 @@ export default function ChatWindow({ room, onBack }) {
     return () => socket.off("new_message", handler);
   }, [socket, room]);
 
-  // auto-scroll
   useEffect(() => {
     if (messagesRef.current) {
       messagesRef.current.scrollTo({
@@ -239,7 +235,6 @@ export default function ChatWindow({ room, onBack }) {
     }
   };
 
-  // group members
   useEffect(() => {
     if (room?.is_group === 1) {
       axios
@@ -254,7 +249,6 @@ export default function ChatWindow({ room, onBack }) {
     }
   }, [room, meId]);
 
-  // group messages by date
   const grouped = React.useMemo(() => {
     if (!room) return [];
     const groups = [];
@@ -273,7 +267,6 @@ export default function ChatWindow({ room, onBack }) {
 
   return (
     <div className="chat-window">
-      {/* Header */}
       <div className="m-header">
         <button
           className="back-btn"
@@ -308,7 +301,6 @@ export default function ChatWindow({ room, onBack }) {
         )}
       </div>
 
-      {/* Messages */}
       <div className="messages" ref={messagesRef}>
         {grouped.map(({ label, messages }) => (
           <React.Fragment key={label}>
@@ -402,7 +394,6 @@ export default function ChatWindow({ room, onBack }) {
         ))}
       </div>
 
-      {/* Input area */}
       <div className="input-area">
         <div className="emoji-picker-container">
           <button
@@ -420,7 +411,7 @@ export default function ChatWindow({ room, onBack }) {
             </div>
           )}
         </div>
-        <FileUpload onUpload={onFileUploaded}>
+        <FileUpload onUpload={onFileUploaded} employeeId={meId} orgId={orgId}>
           {(open) => (
             <button className="icon-btn" onClick={open}>
               <FaPaperclip />
@@ -445,7 +436,6 @@ export default function ChatWindow({ room, onBack }) {
         </button>
       </div>
 
-      {/* Member list modal */}
       {showMembers && (
         <MemberListModal
           roomId={room.id}
@@ -456,7 +446,6 @@ export default function ChatWindow({ room, onBack }) {
         />
       )}
 
-      {/* confirm dialog */}
       <Modal
         isVisible={alertModal.isVisible}
         title={alertModal.title}

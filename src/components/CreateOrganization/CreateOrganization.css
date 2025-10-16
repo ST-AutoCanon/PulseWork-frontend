@@ -465,14 +465,6 @@ button.orgprefix-delete-btn:active {
   transform: scale(0.98);
 }
 
-/* Focus states for accessibility */
-button.orgprefix-view-btn:focus,
-button.orgprefix-edit-btn:focus,
-button.orgprefix-delete-btn:focus {
-  /* outline: 2px solid #ffca28;
-  outline-offset: 2px; */
-}
-
 /* Disabled states */
 button.orgprefix-view-btn:disabled,
 button.orgprefix-edit-btn:disabled,

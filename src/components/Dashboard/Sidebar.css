@@ -11,7 +11,7 @@
 .sidebar ul {
   list-style-type: none;
   padding: 0;
-  margin-top: 15%;
+  margin-top: 5%;
 }
 
 .sidebar li {
@@ -130,30 +130,45 @@
 
 .mobile-menu ul {
   display: grid;
-  margin-left: -4%;
+  margin-left: -8%;
   grid-template-columns: repeat(3, 1fr);
   gap: 15px;
   text-align: center;
   padding: 10px;
 }
 
+/* Mobile menu — stack icon above label */
 .mobile-menu li {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 10px;
+  padding: 6px 0;
   border-radius: 8px;
   transition: background 0.3s;
 }
 
-.mobile-menu li.active {
-  background: rgba(200, 200, 200, 0.364);
+/* slightly larger icon and spacing */
+.mobile-menu li .icon {
+  font-size: 28px; /* increase if you want bigger icons */
+  line-height: 1;
+  display: block;
+  margin: 0; /* reset any previous margin */
 }
 
-.mobile-menu .icon {
-  font-size: 24px;
+/* label under the icon */
+.mobile-menu li .label {
+  font-size: 13px;
+  margin-top: 0;
+  display: block;
+  text-align: center;
   color: black;
+  white-space: nowrap; /* prevent wrapping if you prefer */
+}
+
+/* keep active state style */
+.mobile-menu li.active {
+  background: rgba(200, 200, 200, 0.364);
 }
 
 .mobile-menu .menu-text {

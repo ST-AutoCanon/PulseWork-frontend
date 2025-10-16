@@ -46,7 +46,6 @@ const EmployeeQuery = () => {
 
   const selectedThreadIdRef = useRef(null);
 
-  // Mobile detection
   const [isMobile, setIsMobile] = useState(
     typeof window !== "undefined" ? window.innerWidth <= 768 : false
   );
@@ -54,7 +53,6 @@ const EmployeeQuery = () => {
     if (typeof window === "undefined") return;
     const mq = window.matchMedia("(max-width: 768px)");
     const onChange = (e) => setIsMobile(e.matches);
-    // modern browsers: use addEventListener if available
     if (mq.addEventListener) mq.addEventListener("change", onChange);
     else mq.addListener(onChange);
     return () => {
@@ -63,7 +61,6 @@ const EmployeeQuery = () => {
     };
   }, []);
 
-  // build headers helper including employee & org ids
   const buildHeaders = (extra = {}) => ({
     "x-api-key": API_KEY,
     ...(employeeId ? { "x-employee-id": employeeId } : {}),
@@ -89,19 +86,21 @@ const EmployeeQuery = () => {
   const closeAlert = () =>
     setAlertModal({ isVisible: false, title: "", message: "" });
 
-  // keep ref of currently selected thread id for socket handlers
   useEffect(() => {
     selectedThreadIdRef.current = selectedQuery?.id ?? null;
   }, [selectedQuery]);
 
-  // initialize socket when employeeId is available
   useEffect(() => {
     if (!employeeId) return;
     if (!BACKEND_URL) return;
 
-    const socket = io(BACKEND_URL, {
+    const socket = io(process.env.NEXT_PUBLIC_BACKEND_URL, {
+      path: "/api/socket.io",
+      auth: {
+        apiKey: process.env.NEXT_PUBLIC_API_KEY,
+        userId: employeeId,
+      },
       query: { userId: employeeId },
-      auth: { apiKey: API_KEY, orgId },
     });
 
     socketRef.current = socket;
@@ -118,17 +117,27 @@ const EmployeeQuery = () => {
     socket.on("connect_error", onConnectError);
 
     socket.on("newMessage", (msg) => {
-      if (String(msg.thread_id) === String(selectedThreadIdRef.current)) {
-        setMessages((prev) => [...prev, msg]);
-      }
-      // refresh thread list to update unread counts
+      setMessages((prev) => {
+        const sameMessage = prev.some(
+          (m) =>
+            String(m.id) === String(msg.id) ||
+            (m.thread_id === msg.thread_id &&
+              m.sender_id === msg.sender_id &&
+              m.message === msg.message &&
+              m.attachment_url === msg.attachment_url)
+        );
+        return sameMessage ? prev : [...prev, msg];
+      });
       fetchEmpQueries();
     });
 
     socket.on("messageAck", (msg) => {
-      if (String(msg.thread_id) === String(selectedThreadIdRef.current)) {
-        setMessages((prev) => [...prev, msg]);
-      }
+      setMessages((prev) => {
+        const alreadyExists = prev.some(
+          (m) => String(m.id) === String(msg.id) || m.message === msg.message
+        );
+        return alreadyExists ? prev : [...prev, msg];
+      });
     });
 
     socket.on("error", (err) => console.error("[socket] error:", err));
@@ -144,10 +153,8 @@ const EmployeeQuery = () => {
         socket.disconnect();
       } catch (e) {}
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [BACKEND_URL, API_KEY, employeeId, orgId]);
 
-  // fetch employee's threads
   const fetchEmpQueries = async () => {
     if (!employeeId) return setLoading(false);
     setLoading(true);
@@ -170,16 +177,13 @@ const EmployeeQuery = () => {
 
   useEffect(() => {
     if (employeeId) fetchEmpQueries();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [employeeId, orgId]);
 
-  // join room and load messages when selecting a thread
   useEffect(() => {
     if (!selectedQuery) return;
     if (socketRef.current && socketRef.current.connected) {
       socketRef.current.emit("joinThread", selectedQuery.id);
     }
-    // fetch history
     (async () => {
       try {
         const headers = buildHeaders();
@@ -194,7 +198,6 @@ const EmployeeQuery = () => {
         showAlert("Failed to load messages for the selected thread.");
       }
     })();
-    // mark messages read server-side (best-effort)
     (async () => {
       try {
         const headers = buildHeaders({ "Content-Type": "application/json" });
@@ -203,20 +206,15 @@ const EmployeeQuery = () => {
           { sender_id: employeeId },
           { headers }
         );
-        // update local unread counters optimistically
         setQueries((prev) =>
           prev.map((q) =>
             q.id === selectedQuery.id ? { ...q, unread_message_count: 0 } : q
           )
         );
-      } catch (err) {
-        // ignore mark-read failures
-      }
+      } catch (err) {}
     })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedQuery]);
 
-  // auto-scroll when messages change
   useEffect(() => {
     if (chatContainerRef.current) {
       chatContainerRef.current.scrollTop =
@@ -232,14 +230,12 @@ const EmployeeQuery = () => {
     }
   };
 
-  // Sending message: supports attachments via multipart REST, otherwise socket with REST fallback
   const handleSendMessage = async () => {
     if (!selectedQuery) {
       showAlert("Please select a thread first.");
       return;
     }
 
-    // If attachment present -> REST multipart upload
     if (attachmentFile) {
       const formData = new FormData();
       formData.append("attachment", attachmentFile);
@@ -256,11 +252,9 @@ const EmployeeQuery = () => {
           { headers }
         );
         const newMsg = res.data?.data?.message ?? res.data?.data ?? res.data;
-        setMessages((prev) => [...prev, newMsg]);
         setInputMessage("");
         setAttachmentFile(null);
         setAttachmentName("");
-        // optionally refresh queries
         fetchEmpQueries();
       } catch (err) {
         console.error("attachment send error:", err);
@@ -283,14 +277,10 @@ const EmployeeQuery = () => {
       message: inputMessage,
     };
 
-    // Prefer socket (with ack), fallback to REST
     if (socketRef.current && socketRef.current.connected) {
       socketRef.current.emit("sendQueryMessage", payload, async (resp) => {
-        if (resp && resp.success && resp.message) {
-          setMessages((prev) => [...prev, resp.message]);
-          setInputMessage("");
-        } else {
-          // REST fallback
+        if (resp && resp.success) setInputMessage("");
+        else {
           try {
             const headers = buildHeaders();
             const res = await axios.post(
@@ -300,7 +290,6 @@ const EmployeeQuery = () => {
             );
             const newMsg =
               res.data?.data?.message ?? res.data?.data ?? res.data;
-            setMessages((prev) => [...prev, newMsg]);
             setInputMessage("");
           } catch (err) {
             console.error("REST fallback failed after socket failure:", err);
@@ -309,7 +298,6 @@ const EmployeeQuery = () => {
         }
       });
     } else {
-      // REST fallback when socket not connected
       try {
         const headers = buildHeaders();
         const res = await axios.post(
@@ -318,7 +306,6 @@ const EmployeeQuery = () => {
           { headers }
         );
         const newMsg = res.data?.data?.message ?? res.data?.data ?? res.data;
-        setMessages((prev) => [...prev, newMsg]);
         setInputMessage("");
       } catch (err) {
         console.error("REST send failed:", err);
@@ -327,7 +314,6 @@ const EmployeeQuery = () => {
     }
   };
 
-  // Start a new thread
   const startThread = async () => {
     if (!recipientRole || !subject || !queryText) {
       showAlert("Please fill out all fields.");
@@ -355,9 +341,7 @@ const EmployeeQuery = () => {
       setSubject("");
       setQueryText("");
       await fetchEmpQueries();
-      // if on mobile, open the new thread
       if (isMobile && tid) {
-        // attempt to find it in queries after refresh (best-effort)
         const found = (
           await axios
             .get(`${BACKEND_URL}/threads/${tid}`, { headers: buildHeaders() })
@@ -373,13 +357,11 @@ const EmployeeQuery = () => {
     }
   };
 
-  // Open feedback modal to close thread
   const openFeedbackModal = (tid) => {
     setThreadToClose(tid);
     setShowFeedbackModal(true);
   };
 
-  // Close a thread with feedback
   const closeThread = async () => {
     if (!feedback) {
       showAlert("Please select your feedback.");
@@ -414,7 +396,6 @@ const EmployeeQuery = () => {
     setFeedback("");
   };
 
-  // download attachment
   const downloadAttachment = async (url) => {
     if (!url) return showAlert("No attachment URL provided");
     try {
@@ -446,7 +427,6 @@ const EmployeeQuery = () => {
       });
       const msgs = res.data?.data ?? res.data ?? [];
       setMessages(Array.isArray(msgs) ? msgs : []);
-      // mark read
       await axios.put(
         `${BACKEND_URL}/threads/${q.id}/messages/read`,
         { sender_id: employeeId },
@@ -462,7 +442,6 @@ const EmployeeQuery = () => {
     }
   };
 
-  // Mobile back action: go back to list
   const mobileBackToList = () => {
     setSelectedQuery(null);
     setMessages([]);
@@ -478,8 +457,6 @@ const EmployeeQuery = () => {
       </div>
 
       <div className="emp-query-content">
-        {/* --------- Sidebar / List (desktop: left column; mobile: first screen) --------- */}
-        {/* On mobile: show list full-screen; on selection we hide this list */}
         {(!isMobile || !selectedQuery) && (
           <div className="emp-sidebar">
             <div className="toggle-switch">
@@ -558,7 +535,6 @@ const EmployeeQuery = () => {
           </div>
         )}
 
-        {/* --------- Chat area (desktop always visible; mobile visible only when a thread is selected) --------- */}
         {(!isMobile || selectedQuery) && (
           <div
             className={`emp-chat-container ${isMobile ? "mobile-chat" : ""}`}
@@ -661,7 +637,6 @@ const EmployeeQuery = () => {
 
             {selectedQuery ? (
               <>
-                {/* Mobile back button */}
                 {isMobile && (
                   <div className="mobile-chat-topbar">
                     <button
@@ -690,7 +665,6 @@ const EmployeeQuery = () => {
                       </div>
                     </div>
 
-                    {/* END QUERY button on mobile topbar */}
                     <button
                       className="mobile-end-btn"
                       onClick={() => openFeedbackModal(selectedQuery.id)}

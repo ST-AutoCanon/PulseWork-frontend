@@ -583,11 +583,6 @@
     text-align: left;
   }
 
-  /* Label Adjustments */
-  .leave-status-label {
-    margin-left: 50%;
-  }
-
   /* My Leaves Section */
   .my-leaves {
     width: 100%;
@@ -1321,7 +1316,6 @@
   padding: 12px;
   border: 1px solid #ccc;
   border-radius: 5px;
-  width: 100px;
 }
 
 .team-search-input label {

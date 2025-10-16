@@ -192,29 +192,6 @@ export default function StepProfessional({ data, onChange, departments = [] }) {
 
   return (
     <div className="step-professional">
-      <label>
-        <input
-          type="radio"
-          name="domain"
-          value="ST"
-          checked={data.domain === "ST"}
-          onChange={() => onChange("domain", "ST")}
-          required
-        />
-        ST
-      </label>
-      <label>
-        <input
-          type="radio"
-          name="domain"
-          value="STS"
-          checked={data.domain === "STS"}
-          onChange={() => onChange("domain", "STS")}
-          required
-        />
-        STS
-      </label>
-
       <div className="step-personal">
         <label>
           Employee Type<span className="required">*</span>

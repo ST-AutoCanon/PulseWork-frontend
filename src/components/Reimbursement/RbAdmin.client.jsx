@@ -164,10 +164,11 @@ const RbAdmin = () => {
           if (!match) return null;
           const year = match[1];
           const month = match[2];
-          const fileUrl = `${BACKEND_URL}/reimbursement/${year}/${month}/${claim.employee_id}/${file.filename}`;
+          const fileUrl = `${BACKEND_URL}/reimbursement/${orgId}/${year}/${month}/${claim.employee_id}/${file.filename}`;
           const response = await axios.get(fileUrl, {
             headers: {
               "x-api-key": API_KEY,
+              "x-employee-id": employeeId,
               Authorization: `Bearer ${authToken}`,
             },
             responseType: "blob",
@@ -235,7 +236,6 @@ const RbAdmin = () => {
 
     const updatedStatus = statusUpdates[id];
     const approverComment = comments?.[id] || "";
-    const employeeId = employeeData?.employeeId;
 
     try {
       await axios.put(
@@ -249,6 +249,7 @@ const RbAdmin = () => {
         {
           headers: {
             "x-api-key": API_KEY,
+            "x-org-id": orgId,
           },
         }
       );
@@ -289,6 +290,7 @@ const RbAdmin = () => {
         {
           headers: {
             "x-api-key": API_KEY,
+            "x-org-id": orgId,
           },
         }
       );
@@ -314,6 +316,7 @@ const RbAdmin = () => {
       const response = await axios.get(`${BACKEND_URL}/download/${claim.id}`, {
         headers: {
           "x-api-key": API_KEY,
+          "x-org-id": orgId,
         },
         responseType: "blob",
       });

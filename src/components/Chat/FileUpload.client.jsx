@@ -5,12 +5,13 @@ import axios from "axios";
 import { FaPaperclip } from "react-icons/fa";
 import "./FileUpload.css";
 
-export default function FileUpload({ onUpload, employeeId }) {
+export default function FileUpload({ onUpload, employeeId, orgId }) {
   const inp = useRef();
   const API_KEY = process.env.NEXT_PUBLIC_API_KEY; // Next.js convention
   const headers = {
     "x-api-key": API_KEY,
-    "x-employee-id": employeeId || "", // passed from useAuth or parent
+    "x-employee-id": employeeId || "",
+    "x-org-id": orgId, // passed from useAuth or parent
   };
 
   const pick = () => inp.current.click();

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import axios from "axios";
 import "./vendors.css";
 import { FaEye, FaPencilAlt } from "react-icons/fa";
@@ -115,9 +115,9 @@ const Vendors = () => {
     };
   }, [headers]);
 
-  const showAlert = (message, title = "") => {
+  const showAlert = useCallback((message, title = "") => {
     setAlertModal({ isVisible: true, title, message });
-  };
+  }, []);
 
   const closeAlert = () => {
     setAlertModal({ isVisible: false, title: "", message: "" });
@@ -175,34 +175,26 @@ const Vendors = () => {
     setEmailErrors(["", "", ""]);
   };
 
-  useEffect(() => {
+  const fetchVendors = useCallback(async () => {
     if (!headers) return;
-
-    let cancelled = false;
-
-    const fetchVendors = async () => {
-      try {
-        const response = await axios.get(
-          `${process.env.NEXT_PUBLIC_BACKEND_URL}/vendors/list`,
-          { headers }
-        );
-        if (cancelled) return;
-        if (response.data && response.data.success) {
-          setVendors(response.data.data);
-        }
-      } catch (err) {
-        if (cancelled) return;
-        console.error("Error fetching vendors:", err);
-        showAlert("Failed to fetch vendors");
+    try {
+      const response = await axios.get(
+        `${process.env.NEXT_PUBLIC_BACKEND_URL}/vendors/list`,
+        { headers }
+      );
+      if (response.data && response.data.success) {
+        setVendors(response.data.data);
       }
-    };
+    } catch (err) {
+      console.error("Error fetching vendors:", err);
+      showAlert("Failed to fetch vendors");
+    }
+  }, [headers, showAlert]);
 
+  // call once on mount / when headers change
+  useEffect(() => {
     fetchVendors();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [headers]);
+  }, [fetchVendors]);
 
   const filteredVendors = vendors.filter((vendor) =>
     vendor.company_name.toLowerCase().includes(searchTerm.toLowerCase())
@@ -254,26 +246,85 @@ const Vendors = () => {
     setShowDownloadPopup(true);
   };
 
-  const handleViewDocument = (url) => {
-    if (!url) return;
-    window.open(url, "_blank", "noopener,noreferrer");
+  const handleViewDocument = async (documentPath) => {
+    if (!documentPath) {
+      showAlert("No document available.");
+      return;
+    }
+
+    try {
+      const fileName = documentPath.split(/[/\\]/).pop();
+      const fileUrl = `${
+        process.env.NEXT_PUBLIC_BACKEND_URL
+      }/vendors/download/${encodeURIComponent(fileName)}`;
+
+      const response = await axios.get(fileUrl, {
+        headers,
+        responseType: "blob",
+      });
+
+      const extension = fileName.split(".").pop().toLowerCase();
+      let mimeType = "application/octet-stream";
+
+      if (extension === "pdf") mimeType = "application/pdf";
+      else if (["jpg", "jpeg"].includes(extension)) mimeType = "image/jpeg";
+      else if (extension === "png") mimeType = "image/png";
+
+      const fileBlob = new Blob([response.data], { type: mimeType });
+      const fileURL = window.URL.createObjectURL(fileBlob);
+      window.open(fileURL, "_blank");
+    } catch (error) {
+      console.error(
+        "Error viewing vendor document:",
+        error.response?.data || error.message
+      );
+      showAlert("Failed to open vendor document.");
+    }
   };
 
-  const handleDownloadDocument = (url) => {
-    if (!url) return;
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "";
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
+  const handleDownloadDocument = async (documentPath) => {
+    if (!documentPath) {
+      showAlert("No document available.");
+      return;
+    }
+
+    try {
+      const fileName = documentPath.split(/[/\\]/).pop();
+      const response = await axios.get(
+        `${process.env.NEXT_PUBLIC_BACKEND_URL}/vendors/download/${fileName}`,
+        { headers, responseType: "blob" }
+      );
+
+      const blob = new Blob([response.data]);
+      const url = window.URL.createObjectURL(blob);
+
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error("Error downloading document:", error);
+      showAlert("Failed to download file.");
+    }
   };
 
-  const handleDownloadAll = (filesObj) => {
-    if (!filesObj) return;
-    const fileUrls = Object.values(filesObj).filter(Boolean);
-    if (fileUrls.length === 0) return;
-    fileUrls.forEach((u) => handleDownloadDocument(u));
+  const handleDownloadAll = (vendorFiles) => {
+    const fileKeys = [
+      "gst_certificate",
+      "pan_card",
+      "cancelled_cheque",
+      "msme_certificate",
+      "incorporation_certificate",
+    ];
+
+    fileKeys.forEach((key) => {
+      if (vendorFiles[key]) {
+        handleDownloadDocument(vendorFiles[key]);
+      }
+    });
   };
 
   const handleEdit = (vendor) => {
@@ -394,44 +445,42 @@ const Vendors = () => {
 
     try {
       const base = process.env.NEXT_PUBLIC_BACKEND_URL;
-      if (!base) {
-        showAlert("Backend URL not configured");
-        return;
-      }
-
       if (isEditing && editingVendorId) {
-        const url = `${base}/vendors/update/${editingVendorId}`;
-        const resp = await axios.put(url, formPayload, {
-          headers: {
-            ...(headers || {}),
-            "Content-Type": "multipart/form-data",
-          },
-        });
+        const resp = await axios.put(
+          `${base}/vendors/update/${editingVendorId}`,
+          formPayload,
+          {
+            headers: {
+              ...(headers || {}),
+              "Content-Type": "multipart/form-data",
+            },
+          }
+        );
+
         if (resp.data && resp.data.success) {
-          setVendors((prev) =>
-            prev.map((v) =>
-              v.vendor_id === editingVendorId || v.id === editingVendorId
-                ? resp.data.data || resp.data.vendor || { ...v, ...formData }
-                : v
-            )
-          );
+          // Optionally keep the optimistic update:
+          // setVendors(prev => prev.map(...))
+
+          // Re-fetch remote list so UI matches server
+          await fetchVendors();
+
           showAlert("Vendor updated successfully");
           togglePopup();
         } else {
           showAlert("Failed to update vendor");
         }
       } else {
-        const url = `${base}/vendors/add`;
-        const resp = await axios.post(url, formPayload, {
+        const resp = await axios.post(`${base}/vendors/add`, formPayload, {
           headers: {
             ...(headers || {}),
             "Content-Type": "multipart/form-data",
           },
         });
+
         if (resp.data && resp.data.success) {
-          const newVendor = resp.data.data ||
-            resp.data.vendor || { ...formData };
-          setVendors((prev) => [newVendor, ...prev]);
+          // Re-fetch from server
+          await fetchVendors();
+
           showAlert("Vendor added successfully");
           togglePopup();
         } else {

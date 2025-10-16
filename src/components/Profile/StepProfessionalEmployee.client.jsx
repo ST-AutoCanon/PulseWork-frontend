@@ -187,31 +187,6 @@ export default function StepProfessionalEmployee({
 
   return (
     <div className="step-professional">
-      <label>
-        <input
-          type="radio"
-          name="domain"
-          value="ST"
-          checked={data.domain === "ST"}
-          onChange={() => !isReadOnly("domain") && onChange("domain", "ST")}
-          required
-          disabled={isReadOnly("domain")}
-        />
-        ST
-      </label>
-      <label>
-        <input
-          type="radio"
-          name="domain"
-          value="STS"
-          checked={data.domain === "STS"}
-          onChange={() => !isReadOnly("domain") && onChange("domain", "STS")}
-          required
-          disabled={isReadOnly("domain")}
-        />
-        STS
-      </label>
-
       <div className="step-personal">
         <label>
           Employee Type<span className="required">*</span>

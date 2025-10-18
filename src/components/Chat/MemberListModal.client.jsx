@@ -15,7 +15,7 @@ export default function MemberListModal({
   apiKey,
   employeeId,
 }) {
-  const { user } = useAuth(); // ✅ contains employeeId & orgId
+  const { user } = useAuth();
   const [allEmployees, setAllEmployees] = useState([]);
   const [query, setQuery] = useState("");
   const [adding, setAdding] = useState(null);
@@ -27,7 +27,7 @@ export default function MemberListModal({
   });
   const [creatorId, setCreatorId] = useState(null);
 
-  const meId = employeeId || user?.employeeId || null; // ✅ prefer prop, then user
+  const meId = employeeId || user?.employeeId || null;
   const orgId = user?.orgId || null;
 
   const API_KEY = apiKey || process.env.NEXT_PUBLIC_API_KEY;
@@ -37,12 +37,11 @@ export default function MemberListModal({
     () => ({
       "x-api-key": API_KEY ?? "",
       "x-employee-id": meId ?? "",
-      "x-org-id": orgId ?? "", // ✅ added orgId for all requests
+      "x-org-id": orgId ?? "",
     }),
     [API_KEY, meId, orgId]
   );
 
-  // helper to open confirm modal
   const showAlert = ({ title = "", message = "", onConfirm = null }) => {
     setAlertModal({ isVisible: true, title, message, onConfirm });
   };
@@ -54,7 +53,6 @@ export default function MemberListModal({
       onConfirm: null,
     });
 
-  // load members + detect creator
   useEffect(() => {
     if (!roomId) return;
     let mounted = true;
@@ -74,7 +72,6 @@ export default function MemberListModal({
     };
   }, [roomId, BASE_URL, JSON.stringify(headers), setMembers]);
 
-  // load all employees for suggestions
   useEffect(() => {
     let mounted = true;
     axios
@@ -92,7 +89,6 @@ export default function MemberListModal({
     };
   }, [BASE_URL, JSON.stringify(headers)]);
 
-  // filter suggestions (not already in the group)
   const suggestions = allEmployees
     .filter(
       (u) =>
@@ -101,7 +97,6 @@ export default function MemberListModal({
     )
     .filter((u) => !members.some((m) => m.employee_id === u.employee_id));
 
-  // add a member
   const addMember = async (empId) => {
     setAdding(empId);
     try {
@@ -122,7 +117,6 @@ export default function MemberListModal({
     }
   };
 
-  // remove member with confirm modal
   const confirmRemove = (empId) => {
     showAlert({
       message: "This will remove them from the group. Continue?",
@@ -226,7 +220,6 @@ export default function MemberListModal({
         </div>
       </div>
 
-      {/* Confirm remove modal */}
       <Modal
         isVisible={alertModal.isVisible}
         title={alertModal.title}

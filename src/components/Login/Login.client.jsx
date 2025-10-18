@@ -72,15 +72,14 @@ export default function Login({ onClose }) {
     e.preventDefault();
     setErrorMessage("");
 
-    // prevent double submission
-    if (isSubmitting) return; // <<< guard
+    if (isSubmitting) return;
 
     if (!username || !password) {
       setErrorMessage("Username and password are required.");
       return;
     }
 
-    setIsSubmitting(true); // <<< start submit state
+    setIsSubmitting(true);
     try {
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_BACKEND_URL}/login`,
@@ -135,7 +134,7 @@ export default function Login({ onClose }) {
       console.error("login error", err);
       setErrorMessage("An unexpected error occurred.");
     } finally {
-      setIsSubmitting(false); // <<< always re-enable
+      setIsSubmitting(false);
     }
   };
 
@@ -236,7 +235,7 @@ export default function Login({ onClose }) {
         </div>
 
         <div className="footer-text">
-          © 2022 Sukalpa Tech. All Rights Reserved.
+          © 2025 Sukalpa Tech. All Rights Reserved.
         </div>
 
         {alertModal.isVisible && (

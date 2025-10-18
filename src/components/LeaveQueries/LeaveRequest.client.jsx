@@ -127,10 +127,12 @@ export default function LeaveRequest() {
 
       <TeamTable
         leaveRequests={hook.leaveRequests}
-        statusUpdates={{}}
-        handleStatusChange={() => {}}
-        onUpdate={() => {}}
+        statusUpdates={hook.statusUpdates}
+        handleStatusChange={hook.handleStatusChange}
+        onUpdate={hook.handleUpdate}
         canViewTeam={hook.canViewTeam}
+        policies={hook.policies}
+        activePolicy={hook.activePolicy}
       />
 
       <SelfTable

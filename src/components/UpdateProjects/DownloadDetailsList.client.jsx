@@ -43,7 +43,12 @@ const DownloadDetailsList = () => {
           "Content-Type": "application/json",
           "x-api-key": API_KEY || "",
         };
-        // include x-employee-id only when available
+        const orgId =
+          user?.orgId ||
+          user?.raw?.org_id ||
+          user?.org_id ||
+          user?.organization_id;
+        if (orgId) headers["x-org-id"] = orgId;
         const meId = user?.employeeId ?? user?.id ?? null;
         if (meId) headers["x-employee-id"] = String(meId);
 
@@ -53,7 +58,6 @@ const DownloadDetailsList = () => {
         if (!resp.ok) throw new Error(`Error ${resp.status}`);
         const json = await resp.json();
 
-        // accept both `{ downloadDetails: [...] }` and `[...]`
         const downloadDetails =
           json?.downloadDetails ?? json?.message ?? json ?? [];
 
@@ -71,7 +75,6 @@ const DownloadDetailsList = () => {
     return () => {
       mounted = false;
     };
-    // refetch when user becomes available (auth hydration)
   }, [user, BACKEND_URL, API_KEY]);
 
   const toggleRow = (id) =>

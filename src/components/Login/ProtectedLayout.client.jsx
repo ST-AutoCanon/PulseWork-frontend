@@ -5,7 +5,7 @@ import { useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "../../context/AuthProvider.client";
 
-const IDLE_TIMEOUT = 15 * 60 * 1000;
+const IDLE_TIMEOUT = 5 * 60 * 1000;
 const CHECK_INTERVAL = 60 * 1000;
 
 export default function ProtectedLayout({ children }) {

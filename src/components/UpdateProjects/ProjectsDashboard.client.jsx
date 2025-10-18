@@ -11,7 +11,7 @@ import { FiDownload, FiEye } from "react-icons/fi";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
 import DownloadDetailsList from "./DownloadDetailsList.client";
-import { useAuth } from "../../context/AuthProvider.client"; // adjust path if needed
+import { useAuth } from "../../context/AuthProvider.client";
 
 const formatDate = (dateString) => {
   if (!dateString) return "N/A";
@@ -91,7 +91,6 @@ const ProjectCard = ({ projectData, onUpdate, onViewInvoices, userRole }) => {
 };
 
 const ProjectsDashboard = () => {
-  // "projects" or "invoices" controls the view.
   const [currentScreen, setCurrentScreen] = useState("projects");
   const [showForm, setShowForm] = useState(false);
   const [showDownloadForm, setShowDownloadForm] = useState(false);
@@ -108,7 +107,6 @@ const ProjectsDashboard = () => {
   const userRole = user?.role ?? "Employee";
   const employeeId = user?.employeeId ?? user?.id ?? null;
 
-  // ---------- buildHeaders helper (includes x-org-id if available) ----------
   const buildHeaders = () => {
     const headers = {
       "Content-Type": "application/json",
@@ -116,7 +114,6 @@ const ProjectsDashboard = () => {
     };
     if (employeeId) headers["x-employee-id"] = employeeId;
 
-    // derive org id from same places used elsewhere
     const orgId =
       user?.orgId || user?.raw?.org_id || user?.org_id || user?.organization_id;
     if (orgId) headers["x-org-id"] = orgId;
@@ -147,7 +144,6 @@ const ProjectsDashboard = () => {
 
   useEffect(() => {
     fetchProjects();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userRole, employeeId]);
 
   const handleProjectAdded = () => {
@@ -162,8 +158,7 @@ const ProjectsDashboard = () => {
   );
 
   useEffect(() => {
-    fetchInvoiceSequence(); // Fetch invoice sequence whenever selectedInvoiceType changes
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    fetchInvoiceSequence();
   }, [selectedInvoiceType]);
 
   const fetchInvoiceSequence = async () => {
@@ -226,7 +221,6 @@ const ProjectsDashboard = () => {
       const filename = `${invoiceNumberDirect}.pdf`;
       pdf.save(filename);
 
-      // 1) record the download in our DB:
       await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/download-details`, {
         method: "POST",
         headers: buildHeaders(),

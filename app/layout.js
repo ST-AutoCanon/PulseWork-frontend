@@ -1,5 +1,6 @@
 import "./globals.css";
 import { AuthProvider } from "../src/context/AuthProvider.client";
+import AuthLoadingOverlay from "../src/components/AuthLoadingOverlay/AuthLoadingOverlay.client";
 
 export const metadata = {
   title: "PulseWork",
@@ -13,6 +14,7 @@ export default function RootLayout({ children }) {
       <body>
         <AuthProvider>
           <div id="portal-root" />
+          <AuthLoadingOverlay />
           {children}
         </AuthProvider>
       </body>

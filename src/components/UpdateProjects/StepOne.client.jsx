@@ -234,7 +234,7 @@ const StepOne = ({
           >
             <option value=" ">Select Mode</option>
             <option value="Online">Online</option>
-            <option value="Working at STS">Working at STS</option>
+            <option value="Working from Office">Working from Office</option>
             <option value="Hybrid">Hybrid</option>
             <option value="Working at client location">
               Working at client location

@@ -165,21 +165,21 @@
 }
 
 .invoice-page {
-  position: relative; /* Ensure positioning context */
+  position: relative;
   z-index: 1000;
 }
 
 .in-back-btn {
   font-size: 38px;
-  color: #00468c; /* or #333 depending on theme */
+  color: #00468c;
   cursor: pointer;
+  margin: 2% 0 0;
 }
 
 .in-back-btn:hover {
-  color: #002b5c; /* Darker on hover */
+  color: #002b5c;
 }
 
-/* Invoice Table Styling */
 .invoice-table {
   width: 100%;
   border-collapse: collapse;
@@ -188,14 +188,12 @@
   text-align: left;
 }
 
-/* Header Styling */
 .invoice-table thead tr {
   background-color: #f2f2f2;
   color: #000;
   font-weight: bold;
 }
 
-/* Cell Padding and Borders */
 .invoice-table th,
 .invoice-table td {
   padding: 0.5%;
@@ -241,7 +239,6 @@
   overflow: hidden;
 }
 
-/* Container for the line items wrapper */
 .line-items-wrapper {
   padding: 2%;
   border: 1px solid #ddd;
@@ -255,7 +252,6 @@
   padding: 1% 0;
 }
 
-/* Each row for a line item */
 .line-item-row {
   display: flex;
   align-items: center;
@@ -264,13 +260,11 @@
   padding-bottom: 10px;
 }
 
-/* For each field in a row */
 .line-item-row > div {
   display: flex;
   flex-direction: column;
 }
 
-/* Serial number field styling */
 .serial-number-field {
   min-width: 40px;
   text-align: center;
@@ -285,7 +279,6 @@
   border: none;
 }
 
-/* Container for the inline add button */
 .add-button-cell {
   display: flex;
   align-items: center;
@@ -293,7 +286,6 @@
   margin-right: 2%;
 }
 
-/* Style for the inline + button */
 .add-line-item-btn {
   background-color: #79c42b;
   color: #fff;
@@ -316,7 +308,6 @@
   margin: 0;
 }
 
-/* Terms & Conditions block */
 .terms-conditions {
   flex: 1;
   border: 1px solid #ddd;
@@ -340,7 +331,6 @@
   font-size: medium;
 }
 
-/* Totals block */
 .totals {
   flex: 1;
   border: 1px solid #ddd;
@@ -353,7 +343,6 @@
   margin-bottom: 0.5rem;
 }
 
-/* Align the label/input pairs in totals */
 .totals .in-input-group {
   display: flex;
   flex-wrap: wrap;
@@ -486,21 +475,19 @@
   color: #fff;
 }
 
-/* Modal overlay styles */
 .tds-modal-overlay {
   position: fixed;
   top: 0;
   left: 0;
   width: 100%;
   height: 100%;
-  background-color: rgba(0, 0, 0, 0.5); /* Semi-transparent black background */
+  background-color: rgba(0, 0, 0, 0.5);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 1000;
 }
 
-/* Modal content styles */
 .tds-modal-content {
   background-color: #fff;
   padding: 20px;
@@ -510,7 +497,6 @@
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
 }
 
-/* Header styling */
 .tds-modal-content h3 {
   margin-top: 0;
   font-size: 1.4rem;
@@ -518,7 +504,6 @@
   text-align: center;
 }
 
-/* Paragraph and label styling */
 .tds-modal-content p,
 .tds-modal-content label {
   color: #555;
@@ -526,7 +511,6 @@
   text-align: center;
 }
 
-/* Form inputs styling */
 .tds-modal-content input[type="checkbox"] {
   margin-right: 5px;
 }
@@ -542,7 +526,6 @@
   box-sizing: border-box;
 }
 
-/* Button styling */
 .tds-save {
   padding: 10px 15px;
   margin: 5px 5px 5px 80px;
@@ -559,7 +542,6 @@
   background-color: #76c523;
 }
 
-/* Optional: Cancel button with different style */
 .tds-cancel {
   padding: 10px 15px;
   margin: 5px 5px 5px 80px;

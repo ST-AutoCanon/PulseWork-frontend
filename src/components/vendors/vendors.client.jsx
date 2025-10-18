@@ -253,10 +253,16 @@ const Vendors = () => {
     }
 
     try {
+      const orgId =
+        user.orgId ||
+        user.org_id ||
+        (user.org && user.org.id) ||
+        (user.organization && user.organization.id) ||
+        null;
       const fileName = documentPath.split(/[/\\]/).pop();
       const fileUrl = `${
         process.env.NEXT_PUBLIC_BACKEND_URL
-      }/vendors/download/${encodeURIComponent(fileName)}`;
+      }/vendors/download/${orgId}/${encodeURIComponent(fileName)}`;
 
       const response = await axios.get(fileUrl, {
         headers,
@@ -289,9 +295,15 @@ const Vendors = () => {
     }
 
     try {
+      const orgId =
+        user.orgId ||
+        user.org_id ||
+        (user.org && user.org.id) ||
+        (user.organization && user.organization.id) ||
+        null;
       const fileName = documentPath.split(/[/\\]/).pop();
       const response = await axios.get(
-        `${process.env.NEXT_PUBLIC_BACKEND_URL}/vendors/download/${fileName}`,
+        `${process.env.NEXT_PUBLIC_BACKEND_URL}/vendors/download/${orgId}/${fileName}`,
         { headers, responseType: "blob" }
       );
 

@@ -45,6 +45,8 @@ const Assets = () => {
     return { ...base, ...opts };
   };
 
+  const orgId = user?.orgId || user?.org_id || null;
+
   const [showPopup, setShowPopup] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState("");
   const [selectedSubCategory, setSelectedSubCategory] = useState("");
@@ -144,9 +146,7 @@ const Assets = () => {
   }, [assetId, user]);
 
   const defaultLocationSuggestions = [
-    { name: "sts-belagavi", employeeId: "sts-belagavi" },
-    { name: "sts-dharwad", employeeId: "sts-dharwad" },
-    { name: "sts-chennai", employeeId: "sts-chennai" },
+    { name: "Company", employeeId: "Office Property" },
   ];
   const handleBlurAssignPopup = (index) => {
     setTimeout(() => {
@@ -296,7 +296,7 @@ const Assets = () => {
   };
   const viewDocument = async (path) => {
     try {
-      const response = await axios.get(`${BACKEND}/uploads/${path}`, {
+      const response = await axios.get(`${BACKEND}/uploads/${orgId}/${path}`, {
         headers: getHeaders(),
         responseType: "blob",
       });
@@ -483,7 +483,7 @@ const Assets = () => {
     try {
       const fileUrl = `${BACKEND}/${documentPath.replace(
         /^\/?uploads\//,
-        "uploads/"
+        `uploads/${orgId}/`
       )}`;
 
       const response = await axios.get(fileUrl, {

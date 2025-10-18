@@ -109,6 +109,208 @@ export default function useLeaveRequest() {
   const closeConfirm = () =>
     setConfirmModal({ isVisible: false, message: "", onConfirm: null });
 
+  // ----- status updates (for team approvals) -----
+  const [statusUpdates, setStatusUpdates] = useState({});
+
+  /**
+   * handleStatusChange: update local statusUpdates state immediately.
+   * Called by TeamTable when user changes dropdown or comments.
+   */
+  const handleStatusChange = (leaveId, field, value) => {
+    setStatusUpdates((prev) => ({
+      ...prev,
+      [leaveId]: { ...(prev[leaveId] || {}), [field]: value },
+    }));
+  };
+
+  /**
+   * handleUpdate: call backend to commit status change for a leave request.
+   * - leaveId: id of leave request
+   * - payload: optional, object of { status, comments } (fall back to statusUpdates[leaveId])
+   *
+   * NOTE: replace the endpoint URL below if your API differs.
+   */
+  // Replace existing handleUpdate with this implementation
+  const handleUpdate = async (leaveId, payload = null) => {
+    // prefer explicit payload param, otherwise the local statusUpdates entry
+    const update = payload || statusUpdates[leaveId] || {};
+    // pull basic fields
+    const status = update.status || "";
+    const comments = update.comments || "";
+
+    if (!leaveId) return;
+    if (!status) {
+      showAlert("Please select a status before updating.");
+      return;
+    }
+    if (String(status).toLowerCase() === "rejected" && !comments) {
+      showAlert("Please enter comments when rejecting a request.");
+      return;
+    }
+
+    // optimistic UI update: mark request as updated locally so table responds immediately
+    setLeaveRequests((prev) => {
+      const nextTeam = (prev.team || []).map((r) =>
+        String(r.leave_id || r.id) === String(leaveId)
+          ? { ...r, status, comments: comments || r.comments }
+          : r
+      );
+      return { ...prev, team: nextTeam };
+    });
+
+    // clear the local status update (we'll re-fetch or handle result below)
+    setStatusUpdates((prev) => {
+      const clone = { ...prev };
+      delete clone[leaveId];
+      return clone;
+    });
+
+    // ----- normalize any split fields that might be in payload -----
+    const normalizeBoolean = (v) => {
+      if (v === true || v === false) return v;
+      if (typeof v === "string") {
+        const t = v.trim().toLowerCase();
+        if (["true", "1", "yes", "on"].includes(t)) return true;
+        if (["false", "0", "no", "off"].includes(t)) return false;
+        return false;
+      }
+      if (typeof v === "number") return v !== 0;
+      return false;
+    };
+
+    const pickNumber = (...vals) => {
+      for (const v of vals) {
+        if (v === null || v === undefined) continue;
+        const n = Number(v);
+        if (!isNaN(n)) return n;
+      }
+      return 0;
+    };
+
+    // collect split fields from many possible keys (frontend might use snake/camel)
+    const compensated =
+      pickNumber(
+        update.compensated_days,
+        update.compensatedDays,
+        update.compensated,
+        0
+      ) || 0;
+    const deducted =
+      pickNumber(
+        update.deducted_days,
+        update.deductedDays,
+        update.deducted,
+        0
+      ) || 0;
+    const lop =
+      pickNumber(
+        update.loss_of_pay_days,
+        update.lopDays,
+        update.loss_of_pay,
+        0
+      ) || 0;
+    // preserved may be intentionally null
+    const preservedRaw =
+      update.preserved_leave_days ??
+      update.preservedLeaveDays ??
+      update.preserved ??
+      null;
+    const preserved =
+      preservedRaw === null || preservedRaw === undefined
+        ? null
+        : Number(preservedRaw);
+
+    // total_days: prefer explicit payload, otherwise compute from local leaveRequests entry
+    let totalDays = pickNumber(
+      update.total_days,
+      update.totalDays,
+      update.totalDaysRequested
+    );
+
+    if (!totalDays) {
+      // try to compute from cached leaveRequests (fall back)
+      const row =
+        (leaveRequests.team || []).find(
+          (r) => String(r.leave_id || r.id) === String(leaveId)
+        ) || null;
+      if (row) {
+        try {
+          // use your util calculateDays (imported)
+          totalDays = calculateDays(row.start_date, row.end_date, row.H_F_day);
+        } catch {
+          totalDays = 0;
+        }
+      }
+    }
+
+    // is_defaulted boolean (accept both keys)
+    const isDefaultedFlag = normalizeBoolean(
+      update.is_defaulted ?? update.isDefaulted ?? false
+    );
+
+    // Build final body to send to server (include both snake_case & camelCase where helpful)
+    const body = {
+      status,
+      comments,
+      compensated_days: Number(compensated),
+      compensatedDays: Number(compensated),
+      compensated: Number(compensated),
+
+      deducted_days: Number(deducted),
+      deductedDays: Number(deducted),
+      deducted: Number(deducted),
+
+      loss_of_pay_days: Number(lop),
+      lopDays: Number(lop),
+      loss_of_pay: Number(lop),
+
+      preserved_leave_days: preserved === null ? null : Number(preserved),
+      preservedLeaveDays: preserved === null ? null : Number(preserved),
+      preserved: preserved === null ? null : Number(preserved),
+
+      total_days: Number(totalDays),
+      totalDays: Number(totalDays),
+
+      // send boolean flag (backend accepts it)
+      is_defaulted: Boolean(isDefaultedFlag),
+      isDefaulted: Boolean(isDefaultedFlag),
+
+      // actor / approver id: set caller approverId (backend expects actorId optionally)
+      actorId: employeeId,
+      approverId: employeeId,
+    };
+
+    try {
+      const url = `${BACKEND}/admin/leave/${leaveId}`;
+      const res = await fetch(url, {
+        method: "PUT",
+        headers,
+        body: JSON.stringify(body),
+      });
+
+      if (!res.ok) {
+        // backend failed — show message and rollback by refetching list
+        let json = null;
+        try {
+          json = await res.json();
+        } catch (e) {}
+        showAlert(json?.message || "Failed to update leave status.");
+        await fetchLeaveRequests();
+        return;
+      }
+
+      // success — refresh list & balances
+      showAlert("Leave status updated.");
+      await fetchLeaveRequests();
+      await fetchLeaveBalance();
+    } catch (err) {
+      console.error("handleUpdate error:", err);
+      showAlert("Failed to update leave (network error).");
+      // rollback by re-fetching
+      await fetchLeaveRequests();
+    }
+  };
+
   // ----- Fetchers -----
   const fetchLeaveBalance = async () => {
     if (!employeeId) return;
@@ -495,6 +697,9 @@ export default function useLeaveRequest() {
     monthlyLop,
     lopMonth,
     lopYear,
+    statusUpdates,
+    handleStatusChange,
+    handleUpdate,
 
     // mappings
     defaultLeaveSettings,

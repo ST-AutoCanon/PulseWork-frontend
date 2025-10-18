@@ -58,9 +58,7 @@ const Reimbursement = () => {
   const [updateErrorMessage, setUpdateErrorMessage] = useState("");
   const [submitErrorMessage, setSubmitErrorMessage] = useState("");
   const [projects, setProjects] = useState([]);
-  const [statusFilter, setStatusFilter] = useState(
-    role === "Admin" ? "approved" : "pending"
-  );
+  const [statusFilter, setStatusFilter] = useState("pending");
   const [selectedSubType, setSelectedSubType] = useState("");
 
   const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL;

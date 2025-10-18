@@ -1,9 +1,25 @@
+/* overlay + centering */
+.modal {
+  position: fixed;
+  inset: 0; /* top:0; right:0; bottom:0; left:0; */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.35);
+  z-index: 9999;
+  padding: 16px;
+}
+
 /* container */
 .modal-content {
-  width: 400px;
+  width: 100%;
+  max-width: 480px;
   background: #fff;
-  border-radius: 8px;
+  border-radius: 10px;
   padding: 20px;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.15);
+  max-height: 90vh;
+  overflow-y: auto;
 }
 
 /* chips */
@@ -43,16 +59,17 @@
 /* inputs */
 .group-name-input,
 .msg-search {
-  width: 95%;
+  width: 100%;
   padding: 8px;
   margin-bottom: 8px;
   border: 1px solid #ccc;
   border-radius: 4px;
+  box-sizing: border-box;
 }
 
 /* suggestions */
 .suggestions-list {
-  max-height: 180px;
+  max-height: 220px;
   overflow-y: auto;
   border: 1px solid #ddd;
   background: #fff;
@@ -62,8 +79,9 @@
 .suggestion-item {
   display: flex;
   align-items: center;
-  padding: 6px 10px;
+  padding: 8px 10px;
   cursor: pointer;
+  gap: 8px;
 }
 .suggestion-item.selected {
   background: #0078d4;
@@ -92,11 +110,11 @@
   gap: 8px;
 }
 .create-btn {
-  padding: 6px 12px;
+  padding: 8px 14px;
   background: #0078d4;
   color: #fff;
   border: none;
-  border-radius: 4px;
+  border-radius: 6px;
   cursor: pointer;
 }
 .create-btn:disabled {
@@ -104,10 +122,16 @@
   cursor: not-allowed;
 }
 .cancel-btn {
-  padding: 6px 12px;
+  padding: 8px 12px;
   background: #ddd;
   color: #333;
   border: none;
-  border-radius: 4px;
+  border-radius: 6px;
   cursor: pointer;
+}
+
+/* accessible focus */
+.suggestion-item:focus {
+  outline: 2px solid #0078d4;
+  outline-offset: 2px;
 }

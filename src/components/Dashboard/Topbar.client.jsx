@@ -395,7 +395,9 @@ export default function Topbar() {
         <div
           role="button"
           tabIndex={0}
-          onClick={() => logout({ redirect: true })}
+          onClick={() => {
+            setTimeout(() => logout({ redirect: true }), 0);
+          }}
           onKeyDown={(e) => {
             if (e.key === "Enter") logout({ redirect: true });
           }}

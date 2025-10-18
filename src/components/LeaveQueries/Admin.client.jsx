@@ -536,7 +536,6 @@ export default function Admin({ openPolicyId = null }) {
           total_days: Number(days),
           totalDays: Number(days),
 
-          // mark this action as defaulted (server will set is_defaulted column)
           is_defaulted: true,
           isDefaulted: true,
         };
@@ -560,7 +559,6 @@ export default function Admin({ openPolicyId = null }) {
         return;
       }
 
-      // If there IS an active policy -> show compensation popup as before
       const approveDeficit = async () => {
         const preserved_leave_days = Number(remaining) || 0;
         const lopDaysVal = Number(days) || 0;
@@ -588,7 +586,6 @@ export default function Admin({ openPolicyId = null }) {
           total_days: Number(days),
           totalDays: Number(days),
 
-          // manual admin approval under active policy
           is_defaulted: false,
           isDefaulted: false,
         };
@@ -639,7 +636,6 @@ export default function Admin({ openPolicyId = null }) {
           total_days: Number(days),
           totalDays: Number(days),
 
-          // manual admin action under active policy
           is_defaulted: false,
           isDefaulted: false,
         };
@@ -696,7 +692,6 @@ export default function Admin({ openPolicyId = null }) {
           total_days: Number(days),
           totalDays: Number(days),
 
-          // manual admin action under active policy
           is_defaulted: false,
           isDefaulted: false,
         };
@@ -794,7 +789,6 @@ export default function Admin({ openPolicyId = null }) {
           total_days: Number(days),
           totalDays: Number(days),
 
-          // manual admin action under active policy
           is_defaulted: false,
           isDefaulted: false,
         };
@@ -833,7 +827,6 @@ export default function Admin({ openPolicyId = null }) {
         return result;
       };
 
-      // OPEN THE POPUP
       setLopModal({
         isVisible: true,
         leaveId,
@@ -856,7 +849,6 @@ export default function Admin({ openPolicyId = null }) {
       return;
     }
 
-    // Not Approved (or simple non-split action) — send simple status update (reject/approve without splits)
     console.log("[handleUpdate] sending simple update", {
       leaveId,
       payload: upd,
@@ -1138,10 +1130,8 @@ export default function Admin({ openPolicyId = null }) {
         </div>
       </div>
 
-      {/* Compensation popup (rendered BEFORE alert) */}
       <CompensationPopup lopModal={lopModal} setLopModal={setLopModal} />
 
-      {/* Alert Modal (rendered after popup to avoid stacking surprises) */}
       <Modal
         isVisible={alertModal.isVisible}
         onClose={closeAlert}

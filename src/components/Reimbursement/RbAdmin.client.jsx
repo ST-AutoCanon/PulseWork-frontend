@@ -718,7 +718,7 @@ const RbAdmin = () => {
                           <tfoot>
                             <tr className="total-row">
                               <td
-                                colSpan="5"
+                                colSpan="6"
                                 style={{
                                   textAlign: "right",
                                   color: "#949494",
@@ -820,6 +820,7 @@ const RbAdmin = () => {
                     {
                       headers: {
                         "x-api-key": API_KEY,
+                        "x-org-id": orgId,
                       },
                     }
                   );

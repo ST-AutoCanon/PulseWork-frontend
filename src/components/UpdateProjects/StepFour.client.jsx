@@ -3,12 +3,12 @@
 import React from "react";
 import { FiDownload } from "react-icons/fi";
 import MonthlyScheduleTable from "./MonthlyScheduleTable.client";
-import { useAuth } from "../../context/AuthProvider.client"; // adjust path if needed
+import { useAuth } from "../../context/AuthProvider.client";
 import { getStatusBgColor } from "./utils.client";
 
 const StepFour = ({
   formData,
-  getStatusBgColor: _getStatusBgColor, // kept for parity if passed down
+  getStatusBgColor: _getStatusBgColor,
   getFinanceStatusColor,
   handleFinanceChange,
   handleTopLevelFinanceChange,
@@ -23,7 +23,6 @@ const StepFour = ({
   const { user } = useAuth();
   const employeeId = user?.employeeId ?? user?.id ?? null;
 
-  // Prefer the utility passed in props; fall back to imported helper if needed.
   const statusBg = _getStatusBgColor || getStatusBgColor;
 
   return (
@@ -35,6 +34,8 @@ const StepFour = ({
           service_description={formData.service_description}
           onFinancialDetailsChange={onFinancialDetailsChange}
           onMonthlyFixedAmountChange={onMonthlyFixedAmountChange}
+          downloadAllAttachments={downloadAllAttachments}
+          projectData={projectData}
         />
       ) : (
         <>
@@ -124,7 +125,6 @@ const StepFour = ({
                   <label>Project Docs</label>
                   <FiDownload
                     className="pj-download"
-                    // pass employeeId so the handler can include user context in requests
                     onClick={() =>
                       downloadAllAttachments(projectData.id, employeeId)
                     }

@@ -11,59 +11,98 @@ export default function GroupModal({ onCreate, onClose, employeeId }) {
   const { user } = useAuth();
   const socket = useSocket();
   const meId = employeeId || user?.employeeId || null;
-  const orgId = user?.orgId || null;
+  const orgId = user?.orgId || user?.org_id || null;
+
   const headers = {
     "x-api-key": process.env.NEXT_PUBLIC_API_KEY,
     "x-employee-id": meId,
     "x-org-id": orgId,
   };
 
+  const apiKey = process.env.NEXT_PUBLIC_API_KEY;
+
   const [employees, setEmployees] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [selected, setSelected] = useState([]);
   const [name, setName] = useState("");
 
+  // Helper to normalize employee identifier & display fields
+  const idOf = (u) => String(u?.employee_id ?? u?.employeeId ?? u?.id ?? "");
+  const nameOf = (u) => u?.name ?? u?.fullName ?? "";
+
   useEffect(() => {
+    if (!meId) return;
+    let mounted = true;
+
     axios
       .get(`${process.env.NEXT_PUBLIC_BACKEND_URL}/employees`, { headers })
-      .then((r) => setEmployees(r.data.data || []))
-      .catch(() => setEmployees([]));
-  }, [headers]);
+      .then((r) => {
+        if (!mounted) return;
+        setEmployees(r.data?.data || []);
+      })
+      .catch(() => {
+        if (!mounted) return;
+        setEmployees([]);
+      });
 
-  const suggestions = employees.filter(
-    (u) =>
-      u.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      u.employee_id.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+    return () => {
+      mounted = false;
+    };
+  }, [meId]); // don't depend on headers object reference
+
+  // lock body scroll while modal is open
+  useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, []);
+
+  const suggestions = employees.filter((u) => {
+    const q = searchTerm.trim().toLowerCase();
+    if (!q) return false;
+    const nm = nameOf(u).toLowerCase();
+    const eid = idOf(u).toLowerCase();
+    return nm.includes(q) || eid.includes(q);
+  });
 
   const toggle = (emp) => {
-    setSelected((sel) =>
-      sel.find((s) => s.employee_id === emp.employee_id)
-        ? sel.filter((s) => s.employee_id !== emp.employee_id)
-        : [...sel, emp]
-    );
+    const empId = idOf(emp);
+    setSelected((sel) => {
+      const exists = sel.some((s) => idOf(s) === empId);
+      if (exists) return sel.filter((s) => idOf(s) !== empId);
+      return [...sel, emp];
+    });
   };
 
   const create = () => {
     if (!name.trim() || selected.length === 0) return;
+    if (!socket || !socket.connected) {
+      console.warn("Socket not ready — cannot create group");
+      return;
+    }
     socket.emit("create_room", {
       name,
       isGroup: true,
-      members: selected.map((s) => s.employee_id),
+      members: selected.map((s) => idOf(s)),
     });
-    onCreate();
+    if (typeof onCreate === "function") onCreate();
   };
 
   return (
-    <div className="modal">
-      <div className="modal-content">
+    <div className="modal" role="dialog" aria-modal="true" onClick={onClose}>
+      <div
+        className="modal-content"
+        onClick={(e) => e.stopPropagation()}
+        role="document"
+      >
         <h3>Create Group</h3>
 
-        {/* Selected chips */}
         {selected.length > 0 && (
           <div className="selected-chips">
             {selected.map((u) => (
-              <div key={u.employee_id} className="chip">
+              <div key={idOf(u)} className="chip">
                 <UserAvatar
                   photoUrl={u.photo_url}
                   role={u.role}
@@ -71,11 +110,11 @@ export default function GroupModal({ onCreate, onClose, employeeId }) {
                   apiKey={apiKey}
                   className="chip-avatar"
                 />
-                <span className="chip-name">{u.name}</span>
+                <span className="chip-name">{nameOf(u)}</span>
                 <button
                   className="chip-remove"
                   onClick={() => toggle(u)}
-                  aria-label={`Remove ${u.name}`}
+                  aria-label={`Remove ${nameOf(u)}`}
                 >
                   &times;
                 </button>
@@ -84,7 +123,6 @@ export default function GroupModal({ onCreate, onClose, employeeId }) {
           </div>
         )}
 
-        {/* Group name */}
         <input
           className="group-name-input"
           placeholder="Group name"
@@ -92,7 +130,6 @@ export default function GroupModal({ onCreate, onClose, employeeId }) {
           onChange={(e) => setName(e.target.value)}
         />
 
-        {/* Search */}
         <input
           className="msg-search"
           placeholder="Search employees..."
@@ -100,19 +137,21 @@ export default function GroupModal({ onCreate, onClose, employeeId }) {
           onChange={(e) => setSearchTerm(e.target.value)}
         />
 
-        {/* Suggestions */}
         {searchTerm && (
           <div className="suggestions-list">
             {suggestions.length > 0 ? (
               suggestions.map((u) => {
-                const isSel = !!selected.find(
-                  (s) => s.employee_id === u.employee_id
-                );
+                const isSel = selected.some((s) => idOf(s) === idOf(u));
                 return (
                   <div
-                    key={u.employee_id}
+                    key={idOf(u)}
                     className={`suggestion-item ${isSel ? "selected" : ""}`}
                     onClick={() => toggle(u)}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") toggle(u);
+                    }}
                   >
                     <UserAvatar
                       photoUrl={u.photo_url}
@@ -121,7 +160,7 @@ export default function GroupModal({ onCreate, onClose, employeeId }) {
                       apiKey={apiKey}
                       className="chat-avatar-small"
                     />
-                    <span>{u.name}</span>
+                    <span>{nameOf(u)}</span>
                   </div>
                 );
               })
@@ -131,7 +170,6 @@ export default function GroupModal({ onCreate, onClose, employeeId }) {
           </div>
         )}
 
-        {/* Actions */}
         <div className="modal-actions">
           <button
             className="create-btn"

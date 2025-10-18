@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import Salary_Statement from "./Salary_Statement.client";
 import GeneratePayslip from "../generate_payslip/GeneratePayslip.client";
-import { useAuth } from "../../context/AuthProvider.client"; // Adjust path
+import { useAuth } from "../../context/AuthProvider.client";
 
 class ErrorBoundary extends React.Component {
   state = { hasError: false, error: null };
@@ -27,7 +27,6 @@ const SalaryStatementWrapper = () => {
   const modalRef = useRef(null);
   const firstButtonRef = useRef(null);
 
-  // Modal keyboard & focus management
   const handleKeyDown = (e) => {
     if (e.key === "Escape") setShowPopup(false);
   };
@@ -68,7 +67,6 @@ const SalaryStatementWrapper = () => {
     setSelectedView(view);
     setShowPopup(false);
 
-    // Persist in Auth context
     setUser({ ...user, selectedView: view });
   };
 
@@ -78,7 +76,6 @@ const SalaryStatementWrapper = () => {
 
   return (
     <div style={styles.wrapper}>
-      {/* Popup Modal */}
       {showPopup && (
         <div
           style={styles.overlay}
@@ -110,7 +107,6 @@ const SalaryStatementWrapper = () => {
         </div>
       )}
 
-      {/* Display selected content */}
       {selectedView === "statement" && (
         <ErrorBoundary>
           <Salary_Statement />

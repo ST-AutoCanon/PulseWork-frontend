@@ -1,4 +1,3 @@
-// InvoiceTemplate.client.jsx
 "use client";
 
 import React from "react";
@@ -21,9 +20,9 @@ const InvoiceTemplate = React.forwardRef((props, ref) => {
     withSeal,
     lineItems,
     subTotal,
-    gst, // GST percentage, for example "18"
-    gstAmount, // Total GST amount
-    advance, // Advance paid
+    gst,
+    gstAmount,
+    advance,
     totalExcludingTax,
     totalIncludingTax,
     terms,

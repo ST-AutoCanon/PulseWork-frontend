@@ -100,7 +100,6 @@ export default function useProjectForm({
     financialDetails: [],
   });
 
-  // seed from passed-in projectData
   useEffect(() => {
     if (projectData) {
       setFormData((prev) => ({
@@ -140,7 +139,6 @@ export default function useProjectForm({
   const closeAlert = () =>
     setAlertModal({ isVisible: false, title: "", message: "" });
 
-  // fetch employees (now includes x-org-id and x-employee-id if available)
   useEffect(() => {
     const headers = {
       "Content-Type": "application/json",
@@ -159,7 +157,7 @@ export default function useProjectForm({
       .catch((error) => {
         console.error("Error fetching employees:", error);
       });
-  }, [employeeId, orgId]); // refetch if orgId or employeeId changes
+  }, [employeeId, orgId]);
 
   useEffect(() => {
     if (filterType === "all") {
@@ -278,6 +276,7 @@ export default function useProjectForm({
           headers: {
             "Content-Type": "application/json",
             "x-api-key": process.env.NEXT_PUBLIC_API_KEY,
+            ...(orgId ? { "x-org-id": orgId } : {}),
           },
         }
       )
@@ -554,7 +553,6 @@ export default function useProjectForm({
     }));
   };
 
-  // sync milestones <-> financialDetails
   useEffect(() => {
     setFormData((prev) => {
       const milestones = Array.isArray(prev.milestones) ? prev.milestones : [];
@@ -637,6 +635,7 @@ export default function useProjectForm({
           credentials: "include",
           headers: {
             "x-api-key": process.env.NEXT_PUBLIC_API_KEY,
+            ...(orgId ? { "x-org-id": orgId } : {}),
           },
         }
       );
@@ -663,6 +662,7 @@ export default function useProjectForm({
           method: "GET",
           headers: {
             "x-api-key": process.env.NEXT_PUBLIC_API_KEY,
+            ...(orgId ? { "x-org-id": orgId } : {}),
           },
         }
       );
@@ -757,7 +757,6 @@ export default function useProjectForm({
         setStep(1);
       }
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step, formData.payment_type, allowedSteps]);
 
   const nextStep = () => {
@@ -987,7 +986,7 @@ export default function useProjectForm({
         credentials: "include",
         headers: {
           "x-api-key": process.env.NEXT_PUBLIC_API_KEY,
-          ...(orgId ? { "x-org-id": orgId } : {}), // <-- added org id
+          ...(orgId ? { "x-org-id": orgId } : {}),
         },
         body: submissionData,
       });
@@ -1090,7 +1089,7 @@ export default function useProjectForm({
     lineLeft,
     totalLineWidth,
     allowedSteps,
-    editable: editableFromRole, // object mapping (1..4) => boolean
+    editable: editableFromRole,
     formData,
     setFormData,
     handleSubmit,

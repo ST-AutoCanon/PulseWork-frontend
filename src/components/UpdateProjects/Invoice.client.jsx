@@ -22,11 +22,13 @@ const Invoice = ({ onBack, project }) => {
   // env + headers
   const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
   const API_KEY = process.env.NEXT_PUBLIC_API_KEY;
+  const orgId = user?.orgId ?? user?.org_id ?? null;
 
   const buildHeaders = () => {
     const h = {
       "Content-Type": "application/json",
       "x-api-key": API_KEY || "",
+      "x-org-id": orgId,
     };
     const meId = user?.employeeId ?? user?.id ?? null;
     if (meId) h["x-employee-id"] = String(meId);
@@ -46,8 +48,7 @@ const Invoice = ({ onBack, project }) => {
   b) Second Payment: 25%
   c) Third Payment: 30%
   d) Final Payment: 30%
-2) Taxes & Duties: IGST will be applicable as per prevailing tax laws.
-3) Kindly share the UTR details with pm@sukalpatechsolutions.com & om@sukalpatechsolutions.com for verification.`
+2) Taxes & Duties: IGST will be applicable as per prevailing tax laws.`
   );
 
   const [invoiceDate, setInvoiceDate] = useState("");

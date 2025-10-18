@@ -25,7 +25,8 @@ const AdminQuery = () => {
   const [newMessage, setNewMessage] = useState("");
   const [attachmentBase64, setAttachmentBase64] = useState(null);
   const [attachmentName, setAttachmentName] = useState("");
-  const [loading, setLoading] = useState(true);
+  const [loadingQueries, setLoadingQueries] = useState(true);
+  const [loadingMessages, setLoadingMessages] = useState(false);
   const [error, setError] = useState("");
   const [showResolved, setShowResolved] = useState(false);
   const chatContainerRef = useRef(null);
@@ -50,7 +51,6 @@ const AdminQuery = () => {
     selectedThreadIdRef.current = selectedQuery?.id ?? null;
   }, [selectedQuery]);
 
-  // socket setup — only on client and when employeeId exists
   useEffect(() => {
     if (!employeeId) {
       console.warn("[socket] not connecting: employeeId missing");
@@ -66,6 +66,7 @@ const AdminQuery = () => {
     const socket = io(BACKEND_URL, {
       query: { userId: employeeId },
       auth: { apiKey: API_KEY, orgId },
+      path: "/api/socket.io",
     });
 
     socketRef.current = socket;
@@ -81,18 +82,36 @@ const AdminQuery = () => {
     socket.on("disconnect", onDisconnect);
     socket.on("connect_error", onConnectError);
 
+    const addIfNotExists = (msg) => {
+      setMessages((prev) => {
+        const exists = prev.some((m) => {
+          if (m.id && msg.id) return String(m.id) === String(msg.id);
+          const sameThread = String(m.thread_id) === String(msg.thread_id);
+          const sameSender = String(m.sender_id) === String(msg.sender_id);
+          const sameText = (m.message || "") === (msg.message || "");
+          const t1 = m.created_at ? new Date(m.created_at).getTime() : 0;
+          const t2 = msg.created_at ? new Date(msg.created_at).getTime() : 0;
+          const closeTime = Math.abs(t1 - t2) < 3000;
+          const sameAttachment =
+            (m.attachment_url || "") === (msg.attachment_url || "");
+          return (
+            sameThread && sameSender && sameText && closeTime && sameAttachment
+          );
+        });
+        return exists ? prev : [...prev, msg];
+      });
+    };
+
     socket.on("newMessage", (msg) => {
-      // If the message belongs to the currently open thread, append to messages
       if (String(msg.thread_id) === String(selectedThreadIdRef.current)) {
-        setMessages((prev) => [...prev, msg]);
+        addIfNotExists(msg);
       }
-      // Refresh thread list to update previews / unread counts
       fetchQueries();
     });
 
     socket.on("messageAck", (msg) => {
       if (String(msg.thread_id) === String(selectedThreadIdRef.current)) {
-        setMessages((prev) => [...prev, msg]);
+        addIfNotExists(msg);
       }
     });
 
@@ -111,13 +130,13 @@ const AdminQuery = () => {
         console.warn("[socket] disconnect error", e);
       }
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [BACKEND_URL, API_KEY, employeeId, orgId]);
 
-  // fetch queries (threads)
-  const fetchQueries = async () => {
-    setLoading(true);
-    setError("");
+  const fetchQueries = async (opts = { silent: false }) => {
+    if (!opts.silent) {
+      setLoadingQueries(true);
+      setError("");
+    }
     try {
       const headers = {
         "x-api-key": API_KEY,
@@ -129,24 +148,21 @@ const AdminQuery = () => {
       setQueries(Array.isArray(list) ? list : []);
     } catch (err) {
       console.error("fetchQueries error:", err);
-      setError("Error fetching queries");
+      if (!opts.silent) setError("Error fetching queries");
     } finally {
-      setLoading(false);
+      if (!opts.silent) setLoadingQueries(false);
     }
   };
 
   useEffect(() => {
     fetchQueries();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // alert helpers
   const showAlert = (message, title = "") =>
     setAlertModal({ isVisible: true, title, message });
   const closeAlert = () =>
     setAlertModal({ isVisible: false, title: "", message: "" });
 
-  // scroll chat to bottom on messages change
   useEffect(() => {
     if (chatContainerRef.current) {
       chatContainerRef.current.scrollTop =
@@ -154,7 +170,6 @@ const AdminQuery = () => {
     }
   }, [messages]);
 
-  // fetch messages from a thread
   const fetchMessages = async (threadId) => {
     try {
       const headers = {
@@ -174,7 +189,6 @@ const AdminQuery = () => {
     }
   };
 
-  // Send message (socket preferred, REST fallback). Handles attachments via multipart/form-data.
   const sendMessage = async () => {
     if (!newMessage.trim() && !attachmentFile && !attachmentBase64) {
       showAlert("Message or attachment is required.");
@@ -185,7 +199,6 @@ const AdminQuery = () => {
       return;
     }
 
-    // If there's a file, use REST multipart upload (server presumably expects that)
     if (attachmentFile) {
       const form = new FormData();
       form.append("attachment", attachmentFile);
@@ -201,15 +214,15 @@ const AdminQuery = () => {
           ...(orgId ? { "x-org-id": orgId } : {}),
           "Content-Type": "multipart/form-data",
         };
-        const res = await axios.post(
+        await axios.post(
           `${BACKEND_URL}/threads/${selectedQuery.id}/messages`,
           form,
           { headers }
         );
-        const newMsg = res.data?.data?.message ?? res.data?.data ?? res.data;
-        setMessages((prev) => [...prev, newMsg]);
+
         setNewMessage("");
         clearAttachmentInput();
+        fetchQueries();
       } catch (err) {
         console.error("attachment send error:", err);
         showAlert("Failed to send attachment");
@@ -217,7 +230,6 @@ const AdminQuery = () => {
       return;
     }
 
-    // payload for text-only message
     const payload = {
       thread_id: selectedQuery.id,
       sender_id: employeeId,
@@ -227,14 +239,12 @@ const AdminQuery = () => {
       message: newMessage,
     };
 
-    // Try socket first
     if (socketRef.current && socketRef.current.connected) {
       socketRef.current.emit("sendQueryMessage", payload, async (resp) => {
-        if (resp && resp.success && resp.message) {
-          setMessages((prev) => [...prev, resp.message]);
+        if (resp && resp.success) {
           setNewMessage("");
+          fetchQueries({ silent: true });
         } else {
-          // fallback to REST
           try {
             const headers = {
               "x-api-key": API_KEY,
@@ -257,7 +267,6 @@ const AdminQuery = () => {
         }
       });
     } else {
-      // REST fallback
       try {
         const headers = {
           "x-api-key": API_KEY,
@@ -270,7 +279,6 @@ const AdminQuery = () => {
           { headers }
         );
         const newMsg = res.data?.data?.message ?? res.data?.data ?? res.data;
-        setMessages((prev) => [...prev, newMsg]);
         setNewMessage("");
       } catch (err) {
         console.error("REST send failed:", err);
@@ -279,7 +287,6 @@ const AdminQuery = () => {
     }
   };
 
-  // file input handler
   const handleAttachmentChange = (event) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -291,7 +298,6 @@ const AdminQuery = () => {
     reader.readAsDataURL(file);
   };
 
-  // helper to clear file input (by id)
   const clearAttachmentInput = () => {
     setAttachmentFile(null);
     setAttachmentName("");
@@ -300,7 +306,6 @@ const AdminQuery = () => {
     if (fileInput) fileInput.value = "";
   };
 
-  // Mark messages as read (REST)
   const markMessagesAsRead = async (threadId) => {
     try {
       const headers = {
@@ -319,10 +324,10 @@ const AdminQuery = () => {
     }
   };
 
-  // When selecting a thread, join the socket room (if available) and fetch messages
   const handleSelectQuery = async (query) => {
     setSelectedQuery(query);
     setMessages([]);
+    setLoadingMessages(true);
 
     if (socketRef.current && socketRef.current.connected) {
       socketRef.current.emit("joinThread", query.id);
@@ -333,21 +338,18 @@ const AdminQuery = () => {
     try {
       const fetched = await fetchMessages(query.id);
       setMessages(fetched || []);
-
-      // mark as read
       await markMessagesAsRead(query.id);
 
-      // refresh thread list
-      fetchQueries();
+      fetchQueries({ silent: true });
     } catch (err) {
       console.error("Error selecting query:", err);
+    } finally {
+      setLoadingMessages(false);
     }
   };
 
-  // toggle resolved view
   const toggleResolved = () => setShowResolved((prev) => !prev);
 
-  // download attachment URL (assumes backend endpoint returns file blob)
   const downloadAttachment = async (url) => {
     if (!url) return showAlert("No attachment URL");
     try {
@@ -377,7 +379,6 @@ const AdminQuery = () => {
     }
   };
 
-  if (loading) return <p>Loading...</p>;
   if (error) return <p>{error}</p>;
 
   return (
@@ -404,181 +405,195 @@ const AdminQuery = () => {
           </div>
 
           <div className="query-list">
-            {queries
-              .filter((query) =>
-                showResolved
-                  ? query.status === "closed"
-                  : query.status !== "closed"
-              )
-              .map((query) => (
-                <div
-                  key={query.id}
-                  className={`query-item ${
-                    selectedQuery?.id === query.id ? "active" : ""
-                  }`}
-                  onClick={() => handleSelectQuery(query)}
-                >
-                  <UserAvatar
-                    photoUrl={query.photo_url}
-                    role={query.role}
-                    gender={query.gender}
-                    apiKey={API_KEY}
-                    className="profile-pic"
-                  />
-                  <div className="query-info">
-                    <div className="query-header">
-                      <p className="name">{query.sender_name}</p>
-                      {query.unread_message_count > 0 && (
-                        <p className="unread-dot">
-                          {query.unread_message_count > 9
-                            ? "9+"
-                            : query.unread_message_count}
+            {loadingQueries ? (
+              <p>Loading queries…</p>
+            ) : queries.length === 0 ? (
+              <p>No queries found</p>
+            ) : (
+              queries
+                .filter((query) =>
+                  showResolved
+                    ? query.status === "closed"
+                    : query.status !== "closed"
+                )
+                .map((query) => (
+                  <div
+                    key={query.id}
+                    className={`query-item ${
+                      selectedQuery?.id === query.id ? "active" : ""
+                    }`}
+                    onClick={() => handleSelectQuery(query)}
+                  >
+                    <UserAvatar
+                      photoUrl={query.photo_url}
+                      role={query.role}
+                      gender={query.gender}
+                      apiKey={API_KEY}
+                      className="profile-pic"
+                    />
+                    <div className="query-info">
+                      <div className="query-header">
+                        <p className="name">{query.sender_name}</p>
+                        {query.unread_message_count > 0 && (
+                          <p className="unread-dot">
+                            {query.unread_message_count > 9
+                              ? "9+"
+                              : query.unread_message_count}
+                          </p>
+                        )}
+                        <p className="time">
+                          {query.updated_at
+                            ? new Date(query.updated_at).toLocaleTimeString(
+                                [],
+                                {
+                                  hour: "2-digit",
+                                  minute: "2-digit",
+                                }
+                              )
+                            : "N/A"}
                         </p>
-                      )}
-                      <p className="time">
-                        {query.updated_at
-                          ? new Date(query.updated_at).toLocaleTimeString([], {
-                              hour: "2-digit",
-                              minute: "2-digit",
-                            })
-                          : "N/A"}
+                      </div>
+                      <p
+                        className={`message-preview ${
+                          query.unread_message_count > 0 ? "unread-message" : ""
+                        }`}
+                      >
+                        {query.status === "closed" && query.feedback
+                          ? query.feedback
+                          : query.latest_message || "No messages yet"}
                       </p>
                     </div>
-                    <p
-                      className={`message-preview ${
-                        query.unread_message_count > 0 ? "unread-message" : ""
-                      }`}
-                    >
-                      {query.status === "closed" && query.feedback
-                        ? query.feedback
-                        : query.latest_message || "No messages yet"}
-                    </p>
                   </div>
-                </div>
-              ))}
+                ))
+            )}
           </div>
         </div>
 
         <div className="chat-container">
           {selectedQuery ? (
-            <>
-              <div className="chat-header">
-                <p>
-                  {selectedQuery.created_at
-                    ? new Date(selectedQuery.created_at).toLocaleString(
-                        "en-US",
-                        {
-                          year: "numeric",
-                          month: "short",
-                          day: "numeric",
-                          hour: "numeric",
-                          minute: "2-digit",
-                          hour12: true,
-                        }
-                      )
-                    : "—"}
-                </p>
-                <p>
-                  From: <strong>{selectedQuery.sender_name}</strong>
-                </p>
-                <h2>{selectedQuery.subject || "Subject"}</h2>
-              </div>
-
-              <div className="chat-messages" ref={chatContainerRef}>
-                {selectedQuery.status === "closed" &&
-                  selectedQuery.feedback && (
-                    <div className="message-container feedback-message">
-                      <div className="message feedback">
-                        <p>
-                          <strong>Feedback:</strong> {selectedQuery.feedback}
-                        </p>
-                        {selectedQuery.note && (
-                          <p>
-                            <strong>Note:</strong> {selectedQuery.note}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  )}
-
-                {[...messages].reverse().map((message) => (
-                  <div
-                    key={
-                      message.id || `${message.thread_id}-${message.created_at}`
-                    }
-                    className={`message-container ${
-                      String(message.sender_id) === String(employeeId)
-                        ? "right"
-                        : "left"
-                    }`}
-                  >
-                    <div className="message-header">
-                      <p className="message-sender">{message.sender_name}</p>
-                    </div>
-                    <div className="message">
-                      <p className="message-text">{message.message}</p>
-                      {message.attachment_url && (
-                        <button
-                          className="emp-attachment"
-                          onClick={() =>
-                            downloadAttachment(message.attachment_url)
+            loadingMessages ? (
+              <p>Loading messages…</p>
+            ) : (
+              <>
+                <div className="chat-header">
+                  <p>
+                    {selectedQuery.created_at
+                      ? new Date(selectedQuery.created_at).toLocaleString(
+                          "en-US",
+                          {
+                            year: "numeric",
+                            month: "short",
+                            day: "numeric",
+                            hour: "numeric",
+                            minute: "2-digit",
+                            hour12: true,
                           }
-                        >
-                          📎 {message.attachment_url.split("/").pop()}
-                        </button>
-                      )}
-                      <span className="message-time">
-                        {message.created_at
-                          ? new Date(message.created_at).toLocaleTimeString(
-                              [],
-                              { hour: "2-digit", minute: "2-digit" }
-                            )
-                          : ""}
-                      </span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              <div className="chat-input">
-                <div className="input-container">
-                  <div className="input-wrapper">
-                    <input
-                      type="text"
-                      placeholder="Write a reply..."
-                      value={newMessage}
-                      onChange={(e) => setNewMessage(e.target.value)}
-                      disabled={selectedQuery.status === "closed"}
-                      className="message-input"
-                    />
-                    {attachmentName && (
-                      <span className="attachment-suffix">
-                        {attachmentName}
-                      </span>
-                    )}
-                    <label htmlFor="fileInput" className="attachment-icon">
-                      <FiPaperclip />
-                    </label>
-                  </div>
-
-                  <input
-                    type="file"
-                    onChange={handleAttachmentChange}
-                    disabled={selectedQuery.status === "closed"}
-                    style={{ display: "none" }}
-                    id="fileInput"
-                  />
+                        )
+                      : "—"}
+                  </p>
+                  <p>
+                    From: <strong>{selectedQuery.sender_name}</strong>
+                  </p>
+                  <h2>{selectedQuery.subject || "Subject"}</h2>
                 </div>
 
-                <button
-                  className="submit-btn"
-                  onClick={sendMessage}
-                  disabled={selectedQuery.status === "closed"}
-                >
-                  Submit
-                </button>
-              </div>
-            </>
+                <div className="chat-messages" ref={chatContainerRef}>
+                  {selectedQuery.status === "closed" &&
+                    selectedQuery.feedback && (
+                      <div className="message-container feedback-message">
+                        <div className="message feedback">
+                          <p>
+                            <strong>Feedback:</strong> {selectedQuery.feedback}
+                          </p>
+                          {selectedQuery.note && (
+                            <p>
+                              <strong>Note:</strong> {selectedQuery.note}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                  {[...messages].reverse().map((message) => (
+                    <div
+                      key={
+                        message.id ||
+                        `${message.thread_id}-${message.created_at}`
+                      }
+                      className={`message-container ${
+                        String(message.sender_id) === String(employeeId)
+                          ? "right"
+                          : "left"
+                      }`}
+                    >
+                      <div className="message-header">
+                        <p className="message-sender">{message.sender_name}</p>
+                      </div>
+                      <div className="message">
+                        <p className="message-text">{message.message}</p>
+                        {message.attachment_url && (
+                          <button
+                            className="emp-attachment"
+                            onClick={() =>
+                              downloadAttachment(message.attachment_url)
+                            }
+                          >
+                            📎 {message.attachment_url.split("/").pop()}
+                          </button>
+                        )}
+                        <span className="message-time">
+                          {message.created_at
+                            ? new Date(message.created_at).toLocaleTimeString(
+                                [],
+                                { hour: "2-digit", minute: "2-digit" }
+                              )
+                            : ""}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="chat-input">
+                  <div className="input-container">
+                    <div className="input-wrapper">
+                      <input
+                        type="text"
+                        placeholder="Write a reply..."
+                        value={newMessage}
+                        onChange={(e) => setNewMessage(e.target.value)}
+                        disabled={selectedQuery.status === "closed"}
+                        className="message-input"
+                      />
+                      {attachmentName && (
+                        <span className="attachment-suffix">
+                          {attachmentName}
+                        </span>
+                      )}
+                      <label htmlFor="fileInput" className="attachment-icon">
+                        <FiPaperclip />
+                      </label>
+                    </div>
+
+                    <input
+                      type="file"
+                      onChange={handleAttachmentChange}
+                      disabled={selectedQuery.status === "closed"}
+                      style={{ display: "none" }}
+                      id="fileInput"
+                    />
+                  </div>
+
+                  <button
+                    className="submit-btn"
+                    onClick={sendMessage}
+                    disabled={selectedQuery.status === "closed"}
+                  >
+                    Submit
+                  </button>
+                </div>
+              </>
+            )
           ) : (
             <p className="select-query">Select a query to view details</p>
           )}

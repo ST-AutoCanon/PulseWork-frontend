@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import "./MonthlyScheduleTable.css";
 import { useAuth } from "../../context/AuthProvider.client";
+import { FiDownload } from "react-icons/fi";
 
 const getCurrentMonthYear = () => {
   const now = new Date();
@@ -15,6 +16,8 @@ const MonthlyScheduleTable = ({
   service_description = "",
   onFinancialDetailsChange,
   onMonthlyFixedAmountChange,
+  downloadAllAttachments, // new
+  projectData, // new
 }) => {
   const { user } = useAuth();
   const employeeId = user?.employeeId ?? user?.id ?? null;
@@ -23,7 +26,6 @@ const MonthlyScheduleTable = ({
   const initRef = useRef(false);
   const currentMonthYear = getCurrentMonthYear();
 
-  // Initialize financial details on mount
   useEffect(() => {
     if (!initRef.current) {
       let source =
@@ -100,10 +102,8 @@ const MonthlyScheduleTable = ({
       setFinancialDetails(seeded);
       initRef.current = true;
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialFinancialDetails, monthlyFixedAmount, currentMonthYear]);
 
-  // Notify parent whenever financialDetails change
   useEffect(() => {
     if (initRef.current) {
       onFinancialDetailsChange?.(
@@ -119,7 +119,6 @@ const MonthlyScheduleTable = ({
     onFinancialDetailsChange,
   ]);
 
-  // Update amounts when monthlyFixedAmount changes
   useEffect(() => {
     setFinancialDetails((rows) =>
       rows.map((r) => {
@@ -173,16 +172,48 @@ const MonthlyScheduleTable = ({
 
   return (
     <div className="schedule-wrapper">
-      <div className="estimated-amount">
-        <label>Monthly Fixed Amount</label>
-        <input
-          type="number"
-          value={monthlyFixedAmount ?? ""}
-          onChange={(e) => {
-            const amt = parseFloat(e.target.value) || 0;
-            onMonthlyFixedAmountChange?.(amt, service_description, employeeId);
-          }}
-        />
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+        }}
+      >
+        <div className="estimated-amount">
+          <label>Monthly Fixed Amount</label>
+          <input
+            type="number"
+            value={monthlyFixedAmount ?? ""}
+            onChange={(e) => {
+              const amt = parseFloat(e.target.value) || 0;
+              onMonthlyFixedAmountChange?.(
+                amt,
+                service_description,
+                employeeId
+              );
+            }}
+          />
+        </div>
+
+        {projectData && projectData.id && downloadAllAttachments && (
+          <div style={{ marginLeft: 12 }}>
+            <label
+              style={{
+                display: "block",
+                fontSize: 16,
+                fontWeight: "bold",
+                opacity: 0.8,
+              }}
+            >
+              Project Docs
+            </label>
+            <FiDownload
+              className="pj-download"
+              style={{ cursor: "pointer", fontSize: 22, marginLeft: 25 }}
+              onClick={() => downloadAllAttachments(projectData.id, employeeId)}
+              title="Download all project attachments"
+            />
+          </div>
+        )}
       </div>
 
       <table className="schedule-table">

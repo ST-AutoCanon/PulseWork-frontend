@@ -21,7 +21,7 @@
   justify-content: flex-start;
   align-items: center;
   width: 100%;
-  gap: 2%;
+  gap: 1%;
 }
 
 .leave-filters label {
@@ -34,7 +34,7 @@
   padding: 1%;
   border: 1px solid #ccc;
   border-radius: 5px;
-  width: 15%;
+  width: 10%;
   font-size: large;
 }
 
@@ -45,7 +45,7 @@
   padding: 1%;
   font-size: 100%;
   cursor: pointer;
-  width: 15%;
+  width: 12%;
   background-color: #00468c;
   color: white;
   border: none;
@@ -1309,6 +1309,7 @@
 }
 
 .team-search-input {
+  width: 140px;
   display: flex;
   align-items: center;
   white-space: nowrap;

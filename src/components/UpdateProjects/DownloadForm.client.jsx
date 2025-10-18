@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import "./DownloadForm.css";
-import { useAuth } from "../../context/AuthProvider.client"; // adjust path if needed
+import { useAuth } from "../../context/AuthProvider.client";
 
 const MAX_WORDS = 100;
 
@@ -14,7 +14,6 @@ const toNumber = (v) => {
 const DownloadForm = ({ onSubmit, onCancel }) => {
   const { user } = useAuth();
 
-  // meta (will be attached to formData)
   const createdBy = user?.employeeId ?? user?.id ?? null;
   const createdByOrg = user?.orgId ?? user?.raw?.org_id ?? null;
 
@@ -41,7 +40,6 @@ const DownloadForm = ({ onSubmit, onCancel }) => {
   const [totalIncludingTax, setTotalIncludingTax] = useState(0);
   const [terms, setTerms] = useState("");
 
-  // Recompute line item totals and subtotal whenever quantities/rates change.
   useEffect(() => {
     let newSubTotal = 0;
     const updated = lineItems.map((item) => {
@@ -52,7 +50,6 @@ const DownloadForm = ({ onSubmit, onCancel }) => {
       return { ...item, total };
     });
 
-    // Only update if totals differ to avoid unnecessary re-renders
     const needUpdate =
       updated.some((u, i) => u.total !== (lineItems[i]?.total ?? 0)) ||
       updated.length !== lineItems.length;
@@ -61,10 +58,8 @@ const DownloadForm = ({ onSubmit, onCancel }) => {
       setLineItems(updated);
     }
     setSubTotal(Number(newSubTotal.toFixed(2)));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lineItems.map((li) => `${li.quantity}:${li.rate}`).join("|")]);
 
-  // Compute GST amount
   useEffect(() => {
     const base = toNumber(subTotal);
     const gstPerc = toNumber(gst);
@@ -72,7 +67,6 @@ const DownloadForm = ({ onSubmit, onCancel }) => {
     setGSTAmount(Number(computedGST.toFixed(2)));
   }, [subTotal, gst]);
 
-  // Totals after advance & GST
   useEffect(() => {
     const sub = toNumber(subTotal);
     const adv = toNumber(advance);
@@ -97,14 +91,12 @@ const DownloadForm = ({ onSubmit, onCancel }) => {
     ]);
   };
 
-  // Enforce MAX_WORDS limit for terms
   const handleTermsChange = (e) => {
     const raw = e.target.value;
     const words = raw.trim().split(/\s+/).filter(Boolean);
     if (words.length <= MAX_WORDS) {
       setTerms(raw);
     } else {
-      // trim to allowed words
       setTerms(words.slice(0, MAX_WORDS).join(" "));
     }
   };
@@ -112,14 +104,12 @@ const DownloadForm = ({ onSubmit, onCancel }) => {
   const handleSubmit = (e) => {
     e.preventDefault();
 
-    // Final normalized payload
     const payload = {
       to: to || null,
       address: address || null,
       contact: contact || null,
       companyGst: companyGst || null,
       state: state || null,
-      // keep date strings as the input value (YYYY-MM-DD). Parent can convert to timezone-aware if needed
       invoiceDate: invoiceDate || null,
       referenceDate: referenceDate || null,
       referenceId: referenceId || null,
@@ -138,7 +128,6 @@ const DownloadForm = ({ onSubmit, onCancel }) => {
       totalExcludingTax: toNumber(totalExcludingTax),
       totalIncludingTax: toNumber(totalIncludingTax),
       terms: terms || "",
-      // meta
       createdBy,
       createdByOrg,
       createdAt: new Date().toISOString(),

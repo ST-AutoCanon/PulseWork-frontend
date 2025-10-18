@@ -8,6 +8,7 @@ const AuthContext = createContext({
   login: async () => {},
   logout: async () => {},
   hydrated: false,
+  isLoggingOut: false,
 });
 
 function getCookie(name) {
@@ -35,6 +36,7 @@ function readStoredEmployeeId() {
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [hydrated, setHydrated] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
   const router = useRouter();
 
   const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
@@ -98,7 +100,10 @@ export function AuthProvider({ children }) {
         console.error("rehydrate error", err);
         setUser(null);
       } finally {
-        if (mounted) setHydrated(true);
+        if (mounted) {
+          setHydrated(true);
+          if (typeof window !== "undefined") window.__APP_LOGGING_OUT = false;
+        }
       }
     }
 
@@ -119,30 +124,37 @@ export function AuthProvider({ children }) {
   };
 
   const logout = async ({ redirect = true } = {}) => {
+    setIsLoggingOut(true);
+    if (typeof window !== "undefined") window.__APP_LOGGING_OUT = true;
+
+    setUser(null);
     try {
-      if (BACKEND_URL) {
-        await fetch(`${BACKEND_URL}/logout`, {
-          method: "POST",
-          credentials: "include",
-          headers: {
-            "x-api-key": API_KEY || "",
-            "Content-Type": "application/json",
-          },
+      localStorage.removeItem("auth:employeeId");
+    } catch (e) {}
+
+    if (redirect) router.push("/");
+
+    if (BACKEND_URL) {
+      fetch(`${BACKEND_URL}/logout`, {
+        method: "POST",
+        credentials: "include",
+        headers: {
+          "x-api-key": API_KEY || "",
+          "Content-Type": "application/json",
+        },
+      })
+        .catch((err) => console.error("logout request failed:", err))
+        .finally(() => {
+          if (typeof window !== "undefined") window.__APP_LOGGING_OUT = false;
+          setIsLoggingOut(false);
         });
-      }
-    } catch (err) {
-      console.error("logout request failed:", err);
-    } finally {
-      setUser(null);
-      try {
-        localStorage.removeItem("auth:employeeId");
-      } catch (e) {}
-      if (redirect) router.push("/");
     }
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, hydrated }}>
+    <AuthContext.Provider
+      value={{ user, login, logout, hydrated, isLoggingOut }}
+    >
       {children}
     </AuthContext.Provider>
   );

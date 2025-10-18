@@ -805,6 +805,7 @@ input[type="checkbox"]:checked::after {
   font-size: x-large;
   color: #00468c;
   transition: transform 0.1s ease, color 0.1s ease;
+  cursor: pointer;
 }
 
 .pj-download:active {

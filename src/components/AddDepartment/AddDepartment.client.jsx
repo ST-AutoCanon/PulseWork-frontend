@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { useAuth } from "../../context/AuthProvider.client"; // import your auth context
+import { useAuth } from "../../context/AuthProvider.client";
 import "./AddDepartment.css";
 import { IoMdAddCircleOutline } from "react-icons/io";
 import { MdOutlineCancel } from "react-icons/md";
@@ -10,8 +10,9 @@ import Modal from "../Modal/Modal.client";
 const API_KEY = process.env.NEXT_PUBLIC_API_KEY;
 
 const AddDepartment = () => {
-  const { user } = useAuth(); // get current user
-  const orgId = user?.orgId ?? user?.raw?.org_id; // fetch orgId
+  const { user } = useAuth();
+  const orgId = user?.orgId ?? user?.raw?.org_id;
+  const employeeId = user?.employeeId;
 
   const [name, setName] = useState("");
   const [icon, setIcon] = useState(null);
@@ -29,6 +30,7 @@ const AddDepartment = () => {
           method: "GET",
           headers: {
             "x-api-key": API_KEY,
+            "x-org-id": orgId,
           },
         }
       );
@@ -44,6 +46,8 @@ const AddDepartment = () => {
                   {
                     headers: {
                       "x-api-key": API_KEY,
+                      "x-org-id": orgId,
+                      "x-employee-id": employeeId,
                     },
                   }
                 );
@@ -115,6 +119,7 @@ const AddDepartment = () => {
           method: "POST",
           headers: {
             "x-api-key": API_KEY,
+            "x-org-id": orgId,
           },
           body: formData,
         }

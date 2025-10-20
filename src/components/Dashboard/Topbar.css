@@ -31,7 +31,7 @@
 }
 
 .profile-info {
-  margin-left: 10%;
+  margin-left: 5%;
   gap: 5px;
   white-space: nowrap;
   display: flex;
@@ -210,9 +210,9 @@
 
   .calendar-dropdown {
     top: auto;
-    margin-top: 8px;
+    margin-top: 120px;
     font-size: small;
-    margin-right: 2%;
+    margin-right: 2.5%;
   }
 
   .close-btn {

@@ -7,15 +7,16 @@ import { FaFileInvoice } from "react-icons/fa6";
 import { MdOutlineCancel, MdOutlineRemoveRedEye } from "react-icons/md";
 import axios from "axios";
 
-import Reimbursement from "./Reimbursement.client"; // Self reimbursement component
-import "./RbTeamLead.css"; // Keep the same CSS file
-import Modal from "../Modal/Modal.client"; // Custom alert modal
+import Reimbursement from "./Reimbursement.client";
+import "./RbTeamLead.css";
+import Modal from "../Modal/Modal.client";
 import { useAuth } from "../../context/AuthProvider.client";
 
 const RbTeamLead = () => {
-  const { user } = useAuth(); // user contains employeeId, department_id, token
+  const { user } = useAuth();
+  const orgId = user?.orgId;
   const teamLeadId = user?.employeeId;
-  const departmentId = user?.department_id || null;
+  const departmentId = user?.dashboard.department_id || null;
 
   const [view, setView] = useState("team");
   const [employees, setEmployees] = useState([]);
@@ -67,6 +68,7 @@ const RbTeamLead = () => {
         const response = await axios.get(`${BACKEND_URL}/projectdrop`, {
           headers: {
             "x-api-key": API_KEY,
+            "x-org-id": orgId,
           },
         });
         setProjects(response.data);
@@ -75,7 +77,7 @@ const RbTeamLead = () => {
       }
     };
     fetchProjects();
-  }, []);
+  }, [BACKEND_URL, API_KEY, orgId]);
 
   useEffect(() => {
     if (view === "team") fetchEmployees();
@@ -90,6 +92,7 @@ const RbTeamLead = () => {
           headers: {
             "Content-Type": "application/json",
             "x-api-key": API_KEY,
+            "x-org-id": orgId,
             Authorization: `Bearer ${user?.token}`,
           },
           params: {
@@ -139,6 +142,7 @@ const RbTeamLead = () => {
           const response = await axios.get(fileUrl, {
             headers: {
               "x-api-key": API_KEY,
+              "x-org-id": orgId,
               Authorization: `Bearer ${user?.token}`,
             },
             responseType: "blob",
@@ -166,6 +170,17 @@ const RbTeamLead = () => {
     setStatusUpdates((prev) => ({ ...prev, [id]: value }));
   };
 
+  const applyPaymentUpdateToState = (reimbursementId, update) => {
+    setEmployees((prev) =>
+      prev.map((emp) => {
+        const newClaims = emp.claims.map((c) =>
+          String(c.id) === String(reimbursementId) ? { ...c, ...update } : c
+        );
+        return { ...emp, claims: newClaims };
+      })
+    );
+  };
+
   const updateStatus = async (id) => {
     const updatedStatus = statusUpdates[id];
     if (!updatedStatus) return showAlert("Please select a status.");
@@ -186,6 +201,7 @@ const RbTeamLead = () => {
         {
           headers: {
             "x-api-key": API_KEY,
+            "x-org-id": orgId,
           },
         }
       );
@@ -197,30 +213,42 @@ const RbTeamLead = () => {
     }
   };
 
-  const updatePaymentStatus = async () => {
-    if (!selectedPaymentOption) return showAlert("Please select an option.");
+  const updatePaymentStatus = async (claimId, selectedOption) => {
     try {
-      await axios.put(
-        `${BACKEND_URL}/reimbursement/payment-status/${selectedPaymentClaim.id}`,
+      const res = await axios.put(
+        `${BACKEND_URL}/reimbursement/payment-status/${claimId}`,
         {
-          payment_status: selectedPaymentOption === "paid" ? "paid" : "pending",
+          payment_status: selectedOption === "paid" ? "paid" : "pending",
           user_role: "Manager",
         },
-        { headers: { "x-api-key": API_KEY } }
+        { headers: { "x-api-key": API_KEY, "x-org-id": orgId } }
       );
+
+      const returned = (res.data && (res.data.data || res.data)) || {};
+
+      const newStatus =
+        returned.payment_status ||
+        (selectedOption === "paid" ? "paid" : "pending");
+      const paidDate = returned.paid_date || returned.paidDate || null;
+
+      applyPaymentUpdateToState(claimId, {
+        payment_status: newStatus,
+        paid_date: paidDate,
+      });
+
       showAlert("Payment status updated successfully.");
-      setIsPaymentModalOpen(false);
-      fetchEmployees();
-    } catch (error) {
-      console.error("Error updating payment status:", error);
+      return { success: true, returned };
+    } catch (err) {
+      console.error("Error updating payment status:", err);
       showAlert("Could not update payment status. Please try again.");
+      return { success: false };
     }
   };
 
   const handleDownloadPDF = async (claim) => {
     try {
       const response = await axios.get(`${BACKEND_URL}/download/${claim.id}`, {
-        headers: { "x-api-key": API_KEY },
+        headers: { "x-api-key": API_KEY, "x-org-id": orgId },
         responseType: "blob",
       });
       let filename = `Reimbursement_${claim.id}.pdf`;
@@ -438,7 +466,6 @@ const RbTeamLead = () => {
                                       {projectSelections[rb.id] || rb.project}
                                     </div>
                                   ) : (
-                                    // When status is pending, render the dropdown
                                     <select
                                       className="rb-status-dropdown"
                                       value={projectSelections[rb.id] || ""}
@@ -450,8 +477,8 @@ const RbTeamLead = () => {
                                       }
                                     >
                                       <option value="">Select</option>
-                                      <option value="STS CLAIM">
-                                        STS CLAIM
+                                      <option value="Company Claim">
+                                        Company Claim
                                       </option>
                                       {projects.map((project, index) => (
                                         <option key={index} value={project}>
@@ -492,7 +519,7 @@ const RbTeamLead = () => {
                                         className="pending-payment-btn"
                                         onClick={() => {
                                           setSelectedPaymentClaim(rb);
-                                          setSelectedPaymentOption(""); // Reset selection
+                                          setSelectedPaymentOption("");
                                           setIsPaymentModalOpen(true);
                                         }}
                                       >
@@ -548,7 +575,6 @@ const RbTeamLead = () => {
       ) : (
         <Reimbursement />
       )}
-      {/* Modal for Attachments */}
       {isModalOpen && (
         <div className="att-modal-overlay">
           <div className="att-modal-content">
@@ -585,7 +611,6 @@ const RbTeamLead = () => {
         </div>
       )}
 
-      {/* Payment Modal */}
       {isPaymentModalOpen && (
         <Modal
           isVisible={isPaymentModalOpen}
@@ -633,22 +658,14 @@ const RbTeamLead = () => {
                   return;
                 }
                 try {
-                  await axios.put(
-                    `${BACKEND_URL}/reimbursement/payment-status/${selectedPaymentClaim.id}`,
-                    {
-                      payment_status:
-                        selectedPaymentOption === "paid" ? "paid" : "pending",
-                      user_role: "admin", // adjust role as needed
-                    },
-                    {
-                      headers: {
-                        "x-api-key": API_KEY,
-                      },
-                    }
+                  const result = await updatePaymentStatus(
+                    selectedPaymentClaim.id,
+                    selectedPaymentOption
                   );
-                  showAlert("Payment status updated successfully.");
-                  setIsPaymentModalOpen(false);
-                  fetchEmployees(); // Refresh data
+
+                  if (result.success) {
+                    setIsPaymentModalOpen(false);
+                  }
                 } catch (error) {
                   console.error("Error updating payment status:", error);
                   showAlert(
@@ -662,7 +679,6 @@ const RbTeamLead = () => {
           </div>
         </Modal>
       )}
-      {/* Alert Modal */}
       <Modal
         isVisible={alertModal.isVisible}
         onClose={closeAlert}

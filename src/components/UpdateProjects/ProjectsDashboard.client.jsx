@@ -54,7 +54,7 @@ const ProjectCard = ({ projectData, onUpdate, onViewInvoices, userRole }) => {
     <div className="add-project-card" style={{ cursor: "pointer" }}>
       <div className="company">
         <h3>{company}</h3>
-        {userRole !== "Employee" && (
+        {(userRole === "Admin" || userRole === "Manager") && (
           <MdUpdate
             onClick={(e) => {
               e.stopPropagation();
@@ -77,7 +77,7 @@ const ProjectCard = ({ projectData, onUpdate, onViewInvoices, userRole }) => {
       <p className="project-label">Milestone Status</p>
       <p className="project-value">Phase {milestone}</p>
       <p className="project-value">
-        {userRole !== "Employee" && userRole !== "Team Lead" && (
+        {(userRole === "Admin" || userRole === "Manager") && (
           <button
             className="add-project-button"
             onClick={() => onViewInvoices(projectData)}
@@ -104,7 +104,7 @@ const ProjectsDashboard = () => {
   const [downloadDetails, setDownloadDetails] = useState({});
 
   const { user } = useAuth();
-  const userRole = user?.role ?? "Employee";
+  const userRole = user?.role ?? null;
   const employeeId = user?.employeeId ?? user?.id ?? null;
 
   const buildHeaders = () => {
@@ -123,22 +123,36 @@ const ProjectsDashboard = () => {
 
   const fetchProjects = async () => {
     try {
-      let url = `${process.env.NEXT_PUBLIC_BACKEND_URL}/projects`;
-      if (userRole === "Employee" || userRole === "Team Lead") {
-        url = `${process.env.NEXT_PUBLIC_BACKEND_URL}/projects/employeeProjects?employeeId=${employeeId}`;
+      if (userRole !== "Admin" && !employeeId) {
+        setProjects([]);
+        return;
+      }
+
+      let url = "";
+      const BACKEND = process.env.NEXT_PUBLIC_BACKEND_URL;
+
+      if (userRole === "Admin") {
+        url = `${BACKEND}/projects`;
+      } else {
+        url = `${BACKEND}/projects/employeeProjects?employeeId=${encodeURIComponent(
+          employeeId
+        )}`;
       }
 
       const response = await fetch(url, {
         method: "GET",
         headers: buildHeaders(),
       });
+
       if (!response.ok) {
         throw new Error(`Error: ${response.status} ${response.statusText}`);
       }
+
       const data = await response.json();
-      setProjects(data.projects || []);
+      setProjects(data.projects || data || []);
     } catch (error) {
       console.error("Error fetching projects:", error);
+      setProjects([]);
     }
   };
 
@@ -307,7 +321,7 @@ const ProjectsDashboard = () => {
             >
               Pending
             </span>
-            {(userRole === "Admin" || userRole === "Financial Manager") && (
+            {userRole === "Admin" && (
               <span
                 className={
                   activeTab === "General Templates" ? "active-tab" : ""

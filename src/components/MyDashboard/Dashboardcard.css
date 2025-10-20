@@ -47,3 +47,143 @@
   font-size: 0.7rem;
   color: #555;
 }
+
+/* -----------------------
+   Mobile styles for Dashboardcard
+   (append to Dashboardcard.css)
+   ----------------------- */
+
+/* Phones & small tablets: horizontal scroll "card carousel" with snap */
+@media (max-width: 768px) {
+  .dashboard-card-containers {
+    display: flex;
+    flex-direction: row; /* keep horizontal flow for swipe */
+    justify-content: flex-start;
+    gap: 12px;
+    padding: 12px;
+    box-sizing: border-box;
+    overflow-x: auto; /* keep horizontal scrolling */
+    -webkit-overflow-scrolling: touch;
+    scroll-snap-type: x mandatory;
+    scroll-padding: 12px;
+  }
+
+  /* make each card a swipeable panel, slightly wider for readability */
+  .dashboard-card-containers .card {
+    flex: 0 0 auto;
+    min-width: calc(80vw); /* nearly full viewport width on phones */
+    max-width: 420px;
+    width: auto; /* allow min-width to control sizing */
+    margin: 0;
+    padding: 14px;
+    border-radius: 10px;
+    box-shadow: 0 6px 14px rgba(0, 0, 0, 0.06);
+    scroll-snap-align: center;
+    align-items: center;
+    gap: 12px;
+  }
+
+  /* center content and increase touch target sizes */
+  .card {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 12px;
+  }
+
+  .icon {
+    font-size: 2.4rem;
+    margin-right: 8px;
+    flex: 0 0 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .custom-icon {
+    width: 48px;
+    height: 48px;
+  }
+
+  .content {
+    display: flex;
+    flex-direction: column;
+    text-align: left;
+    flex: 1 1 auto;
+    gap: 4px;
+  }
+
+  .value {
+    font-size: 1.6rem;
+    font-weight: 700;
+    color: #3498db;
+  }
+
+  .label {
+    font-size: 0.95rem;
+    color: #444;
+  }
+
+  /* allow a little end padding so last card isn't flush to screen edge */
+  .dashboard-card-containers::after {
+    content: "";
+    flex: 0 0 12px;
+  }
+}
+
+/* Extra-small phones: stack vertically for best readability */
+@media (max-width: 420px) {
+  .dashboard-card-containers {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 10px;
+    overflow-x: visible;
+  }
+
+  .dashboard-card-containers .card {
+    min-width: unset;
+    width: calc(100% - 20px);
+    max-width: none;
+    margin: 6px auto;
+    padding: 12px;
+    flex-direction: row;
+    align-items: center;
+  }
+
+  .icon {
+    font-size: 2rem;
+    flex: 0 0 44px;
+  }
+
+  .value {
+    font-size: 1.4rem;
+  }
+
+  .label {
+    font-size: 0.85rem;
+  }
+}
+
+/* Medium phones / small desktops: give slightly wider cards */
+@media (min-width: 769px) and (max-width: 1024px) {
+  .dashboard-card-containers {
+    gap: 14px;
+    padding: 14px;
+  }
+
+  .dashboard-card-containers .card {
+    min-width: calc(45% - 28px);
+    max-width: 360px;
+    scroll-snap-align: none;
+  }
+
+  .icon {
+    font-size: 2.2rem;
+  }
+
+  .value {
+    font-size: 1.7rem;
+  }
+}

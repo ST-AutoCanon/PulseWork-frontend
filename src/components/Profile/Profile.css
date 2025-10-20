@@ -203,3 +203,172 @@
   border: 1px solid #ffcccc;
   white-space: nowrap;
 }
+
+/* --------------------------
+   Mobile / Responsive tweaks
+   (append to Profile.css)
+   -------------------------- */
+
+@media (max-width: 768px) {
+  .profile-content {
+    width: calc(100vw - 24px);
+    max-width: none;
+    margin-top: 4%;
+    padding: 12px;
+    border-radius: 8px;
+  }
+
+  .profile-header {
+    flex-direction: row;
+    align-items: center;
+    gap: 12px;
+    padding-bottom: 10px;
+  }
+
+  .profile-photo {
+    width: 64px;
+    height: 64px;
+    margin-right: 12px;
+    border-width: 2px;
+  }
+
+  .profile-name h3 {
+    font-size: 1.05rem;
+  }
+
+  .profile-name .info-secondary {
+    font-size: 0.85rem;
+  }
+
+  /* Tabs -> wrap & become touch friendly */
+  .tabs {
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .tab-btn {
+    padding: 8px 6px;
+    font-size: 0.9rem;
+    flex: 1 1 auto;
+    text-align: center;
+  }
+
+  .tab-panel {
+    max-height: 56vh; /* keep room for close button */
+    overflow-y: auto;
+    padding-right: 8px;
+  }
+
+  .personal-grid {
+    gap: 10px;
+  }
+
+  /* Two-column pairs collapse to single column */
+  .field-pair {
+    grid-template-columns: 1fr;
+  }
+
+  .field-row {
+    padding: 10px;
+    font-size: 0.95rem;
+  }
+
+  .field-label {
+    font-size: 0.95rem;
+  }
+
+  .field-value {
+    font-size: 0.95rem;
+  }
+
+  .update-profile-btn {
+    width: 100%;
+    padding: 10px 14px;
+    font-size: 1rem;
+    border-radius: 6px;
+  }
+
+  /* Documents and assets */
+  .documents {
+    margin: 8% 6%;
+    font-size: 0.95rem;
+  }
+
+  .docs-row .doc-actions button {
+    padding: 6px 10px;
+    font-size: 0.85rem;
+  }
+
+  .assets-row .assets-list {
+    font-size: 0.95rem;
+  }
+
+  /* Modal override for small screen: full-screen feeling */
+  .profile-popup {
+    align-items: flex-start;
+    padding-top: 6%;
+  }
+
+  .profile-content {
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.2);
+  }
+
+  /* Close button bigger and easier to tap */
+  .profile-close {
+    top: 8px;
+    right: 8px;
+    font-size: 1.35rem;
+    padding: 6px;
+    background: transparent;
+    border-radius: 6px;
+  }
+
+  /* Missing bubbles: wrap nicely */
+  .missing-fields {
+    gap: 6px;
+  }
+  .missing-bubble {
+    font-size: 0.8rem;
+    padding: 6px 10px;
+  }
+}
+
+/* Extra small phones */
+@media (max-width: 420px) {
+  .profile-content {
+    width: calc(100vw - 12px);
+    padding: 10px;
+    margin-top: 3%;
+  }
+
+  .profile-photo {
+    width: 56px;
+    height: 56px;
+  }
+
+  .profile-name h3 {
+    font-size: 1rem;
+  }
+
+  .tab-btn {
+    font-size: 0.9rem;
+    padding: 8px 6px;
+  }
+
+  .tab-panel {
+    max-height: 62vh;
+  }
+
+  .field-row {
+    font-size: 0.9rem;
+    padding: 8px;
+  }
+
+  .docs-row .doc-actions button {
+    padding: 6px 8px;
+    font-size: 0.8rem;
+  }
+
+  .update-profile-btn {
+    font-size: 0.95rem;
+  }
+}

@@ -36,6 +36,7 @@ const StepFour = ({
           onMonthlyFixedAmountChange={onMonthlyFixedAmountChange}
           downloadAllAttachments={downloadAllAttachments}
           projectData={projectData}
+          editable={editable}
         />
       ) : (
         <>

@@ -46,7 +46,7 @@
 }
 
 .date-filter input {
-  max-width: 150px;
+  max-width: 120px;
   padding: 2%;
   border-radius: 5px;
 }
@@ -72,7 +72,7 @@
   padding: 3%;
   border: 1px solid #ccc;
   border-radius: 4px;
-  width: 160px;
+  width: 140px;
   margin-bottom: 0px;
 }
 
@@ -262,6 +262,7 @@
   text-overflow: ellipsis;
   word-wrap: break-word;
   font-size: medium;
+  margin-top: 2%;
 }
 
 .comments-col:hover .comment-preview {

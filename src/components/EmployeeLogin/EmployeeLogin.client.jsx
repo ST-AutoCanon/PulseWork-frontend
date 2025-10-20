@@ -407,7 +407,7 @@ const EmployeeLogin = () => {
         setError("Organization ID is missing. Please log in again.");
         setPunchData([]);
         setLoading(false);
-        router.push("/login");
+        router.push("/");
         return;
       }
 
@@ -537,7 +537,7 @@ const EmployeeLogin = () => {
 
     if (!orgId) {
       setError("Organization ID is missing. Please log in again.");
-      router.push("/login");
+      router.push("/");
       return;
     }
 

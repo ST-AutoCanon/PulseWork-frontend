@@ -1,13 +1,13 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import "jspdf-autotable"; // Import autoTable plugin for tables
-import "./PayrollSummary.css"; // Ensure proper CSS
+import "jspdf-autotable";
+import "./PayrollSummary.css";
 import generatePayslipPDF from "../../utils/generatePayslipPDF";
-import { useAuth } from "../../context/AuthProvider.client"; // Adjust path
+import { useAuth } from "../../context/AuthProvider.client";
 
 const PayrollSummary = () => {
-  const { user } = useAuth(); // Get logged-in employee info
+  const { user } = useAuth();
   const getCurrentMonthYear = () => {
     const now = new Date();
     return { month: now.getMonth() + 1, year: now.getFullYear() };
@@ -33,6 +33,35 @@ const PayrollSummary = () => {
   const handleDateChange = (event) => {
     const [month, year] = event.target.value.split("-");
     setSelectedDate({ month: parseInt(month), year: parseInt(year) });
+  };
+
+  // inside PayrollSummary component
+
+  const handleDownload = () => {
+    try {
+      const blob = generatePayslipPDF(
+        payrollData,
+        selectedDate,
+        bankDetails,
+        attendance,
+        employeeDetails
+      );
+      if (!blob) {
+        console.error("generatePayslipPDF returned null/undefined");
+        return;
+      }
+
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `Payslip_${employeeId}_${selectedDate.month}_${selectedDate.year}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error("Failed to download payslip:", err);
+    }
   };
 
   useEffect(() => {
@@ -287,18 +316,7 @@ const PayrollSummary = () => {
               </div>
             )}
 
-            <button
-              onClick={() =>
-                generatePayslipPDF(
-                  payrollData,
-                  selectedDate,
-                  bankDetails,
-                  attendance,
-                  employeeDetails
-                )
-              }
-              className="payroll-download-btn"
-            >
+            <button onClick={handleDownload} className="payroll-download-btn">
               Download PDF
             </button>
           </div>

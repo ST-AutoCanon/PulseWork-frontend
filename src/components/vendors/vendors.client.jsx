@@ -1022,19 +1022,13 @@ const Vendors = () => {
                     />
                   </div>
                   <div className="contact-field">
-                    <label htmlFor="cancelled_cheque">
-                      Cancelled Cheque:
-                      {!isEditing && (
-                        <span className="vendor-required-asterisk">*</span>
-                      )}
-                    </label>
+                    <label htmlFor="cancelled_cheque">Cancelled Cheque:</label>
                     <input
                       id="cancelled_cheque"
                       type="file"
                       name="cancelled_cheque"
                       accept=".pdf,.jpg,.png,.jpeg"
                       onChange={handleFileChange}
-                      required={!isEditing}
                     />
                   </div>
                 </div>

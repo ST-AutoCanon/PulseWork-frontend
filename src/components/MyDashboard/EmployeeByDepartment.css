@@ -62,3 +62,102 @@
   margin: auto;
   padding: 10px;
 }
+
+/* -------------------------
+   Mobile styles for EmployeeByDepartment
+   (append to EmployeeByDepartment.css)
+   ------------------------- */
+
+@media (max-width: 768px) {
+  .employee-department {
+    width: calc(100vw - 20px);
+    max-width: 520px;
+    margin: 10px auto;
+    padding: 12px;
+    box-sizing: border-box;
+    height: auto;
+    min-height: 260px;
+    border-radius: 10px;
+    align-items: center;
+  }
+
+  .employee-department h3 {
+    font-size: 16px;
+    text-align: center;
+    width: 100%;
+    margin: 4px 0 8px;
+  }
+
+  .employee-department-chart,
+  .chart-container-bydepartment {
+    width: 100%;
+    height: auto;
+    min-height: 220px;
+    margin: 0 auto;
+    padding: 6px;
+    box-sizing: border-box;
+  }
+
+  /* Force chart canvas to be responsive and fill the area */
+  .chart-container-bydepartment canvas,
+  .employee-department-chart canvas {
+    width: 100% !important;
+    height: auto !important;
+    max-height: 320px;
+  }
+
+  /* Legend: center and wrap, smaller text */
+  .employee-department-legend {
+    justify-content: center;
+    gap: 8px;
+    margin-top: 12px;
+    padding: 4px 6px;
+  }
+
+  .employee-department-legend-item {
+    font-size: 12px;
+    gap: 8px;
+  }
+
+  .employee-department-legend-color {
+    width: 10px;
+    height: 10px;
+    margin-right: 6px;
+  }
+
+  .employee-department-session {
+    font-size: 14px;
+  }
+
+  /* Reduce tick label font sizes inside the chart - Chart.js inline config may still dominate, but this helps wrappers */
+  .employee-department .chartjs-render-monitor {
+    max-height: 300px;
+  }
+}
+
+/* Extra-small phones */
+@media (max-width: 420px) {
+  .employee-department {
+    width: calc(100vw - 14px);
+    padding: 10px;
+    min-height: 220px;
+  }
+
+  .employee-department h3 {
+    font-size: 15px;
+    margin-bottom: 6px;
+  }
+
+  .employee-department-chart,
+  .chart-container-bydepartment {
+    min-height: 200px;
+    padding: 4px;
+  }
+
+  .employee-department-legend-item {
+    font-size: 11px;
+  }
+
+  /* Make bars slightly thicker on narrower screens by reducing categoryPercentage / barPercentage via Chart config if needed.
+     If you want me to include a small JS tweak to adjust Chart options on mobile I can provide that. */
+}

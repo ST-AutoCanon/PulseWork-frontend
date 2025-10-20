@@ -220,10 +220,27 @@ const Sidebar = ({ setActiveContent }) => {
         >
           <MdIcons.MdCurrencyRupee />
         </button>
+        {user?.role !== "Admin" && user?.role !== "SuperAdmin" && (
+          <button
+            className={showProfile ? "active" : ""}
+            onClick={() => setShowProfile((s) => !s)}
+            aria-label="View Profile"
+            title="View Profile"
+          >
+            <MdIcons.MdPerson />
+          </button>
+        )}
         <button onClick={() => setShowMobileMenu(true)}>
           <MdIcons.MdMenu />
         </button>
       </div>
+
+      {showProfile && (
+        <Profile
+          employeeId={user?.employeeId}
+          onClose={() => setShowProfile(false)}
+        />
+      )}
 
       {showMobileMenu && (
         <div

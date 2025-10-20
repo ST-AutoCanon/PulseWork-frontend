@@ -629,8 +629,8 @@ const RbAdmin = () => {
                                       }
                                     >
                                       <option value="">Select</option>
-                                      <option value="STS CLAIM">
-                                        STS CLAIM
+                                      <option value="Company Claim">
+                                        Company Claim
                                       </option>
                                       {projects.map((project, index) => (
                                         <option key={index} value={project}>

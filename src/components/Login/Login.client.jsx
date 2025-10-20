@@ -142,8 +142,14 @@ export default function Login({ onClose }) {
     isModalOpen && (
       <div className="login-container">
         <div className="top-tabs-bar">
-          <span className="tab-link">Overview</span>
-          <span className="tab-link">Demo Request</span>
+          <button className="tab-link">Overview</button>
+          <button
+            className="tab-link"
+            onClick={() => router.push("/demo-request")}
+            aria-haspopup="dialog"
+          >
+            Demo Request
+          </button>
           <button className="purchase-btn">Purchase</button>
         </div>
 

@@ -1,4 +1,3 @@
-// GeneratePayslip.client.jsx
 "use client";
 
 import React, { useState, useEffect } from "react";
@@ -9,6 +8,7 @@ import { useAuth } from "../../context/AuthProvider.client";
 
 export default function GeneratePayslip() {
   const { user } = useAuth();
+  const orgId = user?.orgId ?? user?.org_id ?? null;
   const meId = user?.employeeId ?? user?.id ?? null;
 
   const [showModal, setShowModal] = useState(false);
@@ -17,8 +17,9 @@ export default function GeneratePayslip() {
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [employeeData, setEmployeeData] = useState([]);
+  const [employeeData, setEmployeeData] = useState([]); // table data (unchanged)
   const [filteredEmployeeData, setFilteredEmployeeData] = useState([]);
+  const [formEmployeeList, setFormEmployeeList] = useState([]); // used only for the form dropdown (/payslip/employees)
   const [editingEmployeeId, setEditingEmployeeId] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [viewDetailsModal, setViewDetailsModal] = useState({
@@ -33,12 +34,14 @@ export default function GeneratePayslip() {
 
   const headers = {
     "x-api-key": API_KEY,
+    "x-org-id": orgId,
     ...(meId ? { "x-employee-id": meId } : {}),
   };
 
-  const [formData, setFormData] = useState({
+  // Note: employeeId is intentionally first in the form order as requested.
+  const initialFormData = {
+    employeeId: "PW-000001",
     employeeName: "",
-    employeeId: "STS001",
     gender: "",
     designation: "",
     dateOfJoining: "",
@@ -56,7 +59,9 @@ export default function GeneratePayslip() {
     esiInsurance: "",
     professionalTax: "",
     tds: "",
-  });
+  };
+
+  const [formData, setFormData] = useState(initialFormData);
 
   const [alertModal, setAlertModal] = useState({
     isVisible: false,
@@ -76,7 +81,7 @@ export default function GeneratePayslip() {
   const closeViewDetails = () =>
     setViewDetailsModal({ isVisible: false, employee: null });
 
-  // Fetch employees list (old-employee list endpoint)
+  // Fetch employee data for table (unchanged)
   useEffect(() => {
     let mounted = true;
     const fetchEmployeeData = async () => {
@@ -106,10 +111,76 @@ export default function GeneratePayslip() {
     return () => {
       mounted = false;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [BACKEND_URL, API_KEY, meId]);
 
-  // Search debounce
+  // Fetch employee list specifically for the form dropdown - use /payslip/employees as requested
+  useEffect(() => {
+    let mounted = true;
+    const fetchFormEmployees = async () => {
+      try {
+        const resp = await fetch(`${BACKEND_URL}/payslip/employees`, {
+          headers,
+        });
+        if (!resp.ok) {
+          const text = await resp.text().catch(() => null);
+          throw new Error(text || `HTTP ${resp.status}`);
+        }
+        const data = await resp.json();
+        if (!mounted) return;
+
+        // The API sometimes returns: an array OR { data: [...] } OR { message: { data: [...] } }
+        // Normalize to a flat array and then normalize item keys so the rest of the component can rely on consistent fields.
+        let list = [];
+        if (Array.isArray(data)) list = data;
+        else if (Array.isArray(data.data)) list = data.data;
+        else if (Array.isArray(data.message?.data)) list = data.message.data;
+        else list = [];
+
+        const normalized = list.map((item) => ({
+          employee_id: item.employee_id || item.employeeId || "",
+          employee_name:
+            item.employee_name || item.employeeName || item.name || "",
+          gender: item.gender || "",
+          designation: item.position || item.designation || "",
+          department_name:
+            item.department_name ||
+            item.departmentName ||
+            item.department ||
+            "",
+          // unify joining date key to date_of_joining (ISO string or null)
+          date_of_joining:
+            item.joining_date ||
+            item.date_of_joining ||
+            item.joiningDate ||
+            null,
+          account_no:
+            item.account_number || item.account_no || item.accountNo || "",
+          uin_no: item.uan_number || item.uan || item.uanNumber || "",
+          pan_number: item.pan_number || item.panNumber || "",
+          esi_number: item.esi_number || item.esiNumber || "",
+          pf_number: item.pf_number || item.pfNumber || "",
+          id: item.id || item.employee_id || null,
+        }));
+
+        setFormEmployeeList(normalized);
+      } catch (err) {
+        console.error("Form employee fetch error:", err);
+        // We intentionally do not block other functionality if this fails, but show an alert so devs know.
+        showAlert(
+          "Error fetching payslip employee list (form dropdown): " +
+            (err.message || err),
+          "Warning"
+        );
+      }
+    };
+
+    fetchFormEmployees();
+
+    return () => {
+      mounted = false;
+    };
+  }, [BACKEND_URL, API_KEY, meId]);
+
   useEffect(() => {
     const t = setTimeout(() => {
       const q = (searchQuery || "").trim().toLowerCase();
@@ -130,11 +201,37 @@ export default function GeneratePayslip() {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
+
+    // When employeeId is changed via dropdown, auto-fill the related fields BUT keep them editable after that.
     if (name === "employeeId") {
-      const formattedValue = value.toUpperCase().startsWith("STS")
-        ? value
-        : `STS${value.replace(/\D/g, "")}`;
-      setFormData((p) => ({ ...p, [name]: formattedValue }));
+      const selected = formEmployeeList.find(
+        (emp) => (emp.employee_id || emp.employeeId || "") === value
+      );
+      if (selected) {
+        setFormData((p) => ({
+          ...p,
+          employeeId: value,
+          employeeName:
+            selected.employee_name || selected.name || p.employeeName,
+          gender: selected.gender || p.gender,
+          designation:
+            (selected.position || selected.designation || "") +
+              (selected.department_name
+                ? ` (${selected.department_name})`
+                : "") || p.designation,
+          dateOfJoining: selected.date_of_joining
+            ? selected.date_of_joining.split("T")[0]
+            : selected.dateOfJoining || p.dateOfJoining,
+          accountNo: selected.account_no || selected.accountNo || p.accountNo,
+          uinNo: selected.uin_no || selected.uinNo || p.uinNo,
+          panNumber: selected.pan_number || selected.panNumber || p.panNumber,
+          esiNumber: selected.esi_number || selected.esiNumber || p.esiNumber,
+          pfNumber: selected.pf_number || selected.pfNumber || p.pfNumber,
+        }));
+      } else {
+        // If user clears selection or selects a non-matching value, just set the ID
+        setFormData((p) => ({ ...p, employeeId: value }));
+      }
     } else if (name === "selectedMonth") {
       setSelectedMonth(value);
     } else if (name === "selectedYear") {
@@ -299,7 +396,7 @@ export default function GeneratePayslip() {
     return {
       payrollData: {
         employee_name: formData.employeeName || "Unknown",
-        employee_id: formData.employeeId || "STS001",
+        employee_id: formData.employeeId || "PW-000001",
         designation: formData.designation || "N/A",
         joining_date:
           formData.dateOfJoining || new Date().toISOString().split("T")[0],
@@ -343,10 +440,12 @@ export default function GeneratePayslip() {
 
   const handleEdit = (employee) => {
     setFormData({
+      employeeId: employee.employee_id || "PW-000001",
       employeeName: employee.employee_name || "",
-      employeeId: employee.employee_id || "STS001",
       gender: employee.gender || "",
-      designation: employee.designation || "",
+      designation:
+        (employee.designation || employee.position || "") +
+        (employee.department_name ? ` (${employee.department_name})` : ""),
       dateOfJoining: employee.date_of_joining
         ? employee.date_of_joining.split("T")[0]
         : "",
@@ -415,6 +514,7 @@ export default function GeneratePayslip() {
         method,
         headers: {
           ...headers,
+          "x-org-id": orgId,
           "Content-Type": "application/json",
         },
         body: JSON.stringify(backendData),
@@ -432,7 +532,6 @@ export default function GeneratePayslip() {
         "Success"
       );
 
-      // refresh employee list
       const updatedResponse = await fetch(`${BACKEND_URL}/old-employee/list`, {
         headers,
       });
@@ -449,27 +548,7 @@ export default function GeneratePayslip() {
       }
 
       setShowModal(false);
-      setFormData({
-        employeeName: "",
-        employeeId: "STS001",
-        gender: "",
-        designation: "",
-        dateOfJoining: "",
-        accountNo: "",
-        workingDays: "",
-        leavesTaken: "",
-        uinNo: "",
-        panNumber: "",
-        esiNumber: "",
-        pfNumber: "",
-        basic: "",
-        hra: "",
-        otherAllowance: "",
-        pf: "",
-        esiInsurance: "",
-        professionalTax: "",
-        tds: "",
-      });
+      setFormData(initialFormData);
       setSelectedMonth(new Date().getMonth() + 1);
       setSelectedYear(new Date().getFullYear());
       setEditingEmployeeId(null);
@@ -695,14 +774,33 @@ export default function GeneratePayslip() {
     "Download",
   ];
 
-  // layout helper for form rows
-  const fieldKeys = Object.keys(formData).concat([
-    "selectedMonth",
-    "selectedYear",
-  ]);
+  // Explicit field order for the form so employeeId appears first
+  const fieldOrder = [
+    "employeeId",
+    "employeeName",
+    "gender",
+    "designation",
+    "dateOfJoining",
+    "accountNo",
+    "workingDays",
+    "leavesTaken",
+    "uinNo",
+    "panNumber",
+    "esiNumber",
+    "pfNumber",
+    "basic",
+    "hra",
+    "otherAllowance",
+    "pf",
+    "esiInsurance",
+    "professionalTax",
+    "tds",
+  ];
+
+  const fieldsForRows = fieldOrder.concat(["selectedMonth", "selectedYear"]);
   const rows = [];
-  for (let i = 0; i < fieldKeys.length; i += 3)
-    rows.push(fieldKeys.slice(i, i + 3));
+  for (let i = 0; i < fieldsForRows.length; i += 3)
+    rows.push(fieldsForRows.slice(i, i + 3));
 
   return (
     <div className="generatePayslip-container">
@@ -725,27 +823,7 @@ export default function GeneratePayslip() {
             setError(null);
             setSuccess(null);
             setEditingEmployeeId(null);
-            setFormData({
-              employeeName: "",
-              employeeId: "STS001",
-              gender: "",
-              designation: "",
-              dateOfJoining: "",
-              accountNo: "",
-              workingDays: "",
-              leavesTaken: "",
-              uinNo: "",
-              panNumber: "",
-              esiNumber: "",
-              pfNumber: "",
-              basic: "",
-              hra: "",
-              otherAllowance: "",
-              pf: "",
-              esiInsurance: "",
-              professionalTax: "",
-              tds: "",
-            });
+            setFormData(initialFormData);
             setSelectedMonth(new Date().getMonth() + 1);
             setSelectedYear(new Date().getFullYear());
           }}
@@ -759,19 +837,34 @@ export default function GeneratePayslip() {
           <thead>
             <tr>
               {tableHeaders.map((h, i) => (
-                <th key={i}>{h}</th>
+                <th key={i} className="generatePayslip-table-header">
+                  {h}
+                </th>
               ))}
             </tr>
           </thead>
           <tbody>
             {filteredEmployeeData.map((employee) => (
               <tr key={employee.id || employee.employee_id}>
-                <td>{employee.employee_name}</td>
-                <td>{employee.employee_id}</td>
-                <td>{employee.gender}</td>
-                <td>{employee.designation}</td>
-                <td>{(employee.date_of_joining || "").split("T")[0]}</td>
-                <td>
+                <td className="generatePayslip-table-cell">
+                  {employee.employee_name}
+                </td>
+                <td className="generatePayslip-table-cell">
+                  {employee.employee_id}
+                </td>
+                <td className="generatePayslip-table-cell">
+                  {employee.gender}
+                </td>
+                <td className="generatePayslip-table-cell">
+                  {(employee.designation || employee.position || "") +
+                    (employee.department_name
+                      ? ` (${employee.department_name})`
+                      : "")}
+                </td>
+                <td className="generatePayslip-table-cell">
+                  {(employee.date_of_joining || "").split("T")[0]}
+                </td>
+                <td className="generatePayslip-table-cell">
                   <button
                     className="generatePayslip-view-btn"
                     onClick={() => handleViewDetails(employee)}
@@ -780,7 +873,7 @@ export default function GeneratePayslip() {
                     <i className="fas fa-eye" />
                   </button>
                 </td>
-                <td>
+                <td className="generatePayslip-table-cell">
                   <button
                     className="generatePayslip-edit-btn"
                     onClick={() => handleEdit(employee)}
@@ -789,7 +882,7 @@ export default function GeneratePayslip() {
                     <i className="fas fa-pencil-alt" />
                   </button>
                 </td>
-                <td>
+                <td className="generatePayslip-table-cell">
                   <button
                     className="generatePayslip-download-btn"
                     onClick={() => handleDownloadForEmployee(employee)}
@@ -883,7 +976,41 @@ export default function GeneratePayslip() {
                           )}
                         </label>
 
-                        {field === "selectedMonth" ? (
+                        {/* special handling for employeeId: a dropdown (non-editable) that auto-fills other fields */}
+                        {field === "employeeId" ? (
+                          <select
+                            id="employeeId"
+                            name="employeeId"
+                            value={formData.employeeId}
+                            onChange={handleChange}
+                            className="generatePayslip-popup-input"
+                          >
+                            <option value="">Select Employee ID</option>
+                            {Array.isArray(formEmployeeList) &&
+                            formEmployeeList.length > 0 ? (
+                              formEmployeeList.map((emp) => (
+                                <option
+                                  key={
+                                    emp.employee_id || emp.id || emp.employeeId
+                                  }
+                                  value={emp.employee_id || emp.employeeId}
+                                >
+                                  {`${emp.employee_id || emp.employeeId} - ${
+                                    emp.employee_name || emp.name || ""
+                                  }`}
+                                </option>
+                              ))
+                            ) : // fallback when payslip API returns a non-array (avoid .map error)
+                            formData.employeeId ? (
+                              <option
+                                key={formData.employeeId}
+                                value={formData.employeeId}
+                              >
+                                {formData.employeeId}
+                              </option>
+                            ) : null}
+                          </select>
+                        ) : field === "selectedMonth" ? (
                           <select
                             id="selectedMonth"
                             name="selectedMonth"
@@ -944,7 +1071,7 @@ export default function GeneratePayslip() {
                               field === "dateOfJoining"
                                 ? "YYYY-MM-DD"
                                 : field === "employeeId"
-                                ? "STS001"
+                                ? "PW-000001"
                                 : `Enter ${fieldLabels[field]}`
                             }
                             type={

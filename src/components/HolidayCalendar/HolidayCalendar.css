@@ -156,3 +156,143 @@
 .color-box.company {
   background-color: #9090fd;
 }
+
+@media (max-width: 600px) {
+  .calendar-container {
+    width: calc(100vw - 18px);
+    max-width: 380px;
+    height: auto;
+    box-sizing: border-box;
+  }
+
+  .calendar-wrapper {
+    height: auto;
+  }
+
+  .react-calendar {
+    width: 100%;
+    font-size: 14px;
+  }
+
+  .react-calendar__navigation {
+    height: auto;
+    padding: 8px 6px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .react-calendar__navigation__label {
+    font-size: 1.15rem;
+    font-weight: 700;
+    pointer-events: none;
+    color: #fff;
+  }
+
+  .react-calendar__navigation__arrow {
+    width: 36px;
+    height: 36px;
+    font-size: 2rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+  }
+
+  .react-calendar__month-view__weekdays {
+    font-size: 0.85rem;
+    margin-top: 6px;
+  }
+
+  .react-calendar__tile {
+    position: relative;
+    font-size: 0.95rem;
+    min-height: 48px;
+    line-height: 1.1;
+    box-sizing: border-box;
+  }
+
+  .react-calendar__tile abbr {
+    z-index: 10;
+  }
+
+  .tile-tooltip-overlay {
+    z-index: 6;
+  }
+
+  .sunday-dot,
+  .holiday-dot {
+    width: 24px;
+    height: 24px;
+    top: 10px;
+    right: 12px;
+  }
+
+  .optional-dot {
+    background-color: #d32f2f;
+  }
+
+  .company-dot {
+    background-color: #9090fd;
+  }
+
+  .react-tooltip {
+    z-index: 99999 !important;
+    font-size: 13px !important;
+    padding: 6px 8px !important;
+  }
+
+  .react-calendar__tile--active,
+  .react-calendar__tile--range,
+  .react-calendar__tile--rangeStart,
+  .react-calendar__tile--rangeEnd {
+    background-color: #fae5a4 !important;
+    border-radius: 6px;
+  }
+
+  .holiday-legend-top {
+    display: flex;
+    gap: 0.75rem;
+    background-color: rgba(255, 255, 255, 0.95);
+    margin-top: -15px;
+    border-radius: 10px;
+  }
+
+  .legend-item {
+    gap: 8px;
+  }
+
+  .color-box {
+    width: 12px;
+    height: 12px;
+  }
+
+  /* Slight spacing tweaks for mobile layout */
+  .calendar-container .file-note,
+  .calendar-container .error-message-for-uploadfile {
+    font-size: 13px;
+  }
+}
+
+/* Optional: medium phones / small tablets (keeps desktop unchanged) */
+@media (min-width: 601px) and (max-width: 900px) {
+  .calendar-container {
+    width: 420px;
+    max-width: calc(100vw - 40px);
+    height: auto;
+    padding: 12px;
+    margin: 12px auto;
+  }
+
+  .react-calendar__tile {
+    min-height: 52px;
+  }
+
+  .holiday-legend-top {
+    top: 72px; /* keep original position if there's room */
+    left: 50%;
+    transform: translateX(-50%);
+    background: transparent;
+    padding: 0;
+  }
+}

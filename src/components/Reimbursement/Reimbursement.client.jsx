@@ -1622,7 +1622,7 @@ const Reimbursement = () => {
                   required
                 >
                   <option value="">Select project</option>
-                  <option value="STS CLAIM">STS CLAIM</option>
+                  <option value="Company Claim">Company Claim</option>
                   {projects.map((proj, i) => (
                     <option key={i} value={proj}>
                       {proj}

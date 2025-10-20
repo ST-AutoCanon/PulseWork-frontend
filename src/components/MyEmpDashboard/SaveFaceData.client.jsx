@@ -7,7 +7,7 @@ import { useAuth } from "../../context/AuthProvider.client";
 import "./SaveFaceData.css";
 
 export default function SaveFaceData({ onClose }) {
-  const { user } = useAuth();
+  const { user, hydrated } = useAuth();
   const employeeIdFromAuth =
     user?.employeeId ?? user?.employee_id ?? user?.id ?? null;
 
@@ -20,6 +20,10 @@ export default function SaveFaceData({ onClose }) {
   const [isCapturing, setIsCapturing] = useState(false);
   const [modelsLoaded, setModelsLoaded] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+
+  // Instruction / overlay messages shown during capture
+  const [instruction, setInstruction] = useState("");
+  const [samplesCount, setSamplesCount] = useState(0);
 
   const [alertModal, setAlertModal] = useState({
     isVisible: false,
@@ -53,16 +57,23 @@ export default function SaveFaceData({ onClose }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [employeeIdFromAuth]);
 
+  useEffect(() => {
+    if (hydrated && !user) {
+      showAlert(
+        "User information not found. Please login or ensure your session is active."
+      );
+    }
+  }, [hydrated, user]);
+
   const showAlert = (message, title = "") =>
     setAlertModal({ isVisible: true, title, message });
   const closeAlert = () =>
     setAlertModal({ isVisible: false, title: "", message: "" });
 
-  // Normalize backend response check into a boolean-like object
+  // returns { exists: boolean, count: number | null, raw }
   const interpretFaceCheck = (respData) => {
-    if (!respData) return { exists: false, raw: respData };
-    // common shapes:
-    // { exists: true }  OR { isRegistered: true } OR { registered: true } OR { count: 1 }
+    if (!respData) return { exists: false, count: null, raw: respData };
+
     const exists =
       Boolean(respData.exists) ||
       Boolean(respData.isRegistered) ||
@@ -70,13 +81,21 @@ export default function SaveFaceData({ onClose }) {
       (typeof respData.count === "number" && respData.count > 0) ||
       Boolean(respData.data?.exists) ||
       Boolean(respData.data?.isRegistered) ||
-      (typeof respData.data?.count === "number" && respData.data.count > 0);
-    return { exists, raw: respData };
+      (typeof respData.data?.count === "number" && respData.data.count > 0) ||
+      false;
+
+    let count = null;
+    if (typeof respData.count === "number") count = respData.count;
+    else if (typeof respData.data?.count === "number")
+      count = respData.data.count;
+    else if (Array.isArray(respData.data)) count = respData.data.length;
+    else if (Array.isArray(respData)) count = respData.length;
+
+    return { exists, count, raw: respData };
   };
 
   async function checkExistingFace(employeeId) {
     if (!BACKEND_URL || !API_KEY) {
-      // treat as "unknown" instead of forcing popup
       console.warn("Missing backend or API key while checking existing face");
       return null;
     }
@@ -93,21 +112,20 @@ export default function SaveFaceData({ onClose }) {
           headers,
         }
       );
-      if (!resp.ok) {
-        // parse body for debug but don't force popup
-        const maybe = await resp.json().catch(() => null);
-        console.warn("face check returned non-OK:", resp.status, maybe);
-        return interpretFaceCheck(maybe);
+
+      const parsed = await resp.json().catch(() => null);
+      if (!resp.ok && !parsed) {
+        console.warn("face check returned non-OK without body:", resp.status);
+        return null;
       }
-      const data = await resp.json().catch(() => null);
-      return interpretFaceCheck(data);
+      return interpretFaceCheck(parsed);
     } catch (err) {
       console.error("checkExistingFace error:", err);
       return null;
     }
   }
 
-  // On mount: load models and also pre-check if face exists to avoid showing modal at all
+  // On mount: load models and pre-check if face exists
   useEffect(() => {
     let canceled = false;
     const loadModels = async () => {
@@ -127,17 +145,26 @@ export default function SaveFaceData({ onClose }) {
 
     loadModels();
 
-    // pre-check existence: if exists -> close immediately (don't show the modal)
     (async () => {
       if (!userName) return;
       const check = await checkExistingFace(userName);
-      if (check && check.exists) {
-        // show a brief confirmation then close
+      if (check === null) {
+        showAlert("Failed to check existing face data. Please try again.");
+        return;
+      }
+      if (check.exists) {
         showAlert("Face data already exists for this Employee ID.");
         setTimeout(() => {
           closeAlert();
           onClose?.();
         }, 1000);
+        return;
+      }
+      if (typeof check.count === "number" && check.count > 1) {
+        showAlert(
+          `Multiple entries (${check.count}) found for Employee ID ${userName}. Cannot capture face data.`
+        );
+        return;
       }
     })();
 
@@ -191,6 +218,9 @@ export default function SaveFaceData({ onClose }) {
       } catch (e) {}
       canvasRef.current = null;
     }
+    // clear any overlay instruction when camera stops
+    setInstruction("");
+    setSamplesCount(0);
   };
 
   const captureFaceData = async () => {
@@ -210,29 +240,30 @@ export default function SaveFaceData({ onClose }) {
       return;
     }
 
-    // Check existing face data — if exists, inform and close
     const check = await checkExistingFace(userName);
-    if (check) {
-      if (check.exists) {
-        showAlert("Face data already exists for this Employee ID.");
-        // close modal after letting user see the message
-        setTimeout(() => {
-          closeAlert();
-          onClose?.();
-        }, 900);
-        return;
-      }
-      if (check.count > 1) {
-        showAlert(
-          "Multiple face entries found for this Employee ID. Cannot capture."
-        );
-        // leave modal open for support/help
-        return;
-      }
+    if (check === null) {
+      showAlert("Failed to check existing face data. Please try again.");
+      return;
+    }
+    if (check.exists) {
+      showAlert("Face data already exists for this Employee ID.");
+      setTimeout(() => {
+        closeAlert();
+        onClose?.();
+      }, 900);
+      return;
+    }
+    if (typeof check.count === "number" && check.count > 1) {
+      showAlert(
+        "Multiple face entries found for this Employee ID. Cannot capture."
+      );
+      return;
     }
 
-    // proceed to capture
     setIsCapturing(true);
+    setInstruction("🔄 Preparing camera...");
+    setSamplesCount(0);
+
     try {
       await startCamera();
 
@@ -258,7 +289,7 @@ export default function SaveFaceData({ onClose }) {
       const maxSamples = 30;
       const sampleIntervalMs = 500;
       let attempts = 0;
-      const maxAttempts = 100;
+      const maxAttempts = 120;
 
       intervalRef.current = setInterval(async () => {
         try {
@@ -269,6 +300,7 @@ export default function SaveFaceData({ onClose }) {
             clearInterval(intervalRef.current);
             stopCamera();
             setIsCapturing(false);
+            setInstruction("");
             showAlert(
               "Failed to capture enough samples. Please try again with better lighting."
             );
@@ -284,39 +316,65 @@ export default function SaveFaceData({ onClose }) {
             .withFaceDescriptors();
 
           const resized = faceapi.resizeResults(detections, displaySize);
-          const ctx = canvasRef.current.getContext("2d");
-          ctx.clearRect(
-            0,
-            0,
-            canvasRef.current.width,
-            canvasRef.current.height
-          );
-          faceapi.draw.drawDetections(canvasRef.current, resized);
 
+          if (canvasRef.current) {
+            const ctx = canvasRef.current.getContext("2d");
+            ctx.clearRect(
+              0,
+              0,
+              canvasRef.current.width,
+              canvasRef.current.height
+            );
+            faceapi.draw.drawDetections(canvasRef.current, resized);
+          }
+
+          // No detections
           if (!detections || detections.length === 0) {
-            return;
-          }
-          if (detections.length > 1) {
+            setInstruction("🕵️‍♂️ No face detected. Please look at the camera.");
             return;
           }
 
+          // Multiple faces
+          if (detections.length > 1) {
+            setInstruction(
+              "👥 Multiple faces found. Ensure only one person is in front of the camera."
+            );
+            return;
+          }
+
+          // bounding box too small -> move closer
           const box = detections[0].detection.box;
           if (box.width < 100 || box.height < 100) {
+            setInstruction(
+              "📏 Move closer to the camera for better detection."
+            );
             return;
           }
 
+          // brightness check
           const brightness = estimateVideoBrightness(videoRef.current);
           if (brightness < 40) {
+            setInstruction(
+              "💡 Low lighting detected. Please move to a brighter area."
+            );
             return;
           }
 
+          // passed checks -> capture descriptor
           capturedDescriptors.push(Array.from(detections[0].descriptor));
+          setSamplesCount(capturedDescriptors.length);
+          setInstruction(
+            `✅ Capturing... (${capturedDescriptors.length}/${maxSamples} samples)`
+          );
 
           if (capturedDescriptors.length >= maxSamples) {
             clearInterval(intervalRef.current);
+            setInstruction("✅ Captured enough samples. Saving...");
             await saveCapturedFace(capturedDescriptors);
             stopCamera();
             setIsCapturing(false);
+            setInstruction("");
+            setSamplesCount(0);
           }
         } catch (err) {
           console.error("capture interval error:", err);
@@ -330,6 +388,8 @@ export default function SaveFaceData({ onClose }) {
       setIsCapturing(false);
       stopCamera();
       clearInterval(intervalRef.current);
+      setInstruction("");
+      setSamplesCount(0);
     }
   };
 
@@ -368,6 +428,13 @@ export default function SaveFaceData({ onClose }) {
 
     if (!BACKEND_URL || !API_KEY) {
       showAlert("Missing backend configuration (API key / URL).");
+      return;
+    }
+
+    if (!employeeIdFromAuth) {
+      showAlert(
+        "Employee ID is missing from authentication context. Please login and try again."
+      );
       return;
     }
 
@@ -418,7 +485,10 @@ export default function SaveFaceData({ onClose }) {
         </p>
       </div>
 
-      <div className={`video-wrapper ${isCapturing ? "capturing" : ""}`}>
+      <div
+        className={`video-wrapper ${isCapturing ? "capturing" : ""}`}
+        style={{ position: "relative" }}
+      >
         <video
           ref={videoRef}
           id="video"
@@ -436,24 +506,32 @@ export default function SaveFaceData({ onClose }) {
             boxShadow: "0 0 12px rgba(0,0,0,0.25)",
           }}
         />
+        {/* Instruction overlay (react state driven) */}
+        <div className="instruction" role="status" aria-live="polite">
+          {instruction}
+        </div>
       </div>
 
-      <div className="face-buttons">
+      <div className="face-buttons" style={{ marginTop: 12 }}>
         <button
           id="saveFace"
           onClick={captureFaceData}
           disabled={isCapturing || !modelsLoaded}
           className="btn"
         >
-          {isCapturing ? "Capturing..." : "Save My Face"}
+          {isCapturing ? `Capturing... (${samplesCount}/30)` : "Save My Face"}
         </button>
         <button
           onClick={() => {
             stopCamera();
             setIsCapturing(false);
+            setInstruction("");
+            setSamplesCount(0);
+            clearInterval(intervalRef.current);
           }}
           className="btn btn-secondary"
           disabled={!isCapturing}
+          style={{ marginLeft: 8 }}
         >
           Cancel
         </button>

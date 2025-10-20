@@ -16,10 +16,28 @@ const MonthlyScheduleTable = ({
   service_description = "",
   onFinancialDetailsChange,
   onMonthlyFixedAmountChange,
-  downloadAllAttachments, // new
-  projectData, // new
+  downloadAllAttachments,
+  projectData,
+  editable = false,
 }) => {
   const { user } = useAuth();
+
+  const rawRole = user?.role || user?.userRole || "";
+  const userRole = String(rawRole).toLowerCase();
+  const dashboardData = user?.dashboardData || user?.dashboard || {};
+  const department = (dashboardData.department || "").toLowerCase();
+
+  const allowed =
+    userRole === "admin" ||
+    (userRole === "manager" && department === "finance");
+
+  if (!allowed)
+    return (
+      <div style={{ padding: 24, textAlign: "center", color: "#666" }}>
+        You do not have permission to view this section.
+      </div>
+    );
+
   const employeeId = user?.employeeId ?? user?.id ?? null;
 
   const [financialDetails, setFinancialDetails] = useState([]);
@@ -146,6 +164,8 @@ const MonthlyScheduleTable = ({
   };
 
   const handleInputChange = (idx, field, raw) => {
+    if (!editable) return;
+
     const rows = [...financialDetails];
     const row = { ...rows[idx] };
 
@@ -184,6 +204,7 @@ const MonthlyScheduleTable = ({
             type="number"
             value={monthlyFixedAmount ?? ""}
             onChange={(e) => {
+              if (!editable) return;
               const amt = parseFloat(e.target.value) || 0;
               onMonthlyFixedAmountChange?.(
                 amt,
@@ -191,6 +212,7 @@ const MonthlyScheduleTable = ({
                 employeeId
               );
             }}
+            readOnly={!editable}
           />
         </div>
 
@@ -247,6 +269,7 @@ const MonthlyScheduleTable = ({
                       e.target.value
                     )
                   }
+                  readOnly={!editable}
                 />
               </td>
               <td>
@@ -256,6 +279,7 @@ const MonthlyScheduleTable = ({
                   onChange={(e) =>
                     handleInputChange(idx, "m_actual_amount", e.target.value)
                   }
+                  readOnly={!editable}
                 />
               </td>
               <td>
@@ -266,6 +290,7 @@ const MonthlyScheduleTable = ({
                     onChange={(e) =>
                       handleInputChange(idx, "m_tds_percentage", e.target.value)
                     }
+                    readOnly={!editable}
                   />{" "}
                   %<input readOnly type="number" value={f.m_tds_amount ?? ""} />
                 </div>
@@ -278,6 +303,7 @@ const MonthlyScheduleTable = ({
                     onChange={(e) =>
                       handleInputChange(idx, "m_gst_percentage", e.target.value)
                     }
+                    readOnly={!editable}
                   />{" "}
                   %<input readOnly type="number" value={f.m_gst_amount ?? ""} />
                 </div>
@@ -291,6 +317,7 @@ const MonthlyScheduleTable = ({
                   onChange={(e) =>
                     handleInputChange(idx, "status", e.target.value)
                   }
+                  disabled={!editable}
                 >
                   <option>Pending</option>
                   <option>Received</option>

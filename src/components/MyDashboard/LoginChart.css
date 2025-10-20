@@ -41,3 +41,14 @@
   height: 100%;
   width: 100%;
 }
+
+@media (max-width: 768px) {
+  .dashboardlogin-chart-container {
+    margin: 10% 0 0 0;
+  }
+
+  .dashboardlogin-chart h3 {
+    text-align: center;
+    margin: 0;
+  }
+}

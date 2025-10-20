@@ -269,14 +269,19 @@ html {
 }
 
 .tab-link {
-  color: rgba(255, 255, 255, 0.7);
-  font-size: 16px;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.95);
+  border: 0;
+  padding: 8px 12px;
+  font-size: 15px;
+  border-radius: 25px;
+  transition: background 0.15s, transform 0.12s, color 0.12s;
   cursor: pointer;
-  transition: color 0.3s;
 }
 
 .tab-link:hover {
-  color: white;
+  background: rgba(255, 255, 255, 0.06);
+  transform: translateY(-1px);
 }
 
 .purchase-btn {

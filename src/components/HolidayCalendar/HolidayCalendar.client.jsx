@@ -7,7 +7,7 @@ import "./HolidayCalendar.css";
 import axios from "axios";
 import { Tooltip } from "react-tooltip";
 import "react-tooltip/dist/react-tooltip.css";
-import { useAuth } from "../../context/AuthProvider.client"; // adjust path if needed
+import { useAuth } from "../../context/AuthProvider.client";
 
 const HolidayCalendar = ({ closeCalendar }) => {
   const { user } = useAuth();
@@ -18,7 +18,6 @@ const HolidayCalendar = ({ closeCalendar }) => {
   const API_KEY = process.env.NEXT_PUBLIC_API_KEY;
   const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
 
-  // include employee and org info from auth in headers if available
   const headers = {
     "x-api-key": API_KEY ?? "",
     "Content-Type": "application/json",
@@ -31,7 +30,6 @@ const HolidayCalendar = ({ closeCalendar }) => {
 
     const fetchHolidays = async () => {
       try {
-        // include org_id query param if we have it from auth (keeps API consistent with other changes)
         const orgQuery = user?.orgId
           ? `?org_id=${encodeURIComponent(user.orgId)}`
           : "";
@@ -39,21 +37,17 @@ const HolidayCalendar = ({ closeCalendar }) => {
           headers,
           cancelToken: source.token,
         });
-        // the API historically returned in message or top-level — preserve that behavior
         const data = res?.data?.message ?? res?.data ?? [];
         setHolidays(Array.isArray(data) ? data : []);
       } catch (err) {
         if (axios.isCancel(err)) return;
         console.error("Error fetching holidays:", err);
-        // if auth contains a cached holidays payload (optional), use that as a fallback
         try {
           if (Array.isArray(user?.holidays) && user.holidays.length > 0) {
             setHolidays(user.holidays);
             return;
           }
-        } catch (e) {
-          // ignore
-        }
+        } catch (e) {}
         setHolidays([]);
       }
     };
@@ -62,7 +56,6 @@ const HolidayCalendar = ({ closeCalendar }) => {
     return () => {
       source.cancel("HolidayCalendar unmounted");
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [BACKEND_URL, user?.orgId, user?.holidays]);
 
   const getHoliday = (d) =>

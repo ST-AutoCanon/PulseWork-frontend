@@ -17,7 +17,7 @@ const StepTwo = ({
   points,
   handleInputChange,
   handleKeyDown,
-  editable, // optional: if undefined we infer from user's role
+  editable,
   handleStsOwnerChange,
   handleChange,
   formData,
@@ -62,66 +62,85 @@ const StepTwo = ({
         </div>
 
         <div className="pj-form-group2">
-          <label>
-            Add Employees{" "}
-            <div className="pj-search-box">
-              <MdSearch className="pj-search-icon" />
-              <input
-                type="text"
-                className="pj-search-input"
-                placeholder="Search by Name, EmpID or Dept"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
+          <label> Add Employees</label>
+
+          {/* Search + filter controls — only interactive when editable */}
+          {isEditable ? (
+            <div>
+              <div className="pj-search-box">
+                <MdSearch className="pj-search-icon" />
+                <input
+                  type="text"
+                  className="pj-search-input"
+                  placeholder="Search by Name, EmpID or Dept"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+              </div>
+
+              <div className="sp2-radio">
+                <input
+                  type="radio"
+                  name="employee-filter"
+                  value="dept"
+                  checked={filterType === "dept"}
+                  onChange={handleFilterChange}
+                />
+                <label>Dept</label>
+                <input
+                  type="radio"
+                  name="employee-filter"
+                  value="all"
+                  checked={filterType === "all"}
+                  onChange={handleFilterChange}
+                />
+                <label>All</label>
+              </div>
             </div>
-            <div className="sp2-radio">
-              <input
-                type="radio"
-                name="employee-filter"
-                value="dept"
-                checked={filterType === "dept"}
-                onChange={handleFilterChange}
-                disabled={!isEditable}
-              />
-              <label>Dept</label>
-              <input
-                type="radio"
-                name="employee-filter"
-                value="all"
-                checked={filterType === "all"}
-                onChange={handleFilterChange}
-                disabled={!isEditable}
-              />
-              <label>All</label>
+          ) : (
+            <div
+              style={{ marginLeft: "45px", fontSize: "12px", color: "#666" }}
+            >
+              Employee selection is read-only for your role.
             </div>
-          </label>
+          )}
 
           <div className="add-employee">
-            <div className="employee-list">
-              {filteredEmployees.map((item, index) =>
-                item.type === "department" ? (
-                  <div
-                    key={index}
-                    className="employee-item"
-                    onDoubleClick={
-                      isEditable
-                        ? () => handleDepartmentDoubleClick(item.name)
-                        : undefined
-                    }
-                  >
-                    {item.name}
-                  </div>
-                ) : (
-                  <div
-                    key={item.employee_id}
-                    className="employee-item"
-                    onDoubleClick={
-                      isEditable ? () => handleDoubleClick(item) : undefined
-                    }
-                  >
-                    {item.name} ({item.department_name})
-                  </div>
+            <div
+              className="employee-list"
+              /* prevent pointer interaction when not editable */
+              style={{
+                pointerEvents: isEditable ? "auto" : "none",
+                opacity: isEditable ? 1 : 0.6,
+              }}
+            >
+              {isEditable ? (
+                filteredEmployees.map((item, index) =>
+                  item.type === "department" ? (
+                    <div
+                      key={index}
+                      className="employee-item"
+                      onDoubleClick={() =>
+                        handleDepartmentDoubleClick(item.name)
+                      }
+                    >
+                      {item.name}
+                    </div>
+                  ) : (
+                    <div
+                      key={item.employee_id}
+                      className="employee-item"
+                      onDoubleClick={() => handleDoubleClick(item)}
+                    >
+                      {item.name} ({item.department_name})
+                    </div>
+                  )
                 )
+              ) : (
+                // when not editable, show a helpful read-only list or nothing.
+                <div style={{ color: "#444", padding: 8 }}>
+                  Employee search and selection disabled.
+                </div>
               )}
             </div>
           </div>
@@ -141,6 +160,10 @@ const StepTwo = ({
                         ? () => handleRemoveEmployee(emp.employee_id)
                         : undefined
                     }
+                    style={{
+                      cursor: isEditable ? "pointer" : "default",
+                      opacity: isEditable ? 1 : 0.6,
+                    }}
                   >
                     ❌
                   </span>

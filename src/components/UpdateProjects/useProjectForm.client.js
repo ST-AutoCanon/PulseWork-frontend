@@ -19,7 +19,7 @@ export default function useProjectForm({
   const { user } = useAuth();
   const projectRole = user?.role || user?.userRole || " ";
   const dashboardData = user?.dashboardData || user?.dashboard || {};
-  const userPosition = dashboardData.position || user?.position || null;
+  const department = (dashboardData.department || "").toLowerCase();
   const employeeId = user?.employeeId ?? user?.id ?? null;
   const orgId = user?.orgId ?? user?.raw?.org_id ?? null;
 
@@ -38,7 +38,7 @@ export default function useProjectForm({
     },
   };
 
-  if (projectRole === "Manager" && userPosition === "Finance Manager") {
+  if (projectRole === "Manager" && department === "finance") {
     rolePermissions.Manager = {
       allowedSteps: [1, 2, 3, 4],
       editable: { 1: false, 2: false, 3: false, 4: true },
@@ -711,7 +711,7 @@ export default function useProjectForm({
 
   const steps = [
     "Project Details",
-    "STS Owners",
+    "Project Owners",
     "Milestone",
     "Financial Details",
   ];

@@ -1,6 +1,6 @@
 .employee-login {
   padding: 20px;
-  font-family: 'Arial', sans-serif;
+  font-family: "Arial", sans-serif;
 }
 
 .time-group {
@@ -36,7 +36,7 @@
 /* Employee card styles */
 .employee-card-hover {
   position: relative;
-  width: 180px; /* Smaller width for more cards in a row */
+  width: 220px; /* Smaller width for more cards in a row */
   border: 1px solid #ccc;
   border-radius: 10px;
   background-color: white;
@@ -57,18 +57,17 @@
 
 /* Profile Section */
 .profile-section-admin {
-  display: flex!important;
-  align-items: center!important;
-  gap: 0px!important;
-  margin-bottom: 8px!important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 0px !important;
+  margin-bottom: 8px !important;
 }
 
-
 .profile-img1 {
-  width: 40px!important;
-  height: 40px!important;
-  border-radius: 50%!important;
-  margin-left: -3%!important;
+  width: 40px !important;
+  height: 40px !important;
+  border-radius: 50% !important;
+  margin-left: -3% !important;
 }
 
 /* Time Section */
@@ -140,21 +139,20 @@
   color: #555;
 }
 
-
 .expand-icon {
   font-size: 1.2rem;
   color: #555;
   user-select: none;
-  background-color: #f0f0f0;  /* Light gray background */
-  padding: 4px;               /* Inner space around the icon */
-  border-radius: 4px;         /* Slightly rounded corners */
-  border: 1px solid #ccc;     /* Optional border */
+  background-color: #f0f0f0; /* Light gray background */
+  padding: 4px; /* Inner space around the icon */
+  border-radius: 4px; /* Slightly rounded corners */
+  border: 1px solid #ccc; /* Optional border */
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 24px;                /* Fixed width */
-  height: 24px;               /* Fixed height */
-  cursor: pointer;            /* Make it look clickable */
+  width: 24px; /* Fixed width */
+  height: 24px; /* Fixed height */
+  cursor: pointer; /* Make it look clickable */
 }
 
 /* Popup Styles */
@@ -220,7 +218,7 @@
 .hover-indicator {
   position: absolute;
   top: 6px;
-  left: 140px;
+  left: 190px;
   color: rgb(47, 42, 42);
   padding: 4px;
   font-size: 0.65rem;

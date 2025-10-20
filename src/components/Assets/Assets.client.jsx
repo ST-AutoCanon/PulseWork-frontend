@@ -102,7 +102,6 @@ const Assets = () => {
 
   useEffect(() => {
     setAssignedTo("");
-    fetchAssets();
   }, [user]);
 
   const params = useParams();
@@ -235,34 +234,125 @@ const Assets = () => {
     setDocument(e.target.files[0]);
   };
 
-  useEffect(() => {
-    if (!isReadyForApi()) return;
+  const [assetCounts, setAssetCounts] = useState([]);
 
-    const fetchAssetsAndAssignments = async () => {
-      try {
-        const assetsResponse = await axios.get(`${BACKEND}/api/assets/list`, {
-          headers: getHeaders(),
+  // derive assetCounts structure locally from assets array so header updates immediately
+  const computeCountsFromAssets = (assetsArr = []) => {
+    const total_assets = Array.isArray(assetsArr) ? assetsArr.length : 0;
+
+    const map = {}; // category -> { category_total, sub: { subCategory: count } }
+
+    assetsArr.forEach((a) => {
+      const category = a.category || "Uncategorized";
+      const sub = a.sub_category || a.subCategory || "Other";
+
+      if (!map[category]) map[category] = { category_total: 0, sub: {} };
+      map[category].category_total += 1;
+      map[category].sub[sub] = (map[category].sub[sub] || 0) + 1;
+    });
+
+    const result = [];
+    // keep the same convention your UI expects: first element holds total_assets
+    result.push({ total_assets });
+
+    // then push rows for each subcategory (category_total repeated for ease of grouping)
+    Object.entries(map).forEach(([category, data]) => {
+      Object.entries(data.sub).forEach(([sub_category, sub_category_count]) => {
+        result.push({
+          category,
+          sub_category,
+          sub_category_count,
+          category_total: data.category_total,
+          total_assets,
         });
+      });
+    });
 
-        const assetsData =
-          assetsResponse.data?.data ?? assetsResponse.data ?? [];
-        setAssets(Array.isArray(assetsData) ? assetsData : []);
+    return result;
+  };
 
-        setAssignedAssets((prev) => prev ?? []);
-      } catch (error) {
-        console.error("Error fetching assets:", error);
+  const optimisticIncrementCounts = (newAsset = {}) => {
+    try {
+      setAssetCounts((prev = []) => {
+        const copy = prev.map((p) => ({ ...p }));
+
+        if (copy.length > 0) {
+          copy[0] = {
+            ...copy[0],
+            total_assets: (Number(copy[0].total_assets) || 0) + 1,
+          };
+        } else {
+          copy.push({ total_assets: 1 });
+        }
+
+        const cat = newAsset.category || newAsset.category_name || null;
+        const sub = newAsset.sub_category || newAsset.subCategory || null;
+
+        if (cat) {
+          let foundCat = false;
+          for (let i = 0; i < copy.length; i++) {
+            if (copy[i].category === cat) {
+              foundCat = true;
+              copy[i] = {
+                ...copy[i],
+                category_total: (Number(copy[i].category_total) || 0) + 1,
+              };
+              if (sub && copy[i].sub_category === sub) {
+                copy[i] = {
+                  ...copy[i],
+                  sub_category_count:
+                    (Number(copy[i].sub_category_count) || 0) + 1,
+                };
+              }
+            }
+          }
+          if (!foundCat) {
+            copy.push({
+              category: cat,
+              category_total: 1,
+              sub_category: sub || "",
+              sub_category_count: sub ? 1 : 0,
+            });
+          }
+        }
+
+        return copy;
+      });
+    } catch (err) {
+      console.warn("optimisticIncrementCounts failed:", err);
+    }
+  };
+
+  const fetchAssetCounts = async () => {
+    if (!isReadyForApi()) return;
+    try {
+      const res = await fetch(`${BACKEND}/api/assets/counts`, {
+        headers: getHeaders(),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) {
+        console.warn("Failed to fetch asset counts:", data);
+        return;
       }
-    };
-
-    fetchAssetsAndAssignments();
-  }, [user, BACKEND]);
+      const counts = data && data.success && data.data ? data.data : data || [];
+      setAssetCounts(Array.isArray(counts) ? counts : []);
+    } catch (err) {
+      console.error("Error fetching asset counts:", err);
+    }
+  };
 
   const fetchAssets = async () => {
+    if (!isReadyForApi()) return;
     try {
       const response = await axios.get(`${BACKEND}/api/assets/list`, {
         headers: getHeaders(),
       });
-      setAssets(response.data || []);
+
+      const assetsData = response.data?.data ?? response.data ?? [];
+      const list = Array.isArray(assetsData) ? assetsData : [];
+      setAssets(list);
+      // compute counts from assets you just fetched
+      setAssetCounts(computeCountsFromAssets(list));
     } catch (error) {
       console.error(
         "❌ Error fetching assets:",
@@ -271,6 +361,20 @@ const Assets = () => {
       showAlert("Failed to fetch assets.");
     }
   };
+
+  useEffect(() => {
+    if (!isReadyForApi()) return;
+    (async () => {
+      await fetchAssets();
+      await fetchAssetCounts();
+    })();
+  }, [user, BACKEND]);
+
+  useEffect(() => {
+    if (selectedAsset) {
+      fetchAssignedData(selectedAsset.asset_id);
+    }
+  }, [selectedAsset, user]);
 
   const resetForm = () => {
     setAssignedTo("");
@@ -431,7 +535,9 @@ const Assets = () => {
 
       showAlert("Asset Assigned successfully ");
       closeAssignPopup();
-      fetchAssets();
+
+      await fetchAssets();
+      await fetchAssetCounts();
     } catch (error) {
       console.error(
         "❌ Error assigning asset:",
@@ -523,8 +629,8 @@ const Assets = () => {
     formData.append("category", selectedCategory);
     formData.append("sub_category", selectedSubCategory);
     formData.append("status", status);
-    let assignedToArray = [];
 
+    let assignedToArray = [];
     if (
       assignedTo &&
       typeof assignedTo === "object" &&
@@ -544,10 +650,7 @@ const Assets = () => {
     }
 
     formData.append("assigned_to", JSON.stringify(assignedToArray));
-
-    if (document) {
-      formData.append("document", document);
-    }
+    if (document) formData.append("document", document);
 
     try {
       const headersForForm = { ...getHeaders() };
@@ -556,10 +659,43 @@ const Assets = () => {
       const response = await axios.post(`${BACKEND}/api/assets/add`, formData, {
         headers: headersForForm,
       });
+
+      // try to get the created asset object from backend response
+      const created =
+        (response.data &&
+          (response.data.data || response.data.asset || response.data)) ||
+        null;
+
+      // If backend returned the created asset, use it. If not, build a light-weight local record:
+      const createdAssetLocal = created || {
+        // some fields that your table uses — keep them in sync if your backend differs
+        id: `local-${Date.now()}`,
+        asset_id: created?.asset_id || `TEMP-${Date.now()}`,
+        asset_code: created?.asset_code || "",
+        asset_name: assetName,
+        configuration,
+        valuation_date: valuationDate,
+        assigned_to: JSON.stringify(assignedToArray),
+        category: selectedCategory,
+        sub_category: selectedSubCategory,
+        status,
+        document_path: created?.document_path || null,
+      };
+
+      // 1) insert into local assets immediately so the table updates
+      setAssets((prev) => [createdAssetLocal, ...(prev || [])]);
+
+      // 2) recompute counts locally from the updated assets array (immediate header update)
+      setAssetCounts((prevAssetsCounts) =>
+        computeCountsFromAssets([createdAssetLocal, ...(assets || [])])
+      );
+
+      // 3) still re-sync with server counts to ensure accuracy
+      fetchAssetCounts().catch((e) => console.warn("refresh counts failed", e));
+
       showAlert("Asset saved successfully!");
       resetFormforaddasset();
       togglePopup();
-      fetchAssets();
     } catch (error) {
       console.error("Error saving asset:", error);
       showAlert(
@@ -642,8 +778,8 @@ const Assets = () => {
         }
       );
       showAlert("Return date updated successfully!");
-      setAssets((prevAssets) =>
-        prevAssets.map((asset) =>
+      setAssets((prevAssets) => {
+        const newAssets = prevAssets.map((asset) =>
           asset.assetId === formDataLocal.assetId
             ? {
                 ...asset,
@@ -651,8 +787,12 @@ const Assets = () => {
                 returnDate: formDataLocal.returnDate,
               }
             : asset
-        )
-      );
+        );
+        setAssetCounts(computeCountsFromAssets(newAssets));
+        return newAssets;
+      });
+
+      await fetchAssetCounts();
 
       setFormDataLocal({ assetId: "", employeeName: "", returnDate: "" });
       setShowForm(false);
@@ -661,23 +801,6 @@ const Assets = () => {
       showAlert("Failed to update return date. Please try again.");
     }
   };
-
-  const [assetCounts, setAssetCounts] = useState([]);
-
-  useEffect(() => {
-    fetch(`${BACKEND}/api/assets/counts`, {
-      headers: getHeaders(),
-    })
-      .then((response) => response.json())
-      .then((data) => {
-        if (data.success) {
-          setAssetCounts(data.data);
-        } else {
-          console.error("Failed to fetch asset counts");
-        }
-      })
-      .catch((error) => console.error("Error fetching asset counts:", error));
-  }, [user]);
 
   const submitAssignments = async () => {
     try {
@@ -697,6 +820,9 @@ const Assets = () => {
 
       const result = await response.json();
       showAlert("Assets assigned successfully!");
+
+      await fetchAssets();
+      await fetchAssetCounts();
     } catch (error) {
       console.error("Error submitting assignments:", error);
       showAlert("Failed to assign assets. Please try again.");
@@ -810,11 +936,11 @@ const Assets = () => {
       sub_category_count,
       category_total,
       total_assets,
-    } = item;
+    } = item || {};
 
     if (!acc[category]) {
       acc[category] = {
-        categoryTotal: category_total,
+        categoryTotal: category_total || 0,
         subcategories: [],
       };
     }
@@ -854,7 +980,9 @@ const Assets = () => {
           <div className="total-assets-box">
             <strong>Total Assets:</strong>{" "}
             <span>
-              {assetCounts.length > 0 ? assetCounts[0].total_assets : "0"}
+              {assetCounts.length > 0
+                ? assetCounts[0]?.total_assets ?? "0"
+                : "0"}
             </span>
           </div>
 

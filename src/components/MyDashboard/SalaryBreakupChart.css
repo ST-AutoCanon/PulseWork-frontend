@@ -67,3 +67,126 @@
   align-items: center;
   padding: 10px;
 }
+
+/* ---------------------------
+   Mobile styles for SalaryBreakupChart
+   (append to SalaryBreakupChart.css)
+   --------------------------- */
+
+@media (max-width: 768px) {
+  .salary-breakup-chart {
+    width: calc(100vw - 18px);
+    max-width: 480px;
+    margin: 10px auto;
+    padding: 12px;
+    box-sizing: border-box;
+    height: auto;
+    min-height: 260px;
+    border-radius: 10px;
+    align-items: center;
+  }
+
+  .salary-breakup-chart h3 {
+    font-size: 16px;
+    text-align: center;
+    width: 100%;
+    margin: 0 0 8px;
+  }
+
+  .salary-breakup-chart p {
+    font-size: 13px;
+    margin-top: 4px;
+  }
+
+  .chart-container-for-employee {
+    width: 100%;
+    min-height: 220px;
+    max-height: 320px;
+    padding: 6px;
+    box-sizing: border-box;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: transparent;
+  }
+
+  /* Force canvas to be responsive inside the container */
+  .chart-container-for-employee canvas,
+  .chart-container-for-employee .chartjs-render-monitor {
+    width: 100% !important;
+    height: auto !important;
+    max-height: 320px;
+  }
+
+  .salary-amount-chart {
+    font-size: 16px;
+    margin-top: 8px;
+    text-align: center;
+    width: 100%;
+  }
+
+  .custom-legend-chart {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin-top: 10px;
+    flex-wrap: wrap;
+    padding: 6px;
+  }
+
+  .legend-item-chart {
+    display: flex;
+    align-items: center;
+    font-size: 12px;
+    gap: 8px;
+  }
+
+  .legend-color-chart {
+    width: 10px;
+    height: 10px;
+    margin-right: 6px;
+    border-radius: 2px;
+  }
+
+  .salary-breakup-chart .error {
+    font-size: 13px;
+    text-align: center;
+    margin-top: 8px;
+  }
+}
+
+/* Extra-small phones */
+@media (max-width: 420px) {
+  .salary-breakup-chart {
+    width: calc(100vw - 12px);
+    padding: 10px;
+    min-height: 220px;
+  }
+  .salary-breakup-chart h3 {
+    font-size: 15px;
+  }
+  .chart-container-for-employee {
+    min-height: 200px;
+  }
+  .legend-item-chart {
+    font-size: 11px;
+    gap: 6px;
+  }
+}
+
+/* Medium devices (tablet-ish) - keep comfortable chart sizes */
+@media (min-width: 769px) and (max-width: 1024px) {
+  .salary-breakup-chart {
+    width: calc(100% - 28px);
+    max-width: 600px;
+    min-height: 260px;
+    padding: 14px;
+  }
+  .chart-container-for-employee {
+    min-height: 260px;
+    max-height: 360px;
+  }
+  .chart-container-for-employee canvas {
+    max-height: 360px !important;
+  }
+}

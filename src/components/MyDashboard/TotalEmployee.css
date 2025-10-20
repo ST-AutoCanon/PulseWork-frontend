@@ -53,3 +53,105 @@
   border-radius: 50%;
   margin-right: 5px;
 }
+
+/* ----------------------
+   Mobile styles for TotalEmployee
+   (append to TotalEmployee.css)
+   ---------------------- */
+
+@media (max-width: 768px) {
+  .total-employees {
+    width: calc(100vw - 20px);
+    max-width: 420px;
+    margin: 10px auto;
+    padding: 14px 0;
+    height: auto;
+    min-height: 260px;
+    border-radius: 10px;
+    box-shadow: 0 6px 14px rgba(0, 0, 0, 0.06);
+    align-items: center;
+  }
+
+  .total-employees h3 {
+    font-size: 18px;
+    text-align: center;
+    width: 100%;
+    margin: 0 0 8px 0;
+    padding: 0;
+  }
+
+  .admindashtotalemployee-chart {
+    width: 100%;
+    height: auto;
+    min-height: 220px; /* gives chart usable height on phones */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-top: 8px;
+    padding: 6px 4px;
+    box-sizing: border-box;
+    background: transparent;
+  }
+
+  /* Force chart canvas to be responsive and fill the area */
+  .admindashtotalemployee-chart canvas {
+    width: 100% !important;
+    height: auto !important;
+    max-height: 260px;
+  }
+
+  /* Legend container: wrap and center with smaller text */
+  .total-employees .legend-container {
+    margin-top: 10px;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 10px;
+    padding: 6px 4px;
+  }
+
+  .total-employees .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+  }
+
+  .total-employees .legend-color {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    margin-right: 6px;
+  }
+
+  /* Small screens: slightly smaller center text in chart */
+  /* Chart center text is drawn by plugin; reduce font via canvas scaling hack by setting container font-size */
+  .total-employees {
+    --donut-center-font-scale: 0.9; /* used if plugin reads CSS var, otherwise helps keep spacing */
+  }
+
+  /* Quiet error text sizing */
+  .total-employees .error {
+    font-size: 13px;
+    text-align: center;
+    margin-top: 8px;
+  }
+}
+
+/* medium phones / small tablets */
+@media (min-width: 421px) and (max-width: 1024px) {
+  .total-employees {
+    width: calc(100% - 28px);
+    max-width: 520px;
+    padding: 16px;
+    min-height: 260px;
+  }
+
+  .admindashtotalemployee-chart {
+    min-height: 240px;
+  }
+
+  .admindashtotalemployee-chart canvas {
+    max-height: 300px;
+  }
+}

@@ -4,32 +4,33 @@ import * as XLSX from "xlsx";
 import axios from "axios";
 import Modal from "../Modal/Modal.client";
 import { VALID_SALARY_HEADERS } from "../constants/salarystatement";
-import { useAuth } from "../../context/AuthProvider.client"; // Adjust path if needed
+import { useAuth } from "../../context/AuthProvider.client";
 import "./Salary_Statement.css";
 
 const Salary_Statement = () => {
   const { user } = useAuth();
+  const orgId = user?.orgId ?? user?.org_id ?? null;
   const meId = user?.employeeId ?? null;
-  const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || ""; // <-- added
+  const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "";
   const API_KEY = process.env.NEXT_PUBLIC_API_KEY;
   const headers = {
     "x-api-key": API_KEY || "",
     "x-employee-id": String(meId || ""),
+    "x-org-id": orgId,
   };
 
-  // --- States that were missing or mismatched in your snippet
   const [file, setFile] = useState(null);
   const [fileName, setFileName] = useState("No file chosen");
-  const [tableData, setTableData] = useState([]); // array of rows (array)
-  const [tableHeaders, setTableHeaders] = useState([]); // replaces `header` / setHeader
+  const [tableData, setTableData] = useState([]);
+  const [tableHeaders, setTableHeaders] = useState([]);
   const [invalidCells, setInvalidCells] = useState(new Map());
   const [updatedCells, setUpdatedCells] = useState(new Map());
   const [previousData, setPreviousData] = useState(null);
-  const [prevTableData, setPrevTableData] = useState([]); // <-- added, used by readExcel/validate
+  const [prevTableData, setPrevTableData] = useState([]);
   const [error, setError] = useState("");
   const [salaryData, setSalaryData] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
-  const [filteredData, setFilteredData] = useState([]); // <-- added
+  const [filteredData, setFilteredData] = useState([]);
   const [selectedMonth, setSelectedMonth] = useState("");
   const [selectedYear, setSelectedYear] = useState("");
   const [isMonthYearSelected, setIsMonthYearSelected] = useState(false);
@@ -39,15 +40,12 @@ const Salary_Statement = () => {
     title: "",
     message: "",
   });
-  const [uploadMessage, setUploadMessage] = useState(""); // <-- added
-  const [selectedMonthYearData, setSelectedMonthYearData] = useState([]); // <-- added because you call setSelectedMonthYearData
+  const [uploadMessage, setUploadMessage] = useState("");
+  const [selectedMonthYearData, setSelectedMonthYearData] = useState([]);
   const templateUrl = "/templates/Statement_Template.xlsx";
   const [excelData, setExcelData] = useState([]);
   const [showNote, setShowNote] = useState(true);
 
-  // ----------------------------
-  // Helper functions
-  // ----------------------------
   const parseNumeric = (val) => {
     if (val === "" || val === null || val === undefined) return 0;
     return isNaN(Number(val)) ? 0 : Number(val);
@@ -79,9 +77,6 @@ const Salary_Statement = () => {
     );
   };
 
-  // ----------------------------
-  // File handling + parsing
-  // ----------------------------
   const handleFileChange = (event) => {
     const selectedFile = event.target.files?.[0];
     if (!selectedFile) {
@@ -126,10 +121,8 @@ const Salary_Statement = () => {
   };
 
   const convertExcelDate = (serial) => {
-    // keep your robust conversion but guard for non-number
     if (serial === null || serial === undefined) return serial;
     if (typeof serial === "string") {
-      // already a string, maybe ISO or Excel formatted string
       return serial;
     }
     if (typeof serial !== "number" || !isFinite(serial)) {
@@ -161,7 +154,6 @@ const Salary_Statement = () => {
       });
       const rows = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
 
-      // parsedRows preserves keys (object per row)
       const parsedRows = rows.map((row) => {
         const cleaned = cleanKeys(row);
         const rawDate = cleaned["Joining Date"];
@@ -188,7 +180,7 @@ const Salary_Statement = () => {
 
       const extractedHeaders = jsonData[0].map((h) =>
         typeof h === "string" ? h.trim() : h
-      ); // normalized header row
+      );
       if (!validateHeaders(extractedHeaders)) {
         setError("❌ Headers not matched");
         setTableData([]);
@@ -200,7 +192,6 @@ const Salary_Statement = () => {
       const validData = jsonData
         .slice(1)
         .filter((row) => row && row.length > 0);
-      // use prevTableData state (if exists)
       const prevDataForCompare = prevTableData.length
         ? prevTableData
         : validData;
@@ -217,14 +208,11 @@ const Salary_Statement = () => {
       setExcelData(parsedRows);
       setInvalidCells(invalidMap);
       setUpdatedCells(updatedMap);
-      setFilteredData(cleanedTableData); // initialize filtered view
+      setFilteredData(cleanedTableData);
     };
     reader.readAsArrayBuffer(file);
   };
 
-  // ----------------------------
-  // Data validation
-  // ----------------------------
   const detectColumnTypes = (headers) => {
     if (!Array.isArray(headers)) return [];
     return headers.map((header) => {
@@ -262,7 +250,6 @@ const Salary_Statement = () => {
     );
   };
 
-  // Use tableHeaders (not `header`) here:
   const actualHeaders = normalizeHeaders(tableHeaders);
 
   const validateData = (jsonData, headers, prevData = []) => {
@@ -361,9 +348,6 @@ const Salary_Statement = () => {
     return { invalidCells, updatedCells };
   };
 
-  // ----------------------------
-  // Upload / API calls
-  // ----------------------------
   const showAlert = (message, title = "") => {
     setAlertModal({ isVisible: true, title, message });
   };
@@ -386,7 +370,6 @@ const Salary_Statement = () => {
       return;
     }
 
-    // Verify no invalid cells
     console.log("🔍 Checking invalidCells:", invalidCells);
     if (invalidCells.size > 0) {
       let errorMessage =
@@ -425,7 +408,7 @@ const Salary_Statement = () => {
         setFile(null);
         setFileName("No file chosen");
         setTableData([]);
-        setTableHeaders([]); // replaced setHeader
+        setTableHeaders([]);
         setInvalidCells(new Map());
         setUpdatedCells(new Map());
         setExcelData([]);
@@ -495,9 +478,6 @@ const Salary_Statement = () => {
     return totalSalary.toFixed(2);
   };
 
-  // ----------------------------
-  // Month/year UI helpers + fetchers
-  // ----------------------------
   const generateMonthYearOptions = () => {
     const options = [];
     const current = new Date();
@@ -563,7 +543,6 @@ const Salary_Statement = () => {
     fetchSalaryStatement(month, year);
   }, []);
 
-  // fetchSalaryData uses the selectedMonth/selectedYear (fixed)
   const fetchSalaryData = async (
     month = selectedMonth,
     year = selectedYear
@@ -604,9 +583,6 @@ const Salary_Statement = () => {
     }
   }, [selectedMonth, selectedYear]);
 
-  // ----------------------------
-  // Search / filter handlers (fixed to use filteredData state)
-  // ----------------------------
   const filterSalaryData = (e) => {
     const searchValue = e.target.value.toLowerCase();
     setSearchTerm(searchValue);
@@ -646,9 +622,6 @@ const Salary_Statement = () => {
     return h.charAt(0).toUpperCase() + h.slice(1).toLowerCase();
   };
 
-  // ----------------------------
-  // JSX
-  // ----------------------------
   return (
     <div className="salary-container">
       <div className="upload-container">

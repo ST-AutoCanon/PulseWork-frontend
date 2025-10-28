@@ -155,24 +155,64 @@ const RbAdmin = () => {
   const handleOpenAttachments = async (files, claim) => {
     if (!files || files.length === 0)
       return showAlert("No attachments available.");
+
     try {
       const authToken = user?.token;
+
+      // keep only valid file objects with filename matching your expected format
+      const validFiles = (files || []).filter(
+        (file) =>
+          file &&
+          typeof file.filename === "string" &&
+          /^\d{4}-\d{2}-\d{2}/.test(file.filename)
+      );
+
+      if (validFiles.length === 0) {
+        return showAlert("No valid attachments available.");
+      }
+
       const fetchedFiles = await Promise.all(
-        files.map(async (file) => {
-          if (!file?.filename) return null;
+        validFiles.map(async (file) => {
           const match = file.filename.match(/^(\d{4})-(\d{2})-\d{2}/);
-          if (!match) return null;
+          if (!match) return null; // extra guard
+
           const year = match[1];
           const month = match[2];
-          const fileUrl = `${BACKEND_URL}/reimbursement/${orgId}/${year}/${month}/${claim.employee_id}/${file.filename}`;
+
+          // ensure required path parts exist
+          if (!orgId || !claim?.employee_id) {
+            console.error("Missing orgId or employeeId for attachment URL", {
+              orgId,
+              employeeId: claim?.employee_id,
+              file,
+            });
+            return null;
+          }
+
+          // encode filename and other path segments
+          const safeFilename = encodeURIComponent(file.filename);
+          const safeOrgId = encodeURIComponent(String(orgId));
+          const safeEmployeeId = encodeURIComponent(String(claim.employee_id));
+          const fileUrl = `${BACKEND_URL}/reimbursement/${safeOrgId}/${year}/${month}/${safeEmployeeId}/${safeFilename}`;
+
+          // debug log — very helpful to match server logs
+          console.debug(
+            "Fetching attachment URL:",
+            fileUrl,
+            "originalFilename:",
+            file.filename
+          );
+
           const response = await axios.get(fileUrl, {
             headers: {
               "x-api-key": API_KEY,
               "x-employee-id": employeeId,
+              "x-org-id": orgId,
               Authorization: `Bearer ${authToken}`,
             },
             responseType: "blob",
           });
+
           return {
             name: file.filename,
             url: URL.createObjectURL(
@@ -183,11 +223,12 @@ const RbAdmin = () => {
           };
         })
       );
+
       setSelectedFiles(fetchedFiles.filter(Boolean));
       setSelectedClaim(claim);
       setIsModalOpen(true);
     } catch (error) {
-      console.error(error);
+      console.error("handleOpenAttachments error:", error);
       showAlert("No attachments found for this claim.");
     }
   };

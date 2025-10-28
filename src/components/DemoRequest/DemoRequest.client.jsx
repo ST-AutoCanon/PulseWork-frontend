@@ -4,14 +4,22 @@ import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import styles from "./DemoRequest.module.css";
 
+/**
+ * DemoRequest
+ * - On success alert OK: navigate to home (or call externalOnClose if provided)
+ * - On modal close (×) and Cancel: navigate to home
+ * - Dispatches "demoRequest:submitted" on success before navigation
+ */
 export default function DemoRequest({ onClose: externalOnClose } = {}) {
   const router = useRouter();
+
   const [isOpen, setIsOpen] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [alertModal, setAlertModal] = useState({
     isVisible: false,
     title: "",
     message: "",
+    isSuccess: false,
   });
 
   const [form, setForm] = useState({
@@ -31,21 +39,40 @@ export default function DemoRequest({ onClose: externalOnClose } = {}) {
     };
   }, [isOpen]);
 
-  // Use this wrapper to close either via provided onClose or internal state.
-  const closeModal = () => {
+  // helper: prefer externalOnClose (parent hook) otherwise client-side navigate
+  const navigateHome = () => {
     if (typeof externalOnClose === "function") {
-      externalOnClose();
+      try {
+        externalOnClose();
+      } catch (err) {
+        console.error("[DemoRequest] externalOnClose threw:", err);
+        router.push("/");
+      }
     } else {
-      setIsOpen(false);
+      router.push("/");
     }
+  };
+
+  // close modal and navigate home (for header × and Cancel)
+  const closeModalAndNavigate = () => {
+    console.log("[DemoRequest] closeModalAndNavigate()");
+    setIsOpen(false);
+    navigateHome();
   };
 
   useEffect(() => {
     const onKey = (e) => {
       if (e.key === "Escape") {
-        if (alertModal.isVisible)
-          setAlertModal({ isVisible: false, title: "", message: "" });
-        else setIsOpen(false);
+        if (alertModal.isVisible) {
+          setAlertModal({
+            isVisible: false,
+            title: "",
+            message: "",
+            isSuccess: false,
+          });
+        } else {
+          closeModalAndNavigate();
+        }
       }
     };
     window.addEventListener("keydown", onKey);
@@ -54,10 +81,42 @@ export default function DemoRequest({ onClose: externalOnClose } = {}) {
 
   const openModal = () => setIsOpen(true);
 
-  const showAlert = (message, title = "") =>
-    setAlertModal({ isVisible: true, title, message });
-  const closeAlert = () =>
-    setAlertModal({ isVisible: false, title: "", message: "" });
+  const showAlert = (message, title = "", isSuccess = false) =>
+    setAlertModal({ isVisible: true, title, message, isSuccess });
+
+  // Dismiss alert. If it was a success alert, dispatch event then navigate home.
+  const closeAlert = () => {
+    const wasSuccess = alertModal.isSuccess;
+    console.log("[DemoRequest] closeAlert() called; wasSuccess =", wasSuccess);
+
+    // Close the alert UI immediately
+    setAlertModal({
+      isVisible: false,
+      title: "",
+      message: "",
+      isSuccess: false,
+    });
+
+    if (wasSuccess) {
+      // dispatch event so parent can react if desired
+      try {
+        const detail = { message: alertModal.message || "submitted" };
+        window.dispatchEvent(
+          new CustomEvent("demoRequest:submitted", { detail })
+        );
+        console.log("[DemoRequest] dispatched demoRequest:submitted", detail);
+      } catch (err) {
+        console.error(
+          "[DemoRequest] failed to dispatch demoRequest:submitted",
+          err
+        );
+      }
+
+      // close modal and navigate home
+      setIsOpen(false);
+      navigateHome();
+    }
+  };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -73,19 +132,24 @@ export default function DemoRequest({ onClose: externalOnClose } = {}) {
   };
 
   const handleSubmit = async (e) => {
-    e?.preventDefault();
+    if (e && typeof e.preventDefault === "function") e.preventDefault();
+
+    console.log("[DemoRequest] handleSubmit called", { isSubmitting });
     if (isSubmitting) return;
 
     const err = validate();
     if (err) {
-      showAlert(err, "Validation error");
+      showAlert(err, "Validation error", false);
       return;
     }
 
     setIsSubmitting(true);
     try {
+      console.log("[DemoRequest] sending request", {
+        payload: { ...form, messageLength: form.message.length },
+      });
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_BACKEND_URL}/demo-request`,
+        `${process.env.NEXT_PUBLIC_BACKEND_URL}/contact`,
         {
           method: "POST",
           headers: {
@@ -97,16 +161,39 @@ export default function DemoRequest({ onClose: externalOnClose } = {}) {
         }
       );
 
-      const data = await response.json();
-      if (!response.ok) {
-        showAlert(data.message || "Failed to send demo request", "Error");
+      let data;
+      try {
+        data = await response.json();
+      } catch (parseErr) {
+        console.error("[DemoRequest] failed to parse JSON response", parseErr);
+        showAlert("Unexpected server response.", "Error", false);
         return;
       }
 
+      console.log("[DemoRequest] response", {
+        ok: response.ok,
+        status: response.status,
+        data,
+      });
+
+      if (!response.ok) {
+        showAlert(
+          data.message || "Failed to send demo request",
+          "Error",
+          false
+        );
+        return;
+      }
+
+      // SUCCESS: show alert and mark isSuccess true.
       showAlert(
-        "Your demo request has been sent. We'll contact you shortly.",
-        "Success"
+        data.message ||
+          "Your demo request has been sent. We'll contact you shortly.",
+        "Success",
+        true
       );
+
+      // clear local form (modal will close when user dismisses success alert)
       setForm({
         name: "",
         email: "",
@@ -115,10 +202,13 @@ export default function DemoRequest({ onClose: externalOnClose } = {}) {
         message: "",
         preferredDate: "",
       });
-      closeModal();
+
+      console.log(
+        "[DemoRequest] success: alert shown (waiting for user dismissal)"
+      );
     } catch (err) {
-      console.error("Demo request error", err);
-      showAlert("An unexpected error occurred.", "Error");
+      console.error("[DemoRequest] request error", err);
+      showAlert("An unexpected error occurred.", "Error", false);
     } finally {
       setIsSubmitting(false);
     }
@@ -140,7 +230,9 @@ export default function DemoRequest({ onClose: externalOnClose } = {}) {
           role="dialog"
           aria-modal="true"
           onMouseDown={(e) => {
-            if (e.target === e.currentTarget) closeModal();
+            // If an alert is visible, ignore outside clicks so that nothing accidentally closes the modal
+            if (e.target === e.currentTarget && !alertModal.isVisible)
+              closeModalAndNavigate();
           }}
         >
           <div
@@ -151,7 +243,7 @@ export default function DemoRequest({ onClose: externalOnClose } = {}) {
               <h3 className={styles.title}>Request a Demo</h3>
               <button
                 className={styles.closeBtn}
-                onClick={closeModal}
+                onClick={closeModalAndNavigate}
                 aria-label="Close"
               >
                 ×
@@ -221,10 +313,11 @@ export default function DemoRequest({ onClose: externalOnClose } = {}) {
 
                 <div className={styles.actions}>
                   <button
-                    type="submit"
+                    type="button"
                     className={styles.primaryBtn}
                     disabled={isSubmitting}
                     aria-busy={isSubmitting}
+                    onClick={handleSubmit}
                   >
                     {isSubmitting ? "Sending..." : "Send Request"}
                   </button>
@@ -232,7 +325,7 @@ export default function DemoRequest({ onClose: externalOnClose } = {}) {
                   <button
                     type="button"
                     className={styles.secondaryBtn}
-                    onClick={closeModal}
+                    onClick={closeModalAndNavigate}
                   >
                     Cancel
                   </button>
@@ -244,7 +337,7 @@ export default function DemoRequest({ onClose: externalOnClose } = {}) {
               </form>
             </div>
 
-            <div className={styles.decor} aria-hidden></div>
+            <div className={styles.decor} aria-hidden />
           </div>
         </div>
       )}

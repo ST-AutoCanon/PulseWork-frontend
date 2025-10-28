@@ -1,52 +1,39 @@
-/* Dashboard container */
 .dashboard {
+  background: #fff;
   display: flex;
-
-  flex-direction: column; /* Topbar on top, Sidebar + Content below */
-  height: 100%; /* Full viewport height */
-  overflow: hidden; /* Prevent scrollbars outside the layout */
+  flex-direction: column;
+  height: 100vh;
 }
-
-/* Topbar styles */
 
 .conentcontainerdeisgn {
-  background-color: #e8e9ea;
+  height: 100vh;
 }
 
-/* Content container (Sidebar + Main Content) */
 .content-container {
   display: flex;
-  border-radius: 5px;
-  scrollbar-width: none; /* Hides scrollbar in Firefox */
-  -ms-overflow-style: none;
-  background-color: #ddd;
-  flex: 1; /* Fills the remaining space below the Topbar */
-  margin-bottom: 0px; /* Push Sidebar and Main Content below the Topbar */
-  overflow: auto; /* Prevents overflow in the layout */
+  background: #ddd;
+  height: 620px;
+  overflow-y: auto;
+  margin-left: 250px;
 }
 
-/* Sidebar styles */
 .sidebar {
-  width: 250px; /* Fixed width */
-  background-color: white;
-  overflow-y: auto; /* Sidebar scrolls if content overflows */
-  scrollbar-width: none; /* Hides scrollbar in Firefox */
+  width: 250px;
+  height: 610px;
+  background-color: #fff;
+  overflow-y: auto;
+  scrollbar-width: none;
   -ms-overflow-style: none;
-  /* height: calc(100vh - 60px); Full height minus Topbar height */
-  position: sticky; /* Sticks in place during scrolling */
-  top: 10px; /* Push below the Topbar */
-  margin-top: 10px;
-  z-index: 1; /* Keep Sidebar below the Topbar */
+  position: fixed;
+  z-index: 1;
 }
 
-/* Main content styles */
 .main-content {
-  flex: 1; /* Main content takes the remaining space */
-  /* overflow-y: auto; Enable scrolling for the main content */
+  flex: 1;
   background-color: #ddd;
 
-  height: 0%; /* Full height minus Topbar height */
-  box-sizing: border-box; /* Include padding in width/height */
+  height: 0%;
+  box-sizing: border-box;
 }
 
 .main-content h1 {
@@ -56,27 +43,22 @@
 .Dashboarddesign {
   height: 95vh;
   padding: 0px;
-  padding-top: 10px;
   border-radius: 5px;
   background-color: white;
 }
 .Dashboard123 {
   height: auto;
-  margin-top: 2%;
   padding: 0px;
-  background-color: #e8e9ea;
+  background-color: #0f98c2;
 }
 
-/* ///////////////////////////////////////// */
-
 @media screen and (max-width: 768px) {
-  /* STACK CONTENT IN COLUMN */
   .content-container {
     flex-direction: column;
     width: 100%;
+    margin: 0;
   }
 
-  /* MAKE SIDEBAR ABSOLUTE TO AVOID SHIFTING CONTENT */
   .sidebar {
     position: relative;
     top: 0;
@@ -86,13 +68,10 @@
     background-color: white;
     display: none;
     box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
-    /* transition: transform 0.3s ease-in-out; */
-    /* transform: translateY(-100%); */
     margin-left: 0%;
-    z-index: 100; /* Above overlay */
+    z-index: 100;
   }
 
-  /* SHOW SIDEBAR WHEN TOGGLED */
   .sidebar.sidebar-open {
     transform: translateY(0);
   }
@@ -105,13 +84,11 @@
     background-color: white;
   }
 
-  /* MAIN CONTENT FULL WIDTH */
   .main-content {
     width: 100%;
     flex: 1;
   }
 
-  /* ADD SPACE IN TOPBAR FOR HAMBURGER */
   .topbar {
     margin-top: -20%;
     position: relative;

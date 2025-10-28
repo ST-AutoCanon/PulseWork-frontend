@@ -130,7 +130,7 @@
 .orgprefix-form-row {
   display: flex;
   flex-wrap: wrap;
-  gap: 40px; /* Restored gap as per provided CSS */
+  gap: 15px; /* Restored gap as per provided CSS */
   width: 100%; /* Consistent width across all form rows */
 }
 
@@ -145,7 +145,7 @@
   flex: 1;
   display: flex;
   flex-direction: column;
-  min-width: 200px;
+  min-width: 230px;
   width: 100%; /* Ensure fields take full width of their container */
   box-sizing: border-box; /* Prevent padding from affecting width */
 }

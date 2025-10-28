@@ -9,7 +9,7 @@
   z-index: 1100;
   padding: 8px 0;
   color: #f0f0f0;
-  margin-top: 3%;
+  margin-top: 1.5%;
   box-sizing: border-box;
 }
 
@@ -182,10 +182,4 @@
 .notification-item[tabindex="0"]:focus {
   outline: 2px solid rgba(255, 255, 255, 0.12);
   outline-offset: -2px;
-}
-
-/* ensure dialog doesn't create horizontal scroll */
-html,
-body {
-  overflow-x: hidden;
 }

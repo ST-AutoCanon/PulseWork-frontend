@@ -1,6 +1,5 @@
 .sidebar {
   width: 250px;
-  background-color: #f4f4f4;
   overflow-y: auto;
   position: fixed;
   left: 0;
@@ -8,9 +7,9 @@
 }
 
 .sidebar ul {
+  background: #fff;
   list-style-type: none;
   padding: 0;
-  margin-top: 5%;
 }
 
 .sidebar li {
@@ -20,7 +19,6 @@
   padding: 16px 16px;
   margin: 8px 0;
   cursor: pointer;
-  background-color: white;
   border-radius: 6px 0 0 6px;
   transition: background-color 0.3s;
 }
@@ -31,7 +29,7 @@
 
 .sidebar .icon {
   font-size: 20px;
-  color: #555;
+  color: #000;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -44,7 +42,7 @@
   align-items: center;
   gap: 8px;
   font-size: 16px;
-  color: #333;
+  color: #000;
   padding-bottom: 0;
   line-height: 1;
 }
@@ -56,7 +54,7 @@
 }
 
 .sidebar li.active .icon {
-  color: #222;
+  color: #000;
 }
 
 .view-profile {

@@ -3,17 +3,17 @@
   justify-content: space-between;
   align-items: center;
   height: 2%;
-
-  padding: 20px;
-  background-color: white;
+  padding: 40px 20px 20px 30px;
+  background-color: #fff;
   color: black;
   position: sticky;
-  top: 2%;
+  top: 0%;
   left: 0;
   right: 0;
   width: 100%;
   flex-shrink: 0;
   margin-left: -20%;
+  z-index: 10;
 }
 
 .profile-section {
@@ -46,7 +46,7 @@
 }
 .profile-designation {
   font-size: 14px;
-  color: #777;
+  color: #727272;
   margin-right: 30%;
   display: inline-block;
 }
@@ -71,7 +71,7 @@
 
 .calendar-dropdown {
   position: absolute;
-  top: 95px;
+  top: 10%;
   right: 0.1%;
   font-size: small;
   background: white;
@@ -97,6 +97,7 @@
 }
 
 .fa-icon {
+  color: #000;
   cursor: pointer;
   transition: transform 0.1s ease, color 0.3s ease;
 }
@@ -120,15 +121,16 @@
 .org-name-gradient {
   font-size: 24px;
   font-weight: 700;
-  background: linear-gradient(to right, #10677a, #6eba35);
-  background-clip: text;
+  background: linear-gradient(to bottom, #156178, #0f98c2);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
+  -webkit-text-stroke: 0.4px rgba(0, 0, 0, 0.08);
   display: inline-block;
   white-space: nowrap;
 }
 
 .notification-icon {
+  color: #fff;
   position: relative;
   display: inline-block;
   cursor: pointer;
@@ -150,10 +152,9 @@
   .topbar1 {
     padding: 0px;
     height: auto;
-    margin-left: 0;
+    margin: 0;
     flex-direction: column;
     align-items: stretch;
-    margin-top: 0%;
     background-color: #ffffff;
   }
 

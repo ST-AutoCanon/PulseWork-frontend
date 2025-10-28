@@ -69,7 +69,7 @@
 
 .search-bar input {
   flex: 1;
-  padding: 3%;
+  padding: 4%;
   border: 1px solid #ccc;
   border-radius: 4px;
   width: 140px;
@@ -176,8 +176,8 @@
 }
 
 .search-button {
-  padding: 0.6%;
-  width: 200px;
+  padding: 0.8%;
+  width: 120px;
   font-size: medium;
   cursor: pointer;
   background-color: #00468c;

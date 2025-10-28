@@ -17,12 +17,11 @@
 
 .add-dp {
   display: flex;
-  width: 16%;
   background-color: #79c42b;
-  text-align: center;
+  align-items: center;
   color: #fff;
   gap: 1%;
-  font-size: medium;
+  font-size: 18px;
   border-radius: 5px;
   height: 60%;
   border: none;
@@ -77,11 +76,12 @@
 
 .add-dp span {
   display: flex;
-  margin: 6%;
+  width: 150px;
 }
 
 .add-icon {
   font-size: xx-large;
+  margin: 0 2%;
 }
 
 /* Department List */

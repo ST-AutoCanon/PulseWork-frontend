@@ -84,20 +84,13 @@
 .employee-table td {
   border: 1px solid #cccbce;
   background-color: #fff;
-  padding: 0.5%;
+  padding: 0.5rem;
   text-align: left;
   font-size: 14px;
 }
 
 .employee-table tr {
   background-color: #fff;
-}
-
-.employee-table th,
-.employee-table td {
-  padding: 0.75rem;
-  border: 1px solid #ddd;
-  text-align: left;
 }
 
 .status-active {
@@ -518,6 +511,10 @@
   background-color: #999;
 }
 
+.employee-table td:nth-child(3) {
+  width: 95px;
+}
+
 .edit.disabled,
 .deactivate.disabled {
   color: #ccc;
@@ -537,7 +534,6 @@
 }
 
 .deactivate {
-  margin-left: 5px;
   cursor: pointer;
   font-size: x-large;
   border: none;

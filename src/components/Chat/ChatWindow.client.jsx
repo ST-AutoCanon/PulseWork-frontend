@@ -22,6 +22,7 @@ import { getDateLabel } from "./DateLabels";
 import "./ChatWindow.css";
 
 async function getLocationAndAddress() {
+  // unchanged
   return new Promise((resolve) => {
     if (!navigator.geolocation) {
       return resolve({
@@ -86,6 +87,10 @@ export default function ChatWindow({ room, onBack }) {
   const emojiRef = useRef(null);
   const [showMembers, setShowMembers] = useState(false);
   const [members, setMembers] = useState([]);
+
+  // selected File object (not uploaded yet)
+  const [selectedFile, setSelectedFile] = useState(null);
+  const selectedFileRef = useRef(null);
 
   const [alertModal, setAlertModal] = useState({
     isVisible: false,
@@ -197,20 +202,92 @@ export default function ChatWindow({ room, onBack }) {
     });
   };
 
-  const send = () => {
-    if (!txt.trim() || !room) return;
-    doSend({ roomId: room.id, content: txt, type: "text" });
-    setTxt("");
-    setShowEmojiPicker(false);
+  const uploadFile = async (file) => {
+    const fd = new FormData();
+    fd.append("file", file);
+    const base = (process.env.NEXT_PUBLIC_BACKEND_URL || "").replace(
+      /\/+$/,
+      ""
+    );
+    const url = `${base}/ChatUploads`;
+    const resp = await axios.post(url, fd, { headers });
+    return resp.data?.url;
   };
 
-  const onFileUploaded = (url) =>
-    doSend({ roomId: room.id, content: "", type: "file", fileUrl: url });
+  // send: uses selectedFile if present. caption = txt without filename token.
+  const send = async () => {
+    // if nothing typed and no selected file => nothing to send
+    if ((!txt.trim() && !selectedFile) || !room) return;
 
-  const onEmojiClick = (emojiData) => {
-    const ch = emojiData?.emoji || "";
-    setTxt((p) => p + ch);
+    if (selectedFile) {
+      try {
+        const uploadedUrl = await uploadFile(selectedFile);
+        // remove filename token from caption
+        const filenameToken = `[${selectedFile.name}]`;
+        const caption = txt.replace(filenameToken, "").trim();
+        await doSend({
+          roomId: room.id,
+          content: caption || "",
+          type: "file",
+          fileUrl: uploadedUrl,
+        });
+        setTxt("");
+        setSelectedFile(null);
+        selectedFileRef.current = null;
+        setShowEmojiPicker(false);
+      } catch (err) {
+        console.error("File upload/send failed:", err);
+        alert("Failed to upload or send file");
+      }
+      return;
+    }
+
+    if (txt.trim()) {
+      doSend({ roomId: room.id, content: txt, type: "text" });
+      setTxt("");
+      setShowEmojiPicker(false);
+    }
   };
+
+  // handler to receive File object from FileUpload
+  const handleFileSelect = (file) => {
+    if (!file) return;
+
+    // remove previous filename token if present
+    const prevName = selectedFileRef.current?.name;
+    setTxt((prev) => {
+      let newTxt = prev || "";
+
+      if (prevName) {
+        const prevToken = `[${prevName}]`;
+        // remove ALL occurrences of previous token (trim extra spaces)
+        newTxt = newTxt
+          .split(prevToken)
+          .join("")
+          .replace(/\s{2,}/g, " ")
+          .trim();
+        if (newTxt) newTxt += " ";
+      }
+
+      const token = `[${file.name}]`;
+      // if token already present somewhere, avoid duplicating
+      if (newTxt.includes(token)) return newTxt + " ";
+      return (newTxt + token + " ").trim() + " ";
+    });
+
+    // set selected file state and update ref
+    setSelectedFile(file);
+    selectedFileRef.current = file;
+  };
+
+  useEffect(() => {
+    if (!selectedFile) return;
+    const token = `[${selectedFile.name}]`;
+    if (!txt.includes(token)) {
+      setSelectedFile(null);
+      selectedFileRef.current = null;
+    }
+  }, [txt, selectedFile]);
 
   const downloadFile = async (filename) => {
     try {
@@ -240,7 +317,9 @@ export default function ChatWindow({ room, onBack }) {
       axios
         .get(
           `${process.env.NEXT_PUBLIC_BACKEND_URL}/rooms/${room.id}/members`,
-          { headers }
+          {
+            headers,
+          }
         )
         .then((r) => setMembers(r.data))
         .catch(console.error);
@@ -405,19 +484,25 @@ export default function ChatWindow({ room, onBack }) {
           {showEmojiPicker && (
             <div className="emoji-dropdown" ref={emojiRef}>
               <Picker
-                onEmojiClick={onEmojiClick}
+                onEmojiClick={(emojiData) =>
+                  setTxt((p) => p + (emojiData?.emoji || ""))
+                }
                 pickerStyle={{ width: "100%" }}
               />
             </div>
           )}
         </div>
-        <FileUpload onUpload={onFileUploaded} employeeId={meId} orgId={orgId}>
-          {(open) => (
-            <button className="icon-btn" onClick={open}>
-              <FaPaperclip />
-            </button>
-          )}
-        </FileUpload>
+
+        {/* FileUpload now provides a file via onSelect (File object). It still renders its paperclip button */}
+        <FileUpload
+          onSelect={handleFileSelect}
+          employeeId={meId}
+          orgId={orgId}
+        />
+
+        {/* NOTE: we no longer show a separate preview or remove button.
+            The filename token is injected into the textarea instead. */}
+
         <textarea
           className="m-input"
           rows={2}

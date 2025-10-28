@@ -140,6 +140,12 @@
   background-color: #ffffff;
 }
 
+.pj-add-emp {
+  width: 70%;
+  display: flex;
+  justify-content: space-between;
+}
+
 .pj-form-row {
   display: flex;
   justify-content: space-between;

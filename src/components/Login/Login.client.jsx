@@ -23,7 +23,7 @@ export default function Login({ onClose }) {
     title: "",
     message: "",
   });
-  const [isSubmitting, setIsSubmitting] = useState(false); // <<< NEW
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const toggleShowPassword = () => setShowPassword((p) => !p);
 
@@ -150,7 +150,13 @@ export default function Login({ onClose }) {
           >
             Demo Request
           </button>
-          <button className="purchase-btn">Purchase</button>
+          <button
+            className="purchase-btn"
+            onClick={() => router.push("/purchase")}
+            aria-label="Purchase - open contact and location"
+          >
+            Purchase
+          </button>
         </div>
 
         <div className="login-card">

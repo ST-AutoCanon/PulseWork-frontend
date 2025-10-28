@@ -1,62 +1,62 @@
-.calendar-container {
+.calendarContainer {
   width: 350px;
-  height: 330px;
+  height: auto;
   text-align: center;
   background: #ffffff;
-  border-radius: 10px;
   box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
   position: relative;
 }
 
-.calendar-wrapper {
+.admin {
+  height: 400px;
+}
+
+.calendarWrapper {
   position: relative;
-  height: 100%;
   background: #f2f2f2;
   border-radius: 8px;
 }
 
-.react-calendar {
+:global(.react-calendar) {
   height: 100%;
   background: #ffffff;
 }
 
-.react-calendar__navigation {
-  height: 20%;
+:global(.react-calendar__navigation) {
+  height: 15%;
   background: #79c42b;
 }
-.react-calendar__navigation__arrow {
+:global(.react-calendar__navigation__arrow) {
   width: 20%;
   font-size: xx-large;
   color: #fff;
 }
-
-.react-calendar__navigation button:enabled:hover,
-.react-calendar__navigation button:enabled:focus {
+:global(.react-calendar__navigation button:enabled:hover),
+:global(.react-calendar__navigation button:enabled:focus) {
   background-color: #79c42b;
 }
-
-.react-calendar__navigation__label {
-  font-size: 1.5rem;
+:global(.react-calendar__navigation__label) {
+  font-size: 1.3rem;
   font-weight: bold;
   pointer-events: none;
   color: #fff;
 }
 
-.react-calendar__month-view__weekdays {
+:global(.react-calendar__month-view__weekdays) {
   font-size: 0.9rem;
   border: none;
   color: #79c42b;
   margin-top: 2%;
 }
 
-.react-calendar__tile {
+:global(.react-calendar__tile) {
   position: relative;
   padding: 3%;
   font-size: medium;
   font-weight: lighter;
 }
 
-.tile-tooltip-overlay {
+.tileTooltipOverlay {
   position: absolute;
   top: 0;
   left: 0;
@@ -67,7 +67,7 @@
   cursor: pointer;
 }
 
-.react-calendar__tile abbr {
+:global(.react-calendar__tile abbr) {
   position: relative;
   z-index: 5;
   pointer-events: none;
@@ -75,7 +75,7 @@
   font-weight: bold;
 }
 
-.sunday-dot {
+.sundayDot {
   width: 30px;
   height: 30px;
   border-radius: 50%;
@@ -86,7 +86,7 @@
   z-index: 4;
 }
 
-.holiday-dot {
+.holidayDot {
   width: 30px;
   height: 30px;
   border-radius: 50%;
@@ -96,15 +96,15 @@
   z-index: 4;
 }
 
-.optional-dot {
+.optionalDot {
   background-color: #d32f2f;
 }
 
-.company-dot {
+.companyDot {
   background-color: #9090fd;
 }
 
-.react-tooltip {
+:global(.react-tooltip) {
   z-index: 9999 !important;
   background-color: #000000e6 !important;
   color: white !important;
@@ -113,22 +113,21 @@
   font-size: 14px !important;
 }
 
-.react-calendar__tile--active {
+:global(.react-calendar__tile--active) {
   background-color: #fae5a4 !important;
   border-radius: 5px;
 }
-
-.react-calendar__tile--range {
+:global(.react-calendar__tile--range) {
   background-color: #fae5a4 !important;
 }
-.react-calendar__tile--rangeStart,
-.react-calendar__tile--rangeEnd {
+:global(.react-calendar__tile--rangeStart),
+:global(.react-calendar__tile--rangeEnd) {
   background-color: #fae5a4 !important;
 }
 
-.holiday-legend-top {
+.holidayLegendTop {
   position: absolute;
-  top: 72px;
+  top: 16%;
   left: 50%;
   transform: translateX(-50%);
   display: flex;
@@ -137,44 +136,118 @@
   border-radius: 5px;
 }
 
-.legend-item {
+.legendItem {
   display: flex;
   align-items: center;
   gap: 6px;
 }
 
-.color-box {
+.colorBox {
   width: 12px;
   height: 12px;
   border-radius: 2px;
 }
 
-.color-box.optional {
+.colorBox.optional {
   background-color: #d32f2f;
 }
 
-.color-box.company {
+.colorBox.company {
   background-color: #9090fd;
 }
 
+.closeBtn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-weight: bold;
+  z-index: 10;
+}
+
+.adminButtons {
+  position: absolute;
+  bottom: 8px;
+  top: 70%;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: center;
+  width: calc(100% - 20px);
+  padding: 6px;
+  box-sizing: border-box;
+  background: transparent;
+}
+
+.iconBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: none;
+  cursor: pointer;
+  background: #79c42b;
+  color: #fff;
+  font-weight: 600;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+.iconBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.templateIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 6px;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  background: #fff;
+  color: #333;
+}
+
+.fileNote {
+  width: 100%;
+  text-align: center;
+  font-size: 13px;
+  margin-top: 6px;
+  color: #333;
+}
+.errorMessageForUploadfile {
+  width: 100%;
+  text-align: center;
+  font-size: 13px;
+  margin-top: 6px;
+  color: #d32f2f;
+}
+
 @media (max-width: 600px) {
-  .calendar-container {
+  .calendarContainer {
     width: calc(100vw - 18px);
     max-width: 380px;
     height: auto;
     box-sizing: border-box;
   }
 
-  .calendar-wrapper {
+  .calendarWrapper {
     height: auto;
   }
 
-  .react-calendar {
+  :global(.react-calendar) {
     width: 100%;
     font-size: 14px;
   }
 
-  .react-calendar__navigation {
+  :global(.react-calendar__navigation) {
     height: auto;
     padding: 8px 6px;
     display: flex;
@@ -182,14 +255,14 @@
     gap: 6px;
   }
 
-  .react-calendar__navigation__label {
+  :global(.react-calendar__navigation__label) {
     font-size: 1.15rem;
     font-weight: 700;
     pointer-events: none;
     color: #fff;
   }
 
-  .react-calendar__navigation__arrow {
+  :global(.react-calendar__navigation__arrow) {
     width: 36px;
     height: 36px;
     font-size: 2rem;
@@ -199,12 +272,12 @@
     color: #fff;
   }
 
-  .react-calendar__month-view__weekdays {
+  :global(.react-calendar__month-view__weekdays) {
     font-size: 0.85rem;
     margin-top: 6px;
   }
 
-  .react-calendar__tile {
+  :global(.react-calendar__tile) {
     position: relative;
     font-size: 0.95rem;
     min-height: 48px;
@@ -212,71 +285,68 @@
     box-sizing: border-box;
   }
 
-  .react-calendar__tile abbr {
+  :global(.react-calendar__tile abbr) {
     z-index: 10;
   }
 
-  .tile-tooltip-overlay {
+  .tileTooltipOverlay {
     z-index: 6;
   }
 
-  .sunday-dot,
-  .holiday-dot {
+  .sundayDot,
+  .holidayDot {
     width: 24px;
     height: 24px;
     top: 10px;
     right: 12px;
   }
 
-  .optional-dot {
+  .optionalDot {
     background-color: #d32f2f;
   }
 
-  .company-dot {
+  .companyDot {
     background-color: #9090fd;
   }
 
-  .react-tooltip {
+  :global(.react-tooltip) {
     z-index: 99999 !important;
     font-size: 13px !important;
     padding: 6px 8px !important;
   }
 
-  .react-calendar__tile--active,
-  .react-calendar__tile--range,
-  .react-calendar__tile--rangeStart,
-  .react-calendar__tile--rangeEnd {
+  :global(.react-calendar__tile--active),
+  :global(.react-calendar__tile--range),
+  :global(.react-calendar__tile--rangeStart),
+  :global(.react-calendar__tile--rangeEnd) {
     background-color: #fae5a4 !important;
     border-radius: 6px;
   }
 
-  .holiday-legend-top {
+  .holidayLegendTop {
     display: flex;
     gap: 0.75rem;
     background-color: rgba(255, 255, 255, 0.95);
-    margin-top: -15px;
     border-radius: 10px;
   }
 
-  .legend-item {
+  .legendItem {
     gap: 8px;
   }
 
-  .color-box {
+  .colorBox {
     width: 12px;
     height: 12px;
   }
 
-  /* Slight spacing tweaks for mobile layout */
-  .calendar-container .file-note,
-  .calendar-container .error-message-for-uploadfile {
+  .calendarContainer .fileNote,
+  .calendarContainer .errorMessageForUploadfile {
     font-size: 13px;
   }
 }
 
-/* Optional: medium phones / small tablets (keeps desktop unchanged) */
 @media (min-width: 601px) and (max-width: 900px) {
-  .calendar-container {
+  .calendarContainer {
     width: 420px;
     max-width: calc(100vw - 40px);
     height: auto;
@@ -284,12 +354,12 @@
     margin: 12px auto;
   }
 
-  .react-calendar__tile {
+  :global(.react-calendar__tile) {
     min-height: 52px;
   }
 
-  .holiday-legend-top {
-    top: 72px; /* keep original position if there's room */
+  .holidayLegendTop {
+    top: 72px;
     left: 50%;
     transform: translateX(-50%);
     background: transparent;

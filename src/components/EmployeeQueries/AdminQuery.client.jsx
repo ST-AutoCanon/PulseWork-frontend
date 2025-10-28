@@ -34,12 +34,16 @@ const AdminQuery = () => {
   const selectedThreadIdRef = useRef(null);
   const [attachmentFile, setAttachmentFile] = useState(null);
 
+  // track seen message ids to avoid duplicates from socket
+  const messageIdsRef = useRef(new Set());
+
   const [alertModal, setAlertModal] = useState({
     isVisible: false,
     title: "",
     message: "",
   });
 
+  // convenience headers (not used everywhere in original code, you can use it)
   const headersBase = {
     "x-api-key": API_KEY,
     "Content-Type": "application/json",
@@ -51,15 +55,38 @@ const AdminQuery = () => {
     selectedThreadIdRef.current = selectedQuery?.id ?? null;
   }, [selectedQuery]);
 
+  // helper dedupe: prefer id, fallback to composite key
+  const makeMsgKey = (m) => {
+    if (!m) return null;
+    if (m.id !== undefined && m.id !== null) return `id:${String(m.id)}`;
+    const thread = m.thread_id ?? m.threadId ?? "";
+    const sender = m.sender_id ?? m.senderId ?? "";
+    const time = m.created_at ? new Date(m.created_at).getTime() : "";
+    const att = m.attachment_url ?? m.attachmentUrl ?? "";
+    const text = (m.message || "").slice(0, 200);
+    return `f:${thread}::${sender}::${time}::${att}::${text}`;
+  };
+
+  // add incoming message only if not seen
+  const addIfNotExists = (msg) => {
+    if (!msg) return;
+    const key = makeMsgKey(msg);
+    if (!key) return;
+    if (messageIdsRef.current.has(key)) return;
+    messageIdsRef.current.add(key);
+    setMessages((prev) => [...prev, msg]);
+  };
+
   useEffect(() => {
+    // don't try to connect socket if missing required values
     if (!employeeId) {
       console.warn("[socket] not connecting: employeeId missing");
-      setLoading(false);
+      setLoadingQueries(false);
       return;
     }
     if (!BACKEND_URL) {
       console.warn("[socket] BACKEND_URL not configured");
-      setLoading(false);
+      setLoadingQueries(false);
       return;
     }
 
@@ -78,51 +105,33 @@ const AdminQuery = () => {
     const onConnectError = (err) =>
       console.error("[socket] connect_error", err);
 
+    const handleNewMessage = (msg) => {
+      // only add messages for the currently selected thread
+      if (String(msg.thread_id) === String(selectedThreadIdRef.current)) {
+        addIfNotExists(msg);
+      }
+      fetchQueries?.({ silent: true });
+    };
+
+    const handleMessageAck = (msg) => {
+      if (String(msg.thread_id) === String(selectedThreadIdRef.current)) {
+        addIfNotExists(msg);
+      }
+    };
+
     socket.on("connect", onConnect);
     socket.on("disconnect", onDisconnect);
     socket.on("connect_error", onConnectError);
-
-    const addIfNotExists = (msg) => {
-      setMessages((prev) => {
-        const exists = prev.some((m) => {
-          if (m.id && msg.id) return String(m.id) === String(msg.id);
-          const sameThread = String(m.thread_id) === String(msg.thread_id);
-          const sameSender = String(m.sender_id) === String(msg.sender_id);
-          const sameText = (m.message || "") === (msg.message || "");
-          const t1 = m.created_at ? new Date(m.created_at).getTime() : 0;
-          const t2 = msg.created_at ? new Date(msg.created_at).getTime() : 0;
-          const closeTime = Math.abs(t1 - t2) < 3000;
-          const sameAttachment =
-            (m.attachment_url || "") === (msg.attachment_url || "");
-          return (
-            sameThread && sameSender && sameText && closeTime && sameAttachment
-          );
-        });
-        return exists ? prev : [...prev, msg];
-      });
-    };
-
-    socket.on("newMessage", (msg) => {
-      if (String(msg.thread_id) === String(selectedThreadIdRef.current)) {
-        addIfNotExists(msg);
-      }
-      fetchQueries();
-    });
-
-    socket.on("messageAck", (msg) => {
-      if (String(msg.thread_id) === String(selectedThreadIdRef.current)) {
-        addIfNotExists(msg);
-      }
-    });
-
+    socket.on("newMessage", handleNewMessage);
+    socket.on("messageAck", handleMessageAck);
     socket.on("error", (err) => console.error("[socket] server error:", err));
 
     return () => {
       socket.off("connect", onConnect);
       socket.off("disconnect", onDisconnect);
       socket.off("connect_error", onConnectError);
-      socket.off("newMessage");
-      socket.off("messageAck");
+      socket.off("newMessage", handleNewMessage);
+      socket.off("messageAck", handleMessageAck);
       socket.off("error");
       try {
         socket.disconnect();
@@ -130,7 +139,7 @@ const AdminQuery = () => {
         console.warn("[socket] disconnect error", e);
       }
     };
-  }, [BACKEND_URL, API_KEY, employeeId, orgId]);
+  }, [BACKEND_URL, API_KEY, employeeId, orgId]); // socket lifecycle
 
   const fetchQueries = async (opts = { silent: false }) => {
     if (!opts.silent) {
@@ -199,6 +208,11 @@ const AdminQuery = () => {
       return;
     }
 
+    // If socket is connected, rely on socket broadcast as the only way to add messages locally.
+    // If socket is NOT connected we POST and refresh message list from server.
+    const socketConnected = socketRef.current && socketRef.current.connected;
+
+    // ATTACHMENT path (FormData)
     if (attachmentFile) {
       const form = new FormData();
       form.append("attachment", attachmentFile);
@@ -212,13 +226,31 @@ const AdminQuery = () => {
           "x-api-key": API_KEY,
           ...(employeeId ? { "x-employee-id": employeeId } : {}),
           ...(orgId ? { "x-org-id": orgId } : {}),
-          "Content-Type": "multipart/form-data",
+          // do NOT set Content-Type manually
         };
+
         await axios.post(
           `${BACKEND_URL}/threads/${selectedQuery.id}/messages`,
           form,
           { headers }
         );
+
+        // if socket is connected, server should broadcast the created message back via socket -> handleNewMessage will add it.
+        // if socket is disconnected, fetch the updated messages from server and replace local list:
+        if (!socketConnected) {
+          const fetched = await fetchMessages(selectedQuery.id);
+          // refresh dedupe set + messages
+          messageIdsRef.current.clear();
+          const unique = [];
+          for (const m of fetched || []) {
+            const k = makeMsgKey(m);
+            if (!messageIdsRef.current.has(k)) {
+              messageIdsRef.current.add(k);
+              unique.push(m);
+            }
+          }
+          setMessages(unique);
+        }
 
         setNewMessage("");
         clearAttachmentInput();
@@ -230,6 +262,7 @@ const AdminQuery = () => {
       return;
     }
 
+    // Text-only path: emit to socket if possible
     const payload = {
       thread_id: selectedQuery.id,
       sender_id: employeeId,
@@ -239,46 +272,44 @@ const AdminQuery = () => {
       message: newMessage,
     };
 
-    if (socketRef.current && socketRef.current.connected) {
-      socketRef.current.emit("sendQueryMessage", payload, async (resp) => {
+    if (socketConnected) {
+      // emit and rely on socket broadcast to update local messages
+      socketRef.current.emit("sendQueryMessage", payload, (resp) => {
+        // server ack (optional) — we still don't append locally here
         if (resp && resp.success) {
           setNewMessage("");
           fetchQueries({ silent: true });
         } else {
-          try {
-            const headers = {
-              "x-api-key": API_KEY,
-              ...(employeeId ? { "x-employee-id": employeeId } : {}),
-              ...(orgId ? { "x-org-id": orgId } : {}),
-            };
-            const res = await axios.post(
-              `${BACKEND_URL}/threads/${selectedQuery.id}/messages`,
-              payload,
-              { headers }
-            );
-            const newMsg =
-              res.data?.data?.message ?? res.data?.data ?? res.data;
-            setMessages((prev) => [...prev, newMsg]);
-            setNewMessage("");
-          } catch (err) {
-            console.error("REST fallback error:", err);
-            showAlert("Failed to send message. Please try again.");
-          }
+          // server reported failure — we can show alert or optionally fallback
+          console.warn("socket sendQueryMessage reported failure:", resp);
+          showAlert("Message send failed over socket.");
         }
       });
     } else {
+      // socket not connected: use REST and then fetch messages from server for canonical state
       try {
         const headers = {
           "x-api-key": API_KEY,
           ...(employeeId ? { "x-employee-id": employeeId } : {}),
           ...(orgId ? { "x-org-id": orgId } : {}),
         };
-        const res = await axios.post(
+        await axios.post(
           `${BACKEND_URL}/threads/${selectedQuery.id}/messages`,
           payload,
           { headers }
         );
-        const newMsg = res.data?.data?.message ?? res.data?.data ?? res.data;
+        // refresh messages from server
+        const fetched = await fetchMessages(selectedQuery.id);
+        messageIdsRef.current.clear();
+        const unique = [];
+        for (const m of fetched || []) {
+          const k = makeMsgKey(m);
+          if (!messageIdsRef.current.has(k)) {
+            messageIdsRef.current.add(k);
+            unique.push(m);
+          }
+        }
+        setMessages(unique);
         setNewMessage("");
       } catch (err) {
         console.error("REST send failed:", err);
@@ -326,20 +357,38 @@ const AdminQuery = () => {
 
   const handleSelectQuery = async (query) => {
     setSelectedQuery(query);
+    // clear previous messages and seen ids
+    messageIdsRef.current.clear();
     setMessages([]);
     setLoadingMessages(true);
 
+    // leave previous thread if any, then join new thread
     if (socketRef.current && socketRef.current.connected) {
+      if (
+        selectedThreadIdRef.current &&
+        selectedThreadIdRef.current !== query.id
+      ) {
+        socketRef.current.emit("leaveThread", selectedThreadIdRef.current);
+      }
       socketRef.current.emit("joinThread", query.id);
+      selectedThreadIdRef.current = query.id;
     } else {
       console.warn("[client] socket not connected: cannot emit joinThread");
     }
 
     try {
       const fetched = await fetchMessages(query.id);
-      setMessages(fetched || []);
+      // populate messages and seen ids deterministically
+      const unique = [];
+      for (const m of fetched || []) {
+        const k = makeMsgKey(m);
+        if (!messageIdsRef.current.has(k)) {
+          messageIdsRef.current.add(k);
+          unique.push(m);
+        }
+      }
+      setMessages(unique);
       await markMessagesAsRead(query.id);
-
       fetchQueries({ silent: true });
     } catch (err) {
       console.error("Error selecting query:", err);
@@ -514,11 +563,11 @@ const AdminQuery = () => {
                       </div>
                     )}
 
-                  {[...messages].reverse().map((message) => (
+                  {[...messages].reverse().map((message, idx) => (
                     <div
                       key={
                         message.id ||
-                        `${message.thread_id}-${message.created_at}`
+                        `${message.thread_id}-${message.created_at}-${idx}`
                       }
                       className={`message-container ${
                         String(message.sender_id) === String(employeeId)

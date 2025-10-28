@@ -163,6 +163,9 @@ const CreateOrganization = ({ employeeId: propEmployeeId = null }) => {
   const [openDropdownId, setOpenDropdownId] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // NEW: Employee ID Prefix (2-4 uppercase letters)
+  const [employeePrefix, setEmployeePrefix] = useState("");
+
   const roles = ["Admin", "Manager", "Supervisor", "Employee", "General"];
   const debouncedSearchTerm = useDebounce(searchTerm, 300);
 
@@ -193,6 +196,15 @@ const CreateOrganization = ({ employeeId: propEmployeeId = null }) => {
       : "";
   };
 
+  const validatePrefix = (prefix) => {
+    const regex = /^[A-Z]{2,4}$/;
+    return prefix
+      ? regex.test(prefix)
+        ? ""
+        : "Employee ID prefix must be 2 to 4 uppercase letters."
+      : "Employee ID prefix is required.";
+  };
+
   const validateDates = (start, end) => {
     if (!start || !end) return "";
     const startDateObj = new Date(start);
@@ -202,19 +214,14 @@ const CreateOrganization = ({ employeeId: propEmployeeId = null }) => {
       : "End date cannot be before start date.";
   };
 
+  // Simplified validation: rely on HTML `required` for simple presence checks
+  // keep JS validation for patterns and related rules
   const validateForm = (currentStep) => {
     const newErrors = {};
     let errorMessages = [];
 
     if (currentStep === 1) {
-      newErrors.name = name ? "" : "Organization Name is required.";
-      newErrors.subdomain = subdomain ? "" : "Display Name is required.";
-      newErrors.noEmployees = noEmployees
-        ? ""
-        : "Number of Employees is required.";
-      newErrors.companyAddress = companyAddress
-        ? ""
-        : "Company Address is required.";
+      newErrors.employeePrefix = validatePrefix(employeePrefix);
       newErrors.cPanNo = validatePanNumber(cPanNo);
       newErrors.adminEmail =
         validateEmail(adminEmail) ||
@@ -234,24 +241,15 @@ const CreateOrganization = ({ employeeId: propEmployeeId = null }) => {
         .filter(([_, error]) => error)
         .map(([key, error]) => {
           const fieldNames = {
-            name: "Organization Name",
-            subdomain: "Display Name",
-            noEmployees: "Number of Employees",
-            companyAddress: "Company Address",
+            employeePrefix: "Employee ID Prefix",
             cPanNo: "Company PAN No",
             adminEmail: "Admin Email ID",
-            adminFirstName: "Admin First Name",
-            adminLastName: "Admin Last Name",
-            adminDob: "Admin Date of Birth",
-            adminAadharNo: "Admin Aadhaar No",
-            adminPanNo: "Admin Pan No",
-            adminMobileNo: "Admin Mobile No",
             contactEmail: "Contact Email ID",
             contactPhone: "Contact Phone No",
             startDate: "Start Date",
             endDate: "End Date",
           };
-          return `${fieldNames[key]}: ${error}`;
+          return `${fieldNames[key] || key}: ${error}`;
         });
     } else if (currentStep === 2) {
       newErrors.sidebarAccess = sidebarAccess.some(
@@ -278,18 +276,6 @@ const CreateOrganization = ({ employeeId: propEmployeeId = null }) => {
   const updateFieldError = (field, value) => {
     let error = "";
     switch (field) {
-      case "name":
-        error = value ? "" : "Organization Name is required.";
-        break;
-      case "subdomain":
-        error = value ? "" : "Display Name is required.";
-        break;
-      case "noEmployees":
-        error = value ? "" : "Number of Employees is required.";
-        break;
-      case "companyAddress":
-        error = value ? "" : "Company Address is required.";
-        break;
       case "cPanNo":
         error = validatePanNumber(value);
         break;
@@ -302,9 +288,6 @@ const CreateOrganization = ({ employeeId: propEmployeeId = null }) => {
       case "contactPhone":
         error = validateMobileNumber(value);
         break;
-      case "startDate":
-        error = value ? "" : "Start Date is required.";
-        break;
       case "endDate":
         error =
           validateDates(startDate, value) ||
@@ -314,6 +297,9 @@ const CreateOrganization = ({ employeeId: propEmployeeId = null }) => {
         error = value.some((access) => access.roles.length > 0)
           ? ""
           : "At least one sidebar item must have a role assigned.";
+        break;
+      case "employeePrefix":
+        error = validatePrefix(value);
         break;
       default:
         break;
@@ -354,6 +340,7 @@ const CreateOrganization = ({ employeeId: propEmployeeId = null }) => {
       setCurrentOrgId(null);
       setShouldValidate(false);
       setOpenDropdownId(null);
+      setEmployeePrefix("");
     }
   }, [showForm, isEditing]);
 
@@ -508,6 +495,7 @@ const CreateOrganization = ({ employeeId: propEmployeeId = null }) => {
     setContactPhone(org.contact_phone_no || "");
     setStartDate(org.start_date ? org.start_date.split("T")[0] : "");
     setEndDate(org.end_date ? org.end_date.split("T")[0] : "");
+    setEmployeePrefix(org.employee_prefix || "");
     setErrors({});
     setMessage("");
     setStep(1);
@@ -584,6 +572,7 @@ const CreateOrganization = ({ employeeId: propEmployeeId = null }) => {
     setMessage("");
     setShouldValidate(false);
     setOpenDropdownId(null);
+    setEmployeePrefix("");
   };
 
   const handleNextStep = (e) => {
@@ -629,6 +618,7 @@ const CreateOrganization = ({ employeeId: propEmployeeId = null }) => {
       aadhaar_number: adminAadharNo,
       pan_number: adminPanNo,
       phone_number: adminMobileNo,
+      employee_prefix: employeePrefix,
     };
 
     const sidebarAccessData = sidebarAccess.flatMap((access) =>
@@ -702,6 +692,7 @@ const CreateOrganization = ({ employeeId: propEmployeeId = null }) => {
         setMessage("");
         setShouldValidate(false);
         setOpenDropdownId(null);
+        setEmployeePrefix("");
       } else {
         const errorMsg =
           (data && (data.message || data.error)) ||
@@ -741,6 +732,7 @@ const CreateOrganization = ({ employeeId: propEmployeeId = null }) => {
       setMessage("");
       setShouldValidate(false);
       setOpenDropdownId(null);
+      setEmployeePrefix("");
     }
   };
 
@@ -822,10 +814,8 @@ const CreateOrganization = ({ employeeId: propEmployeeId = null }) => {
                       <input
                         type="text"
                         value={name}
-                        onChange={(e) => {
-                          setName(e.target.value);
-                          updateFieldError("name", e.target.value);
-                        }}
+                        onChange={(e) => setName(e.target.value)}
+                        required
                       />
                       {errors.name && (
                         <span className="orgprefix-error-message">
@@ -840,10 +830,8 @@ const CreateOrganization = ({ employeeId: propEmployeeId = null }) => {
                       <input
                         type="text"
                         value={subdomain}
-                        onChange={(e) => {
-                          setSubdomain(e.target.value);
-                          updateFieldError("subdomain", e.target.value);
-                        }}
+                        onChange={(e) => setSubdomain(e.target.value)}
+                        required
                       />
                       {errors.subdomain && (
                         <span className="orgprefix-error-message">
@@ -851,6 +839,33 @@ const CreateOrganization = ({ employeeId: propEmployeeId = null }) => {
                         </span>
                       )}
                     </div>
+
+                    {/* NEW: Employee ID Prefix field (required, 2-4 uppercase letters) */}
+                    <div className="orgprefix-form-field">
+                      <label>
+                        Employee ID Prefix<span className="red">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={employeePrefix}
+                        onChange={(e) => {
+                          const val = e.target.value.toUpperCase().slice(0, 4);
+                          setEmployeePrefix(val);
+                          if (shouldValidate)
+                            updateFieldError("employeePrefix", val);
+                        }}
+                        pattern="[A-Z]{2,4}"
+                        title="2 to 4 uppercase letters"
+                        maxLength={4}
+                        required
+                      />
+                      {errors.employeePrefix && (
+                        <span className="orgprefix-error-message">
+                          {errors.employeePrefix}
+                        </span>
+                      )}
+                    </div>
+
                     <div className="orgprefix-form-field">
                       <label>
                         Number of Employees<span className="red">*</span>
@@ -858,10 +873,8 @@ const CreateOrganization = ({ employeeId: propEmployeeId = null }) => {
                       <input
                         type="number"
                         value={noEmployees}
-                        onChange={(e) => {
-                          setNoEmployees(e.target.value);
-                          updateFieldError("noEmployees", e.target.value);
-                        }}
+                        onChange={(e) => setNoEmployees(e.target.value)}
+                        required
                       />
                       {errors.noEmployees && (
                         <span className="orgprefix-error-message">
@@ -877,10 +890,8 @@ const CreateOrganization = ({ employeeId: propEmployeeId = null }) => {
                       <input
                         type="text"
                         value={companyAddress}
-                        onChange={(e) => {
-                          setCompanyAddress(e.target.value);
-                          updateFieldError("companyAddress", e.target.value);
-                        }}
+                        onChange={(e) => setCompanyAddress(e.target.value)}
+                        required
                       />
                       {errors.companyAddress && (
                         <span className="orgprefix-error-message">
@@ -896,12 +907,11 @@ const CreateOrganization = ({ employeeId: propEmployeeId = null }) => {
                         type="text"
                         value={cPanNo}
                         onChange={(e) => {
-                          setCPanNo(e.target.value.toUpperCase());
-                          updateFieldError(
-                            "cPanNo",
-                            e.target.value.toUpperCase()
-                          );
+                          const v = e.target.value.toUpperCase();
+                          setCPanNo(v);
+                          if (shouldValidate) updateFieldError("cPanNo", v);
                         }}
+                        required
                       />
                       {errors.cPanNo && (
                         <span className="orgprefix-error-message">
@@ -919,8 +929,10 @@ const CreateOrganization = ({ employeeId: propEmployeeId = null }) => {
                         value={contactEmail}
                         onChange={(e) => {
                           setContactEmail(e.target.value);
-                          updateFieldError("contactEmail", e.target.value);
+                          if (shouldValidate)
+                            updateFieldError("contactEmail", e.target.value);
                         }}
+                        required
                       />
                       {errors.contactEmail && (
                         <span className="orgprefix-error-message">
@@ -937,8 +949,10 @@ const CreateOrganization = ({ employeeId: propEmployeeId = null }) => {
                         value={contactPhone}
                         onChange={(e) => {
                           setContactPhone(e.target.value);
-                          updateFieldError("contactPhone", e.target.value);
+                          if (shouldValidate)
+                            updateFieldError("contactPhone", e.target.value);
                         }}
+                        required
                       />
                       {errors.contactPhone && (
                         <span className="orgprefix-error-message">
@@ -956,9 +970,12 @@ const CreateOrganization = ({ employeeId: propEmployeeId = null }) => {
                           value={startDate}
                           onChange={(e) => {
                             setStartDate(e.target.value);
-                            updateFieldError("startDate", e.target.value);
-                            updateFieldError("endDate", endDate);
+                            if (shouldValidate)
+                              updateFieldError("startDate", e.target.value);
+                            if (shouldValidate)
+                              updateFieldError("endDate", endDate);
                           }}
+                          required
                         />
                       </div>
                       {errors.startDate && (
@@ -977,8 +994,10 @@ const CreateOrganization = ({ employeeId: propEmployeeId = null }) => {
                           value={endDate}
                           onChange={(e) => {
                             setEndDate(e.target.value);
-                            updateFieldError("endDate", e.target.value);
+                            if (shouldValidate)
+                              updateFieldError("endDate", e.target.value);
                           }}
+                          required
                         />
                       </div>
                       {errors.endDate && (
@@ -996,8 +1015,10 @@ const CreateOrganization = ({ employeeId: propEmployeeId = null }) => {
                         value={adminEmail}
                         onChange={(e) => {
                           setAdminEmail(e.target.value);
-                          updateFieldError("adminEmail", e.target.value);
+                          if (shouldValidate)
+                            updateFieldError("adminEmail", e.target.value);
                         }}
+                        required
                       />
                       {errors.adminEmail && (
                         <span className="orgprefix-error-message">
@@ -1013,10 +1034,8 @@ const CreateOrganization = ({ employeeId: propEmployeeId = null }) => {
                       <input
                         type="text"
                         value={adminFirstName}
-                        onChange={(e) => {
-                          setAdminFirstName(e.target.value);
-                          updateFieldError("adminFirstName", e.target.value);
-                        }}
+                        onChange={(e) => setAdminFirstName(e.target.value)}
+                        required
                       />
                       {errors.adminFirstName && (
                         <span className="orgprefix-error-message">
@@ -1031,10 +1050,8 @@ const CreateOrganization = ({ employeeId: propEmployeeId = null }) => {
                       <input
                         type="text"
                         value={adminLastName}
-                        onChange={(e) => {
-                          setAdminLastName(e.target.value);
-                          updateFieldError("adminLastName", e.target.value);
-                        }}
+                        onChange={(e) => setAdminLastName(e.target.value)}
+                        required
                       />
                       {errors.adminLastName && (
                         <span className="orgprefix-error-message">
@@ -1049,10 +1066,8 @@ const CreateOrganization = ({ employeeId: propEmployeeId = null }) => {
                       <input
                         type="date"
                         value={adminDob}
-                        onChange={(e) => {
-                          setAdminDob(e.target.value);
-                          updateFieldError("adminDob", e.target.value);
-                        }}
+                        onChange={(e) => setAdminDob(e.target.value)}
+                        required
                       />
                       {errors.adminDob && (
                         <span className="orgprefix-error-message">
@@ -1067,10 +1082,8 @@ const CreateOrganization = ({ employeeId: propEmployeeId = null }) => {
                       <input
                         type="number"
                         value={adminAadharNo}
-                        onChange={(e) => {
-                          setAdminAadharNo(e.target.value);
-                          updateFieldError("adminAadharNo", e.target.value);
-                        }}
+                        onChange={(e) => setAdminAadharNo(e.target.value)}
+                        required
                       />
                       {errors.adminAadharNo && (
                         <span className="orgprefix-error-message">
@@ -1085,10 +1098,8 @@ const CreateOrganization = ({ employeeId: propEmployeeId = null }) => {
                       <input
                         type="text"
                         value={adminPanNo}
-                        onChange={(e) => {
-                          setAdminPanNo(e.target.value);
-                          updateFieldError("adminPanNo", e.target.value);
-                        }}
+                        onChange={(e) => setAdminPanNo(e.target.value)}
+                        required
                       />
                       {errors.adminPanNo && (
                         <span className="orgprefix-error-message">
@@ -1103,10 +1114,8 @@ const CreateOrganization = ({ employeeId: propEmployeeId = null }) => {
                       <input
                         type="number"
                         value={adminMobileNo}
-                        onChange={(e) => {
-                          setAdminMobileNo(e.target.value);
-                          updateFieldError("adminMobileNo", e.target.value);
-                        }}
+                        onChange={(e) => setAdminMobileNo(e.target.value)}
+                        required
                       />
                       {errors.adminMobileNo && (
                         <span className="orgprefix-error-message">

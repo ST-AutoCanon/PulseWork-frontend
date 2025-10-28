@@ -2,7 +2,7 @@
 
 import React from "react";
 import { MdSearch } from "react-icons/md";
-import { useAuth } from "../../context/AuthProvider.client"; // adjust path if needed
+import { useAuth } from "../../context/AuthProvider.client";
 
 const StepTwo = ({
   stsOwners,
@@ -34,7 +34,7 @@ const StepTwo = ({
     <div className="pj-step-two">
       <div className="step-two-grid">
         <div className="pj-form-group2">
-          <label>STS Owner</label>
+          <label>Project Owner</label>
           <select
             name="sts_owner_id"
             value={formData.sts_owner_id || ""}
@@ -51,7 +51,7 @@ const StepTwo = ({
         </div>
 
         <div className="pj-form-group2">
-          <label>STS Contact</label>
+          <label>Project Contact</label>
           <input
             type="text"
             name="sts_contact"
@@ -62,48 +62,48 @@ const StepTwo = ({
         </div>
 
         <div className="pj-form-group2">
-          <label> Add Employees</label>
+          <label>
+            Add Employees
+            {isEditable ? (
+              <div className="pj-add-emp">
+                <div className="pj-search-box">
+                  <MdSearch className="pj-search-icon" />
+                  <input
+                    type="text"
+                    className="pj-search-input"
+                    placeholder="by Name, EmpID or Dept"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                  />
+                </div>
 
-          {/* Search + filter controls — only interactive when editable */}
-          {isEditable ? (
-            <div>
-              <div className="pj-search-box">
-                <MdSearch className="pj-search-icon" />
-                <input
-                  type="text"
-                  className="pj-search-input"
-                  placeholder="Search by Name, EmpID or Dept"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                />
+                <div className="sp2-radio">
+                  <input
+                    type="radio"
+                    name="employee-filter"
+                    value="dept"
+                    checked={filterType === "dept"}
+                    onChange={handleFilterChange}
+                  />
+                  <label>Dept</label>
+                  <input
+                    type="radio"
+                    name="employee-filter"
+                    value="all"
+                    checked={filterType === "all"}
+                    onChange={handleFilterChange}
+                  />
+                  <label>All</label>
+                </div>
               </div>
-
-              <div className="sp2-radio">
-                <input
-                  type="radio"
-                  name="employee-filter"
-                  value="dept"
-                  checked={filterType === "dept"}
-                  onChange={handleFilterChange}
-                />
-                <label>Dept</label>
-                <input
-                  type="radio"
-                  name="employee-filter"
-                  value="all"
-                  checked={filterType === "all"}
-                  onChange={handleFilterChange}
-                />
-                <label>All</label>
+            ) : (
+              <div
+                style={{ marginLeft: "45px", fontSize: "12px", color: "#666" }}
+              >
+                Employee selection is read-only for your role.
               </div>
-            </div>
-          ) : (
-            <div
-              style={{ marginLeft: "45px", fontSize: "12px", color: "#666" }}
-            >
-              Employee selection is read-only for your role.
-            </div>
-          )}
+            )}
+          </label>
 
           <div className="add-employee">
             <div

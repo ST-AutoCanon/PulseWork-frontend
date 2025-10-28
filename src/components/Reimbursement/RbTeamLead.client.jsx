@@ -14,7 +14,7 @@ import { useAuth } from "../../context/AuthProvider.client";
 
 const RbTeamLead = () => {
   const { user } = useAuth();
-  const orgId = user?.orgId;
+  const orgId = user?.orgId ?? user?.org_id ?? null;
   const teamLeadId = user?.employeeId;
   const departmentId = user?.dashboard.department_id || null;
 
@@ -138,11 +138,12 @@ const RbTeamLead = () => {
           const match = file.filename.match(/^(\d{4})-(\d{2})-\d{2}/);
           if (!match) return null;
           const [year, month] = match.slice(1, 3);
-          const fileUrl = `${BACKEND_URL}/reimbursement/${year}/${month}/${claim.employee_id}/${file.filename}`;
+          const fileUrl = `${BACKEND_URL}/reimbursement/${orgId}/${year}/${month}/${claim.employee_id}/${file.filename}`;
           const response = await axios.get(fileUrl, {
             headers: {
               "x-api-key": API_KEY,
               "x-org-id": orgId,
+              "x-employee-id": teamLeadId,
               Authorization: `Bearer ${user?.token}`,
             },
             responseType: "blob",

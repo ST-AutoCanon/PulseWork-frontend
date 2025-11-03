@@ -151,30 +151,26 @@ export default function EmpReImbursement() {
           year: "numeric",
         })}
       </p>
-
-      <div className="reimbursement-tabs" role="tablist">
-        <div
-          role="tab"
-          aria-selected={activeTab === "current"}
-          className={`tab-item ${activeTab === "current" ? "active" : ""}`}
-          onClick={() => setActiveTab("current")}
-          tabIndex={0}
-          onKeyDown={(e) => e.key === "Enter" && setActiveTab("current")}
-        >
-          Current Month
-        </div>
-        <div
-          role="tab"
-          aria-selected={activeTab === "previous"}
-          className={`tab-item ${activeTab === "previous" ? "active" : ""}`}
-          onClick={() => setActiveTab("previous")}
-          tabIndex={0}
-          onKeyDown={(e) => e.key === "Enter" && setActiveTab("previous")}
-        >
-          Prev Month
-        </div>
-      </div>
-
+<div className="reimbursement-tabs" role="tablist">
+  <button
+    type="button"
+    role="tab"
+    aria-selected={activeTab === "current"}
+    className={`tab-item ${activeTab === "current" ? "active" : ""}`}
+    onClick={() => setActiveTab("current")}
+  >
+    Current Month
+  </button>
+  <button
+    type="button"
+    role="tab"
+    aria-selected={activeTab === "previous"}
+    className={`tab-item ${activeTab === "previous" ? "active" : ""}`}
+    onClick={() => setActiveTab("previous")}
+  >
+    Prev Month
+  </button>
+</div>
       <div className="chart-container-reimbursement" style={{ height: 260 }}>
         <Pie
           data={chartData}
@@ -186,7 +182,7 @@ export default function EmpReImbursement() {
         />
       </div>
 
-      <CustomLegend chartData={chartData} />
+      {/* <CustomLegend chartData={chartData} /> */}
     </div>
   );
 }

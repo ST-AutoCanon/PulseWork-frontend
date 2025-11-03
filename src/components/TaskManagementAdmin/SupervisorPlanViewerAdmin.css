@@ -1,0 +1,630 @@
+
+.supervisor-plan-admin-wrapper {
+  display: flex;
+  min-height: 100vh;
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  background-color: #f0f2f5;
+  overflow-x: hidden;
+  width: 100%;
+  max-width: 100%;
+  position: relative;
+}
+
+/* Header for Config Button */
+.supervisor-plan-admin-header {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 100%;
+  padding: 15px 20px;
+  z-index: 20;
+  display: flex;
+  justify-content: flex-end;
+}
+
+/* Config Button */
+.supervisor-plan-admin-config-button {
+  padding: 8px 16px;
+  background-color: #28a745;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  transition: background-color 0.2s ease;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.supervisor-plan-admin-config-button:hover {
+  background-color: #218838;
+}
+
+.supervisor-plan-admin-config-button:disabled {
+  background-color: #ccc;
+  cursor: not-allowed;
+}
+
+/* Search Input */
+.supervisor-plan-admin-search-input {
+  width: 100%;
+  padding: 8px;
+  margin-bottom: 10px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  font-size: 13px;
+  box-sizing: border-box;
+  background-color: #fff;
+  transition: border-color 0.2s ease;
+}
+
+.supervisor-plan-admin-search-input:focus {
+  outline: none;
+  border-color: #28a745;
+  box-shadow: 0 0 4px rgba(40, 167, 69, 0.3);
+}
+
+.supervisor-plan-admin-search-input::placeholder {
+  color: #888;
+}
+
+/* Left panel - Employee list */
+.supervisor-plan-admin-employee-list {
+  width: 160px;
+  max-width: 100%;
+  background-color: #fff;
+  padding: 15px;
+  border-right: 1px solid #ddd;
+  display: flex;
+  flex-direction: column;
+  overflow-x: hidden;
+  
+}
+
+.supervisor-plan-admin-employee-list h3 {
+  margin-bottom: 10px;
+  color: #333;
+  text-transform: uppercase;
+  font-size: 14px;
+  letter-spacing: 0.5px;
+}
+
+.supervisor-plan-admin-employee-list ul.supervisor-plan-admin-employee-scroll {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  max-height: calc(100vh - 100px);
+  width: 100%;
+  max-width: 100%;
+  scrollbar-width: thin;
+  scrollbar-color: #b1b8b2 #f0f0f0;
+}
+
+.supervisor-plan-admin-employee-list ul.supervisor-plan-admin-employee-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+
+.supervisor-plan-admin-employee-list ul.supervisor-plan-admin-employee-scroll::-webkit-scrollbar-track {
+  background: #f0f0f0;
+}
+
+.supervisor-plan-admin-employee-list ul.supervisor-plan-admin-employee-scroll::-webkit-scrollbar-thumb {
+  background: #28a745;
+  border-radius: 4px;
+}
+
+.supervisor-plan-admin-employee-list li {
+  padding: 8px;
+  margin-bottom: 5px;
+  cursor: pointer;
+  border-radius: 6px;
+  transition: 0.2s;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+  font-size: 13px;
+}
+
+.supervisor-plan-admin-employee-list li:hover {
+  background-color: #f0f0f0;
+}
+
+.supervisor-plan-admin-employee-list li.supervisor-plan-admin-active {
+  background-color: #28a745;
+  color: white;
+}
+
+/* Right panel - Task details */
+.supervisor-plan-admin-task-details {
+  flex: 1;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  overflow-x: hidden;
+  max-width: 100%;
+}
+
+.supervisor-plan-admin-task-details h3 {
+  margin-bottom: 20px;
+  color: #333;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+/* Week Navigation */
+.supervisor-plan-admin-week-navigation {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 15px;
+  position: sticky;
+  /* top: 60px; */
+  background-color: #f0f2f5;
+  z-index: 10;
+  padding: 10px 0;
+  width: 100%;
+  max-width: 100%;
+}
+
+.supervisor-plan-admin-nav-button {
+  background-color: #28a745;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  padding: 6px 12px;
+  font-size: 16px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.supervisor-plan-admin-nav-button:hover {
+  background-color: #218838;
+}
+
+.supervisor-plan-admin-nav-button:disabled {
+  background-color: #ccc;
+  cursor: not-allowed;
+}
+
+.supervisor-plan-admin-week-label {
+  font-size: 16px;
+  font-weight: 500;
+  color: #333;
+}
+
+/* Tasks Container */
+.supervisor-plan-admin-tasks-container {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  max-height: calc(100vh - 100px);
+  width: 100%;
+  max-width: 100%;
+  scrollbar-width: thin;
+  scrollbar-color: #b0b3b0 #f0f0f0;
+}
+
+.supervisor-plan-admin-tasks-container::-webkit-scrollbar {
+  width: 8px;
+}
+
+.supervisor-plan-admin-tasks-container::-webkit-scrollbar-track {
+  background: #f0f0f0;
+}
+
+.supervisor-plan-admin-tasks-container::-webkit-scrollbar-thumb {
+  background: #28a745;
+  border-radius: 4px;
+}
+
+/* Task Card */
+.supervisor-plan-admin-task-card {
+  background-color: #fff;
+  border-radius: 10px;
+  padding: 15px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08);
+  transition: transform 0.2s;
+  max-width: 100%;
+}
+
+/* Task Header */
+.supervisor-plan-admin-task-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
+  gap: 10px;
+  width: 100%;
+  max-width: 100%;
+}
+
+.supervisor-plan-admin-task-title {
+  font-size: 14px;
+  font-weight: 600;
+  flex: 1;
+  min-width: 0;
+  word-break: break-word;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+.supervisor-plan-admin-task-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.supervisor-plan-admin-task-date {
+  font-size: 12px;
+  color: #888;
+  white-space: nowrap;
+}
+
+.supervisor-plan-admin-status-icon {
+  font-size: 16px;
+  margin-right: 8px;
+}
+
+/* Task Body */
+.supervisor-plan-admin-task-body {
+  margin-bottom: 10px;
+}
+
+.supervisor-plan-admin-task-body p {
+  margin: 0;
+  font-size: 13px;
+  word-break: break-word;
+  white-space: normal;
+  max-width: 100%;
+}
+
+/* Project ID Circle */
+.supervisor-plan-admin-project-circle-wrapper {
+  position: relative;
+}
+
+.supervisor-plan-admin-project-circle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  background-color: #28a745;
+  color: white;
+  border-radius: 50%;
+  font-size: 10px;
+  font-weight: 500;
+}
+
+/* Status Dot */
+.supervisor-plan-admin-status-dot-wrapper {
+  position: relative;
+}
+
+.supervisor-plan-admin-status-dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+/* Tooltip for Project Circle and Status Dot */
+.supervisor-plan-admin-tooltip {
+  visibility: hidden;
+  background-color: #333;
+  color: white;
+  text-align: center;
+  border-radius: 4px;
+  padding: 5px 8px;
+  position: absolute;
+  z-index: 1000;
+  left: -100%;
+  transform: translateX(-50%);
+  font-size: 12px;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.supervisor-plan-admin-project-circle-wrapper:hover .supervisor-plan-admin-tooltip,
+.supervisor-plan-admin-status-dot-wrapper:hover .supervisor-plan-admin-tooltip {
+  visibility: visible;
+}
+
+/* Star Rating */
+.supervisor-plan-admin-star-rating {
+  display: flex;
+  gap: 3px;
+  margin-top: 4px;
+}
+
+.supervisor-plan-admin-star {
+  font-size: 14px;
+  color: #ccc;
+  cursor: pointer;
+}
+
+.supervisor-plan-admin-star.filled {
+  color: #ffc107;
+}
+
+/* Edit Section */
+.supervisor-plan-admin-edit-section {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 8px;
+  margin-top: 10px;
+  max-width: 100%;
+  transition: opacity 0.8s ease;
+}
+
+.supervisor-plan-admin-edit-section label {
+  display: flex;
+  flex-direction: column;
+  font-size: 12px;
+}
+
+.supervisor-plan-admin-edit-section select,
+.supervisor-plan-admin-edit-section input {
+  padding: 5px 8px;
+  margin-top: 4px;
+  font-size: 12px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  max-width: 100%;
+  word-break: break-word;
+  white-space: normal;
+}
+
+.supervisor-plan-admin-edit-section .supervisor-plan-admin-star-rating {
+  justify-content: flex-start;
+}
+
+.supervisor-plan-admin-update-task-button {
+  padding: 5px 12px;
+  background-color: #28a745;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 12px;
+  align-self: end;
+  justify-self: end;
+  max-width: 80px;
+}
+
+.supervisor-plan-admin-update-task-button:hover {
+  background-color: #218838;
+}
+
+.supervisor-plan-admin-error-message {
+  color: red;
+  padding: 10px;
+}
+
+/* Modal Styling */
+.supervisor-plan-admin-modal {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background-color: white;
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+  z-index: 1000;
+  max-width: 400px;
+  width: 90%;
+}
+
+.supervisor-plan-admin-modal h3 {
+  margin: 0 0 20px;
+  font-size: 16px;
+  font-weight: 600;
+  color: #333;
+  text-align: center;
+}
+
+.supervisor-plan-admin-config-modal-content {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.supervisor-plan-admin-config-input-group {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 15px;
+}
+
+.supervisor-plan-admin-config-input-group label {
+  display: flex;
+  flex-direction: column;
+  font-size: 13px;
+  color: #333;
+}
+
+.supervisor-plan-admin-config-input-group input {
+  padding: 8px;
+  margin-top: 5px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  font-size: 13px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.supervisor-plan-admin-config-input-group input:focus {
+  outline: none;
+  border-color: #28a745;
+  box-shadow: 0 0 4px rgba(40, 167, 69, 0.3);
+}
+
+.supervisor-plan-admin-modal-buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.supervisor-plan-admin-modal-buttons button {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.supervisor-plan-admin-modal-buttons button:first-child {
+  background-color: #ccc;
+  color: #333;
+}
+
+.supervisor-plan-admin-modal-buttons button:first-child:hover {
+  background-color: #b0b0b0;
+}
+
+.supervisor-plan-admin-modal-buttons button:last-child {
+  background-color: #28a745;
+  color: white;
+}
+
+.supervisor-plan-admin-modal-buttons button:last-child:hover {
+  background-color: #218838;
+}
+
+.supervisor-plan-admin-modal-buttons button:disabled {
+  background-color: #ccc;
+  cursor: not-allowed;
+}
+
+.supervisor-plan-admin-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  z-index: 999;
+}
+
+/* Ensure responsiveness */
+@media (max-width: 768px) {
+  .supervisor-plan-admin-config-button {
+    padding: 6px 12px;
+    font-size: 12px;
+  }
+  .supervisor-plan-admin-header {
+    padding: 10px 15px;
+  }
+  .supervisor-plan-admin-employee-list {
+    width: 120px;
+  }
+  .supervisor-plan-admin-search-input {
+    font-size: 12px;
+    padding: 6px;
+  }
+  .supervisor-plan-admin-modal {
+    max-width: 300px;
+  }
+  .supervisor-plan-admin-config-input-group input {
+    max-width: 100%;
+  }
+}
+
+.supervisor-plan-admin-task-date {
+  display: inline-block;
+  margin: 0 8px;
+  color: #333;
+}
+.supervisor-plan-admin-task-date.holiday {
+  background-color: #ff9800;
+  color: white;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.supervisor-plan-admin-task-date {
+  display: inline-block;
+  margin: 0 8px;
+  color: #333;
+}
+.supervisor-plan-admin-task-date.holiday {
+  background-color: #ff9800;
+  color: white;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+.supervisor-plan-admin-search-bar {
+  
+  padding: 8px;
+  margin-bottom: 10px;
+  border-radius: 4px;
+  border: 1px solid #ccc;
+  font-size: 11px;
+}
+.supervisor-plan-admin-tasks-container {
+  display: flex;
+  flex-direction: column;
+  gap: 20px; /* Space between day groups */
+  padding: 10px;
+  overflow-y: auto;
+}
+
+.supervisor-plan-admin-day-group {
+  background: #f9f9f9;
+  border-radius: 8px;
+  padding: 10px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.supervisor-plan-admin-day-header {
+  font-weight: bold;
+  font-size: 14px;
+  margin-bottom: 10px;
+  padding-bottom: 5px;
+  border-bottom: 1px solid #ddd;
+}
+
+.supervisor-plan-admin-no-tasks {
+  color: #999;
+  font-style: italic;
+  margin: 5px 0;
+  font-size: 13px;
+}
+
+/* Space between tasks in the same day */
+.supervisor-plan-admin-day-group > .supervisor-plan-admin-task-card {
+  margin-bottom: 15px;
+}
+.supervisor-plan-admin-day-group > .supervisor-plan-admin-task-card:last-child {
+  margin-bottom: 0;
+}
+
+/* Ensure task cards have margin/gap */
+.supervisor-plan-admin-task-card {
+  background: #fff;
+  border-radius: 6px;
+  padding: 10px;
+  border: 1px solid #eee;
+}
+
+/* Date styles (copy from non-admin, prefix if needed) */
+.supervisor-plan-task-date {
+  font-size: 12px;
+  padding: 2px 5px;
+  border-radius: 4px;
+  margin-right: 8px;
+}
+.supervisor-plan-task-date-leave { background: #ffeb3b; }
+.supervisor-plan-task-date-holiday { background: #ff9800; color: white; }
+.supervisor-plan-task-date-sunday { background: #2196f3; color: white; }
+.supervisor-plan-task-date-regular { background: transparent; }

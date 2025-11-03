@@ -8,54 +8,79 @@
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
   display: flex;
   flex-direction: column;
-  justify-content: space-evenly;
+  justify-content: flex-start;
   align-items: center;
-  overflow: hidden;
+  overflow: visible; /* CHANGED: was hidden → blocks clicks! */
+  position: relative;
 }
 
 .emp-reimbursement h3 {
   font-weight: bold;
-  margin-right: 30%;
-  margin-top: 1%;
+  margin: 0 0 8px 0;
+  align-self: flex-start;
+  font-size: 16px;
 }
 
-.emp-reimbursement p {
-  margin-top: -2%;
+.emp-reimbursement > p {
+  margin: 0 0 16px 0;
   color: #686868;
-  font-size: small;
-
-  margin-right: 70%;
+  font-size: 12px;
+  align-self: flex-start;
 }
 
-.chart-container-reimbursement {
-  width: 50%;
-  height: 100px;
-  margin-top: -30%;
-  margin-bottom: -10%;
-}
-
+/* Tabs Container */
 .reimbursement-tabs {
   display: flex;
   justify-content: center;
-  margin-bottom: 20%;
-  gap: 10px;
+  gap: 16px;
+  margin-bottom: 16px;
+  width: 100%;
+  z-index: 10;
 }
 
+/* Tab Button (now <button>) */
 .tab-item {
-  padding: 6px 14px;
-  cursor: pointer;
+  padding: 10px 16px;           /* Bigger click area */
+  min-width: 44px;              /* Mobile tap target */
+  min-height: 44px;             /* WCAG compliant */
+  background: transparent;
+  border: none;
+  border-bottom: 3px solid transparent;
   font-weight: bold;
   font-size: 14px;
-  border-bottom: 3px solid transparent;
-  transition: all 0.3s ease-in-out;
   color: #555;
+  cursor: pointer;              /* Hand cursor */
+  user-select: none;            /* No text selection */
+  transition: all 0.3s ease;
+  border-radius: 4px 4px 0 0;
+  outline: none;
 }
 
+/* Hover */
 .tab-item:hover {
   color: #3498db;
+  background: rgba(52, 152, 219, 0.1);
 }
 
+/* Active */
 .tab-item.active {
-  border-bottom: 3px solid #3498db;
   color: #3498db;
+  border-bottom-color: #3498db;
+}
+
+/* Focus (keyboard) */
+.tab-item:focus-visible {
+  outline: 2px solid #3498db;
+  outline-offset: 2px;
+}
+
+/* Chart */
+.chart-container-reimbursement {
+  width: 70%;
+  height: 160px;
+  margin: 0 auto;
+  flex-grow: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
 }

@@ -1,0 +1,935 @@
+.supervisor-plan-wrapper {
+  display: flex;
+  min-height: 100vh;
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  background-color: #f0f2f5;
+  overflow-x: hidden;
+  width: 100%;
+  max-width: 100%;
+}
+
+/* Left panel - Employee list */
+.supervisor-plan-employee-list {
+  width: 160px;
+  max-width: 100%;
+  background-color: #fff;
+  padding: 15px;
+  border-right: 1px solid #ddd;
+  display: flex;
+  flex-direction: column;
+  overflow-x: hidden;
+}
+
+.supervisor-plan-employee-list h3 {
+  margin-bottom: 10px;
+  color: #333;
+  text-transform: uppercase;
+  font-size: 14px;
+  letter-spacing: 0.5px;
+}
+
+.supervisor-plan-employee-list ul.supervisor-plan-employee-scroll {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  max-height: calc(100vh - 60px);
+  width: 100%;
+  max-width: 100%;
+  scrollbar-width: thin;
+  scrollbar-color: #b1b8b2 #f0f0f0;
+}
+
+.supervisor-plan-employee-list ul.supervisor-plan-employee-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+
+.supervisor-plan-employee-list ul.supervisor-plan-employee-scroll::-webkit-scrollbar-track {
+  background: #f0f0f0;
+}
+
+.supervisor-plan-employee-list ul.supervisor-plan-employee-scroll::-webkit-scrollbar-thumb {
+  background: #28a745;
+  border-radius: 4px;
+}
+
+.supervisor-plan-employee-list li {
+  padding: 8px;
+  margin-bottom: 5px;
+  cursor: pointer;
+  border-radius: 6px;
+  transition: 0.2s;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+  font-size: 13px;
+}
+
+.supervisor-plan-employee-list li:hover {
+  background-color: #28a745;
+}
+
+.supervisor-plan-employee-list li.supervisor-plan-active {
+  background-color: #28a745;
+  color: #ffffff;
+}
+
+/* Right panel - Task details */
+.supervisor-plan-task-details {
+  flex: 1;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  overflow-x: hidden;
+  max-width: 100%;
+}
+
+.supervisor-plan-task-details h3 {
+  margin-bottom: 20px;
+  color: #333;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+/* Week Navigation */
+.supervisor-plan-week-navigation {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 15px;
+  position: sticky;
+  top: 0;
+  background-color: #f0f2f5;
+  z-index: 10;
+  padding: 10px 0;
+  width: 100%;
+  max-width: 100%;
+}
+
+.supervisor-plan-nav-button {
+  background-color: #28a745;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  padding: 6px 12px;
+  font-size: 16px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.supervisor-plan-nav-button:hover {
+  background-color: #218838;
+}
+
+.supervisor-plan-nav-button:disabled {
+  background-color: #ccc;
+  cursor: not-allowed;
+}
+
+.supervisor-plan-week-label {
+  font-size: 16px;
+  font-weight: 500;
+  color: #333;
+}
+
+/* Tasks Container */
+.supervisor-plan-tasks-container {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  max-height: calc(100vh - 100px);
+  width: 100%;
+  max-width: 100%;
+  scrollbar-width: thin;
+  scrollbar-color: #b0b3b0 #f0f0f0;
+}
+
+.supervisor-plan-tasks-container::-webkit-scrollbar {
+  width: 8px;
+}
+
+.supervisor-plan-tasks-container::-webkit-scrollbar-track {
+  background: #f0f0f0;
+}
+
+.supervisor-plan-tasks-container::-webkit-scrollbar-thumb {
+  background: #28a745;
+  border-radius: 4px;
+}
+
+/* Task Card */
+.supervisor-plan-task-card {
+  background-color: #fff;
+  border-radius: 10px;
+  padding: 15px;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.08);
+  transition: transform 0.2s;
+  max-width: 100%;
+}
+
+.supervisor-plan-day-group > .supervisor-plan-task-card + .supervisor-plan-task-card {
+  margin-top: 20px; /* Gap between consecutive tasks on the same day */
+  padding-top: 20px;
+  border-top: 1px dashed #ddd; /* Optional visual separator */
+}
+/* Task Header */
+.supervisor-plan-task-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
+  gap: 10px;
+  width: 100%;
+  max-width: 100%;
+}
+
+.supervisor-plan-task-title {
+  font-size: 14px;
+  font-weight: 600;
+  flex: 1;
+  min-width: 0;
+  word-break: break-word;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+.supervisor-plan-task-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.supervisor-plan-task-date {
+  font-size: 12px;
+  color: #888;
+  white-space: nowrap;
+}
+
+.supervisor-plan-status-icon {
+  font-size: 16px;
+  margin-right: 8px;
+}
+
+/* Task Body */
+.supervisor-plan-task-body {
+  margin-bottom: 10px;
+}
+
+.supervisor-plan-task-body p {
+  margin: 0;
+  font-size: 13px;
+  word-break: break-word;
+  white-space: normal;
+  max-width: 100%;
+}
+
+/* Project ID Circle */
+.supervisor-plan-project-circle-wrapper {
+  position: relative;
+}
+
+.supervisor-plan-project-circle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  background-color: #28a745;
+  color: white;
+  border-radius: 50%;
+  font-size: 10px;
+  font-weight: 500;
+}
+
+/* Status Dot */
+.supervisor-plan-status-dot-wrapper {
+  position: relative;
+}
+
+.supervisor-plan-status-dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+/* Tooltip for Project Circle and Status Dot */
+.supervisor-plan-tooltip {
+  visibility: hidden;
+  background-color: #333;
+  color: white;
+  text-align: center;
+  border-radius: 4px;
+  padding: 5px 8px;
+  position: absolute;
+  z-index: 1000; /* Increased z-index to ensure tooltip is above other elements */
+ /* Changed from bottom: 125% to top to prevent clipping */
+  left: -100%;
+  transform: translateX(-50%);
+  font-size: 12px;
+  white-space: nowrap;
+  pointer-events: none; /* Prevent tooltip from interfering with hover events */
+}
+
+.supervisor-plan-project-circle-wrapper:hover .supervisor-plan-tooltip,
+.supervisor-plan-status-dot-wrapper:hover .supervisor-plan-tooltip {
+  visibility: visible;
+}
+
+/* Star Rating */
+.supervisor-plan-star-rating {
+  display: flex;
+  gap: 3px;
+  margin-top: 4px;
+}
+
+.supervisor-plan-star {
+  font-size: 14px;
+  color: #ccc;
+  cursor: pointer;
+}
+
+.supervisor-plan-star.filled {
+  color: #ffc107;
+}
+
+/* Edit Section */
+.supervisor-plan-edit-section {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 3px;
+  margin-top: 10px;
+  max-width: 100%;
+}
+
+.supervisor-plan-edit-section label {
+  display: flex;
+  flex-direction: column;
+  font-size: 12px;
+}
+
+.supervisor-plan-edit-section select,
+.supervisor-plan-edit-section input {
+  padding: 5px 8px;
+  margin-top: 4px;
+  font-size: 12px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  max-width: 100%;
+  word-break: break-word;
+  white-space: normal;
+}
+
+.supervisor-plan-edit-section .supervisor-plan-star-rating {
+  justify-content: flex-start;
+}
+
+.supervisor-plan-update-task-button {
+  padding: 5px 12px;
+  background-color: #28a745;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 12px;
+  align-self: end;
+  justify-self: end;
+  max-width: 80px;
+}
+
+.supervisor-plan-update-task-button:hover {
+  background-color: #218838;
+}
+
+.supervisor-plan-error-message {
+  color: red;
+  padding: 10px;
+}
+
+/* Modal Styling */
+.supervisor-plan-modal {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background-color: white;
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+  z-index: 1000;
+  max-width: 400px;
+  width: 90%;
+}
+
+.supervisor-plan-modal p {
+  margin: 0 0 15px;
+  font-size: 14px;
+}
+
+.supervisor-plan-modal-buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.supervisor-plan-modal-buttons button {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.supervisor-plan-modal-buttons button:first-child {
+  background-color: #28a745;
+  color: white;
+}
+
+.supervisor-plan-modal-buttons button:first-child:hover {
+  background-color: #218838;
+}
+
+.supervisor-plan-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0,0,0,0.5);
+  z-index: 999;
+}
+.supervisor-plan-edit-section {
+  transition: opacity 0.8s ease; /* Smooth transition for opacity changes */
+}
+.supervisor-plan-edit-section[disabled] {
+  background-color: #d3d3d3; /* Darker gray background */
+  color: #666; /* Darker text color */
+}
+.supervisor-plan-task-frozen {
+  background-color: rgba(200, 200, 200, 0.5);
+}
+.supervisor-plan-task-date {
+  font-size: 14px;
+  font-weight: 600;
+  color: #111827;
+  text-align: center;
+  display: inline-block;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+.supervisor-plan-task-date.supervisor-plan-task-date-leave {
+  background-color: #f5f501;
+  color: white;
+}
+.supervisor-plan-task-date.supervisor-plan-task-date-holiday {
+  background-color: #ff9800;
+  color: white;
+}
+.supervisor-plan-task-date.supervisor-plan-task-date-sunday {
+  background-color: #3770ecff;
+  color: white;
+}
+.supervisor-plan-task-date.supervisor-plan-task-date-regular {
+  background-color: transparent;
+  color: #333;
+}
+@media (max-width: 768px) {
+  .supervisor-plan-task-date {
+    font-size: 12px;
+    padding: 2px 4px;
+  }
+}
+
+.supervisor-plan-tasks-container {
+  display: flex;
+  flex-direction: column;
+  gap: 20px; /* Space between day groups */
+  padding: 10px;
+  overflow-y: auto;
+}
+
+.supervisor-plan-day-group {
+  background: #f9f9f9;
+  border-radius: 8px;
+  padding: 10px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.supervisor-plan-day-header {
+  font-weight: bold;
+  font-size: 14px;
+  margin-bottom: 10px;
+  padding-bottom: 5px;
+  border-bottom: 1px solid #ddd;
+}
+
+.supervisor-plan-no-tasks {
+  color: #999;
+  font-style: italic;
+  margin: 5px 0;
+  font-size: 13px;
+}
+
+/* Space between tasks in the same day */
+.supervisor-plan-day-group > .supervisor-plan-admin-task-card {
+  margin-bottom: 15px;
+}
+.supervisor-plan-day-group > .supervisor-plan-admin-task-card:last-child {
+  margin-bottom: 0;
+}
+
+/* Ensure task cards have margin/gap */
+.supervisor-plan-task-card {
+  background: #fff;
+  border-radius: 6px;
+  padding: 10px;
+  border: 1px solid #eee;
+}
+
+/* Date styles (copy from non-admin, prefix if needed) */
+.supervisor-plan-task-date {
+  font-size: 12px;
+  padding: 2px 5px;
+  border-radius: 4px;
+  margin-right: 8px;
+}
+.supervisor-plan-task-date-leave { background: #ffeb3b; }
+.supervisor-plan-task-date-holiday { background: #ff9800; color: white; }
+.supervisor-plan-task-date-sunday { background: #2196f3; color: white; }
+.supervisor-plan-task-date-regular { background: transparent; }
+
+
+
+/* ------------------- Mobile Enhancements for SupervisorPlanViewer (Page-Specific, No Global Impact) ------------------- */
+@media (max-width: 768px) {
+  /* Wrapper: full-width stacked layout, ensure edge-to-edge alignment */
+  .supervisor-plan-wrapper {
+    flex-direction: column;
+    padding: 0;
+    min-height: auto;
+    width: 100%;
+    box-sizing: border-box;
+    overflow-x: hidden; /* Prevent any horizontal overflow on this page */
+  }
+/* ... Existing mobile media query rules remain unchanged up to the employee list ... */
+
+/* Employee list: full-width horizontal scrollable pills, balanced padding */
+.supervisor-plan-employee-list {
+  width: 100%;
+  padding: 8px 12px;
+  border-bottom: 1px solid #ddd;
+  display: flex;
+  flex-direction: column;
+  overflow-x: auto;
+  gap: 8px;
+  background-color: #fff;
+  box-sizing: border-box;
+  -webkit-overflow-scrolling: touch;
+}
+
+.supervisor-plan-employee-list h3 {
+  display: none; /* Save space on mobile */
+  margin: 0 0 8px;
+  font-size: 14px;
+}
+
+.supervisor-plan-employee-list .supervisor-plan-search-bar {
+  width: 100%;
+  margin-bottom: 8px;
+  padding: 8px 10px;
+  font-size: 13px;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+  box-sizing: border-box;
+}
+
+.supervisor-plan-employee-list ul.supervisor-plan-employee-scroll {
+  display: flex;
+  flex-direction: row;
+  gap: 8px;
+  padding: 0;
+  margin: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  width: 100%;
+  box-sizing: border-box;
+  scroll-snap-type: x mandatory;
+}
+
+.supervisor-plan-employee-list ul.supervisor-plan-employee-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+.supervisor-plan-employee-list ul.supervisor-plan-employee-scroll {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.supervisor-plan-employee-list li {
+  flex-shrink: 0;
+  padding: 8px 16px;
+  border-radius: 20px;
+  background-color: #f5f5f5;
+  border: 1px solid #ddd;
+  text-align: center;
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s, color 0.2s;
+  scroll-snap-align: center;
+  white-space: nowrap;
+  min-width: 100px; /* Ensure consistent pill size */
+  color: #333; /* Default text color for inactive */
+}
+
+.supervisor-plan-employee-list li.supervisor-plan-active {
+  background-color: #28a745;
+  border-color: #28a745;
+  color: #fff; /* Ensures active name text is white on green */
+  font-weight: 600; /* Optional: bolder for emphasis */
+}
+
+.supervisor-plan-employee-list li:hover {
+  background-color: #e8e8e8;
+  color: #333;
+}
+
+.supervisor-plan-employee-list li.supervisor-plan-active:hover {
+  background-color: #218838; /* Darker green on hover */
+  color: #fff;
+}
+
+/* If there's a separate dropdown for employee selection (e.g., in edit or modal), apply similar active styling */
+.supervisor-plan-employee-dropdown option:checked,
+.supervisor-plan-employee-select .supervisor-plan-active-option {
+  background-color: #28a745;
+  color: #fff;
+}
+
+/* ... Rest of the media query rules remain unchanged ... */
+
+  /* Task details: full width, edge-aligned content */
+  .supervisor-plan-task-details {
+    width: 100%;
+    padding: 0 12px 12px;
+    box-sizing: border-box;
+    overflow-x: hidden;
+  }
+
+  /* Week navigation: full-width sticky, centered for balance */
+  .supervisor-plan-week-navigation {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    background-color: #fff;
+    border-bottom: 1px solid #e0e0e0;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    width: 100%;
+    box-sizing: border-box;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+  }
+
+  .supervisor-plan-nav-button {
+    padding: 6px 12px;
+    font-size: 14px;
+    background-color: #28a745;
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  .supervisor-plan-nav-button:disabled {
+    background-color: #ccc;
+  }
+
+  .supervisor-plan-week-label {
+    font-size: 14px;
+    font-weight: 600;
+    color: #333;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 60%;
+    text-align: center;
+  }
+
+  /* Tasks container: full width, consistent gaps */
+  .supervisor-plan-tasks-container {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    padding: 12px 0;
+    width: 100%;
+    box-sizing: border-box;
+    overflow-x: hidden;
+  }
+
+  /* Day group: full-width, edge-to-edge card */
+  .supervisor-plan-day-group {
+    background: #f9f9f9;
+    border-radius: 10px;
+    padding: 12px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+    width: 100%;
+    box-sizing: border-box;
+    margin: 0; /* Remove any default margins */
+  }
+
+  .supervisor-plan-day-header {
+    font-size: 15px;
+    font-weight: 600;
+    margin: 0 0 12px 0;
+    padding-bottom: 6px;
+    border-bottom: 1px solid #ddd;
+    color: #333;
+    text-align: left;
+  }
+
+  .supervisor-plan-day-header span {
+    display: inline-block;
+    min-width: 60px;
+    text-align: center;
+  }
+
+  /* No tasks message: centered */
+  .supervisor-plan-no-tasks {
+    font-size: 13px;
+    color: #777;
+    text-align: center;
+    padding: 8px;
+    margin: 0;
+  }
+
+  /* Task card: full-width, aligned edges */
+  .supervisor-plan-task-card {
+    padding: 14px;
+    border-radius: 10px;
+    background-color: #fff;
+    border: 1px solid #eee;
+    width: 100%;
+    box-sizing: border-box;
+    transition: box-shadow 0.2s;
+    margin: 0; /* Ensure no extra margins */
+  }
+
+  .supervisor-plan-task-card + .supervisor-plan-task-card {
+    margin-top: 16px; /* Consistent gap between tasks */
+    padding-top: 16px;
+    border-top: 1px dashed #ddd;
+  }
+
+  .supervisor-plan-task-card.supervisor-plan-task-frozen {
+    opacity: 0.7;
+    background-color: #f5f5f5;
+  }
+
+  /* Task header: stacked, full-width elements */
+  .supervisor-plan-task-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+    margin-bottom: 12px;
+    width: 100%;
+  }
+
+  .supervisor-plan-task-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: #333;
+    word-break: break-word;
+    width: 100%;
+  }
+
+  .supervisor-plan-task-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    font-size: 12px;
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .supervisor-plan-task-meta > * {
+    flex: 1;
+    min-width: 60px;
+    text-align: center;
+  }
+
+  .supervisor-plan-project-circle-wrapper,
+  .supervisor-plan-status-dot-wrapper {
+    display: flex;
+    justify-content: center;
+  }
+
+  .supervisor-plan-status-icon {
+    margin-right: 0;
+    font-size: 18px;
+  }
+
+  /* Tooltip: mobile-friendly positioning */
+  .supervisor-plan-tooltip {
+    font-size: 13px;
+    padding: 6px 10px;
+    left: 50% !important;
+    transform: translateX(-50%) !important;
+    top: 120%;
+    width: max-content;
+    max-width: 200px;
+  }
+
+  /* Task body: readable text */
+  .supervisor-plan-task-body p {
+    font-size: 13px;
+    line-height: 1.5;
+    color: #555;
+    word-break: break-word;
+    margin: 0;
+  }
+
+  /* Frozen message */
+  .supervisor-plan-frozen-message {
+    font-size: 12px;
+    color: #d9534f;
+    text-align: center;
+    margin: 10px 0;
+    font-style: italic;
+  }
+
+  /* Edit section: stacked, full-width */
+  .supervisor-plan-edit-section {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    margin-top: 14px;
+    padding-top: 14px;
+    border-top: 1px dashed #ddd;
+    width: 100%;
+  }
+
+  .supervisor-plan-edit-section label {
+    font-size: 13px;
+    font-weight: 500;
+    color: #333;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .supervisor-plan-edit-section select,
+  .supervisor-plan-edit-section input {
+    padding: 10px 12px;
+    font-size: 14px;
+    border-radius: 8px;
+    border: 1px solid #ccc;
+    width: 100%;
+    box-sizing: border-box;
+    background-color: #fff;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+
+  .supervisor-plan-edit-section select:focus,
+  .supervisor-plan-edit-section input:focus {
+    border-color: #28a745;
+    box-shadow: 0 0 5px rgba(40, 167, 69, 0.3);
+    outline: none;
+  }
+
+  .supervisor-plan-edit-section .supervisor-plan-star-rating {
+    justify-content: flex-start;
+    gap: 6px;
+  }
+
+  .supervisor-plan-star {
+    font-size: 18px;
+  }
+
+  /* Update button: full-width, easy tap */
+  .supervisor-plan-update-task-button {
+    width: 100%;
+    padding: 12px;
+    font-size: 14px;
+    font-weight: 600;
+    background-color: #28a745;
+    color: white;
+    border-radius: 8px;
+    border: none;
+    margin-top: 8px;
+    transition: background 0.2s;
+  }
+
+  .supervisor-plan-update-task-button:hover {
+    background-color: #218838;
+  }
+
+  .supervisor-plan-update-task-button:disabled {
+    background-color: #ccc;
+  }
+
+  /* Date styles */
+  .supervisor-plan-task-date {
+    font-size: 12px;
+    padding: 3px 7px;
+    border-radius: 5px;
+  }
+
+  /* Error / loading messages: centered */
+  .supervisor-plan-error-message,
+  .supervisor-plan-task-details > p {
+    font-size: 13px;
+    text-align: center;
+    padding: 10px;
+    color: #666;
+    margin: 0;
+    width: 100%;
+  }
+
+  /* Modal: mobile-optimized */
+  .supervisor-plan-modal {
+    width: 90%;
+    max-width: 320px;
+    padding: 20px;
+    box-sizing: border-box;
+  }
+
+  .supervisor-plan-modal p {
+    font-size: 14px;
+  }
+
+  /* Ensure all child elements respect boundaries */
+  .supervisor-plan-wrapper *,
+  .supervisor-plan-wrapper *::before,
+  .supervisor-plan-wrapper *::after {
+    box-sizing: border-box;
+    max-width: 100%;
+  }
+
+  /* Larger tap targets for interactive elements */
+  .supervisor-plan-employee-list li,
+  .supervisor-plan-nav-button,
+  .supervisor-plan-update-task-button,
+  .supervisor-plan-edit-section select,
+  .supervisor-plan-edit-section input,
+  .supervisor-plan-star {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+}

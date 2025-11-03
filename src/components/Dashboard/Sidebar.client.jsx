@@ -26,7 +26,9 @@ import Chat from "../Chat/ChatPage.client";
 import EmployeeLogin from "../EmployeeLogin/EmployeeLogin.client";
 import CreateOrganization from "../CreateOrganization/CreateOrganization.client";
 import TemplateBuilder from "../TemplateBuilder/TemplateBuilder";
-
+import TaskManagement from "../TaskManagement/TaskManagement.client";
+import TaskManagementEmployee from "../TaskManagementEmployee/EmpTaskManagement.client";
+import TaskManagementAdmin from "../TaskManagementAdmin/TaskManagementAdmin.client";
 const Sidebar = ({ setActiveContent }) => {
   const { user, hydrated } = useAuth();
   const [menuItems, setMenuItems] = useState([]);
@@ -88,6 +90,16 @@ const Sidebar = ({ setActiveContent }) => {
       "/assets": () => <Assets />,
       "/vendors": () => <Vendors />,
       "/EmployeeLogin": () => <EmployeeLogin />,
+     "/TaskManagement": (role) => {
+  if (role === "Admin") {
+    return <TaskManagementAdmin />;
+  } else if (role === "Supervisor") {
+    return <TaskManagement />;
+  } else {
+    return <TaskManagementEmployee />;
+  }
+},
+
     }),
     []
   );

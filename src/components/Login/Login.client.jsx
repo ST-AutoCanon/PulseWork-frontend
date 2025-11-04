@@ -227,8 +227,6 @@ export default function Login({ onClose }) {
                 </a>
               </div>
 
-              {errorMessage && <p className="error-msg">{errorMessage}</p>}
-
               <button
                 type="submit"
                 className="login-btn"
@@ -239,6 +237,7 @@ export default function Login({ onClose }) {
                 {isSubmitting ? "Logging in..." : "Log In"}
               </button>
             </form>
+            {errorMessage && <p className="error-msg">{errorMessage}</p>}
 
             <div className="section-circles1">
               <div className="circle circle4" />

@@ -122,7 +122,7 @@
   font-size: 24px;
   font-weight: 700;
   background: linear-gradient(to bottom, #156178, #0f98c2);
-  -webkit-background-clip: text;
+  background-clip: text;
   -webkit-text-fill-color: transparent;
   -webkit-text-stroke: 0.4px rgba(0, 0, 0, 0.08);
   display: inline-block;

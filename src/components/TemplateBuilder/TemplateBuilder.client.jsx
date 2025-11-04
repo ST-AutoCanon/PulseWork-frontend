@@ -1,7 +1,12 @@
+"use client";
+
 import React, { useState, useRef, useEffect, useMemo } from "react";
 import BasicTemplateEditor from "./BasicTemplateEditor";
 import CustomTemplateEditor from "./CustomTemplateEditor";
-import "./TemplateBuilder.css";
+import UploadScan from "./UploadScan.client";
+import A4Preview from "./A4Preview";
+import { useAuth } from "../../context/AuthProvider.client";
+import styles from "./TemplateBuilder.module.css";
 
 const CATEGORIES = [
   { key: "all", label: "All" },
@@ -49,9 +54,7 @@ function templateToBoxes(template) {
       .map((c) => {
         if (typeof c.content === "string") {
           const s = c.content;
-          if (/<[a-z][\s\S]*>/i.test(s)) {
-            return textFromHtml(s);
-          }
+          if (/<[a-z][\s\S]*>/i.test(s)) return textFromHtml(s);
           return s;
         }
         if (c.components && Array.isArray(c.components)) {
@@ -66,9 +69,7 @@ function templateToBoxes(template) {
             })
             .join(" ");
         }
-        if (c.html && typeof c.html === "string") {
-          return textFromHtml(c.html);
-        }
+        if (c.html && typeof c.html === "string") return textFromHtml(c.html);
         return "";
       })
       .filter(Boolean);
@@ -90,72 +91,66 @@ function templateToBoxes(template) {
 }
 
 export default function TemplateBuilder() {
-  const [mode, setMode] = useState("upload"); // upload | scratch | basic
+  const { user } = useAuth();
+  const [mode, setMode] = useState("upload");
   const [generated, setGenerated] = useState(null);
-  const [orgId, setOrgId] = useState(null);
   const [basicTemplates, setBasicTemplates] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [loading, setLoading] = useState(false);
-  const headerRef = useRef();
-  const bodyRef = useRef();
-  const footerRef = useRef();
+  const [query, setQuery] = useState("");
+  const [previewHeaderUrl, setPreviewHeaderUrl] = useState(null);
+  const [previewFooterUrl, setPreviewFooterUrl] = useState(null);
 
-  const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
-  const API_KEY = process.env.NEXT_PUBLIC_API_KEY;
+  const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "";
+  const API_KEY = process.env.NEXT_PUBLIC_API_KEY || "";
+  const orgId = user?.orgId ?? user?.org_id ?? null;
 
   useEffect(() => {
-    const raw = localStorage.getItem("orgId");
-    const parsed = raw ? parseInt(raw, 10) : NaN;
-    if (!raw || Number.isNaN(parsed)) {
-      return;
-    }
-    setOrgId(parsed);
+    if (!orgId) return;
+    const parsed = Number(orgId);
+    if (Number.isNaN(parsed)) return;
     fetchBasicTemplates(parsed);
     fetchSavedTemplates(parsed);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [orgId]);
 
   const saveUrl = orgId ? `${BACKEND_URL}/api/orgs/${orgId}/templates` : null;
 
   async function fetchBasicTemplates(org) {
     setLoading(true);
-    const localBase = (process.env.PUBLIC_URL || "") + "/commonTemplates/basic";
+    const localBase = "/commonTemplates/basic";
     try {
-      const res = await fetch(
-        `${BACKEND_URL}/api/orgs/${org}/templates/basic`,
-        {
-          method: "GET",
-          headers: { "x-api-key": API_KEY },
-          credentials: "include",
-        }
-      );
-      if (res.ok) {
-        const data = await res.json();
-        if (Array.isArray(data) && data.length) {
-          const normalized = data.map((entry) => {
-            const baseUrl =
-              (process.env.PUBLIC_URL || "") + "/commonTemplates/basic/";
-            const thumbnail = entry.thumbnail
-              ? entry.thumbnail.startsWith("http")
-                ? entry.thumbnail
-                : (() => {
-                    try {
-                      return new URL(entry.thumbnail, baseUrl).href;
-                    } catch (e) {
-                      return baseUrl + entry.thumbnail;
-                    }
-                  })()
-              : null;
-            const category = inferCategory(entry);
-            return {
-              ...entry,
-              thumbnail,
-              category,
-            };
-          });
-          setBasicTemplates(normalized);
-          setLoading(false);
-          return;
+      if (org) {
+        const res = await fetch(
+          `${BACKEND_URL}/api/orgs/${org}/templates/basic`,
+          {
+            method: "GET",
+            headers: { "x-api-key": API_KEY },
+            credentials: "include",
+          }
+        );
+        if (res.ok) {
+          const data = await res.json();
+          if (Array.isArray(data) && data.length) {
+            const normalized = data.map((entry) => {
+              const baseUrl = "/commonTemplates/basic/";
+              const thumbnail = entry.thumbnail
+                ? entry.thumbnail.startsWith("http")
+                  ? entry.thumbnail
+                  : (() => {
+                      try {
+                        return new URL(entry.thumbnail, baseUrl).href;
+                      } catch (e) {
+                        return baseUrl + entry.thumbnail;
+                      }
+                    })()
+                : null;
+              const category = inferCategory(entry);
+              return { ...entry, thumbnail, category };
+            });
+            setBasicTemplates(normalized);
+            setLoading(false);
+            return;
+          }
         }
       }
     } catch (e) {
@@ -165,7 +160,6 @@ export default function TemplateBuilder() {
       );
     }
 
-    // fallback to local manifest
     try {
       const manifestUrl = `${localBase}/manifest.json`;
       const mRes = await fetch(manifestUrl);
@@ -212,7 +206,6 @@ export default function TemplateBuilder() {
     }
   }
 
-  // --- NEW: fetch saved templates from backend and prepend them to the list ---
   async function fetchSavedTemplates(org) {
     if (!org) return;
     setLoading(true);
@@ -233,24 +226,18 @@ export default function TemplateBuilder() {
       }
 
       const normalized = data.map((entry) => {
-        // parse grapes_json if it's a string
         let grapesJson = entry.grapes_json || entry.grapesJson || null;
         try {
           if (typeof grapesJson === "string" && grapesJson.trim())
             grapesJson = JSON.parse(grapesJson);
-        } catch (e) {
-          // leave as-is
-        }
+        } catch (e) {}
 
-        // normalize thumbnail (if backend returned only filename)
         let thumbnail = entry.thumbnail_url || entry.thumbnail || null;
         if (thumbnail && !thumbnail.startsWith("http")) {
           try {
-            const base = (BACKEND_URL || "").replace(/\/$/, "");
+            const base = BACKEND_URL.replace(/\/$/, "");
             thumbnail = `${base}/api/orgs/${org}/uploads/${thumbnail}`;
-          } catch (e) {
-            // leave as-is
-          }
+          } catch (e) {}
         }
 
         const category = inferCategory(entry);
@@ -264,7 +251,6 @@ export default function TemplateBuilder() {
         };
       });
 
-      // Prepend saved templates so user's templates appear first
       setBasicTemplates((prev) => [...normalized, ...prev]);
     } catch (err) {
       console.error("fetchSavedTemplates failed", err);
@@ -315,18 +301,12 @@ export default function TemplateBuilder() {
     setMode("basic");
   }
 
-  const filteredTemplates = useMemo(() => {
-    if (selectedCategory === "all") return basicTemplates;
-    return basicTemplates.filter((t) => t.category === selectedCategory);
-  }, [basicTemplates, selectedCategory]);
-
   async function handleCustomSave(payload) {
     if (!saveUrl) {
       alert("No save URL (org missing).");
       return;
     }
 
-    // If payload contains template_json (stringified), try parse it
     let parsedTemplate = null;
     if (payload && typeof payload.template_json === "string") {
       try {
@@ -336,7 +316,6 @@ export default function TemplateBuilder() {
       }
     }
 
-    // unify potential shapes from different editors
     const grapesJson =
       payload.grapesJson ||
       payload.grapes_json ||
@@ -358,7 +337,6 @@ export default function TemplateBuilder() {
     const bodyPayload = {
       name: payload.meta?.name || payload.name || "Untitled Template",
       template_type: "custom",
-      // backend expects these names
       grapes_json: grapesJson ? JSON.stringify(grapesJson) : null,
       html: html || null,
       css: css || null,
@@ -379,7 +357,6 @@ export default function TemplateBuilder() {
       if (!resp.ok) throw new Error(data.error || "Save failed");
       alert("Template saved: " + (data.id || "ok"));
 
-      // refresh saved templates so the new template appears immediately
       fetchSavedTemplates(orgId);
     } catch (err) {
       console.error("save failed", err);
@@ -387,181 +364,215 @@ export default function TemplateBuilder() {
     }
   }
 
+  function chooseBasic(template) {
+    setGenerated(template);
+    setMode("basic");
+  }
+
+  const filteredTemplates = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    let list = basicTemplates;
+    if (selectedCategory !== "all")
+      list = list.filter((t) => t.category === selectedCategory);
+    if (q)
+      list = list.filter(
+        (t) =>
+          (t.name || "").toLowerCase().includes(q) ||
+          (t.description || "").toLowerCase().includes(q) ||
+          (t.id || "").toLowerCase().includes(q)
+      );
+    return list;
+  }, [basicTemplates, selectedCategory, query]);
+
   return (
-    <div className="template-builder">
-      <div className="left-panel">
-        <h3>Choose mode</h3>
-        <div>
-          <button
-            onClick={() => setMode("upload")}
-            className={mode === "upload" ? "active" : ""}
-          >
-            Upload & Generate
-          </button>
-          <button
-            onClick={buildFromScratch}
-            className={mode === "scratch" ? "active" : ""}
-          >
-            Build from Scratch
-          </button>
-          <button
-            onClick={() => setMode("basic")}
-            className={mode === "basic" ? "active" : ""}
-          >
-            Basic Templates
-          </button>
+    <div className={styles.container}>
+      <aside className={styles.leftPanel}>
+        <div className={styles.headerRow}>
+          <h3 className={styles.heading}>Templates</h3>
+          <div className={styles.modeButtons}>
+            <button
+              className={`${styles.modeBtn} ${
+                mode === "upload" ? styles.active : ""
+              }`}
+              onClick={() => setMode("upload")}
+              aria-pressed={mode === "upload"}
+            >
+              Upload
+            </button>
+            <button
+              className={`${styles.modeBtn} ${
+                mode === "scratch" ? styles.active : ""
+              }`}
+              onClick={() => setMode("scratch")}
+              aria-pressed={mode === "scratch"}
+            >
+              Scratch
+            </button>
+            <button
+              className={`${styles.modeBtn} ${
+                mode === "basic" ? styles.active : ""
+              }`}
+              onClick={() => setMode("basic")}
+              aria-pressed={mode === "basic"}
+            >
+              Basic
+            </button>
+          </div>
         </div>
 
+        {/* Upload controls shown only in upload mode (left panel) */}
         {mode === "upload" && (
-          <>
-            <h4>Upload scan</h4>
-            <div>
-              <div>
-                Upload & Generate is coming soon — working on the scanner/ocr
-                pipeline.
-              </div>
-              <button onClick={() => alert("Coming soon")}>Coming soon</button>
-            </div>
-          </>
+          <UploadScan
+            orgId={orgId}
+            backendUrl={process.env.NEXT_PUBLIC_BACKEND_URL}
+            apiKey={process.env.NEXT_PUBLIC_API_KEY}
+            controlsOnly={true}
+            // keep parent informed about preview images so preview can render in main area
+            onPreviewChange={({ headerUrl, footerUrl }) => {
+              setPreviewHeaderUrl(headerUrl || null);
+              setPreviewFooterUrl(footerUrl || null);
+            }}
+            onSaved={(resp) => {
+              setGenerated(resp);
+              setMode("basic");
+              // optional: fetchSavedTemplates(orgId);
+            }}
+            a4PreviewWidth={420}
+          />
         )}
 
+        {/* Basic mode controls: search, chips and templates list */}
         {mode === "basic" && (
           <>
-            <h4>Basic templates</h4>
+            <div className={styles.searchWrap}>
+              <input
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Search templates..."
+                className={styles.search}
+                aria-label="Search templates"
+              />
+            </div>
 
-            <div>
+            <div
+              className={styles.chips}
+              role="tablist"
+              aria-label="Template categories"
+            >
               {CATEGORIES.map((c) => (
                 <button
                   key={c.key}
                   onClick={() => setSelectedCategory(c.key)}
-                  className={
-                    selectedCategory === c.key
-                      ? "active category-btn"
-                      : "category-btn"
-                  }
+                  className={`${styles.chip} ${
+                    selectedCategory === c.key ? styles.chipActive : ""
+                  }`}
+                  role="tab"
+                  aria-selected={selectedCategory === c.key}
                 >
                   {c.label}
                 </button>
               ))}
             </div>
 
-            <div className="templates-list">
-              {loading && <div>Loading templates…</div>}
-              {!loading && filteredTemplates.length === 0 && (
-                <div>No templates found in this category</div>
+            <div className={styles.templatesList}>
+              {loading && (
+                <div className={styles.loading}>Loading templates…</div>
               )}
-              {!loading &&
-                filteredTemplates.map((t) => (
-                  <div
+              {!loading && filteredTemplates.length === 0 && (
+                <div className={styles.empty}>No templates found</div>
+              )}
+
+              <div className={styles.grid}>
+                {filteredTemplates.map((t) => (
+                  <button
                     key={t.id || t.name}
-                    className="template-card"
+                    className={styles.card}
                     onClick={() => chooseBasic(t)}
+                    title={t.name}
+                    aria-label={`Choose ${t.name}`}
                   >
-                    <div className="thumb">
+                    <div className={styles.thumb}>
                       {t.thumbnail ? (
-                        <img src={t.thumbnail} alt={t.name} />
+                        <img src={t.thumbnail} alt={t.name} loading="lazy" />
                       ) : (
-                        <div>T</div>
+                        <div className={styles.placeholderIcon}>T</div>
                       )}
                     </div>
-                    <div className="meta">
-                      <div className="title">{t.name || t.id}</div>
-                      <div className="subtitle">{t.description || ""}</div>
+                    <div className={styles.meta}>
+                      <div className={styles.title}>{t.name || t.id}</div>
+                      <div className={styles.subtitle}>
+                        {t.description || ""}
+                      </div>
                     </div>
-                  </div>
+                  </button>
                 ))}
+              </div>
             </div>
           </>
         )}
+      </aside>
 
-        {mode === "scratch" && (
-          <>
-            <h4>Create blank template</h4>
-            <p>
-              You will open a blank canvas to design a template from scratch.
-            </p>
-            <button
-              onClick={() => {
-                setGenerated({ html: "", grapesJson: null, imageUrl: null });
-                setMode("scratch");
-              }}
-            >
-              Open Blank Editor
-            </button>
-          </>
-        )}
-      </div>
-
-      <div className="editor-panel">
+      <main className={styles.editorPanel}>
         <div
-          className="editor-container"
+          className={styles.editorContainer}
           data-testid="template-editor-container"
-          style={{
-            flex: 1,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            overflow: "hidden",
-          }}
         >
-          {/* UPLOAD mode (server-generated HTML) */}
-          {mode === "upload" && generated && generated.html && (
-            <BasicTemplateEditor
-              key={
-                generated.imageUrl ||
-                generated.id ||
-                generated.previewText ||
-                "upload"
-              }
-              initialHtml={generated.html}
-              initialJson={generated.grapesJson}
-              baseUrl={
-                generated.baseUrl ||
-                (process.env.PUBLIC_URL || "") + "/commonTemplates/basic/"
-              }
+          {/* show preview in main when uploading (uses preview urls from UploadScan controls) */}
+          {mode === "upload" && (previewHeaderUrl || previewFooterUrl) && (
+            <A4Preview
+              headerUrl={previewHeaderUrl}
+              footerUrl={previewFooterUrl}
+              width={560}
             />
           )}
 
-          {/* BASIC templates:
-              - If template has .html content, OPEN IT with TemplateEditor (full HTML)
-              - Otherwise fallback to CustomTemplateEditor (boxes)
-          */}
-          {mode === "basic" && generated && (
-            <>
-              {generated.html && generated.html.trim() ? (
-                <BasicTemplateEditor
-                  key={generated.id || generated.file || Math.random()}
-                  initialHtml={generated.html}
-                  baseUrl={
-                    (process.env.PUBLIC_URL || "") + "/commonTemplates/basic/"
-                  }
-                  onSave={(payload) => {
-                    // payload contains html + css + savedAt
-                    // convert to the same POST you used before or call handleCustomSave
-                    handleCustomSave({
-                      ...payload,
-                      templateId: generated.id || generated.name,
-                    });
-                  }}
-                />
-              ) : (
-                <CustomTemplateEditor
-                  key={
-                    generated.id ||
-                    generated.name ||
-                    generated.file ||
-                    Math.random()
-                  }
-                  background={generated.thumbnail || generated.imageUrl || null}
-                  initialBoxes={templateToBoxes(generated)}
-                  onSave={handleCustomSave}
-                  canvasWidthPx={1000}
-                />
-              )}
-            </>
+          {/* if no preview yet, show placeholder */}
+          {mode === "upload" && !previewHeaderUrl && !previewFooterUrl && (
+            <div className={styles.placeholder}>
+              Use the Upload controls on the left to select header and footer —
+              preview will appear here.
+            </div>
           )}
 
-          {/* SCRATCH -> blank CustomTemplateEditor */}
+          {/* Basic / generated handling remains unchanged */}
+          {mode === "upload" && generated && generated.html && (
+            <BasicTemplateEditor
+              key={generated.id || "upload"}
+              initialHtml={generated.html}
+              initialJson={generated.grapesJson}
+              baseUrl={generated.baseUrl || "/commonTemplates/basic/"}
+            />
+          )}
+
+          {mode === "basic" &&
+            generated &&
+            (generated.html && generated.html.trim() ? (
+              <BasicTemplateEditor
+                key={generated.id || generated.file || Math.random()}
+                initialHtml={generated.html}
+                baseUrl={"/commonTemplates/basic/"}
+                onSave={(payload) =>
+                  handleCustomSave({
+                    ...payload,
+                    templateId: generated.id || generated.name,
+                  })
+                }
+              />
+            ) : generated ? (
+              <CustomTemplateEditor
+                key={
+                  generated.id ||
+                  generated.name ||
+                  generated.file ||
+                  Math.random()
+                }
+                background={generated.thumbnail || generated.imageUrl || null}
+                initialBoxes={templateToBoxes(generated)}
+                onSave={handleCustomSave}
+                canvasWidthPx={1000}
+              />
+            ) : null)}
+
           {mode === "scratch" && (
             <CustomTemplateEditor
               key={"scratch-" + Date.now()}
@@ -571,19 +582,8 @@ export default function TemplateBuilder() {
               canvasWidthPx={1000}
             />
           )}
-
-          {!(
-            (mode === "upload" && generated && generated.html) ||
-            (mode === "basic" && generated) ||
-            mode === "scratch"
-          ) && (
-            <div className="placeholder">
-              Choose a mode and either upload an image, select a base template,
-              or start from scratch.
-            </div>
-          )}
         </div>
-      </div>
+      </main>
     </div>
   );
 }

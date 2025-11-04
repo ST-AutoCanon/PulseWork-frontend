@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Invoice — Right Sidebar Logo</title>
+    <style>
+      @page {
+        size: A4;
+        margin: 0;
+      }
+      body {
+        margin: 0;
+        font-family: Arial, sans-serif;
+      }
+      .page {
+        width: 210mm;
+        height: 297mm;
+        padding: 12mm;
+        box-sizing: border-box;
+        display: flex;
+        flex-direction: row-reverse;
+      }
+      .sidebar {
+        width: 55mm;
+        padding: 10px;
+        border-left: 1px solid #eee;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+      }
+      .sidebar .logo {
+        max-width: 100%;
+      }
+      .content {
+        flex: 1;
+        padding-right: 14mm;
+      }
+      .company-center {
+        text-align: center;
+      }
+      h1 {
+        margin: 0;
+        font-size: 18px;
+        color: #0b5ed7;
+      }
+      .items {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 16px;
+      }
+      .items th,
+      .items td {
+        border: 1px solid #e6e9ef;
+        padding: 8px;
+      }
+      .totals {
+        display: flex;
+        justify-content: flex-end;
+        margin-top: 12px;
+      }
+      .in-footer {
+        position: absolute;
+        right: 12mm;
+        bottom: 12mm;
+        font-size: 12px;
+        color: #666;
+        text-align: right;
+      }
+      .placeholder {
+        color: #6b7280;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="page" data-template="invoice_sidebar_right">
+      <aside class="sidebar">
+        <div class="logo" data-field="logo">
+          <img src="" alt="logo" style="max-width: 100%" />
+        </div>
+        <div
+          data-field="sidebar_note"
+          class="placeholder"
+          style="margin-top: 8px; font-size: 12px; text-align: center"
+        >
+          Sidebar note · GST
+        </div>
+      </aside>
+
+      <main class="content">
+        <div class="company-center">
+          <h1 data-field="company_name">Company Name</h1>
+          <div data-field="company_address" class="placeholder">
+            Address · Phone
+          </div>
+        </div>
+
+        <div
+          style="
+            display: flex;
+            justify-content: space-between;
+            margin-top: 14px;
+          "
+        >
+          <div>
+            <strong>Bill To</strong>
+            <div data-field="client_name" class="placeholder">Client Name</div>
+          </div>
+          <div style="text-align: right">
+            <div>
+              <strong>Invoice</strong>
+              <span data-field="invoice_no">INV-0010</span>
+            </div>
+          </div>
+        </div>
+
+        <table class="items">
+          <thead>
+            <tr>
+              <th>S.No</th>
+              <th>Description</th>
+              <th>Qty</th>
+              <th>Rate</th>
+              <th>Amount</th>
+            </tr>
+          </thead>
+          <tbody data-field="line_items">
+            <tr>
+              <td>1</td>
+              <td>Audit</td>
+              <td>1</td>
+              <td>₹ 15,000</td>
+              <td>₹ 15,000</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div class="totals">
+          <div style="width: 320px">
+            <table style="width: 100%; border-collapse: collapse">
+              <tr>
+                <td style="padding: 6px">Subtotal</td>
+                <td
+                  style="padding: 6px; text-align: right"
+                  data-field="subtotal"
+                >
+                  ₹ 15,000
+                </td>
+              </tr>
+              <tr>
+                <td style="padding: 6px">Tax</td>
+                <td style="padding: 6px; text-align: right" data-field="tax">
+                  ₹ 2,700
+                </td>
+              </tr>
+              <tr>
+                <td style="padding: 6px; font-weight: bold">Total</td>
+                <td
+                  style="padding: 6px; text-align: right; font-weight: bold"
+                  data-field="total"
+                >
+                  ₹ 17,700
+                </td>
+              </tr>
+            </table>
+          </div>
+        </div>
+      </main>
+
+      <div class="in-footer">
+        <div data-field="footer_right" class="placeholder">
+          Right aligned footer — Company registration · Bank
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

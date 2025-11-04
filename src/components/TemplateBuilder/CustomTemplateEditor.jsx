@@ -5,7 +5,7 @@ import "./CustomTemplateEditor.css";
 
 export default function CustomTemplateEditor({
   initialBoxes = [],
-  onSave = (t) => console.log("save", t),
+
   onUploadImage,
   canvasWidthPx = 1000,
 }) {
@@ -18,7 +18,7 @@ export default function CustomTemplateEditor({
   const [mode, setMode] = useState("select");
   const [selectedId, setSelectedId] = useState(null);
   const [editingId, setEditingId] = useState(null);
-  const [editingCell, setEditingCell] = useState(null); // { boxId, r, c }
+  const [editingCell, setEditingCell] = useState(null);
   const [editingTableMode, setEditingTableMode] = useState(null);
   const [canvasWidthActual, setCanvasWidthActual] = useState(canvasWidthPx);
   const [canvasHeightActual, setCanvasHeightActual] = useState(
@@ -1050,9 +1050,7 @@ export default function CustomTemplateEditor({
                       height: "100%",
                     }}
                     data-box-id={b.id}
-                    // <<< STOP propagation early on mousedown so parent drag/selection doesn't steal focus
                     onMouseDown={(e) => {
-                      // if interacting with a table cell or contenteditable, keep it local
                       if (editingCell && editingCell.boxId === b.id) {
                         e.stopPropagation();
                       }

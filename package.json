@@ -3,8 +3,8 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev --turbopack",
-    "build": "next build --turbopack",
+    "dev": "next dev --webpack",
+    "build": "next build --webpack",
     "start": "next start",
     "lint": "eslint"
   },
@@ -19,6 +19,7 @@
     "country-state-city": "^3.2.1",
     "date-fns": "^4.1.0",
     "emoji-picker-react": "^4.13.3",
+    "encoding": "^0.1.13",
     "face-api.js": "^0.22.2",
     "html2canvas": "^1.4.1",
     "jspdf": "^3.0.3",

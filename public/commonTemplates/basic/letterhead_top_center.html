@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Letterhead — Top Center</title>
+    <style>
+      @page {
+        size: A4;
+        margin: 0;
+      }
+      body {
+        margin: 0;
+        font-family: Arial, Helvetica, sans-serif;
+        color: #111;
+      }
+      .page {
+        width: 210mm;
+        height: 297mm;
+        padding: 20mm;
+        box-sizing: border-box;
+        position: relative;
+      }
+      .header {
+        text-align: center;
+        margin-bottom: 12mm;
+      }
+      .logo {
+        max-width: 180px;
+        margin: 0 auto;
+      }
+      .company h1 {
+        margin: 8px 0 0;
+        font-size: 18px;
+        color: #0b5ed7;
+      }
+      .company .sub {
+        font-size: 12px;
+        color: #666;
+      }
+      .body {
+        min-height: 200mm;
+        font-size: 13px;
+        line-height: 1.45;
+      }
+      .in-footer {
+        position: absolute;
+        left: 20mm;
+        right: 20mm;
+        bottom: 20mm;
+        text-align: center;
+        font-size: 11px;
+        color: #666;
+      }
+      .placeholder {
+        color: #6b7280;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="page" data-template="letterhead_top_center">
+      <div class="header">
+        <div class="logo" data-field="logo">
+          <img src="" alt="Logo" style="max-width: 100%" />
+        </div>
+        <div class="company">
+          <h1 data-field="company_name">Company Name</h1>
+          <div class="sub" data-field="company_tagline">
+            Tagline or brief description
+          </div>
+        </div>
+      </div>
+
+      <div class="body" data-field="body">
+        <p class="placeholder">
+          Date: <span data-field="date">2025-01-01</span>
+        </p>
+        <p class="placeholder">To,</p>
+        <p data-field="recipient" class="placeholder">Recipient details here</p>
+        <p data-field="content" class="placeholder">Write letter content...</p>
+      </div>
+
+      <div class="in-footer" data-field="footer">
+        Address · Phone · Email · Website
+      </div>
+    </div>
+  </body>
+</html>

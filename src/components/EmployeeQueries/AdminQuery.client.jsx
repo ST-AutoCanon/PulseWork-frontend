@@ -98,13 +98,6 @@ const AdminQuery = () => {
 
     socketRef.current = socket;
 
-    const onConnect = () =>
-      console.log("[socket] connected", socket.id, "userId=", employeeId);
-    const onDisconnect = (reason) =>
-      console.log("[socket] disconnected", reason);
-    const onConnectError = (err) =>
-      console.error("[socket] connect_error", err);
-
     const handleNewMessage = (msg) => {
       // only add messages for the currently selected thread
       if (String(msg.thread_id) === String(selectedThreadIdRef.current)) {

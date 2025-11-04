@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Letterhead — Right Sidebar</title>
+    <style>
+      @page {
+        size: A4;
+        margin: 0;
+      }
+      body {
+        margin: 0;
+        font-family: Arial, sans-serif;
+        color: #111;
+      }
+      .page {
+        width: 210mm;
+        height: 297mm;
+        padding: 12mm;
+        box-sizing: border-box;
+        display: flex;
+        flex-direction: row-reverse;
+      }
+      .sidebar {
+        width: 60mm;
+        padding: 8px;
+        border-left: 1px solid #eee;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+      }
+      .sidebar .logo {
+        max-width: 100%;
+      }
+      .content {
+        flex: 1;
+        padding-right: 14mm;
+      }
+      .body {
+        min-height: 240mm;
+        font-size: 13px;
+        line-height: 1.45;
+      }
+      .in-footer {
+        position: absolute;
+        left: 12mm;
+        right: 12mm;
+        bottom: 12mm;
+        text-align: center;
+        font-size: 11px;
+        color: #666;
+      }
+      .placeholder {
+        color: #6b7280;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="page" data-template="letterhead_sidebar_right">
+      <aside class="sidebar">
+        <div class="logo" data-field="logo">
+          <img src="" alt="logo" style="max-width: 100%" />
+        </div>
+        <div class="company_note placeholder" data-field="sidebar_note">
+          Short note / GST
+        </div>
+      </aside>
+
+      <div class="content">
+        <div style="text-align: center; margin-bottom: 6mm">
+          <div
+            data-field="company_name"
+            style="font-weight: 700; font-size: 16px"
+          >
+            Company Name
+          </div>
+          <div class="placeholder" data-field="company_contact">
+            Address · Phone
+          </div>
+        </div>
+
+        <div class="body" data-field="body">
+          <p data-field="letter_start" class="placeholder">
+            Start of letter body...
+          </p>
+        </div>
+      </div>
+
+      <div class="in-footer" data-field="footer">
+        Footer text — Bank · PAN · Website
+      </div>
+    </div>
+  </body>
+</html>

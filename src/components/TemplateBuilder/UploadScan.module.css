@@ -1,0 +1,250 @@
+.uploadWrap {
+  display: flex;
+  gap: 18px;
+  align-items: flex-start;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* left controls */
+.controls {
+  width: 360px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.fileRow {
+  display: flex;
+  gap: 12px;
+}
+
+.fileBox {
+  flex: 1;
+  padding: 12px;
+  border-radius: 10px;
+  border: 1px solid #e6e9eb;
+  background: linear-gradient(180deg, #ffffff, #fbfdff);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  position: relative;
+}
+
+.fileLabel {
+  font-size: 13px;
+  font-weight: 700;
+  color: #0f6679;
+}
+
+.fileInput {
+  margin-top: 6px;
+  width: 100%;
+}
+
+.fileInfo {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.fileName {
+  font-size: 13px;
+  color: #333;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.clearBtn {
+  padding: 6px 8px;
+  border-radius: 8px;
+  background: transparent;
+  border: 1px solid #e6e9eb;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.hint {
+  color: #6b7280;
+  font-size: 13px;
+}
+
+/* actions */
+.actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.previewBtn {
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid #e6e9eb;
+  background: transparent;
+  cursor: pointer;
+}
+
+.saveBtn {
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: none;
+  background: linear-gradient(180deg, #77dd0d, #9ef04a);
+  cursor: pointer;
+  font-weight: 700;
+}
+
+/* preview area (A4) */
+.previewArea {
+  flex: 1;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+}
+
+.a4 {
+  box-shadow: 0 8px 20px rgba(2, 6, 23, 0.08);
+  border-radius: 6px;
+  background: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px;
+  box-sizing: border-box;
+}
+
+/* simulate paper inside the frame */
+.paperInner {
+  width: 100%;
+  height: 100%;
+  background: #ffffff;
+  border: 1px solid #e9eef0;
+  box-sizing: border-box;
+  display: grid;
+  grid-template-rows: auto 1fr auto; /* header, body, footer */
+  align-items: stretch;
+}
+
+/* header / footer slot sizes (adjust percentages for visual balance) */
+.headerSlot {
+  padding: 8px;
+  min-height: 40px;
+  max-height: 30%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border-bottom: 1px dashed rgba(0, 0, 0, 0.04);
+}
+
+.footerSlot {
+  padding: 8px;
+  min-height: 40px;
+  max-height: 30%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border-top: 1px dashed rgba(0, 0, 0, 0.04);
+}
+
+.bodySlot {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #9aa5aa;
+  font-size: 12px;
+}
+
+.pageRuler {
+  font-size: 11px;
+  color: #9aa5aa;
+}
+
+/* image inside slot */
+.slotImg {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}
+
+/* placeholder text */
+.slotPlaceholder {
+  font-size: 13px;
+  color: #6b7280;
+  text-align: center;
+}
+
+/* modal for naming */
+.modalBackdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(4, 8, 12, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1200;
+}
+
+.modal {
+  width: 420px;
+  max-width: calc(100% - 32px);
+  background: #fff;
+  padding: 18px;
+  border-radius: 10px;
+  box-shadow: 0 12px 40px rgba(2, 6, 23, 0.18);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.modalTitle {
+  margin: 0;
+  color: #0f6679;
+  font-size: 16px;
+}
+
+.modalText {
+  margin: 0;
+  color: #6b7280;
+  font-size: 13px;
+}
+
+.nameInput {
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid #e6e9eb;
+  outline: none;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.modalActions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.modalCancel {
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: transparent;
+  border: 1px solid #e6e9eb;
+  cursor: pointer;
+}
+
+.modalSave {
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: linear-gradient(180deg, #77dd0d, #9ef04a);
+  border: none;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.error {
+  color: #c0392b;
+  font-size: 13px;
+}

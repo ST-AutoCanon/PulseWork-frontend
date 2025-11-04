@@ -68,9 +68,6 @@ export function SocketProvider({ children }) {
     });
 
     const onConnect = () => {
-      console.log(
-        `Socket connected as ${sock.id} (userId=${userId}, orgId=${orgId})`
-      );
       setConnecting(false);
     };
     const onConnectError = (err) => {

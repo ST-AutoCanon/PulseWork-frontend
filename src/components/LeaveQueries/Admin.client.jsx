@@ -144,10 +144,10 @@ export default function Admin({ openPolicyId = null }) {
   const fetchPolicies = useCallback(async () => {
     try {
       const url = `${API_BASE}/api/leave-policies`;
-      console.log("[fetchPolicies] GET", url);
+
       const res = await fetch(url, { headers: buildHeaders() });
       const json = await res.json().catch(() => null);
-      console.log("[fetchPolicies] response:", res.status, json);
+
       setPolicies((json && (json.data || json.policies)) || []);
     } catch (err) {
       console.error("Failed to fetch leave policies:", err);
@@ -162,10 +162,6 @@ export default function Admin({ openPolicyId = null }) {
   }, [policies]);
 
   useEffect(() => {
-    console.log(
-      "[Admin] Initial/follow-up load: statusFilter, fromDate, toDate, search, user",
-      { statusFilter, fromDate, toDate, search, user }
-    );
     fetchPolicies();
     fetchLeaveQueries();
   }, [statusFilter, fromDate, toDate, search, user?.employeeId, user?.orgId]);
@@ -187,7 +183,7 @@ export default function Admin({ openPolicyId = null }) {
 
       const params = new URLSearchParams(paramsObj).toString();
       const url = `${API_BASE}/admin/leave${params ? `?${params}` : ""}`;
-      console.log("[fetchLeaveQueries] GET", url);
+
       const res = await fetch(url, { headers: buildHeaders() });
       let json = null;
       try {
@@ -195,11 +191,11 @@ export default function Admin({ openPolicyId = null }) {
       } catch (e) {
         console.error("[fetchLeaveQueries] JSON parse error", e);
         const text = await res.text();
-        console.log("[fetchLeaveQueries] raw response text:", text);
+
         showAlert("Failed to parse server response for leave queries.");
         return;
       }
-      console.log("[fetchLeaveQueries] response:", res.status, json);
+
       if (json && (json.success || json.status === "success")) {
         setLeaveQueries(json.data || json.leave_queries || json.message || []);
         setStatusUpdates({});
@@ -241,16 +237,11 @@ export default function Admin({ openPolicyId = null }) {
 
   const loadLeaveBalance = async (employeeId) => {
     if (leaveBalances[employeeId]) {
-      console.log(
-        "[loadLeaveBalance] cached for",
-        employeeId,
-        leaveBalances[employeeId]
-      );
       return leaveBalances[employeeId];
     }
     try {
       const url = `${API_BASE}/api/leave-policies/employee/${employeeId}/leave-balance`;
-      console.log("[loadLeaveBalance] GET", url);
+
       const res = await fetch(url, { headers: buildHeaders() });
       let json = null;
       try {
@@ -258,11 +249,11 @@ export default function Admin({ openPolicyId = null }) {
       } catch (e) {
         console.error("[loadLeaveBalance] JSON parse error", e);
         const text = await res.text();
-        console.log("[loadLeaveBalance] raw response text:", text);
+
         setLeaveBalances((b) => ({ ...b, [employeeId]: [] }));
         return [];
       }
-      console.log("[loadLeaveBalance] response:", res.status, json);
+
       const data = json.data || [];
       setLeaveBalances((b) => ({ ...b, [employeeId]: data }));
       return data;
@@ -396,7 +387,6 @@ export default function Admin({ openPolicyId = null }) {
       if (actorId) headersForReq["x-employee-id"] = actorId;
 
       const url = `${API_BASE}/admin/leave/${leaveId}`;
-      console.log("[doUpdate] Sending PUT", url, "payload:", fullPayload);
 
       const res = await fetch(url, {
         method: "PUT",
@@ -415,15 +405,6 @@ export default function Admin({ openPolicyId = null }) {
           text = `<failed to read text: ${String(e)}>`;
         }
       }
-
-      console.log(
-        "[doUpdate] Response status:",
-        res.status,
-        "json:",
-        json,
-        "text:",
-        text
-      );
 
       if (!res.ok) {
         const serverMsg =
@@ -486,22 +467,13 @@ export default function Admin({ openPolicyId = null }) {
 
   const handleUpdate = async (leaveId, query) => {
     const upd = statusUpdates[leaveId] || {};
-    console.log(
-      "[handleUpdate] invoked for leaveId:",
-      leaveId,
-      "upd:",
-      upd,
-      "query:",
-      query
-    );
+
     if (upd.status === "Approved") {
       const days = calculateDays(query.start_date, query.end_date);
       const balances = await loadLeaveBalance(query.employee_id);
       const bal = balances.find((r) => r.type === query.leave_type);
       const remaining =
         bal && bal.remaining !== undefined ? Number(bal.remaining) || 0 : 0;
-
-      console.log("[handleUpdate] days, remaining:", { days, remaining });
 
       const deficit = Math.max(0, days - remaining);
       const EPS = 1e-6;
@@ -539,11 +511,6 @@ export default function Admin({ openPolicyId = null }) {
           is_defaulted: true,
           isDefaulted: true,
         };
-
-        console.log(
-          "[handleUpdate] No active policy found for request — performing simple approve (default to LoP)",
-          { leaveId, simplePayload }
-        );
 
         const result = await doUpdate(leaveId, simplePayload, query);
         if (result && result.ok) {
@@ -589,8 +556,6 @@ export default function Admin({ openPolicyId = null }) {
           is_defaulted: false,
           isDefaulted: false,
         };
-
-        console.log("[approveDeficit] payload:", payload);
 
         const result = await doUpdate(leaveId, payload, query);
 
@@ -639,8 +604,6 @@ export default function Admin({ openPolicyId = null }) {
           is_defaulted: false,
           isDefaulted: false,
         };
-
-        console.log("[setAllCompensated] payload:", payload);
 
         const result = await doUpdate(leaveId, payload, query);
 
@@ -696,8 +659,6 @@ export default function Admin({ openPolicyId = null }) {
           isDefaulted: false,
         };
 
-        console.log("[setAllDeducted] payload:", payload);
-
         const result = await doUpdate(leaveId, payload, query);
 
         if (result && result.ok) {
@@ -720,15 +681,6 @@ export default function Admin({ openPolicyId = null }) {
         deductedDays,
         lopDays
       ) => {
-        console.log("[applyFlexibleSplit] called", {
-          leaveId,
-          compensatedDays,
-          deductedDays,
-          lopDays,
-          days,
-          remaining,
-        });
-
         const c = Number(compensatedDays) || 0;
         const d = Number(deductedDays) || 0;
         const l = Number(lopDays) || 0;
@@ -793,11 +745,7 @@ export default function Admin({ openPolicyId = null }) {
           isDefaulted: false,
         };
 
-        console.log("[applyFlexibleSplit] payload:", payload);
-
         const result = await doUpdate(leaveId, payload, query);
-
-        console.log("[applyFlexibleSplit] doUpdate result:", result);
 
         if (result && result.ok) {
           const msg = (result.body && result.body.message) || "Leave updated";
@@ -849,10 +797,6 @@ export default function Admin({ openPolicyId = null }) {
       return;
     }
 
-    console.log("[handleUpdate] sending simple update", {
-      leaveId,
-      payload: upd,
-    });
     const result = await doUpdate(leaveId, upd);
     if (result && result.ok) {
       const msg = (result.body && result.body.message) || "Leave updated";

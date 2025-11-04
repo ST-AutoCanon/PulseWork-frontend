@@ -361,7 +361,6 @@ const EmployeeLogin = () => {
       });
     }
 
-    console.log("Grouped by Day and Employee:", grouped);
     return grouped;
   };
 
@@ -397,7 +396,6 @@ const EmployeeLogin = () => {
       slotMap[slotLabel].push(sorted);
     });
 
-    console.log("Grouped by Hour Slots:", slotMap);
     return slotMap;
   };
 
@@ -452,7 +450,6 @@ const EmployeeLogin = () => {
           )}`;
         }
 
-        console.log("Fetching punch data from:", url, { meId, API_KEY });
         const response = await axios.get(url, {
           headers: {
             "x-api-key": API_KEY,
@@ -460,8 +457,6 @@ const EmployeeLogin = () => {
           },
           withCredentials: true,
         });
-
-        console.log("Punch data response:", response.data);
 
         let data = [];
         if (Array.isArray(response.data)) {
@@ -562,14 +557,6 @@ const EmployeeLogin = () => {
         fromDate
       )}&to=${encodeURIComponent(toDate)}&org_id=${encodeURIComponent(orgId)}`;
 
-      console.log("Initiating Excel download:", {
-        url,
-        fromDate,
-        toDate,
-        orgId,
-        meId,
-      });
-
       const response = await axios.get(url, {
         headers: {
           "x-api-key": API_KEY,
@@ -609,8 +596,6 @@ const EmployeeLogin = () => {
       link.click();
       document.body.removeChild(link);
       window.URL.revokeObjectURL(downloadUrl);
-
-      console.log("Excel download successful");
     } catch (err) {
       console.error("Error downloading Excel:", {
         message: err.message,

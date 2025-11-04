@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Invoice — Top Left Logo</title>
+    <style>
+      @page {
+        size: A4;
+        margin: 0;
+      }
+      body {
+        margin: 0;
+        font-family: Arial, sans-serif;
+        color: #111;
+      }
+      .page {
+        width: 210mm;
+        height: 297mm;
+        padding: 18mm;
+        box-sizing: border-box;
+        background: #fff;
+      }
+      .header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+      }
+      .logo {
+        max-width: 160px;
+      }
+      .company {
+        text-align: right;
+      }
+      h1 {
+        margin: 0;
+        font-size: 18px;
+        color: #0b5ed7;
+      }
+      .meta {
+        display: flex;
+        justify-content: space-between;
+        margin-top: 14px;
+      }
+      .items {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 16px;
+      }
+      .items th,
+      .items td {
+        border: 1px solid #e6e9ef;
+        padding: 8px;
+        font-size: 13px;
+      }
+      .items th {
+        background: #f3f6fb;
+        text-align: left;
+      }
+      .totals {
+        margin-top: 12px;
+        display: flex;
+        justify-content: flex-end;
+      }
+      .in-footer {
+        position: absolute;
+        left: 18mm;
+        right: 18mm;
+        bottom: 18mm;
+        text-align: center;
+        font-size: 12px;
+        color: #666;
+      }
+      .placeholder {
+        color: #6b7280;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="page" data-template="invoice_top_left">
+      <div class="header">
+        <div class="logo" data-field="logo">
+          <img src="" alt="Logo" style="max-width: 100%; height: auto" />
+        </div>
+        <div class="company">
+          <h1 data-field="company_name">Company Name</h1>
+          <div data-field="company_address" class="placeholder">
+            Address line · City · State · PIN
+          </div>
+          <div data-field="company_contact" class="placeholder">
+            Phone · Email
+          </div>
+        </div>
+      </div>
+
+      <div class="meta">
+        <div class="bill-to">
+          <strong>Bill To</strong>
+          <div data-field="client_name" class="placeholder">Client Name</div>
+          <div data-field="client_address" class="placeholder">
+            Client address line
+          </div>
+        </div>
+        <div class="meta-right">
+          <div>
+            <strong>Invoice #</strong>
+            <span data-field="invoice_no">INV-0001</span>
+          </div>
+          <div>
+            <strong>Date</strong>
+            <span data-field="invoice_date">2025-01-01</span>
+          </div>
+          <div>
+            <strong>Due</strong> <span data-field="due_date">2025-01-15</span>
+          </div>
+        </div>
+      </div>
+
+      <table class="items">
+        <thead>
+          <tr>
+            <th>S.No</th>
+            <th>Item/Description</th>
+            <th>Qty</th>
+            <th>Rate</th>
+            <th>Amount</th>
+          </tr>
+        </thead>
+        <tbody data-field="line_items">
+          <tr>
+            <td>1</td>
+            <td>Sample service / product</td>
+            <td>1</td>
+            <td>₹ 1,000</td>
+            <td>₹ 1,000</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="totals">
+        <div class="box" style="width: 320px">
+          <table style="width: 100%; border-collapse: collapse">
+            <tr>
+              <td style="padding: 6px">Subtotal</td>
+              <td style="padding: 6px; text-align: right" data-field="subtotal">
+                ₹ 1,000
+              </td>
+            </tr>
+            <tr>
+              <td style="padding: 6px">Tax (18%)</td>
+              <td style="padding: 6px; text-align: right" data-field="tax">
+                ₹ 180
+              </td>
+            </tr>
+            <tr>
+              <td style="padding: 6px; font-weight: bold">Total</td>
+              <td
+                style="padding: 6px; text-align: right; font-weight: bold"
+                data-field="total"
+              >
+                ₹ 1,180
+              </td>
+            </tr>
+          </table>
+        </div>
+      </div>
+
+      <div class="in-footer">
+        <div data-field="notes" class="placeholder">
+          Notes / Terms: Thank you for your business.
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

@@ -16,8 +16,7 @@
   justify-content: space-between;
   align-items: center;
   flex-wrap: wrap;
-  gap: 20px;
-  padding: 0;
+  padding: 0 2%;
 }
 .assetsmain-close-btn-addasset {
   background: none;
@@ -89,8 +88,8 @@
   max-width: 50%;
   padding: 10px;
   box-sizing: border-box;
-  margin-left: auto; /* moves it to the right */
-  margin-right: 0px; /* optional spacing from the right edge */
+  margin-left: auto;
+  margin-right: 0px;
 }
 
 .category-button-wrapper {
@@ -124,7 +123,6 @@
   background-color: #7fbd2c;
 }
 
-/* Tooltip for Subcategories */
 .subcategory-tooltip {
   position: absolute;
   top: 100%;
@@ -151,13 +149,12 @@
 }
 
 .assets-container {
-  max-width: 1200px; /* You can reduce this to 800px or 600px as needed */
-  margin: 0 auto; /* Centers the container */
-  padding: 0px; /* Smaller padding */
+  width: 100%;
+  margin: 0 auto;
+  padding: 0px;
   border-radius: 8px;
 }
 
-/* Style for the caption container */
 .table-caption {
   caption-side: top;
   padding: 10px;
@@ -167,14 +164,12 @@
   gap: 10px;
 }
 
-/* Label styling */
 .asset-table-search-label {
   font-weight: 600;
   font-size: 14px;
-  margin-right: 8px; /* 👈 adds space between label and input */
+  margin-right: 8px;
 }
 
-/* Input box styling */
 .asset-table-search-input {
   padding: 10px 10px;
   font-size: 14px;
@@ -186,7 +181,7 @@
 }
 
 .asset-table-search-input:focus {
-  border-color: #28a745; /* soft green border on focus */
+  border-color: #28a745;
 }
 .asset-search-container {
   display: flex;
@@ -195,7 +190,7 @@
   gap: 10px;
   margin-top: 20px;
   margin-bottom: -30px;
-  margin-left: -10px;
+  margin-left: 10px;
 }
 
 .asset-popup-overlay {
@@ -230,11 +225,10 @@
   font-size: 20px;
   font-weight: bold;
   text-align: center;
-  margin: -20px -20px 20px -20px; /* negative margins to cancel out container padding */
+  margin: -20px -20px 20px -20px;
   border-radius: 8px 8px 0 0;
 }
 
-/* Sticky Options (Main Categories) */
 .sticky-options {
   display: flex;
   justify-content: space-around;
@@ -244,24 +238,22 @@
 }
 
 .sticky-options button {
-  display: flex; /* Ensure the icon and text align properly */
-  align-items: center; /* Vertically center items */
-  justify-content: center; /* Center icon and text */
-  gap: 8px; /* Space between icon and text */
-
-  flex: 1; /* Make all buttons take equal space */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  flex: 1;
   text-align: center;
-  padding: 12px 24px; /* Increase padding */
+  padding: 12px 24px;
   font-size: 18px;
   background: #d3d3d3;
-
   border: none;
   cursor: pointer;
   font-weight: bold;
   border-bottom: 3px solid black;
   border-radius: 5px;
   transition: all 0.2s ease-in-out;
-  min-width: 150px; /* Set a minimum width */
+  min-width: 150px;
 }
 
 .sticky-options button:hover {
@@ -269,53 +261,49 @@
 }
 
 .icon {
-  width: 24px; /* Adjust icon size */
+  width: 24px;
   height: 24px;
 }
 .icon-group {
   display: flex;
   justify-content: center;
-  gap: 10px; /* Space between multiple icons */
+  gap: 10px;
   margin-bottom: 5px;
 }
 
 .asset-details-grid {
   display: flex;
   flex-direction: column;
-  gap: 15px; /* Space between rows */
+  gap: 15px;
   margin-top: 15px;
-  max-width: 600px; /* Adjust width */
+  max-width: 600px;
 }
 
-/* Each row has label and input */
 .row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 20px; /* Space between label and input */
+  gap: 20px;
 }
 
-/* Style labels */
 .row label {
   font-weight: bold;
-  width: 150px; /* Adjust label width */
-  text-align: right; /* Align text to right */
+  width: 150px;
+  text-align: right;
 }
 
-/* Ensure input fields align properly */
 .row input {
-  flex: 1; /* Inputs take available space */
+  flex: 1;
   padding: 10px;
   border: 1px solid #ccc;
   border-radius: 4px;
 }
 
 .sticky-options button.active {
-  border-bottom: none; /* Remove bottom border when active */
-  background: #b0b0b0; /* Darker gray when active */
+  border-bottom: none;
+  background: #b0b0b0;
 }
 
-/* Sub-options (without box, only underline when active) */
 .sticky-suboptions {
   display: flex;
   justify-content: space-around;
@@ -343,10 +331,10 @@
   left: 0;
 }
 .sticky-suboptions button .icon {
-  width: 20px; /* Adjust as needed */
+  width: 20px;
   height: 20px;
 }
-/* Asset Details */
+
 .asset-details input {
   display: block;
   width: 100%;
@@ -358,20 +346,20 @@
 
 .popup-buttons {
   display: flex;
-  justify-content: flex-end; /* Moves buttons to the right */
-  align-items: flex-end; /* Aligns buttons at the bottom */
+  justify-content: flex-end;
+  align-items: flex-end;
   padding: 15px;
-  gap: 10px; /* Adds spacing between buttons */
-  bottom: 10px; /* Ensures it's at the bottom */
-  right: 10px; /* Ensures it's aligned to the right */
-  width: 98%; /* Ensures full width for spacing */
+  gap: 10px;
+  bottom: 10px;
+  right: 10px;
+  width: 98%;
 }
 
 .cancel-btn {
   background-color: #ddd;
   color: rgb(14, 7, 7);
   padding: 10px 18px;
-  border: 1px solid #7fbd2c; /* Grid lines */
+  border: 1px solid #7fbd2c;
   border-radius: 5px;
   cursor: pointer;
   font-size: 16px;
@@ -404,8 +392,6 @@
   color: #000;
 }
 
-/* Assets Table Container */
-/* Assets Table Container */
 .assets-table {
   width: 100%;
   max-width: 100%;
@@ -413,75 +399,71 @@
   background: #f9f9f9;
   border-radius: 10px;
   box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1);
-  max-height: 450px; /* Adjust height */
+  max-height: 450px;
   position: relative;
   border: 1px solid #ddd;
 }
 
-/* Table Styling */
 .assets-table table {
-  table-layout: fixed; /* Prevents columns from resizing based on content */
+  table-layout: fixed;
   width: 100%;
   border-collapse: collapse;
   background-color: white;
   border-radius: 8px;
-  table-layout: auto; /* Ensures correct column width */
+  table-layout: auto;
 }
 .assets-table-wrapper {
-  margin-top: 20px;
-  max-height: 300px; /* Adjust height as needed */
+  margin: 2%;
+  max-height: 300px;
   overflow-y: auto;
-  overflow-x: hidden; /* Prevent horizontal scrolling */
+  overflow-x: hidden;
 }
-/* Specific styling for Asset Name and Configuration columns */
-.assets-table th:nth-child(3), /* Asset Name header */
-.assets-table td:nth-child(3), /* Asset Name cell */
-.assets-table th:nth-child(4), /* Configuration header */
+
+.assets-table th:nth-child(3),
+.assets-table td:nth-child(3),
+.assets-table th:nth-child(4),
 .assets-table td:nth-child(4) {
-  /* Configuration cell */
-  max-width: 150px; /* Set a fixed maximum width */
-  min-width: 150px; /* Ensure consistent width */
+  max-width: 150px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  position: relative; /* For tooltip positioning */
+  position: relative;
 }
 
-/* Tooltip for full text on hover */
 .assets-table td:nth-child(3):hover::after,
 .assets-table td:nth-child(4):hover::after {
-  content: attr(data-full-text); /* Use data attribute for full text */
+  content: attr(data-full-text);
   position: absolute;
-  top: 100%; /* Display below the cell */
+  top: 100%;
   left: 0;
   background-color: #333;
   color: white;
   padding: 8px;
   border-radius: 4px;
   z-index: 10;
-  white-space: normal; /* Allow text wrapping in tooltip */
-  max-width: 300px; /* Limit tooltip width */
-  word-wrap: break-word; /* Break long words */
+  white-space: normal;
+  max-width: 300px;
+  word-wrap: break-word;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }
-/* Sticky Header */
+
 .assets-table thead {
   background-color: white;
   color: black;
   font-weight: bold;
   position: sticky;
-  top: 0; /* Stick to top */
-  z-index: 10; /* Ensure it's above content */
+  top: 0;
+  z-index: 10;
 }
 
 .assets-table {
   width: 100%;
-  border-collapse: collapse; /* Ensures single borders */
+  border-collapse: collapse;
 }
 
 .assets-table th,
 .assets-table td {
-  border: 1px solid #ccc; /* Apply border to all cells */
+  border: 1px solid #ccc;
 }
 
 .assets-table th {
@@ -491,45 +473,40 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  background-color: #f9f9f9; /* Optional: better visual distinction */
+  background-color: #f9f9f9;
 }
 
-/* Scrollable Body */
 .assets-table tbody {
-  overflow-y: auto; /* Enables vertical scrolling */
+  overflow-y: auto;
   max-height: 400px;
 }
 
-/* Table Body Rows */
 .assets-table tbody tr {
   transition: background 0.3s ease;
 }
 
 .assets-table tbody tr:nth-child(even) {
-  background-color: #f2f2f2; /* Alternating row color */
+  background-color: #f2f2f2;
 }
 
 .assets-table tbody tr:hover {
   background-color: #e0e0e0;
 }
 
-/* Table Data Cells */
 .assets-table td {
   padding: 3px;
   text-align: center;
-  font-size: 12px; /* Reduced font size */
-  border: 1px solid #ccc; /* Grid lines */
-  white-space: nowrap; /* Prevents wrapping */
+  font-size: 12px;
+  border: 1px solid #ccc;
+  white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-/* No Border for Certain Cells */
 .assets-table .no-border {
   border: none;
 }
 
-/* Assign Button */
 .assets-table .assign-btn {
   background-color: #007bff;
   color: white;
@@ -546,9 +523,8 @@
   background-color: #0056b3;
 }
 
-/* View Document Button */
 .assets-table button {
-  background-color: #7fbd2c; /* Green */
+  background-color: #7fbd2c;
   color: white;
   padding: 5px 10px;
   font-size: 12px;
@@ -563,38 +539,34 @@
   background-color: #7fbd2c;
 }
 
-/* No Assets Available Row */
 .assets-table td[colspan="7"] {
   text-align: center;
   font-style: italic;
   color: #777;
   padding: 15px;
 }
-/* Assigned To Column */
-/* Assigned To Column */
+
 .assigned-to-cell {
   display: flex;
   align-items: center;
-  justify-content: space-between; /* Keep name & button aligned */
+  justify-content: space-between;
   gap: 10px;
-  min-width: 200px; /* Adjust this value if needed */
-  max-width: 300px; /* Prevent excessive stretching */
+  min-width: 200px;
+  max-width: 300px;
   white-space: nowrap;
   overflow: hidden;
 }
 
-/* Assigned To Name */
 .assigned-name {
   flex-grow: 1;
-  max-width: 70%; /* Ensures name does not take up too much space */
+  max-width: 70%;
   white-space: nowrap;
   overflow: hidden;
-  text-overflow: ellipsis; /* Adds "..." if name is too long */
+  text-overflow: ellipsis;
 }
 
-/* Assign Button */
 .assign-btn {
-  flex-shrink: 0; /* Prevents button from shrinking */
+  flex-shrink: 0;
   min-width: 80px;
   padding: 5px 10px;
   font-size: 12px;
@@ -610,9 +582,6 @@
   background-color: #0056b3;
 }
 
-/* Responsive Table */
-
-/* Assigned Assets Container */
 .assigned-assets-container {
   width: 100%;
   max-width: 1200px;
@@ -623,33 +592,29 @@
   box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1);
 }
 
-/* Table Styling */
 .assigned-assets-table {
   width: 100%;
-  border-collapse: collapse; /* Ensures grid lines appear correctly */
+  border-collapse: collapse;
   background-color: white;
   border-radius: 8px;
   overflow: hidden;
   box-shadow: 0px 2px 6px rgba(0, 0, 0, 0.1);
-  border: 2px solid #ddd; /* Outer border */
+  border: 2px solid #ddd;
 }
 
-/* Table Header */
 .assigned-assets-table thead {
   background-color: #00468c;
   color: white;
   font-weight: bold;
 }
 
-/* Table Header and Cells */
 .assigned-assets-table th,
 .assigned-assets-table td {
   padding: 12px;
   text-align: left;
-  border: 1px solid #ccc; /* Grid lines */
+  border: 1px solid #ccc;
 }
 
-/* Table Body Rows */
 .assigned-assets-table tbody tr {
   transition: background 0.3s ease;
 }
@@ -658,7 +623,6 @@
   background-color: #f1f1f1;
 }
 
-/* Button Styling */
 .assigned-assets-table button {
   background-color: #28a745;
   color: white;
@@ -674,7 +638,6 @@
   background-color: #218838;
 }
 
-/* No Assigned Assets Row */
 .assigned-assets-table td[colspan="7"] {
   text-align: center;
   font-style: italic;
@@ -688,7 +651,7 @@
   font-size: 16px;
   color: gray;
 }
-/* Adjust dropdown box size */
+
 .asset-status-dropdown {
   flex: 1;
   display: flex;
@@ -703,7 +666,6 @@
   font-size: 16px;
 }
 
-/* Overlay to cover the whole screen */
 .assignpopup-overlay {
   position: fixed;
   top: 0;
@@ -715,21 +677,20 @@
   justify-content: center;
   align-items: center;
   z-index: 1000;
-  overflow: hidden; /* Prevents background scrolling */
+  overflow: hidden;
 }
 
-/* Popup content with increased width and scrolling */
 .assignpopup-content {
   background: #e8e9ea;
-  width: 1000px; /* Increased width */
-  max-width: 95%; /* Ensures it fits smaller screens */
-  max-height: 50vh; /* Set max height to avoid cutting */
+  width: 1000px;
+  max-width: 95%;
+  max-height: 50vh;
   padding: 20px;
   border-radius: 0px;
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
   position: relative;
   text-align: left;
-  overflow-y: auto; /* Enable scrolling */
+  overflow-y: auto;
 }
 .assignpopup-content h3 {
   background-color: #00468c;
@@ -739,37 +700,31 @@
   text-align: center;
   font-weight: bold;
   margin-bottom: 15px;
-
-  /* Make the header stretch across the top */
-  margin: -20px -20px 15px -20px; /* Pull edges to touch the sides */
-  padding: 15px; /* Increase padding for better spacing */
-
-  /* Rounded bottom corners only */
+  margin: -20px -20px 15px -20px;
+  padding: 15px;
   border-radius: 0px;
 }
 
-/* Grid layout for form */
 .assetform-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr); /* Two columns */
-  gap: 20px; /* Space between fields */
+  grid-template-columns: repeat(2, 1fr);
+  gap: 20px;
   margin-bottom: 10px;
 }
 
 .assetform-field {
   display: flex;
   flex-direction: column;
-  gap: 5px; /* Space between label and input */
-  margin-bottom: 10px; /* Space between form fields */
+  gap: 5px;
+  margin-bottom: 10px;
 }
-/* Styling the label */
+
 .assetform-field label {
   font-weight: bold;
   font-size: 14px;
   color: #333;
 }
 
-/* Styling the input fields, select, and textarea */
 .assetform-field input,
 .assetform-field select,
 .assetform-field textarea {
@@ -780,14 +735,12 @@
   transition: border 0.3s ease-in-out;
 }
 
-/* Add hover effect */
 .assetform-field input:hover,
 .assetform-field select:hover,
 .assetform-field textarea:hover {
   border-color: #00468c;
 }
 
-/* Focus effect */
 .assetform-field input:focus,
 .assetform-field select:focus,
 .assetform-field textarea:focus {
@@ -796,17 +749,15 @@
   box-shadow: 0 0 5px rgba(0, 70, 140, 0.3);
 }
 
-/* Make textarea slightly larger */
 .assetform-field textarea {
   height: 80px;
   resize: vertical;
 }
-/* Full-width fields (for comments) */
+
 .assetform-field.full-width {
-  grid-column: span 2; /* Makes it take the full width */
+  grid-column: span 2;
 }
 
-/* Row for asset details */
 .row {
   display: flex;
   justify-content: space-between;
@@ -819,7 +770,6 @@
   margin: 0;
 }
 
-/* Styling inputs */
 .form-field input,
 .form-field select,
 .form-field textarea {
@@ -829,7 +779,6 @@
   width: 100%;
 }
 
-/* Make textarea slightly taller */
 .form-field textarea {
   height: 80px;
 }
@@ -849,15 +798,13 @@
   color: #ffcccc;
 }
 
-/* Ensure the table inside the popup also scrolls properly */
 .assigned-assets-container {
-  max-height: 350px; /* Increase the table height */
-  overflow-y: auto; /* Make it scrollable */
+  max-height: 350px;
+  overflow-y: auto;
   border: 1px solid #ddd;
   border-radius: 5px;
 }
 
-/* Row-wise alignment for form fields */
 .row {
   display: flex;
   align-items: center;
@@ -868,7 +815,7 @@
 
 .row label {
   font-weight: bold;
-  width: 150px; /* Increased label width */
+  width: 150px;
 }
 
 .row input,
@@ -878,10 +825,9 @@
   padding: 8px;
   border: 1px solid #ccc;
   border-radius: 5px;
-  width: calc(100% - 160px); /* Adjust width for better alignment */
+  width: calc(100% - 160px);
 }
 
-/* Buttons */
 .assignpopup-buttons {
   display: flex;
   justify-content: flex-end;
@@ -900,12 +846,12 @@
   cursor: pointer;
   border-radius: 5px;
   font-size: 14px;
-  border: 1px solid #7fbd2c; /* Black border */
+  border: 1px solid #7fbd2c;
 }
 
 .assigncancel-btn {
   background-color: #ccc;
-  border: 2px solid black; /* Black border */
+  border: 2px solid black;
 }
 
 .assignsave-btn {
@@ -941,7 +887,7 @@
 .assetform-header,
 .assetform-row {
   display: grid;
-  grid-template-columns: 150px 150px 150px 150px 200px; /* One column per field */
+  grid-template-columns: 150px 150px 150px 150px 200px;
   gap: 30px;
   margin-bottom: 10px;
   align-items: center;
@@ -969,15 +915,14 @@
 }
 
 .returndateform-container h3 {
-  background-color: #00468c; /* Set background color */
-  color: white; /* Set text color */
-  padding: 10px; /* Add padding */
-  text-align: center; /* Center the text */
-  border-radius: 5px; /* Add rounded corners */
-  margin-bottom: 15px; /* Add space below */
+  background-color: #00468c;
+  color: white;
+  padding: 10px;
+  text-align: center;
+  border-radius: 5px;
+  margin-bottom: 15px;
 }
 
-/* Return Date Form Container */
 .returndateform-container {
   background-color: #e8e9ea;
   padding: 20px;
@@ -995,7 +940,6 @@
   z-index: 1000;
 }
 
-/* Form Heading */
 .returndateform-container h3 {
   background-color: #00468c;
   color: white;
@@ -1007,14 +951,12 @@
   margin-bottom: 15px;
 }
 
-/* Form Fields */
 .returndateform-container form {
   display: flex;
   flex-direction: column;
   gap: 15px;
 }
 
-/* Labels */
 .returndateform-container label {
   font-weight: bold;
   font-size: 14px;
@@ -1024,7 +966,6 @@
   margin-bottom: 5px;
 }
 
-/* Input Fields */
 .returndateform-container input {
   padding: 10px;
   border: 1px solid #ccc;
@@ -1034,7 +975,6 @@
   transition: border 0.3s ease-in-out;
 }
 
-/* Input Focus & Hover Effects */
 .returndateform-container input:hover {
   border-color: #00468c;
 }
@@ -1045,22 +985,18 @@
   box-shadow: 0 0 5px rgba(0, 70, 140, 0.3);
 }
 
-/* Parent container should have relative positioning */
-
-/* Buttons Container - Positioned Bottom Right */
 .returndateform-buttons {
   display: flex;
-  flex-direction: row; /* Keeps buttons in a row */
-  justify-content: flex-end; /* Aligns buttons to the right */
+  flex-direction: row;
+  justify-content: flex-end;
   align-items: center;
-  gap: 10px; /* Space between buttons */
+  gap: 10px;
   bottom: 15px;
   right: 15px;
 }
 
-/* Save Button */
 .returndateform-buttons .rsave-btn {
-  background-color: #28a745; /* Green */
+  background-color: #28a745;
   color: white;
   padding: 10px 20px;
   font-size: 14px;
@@ -1077,15 +1013,14 @@
   background-color: #218838;
 }
 
-/* Cancel Button */
 .returndateform-buttons .rcancel-btn {
-  background-color: #dfd9da; /* Light Grey */
+  background-color: #dfd9da;
   color: rgb(22, 6, 6);
   padding: 10px 20px;
   font-size: 14px;
   font-weight: bold;
   border-radius: 5px;
-  border: 1px solid rgb(29, 119, 37); /* Black border */
+  border: 1px solid rgb(29, 119, 37);
   cursor: pointer;
   transition: 0.3s;
   min-width: 100px;
@@ -1093,10 +1028,9 @@
 }
 
 .returndateform-buttons .rcancel-btn:hover {
-  background-color: #c0b6b8; /* Slightly darker on hover */
+  background-color: #c0b6b8;
 }
 
-/* Asset Summary Container */
 .asset-summary {
   width: 100%;
   max-width: 90%;
@@ -1105,11 +1039,10 @@
   background: #f9f9f9;
   border-radius: 10px;
   box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1);
-  overflow-x: auto; /* Enables horizontal scrolling if needed */
+  overflow-x: auto;
   text-align: center;
 }
 
-/* Title */
 .asset-summary h2 {
   text-align: center;
   font-size: 22px;
@@ -1117,20 +1050,18 @@
   margin-bottom: 15px;
 }
 
-/* Table Styling */
 .asset-summary table {
   width: 100%;
-  border-collapse: collapse; /* Ensures proper grid lines */
+  border-collapse: collapse;
   background-color: white;
   border-radius: 8px;
   overflow: hidden;
   box-shadow: 0px 2px 6px rgba(0, 0, 0, 0.1);
-  border: 2px solid #ddd; /* Outer border */
+  border: 2px solid #ddd;
 }
 
-/* Table Header */
 .asset-summary thead {
-  background-color: #00468c; /* Dark blue header */
+  background-color: #00468c;
   color: white;
   font-weight: bold;
 }
@@ -1138,33 +1069,30 @@
 .asset-summary th {
   padding: 12px;
   text-align: center;
-  border: 1px solid #ccc; /* Grid lines */
+  border: 1px solid #ccc;
 }
 
-/* Table Body Rows */
 .asset-summary tbody tr {
   transition: background 0.3s ease;
 }
 
 .asset-summary tbody tr:nth-child(even) {
-  background-color: #f2f2f2; /* Alternating row color */
+  background-color: #f2f2f2;
 }
 
 .asset-summary tbody tr:hover {
   background-color: #e0e0e0;
 }
 
-/* Table Data Cells */
 .asset-summary td {
   padding: 12px;
   text-align: center;
-  border: 1px solid #ccc; /* Grid lines */
+  border: 1px solid #ccc;
   font-size: 16px;
   font-weight: 500;
   color: #333;
 }
 
-/* No Data Available Row */
 .asset-summary td[colspan="5"] {
   text-align: center;
   font-style: italic;
@@ -1172,7 +1100,6 @@
   padding: 15px;
 }
 
-/* Mobile Responsive */
 @media (max-width: 768px) {
   .assignpopup-content {
     width: 95%;
@@ -1195,15 +1122,15 @@
 }
 
 .no-border {
-  display: flex; /* Makes items appear in one row */
-  align-items: center; /* Aligns text and button vertically */
-  gap: 10px; /* Adds space between name and button */
-  white-space: nowrap; /* Prevents wrapping */
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  white-space: nowrap;
 }
 
 .assign-btn {
   padding: 5px 10px;
-  background-color: #007bff; /* Blue background */
+  background-color: #007bff;
   color: white;
   border: none;
   border-radius: 5px;
@@ -1212,18 +1139,18 @@
 }
 
 .assign-btn:hover {
-  background-color: #0056b3; /* Darker blue on hover */
+  background-color: #0056b3;
 }
 
 .assign-btn:active {
-  background-color: #004494; /* Even darker blue when clicked */
+  background-color: #004494;
 }
 
 .view-doc-btn {
   display: flex;
   align-items: center;
-  gap: 5px; /* Space between icon and text */
-  background-color: #28a745; /* Green */
+  gap: 5px;
+  background-color: #28a745;
   color: white;
   padding: 5px 10px;
   font-size: 12px;
@@ -1241,7 +1168,7 @@
 .editassign-btn {
   display: flex;
   align-items: center;
-  gap: 5px; /* Space between icon and text */
+  gap: 5px;
   background-color: #007bff;
   color: white;
   padding: 5px 10px;
@@ -1280,5 +1207,5 @@
 }
 
 .download-doc-btn {
-  background-color: #007b3a; /* Slightly different color for download */
+  background-color: #007b3a;
 }

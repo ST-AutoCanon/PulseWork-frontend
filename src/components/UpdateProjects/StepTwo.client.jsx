@@ -41,7 +41,7 @@ const StepTwo = ({
             onChange={(e) => handleStsOwnerChange(e)}
             disabled={!isEditable}
           >
-            <option value="">Select STS Owner</option>
+            <option value="">Select Project Owner</option>
             {stsOwners.map((emp) => (
               <option key={emp.employee_id} value={emp.employee_id}>
                 {emp.name} ({emp.role})

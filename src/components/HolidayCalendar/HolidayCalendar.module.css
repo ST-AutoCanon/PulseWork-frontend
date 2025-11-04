@@ -17,39 +17,40 @@
   border-radius: 8px;
 }
 
-:global(.react-calendar) {
+/* Anchor all react-calendar selectors under the local wrapper so selectors remain "pure" */
+.calendarWrapper :global(.react-calendar) {
   height: 100%;
   background: #ffffff;
 }
 
-:global(.react-calendar__navigation) {
+.calendarWrapper :global(.react-calendar__navigation) {
   height: 15%;
   background: #79c42b;
 }
-:global(.react-calendar__navigation__arrow) {
+.calendarWrapper :global(.react-calendar__navigation__arrow) {
   width: 20%;
   font-size: xx-large;
   color: #fff;
 }
-:global(.react-calendar__navigation button:enabled:hover),
-:global(.react-calendar__navigation button:enabled:focus) {
+.calendarWrapper :global(.react-calendar__navigation) button:enabled:hover,
+.calendarWrapper :global(.react-calendar__navigation) button:enabled:focus {
   background-color: #79c42b;
 }
-:global(.react-calendar__navigation__label) {
+.calendarWrapper :global(.react-calendar__navigation__label) {
   font-size: 1.3rem;
   font-weight: bold;
   pointer-events: none;
   color: #fff;
 }
 
-:global(.react-calendar__month-view__weekdays) {
+.calendarWrapper :global(.react-calendar__month-view__weekdays) {
   font-size: 0.9rem;
   border: none;
   color: #79c42b;
   margin-top: 2%;
 }
 
-:global(.react-calendar__tile) {
+.calendarWrapper :global(.react-calendar__tile) {
   position: relative;
   padding: 3%;
   font-size: medium;
@@ -67,7 +68,8 @@
   cursor: pointer;
 }
 
-:global(.react-calendar__tile abbr) {
+/* target the abbr inside the tile */
+.calendarWrapper :global(.react-calendar__tile) abbr {
   position: relative;
   z-index: 5;
   pointer-events: none;
@@ -104,24 +106,18 @@
   background-color: #9090fd;
 }
 
-:global(.react-tooltip) {
-  z-index: 9999 !important;
-  background-color: #000000e6 !important;
-  color: white !important;
-  padding: 6px 10px !important;
-  border-radius: 5px !important;
-  font-size: 14px !important;
-}
+/* NOTE: react-tooltip is global and may be appended to the body.
+   Move the real tooltip rules into globals.css (see below). */
 
-:global(.react-calendar__tile--active) {
+.calendarWrapper :global(.react-calendar__tile--active) {
   background-color: #fae5a4 !important;
   border-radius: 5px;
 }
-:global(.react-calendar__tile--range) {
+.calendarWrapper :global(.react-calendar__tile--range) {
   background-color: #fae5a4 !important;
 }
-:global(.react-calendar__tile--rangeStart),
-:global(.react-calendar__tile--rangeEnd) {
+.calendarWrapper :global(.react-calendar__tile--rangeStart),
+.calendarWrapper :global(.react-calendar__tile--rangeEnd) {
   background-color: #fae5a4 !important;
 }
 
@@ -230,6 +226,7 @@
   color: #d32f2f;
 }
 
+/* Responsive */
 @media (max-width: 600px) {
   .calendarContainer {
     width: calc(100vw - 18px);
@@ -242,12 +239,12 @@
     height: auto;
   }
 
-  :global(.react-calendar) {
+  .calendarWrapper :global(.react-calendar) {
     width: 100%;
     font-size: 14px;
   }
 
-  :global(.react-calendar__navigation) {
+  .calendarWrapper :global(.react-calendar__navigation) {
     height: auto;
     padding: 8px 6px;
     display: flex;
@@ -255,14 +252,14 @@
     gap: 6px;
   }
 
-  :global(.react-calendar__navigation__label) {
+  .calendarWrapper :global(.react-calendar__navigation__label) {
     font-size: 1.15rem;
     font-weight: 700;
     pointer-events: none;
     color: #fff;
   }
 
-  :global(.react-calendar__navigation__arrow) {
+  .calendarWrapper :global(.react-calendar__navigation__arrow) {
     width: 36px;
     height: 36px;
     font-size: 2rem;
@@ -272,12 +269,12 @@
     color: #fff;
   }
 
-  :global(.react-calendar__month-view__weekdays) {
+  .calendarWrapper :global(.react-calendar__month-view__weekdays) {
     font-size: 0.85rem;
     margin-top: 6px;
   }
 
-  :global(.react-calendar__tile) {
+  .calendarWrapper :global(.react-calendar__tile) {
     position: relative;
     font-size: 0.95rem;
     min-height: 48px;
@@ -285,7 +282,7 @@
     box-sizing: border-box;
   }
 
-  :global(.react-calendar__tile abbr) {
+  .calendarWrapper :global(.react-calendar__tile) abbr {
     z-index: 10;
   }
 
@@ -309,16 +306,10 @@
     background-color: #9090fd;
   }
 
-  :global(.react-tooltip) {
-    z-index: 99999 !important;
-    font-size: 13px !important;
-    padding: 6px 8px !important;
-  }
-
-  :global(.react-calendar__tile--active),
-  :global(.react-calendar__tile--range),
-  :global(.react-calendar__tile--rangeStart),
-  :global(.react-calendar__tile--rangeEnd) {
+  .calendarWrapper :global(.react-calendar__tile--active),
+  .calendarWrapper :global(.react-calendar__tile--range),
+  .calendarWrapper :global(.react-calendar__tile--rangeStart),
+  .calendarWrapper :global(.react-calendar__tile--rangeEnd) {
     background-color: #fae5a4 !important;
     border-radius: 6px;
   }
@@ -354,7 +345,7 @@
     margin: 12px auto;
   }
 
-  :global(.react-calendar__tile) {
+  .calendarWrapper :global(.react-calendar__tile) {
     min-height: 52px;
   }
 

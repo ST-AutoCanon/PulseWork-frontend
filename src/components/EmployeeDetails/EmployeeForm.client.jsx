@@ -437,17 +437,6 @@ export default function EmployeeForm({
         }
       }
 
-      // Debug log (optional)
-      for (let [key, val] of fd.entries()) {
-        if (val instanceof File) {
-          console.log(
-            `↪︎ FormData field: ${key} ⇒ File { name: ${val.name}, size: ${val.size} }`
-          );
-        } else {
-          console.log(`↪︎ FormData field: ${key} ⇒`, val);
-        }
-      }
-
       // call parent onSubmit (which should handle API headers); pass FormData
       await onSubmit(fd);
 

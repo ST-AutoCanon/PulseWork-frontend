@@ -31,9 +31,7 @@ export default function Topbar() {
   const API_KEY = process.env.NEXT_PUBLIC_API_KEY;
   const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
 
-  useEffect(() => {
-    console.log("[Topbar] hydrated:", hydrated, "user:", user);
-  }, [hydrated, user]);
+  useEffect(() => {}, [hydrated, user]);
 
   const meId = user?.employeeId ?? user?.id ?? null;
 

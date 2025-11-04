@@ -314,3 +314,8 @@
   font-style: italic;
   color: blue;
 }
+
+.dp-error-message {
+  margin: 0;
+  color: red;
+}

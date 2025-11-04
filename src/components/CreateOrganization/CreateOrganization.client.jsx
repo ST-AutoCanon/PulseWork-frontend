@@ -118,6 +118,26 @@ const CreateOrganization = ({ employeeId: propEmployeeId = null }) => {
     [API_KEY, employeeId]
   );
 
+  // convert various date representations to YYYY-MM-DD for <input type="date">
+  const toInputDate = (val) => {
+    if (!val && val !== 0) return "";
+    // If already a simple YYYY-MM-DD string
+    if (typeof val === "string") {
+      // If it starts with YYYY-MM-DD (covers 'YYYY-MM-DD' and ISO 'YYYY-MM-DDTHH:MM:SSZ')
+      const m = val.match(/^(\d{4}-\d{2}-\d{2})/);
+      if (m) return m[1];
+      // fallback: try Date parsing below
+    }
+
+    // If it's a Date object or other parseable string, use UTC parts to avoid tz shifts
+    const d = new Date(val);
+    if (isNaN(d.getTime())) return "";
+    const yyyy = d.getUTCFullYear();
+    const mm = String(d.getUTCMonth() + 1).padStart(2, "0");
+    const dd = String(d.getUTCDate()).padStart(2, "0");
+    return `${yyyy}-${mm}-${dd}`;
+  };
+
   const [showForm, setShowForm] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [currentOrgId, setCurrentOrgId] = useState(null);
@@ -487,14 +507,14 @@ const CreateOrganization = ({ employeeId: propEmployeeId = null }) => {
     setAdminEmail(org.admin_email || "");
     setAdminFirstName(org.first_name || "");
     setAdminLastName(org.last_name || "");
-    setAdminDob(org.dob || "");
+    setAdminDob(toInputDate(org.dob));
     setAdminAadharNo(org.aadhaar_number || "");
     setAdminPanNo(org.pan_number || "");
     setAdminMobileNo(org.phone_number || "");
     setContactEmail(org.contact_email_id || "");
     setContactPhone(org.contact_phone_no || "");
-    setStartDate(org.start_date ? org.start_date.split("T")[0] : "");
-    setEndDate(org.end_date ? org.end_date.split("T")[0] : "");
+    setStartDate(toInputDate(org.start_date));
+    setEndDate(toInputDate(org.end_date));
     setEmployeePrefix(org.employee_prefix || "");
     setErrors({});
     setMessage("");

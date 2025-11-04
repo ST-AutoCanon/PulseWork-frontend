@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Invoice — Footer Centered</title>
+    <style>
+      @page {
+        size: A4;
+        margin: 0;
+      }
+      body {
+        margin: 0;
+        font-family: Arial, sans-serif;
+      }
+      .page {
+        width: 210mm;
+        height: 297mm;
+        padding: 18mm;
+        box-sizing: border-box;
+        position: relative;
+      }
+      .top-left {
+        position: relative;
+      }
+      .top-left .company {
+        font-size: 14px;
+      }
+      .logo {
+        max-width: 120px;
+      }
+      .meta {
+        display: flex;
+        justify-content: space-between;
+        margin-top: 16px;
+      }
+      .items {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 12px;
+      }
+      .items th,
+      .items td {
+        border: 1px solid #e6e9ef;
+        padding: 8px;
+        font-size: 13px;
+      }
+      .totals {
+        display: flex;
+        justify-content: flex-end;
+        margin-top: 12px;
+      }
+      .in-footer {
+        position: absolute;
+        left: 18mm;
+        right: 18mm;
+        bottom: 18mm;
+        text-align: center;
+        padding: 10px 0;
+        border-top: 1px dashed #e6e9ef;
+        color: #444;
+        font-size: 12px;
+        background: #fff;
+      }
+      .placeholder {
+        color: #6b7280;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="page" data-template="invoice_footer_center">
+      <div class="top-left">
+        <div class="logo" data-field="logo">
+          <img src="" alt="logo" style="max-width: 100%" />
+        </div>
+        <div class="company" data-field="company_name">Company Name</div>
+      </div>
+
+      <div class="meta">
+        <div>
+          <strong>Bill To</strong>
+          <div data-field="client_name" class="placeholder">Client Name</div>
+        </div>
+        <div style="text-align: right">
+          <div>
+            <strong>Invoice #</strong>
+            <span data-field="invoice_no">INV-0008</span>
+          </div>
+        </div>
+      </div>
+
+      <table class="items">
+        <thead>
+          <tr>
+            <th>S.No</th>
+            <th>Description</th>
+            <th>Qty</th>
+            <th>Rate</th>
+            <th>Amount</th>
+          </tr>
+        </thead>
+        <tbody data-field="line_items">
+          <tr>
+            <td>1</td>
+            <td>Support</td>
+            <td>12</td>
+            <td>₹ 200</td>
+            <td>₹ 2,400</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="totals">
+        <div style="width: 320px">
+          <table style="width: 100%; border-collapse: collapse">
+            <tr>
+              <td style="padding: 6px">Subtotal</td>
+              <td style="padding: 6px; text-align: right" data-field="subtotal">
+                ₹ 2,400
+              </td>
+            </tr>
+            <tr>
+              <td style="padding: 6px">Tax</td>
+              <td style="padding: 6px; text-align: right" data-field="tax">
+                ₹ 432
+              </td>
+            </tr>
+            <tr>
+              <td style="padding: 6px; font-weight: bold">Total</td>
+              <td
+                style="padding: 6px; text-align: right; font-weight: bold"
+                data-field="total"
+              >
+                ₹ 2,832
+              </td>
+            </tr>
+          </table>
+        </div>
+      </div>
+
+      <div class="in-footer">
+        <div data-field="big_footer" class="placeholder">
+          LEGAL / BANK / TERMS — Company registration · PAN · Bank · Payment
+          instructions
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

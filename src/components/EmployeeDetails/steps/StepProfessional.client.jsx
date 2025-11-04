@@ -52,8 +52,6 @@ export default function StepProfessional({ data, onChange, departments = [] }) {
     })
       .then((res) => res.json())
       .then((json) => {
-        // console.log("supervisor history response:", json);
-
         const entries =
           json && json.data && Array.isArray(json.data.history)
             ? json.data.history

@@ -140,7 +140,6 @@ export default function EmpDashCards() {
           faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL),
         ]);
         if (mounted) {
-          console.log("face-api models loaded");
         }
       } catch (err) {
         console.error("Failed to load face-api models:", err);

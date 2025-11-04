@@ -3,7 +3,7 @@ services:
     build:
       context: ../PluseWork-backend
       dockerfile: Dockerfile
-    container_name: myapp_backend
+    container_name: backend
     ports:
       - "5001:5001"
     environment:
@@ -24,7 +24,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: myapp_frontend
+    container_name: frontend
     ports:
       - "3001:3001"
     environment:

@@ -50,16 +50,12 @@ export default function EmpLeaveTracker() {
         employeeIdFromUser
       )}`;
 
-      console.log("EmpLeaveTracker: fetching leave data from", apiUrl);
-
       try {
         const response = await axios.get(apiUrl, {
           headers: makeHeaders(),
         });
 
         if (canceled) return;
-
-        console.log("EmpLeaveTracker: API response", response?.data);
 
         // handle multiple possible shapes
         const payload = response?.data || {};

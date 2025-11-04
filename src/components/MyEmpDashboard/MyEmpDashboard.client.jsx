@@ -61,7 +61,7 @@ export default function MyEmpDashboard() {
         if (!hasCamera) {
           // no camera — don't prompt
           if (!mounted) return;
-          console.log("No camera found; skipping face registration popup.");
+
           // treat as registered/no-popup needed
           setFaceCheckStatus("registered");
           return;

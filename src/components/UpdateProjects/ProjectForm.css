@@ -793,7 +793,7 @@ input[type="checkbox"]:checked::after {
 .pj-search-box {
   position: relative;
   display: flex;
-  width: 50%;
+  width: 60%;
   margin-bottom: 0.5%;
 }
 

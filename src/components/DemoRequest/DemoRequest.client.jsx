@@ -53,9 +53,7 @@ export default function DemoRequest({ onClose: externalOnClose } = {}) {
     }
   };
 
-  // close modal and navigate home (for header × and Cancel)
   const closeModalAndNavigate = () => {
-    console.log("[DemoRequest] closeModalAndNavigate()");
     setIsOpen(false);
     navigateHome();
   };
@@ -87,7 +85,6 @@ export default function DemoRequest({ onClose: externalOnClose } = {}) {
   // Dismiss alert. If it was a success alert, dispatch event then navigate home.
   const closeAlert = () => {
     const wasSuccess = alertModal.isSuccess;
-    console.log("[DemoRequest] closeAlert() called; wasSuccess =", wasSuccess);
 
     // Close the alert UI immediately
     setAlertModal({
@@ -104,7 +101,6 @@ export default function DemoRequest({ onClose: externalOnClose } = {}) {
         window.dispatchEvent(
           new CustomEvent("demoRequest:submitted", { detail })
         );
-        console.log("[DemoRequest] dispatched demoRequest:submitted", detail);
       } catch (err) {
         console.error(
           "[DemoRequest] failed to dispatch demoRequest:submitted",
@@ -134,7 +130,6 @@ export default function DemoRequest({ onClose: externalOnClose } = {}) {
   const handleSubmit = async (e) => {
     if (e && typeof e.preventDefault === "function") e.preventDefault();
 
-    console.log("[DemoRequest] handleSubmit called", { isSubmitting });
     if (isSubmitting) return;
 
     const err = validate();
@@ -145,9 +140,6 @@ export default function DemoRequest({ onClose: externalOnClose } = {}) {
 
     setIsSubmitting(true);
     try {
-      console.log("[DemoRequest] sending request", {
-        payload: { ...form, messageLength: form.message.length },
-      });
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_BACKEND_URL}/contact`,
         {
@@ -169,12 +161,6 @@ export default function DemoRequest({ onClose: externalOnClose } = {}) {
         showAlert("Unexpected server response.", "Error", false);
         return;
       }
-
-      console.log("[DemoRequest] response", {
-        ok: response.ok,
-        status: response.status,
-        data,
-      });
 
       if (!response.ok) {
         showAlert(
@@ -202,10 +188,6 @@ export default function DemoRequest({ onClose: externalOnClose } = {}) {
         message: "",
         preferredDate: "",
       });
-
-      console.log(
-        "[DemoRequest] success: alert shown (waiting for user dismissal)"
-      );
     } catch (err) {
       console.error("[DemoRequest] request error", err);
       showAlert("An unexpected error occurred.", "Error", false);

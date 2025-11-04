@@ -52,19 +52,18 @@ function ensureDataField(el, prefix = "field") {
 
 export default function BasicTemplateEditor({
   initialHtml = "",
-  onSave = (payload) => console.log("Saved:", payload),
+
   onUploadImage,
 }) {
   const containerRef = useRef(null);
   const innerRef = useRef(null);
   const fileInputRef = useRef(null);
   const [selectedEl, setSelectedEl] = useState(null);
-  const [mode, setMode] = useState("select"); // select | preview
+  const [mode, setMode] = useState("select");
   const [pageBg, setPageBg] = useState("#ffffff");
-  const [editingTableMode, setEditingTableMode] = useState(null); // data-field id of table where single-click edits cells
+  const [editingTableMode, setEditingTableMode] = useState(null);
   const lastRequestedImageTargetRef = useRef(null);
 
-  // a small CSS injection for selection outlines and helpers
   useEffect(() => {
     const style = document.createElement("style");
     style.id = "bte-selected-style";
@@ -82,7 +81,6 @@ export default function BasicTemplateEditor({
     return () => document.getElementById("bte-selected-style")?.remove();
   }, []);
 
-  // Inject HTML into the innerRef (prefer .page element if present)
   useEffect(() => {
     const el = innerRef.current;
     if (!el) return;
@@ -121,7 +119,6 @@ export default function BasicTemplateEditor({
       const parser = new DOMParser();
       const doc = parser.parseFromString(initialHtml, "text/html");
       const page = doc.querySelector(".page") || doc.body;
-      // gather styles from head and inject so template CSS applies inside editor
       const headStyles = Array.from(doc.querySelectorAll("style"))
         .map((s) => s.textContent)
         .join("\n");
@@ -137,25 +134,20 @@ export default function BasicTemplateEditor({
       el.appendChild(pageClone);
       normalizePage(pageClone);
 
-      // make bottom area available so footers aren't overlapped by UI chrome
       if (containerRef.current)
         containerRef.current.style.paddingBottom = "220px";
     } catch (err) {
       el.innerHTML = initialHtml;
     }
 
-    // after insertion, set up editable fields, table editing etc.
     setTimeout(() => {
       setupEditableFields();
       convertTextNodesToEditable();
       ensureTableCellsEditable();
       adjustFooters(true);
     }, 0);
-
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialHtml]);
 
-  // Convert a set of tags to editable if they don't have data-field already
   function convertTextNodesToEditable() {
     const el = innerRef.current;
     if (!el) return;
@@ -199,13 +191,11 @@ export default function BasicTemplateEditor({
     });
   }
 
-  // Turn tbody[data-field] line_items and thead th and table td into individually editable cells
   function ensureTableCellsEditable() {
     const el = innerRef.current;
     if (!el) return;
     const page = el.querySelector(".page") || el;
 
-    // tbody with data-field -> make each cell its own data-field and editable
     Array.from(page.querySelectorAll("tbody[data-field]")).forEach((tbody) => {
       Array.from(tbody.querySelectorAll("tr")).forEach((tr, rIdx) => {
         Array.from(tr.children).forEach((cell, cIdx) => {
@@ -219,13 +209,11 @@ export default function BasicTemplateEditor({
           cell.contentEditable = mode === "select";
           if (!cell.hasAttribute("tabindex"))
             cell.setAttribute("tabindex", "0");
-          // attach dblclick to edit
           attachCellHandlers(cell);
         });
       });
     });
 
-    // thead th
     Array.from(page.querySelectorAll("thead th")).forEach((th, i) => {
       if (!th.getAttribute("data-field")) ensureDataField(th, "th");
       th.classList.add("bte-content-editable");
@@ -236,10 +224,8 @@ export default function BasicTemplateEditor({
       attachCellHandlers(th);
     });
 
-    // tables created by addTable contain marker data-bte-table="true"
     Array.from(page.querySelectorAll("table[data-bte-table='true']")).forEach(
       (table) => {
-        // ensure each td has handlers
         Array.from(table.querySelectorAll("td, th")).forEach((td) => {
           td.classList.add("table-cell");
           attachCellHandlers(td);
@@ -248,12 +234,10 @@ export default function BasicTemplateEditor({
     );
   }
 
-  // attach dblclick handler to cells for editing (idempotent)
   function attachCellHandlers(cell) {
     if (!cell) return;
     if (cell._bteAttached) return;
 
-    // mousedown early stopPropagation when table is in single-click edit mode
     const earlyMouseDown = (ev) => {
       try {
         const table = cell.closest("table[data-bte-table='true']");
@@ -261,7 +245,6 @@ export default function BasicTemplateEditor({
           ?.closest("[data-field]")
           ?.getAttribute("data-field");
         if (editingTableMode && editingTableMode === tableDataField) {
-          // stop ancestor click handlers from stealing focus
           ev.stopPropagation();
         }
       } catch (e) {}
@@ -272,7 +255,6 @@ export default function BasicTemplateEditor({
     const dbl = (ev) => {
       ev.stopPropagation();
       if (mode === "preview") return;
-      // make this cell editable and focus (temporarily)
       cell.contentEditable = true;
       cell.classList.add("table-edit");
       try {
@@ -283,19 +265,16 @@ export default function BasicTemplateEditor({
         range.collapse(false);
         sel.addRange(range);
       } catch (e) {}
-      // on blur commit:
       const onBlur = () => {
         cell.classList.remove("table-edit");
         cell.contentEditable = mode === "select";
         cell.removeEventListener("blur", onBlur);
       };
       cell.addEventListener("blur", onBlur);
-      // focus in next tick to avoid race with other handlers
       setTimeout(() => cell.focus(), 0);
     };
     cell.addEventListener("dblclick", dbl);
 
-    // single-click editing when editingTableMode is set to this table
     const click = (ev) => {
       const table = cell.closest("table[data-bte-table='true']");
       if (!table) return;
@@ -307,14 +286,10 @@ export default function BasicTemplateEditor({
         editingTableMode === tableDataField &&
         mode !== "preview"
       ) {
-        // begin editing this cell
-        // stop propagation so delegated page-click does not steal focus/selection
         ev.stopPropagation();
         cell.contentEditable = true;
         cell.classList.add("table-edit");
-        // keep them editable while editingTableMode is enabled
         const onBlur = () => {
-          // if editingTableMode is active, keep editable; otherwise revert
           if (!editingTableMode || editingTableMode !== tableDataField) {
             cell.contentEditable = mode === "select";
             cell.classList.remove("table-edit");
@@ -327,20 +302,16 @@ export default function BasicTemplateEditor({
     };
     cell.addEventListener("click", click);
 
-    // mark attached
     cell._bteAttached = true;
   }
 
-  // delegated selection & image handling
   function setupEditableFields() {
     const el = innerRef.current;
     if (!el) return;
     const page = el.querySelector(".page") || el;
 
-    // clear previous delegated click/handlers by re-creating page event handlers (simple approach)
     page.onclick = null;
 
-    // ensure all nodes that have data-field are labelled editable
     Array.from(page.querySelectorAll("[data-field]")).forEach((f) => {
       f.classList.add("bte-content-editable");
       const tag = f.tagName.toLowerCase();
@@ -359,9 +330,7 @@ export default function BasicTemplateEditor({
         f.setAttribute("tabindex", "0");
     });
 
-    // make images double-clickable to upload
     Array.from(page.querySelectorAll("img")).forEach((img) => {
-      // ensure wrapper has a data-field
       const container = img.closest("[data-field]") || img.parentElement;
       if (container && !container.getAttribute("data-field"))
         ensureDataField(container, "imgwrap");
@@ -372,12 +341,10 @@ export default function BasicTemplateEditor({
         selectElement(elToSelect);
         openFilePickerForLogo();
       };
-      // avoid multiple attaches: remove then add
       img.ondblclick = null;
       img.addEventListener("dblclick", dbl);
     });
 
-    // delegated click for selecting nearest [data-field]
     page.addEventListener(
       "click",
       function delegated(ev) {
@@ -387,12 +354,10 @@ export default function BasicTemplateEditor({
           return;
         }
         if (mode === "preview") return;
-        // If click originated from a cell and that cell is being edited (editingTableMode), do nothing here
-        // (cells will stopPropagation themselves when appropriate)
+
         ev.stopPropagation();
         ev.preventDefault();
         selectElement(df);
-        // if text, focus and put caret at end
         if (df.getAttribute("data-bte-type") === "text") {
           try {
             df.focus();
@@ -416,7 +381,6 @@ export default function BasicTemplateEditor({
     }
     setSelectedEl(el);
     el.classList && el.classList.add("bte-selected");
-    // if we select a table container, ensure table cells are setup and editingTableMode preserved
     if (el.querySelector && el.querySelector("table[data-bte-table='true']")) {
       ensureTableCellsEditable();
     }
@@ -426,10 +390,9 @@ export default function BasicTemplateEditor({
     if (!selectedEl) return;
     selectedEl.classList && selectedEl.classList.remove("bte-selected");
     setSelectedEl(null);
-    setEditingTableMode((s) => s); // keep editing table mode as-is (no auto-turn-off)
+    setEditingTableMode((s) => s);
   }
 
-  // FOOTER handling: find footer-like nodes and add a spacer so absolute footer doesn't overlap editor chrome
   function adjustFooters(preserveAbsolute = true) {
     const el = innerRef.current;
     if (!el) return;
@@ -503,7 +466,6 @@ export default function BasicTemplateEditor({
     }, 12);
   }
 
-  // IMAGE upload
   function openFilePickerForLogo() {
     if (!fileInputRef.current) {
       const el = document.createElement("input");
@@ -522,7 +484,6 @@ export default function BasicTemplateEditor({
   }
 
   async function handleImageSelected(file) {
-    // pick target: lastRequestedImageTargetRef or selectedEl or try heuristic
     const el = innerRef.current;
     if (!el) return;
     let target =
@@ -585,7 +546,6 @@ export default function BasicTemplateEditor({
     selectElement(target);
   }
 
-  // ADD TABLE and table operations
   function addTable(rows = 3, cols = 4) {
     const wrapper =
       innerRef.current?.querySelector(".page") || innerRef.current;
@@ -599,24 +559,20 @@ export default function BasicTemplateEditor({
       header: true,
       border: true,
     });
-    // mark tbody with a data-field so per-cell data-field generation works
     const tbl = container.querySelector("table");
     if (tbl) {
       const tb = tbl.querySelector("tbody");
       if (tb) tb.setAttribute("data-field", df + "_tbody");
     }
     wrapper.appendChild(container);
-    // run setup to attach handlers and mark cells editable
     setupEditableFields();
     ensureTableCellsEditable();
     selectElement(container);
-    // open table edit in properties panel
     setEditingTableMode(df);
   }
 
   function getSelectedTableContainer() {
     if (!selectedEl) return null;
-    // selectedEl might be cell or table - prefer the container that has data-bte-table
     if (
       selectedEl.getAttribute &&
       selectedEl.getAttribute("data-bte-table") === "true"
@@ -629,11 +585,9 @@ export default function BasicTemplateEditor({
       selectedEl.querySelector &&
       selectedEl.querySelector("table[data-bte-table='true']");
     if (table) return selectedEl;
-    // otherwise, if selectedEl is a table wrapper (container with table inside)
     const tbl =
       selectedEl.closest && selectedEl.closest("table[data-bte-table='true']");
     if (tbl) return tbl.closest("[data-field]") || null;
-    // lastly, try selecting a data-field container that contains a table
     const el = innerRef.current;
     const wrapper = el.querySelector(".page") || el;
     const container = wrapper.querySelector("[data-field^='table_']");
@@ -693,7 +647,6 @@ export default function BasicTemplateEditor({
       table.setAttribute("data-cell-padding", meta.cellPadding);
     if (typeof meta.cellBackground !== "undefined")
       table.setAttribute("data-cell-bg", meta.cellBackground);
-    // apply border/collapse/padding visually
     table.style.borderCollapse = meta.border ? "collapse" : "separate";
     Array.from(table.querySelectorAll("td, th")).forEach((cell) => {
       cell.style.border = meta.border ? "1px solid #e6e9ef" : "none";
@@ -782,7 +735,6 @@ export default function BasicTemplateEditor({
     const table = meta.table;
     const isHeader = !meta.header;
     table.setAttribute("data-header", !!isHeader);
-    // If enabling header and table has at least one row, convert first row cells to <th>
     if (isHeader && table.rows.length > 0) {
       const first = table.rows[0];
       Array.from(first.cells).forEach((cell, idx) => {
@@ -793,7 +745,6 @@ export default function BasicTemplateEditor({
         attachCellHandlers(th);
       });
     } else if (!isHeader && table.rows.length > 0) {
-      // convert th back to td
       const first = table.rows[0];
       Array.from(first.cells).forEach((cell) => {
         if (cell.tagName.toLowerCase() === "th") {
@@ -828,7 +779,6 @@ export default function BasicTemplateEditor({
     selectElement(container);
   }
 
-  // remove selected element
   function deleteSelected() {
     if (!selectedEl) return;
     if (!window.confirm("Remove the selected element from the template?"))
@@ -839,7 +789,6 @@ export default function BasicTemplateEditor({
     if (next && next.nodeType === 1) selectElement(next);
   }
 
-  // save: prefer returning the .page outerHTML if present
   function save() {
     const el = innerRef.current;
     if (!el) return;
@@ -848,13 +797,11 @@ export default function BasicTemplateEditor({
     onSave({ html, savedAt: new Date().toISOString() });
   }
 
-  // toggle preview
   function togglePreview() {
     const wrapper =
       innerRef.current?.querySelector(".page") || innerRef.current;
     if (!wrapper) return;
     if (mode === "preview") {
-      // re-enable editing
       Array.from(wrapper.querySelectorAll("[data-field]")).forEach((f) => {
         if (f.getAttribute("data-bte-type") === "text")
           f.contentEditable = true;
@@ -871,12 +818,10 @@ export default function BasicTemplateEditor({
     }
   }
 
-  // keyboard delete/backspace to clear selected element content or image
   useEffect(() => {
     const onKey = (ev) => {
       if (!selectedEl) return;
       if (ev.key === "Delete" || ev.key === "Backspace") {
-        // if focus is inside an input/textarea or any contentEditable node, allow normal behavior
         const active = document.activeElement;
         if (
           active &&
@@ -902,8 +847,6 @@ export default function BasicTemplateEditor({
     return () => window.removeEventListener("keydown", onKey);
   }, [selectedEl]);
 
-  // ---------- Render ----------
-  // determine selected table container for property panel
   const selectedTableContainer =
     selectedEl &&
     (selectedEl.getAttribute("data-field") || "").startsWith("table_")
@@ -914,7 +857,6 @@ export default function BasicTemplateEditor({
       ? selectedEl
       : null;
 
-  // get table meta for UI state
   const selectedTableMeta = selectedTableContainer
     ? readTableMeta(selectedTableContainer)
     : null;
@@ -924,7 +866,6 @@ export default function BasicTemplateEditor({
       className="cte-root"
       style={{ display: "flex", flexDirection: "column", gap: 12 }}
     >
-      {/* Toolbar */}
       <div
         className="cte-toolbar"
         style={{
@@ -1046,7 +987,6 @@ export default function BasicTemplateEditor({
 
           <button
             onClick={() => {
-              // attempt to auto-select a logo region if nothing selected
               if (!selectedEl) {
                 const auto = findLikelyLogo();
                 if (auto) selectElement(auto);
@@ -1073,7 +1013,6 @@ export default function BasicTemplateEditor({
         </div>
       </div>
 
-      {/* Properties panel */}
       <div
         style={{
           display: "flex",
@@ -1089,7 +1028,6 @@ export default function BasicTemplateEditor({
             Select an element inside the template to edit its properties.
           </div>
         ) : selectedTableContainer ? (
-          // Table-specific controls
           <div
             style={{
               display: "flex",
@@ -1176,7 +1114,6 @@ export default function BasicTemplateEditor({
             </div>
           </div>
         ) : (
-          // generic text/image properties
           <>
             <div style={{ minWidth: 160 }}>
               <div style={{ fontSize: 12 }}>Font</div>
@@ -1264,7 +1201,6 @@ export default function BasicTemplateEditor({
         )}
       </div>
 
-      {/* Canvas */}
       <div style={{ display: "flex", justifyContent: "center", padding: 12 }}>
         <div
           style={{
@@ -1292,7 +1228,6 @@ export default function BasicTemplateEditor({
     </div>
   );
 
-  // ---------------- helper functions for props panel ----------------
   function applyStyleToSelected(prop, value) {
     if (!selectedEl) return;
     selectedEl.style[prop] = value;
@@ -1315,7 +1250,6 @@ export default function BasicTemplateEditor({
     selectedEl.style.fontStyle = cur === "italic" ? "normal" : "italic";
   }
 
-  // rgb->hex helper
   function rgbToHex(rgb) {
     if (!rgb) return "#000000";
     const m = rgb.match(/^rgba?\((\d+),\s*(\d+),\s*(\d+)/i);

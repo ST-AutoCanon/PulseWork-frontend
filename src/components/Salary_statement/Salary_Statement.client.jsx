@@ -357,7 +357,6 @@ const Salary_Statement = () => {
   };
 
   const handleUpload = async () => {
-    console.log("📂 handleUpload() called. File:", file?.name);
     if (!file) {
       setError("❌ Please select a valid file to upload!");
       setTableData([]);
@@ -370,7 +369,6 @@ const Salary_Statement = () => {
       return;
     }
 
-    console.log("🔍 Checking invalidCells:", invalidCells);
     if (invalidCells.size > 0) {
       let errorMessage =
         "❌ Cannot save due to invalid data in the following cells:\n";
@@ -390,14 +388,12 @@ const Salary_Statement = () => {
     try {
       const formData = new FormData();
       formData.append("file", file);
-      console.log("📤 Sending FormData with file:", file.name);
 
       const response = await axios.post(
         `${BACKEND_URL}/salary/upload`,
         formData,
         { headers: { ...headers, "Content-Type": "multipart/form-data" } }
       );
-      console.log("📥 Backend Response:", response.data);
 
       if (response.data.message) {
         const successMessage = response.data.message;
@@ -510,7 +506,7 @@ const Salary_Statement = () => {
         `${BACKEND_URL}/api/salary-statement/${month.toLowerCase()}/${year}`,
         { headers }
       );
-      console.log("Salary statement response:", response.data);
+
       if (response.data && response.data.length > 0) {
         setTableData(response.data);
         setTableHeaders(Object.keys(response.data[0]));
@@ -548,12 +544,12 @@ const Salary_Statement = () => {
     year = selectedYear
   ) => {
     if (!month || !year) return;
-    console.log("Fetching Salary Data for:", month, year);
+
     try {
       const apiUrl = `${BACKEND_URL}/api/salary-statement/${month.toLowerCase()}/${year}`;
-      console.log("API Request URL:", apiUrl);
+
       const response = await axios.get(apiUrl, { headers });
-      console.log("Full API Response:", response.data);
+
       if (
         response.data &&
         response.data.salary_statement &&
@@ -561,7 +557,6 @@ const Salary_Statement = () => {
       ) {
         setSalaryData(response.data.salary_statement);
         setFilteredData(response.data.salary_statement);
-        console.log("Salary Data Set:", response.data.salary_statement);
       } else {
         setSalaryData([]);
         setFilteredData([]);

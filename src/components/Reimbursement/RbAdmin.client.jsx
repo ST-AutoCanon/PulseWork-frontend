@@ -363,7 +363,6 @@ const RbAdmin = () => {
       });
 
       const cd = response.headers["content-disposition"];
-      console.log("Content-Disposition:", cd);
 
       let filename = "";
 

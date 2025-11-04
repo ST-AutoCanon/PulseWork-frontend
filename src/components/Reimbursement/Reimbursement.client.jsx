@@ -616,7 +616,7 @@ const Reimbursement = () => {
           },
         }
       );
-      console.log("Update Response:", response.data);
+
       fetchReimbursements();
       return response.data;
     } catch (error) {

@@ -4,9 +4,6 @@ import React from "react";
 import "./BirthdayCard.css";
 
 const BirthdayCard = ({ name }) => {
-  console.log("🎈 BirthdayCard name:", name);
-
-  // Generate blast pieces dynamically
   const blast = Array.from({ length: 1000 }, (_, i) => (
     <div key={i} className="blast-piece" style={{ "--i": i }} />
   ));

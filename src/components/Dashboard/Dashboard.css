@@ -12,6 +12,8 @@
 .content-container {
   display: flex;
   background: #ddd;
+  background-attachment: fixed;
+  background-size: cover;
   height: 620px;
   overflow-y: auto;
   margin-left: 250px;
@@ -19,7 +21,7 @@
 
 .sidebar {
   width: 250px;
-  height: 610px;
+  height: 620px;
   background-color: #fff;
   overflow-y: auto;
   scrollbar-width: none;

@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Reimbursement — Travel Expenses</title>
+    <style>
+      @page {
+        size: A4;
+        margin: 0;
+      }
+      body {
+        margin: 0;
+        font-family: Arial, Helvetica, sans-serif;
+        color: #222;
+      }
+      .page {
+        width: 210mm;
+        height: 297mm;
+        padding: 20mm;
+        box-sizing: border-box;
+      }
+      .header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 8mm;
+      }
+      .logo {
+        max-width: 120px;
+      }
+      h2 {
+        margin: 0;
+        color: #0b5ed7;
+      }
+      .trip {
+        font-size: 13px;
+        margin-bottom: 6px;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 8px;
+        font-size: 13px;
+      }
+      th,
+      td {
+        border: 1px solid #e6e9ef;
+        padding: 8px;
+      }
+      th {
+        background: #f6f9ff;
+      }
+      .totals {
+        text-align: right;
+        margin-top: 8px;
+        font-weight: 700;
+      }
+      .in-footer {
+        position: absolute;
+        left: 20mm;
+        right: 20mm;
+        bottom: 18mm;
+        color: #666;
+        font-size: 11px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="page" data-template="reimbursement_travel">
+      <div class="header">
+        <div class="logo" data-field="logo">
+          <img src="" alt="logo" style="max-width: 100%" />
+        </div>
+        <div style="text-align: right">
+          <div data-field="company_name">Company Travel Desk</div>
+          <div class="placeholder" data-field="company_contact">
+            Tel · travel@company.com
+          </div>
+        </div>
+      </div>
+
+      <h2>Travel Reimbursement</h2>
+      <div class="trip">
+        <strong>Traveler:</strong>
+        <span data-field="employee_name">Ravi</span> | <strong>Trip:</strong>
+        <span data-field="trip_route">City A -> City B</span> |
+        <strong>Dates:</strong>
+        <span data-field="trip_dates">01-03 Jan 2025</span>
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Date</th>
+            <th>Type</th>
+            <th>From</th>
+            <th>To</th>
+            <th>Cost</th>
+          </tr>
+        </thead>
+        <tbody data-field="line_items">
+          <tr>
+            <td>1</td>
+            <td>2025-01-02</td>
+            <td>Flight</td>
+            <td>City A</td>
+            <td>City B</td>
+            <td data-field="amount_1">₹ 7,000</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="totals">
+        Total Claim: <span data-field="total_amount">₹ 7,000</span>
+      </div>
+
+      <div style="margin-top: 12px">
+        <strong>Itinerary / Purpose:</strong>
+        <div data-field="purpose" class="placeholder">
+          Business meeting details...
+        </div>
+      </div>
+
+      <div
+        style="display: flex; justify-content: space-between; margin-top: 18mm"
+      >
+        <div>
+          <strong>Employee</strong>
+          <div
+            style="margin-top: 18px; border-top: 1px solid #ddd; width: 200px"
+          ></div>
+        </div>
+        <div>
+          <strong>Approver</strong>
+          <div
+            style="margin-top: 18px; border-top: 1px solid #ddd; width: 200px"
+          ></div>
+        </div>
+      </div>
+
+      <div class="in-footer">
+        Attach boarding pass + invoices for hotel / transport receipts.
+      </div>
+    </div>
+  </body>
+</html>

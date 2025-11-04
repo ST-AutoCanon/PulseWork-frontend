@@ -187,7 +187,7 @@ const AddDepartment = () => {
                 onClick={() => setShowPopup(false)}
               />
             </div>
-            {message && <p className="error-message">{message}</p>}
+            {message && <p className="dp-error-message">{message}</p>}
             <form
               className="dp-form"
               onSubmit={handleSubmit}

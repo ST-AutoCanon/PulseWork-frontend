@@ -105,13 +105,6 @@ const EmployeeQuery = () => {
 
     socketRef.current = socket;
 
-    const onConnect = () =>
-      console.log("[socket] connected", socket.id, "userId=", employeeId);
-    const onDisconnect = (reason) =>
-      console.log("[socket] disconnected", reason);
-    const onConnectError = (err) =>
-      console.error("[socket] connect_error", err);
-
     socket.on("connect", onConnect);
     socket.on("disconnect", onDisconnect);
     socket.on("connect_error", onConnectError);

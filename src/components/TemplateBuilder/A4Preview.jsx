@@ -1,6 +1,5 @@
-// A4Preview.jsx
 import React from "react";
-import styles from "./UploadScan.module.css"; // re-use preview styles
+import styles from "./UploadScan.module.css";
 
 export default function A4Preview({ headerUrl, footerUrl, width = 420 }) {
   const a4Ratio = 297 / 210;

@@ -7,7 +7,7 @@
 }
 
 .sidebar ul {
-  background-color: #fff;
+  background: #fff;
   list-style-type: none;
   padding: 0;
 }
@@ -23,13 +23,8 @@
   transition: background-color 0.3s;
 }
 
-.sidebar li.active,
 .sidebar li:hover {
-  background: #ddd;
-  background-attachment: fixed;
-  background-size: cover;
-  color: #000;
-  font-weight: 700;
+  background-color: #ddd;
 }
 
 .sidebar .icon {
@@ -50,6 +45,12 @@
   color: #000;
   padding-bottom: 0;
   line-height: 1;
+}
+
+.sidebar li.active {
+  background: #ddd;
+  color: #000;
+  font-weight: 700;
 }
 
 .sidebar li.active .icon {
@@ -181,6 +182,52 @@
   font-size: 18px;
   cursor: pointer;
   color: black;
+}
+.task-choice-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;
+}
+
+.task-choice-box {
+  background: #fff;
+  padding: 20px;
+  width: 300px;
+  border-radius: 10px;
+  text-align: center;
+}
+
+.task-choice-btn {
+  width: 100%;
+  padding: 10px;
+  border-radius: 8px;
+  margin: 8px 0;
+  background: gray;
+  color: #fff;
+  border: none;
+  cursor: pointer;
+}
+
+.task-choice-btn:hover {
+  opacity: 0.85;
+}
+
+.close-btn {
+  margin-top: 8px;
+  background: #aaa;
+  color: #fff;
+  width: 100%;
+  padding: 8px;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
 }
 
 @keyframes popUp {

@@ -26,6 +26,9 @@ import Chat from "../Chat/ChatPage.client";
 import EmployeeLogin from "../EmployeeLogin/EmployeeLogin.client";
 import CreateOrganization from "../CreateOrganization/CreateOrganization.client";
 import TemplateBuilder from "../TemplateBuilder/TemplateBuilder.client";
+import TaskManagement from "../TaskManagement/TaskManagement.client";
+import TaskManagementEmployee from "../TaskManagementEmployee/EmpTaskManagement.client";
+import TaskManagementAdmin from "../TaskManagementAdmin/TaskManagementAdmin.client";
 
 const Sidebar = ({ setActiveContent }) => {
   const { user, hydrated } = useAuth();
@@ -34,6 +37,9 @@ const Sidebar = ({ setActiveContent }) => {
   const [showProfile, setShowProfile] = useState(false);
   const [activeNav, setActiveNav] = useState("/dashboard");
   const [showMobileMenu, setShowMobileMenu] = useState(false);
+
+  // ✅ NEW STATE FOR SUPERVISOR CHOICE
+  const [showTaskChoice, setShowTaskChoice] = useState(false);
 
   const defaultMenuItems = useMemo(
     () => ({
@@ -88,6 +94,18 @@ const Sidebar = ({ setActiveContent }) => {
       "/assets": () => <Assets />,
       "/vendors": () => <Vendors />,
       "/EmployeeLogin": () => <EmployeeLogin />,
+
+      // ✅ CHANGED ONLY THIS PART
+      "/TaskManagement": (role) => {
+        if (role === "Admin") return <TaskManagementAdmin />;
+
+        if (role === "Supervisor") {
+          setShowTaskChoice(true); // show selection
+          return null; // prevent auto load
+        }
+
+        return <TaskManagementEmployee />;
+      },
     }),
     []
   );
@@ -129,7 +147,7 @@ const Sidebar = ({ setActiveContent }) => {
     const resolver = pathToComponent[item.path];
     if (resolver) {
       const comp = resolver(role);
-      setActiveContent(comp);
+      if (comp) setActiveContent(comp);
       return;
     }
 
@@ -142,12 +160,52 @@ const Sidebar = ({ setActiveContent }) => {
 
     if (MdIcons[iconName]) return MdIcons[iconName];
     if (MdIcons[iconName.trim()]) return MdIcons[iconName.trim()];
+
     if (customIconMap[iconName]) return customIconMap[iconName];
+
     return MdIcons.MdOutlineDashboard;
   };
 
+  // ✅ SUPERVISOR POPUP UI
+  const SupervisorTaskChoice = () => (
+    <div
+      className="task-choice-overlay"
+      onClick={() => setShowTaskChoice(false)}
+    >
+      <div className="task-choice-box" onClick={(e) => e.stopPropagation()}>
+        <h3>Select View</h3>
+
+        <button
+          className="task-choice-btn"
+          onClick={() => {
+            setActiveContent(<TaskManagement />);
+            setShowTaskChoice(false);
+          }}
+        >
+          Manage Tasks (Supervisor)
+        </button>
+
+        <button
+          className="task-choice-btn"
+          onClick={() => {
+            setActiveContent(<TaskManagementEmployee />);
+            setShowTaskChoice(false);
+          }}
+        >
+          My Tasks (Employee View)
+        </button>
+
+        <button className="close-btn" onClick={() => setShowTaskChoice(false)}>
+          Close
+        </button>
+      </div>
+    </div>
+  );
+
   return (
     <>
+      {showTaskChoice && <SupervisorTaskChoice />}
+
       <div className="sidebar">
         {user?.role !== "Admin" && user?.role !== "SuperAdmin" && (
           <div className="view-profile">
@@ -270,7 +328,6 @@ const Sidebar = ({ setActiveContent }) => {
                         if (e.key === "Enter") handleMenuClick(item);
                       }}
                     >
-                      {/* icon above, label below */}
                       <IconComponent className="icon" />
                       <span className="label">{item.label}</span>
                     </li>

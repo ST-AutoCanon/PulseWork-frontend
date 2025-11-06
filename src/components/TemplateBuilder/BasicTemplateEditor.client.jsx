@@ -1,45 +1,13 @@
-import React, { useEffect, useRef, useState } from "react";
-import "./CustomTemplateEditor.css";
+"use client";
 
-const createTableHtml = (rows = 3, cols = 4, opts = {}) => {
-  const {
-    header = true,
-    border = true,
-    cellPadding = 6,
-    cellBackground = "transparent",
-  } = opts;
-
-  let html = `<table class="bte-table" style="width:100%; border-collapse:${
-    border ? "collapse" : "separate"
-  }; table-layout:fixed;" data-bte-table='true' data-rows="${rows}" data-cols="${cols}" data-header="${header}" data-border="${border}" data-cell-padding="${cellPadding}" data-cell-bg="${cellBackground}">`;
-
-  if (header) {
-    html += "<thead><tr>";
-    for (let c = 0; c < cols; c++) {
-      html += `<th class="table-cell" style="border:${
-        border ? "1px solid #e6e9ef" : "none"
-      }; padding:${cellPadding}px; vertical-align:top; min-height:20px;">Header</th>`;
-    }
-    html += "</tr></thead>";
-  }
-
-  html += "<tbody>";
-  const startRow = header ? 1 : 0;
-  const bodyRows = header ? rows - 1 : rows;
-  for (let r = 0; r < bodyRows; r++) {
-    html += "<tr>";
-    for (let c = 0; c < cols; c++) {
-      html += `<td class="table-cell" style="border:${
-        border ? "1px solid #e6e9ef" : "none"
-      }; padding:${cellPadding}px; vertical-align:top; min-height:20px;">${""}</td>`;
-    }
-    html += "</tr>";
-  }
-  html += "</tbody>";
-
-  html += "</table>";
-  return html;
-};
+import React, {
+  useEffect,
+  useRef,
+  useState,
+  forwardRef,
+  useImperativeHandle,
+} from "react";
+import styles from "./CustomTemplateEditor.module.css";
 
 function ensureDataField(el, prefix = "field") {
   if (!el.getAttribute("data-field")) {
@@ -50,11 +18,47 @@ function ensureDataField(el, prefix = "field") {
   }
 }
 
-export default function BasicTemplateEditor({
-  initialHtml = "",
+const createTableHtml = (rows = 3, cols = 4, opts = {}) => {
+  const {
+    header = true,
+    border = true,
+    cellPadding = 6,
+    cellBackground = "transparent",
+  } = opts;
+  let html = `<table class="bte-table" style="width:100%; border-collapse:${
+    border ? "collapse" : "separate"
+  }; table-layout:fixed;" data-bte-table='true' data-rows="${rows}" data-cols="${cols}" data-header="${header}" data-border="${border}" data-cell-padding="${cellPadding}" data-cell-bg="${cellBackground}">`;
+  if (header) {
+    html += "<thead><tr>";
+    for (let c = 0; c < cols; c++) {
+      html += `<th class="table-cell" style="border:${
+        border ? "1px solid #e6e9ef" : "none"
+      }; padding:${cellPadding}px; vertical-align:top; min-height:20px;">Header</th>`;
+    }
+    html += "</tr></thead>";
+  }
+  html += "<tbody>";
+  const bodyRows = header ? rows - 1 : rows;
+  for (let r = 0; r < bodyRows; r++) {
+    html += "<tr>";
+    for (let c = 0; c < cols; c++) {
+      html += `<td class="table-cell" style="border:${
+        border ? "1px solid #e6e9ef" : "none"
+      }; padding:${cellPadding}px; vertical-align:top; min-height:20px;"></td>`;
+    }
+    html += "</tr>";
+  }
+  html += "</tbody></table>";
+  return html;
+};
 
-  onUploadImage,
-}) {
+const BasicTemplateEditor = forwardRef(function BasicTemplateEditor(
+  { initialHtml = "", onUploadImage, canvasWidthPx = 794 },
+  ref
+) {
+  const A4_RATIO = 297 / 210;
+  const canvasHeightPx = Math.round(canvasWidthPx * A4_RATIO);
+
   const containerRef = useRef(null);
   const innerRef = useRef(null);
   const fileInputRef = useRef(null);
@@ -76,10 +80,25 @@ export default function BasicTemplateEditor({
       .bte-table td:focus { outline: 1px dashed rgba(0,0,0,0.12); }
       .table-edit { outline: none; }
       .table-cell { min-height:16px; pointer-events:auto; cursor:text; }
+      .page { box-sizing: border-box; } 
     `;
     document.head.appendChild(style);
     return () => document.getElementById("bte-selected-style")?.remove();
   }, []);
+
+  useEffect(() => {
+    const id = "bte-forced-size";
+    const existing = document.getElementById(id);
+    if (existing) existing.remove();
+    const forced = document.createElement("style");
+    forced.id = id;
+    forced.textContent = `
+      .page { width: ${canvasWidthPx}px !important; height: ${canvasHeightPx}px !important; max-width: ${canvasWidthPx}px !important; min-width: ${canvasWidthPx}px !important; }
+      .page * { box-sizing: border-box; }
+    `;
+    document.head.appendChild(forced);
+    return () => document.getElementById(id)?.remove();
+  }, [canvasWidthPx, canvasHeightPx]);
 
   useEffect(() => {
     const el = innerRef.current;
@@ -88,15 +107,11 @@ export default function BasicTemplateEditor({
 
     function normalizePage(pageEl) {
       if (!pageEl) return;
-      const inlineWidth =
-        pageEl.style.width || pageEl.getAttribute("width") || "";
-      if (!inlineWidth) {
-        pageEl.style.width = "100%";
-        pageEl.style.maxWidth = "900px";
-        pageEl.style.margin = "0 auto";
-      } else {
-        pageEl.style.margin = pageEl.style.margin || "0 auto";
-      }
+      pageEl.style.width = `${canvasWidthPx}px`;
+      pageEl.style.height = `${canvasHeightPx}px`;
+      pageEl.style.maxWidth = `${canvasWidthPx}px`;
+      pageEl.style.minWidth = `${canvasWidthPx}px`;
+      pageEl.style.margin = "0 auto";
       pageEl.style.boxSizing = "border-box";
       pageEl.style.position = pageEl.style.position || "relative";
     }
@@ -104,14 +119,16 @@ export default function BasicTemplateEditor({
     if (!initialHtml || !initialHtml.trim()) {
       const page = document.createElement("div");
       page.className = "page";
-      page.style.width = "100%";
-      page.style.minHeight = "640px";
+      page.style.width = `${canvasWidthPx}px`;
+      page.style.height = `${canvasHeightPx}px`;
       page.style.position = "relative";
       page.style.boxSizing = "border-box";
       el.appendChild(page);
       normalizePage(page);
       setupEditableFields();
       adjustFooters(true);
+      if (containerRef.current)
+        containerRef.current.style.paddingBottom = "20px";
       return;
     }
 
@@ -122,20 +139,16 @@ export default function BasicTemplateEditor({
       const headStyles = Array.from(doc.querySelectorAll("style"))
         .map((s) => s.textContent)
         .join("\n");
-
       const pageClone = page.cloneNode(true);
-
       if (headStyles) {
         const s = document.createElement("style");
         s.textContent = headStyles;
         el.appendChild(s);
       }
-
       el.appendChild(pageClone);
       normalizePage(pageClone);
-
       if (containerRef.current)
-        containerRef.current.style.paddingBottom = "220px";
+        containerRef.current.style.paddingBottom = "20px";
     } catch (err) {
       el.innerHTML = initialHtml;
     }
@@ -146,7 +159,7 @@ export default function BasicTemplateEditor({
       ensureTableCellsEditable();
       adjustFooters(true);
     }, 0);
-  }, [initialHtml]);
+  }, [initialHtml, canvasWidthPx]);
 
   function convertTextNodesToEditable() {
     const el = innerRef.current;
@@ -249,7 +262,6 @@ export default function BasicTemplateEditor({
         }
       } catch (e) {}
     };
-
     cell.addEventListener("mousedown", earlyMouseDown);
 
     const dbl = (ev) => {
@@ -309,7 +321,6 @@ export default function BasicTemplateEditor({
     const el = innerRef.current;
     if (!el) return;
     const page = el.querySelector(".page") || el;
-
     page.onclick = null;
 
     Array.from(page.querySelectorAll("[data-field]")).forEach((f) => {
@@ -354,7 +365,6 @@ export default function BasicTemplateEditor({
           return;
         }
         if (mode === "preview") return;
-
         ev.stopPropagation();
         ev.preventDefault();
         selectElement(df);
@@ -794,7 +804,10 @@ export default function BasicTemplateEditor({
     if (!el) return;
     const page = el.querySelector(".page");
     const html = page ? page.outerHTML : el.innerHTML;
-    onSave({ html, savedAt: new Date().toISOString() });
+    if (typeof onSave === "function") {
+      onSave({ html, savedAt: new Date().toISOString(), meta: {} });
+    }
+    return { html, savedAt: new Date().toISOString(), meta: {} };
   }
 
   function togglePreview() {
@@ -856,377 +869,9 @@ export default function BasicTemplateEditor({
         selectedEl.querySelector("table[data-bte-table='true']")
       ? selectedEl
       : null;
-
   const selectedTableMeta = selectedTableContainer
     ? readTableMeta(selectedTableContainer)
     : null;
-
-  return (
-    <div
-      className="cte-root"
-      style={{ display: "flex", flexDirection: "column", gap: 12 }}
-    >
-      <div
-        className="cte-toolbar"
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-        }}
-      >
-        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-          <button
-            className={mode === "select" ? "active" : ""}
-            onClick={() => setMode("select")}
-          >
-            Select/Edit
-          </button>
-          <button
-            className={mode === "preview" ? "active" : ""}
-            onClick={togglePreview}
-          >
-            {mode === "preview" ? "Exit Preview" : "Preview"}
-          </button>
-
-          <div
-            style={{
-              display: "flex",
-              gap: 6,
-              alignItems: "center",
-              marginLeft: 12,
-            }}
-          >
-            <div style={{ fontSize: 12 }}>Page BG</div>
-            <input
-              type="color"
-              value={pageBg}
-              onChange={(e) => {
-                setPageBg(e.target.value);
-                const wrapper =
-                  innerRef.current?.querySelector(".page") || innerRef.current;
-                if (wrapper) wrapper.style.background = e.target.value;
-              }}
-              title="Set page background"
-            />
-            <button
-              onClick={() => {
-                setPageBg("transparent");
-                const wrapper =
-                  innerRef.current?.querySelector(".page") || innerRef.current;
-                if (wrapper) wrapper.style.background = "transparent";
-              }}
-            >
-              Clear BG
-            </button>
-          </div>
-        </div>
-
-        <div>
-          <button
-            onClick={() => {
-              const wrapper =
-                innerRef.current?.querySelector(".page") || innerRef.current;
-              if (!wrapper) return;
-              const div = document.createElement("div");
-              div.setAttribute("data-field", "custom_text_" + Date.now());
-              div.className = "bte-content-editable";
-              div.contentEditable = true;
-              div.textContent = "New text";
-              div.style.padding = "4px";
-              wrapper.appendChild(div);
-              setupEditableFields();
-              selectElement(div);
-            }}
-          >
-            Add Text
-          </button>
-
-          <button
-            onClick={() => {
-              const wrapper =
-                innerRef.current?.querySelector(".page") || innerRef.current;
-              if (!wrapper) return;
-              const span = document.createElement("span");
-              span.setAttribute(
-                "data-field",
-                "custom_placeholder_" + Date.now()
-              );
-              span.className = "bte-content-editable placeholder";
-              span.contentEditable = true;
-              span.textContent = "[[FIELD]]";
-              wrapper.appendChild(span);
-              setupEditableFields();
-              selectElement(span);
-            }}
-          >
-            Add Field
-          </button>
-
-          <button
-            onClick={() => {
-              const wrapper =
-                innerRef.current?.querySelector(".page") || innerRef.current;
-              if (!wrapper) return;
-              const container = document.createElement("div");
-              container.setAttribute("data-field", "logo_" + Date.now());
-              container.style.textAlign = "right";
-              const img = document.createElement("img");
-              img.alt = "logo";
-              img.style.maxWidth = "120px";
-              img.style.height = "auto";
-              container.appendChild(img);
-              wrapper.appendChild(container);
-              setupEditableFields();
-              selectElement(container);
-              lastRequestedImageTargetRef.current = container;
-              openFilePickerForLogo();
-            }}
-          >
-            Add Logo
-          </button>
-
-          <button
-            onClick={() => {
-              if (!selectedEl) {
-                const auto = findLikelyLogo();
-                if (auto) selectElement(auto);
-              }
-              if (!selectedEl) return alert("Select an element first");
-              if (selectedEl.getAttribute("data-bte-type") === "image") {
-                lastRequestedImageTargetRef.current = selectedEl;
-                openFilePickerForLogo();
-              } else {
-                alert("Selected element is not an image container");
-              }
-            }}
-          >
-            Upload Logo
-          </button>
-
-          <button onClick={() => deleteSelected()} disabled={!selectedEl}>
-            Delete
-          </button>
-
-          <button onClick={() => addTable(3, 4)}>Add Table</button>
-
-          <button onClick={save}>Save</button>
-        </div>
-      </div>
-
-      <div
-        style={{
-          display: "flex",
-          gap: 12,
-          alignItems: "center",
-          padding: "8px 12px",
-          border: "1px solid #eee",
-          borderRadius: 6,
-        }}
-      >
-        {!selectedEl ? (
-          <div style={{ color: "#6b7280" }}>
-            Select an element inside the template to edit its properties.
-          </div>
-        ) : selectedTableContainer ? (
-          <div
-            style={{
-              display: "flex",
-              gap: 12,
-              alignItems: "center",
-              width: "100%",
-            }}
-          >
-            <div style={{ minWidth: 140 }}>
-              <div style={{ fontSize: 12 }}>Table rows / cols</div>
-              <div style={{ display: "flex", gap: 8 }}>
-                <button onClick={() => addTableRow(selectedTableContainer)}>
-                  + Row
-                </button>
-                <button onClick={() => removeTableRow(selectedTableContainer)}>
-                  - Row
-                </button>
-                <button onClick={() => addTableCol(selectedTableContainer)}>
-                  + Col
-                </button>
-                <button onClick={() => removeTableCol(selectedTableContainer)}>
-                  - Col
-                </button>
-              </div>
-            </div>
-
-            <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-              <label>
-                <input
-                  type="checkbox"
-                  checked={!!(selectedTableMeta && selectedTableMeta.header)}
-                  onChange={() => toggleTableHeader(selectedTableContainer)}
-                />{" "}
-                Header
-              </label>
-              <label>
-                <input
-                  type="checkbox"
-                  checked={!!(selectedTableMeta && selectedTableMeta.border)}
-                  onChange={() => toggleTableBorder(selectedTableContainer)}
-                />{" "}
-                Border
-              </label>
-            </div>
-
-            <div>
-              <div style={{ fontSize: 12 }}>Cell BG</div>
-              <input
-                type="color"
-                value={
-                  (selectedTableMeta && selectedTableMeta.cellBg) || "#ffffff"
-                }
-                onChange={(e) =>
-                  setTableCellBackground(selectedTableContainer, e.target.value)
-                }
-              />
-            </div>
-
-            <div
-              style={{
-                marginLeft: "auto",
-                display: "flex",
-                gap: 12,
-                alignItems: "center",
-              }}
-            >
-              <label>
-                <input
-                  type="checkbox"
-                  checked={
-                    editingTableMode ===
-                    selectedTableContainer.getAttribute("data-field")
-                  }
-                  onChange={(e) =>
-                    setEditingTableMode(
-                      e.target.checked
-                        ? selectedTableContainer.getAttribute("data-field")
-                        : null
-                    )
-                  }
-                />{" "}
-                Edit Cells (single click)
-              </label>
-            </div>
-          </div>
-        ) : (
-          <>
-            <div style={{ minWidth: 160 }}>
-              <div style={{ fontSize: 12 }}>Font</div>
-              <select
-                value={(selectedEl && selectedEl.style.fontFamily) || ""}
-                onChange={(e) =>
-                  applyStyleToSelected("fontFamily", e.target.value)
-                }
-              >
-                <option value="">(inherited)</option>
-                <option value="Arial, sans-serif">Arial</option>
-                <option value="Helvetica, sans-serif">Helvetica</option>
-                <option value="'Times New Roman', serif">Times</option>
-                <option value="'Roboto', sans-serif">Roboto</option>
-                <option value="'Montserrat', sans-serif">Montserrat</option>
-              </select>
-            </div>
-
-            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-              <div>
-                <div style={{ fontSize: 12 }}>Size</div>
-                <input
-                  type="number"
-                  defaultValue={parseInt(
-                    (selectedEl &&
-                      (selectedEl.style.fontSize ||
-                        window.getComputedStyle(selectedEl).fontSize)) ||
-                      "14px",
-                    10
-                  )}
-                  onBlur={(e) =>
-                    applyStyleToSelected("fontSize", `${e.target.value}px`)
-                  }
-                  style={{ width: 72 }}
-                />
-              </div>
-
-              <div>
-                <div style={{ fontSize: 12 }}>Color</div>
-                <input
-                  type="color"
-                  defaultValue={rgbToHex(
-                    window.getComputedStyle(selectedEl).color
-                  )}
-                  onChange={(e) =>
-                    applyStyleToSelected("color", e.target.value)
-                  }
-                />
-              </div>
-
-              <div style={{ display: "flex", gap: 8 }}>
-                <button onClick={() => toggleBoldSelected()}>
-                  {window.getComputedStyle(selectedEl).fontWeight === "700" ||
-                  selectedEl.style.fontWeight === "700"
-                    ? "Unbold"
-                    : "Bold"}
-                </button>
-                <button onClick={() => toggleItalicSelected()}>
-                  {window.getComputedStyle(selectedEl).fontStyle === "italic" ||
-                  selectedEl.style.fontStyle === "italic"
-                    ? "Unitalic"
-                    : "Italic"}
-                </button>
-              </div>
-
-              <div>
-                <div style={{ fontSize: 12 }}>Align</div>
-                <select
-                  defaultValue={
-                    window.getComputedStyle(selectedEl).textAlign || "left"
-                  }
-                  onChange={(e) =>
-                    applyStyleToSelected("textAlign", e.target.value)
-                  }
-                >
-                  <option value="">(inherited)</option>
-                  <option value="left">Left</option>
-                  <option value="center">Center</option>
-                  <option value="right">Right</option>
-                  <option value="justify">Justify</option>
-                </select>
-              </div>
-            </div>
-          </>
-        )}
-      </div>
-
-      <div style={{ display: "flex", justifyContent: "center", padding: 12 }}>
-        <div
-          style={{
-            width: "100%",
-            maxWidth: 900,
-            border: "1px solid #e5e7eb",
-            padding: 8,
-            background: "#fff",
-            boxShadow: "0 2px 8px rgba(0,0,0,0.06)",
-          }}
-        >
-          <div
-            ref={containerRef}
-            style={{
-              minHeight: 640,
-              padding: 12,
-              background: pageBg,
-              paddingBottom: 220,
-            }}
-          >
-            <div ref={innerRef} style={{ width: "100%", minHeight: 640 }} />
-          </div>
-        </div>
-      </div>
-    </div>
-  );
 
   function applyStyleToSelected(prop, value) {
     if (!selectedEl) return;
@@ -1259,4 +904,114 @@ export default function BasicTemplateEditor({
       b = parseInt(m[3], 10);
     return "#" + [r, g, b].map((x) => x.toString(16).padStart(2, "0")).join("");
   }
-}
+
+  useImperativeHandle(ref, () => ({
+    addText: () => {
+      const wrapper =
+        innerRef.current?.querySelector(".page") || innerRef.current;
+      if (!wrapper) return;
+      const div = document.createElement("div");
+      div.setAttribute("data-field", "custom_text_" + Date.now());
+      div.className = "bte-content-editable";
+      div.contentEditable = true;
+      div.textContent = "New text";
+      div.style.padding = "4px";
+      wrapper.appendChild(div);
+      setupEditableFields();
+      selectElement(div);
+    },
+    addField: () => {
+      const wrapper =
+        innerRef.current?.querySelector(".page") || innerRef.current;
+      if (!wrapper) return;
+      const span = document.createElement("span");
+      span.setAttribute("data-field", "custom_placeholder_" + Date.now());
+      span.className = "bte-content-editable placeholder";
+      span.contentEditable = true;
+      span.textContent = "[[FIELD]]";
+      wrapper.appendChild(span);
+      setupEditableFields();
+      selectElement(span);
+    },
+    addLogo: () => {
+      const wrapper =
+        innerRef.current?.querySelector(".page") || innerRef.current;
+      if (!wrapper) return;
+      const container = document.createElement("div");
+      container.setAttribute("data-field", "logo_" + Date.now());
+      container.style.textAlign = "right";
+      const img = document.createElement("img");
+      img.alt = "logo";
+      img.style.maxWidth = "120px";
+      img.style.height = "auto";
+      container.appendChild(img);
+      wrapper.appendChild(container);
+      setupEditableFields();
+      selectElement(container);
+      lastRequestedImageTargetRef.current = container;
+      openFilePickerForLogo();
+    },
+    addTable: (r = 3, c = 4) => addTable(r, c),
+    togglePreview: () => togglePreview(),
+    deleteSelected: () => deleteSelected(),
+    getHtml: () => {
+      const el = innerRef.current;
+      if (!el) return "";
+      const page = el.querySelector(".page");
+      return page ? page.outerHTML : el.innerHTML;
+    },
+    getData: () => {
+      const el = innerRef.current;
+      if (!el) return null;
+      const page = el.querySelector(".page");
+      const html = page ? page.outerHTML : el.innerHTML;
+      return { html, meta: { savedAt: new Date().toISOString() } };
+    },
+  }));
+
+  return (
+    <div
+      className={styles["cte-root"]}
+      style={{ display: "flex", flexDirection: "column", gap: 12 }}
+    >
+      <div className={styles["cte-toolbar"]} style={{ display: "none" }} />
+
+      <div style={{ display: "flex", justifyContent: "center" }}>
+        <div
+          style={{
+            width: "100%",
+            maxWidth: canvasWidthPx + 40,
+            border: "1px solid #e5e7eb",
+            padding: 0,
+            background: "#fff",
+            boxShadow: "0 2px 8px rgba(0,0,0,0.06)",
+          }}
+        >
+          <div
+            ref={containerRef}
+            style={{
+              minHeight: canvasHeightPx,
+              padding: 0,
+              background: pageBg,
+              paddingBottom: 20,
+              display: "flex",
+              justifyContent: "center",
+            }}
+          >
+            <div
+              ref={innerRef}
+              style={{
+                width: `${canvasWidthPx}px`,
+                height: `${canvasHeightPx}px`,
+                minHeight: canvasHeightPx,
+                background: "#fff",
+              }}
+            />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+});
+
+export default BasicTemplateEditor;

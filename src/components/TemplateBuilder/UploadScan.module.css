@@ -15,13 +15,13 @@
 }
 
 .fileRow {
-  display: flex;
-  gap: 12px;
+  margin: 0;
 }
 
 .fileBox {
   flex: 1;
   padding: 12px;
+  margin: 5% 0;
   border-radius: 10px;
   border: 1px solid #e6e9eb;
   background: linear-gradient(180deg, #ffffff, #fbfdff);
@@ -126,11 +126,8 @@
   align-items: stretch;
 }
 
-/* header / footer slot sizes (adjust percentages for visual balance) */
 .headerSlot {
-  padding: 8px;
   min-height: 40px;
-  max-height: 30%;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -139,9 +136,7 @@
 }
 
 .footerSlot {
-  padding: 8px;
   min-height: 40px;
-  max-height: 30%;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -160,14 +155,6 @@
 .pageRuler {
   font-size: 11px;
   color: #9aa5aa;
-}
-
-/* image inside slot */
-.slotImg {
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-  display: block;
 }
 
 /* placeholder text */
@@ -247,4 +234,28 @@
 .error {
   color: #c0392b;
   font-size: 13px;
+}
+
+.propsSelectSmall {
+  padding: 6px 8px;
+  border-radius: 8px;
+  border: 1px solid #e6e9eb;
+  background: white;
+  font-size: 13px;
+}
+
+.slotImg {
+  width: 100%;
+  height: 100%;
+  display: block;
+  transform-origin: center center;
+  cursor: grab;
+  transition: transform 0.06s linear;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+/* when user is dragging the img we set grabbing via inline style, but make an alternate */
+.slotImg:active {
+  cursor: grabbing;
 }

@@ -3,15 +3,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import styles from "./UploadScan.module.css";
 
-/**
- * Props:
- * - orgId (required to save)
- * - backendUrl, apiKey
- * - onSaved(response)
- * - a4PreviewWidth
- * - onPreviewChange({ headerUrl, footerUrl, headerFile, footerFile }) called whenever preview changes
- * - controlsOnly (boolean) when true only render controls (no built-in preview area)
- */
 export default function UploadScan({
   orgId,
   backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "",
@@ -52,12 +43,10 @@ export default function UploadScan({
     }
   }, [footerFile]);
 
-  // notify parent about preview changes
   useEffect(() => {
     if (typeof onPreviewChange === "function") {
       onPreviewChange({ headerUrl, footerUrl, headerFile, footerFile });
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [headerUrl, footerUrl, headerFile, footerFile]);
 
   const a4Ratio = 297 / 210;
@@ -124,8 +113,10 @@ export default function UploadScan({
         throw new Error(msg);
       }
 
-      if (onSaved) onSaved(data);
-      // reset
+      // Success: notify parent that save finished (no template payload)
+      if (typeof onSaved === "function") onSaved();
+
+      // reset UI
       setHeaderFile(null);
       setFooterFile(null);
       setSaveName("");
@@ -139,7 +130,6 @@ export default function UploadScan({
     }
   }
 
-  // Controls block (left panel)
   const controls = (
     <>
       <div className={styles.fileRow}>
@@ -224,7 +214,6 @@ export default function UploadScan({
     </>
   );
 
-  // Preview block (can be disabled by controlsOnly)
   const previewBlock = (
     <div className={styles.previewArea}>
       <div
@@ -271,13 +260,10 @@ export default function UploadScan({
 
   return (
     <div className={styles.uploadWrap}>
-      {/* controls always included so left-panel can render them */}
       <div className={styles.controls}>{controls}</div>
 
-      {/* if not controlsOnly render the preview inline (used when UploadScan used standalone) */}
       {!controlsOnly && previewBlock}
 
-      {/* Save name modal (works same regardless of controlsOnly) */}
       {showNamePrompt && (
         <div className={styles.modalBackdrop} role="dialog" aria-modal="true">
           <div className={styles.modal}>

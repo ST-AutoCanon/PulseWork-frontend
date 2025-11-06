@@ -1,9 +1,8 @@
-// Modal.client.jsx
 "use client";
 
 import React, { useEffect, useRef } from "react";
 import ReactDOM from "react-dom";
-import "./Modal.css"; // keep your existing CSS or convert to module if preferred
+import "./Modal.css";
 
 export default function Modal({
   className = "",
@@ -21,26 +20,21 @@ export default function Modal({
   useEffect(() => {
     if (!isVisible) return;
 
-    // Save previously focused element to restore later
     previousActiveRef.current = document.activeElement;
 
-    // Prevent background scroll
     const originalOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
 
-    // Focus the modal container (or first focusable inside)
     const focusable = modalRef.current?.querySelector(
       'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
     );
     (focusable || modalRef.current)?.focus?.();
 
-    // key handler
     const handleKeyDown = (e) => {
       if (e.key === "Escape") {
         e.stopPropagation();
         onClose?.();
       } else if (e.key === "Tab") {
-        // Basic focus trap: keep focus inside modal
         const focusableEls = modalRef.current.querySelectorAll(
           'a[href], area[href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), button:not([disabled]), [tabindex]:not([tabindex="-1"])'
         );
@@ -71,17 +65,14 @@ export default function Modal({
     return () => {
       window.removeEventListener("keydown", handleKeyDown);
       document.body.style.overflow = originalOverflow;
-      // restore focus
       try {
         previousActiveRef.current?.focus?.();
       } catch {}
     };
   }, [isVisible, onClose]);
 
-  // don't render anything if not visible
   if (!isVisible) return null;
 
-  // modal content
   const content = (
     <div
       className={`custom-modal-overlay ${className}`}
@@ -144,6 +135,5 @@ export default function Modal({
     </div>
   );
 
-  // render into body so modal sits above everything
   return ReactDOM.createPortal(content, document.body);
 }

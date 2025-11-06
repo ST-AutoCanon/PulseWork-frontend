@@ -1,16 +1,15 @@
 .container {
   display: flex;
-  gap: 20px;
-  padding: 20px;
+  gap: 10px;
+  padding: 10px;
   font-family: Inter, "Segoe UI", Roboto, system-ui, -apple-system,
     "Helvetica Neue", Arial;
-  background: linear-gradient(180deg, #f7fbfc, #ffffff); /* was var(--bg) */
 }
 
 .leftPanel {
-  width: 350px;
+  width: 300px;
   background: #ffffff;
-  max-height: 570px;
+  max-height: 1400px;
   border-radius: 12px;
   box-shadow: 0 8px 30px rgba(2, 6, 23, 0.06);
   padding: 16px;
@@ -18,13 +17,6 @@
   flex-direction: column;
   gap: 12px;
   overflow-y: auto;
-}
-
-.headerRow {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
 }
 
 .heading {
@@ -35,11 +27,14 @@
 
 .modeButtons {
   display: flex;
+  flex-direction: column;
+  width: 100%;
   gap: 8px;
 }
 
 .modeBtn {
   padding: 6px 10px;
+  margin: 1% 0;
   border-radius: 8px;
   background: transparent;
   border: 1px solid #e6e9eb; /* was var(--border) */
@@ -69,6 +64,7 @@
 .search {
   width: 100%;
   padding: 8px 10px;
+  margin-bottom: 10px;
   border-radius: 10px;
   border: 1px solid #e6e9eb; /* was var(--border) */
   outline: none;
@@ -199,6 +195,65 @@
   padding: 20px;
 }
 
+.smallChips {
+  display: flex;
+  justify-content: space-between;
+}
+
+/* small chips used in the Saved Templates header */
+.chipSmall {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 6px 10px;
+  font-size: 12px;
+  line-height: 1;
+  border-radius: 9999px; /* pill */
+  background: rgba(15, 23, 36, 0.04); /* subtle gray */
+  color: #0f1724; /* same as your text color */
+  border: 1px solid rgba(15, 23, 36, 0.06);
+  cursor: pointer;
+  user-select: none;
+  transition: background 120ms ease, transform 120ms ease, box-shadow 120ms ease;
+  white-space: nowrap;
+  min-height: 28px;
+}
+
+/* hover/active affordances */
+.chipSmall:hover {
+  background: rgba(15, 23, 36, 0.08);
+  transform: translateY(-1px);
+}
+
+.chipSmall:active {
+  transform: translateY(0);
+}
+
+/* keyboard focus */
+.chipSmall:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.18);
+  border-color: rgba(59, 130, 246, 0.6);
+}
+
+/* when you add your shared active class (styles.chipActive) */
+.chipSmall.chipActive,
+.chipSmall.chipActive:hover {
+  background: #0f1724; /* dark background for active */
+  color: #ffffff; /* white text */
+  border-color: rgba(0, 0, 0, 0.12);
+  transform: none;
+}
+
+/* optional: smaller variant icon spacing if you include icons */
+.chipSmall .icon {
+  width: 14px;
+  height: 14px;
+  display: inline-block;
+  flex: 0 0 14px;
+}
+
 @media (max-width: 980px) {
   .container {
     flex-direction: column;
@@ -210,4 +265,102 @@
   .editorPanel {
     order: 1;
   }
+}
+
+/* ---- New classes to replace inline styles ---- */
+
+.toolsSection {
+  margin-top: 12px;
+  margin-bottom: 8px;
+}
+
+.toolsIntro {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.toolsIntroTitle {
+  font-weight: 700;
+}
+
+.toolsIntroDesc {
+  font-size: 13px;
+  color: #374151;
+}
+
+.editorTools {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.toolsTitle {
+  font-weight: 700;
+}
+
+.toolButtons {
+  display: flex;
+  flex-direction: column;
+}
+
+.toolsSearchWrap {
+  margin-top: 8px;
+}
+
+.templatesWrap {
+  margin-top: 10px;
+}
+
+.modalOverlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.4);
+  z-index: 9999;
+}
+
+.modal {
+  background: white;
+  padding: 16px;
+  border-radius: 8px;
+  min-width: 320px;
+  max-width: 90%;
+  box-shadow: 0 8px 30px rgba(2, 6, 23, 0.08);
+}
+
+.modalTitle {
+  margin: 0 0 8px 0;
+}
+.modalLabel {
+  display: block;
+  margin-bottom: 6px;
+  font-weight: 600;
+}
+.modalInput {
+  width: 100%;
+  padding: 8px;
+  border-radius: 6px;
+  border: 1px solid #e6e9eb;
+}
+.modalActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 12px;
+}
+.modalCancel {
+  background: transparent;
+  border: 1px solid #e6e9eb;
+  padding: 6px 10px;
+  border-radius: 6px;
+}
+.modalSave {
+  background: #0f6679;
+  color: white;
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: none;
 }

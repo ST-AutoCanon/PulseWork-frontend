@@ -1,9 +1,7 @@
-
-
 "use client";
 
-import React, { useState, useEffect, useMemo } from 'react';
-import axios from 'axios';
+import React, { useState, useEffect, useMemo } from "react";
+import axios from "axios";
 import {
   getISOWeek,
   startOfISOWeek,
@@ -11,10 +9,10 @@ import {
   format,
   parseISO,
   addDays,
-} from 'date-fns';
-import Modal from '../Modal/Modal.client';
-import { useAuth } from '../../context/AuthProvider.client';
-import './SupervisorPlanViewer.css';
+} from "date-fns";
+import Modal from "../Modal/Modal.client";
+import { useAuth } from "../../context/AuthProvider.client";
+import "./SupervisorPlanViewer.css";
 
 const SupervisorPlanViewer = () => {
   const { user, hydrated } = useAuth();
@@ -22,7 +20,7 @@ const SupervisorPlanViewer = () => {
   // ────────────────────── 1. ALL STATE HOOKS ──────────────────────
   const [supervisorId, setSupervisorId] = useState(null);
   const [employees, setEmployees] = useState([]);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState("");
   const [tasks, setTasks] = useState([]);
   const [projects, setProjects] = useState({});
   const [holidays, setHolidays] = useState([]);
@@ -35,7 +33,10 @@ const SupervisorPlanViewer = () => {
   const [loadingHolidays, setLoadingHolidays] = useState(false);
   const [loadingLeaves, setLoadingLeaves] = useState(false);
   const [error, setError] = useState(null);
-  const [alertModal, setAlertModal] = useState({ isVisible: false, message: '' });
+  const [alertModal, setAlertModal] = useState({
+    isVisible: false,
+    message: "",
+  });
   const [freezeDays, setFreezeDays] = useState(3);
   const [pendingReviewChanges, setPendingReviewChanges] = useState({});
 
@@ -45,9 +46,9 @@ const SupervisorPlanViewer = () => {
     if (user?.employeeId) {
       const id = String(user.employeeId).trim().toUpperCase();
       setSupervisorId(id);
-      console.log('supervisorId set →', id);
+      console.log("supervisorId set →", id);
     } else {
-      setError('User not logged in or employeeId missing.');
+      setError("User not logged in or employeeId missing.");
     }
   }, [user, hydrated]);
 
@@ -55,10 +56,10 @@ const SupervisorPlanViewer = () => {
   const apiHeaders = useMemo(() => {
     if (!supervisorId) return null;
     return {
-      'x-employee-id': supervisorId,
-      'x-role': user?.role || 'Supervisor',
-      'x-org-id': 161,
-      'x-api-key': process.env.NEXT_PUBLIC_API_KEY || '',
+      "x-employee-id": supervisorId,
+      "x-role": user?.role || "Supervisor",
+      "x-org-id": 161,
+      "x-api-key": process.env.NEXT_PUBLIC_API_KEY || "",
     };
   }, [supervisorId, user?.role]);
 
@@ -81,14 +82,15 @@ const SupervisorPlanViewer = () => {
           : [];
         setEmployees(empData);
         setSelectedEmployee(empData[0]?.employee_id || null);
-        setError(empData.length === 0 ? 'No employees assigned to you.' : null);
+        setError(empData.length === 0 ? "No employees assigned to you." : null);
       } catch (err) {
-        const errorMessage =
-          err.response?.status
-            ? `Error ${err.response.status}: ${err.response.data?.error || err.response.statusText}`
-            : err.code === 'ECONNABORTED'
-            ? 'Request timed out'
-            : `Network error: ${err.message}`;
+        const errorMessage = err.response?.status
+          ? `Error ${err.response.status}: ${
+              err.response.data?.error || err.response.statusText
+            }`
+          : err.code === "ECONNABORTED"
+          ? "Request timed out"
+          : `Network error: ${err.message}`;
         setError(errorMessage);
         setEmployees([]);
       } finally {
@@ -128,20 +130,26 @@ const SupervisorPlanViewer = () => {
           cfgArray = response.data;
         } else if (Array.isArray(response.data?.data)) {
           cfgArray = response.data.data;
-        } else if (response.data?.data && typeof response.data.data === 'object') {
+        } else if (
+          response.data?.data &&
+          typeof response.data.data === "object"
+        ) {
           cfgArray = Object.entries(response.data.data).map(([k, v]) => ({
             key: k,
             value: String(v),
           }));
         }
 
-        const cfg = cfgArray.find((c) => c.key === 'freeze_days_supervisor');
+        const cfg = cfgArray.find((c) => c.key === "freeze_days_supervisor");
         const days = cfg ? parseInt(cfg.value, 10) : NaN;
 
         setFreezeDays(isNaN(days) ? 3 : days);
-        console.log('Freeze days loaded:', isNaN(days) ? 3 : days);
+        console.log("Freeze days loaded:", isNaN(days) ? 3 : days);
       } catch (err) {
-        console.error('fetchFreezeDays error:', err.response?.data || err.message);
+        console.error(
+          "fetchFreezeDays error:",
+          err.response?.data || err.message
+        );
         setFreezeDays(3);
       }
     };
@@ -163,12 +171,12 @@ const SupervisorPlanViewer = () => {
           const response = await axios.get(
             `${process.env.NEXT_PUBLIC_BACKEND_URL}/employee/leave/${emp.employee_id}`,
             {
-              headers: { 'x-api-key': process.env.NEXT_PUBLIC_API_KEY || '' },
+              headers: { "x-api-key": process.env.NEXT_PUBLIC_API_KEY || "" },
               timeout: 10000,
             }
           );
           leavesMap[emp.employee_id] = Array.isArray(response.data.data)
-            ? response.data.data.filter((leave) => leave.status === 'Approved')
+            ? response.data.data.filter((leave) => leave.status === "Approved")
             : [];
         }
         setEmployeeLeaves(leavesMap);
@@ -183,6 +191,7 @@ const SupervisorPlanViewer = () => {
   }, [supervisorId, employees]);
 
   // ────────────────────── 6. FETCH TASKS ──────────────────────
+  // ────────────────────── 6. FETCH TASKS ──────────────────────
   useEffect(() => {
     if (!supervisorId || !apiHeaders) return;
 
@@ -193,7 +202,12 @@ const SupervisorPlanViewer = () => {
           `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/weekly_task_supervisor/${supervisorId}`,
           { headers: apiHeaders, timeout: 10000 }
         );
-        const validStatuses = ['not started', 'working', 'completed', 'suspended'];
+        const validStatuses = [
+          "not started",
+          "working",
+          "completed",
+          "suspended",
+        ];
         const taskData =
           res.data.success && Array.isArray(res.data.data)
             ? res.data.data.map((task) => ({
@@ -201,27 +215,47 @@ const SupervisorPlanViewer = () => {
                 employee_id: task.employee_id?.trim().toUpperCase(),
                 emp_status: validStatuses.includes(task.emp_status)
                   ? task.emp_status
-                  : 'not started',
+                  : "not started",
                 week_id: Number(task.week_id),
               }))
             : [];
         setTasks(taskData);
+
         if (taskData.length > 0) {
-          const weekIds = [...new Set(taskData.map((t) => t.week_id))].sort(
+          const taskWeekIds = [...new Set(taskData.map((t) => t.week_id))].sort(
             (a, b) => a - b
           );
-          setSelectedWeekId(weekIds[weekIds.length - 1]);
+
+          // Get current ISO week
+          const today = new Date();
+          const currentWeek = getISOWeek(today);
+
+          // Open current week if tasks exist for it
+          if (taskWeekIds.includes(currentWeek)) {
+            setSelectedWeekId(currentWeek);
+          } else {
+            // Fallback to latest week
+            setSelectedWeekId(taskWeekIds[taskWeekIds.length - 1]);
+          }
+        } else {
+          // No tasks → show current week anyway
+          const currentWeek = getISOWeek(new Date());
+          setSelectedWeekId(currentWeek);
         }
+
         setError(null);
       } catch (err) {
-        const errorMessage =
-          err.response?.status
-            ? `Error ${err.response.status}: ${err.response.data?.error || err.response.statusText}`
-            : err.code === 'ECONNABORTED'
-            ? 'Request timed out'
-            : `Network error: ${err.message}`;
+        const errorMessage = err.response?.status
+          ? `Error ${err.response.status}: ${
+              err.response.data?.error || err.response.statusText
+            }`
+          : err.code === "ECONNABORTED"
+          ? "Request timed out"
+          : `Network error: ${err.message}`;
         setError(errorMessage);
         setTasks([]);
+        // Still set current week on error
+        setSelectedWeekId(getISOWeek(new Date()));
       } finally {
         setLoadingTasks(false);
       }
@@ -241,7 +275,7 @@ const SupervisorPlanViewer = () => {
           `${process.env.NEXT_PUBLIC_BACKEND_URL}/projects/employeeProjects`,
           {
             params: { employeeId: selectedEmployee },
-            headers: { 'x-api-key': process.env.NEXT_PUBLIC_API_KEY || '' },
+            headers: { "x-api-key": process.env.NEXT_PUBLIC_API_KEY || "" },
             timeout: 10000,
           }
         );
@@ -278,8 +312,8 @@ const SupervisorPlanViewer = () => {
     const days = [];
     for (let i = 0; i < 7; i++) {
       const date = addDays(adjustedStart, i);
-      const dateStr = format(date, 'yyyy-MM-dd');
-      const dateDisplay = format(date, 'MMM d');
+      const dateStr = format(date, "yyyy-MM-dd");
+      const dateDisplay = format(date, "MMM d");
       days.push({ dateStr, dateDisplay });
     }
     return days;
@@ -290,8 +324,11 @@ const SupervisorPlanViewer = () => {
     weekDays.forEach(({ dateStr }) => (map[dateStr] = []));
     if (selectedEmployee && selectedWeekId) {
       tasks.forEach((task) => {
-        if (task.employee_id === selectedEmployee && task.week_id === selectedWeekId) {
-          const taskDateStr = format(parseISO(task.task_date), 'yyyy-MM-dd');
+        if (
+          task.employee_id === selectedEmployee &&
+          task.week_id === selectedWeekId
+        ) {
+          const taskDateStr = format(parseISO(task.task_date), "yyyy-MM-dd");
           if (map[taskDateStr]) map[taskDateStr].push(task);
         }
       });
@@ -308,20 +345,20 @@ const SupervisorPlanViewer = () => {
   // ────────────────────── 9. UTILS ──────────────────────
   const showAlert = (message) => {
     setAlertModal({ isVisible: true, message });
-    setTimeout(() => setAlertModal({ isVisible: false, message: '' }), 5000);
+    setTimeout(() => setAlertModal({ isVisible: false, message: "" }), 5000);
   };
 
   const formatWeekId = (weekId) => {
-    if (!weekId) return 'N/A';
+    if (!weekId) return "N/A";
     const currentYear = new Date().getFullYear();
     const startDate = startOfISOWeek(new Date(currentYear, 0, 1));
     const weekStart = new Date(
       startDate.getTime() + (weekId - 1) * 7 * 24 * 60 * 60 * 1000
     );
     const weekEnd = endOfISOWeek(weekStart);
-    return `Week ${weekId} (${format(weekStart, 'MMM d, yyyy')} - ${format(
+    return `Week ${weekId} (${format(weekStart, "MMM d, yyyy")} - ${format(
       weekEnd,
-      'MMM d, yyyy'
+      "MMM d, yyyy"
     )})`;
   };
 
@@ -338,7 +375,7 @@ const SupervisorPlanViewer = () => {
   };
 
   const handleReviewChange = (taskId, value) => {
-    if (value === 'pending') {
+    if (value === "pending") {
       setPendingReviewChanges((prev) => {
         const newPrev = { ...prev };
         delete newPrev[taskId];
@@ -353,7 +390,7 @@ const SupervisorPlanViewer = () => {
     setTasks((prev) =>
       prev.map((task) => {
         if (task.task_id === taskId) {
-          if (field === 'project') {
+          if (field === "project") {
             const selectedProject = Object.entries(projects).find(
               ([id]) => id === value
             );
@@ -375,7 +412,7 @@ const SupervisorPlanViewer = () => {
   const saveTaskField = async (taskId) => {
     const task = tasks.find((t) => t.task_id === taskId);
     if (!task) {
-      showAlert('Task not found');
+      showAlert("Task not found");
       return;
     }
 
@@ -389,28 +426,28 @@ const SupervisorPlanViewer = () => {
     const effectiveReviewStatus =
       pendingReviewChanges[taskId] || task.sup_review_status;
 
-    if (task.sup_review_status === 'suspended_review') {
-      showAlert('This task is suspended and cannot be updated.');
+    if (task.sup_review_status === "suspended_review") {
+      showAlert("This task is suspended and cannot be updated.");
       return;
     }
 
     try {
       const updateData = {
-        sup_status: task.sup_status || 'incomplete',
-        sup_comment: task.sup_comment || '',
-        sup_review_status: effectiveReviewStatus || 'pending',
+        sup_status: task.sup_status || "incomplete",
+        sup_comment: task.sup_comment || "",
+        sup_review_status: effectiveReviewStatus || "pending",
         replacement_task: task.replacement_task || null,
         star_rating: task.star_rating || 0,
         project_id: task.project_id,
         project_name: task.project_name,
       };
 
-      if (task.sup_status === 're-work') {
+      if (task.sup_status === "re-work") {
         let taskDate = new Date(task.task_date || new Date());
         taskDate.setHours(0, 0, 0, 0);
         const nextDay = new Date(taskDate);
         nextDay.setDate(taskDate.getDate() + 1);
-        const nextDayString = nextDay.toLocaleDateString('en-CA');
+        const nextDayString = nextDay.toLocaleDateString("en-CA");
 
         if (!isDateEditable(nextDayString)) {
           showAlert(
@@ -429,11 +466,11 @@ const SupervisorPlanViewer = () => {
           project_name: task.project_name,
           task_name: newTaskName,
           employee_id: task.employee_id,
-          emp_status: 'not started',
-          sup_status: 'incomplete',
+          emp_status: "not started",
+          sup_status: "incomplete",
           emp_comment: null,
           sup_comment: null,
-          sup_review_status: 'pending',
+          sup_review_status: "pending",
           star_rating: 0,
           parent_task_id: task.task_id,
         };
@@ -444,33 +481,30 @@ const SupervisorPlanViewer = () => {
           { headers: apiHeaders, timeout: 10000 }
         );
 
-        updateData.sup_status = 're-work';
+        updateData.sup_status = "re-work";
         await axios.put(
           `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/weekly_task_supervisor/${taskId}`,
           updateData,
           { headers: apiHeaders, timeout: 10000 }
         );
 
-        showAlert(response.data.message || 'New task created successfully');
+        showAlert(response.data.message || "New task created successfully");
         if (response.data.newTask) {
           const newTask = {
             ...response.data.newTask,
             employee_name:
               employees.find(
                 (emp) => emp.employee_id === response.data.newTask.employee_id
-              )?.employee_name || 'Unknown',
+              )?.employee_name || "Unknown",
             employee_id: response.data.newTask.employee_id
               ?.trim()
               .toUpperCase(),
-            emp_status: response.data.newTask.emp_status || 'not started',
+            emp_status: response.data.newTask.emp_status || "not started",
             week_id: Number(response.data.newTask.week_id),
           };
           setTasks((prev) => [...prev, newTask]);
           const newTaskWeek = newTask.week_id;
-          if (
-            newTaskWeek &&
-            newTaskWeek !== selectedWeekId
-          ) {
+          if (newTaskWeek && newTaskWeek !== selectedWeekId) {
             setSelectedWeekId(newTaskWeek);
           }
         }
@@ -480,7 +514,7 @@ const SupervisorPlanViewer = () => {
           updateData,
           { headers: apiHeaders, timeout: 10000 }
         );
-        showAlert('Task updated successfully');
+        showAlert("Task updated successfully");
       }
 
       setPendingReviewChanges((prev) => {
@@ -494,7 +528,12 @@ const SupervisorPlanViewer = () => {
         `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/weekly_task_supervisor/${supervisorId}`,
         { headers: apiHeaders, timeout: 10000 }
       );
-      const validStatuses = ['not started', 'working', 'completed', 'suspended'];
+      const validStatuses = [
+        "not started",
+        "working",
+        "completed",
+        "suspended",
+      ];
       const taskData =
         res.data.success && Array.isArray(res.data.data)
           ? res.data.data.map((task) => ({
@@ -502,67 +541,83 @@ const SupervisorPlanViewer = () => {
               employee_id: task.employee_id?.trim().toUpperCase(),
               emp_status: validStatuses.includes(task.emp_status)
                 ? task.emp_status
-                : 'not started',
+                : "not started",
               week_id: Number(task.week_id),
             }))
           : [];
       setTasks(taskData);
     } catch (err) {
-      const errorMessage =
-        err.response?.status
-          ? `Error ${err.response.status}: ${err.response.data?.error || err.response.statusText}`
-          : err.code === 'ECONNABORTED'
-          ? 'Request timed out'
-          : `Network error: ${err.message}`;
+      const errorMessage = err.response?.status
+        ? `Error ${err.response.status}: ${
+            err.response.data?.error || err.response.statusText
+          }`
+        : err.code === "ECONNABORTED"
+        ? "Request timed out"
+        : `Network error: ${err.message}`;
       showAlert(`Failed to update task: ${errorMessage}`);
     }
   };
 
   const statusColor = (status) => {
     switch (status) {
-      case 'completed': return '#28a745';
-      case 'working': return '#3770ecff';
-      case 'not started': return '#888';
-      case 'suspended': return '#dc3545';
-      default: return '#007bff';
+      case "completed":
+        return "#28a745";
+      case "working":
+        return "#3770ecff";
+      case "not started":
+        return "#888";
+      case "suspended":
+        return "#dc3545";
+      default:
+        return "#007bff";
     }
   };
 
   const getReviewStatusColor = (status) => {
     switch (status) {
-      case 'approved': return '#28a745';
-      case 'struck': return '#ffc107';
-      case 'suspended_review': return '#dc3545';
-      default: return '#6c757d';
+      case "approved":
+        return "#28a745";
+      case "struck":
+        return "#ffc107";
+      case "suspended_review":
+        return "#dc3545";
+      default:
+        return "#6c757d";
     }
   };
 
   const statusLabel = (status) => {
     switch (status) {
-      case 'completed': return 'Completed';
-      case 'working': return 'Working';
-      case 'not started': return 'Not Started';
-      case 'suspended': return 'Suspended';
-      default: return 'Unknown';
+      case "completed":
+        return "Completed";
+      case "working":
+        return "Working";
+      case "not started":
+        return "Not Started";
+      case "suspended":
+        return "Suspended";
+      default:
+        return "Unknown";
     }
   };
 
   const formatDate = (dateString) => {
-    if (!dateString) return 'N/A';
+    if (!dateString) return "N/A";
     const date = new Date(dateString);
-    return date.toLocaleString('en-US', {
-      timeZone: 'Asia/Kolkata',
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
+    return date.toLocaleString("en-US", {
+      timeZone: "Asia/Kolkata",
+      month: "short",
+      day: "numeric",
+      year: "numeric",
     });
   };
 
   const getTaskDateStyle = (dateString, employeeId) => {
     if (!dateString)
       return {
-        className: 'supervisor-plan-task-date supervisor-plan-task-date-regular',
-        tooltip: 'N/A',
+        className:
+          "supervisor-plan-task-date supervisor-plan-task-date-regular",
+        tooltip: "N/A",
       };
     const taskDate = new Date(dateString);
     taskDate.setHours(0, 0, 0, 0);
@@ -584,21 +639,22 @@ const SupervisorPlanViewer = () => {
 
     if (isApprovedLeave)
       return {
-        className: 'supervisor-plan-task-date supervisor-plan-task-date-leave',
-        tooltip: 'Leave',
+        className: "supervisor-plan-task-date supervisor-plan-task-date-leave",
+        tooltip: "Leave",
       };
     if (isHoliday)
       return {
-        className: 'supervisor-plan-task-date supervisor-plan-task-date-holiday',
-        tooltip: 'Holiday',
+        className:
+          "supervisor-plan-task-date supervisor-plan-task-date-holiday",
+        tooltip: "Holiday",
       };
     if (isSunday)
       return {
-        className: 'supervisor-plan-task-date supervisor-plan-task-date-sunday',
-        tooltip: 'Sunday',
+        className: "supervisor-plan-task-date supervisor-plan-task-date-sunday",
+        tooltip: "Sunday",
       };
     return {
-      className: 'supervisor-plan-task-date supervisor-plan-task-date-regular',
+      className: "supervisor-plan-task-date supervisor-plan-task-date-regular",
       tooltip: formatDate(dateString),
     };
   };
@@ -634,8 +690,7 @@ const SupervisorPlanViewer = () => {
     return (
       <div className="supervisor-plan-wrapper">
         <div className="supervisor-plan-error-message">
-          {error || 'Supervisor ID missing.'}{' '}
-          <a href="/login">Log in again</a>.
+          {error || "Supervisor ID missing."} <a href="/login">Log in again</a>.
         </div>
       </div>
     );
@@ -645,11 +700,11 @@ const SupervisorPlanViewer = () => {
     <div className="supervisor-plan-wrapper">
       <Modal
         isVisible={alertModal.isVisible}
-        onClose={() => setAlertModal({ isVisible: false, message: '' })}
+        onClose={() => setAlertModal({ isVisible: false, message: "" })}
         buttons={[
           {
-            label: 'OK',
-            onClick: () => setAlertModal({ isVisible: false, message: '' }),
+            label: "OK",
+            onClick: () => setAlertModal({ isVisible: false, message: "" }),
           },
         ]}
       >
@@ -664,10 +719,15 @@ const SupervisorPlanViewer = () => {
           onChange={(e) => setSearchQuery(e.target.value)}
           placeholder="Search employees by name"
           className="supervisor-plan-search-bar"
-                    style={{ padding: '8px', fontSize:'11px', marginBottom: '10px', borderRadius: '4px', border: '1px solid #ccc' }}
-
+          style={{
+            padding: "8px",
+            fontSize: "11px",
+            marginBottom: "10px",
+            borderRadius: "4px",
+            border: "1px solid #ccc",
+          }}
         />
-        {error && <p style={{ color: 'red' }}>{error}</p>}
+        {error && <p style={{ color: "red" }}>{error}</p>}
         {loadingEmployees || loadingHolidays || loadingLeaves ? (
           <p>Loading employees...</p>
         ) : filteredEmployees.length === 0 ? (
@@ -679,8 +739,8 @@ const SupervisorPlanViewer = () => {
                 key={emp.employee_id}
                 className={
                   selectedEmployee === emp.employee_id
-                    ? 'supervisor-plan-active'
-                    : ''
+                    ? "supervisor-plan-active"
+                    : ""
                 }
                 onClick={() => setSelectedEmployee(emp.employee_id)}
               >
@@ -756,27 +816,27 @@ const SupervisorPlanViewer = () => {
                           pendingReviewChanges[task.task_id] ||
                           task.sup_review_status;
                         const isFrozen =
-                          task.sup_review_status === 'suspended_review';
+                          task.sup_review_status === "suspended_review";
                         const showReviewSelect =
-                          task.sup_review_status === 'pending' &&
+                          task.sup_review_status === "pending" &&
                           !pendingReviewChanges[task.task_id];
                         return (
                           <div
                             key={task.task_id}
                             className={`supervisor-plan-task-card ${
-                              (!editable || isFrozen)
-                                ? 'supervisor-plan-task-frozen'
-                                : ''
+                              !editable || isFrozen
+                                ? "supervisor-plan-task-frozen"
+                                : ""
                             }`}
                           >
                             <div className="supervisor-plan-task-header">
                               <div className="supervisor-plan-task-title">
-                                {effectiveReviewStatus === 'struck' ? (
+                                {effectiveReviewStatus === "struck" ? (
                                   <>
                                     <span
                                       style={{
-                                        textDecoration: 'line-through',
-                                        color: '#a0a0a0',
+                                        textDecoration: "line-through",
+                                        color: "#a0a0a0",
                                       }}
                                     >
                                       {task.task_name}
@@ -784,8 +844,8 @@ const SupervisorPlanViewer = () => {
                                     {task.replacement_task && (
                                       <span
                                         style={{
-                                          color: '#007bff',
-                                          marginLeft: '8px',
+                                          color: "#007bff",
+                                          marginLeft: "8px",
                                         }}
                                       >
                                         Right arrow {task.replacement_task}
@@ -797,11 +857,13 @@ const SupervisorPlanViewer = () => {
                                 )}
                               </div>
                               <div className="supervisor-plan-task-meta">
-                                {effectiveReviewStatus !== 'pending' && (
+                                {effectiveReviewStatus !== "pending" && (
                                   <span className="supervisor-plan-status-icon">
-                                    {effectiveReviewStatus === 'approved' && '✅'}
-                               {effectiveReviewStatus === 'struck' && '📝'}
-                              {effectiveReviewStatus === 'suspended_review' && '⛔'}
+                                    {effectiveReviewStatus === "approved" &&
+                                      "✅"}
+                                    {effectiveReviewStatus === "struck" && "📝"}
+                                    {effectiveReviewStatus ===
+                                      "suspended_review" && "⛔"}
                                   </span>
                                 )}
                                 <span
@@ -835,8 +897,8 @@ const SupervisorPlanViewer = () => {
                             </div>
                             <div className="supervisor-plan-task-body">
                               <p>
-                                <strong>Emp-Update:</strong>{' '}
-                                {task.emp_comment || '-'}
+                                <strong>Emp-Update:</strong>{" "}
+                                {task.emp_comment || "-"}
                               </p>
                             </div>
                             {isFrozen && (
@@ -849,11 +911,11 @@ const SupervisorPlanViewer = () => {
                               <label>
                                 Project:
                                 <select
-                                  value={task.project_id || ''}
+                                  value={task.project_id || ""}
                                   onChange={(e) =>
                                     updateTaskField(
                                       task.task_id,
-                                      'project',
+                                      "project",
                                       e.target.value
                                     )
                                   }
@@ -872,11 +934,11 @@ const SupervisorPlanViewer = () => {
                               <label>
                                 Update:
                                 <select
-                                  value={task.sup_status || 'incomplete'}
+                                  value={task.sup_status || "incomplete"}
                                   onChange={(e) =>
                                     updateTaskField(
                                       task.task_id,
-                                      'sup_status',
+                                      "sup_status",
                                       e.target.value
                                     )
                                   }
@@ -892,11 +954,11 @@ const SupervisorPlanViewer = () => {
                                 Feedback:
                                 <input
                                   type="text"
-                                  value={task.sup_comment || ''}
+                                  value={task.sup_comment || ""}
                                   onChange={(e) =>
                                     updateTaskField(
                                       task.task_id,
-                                      'sup_comment',
+                                      "sup_comment",
                                       e.target.value
                                     )
                                   }
@@ -908,7 +970,7 @@ const SupervisorPlanViewer = () => {
                                 <label>
                                   Review:
                                   <select
-                                    value={task.sup_review_status || 'pending'}
+                                    value={task.sup_review_status || "pending"}
                                     style={{
                                       color: getReviewStatusColor(
                                         task.sup_review_status
@@ -931,16 +993,16 @@ const SupervisorPlanViewer = () => {
                                   </select>
                                 </label>
                               )}
-                              {effectiveReviewStatus === 'struck' && (
+                              {effectiveReviewStatus === "struck" && (
                                 <label>
                                   Updated task:
                                   <input
                                     type="text"
-                                    value={task.replacement_task || ''}
+                                    value={task.replacement_task || ""}
                                     onChange={(e) =>
                                       updateTaskField(
                                         task.task_id,
-                                        'replacement_task',
+                                        "replacement_task",
                                         e.target.value
                                       )
                                     }
@@ -949,7 +1011,7 @@ const SupervisorPlanViewer = () => {
                                   />
                                 </label>
                               )}
-                              {effectiveReviewStatus !== 'pending' && (
+                              {effectiveReviewStatus !== "pending" && (
                                 <label>
                                   Rating:
                                   <div className="supervisor-plan-star-rating">
@@ -958,22 +1020,23 @@ const SupervisorPlanViewer = () => {
                                         key={star}
                                         className={`supervisor-plan-star ${
                                           task.star_rating >= star
-                                            ? 'filled'
-                                            : ''
+                                            ? "filled"
+                                            : ""
                                         }`}
                                         onClick={() =>
-                                          (editable && !isFrozen) &&
+                                          editable &&
+                                          !isFrozen &&
                                           updateTaskField(
                                             task.task_id,
-                                            'star_rating',
+                                            "star_rating",
                                             star
                                           )
                                         }
                                         style={{
                                           cursor:
                                             editable && !isFrozen
-                                              ? 'pointer'
-                                              : 'not-allowed',
+                                              ? "pointer"
+                                              : "not-allowed",
                                         }}
                                       >
                                         ★

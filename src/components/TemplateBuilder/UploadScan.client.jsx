@@ -11,6 +11,8 @@ export default function UploadScan({
   a4PreviewWidth = 360,
   onPreviewChange,
   controlsOnly = false,
+  initialHeaderUrl = null,
+  initialFooterUrl = null,
 }) {
   const [headerFile, setHeaderFile] = useState(null);
   const [footerFile, setFooterFile] = useState(null);
@@ -29,9 +31,9 @@ export default function UploadScan({
       setHeaderUrl(u);
       return () => URL.revokeObjectURL(u);
     } else {
-      setHeaderUrl(null);
+      setHeaderUrl(initialHeaderUrl || null);
     }
-  }, [headerFile]);
+  }, [headerFile, initialHeaderUrl]);
 
   useEffect(() => {
     if (footerFile) {
@@ -39,15 +41,32 @@ export default function UploadScan({
       setFooterUrl(u);
       return () => URL.revokeObjectURL(u);
     } else {
-      setFooterUrl(null);
+      setFooterUrl(initialFooterUrl || null);
     }
-  }, [footerFile]);
+  }, [footerFile, initialFooterUrl]);
+
+  const lastPreviewRef = useRef({
+    headerUrl: null,
+    footerUrl: null,
+    headerFile: null,
+    footerFile: null,
+  });
 
   useEffect(() => {
-    if (typeof onPreviewChange === "function") {
-      onPreviewChange({ headerUrl, footerUrl, headerFile, footerFile });
-    }
-  }, [headerUrl, footerUrl, headerFile, footerFile]);
+    if (typeof onPreviewChange !== "function") return;
+
+    const last = lastPreviewRef.current;
+    const same =
+      last.headerUrl === headerUrl &&
+      last.footerUrl === footerUrl &&
+      last.headerFile === headerFile &&
+      last.footerFile === footerFile;
+
+    if (same) return;
+
+    lastPreviewRef.current = { headerUrl, footerUrl, headerFile, footerFile };
+    onPreviewChange({ headerUrl, footerUrl, headerFile, footerFile });
+  }, [headerUrl, footerUrl, headerFile, footerFile, onPreviewChange]);
 
   const a4Ratio = 297 / 210;
   const previewWidth = Number(a4PreviewWidth) || 360;
@@ -113,10 +132,8 @@ export default function UploadScan({
         throw new Error(msg);
       }
 
-      // Success: notify parent that save finished (no template payload)
       if (typeof onSaved === "function") onSaved();
 
-      // reset UI
       setHeaderFile(null);
       setFooterFile(null);
       setSaveName("");

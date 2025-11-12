@@ -1,13 +1,12 @@
 .container {
   display: flex;
-  gap: 10px;
   padding: 10px;
   font-family: Inter, "Segoe UI", Roboto, system-ui, -apple-system,
     "Helvetica Neue", Arial;
 }
 
 .leftPanel {
-  width: 300px;
+  width: 222px;
   background: #ffffff;
   max-height: 1400px;
   border-radius: 12px;
@@ -22,7 +21,7 @@
 .heading {
   margin: 0;
   font-size: 16px;
-  color: #0f6679; /* was var(--accent) */
+  color: #0f6679;
 }
 
 .modeButtons {
@@ -37,8 +36,8 @@
   margin: 1% 0;
   border-radius: 8px;
   background: transparent;
-  border: 1px solid #e6e9eb; /* was var(--border) */
-  color: #0f6679; /* was var(--accent) */
+  border: 1px solid #e6e9eb;
+  color: #0f6679;
   font-weight: 600;
   cursor: pointer;
 }
@@ -48,11 +47,7 @@
 }
 
 .active {
-  background: linear-gradient(
-    180deg,
-    #77dd0d,
-    #9ef04a
-  ); /* was var(--accent-2) */
+  background: linear-gradient(180deg, #77dd0d, #9ef04a);
   color: #000;
   box-shadow: 0 6px 14px rgba(15, 102, 121, 0.08);
 }
@@ -66,7 +61,7 @@
   padding: 8px 10px;
   margin-bottom: 10px;
   border-radius: 10px;
-  border: 1px solid #e6e9eb; /* was var(--border) */
+  border: 1px solid #e6e9eb;
   outline: none;
 }
 
@@ -80,8 +75,8 @@
   padding: 6px 10px;
   border-radius: 999px;
   background: transparent;
-  border: 1px solid #e6e9eb; /* was var(--border) */
-  color: #0f6679; /* was var(--accent) */
+  border: 1px solid #e6e9eb;
+  color: #0f6679;
   cursor: pointer;
 }
 
@@ -93,20 +88,22 @@
 .templatesList {
   display: flex;
   flex-direction: column;
+  max-height: 200px;
+  overflow-y: auto;
   gap: 10px;
 }
 
 .loading {
-  color: #6b7280; /* was var(--muted) */
+  color: #6b7280;
 }
 
 .empty {
-  color: #6b7280; /* was var(--muted) */
+  color: #6b7280;
   padding: 8px;
 }
 
 .grid {
-  max-height: 400px;
+  max-height: 300px;
   overflow-y: auto;
 }
 
@@ -118,7 +115,7 @@
   padding: 10px;
   margin: 10px 0;
   border-radius: 10px;
-  border: 1px solid #e6e9eb; /* was var(--border) */
+  border: 1px solid #e6e9eb;
   background: linear-gradient(180deg, #fff, #fbfdff);
   cursor: pointer;
   text-align: left;
@@ -130,15 +127,14 @@
 }
 
 .thumb {
-  width: 84px;
-  height: 84px;
+  width: 55px;
   border-radius: 8px;
   background: #ffffff;
   display: flex;
   align-items: center;
   justify-content: center;
   overflow: hidden;
-  border: 1px solid #e6e9eb; /* was var(--border) */
+  border: 1px solid #e6e9eb;
   flex-shrink: 0;
 }
 
@@ -150,7 +146,7 @@
 
 .placeholderIcon {
   font-weight: 700;
-  color: #6b7280; /* was var(--muted) */
+  color: #6b7280;
 }
 
 .meta {
@@ -161,12 +157,12 @@
 .title {
   font-size: 13px;
   font-weight: 700;
-  color: #0f6679; /* was var(--accent) */
+  color: #0f6679;
 }
 
 .subtitle {
   font-size: 12px;
-  color: #6b7280; /* was var(--muted) */
+  color: #6b7280;
 }
 
 .editorPanel {
@@ -187,11 +183,11 @@
 .placeholder {
   width: 100%;
   border-radius: 12px;
-  border: 1px dashed #e6e9eb; /* was var(--border) */
+  border: 1px dashed #e6e9eb;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #6b7280; /* was var(--muted) */
+  color: #6b7280;
   padding: 20px;
 }
 
@@ -200,7 +196,6 @@
   justify-content: space-between;
 }
 
-/* small chips used in the Saved Templates header */
 .chipSmall {
   display: inline-flex;
   align-items: center;
@@ -209,9 +204,9 @@
   padding: 6px 10px;
   font-size: 12px;
   line-height: 1;
-  border-radius: 9999px; /* pill */
-  background: rgba(15, 23, 36, 0.04); /* subtle gray */
-  color: #0f1724; /* same as your text color */
+  border-radius: 9999px;
+  background: rgba(15, 23, 36, 0.04);
+  color: #0f1724;
   border: 1px solid rgba(15, 23, 36, 0.06);
   cursor: pointer;
   user-select: none;
@@ -220,7 +215,6 @@
   min-height: 28px;
 }
 
-/* hover/active affordances */
 .chipSmall:hover {
   background: rgba(15, 23, 36, 0.08);
   transform: translateY(-1px);
@@ -230,23 +224,20 @@
   transform: translateY(0);
 }
 
-/* keyboard focus */
 .chipSmall:focus {
   outline: none;
   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.18);
   border-color: rgba(59, 130, 246, 0.6);
 }
 
-/* when you add your shared active class (styles.chipActive) */
 .chipSmall.chipActive,
 .chipSmall.chipActive:hover {
-  background: #0f1724; /* dark background for active */
-  color: #ffffff; /* white text */
+  background: #0f1724;
+  color: #ffffff;
   border-color: rgba(0, 0, 0, 0.12);
   transform: none;
 }
 
-/* optional: smaller variant icon spacing if you include icons */
 .chipSmall .icon {
   width: 14px;
   height: 14px;
@@ -266,8 +257,6 @@
     order: 1;
   }
 }
-
-/* ---- New classes to replace inline styles ---- */
 
 .toolsSection {
   margin-top: 12px;
@@ -300,8 +289,9 @@
 }
 
 .toolButtons {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
 }
 
 .toolsSearchWrap {

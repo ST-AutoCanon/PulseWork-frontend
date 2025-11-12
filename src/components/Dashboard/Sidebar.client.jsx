@@ -29,6 +29,7 @@ import TemplateBuilder from "../TemplateBuilder/TemplateBuilder.client";
 import TaskManagement from "../TaskManagement/TaskManagement.client";
 import TaskManagementEmployee from "../TaskManagementEmployee/EmpTaskManagement.client";
 import TaskManagementAdmin from "../TaskManagementAdmin/TaskManagementAdmin.client";
+import LetterHead from "../letterHead/letterhead.client";
 
 const Sidebar = ({ setActiveContent }) => {
   const { user, hydrated } = useAuth();
@@ -38,7 +39,6 @@ const Sidebar = ({ setActiveContent }) => {
   const [activeNav, setActiveNav] = useState("/dashboard");
   const [showMobileMenu, setShowMobileMenu] = useState(false);
 
-  // ✅ NEW STATE FOR SUPERVISOR CHOICE
   const [showTaskChoice, setShowTaskChoice] = useState(false);
 
   const defaultMenuItems = useMemo(
@@ -94,14 +94,13 @@ const Sidebar = ({ setActiveContent }) => {
       "/assets": () => <Assets />,
       "/vendors": () => <Vendors />,
       "/EmployeeLogin": () => <EmployeeLogin />,
-
-      // ✅ CHANGED ONLY THIS PART
+      "/letterHead": () => <LetterHead />,
       "/TaskManagement": (role) => {
         if (role === "Admin") return <TaskManagementAdmin />;
 
         if (role === "Supervisor") {
-          setShowTaskChoice(true); // show selection
-          return null; // prevent auto load
+          setShowTaskChoice(true);
+          return null;
         }
 
         return <TaskManagementEmployee />;
@@ -166,7 +165,6 @@ const Sidebar = ({ setActiveContent }) => {
     return MdIcons.MdOutlineDashboard;
   };
 
-  // ✅ SUPERVISOR POPUP UI
   const SupervisorTaskChoice = () => (
     <div
       className="task-choice-overlay"
@@ -312,7 +310,6 @@ const Sidebar = ({ setActiveContent }) => {
             >
               ✖
             </button>
-            {/* inside the mobile-menu JSX */}
             <ul>
               {menuItems && menuItems.length > 0 ? (
                 menuItems.map((item, index) => {

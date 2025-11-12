@@ -6,7 +6,6 @@
   box-sizing: border-box;
 }
 
-/* left controls */
 .controls {
   width: 360px;
   display: flex;
@@ -16,6 +15,7 @@
 
 .fileRow {
   margin: 0;
+  width: 225px;
 }
 
 .fileBox {
@@ -71,7 +71,6 @@
   font-size: 13px;
 }
 
-/* actions */
 .actions {
   display: flex;
   gap: 10px;
@@ -95,7 +94,6 @@
   font-weight: 700;
 }
 
-/* preview area (A4) */
 .previewArea {
   flex: 1;
   display: flex;
@@ -114,7 +112,6 @@
   box-sizing: border-box;
 }
 
-/* simulate paper inside the frame */
 .paperInner {
   width: 100%;
   height: 100%;
@@ -122,7 +119,7 @@
   border: 1px solid #e9eef0;
   box-sizing: border-box;
   display: grid;
-  grid-template-rows: auto 1fr auto; /* header, body, footer */
+  grid-template-rows: auto 1fr auto;
   align-items: stretch;
 }
 
@@ -157,14 +154,12 @@
   color: #9aa5aa;
 }
 
-/* placeholder text */
 .slotPlaceholder {
   font-size: 13px;
   color: #6b7280;
   text-align: center;
 }
 
-/* modal for naming */
 .modalBackdrop {
   position: fixed;
   inset: 0;
@@ -247,7 +242,9 @@
 .slotImg {
   width: 100%;
   height: 100%;
+  max-height: 120px;
   display: block;
+  object-fit: contain;
   transform-origin: center center;
   cursor: grab;
   transition: transform 0.06s linear;
@@ -255,7 +252,6 @@
   -webkit-user-drag: none;
 }
 
-/* when user is dragging the img we set grabbing via inline style, but make an alternate */
 .slotImg:active {
   cursor: grabbing;
 }

@@ -11,6 +11,8 @@ export default function UploadScan({
   a4PreviewWidth = 360,
   onPreviewChange,
   controlsOnly = false,
+  initialHeaderUrl = null,
+  initialFooterUrl = null,
 }) {
   const [headerFile, setHeaderFile] = useState(null);
   const [footerFile, setFooterFile] = useState(null);
@@ -24,30 +26,63 @@ export default function UploadScan({
   const fileInputFooterRef = useRef(null);
 
   useEffect(() => {
-    if (headerFile) {
-      const u = URL.createObjectURL(headerFile);
-      setHeaderUrl(u);
-      return () => URL.revokeObjectURL(u);
-    } else {
-      setHeaderUrl(null);
-    }
+    if (!headerFile) return;
+    const u = URL.createObjectURL(headerFile);
+    setHeaderUrl(u);
+    return () => {
+      try {
+        URL.revokeObjectURL(u);
+      } catch (e) {}
+    };
   }, [headerFile]);
 
   useEffect(() => {
-    if (footerFile) {
-      const u = URL.createObjectURL(footerFile);
-      setFooterUrl(u);
-      return () => URL.revokeObjectURL(u);
-    } else {
-      setFooterUrl(null);
-    }
+    if (headerFile) return;
+    setHeaderUrl(initialHeaderUrl || null);
+  }, [initialHeaderUrl, headerFile]);
+
+  useEffect(() => {
+    if (!footerFile) return;
+    const u = URL.createObjectURL(footerFile);
+    setFooterUrl(u);
+    return () => {
+      try {
+        URL.revokeObjectURL(u);
+      } catch (e) {}
+    };
   }, [footerFile]);
 
   useEffect(() => {
-    if (typeof onPreviewChange === "function") {
+    if (footerFile) return;
+    setFooterUrl(initialFooterUrl || null);
+  }, [initialFooterUrl, footerFile]);
+
+  const lastPreviewRef = useRef({
+    headerUrl: null,
+    footerUrl: null,
+    headerFile: null,
+    footerFile: null,
+  });
+
+  useEffect(() => {
+    if (typeof onPreviewChange !== "function") return;
+
+    const last = lastPreviewRef.current;
+    const same =
+      last.headerUrl === headerUrl &&
+      last.footerUrl === footerUrl &&
+      last.headerFile === headerFile &&
+      last.footerFile === footerFile;
+
+    if (same) return;
+
+    lastPreviewRef.current = { headerUrl, footerUrl, headerFile, footerFile };
+    try {
       onPreviewChange({ headerUrl, footerUrl, headerFile, footerFile });
+    } catch (e) {
+      console.warn("onPreviewChange handler threw", e);
     }
-  }, [headerUrl, footerUrl, headerFile, footerFile]);
+  }, [headerUrl, footerUrl, headerFile, footerFile, onPreviewChange]);
 
   const a4Ratio = 297 / 210;
   const previewWidth = Number(a4PreviewWidth) || 360;
@@ -66,11 +101,11 @@ export default function UploadScan({
 
   function clearHeader() {
     setHeaderFile(null);
-    fileInputHeaderRef.current && (fileInputHeaderRef.current.value = "");
+    if (fileInputHeaderRef.current) fileInputHeaderRef.current.value = "";
   }
   function clearFooter() {
     setFooterFile(null);
-    fileInputFooterRef.current && (fileInputFooterRef.current.value = "");
+    if (fileInputFooterRef.current) fileInputFooterRef.current.value = "";
   }
 
   async function handleSave() {
@@ -113,16 +148,14 @@ export default function UploadScan({
         throw new Error(msg);
       }
 
-      // Success: notify parent that save finished (no template payload)
       if (typeof onSaved === "function") onSaved();
 
-      // reset UI
       setHeaderFile(null);
       setFooterFile(null);
       setSaveName("");
       setShowNamePrompt(false);
-      fileInputHeaderRef.current && (fileInputHeaderRef.current.value = "");
-      fileInputFooterRef.current && (fileInputFooterRef.current.value = "");
+      if (fileInputHeaderRef.current) fileInputHeaderRef.current.value = "";
+      if (fileInputFooterRef.current) fileInputFooterRef.current.value = "";
     } catch (err) {
       setError(err.message || "Save failed");
     } finally {

@@ -10,10 +10,6 @@ import Modal from "../Modal/Modal.client";
 import styles from "./TemplateBuilder.module.css";
 import ProtectedImg from "./ProtectedImg.client";
 
-// (Your DOC_CATEGORIES, SAVED_CATEGORIES, inferCategory, textFromHtml, templateToBoxes
-//  and fetchProtectedImage implementations remain unchanged — truncated here for brevity)
-// For completeness I include them as in your file:
-
 const DOC_CATEGORIES = [
   { key: "all", label: "All" },
   { key: "invoices", label: "Invoices" },
@@ -139,11 +135,6 @@ async function fetchProtectedImage(src, apiKey) {
   }
 }
 
-/* -------------------------
-   HTML and grapesJson resolution helpers
-   (keep your previous implementations but note we extract header/footer blobs later)
-   ------------------------- */
-
 async function replaceUploadUrlsInHtml(html = "", apiKey, backendBase) {
   if (!html) return html;
   if (!backendBase) {
@@ -167,12 +158,10 @@ async function replaceUploadUrlsInHtml(html = "", apiKey, backendBase) {
       const blobUrl = await fetchProtectedImage(src, apiKey);
       if (!blobUrl) return;
 
-      // replace + lock image (non-interactive)
       img.setAttribute("src", blobUrl);
       img.setAttribute("draggable", "false");
       img.setAttribute("data-locked", "true");
 
-      // preserve existing style and add non-interactive hints
       const existing = img.getAttribute("style") || "";
       const extra = "pointer-events: none; user-select: none;";
       img.setAttribute("style", (existing ? existing + ";" : "") + extra);
@@ -202,7 +191,6 @@ async function resolveTemplateProtectedAssets(
     "footerUrl",
   ];
 
-  // replace any top-level candidate fields with blob URLs
   await Promise.all(
     candidateFields.map(async (field) => {
       const val = t[field];
@@ -220,14 +208,11 @@ async function resolveTemplateProtectedAssets(
           src = base + src;
         }
         const blob = await fetchProtectedImage(src, apiKey);
-        if (blob) {
-          t[field] = blob;
-        }
+        if (blob) t[field] = blob;
       }
     })
   );
 
-  // if HTML contains upload URLs, replace with blobs and lock images
   if (
     typeof t.html === "string" &&
     /\/api\/orgs\/\d+\/uploads\//.test(t.html)
@@ -235,7 +220,6 @@ async function resolveTemplateProtectedAssets(
     t.html = await replaceUploadUrlsInHtml(t.html, apiKey, backendBase);
   }
 
-  // walk grapesJson and replace srcs
   if (t.grapesJson && typeof t.grapesJson === "object") {
     try {
       const copy = JSON.parse(JSON.stringify(t.grapesJson));
@@ -245,8 +229,6 @@ async function resolveTemplateProtectedAssets(
           for (const c of node) await walk(c);
           return;
         }
-
-        // attributes.src
         if (
           node.attributes &&
           typeof node.attributes.src === "string" &&
@@ -267,7 +249,6 @@ async function resolveTemplateProtectedAssets(
           const blob = await fetchProtectedImage(src, apiKey);
           if (blob) {
             node.attributes.src = blob;
-            // mark locked & non-interactive
             node.attributes["draggable"] = "false";
             node.attributes["data-locked"] = "true";
             node.attributes["style"] =
@@ -275,8 +256,6 @@ async function resolveTemplateProtectedAssets(
               ";pointer-events:none;user-select:none;";
           }
         }
-
-        // any other string properties in the node that are upload URLs
         for (const k of Object.keys(node)) {
           if (
             typeof node[k] === "string" &&
@@ -314,10 +293,6 @@ async function resolveTemplateProtectedAssets(
   return t;
 }
 
-/* -------------------------
-   Component start
-   ------------------------- */
-
 export default function TemplateBuilder() {
   const { user } = useAuth();
   const [mode, setMode] = useState("upload");
@@ -335,6 +310,11 @@ export default function TemplateBuilder() {
   const [savedModalVisible, setSavedModalVisible] = useState(false);
   const [saveModalOpen, setSaveModalOpen] = useState(false);
   const [saveName, setSaveName] = useState("");
+  const [headerHeight, setHeaderHeight] = useState(0);
+  const [footerHeight, setFooterHeight] = useState(0);
+  const headerImgRef = useRef(null);
+  const footerImgRef = useRef(null);
+  const editorWrapperRef = useRef(null);
 
   const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "";
   const API_KEY = process.env.NEXT_PUBLIC_API_KEY || "";
@@ -344,11 +324,10 @@ export default function TemplateBuilder() {
   const scratchEditorRef = useRef(null);
 
   useEffect(() => {
-    if (!orgId) return;
-    const parsed = Number(orgId);
-    if (Number.isNaN(parsed)) return;
-    fetchPublicBasicTemplates(parsed);
-    fetchSavedTemplates(parsed);
+    const parsedOrg = orgId ? Number(orgId) : null;
+    if (orgId && Number.isNaN(parsedOrg)) return;
+    fetchPublicBasicTemplates(parsedOrg);
+    if (parsedOrg) fetchSavedTemplates(parsedOrg);
   }, [orgId]);
 
   const saveUrl = orgId ? `${BACKEND_URL}/api/orgs/${orgId}/templates` : null;
@@ -364,62 +343,16 @@ export default function TemplateBuilder() {
     }
   }
 
-  /* -------------------------
-     Fetch functions (same as yours)
-     ------------------------- */
-
-  async function fetchPublicBasicTemplates(org) {
+  async function fetchPublicBasicTemplates() {
     setLoading(true);
     const localBase = "/commonTemplates/basic";
-    try {
-      if (org) {
-        if (!BACKEND_URL)
-          console.warn(
-            "fetchPublicBasicTemplates: NEXT_PUBLIC_BACKEND_URL is not set"
-          );
-        const res = await fetch(
-          `${BACKEND_URL}/api/orgs/${org}/templates/basic`,
-          {
-            method: "GET",
-            headers: { "x-api-key": API_KEY },
-            credentials: "include",
-          }
-        );
-        if (res.ok) {
-          const data = await res.json();
-          if (Array.isArray(data)) {
-            const normalized = data.map((entry) => {
-              const baseUrl = "/commonTemplates/basic/";
-              const thumbnail = entry.thumbnail
-                ? entry.thumbnail.startsWith("http")
-                  ? entry.thumbnail
-                  : (() => {
-                      try {
-                        return new URL(entry.thumbnail, baseUrl).href;
-                      } catch (e) {
-                        return baseUrl + entry.thumbnail;
-                      }
-                    })()
-                : null;
-              return { ...entry, thumbnail, origin: "public" };
-            });
-            setPublicTemplates(normalized);
-            setLoading(false);
-            return;
-          }
-        }
-      }
-    } catch (e) {
-      console.warn(
-        "Backend basic templates fetch failed, falling back to public manifest",
-        e.message
-      );
-    }
+    const thumbBase = "/commonTemplates/thumbnails";
 
     try {
       const manifestUrl = `${localBase}/manifest.json`;
+
       const mRes = await fetch(manifestUrl);
-      if (!mRes.ok) throw new Error("No local manifest");
+      if (!mRes.ok) throw new Error(`manifest not found (${mRes.status})`);
       const manifest = await mRes.json();
 
       const loaded = await Promise.all(
@@ -430,18 +363,36 @@ export default function TemplateBuilder() {
             const r = await fetch(fileUrl);
             if (r.ok) html = await r.text();
           } catch (err) {
-            console.warn("Failed to fetch template html", fileUrl, err);
+            console.warn(
+              "[fetchPublicBasicTemplates] failed to fetch template html",
+              fileUrl,
+              err
+            );
           }
-          const thumbnail = entry.thumbnail
-            ? `${localBase}/${entry.thumbnail}`
-            : null;
-          const grapesJson = null;
+          let thumbnail = null;
+          if (entry.thumbnail) {
+            try {
+              let t = String(entry.thumbnail).trim();
+              t = t.replace(/^(\.\/)+/, "");
+              t = t.replace(/^(\.\.\/)+/, "");
+              const parts = t.split("/").filter(Boolean);
+              const fname = parts.length ? parts[parts.length - 1] : t;
+              thumbnail = `${thumbBase}/${fname}`.replace(/\/+/g, "/");
+            } catch (e) {
+              console.warn(
+                "[fetchPublicBasicTemplates] thumbnail normalize failed",
+                entry.thumbnail,
+                e
+              );
+            }
+          }
+
           return {
             id: entry.id,
             name: entry.name,
             description: entry.description || "",
             html,
-            grapesJson,
+            grapesJson: null,
             thumbnail,
             origin: "public",
             rawEntry: entry,
@@ -450,10 +401,11 @@ export default function TemplateBuilder() {
       );
 
       setPublicTemplates(loaded);
+      return;
     } catch (err) {
       console.warn(
-        "No local templates manifest found or failed to load templates",
-        err.message
+        "[fetchPublicBasicTemplates] failed to load local basic templates:",
+        err && err.message
       );
       setPublicTemplates([]);
     } finally {
@@ -517,10 +469,6 @@ export default function TemplateBuilder() {
     }
   }
 
-  /* -------------------------
-     When opening saved template: resolve assets, then extract header/footer blobs
-     ------------------------- */
-
   async function chooseBasic(template) {
     if (!template) return;
     if (template.origin === "saved") {
@@ -531,8 +479,6 @@ export default function TemplateBuilder() {
           BACKEND_URL
         );
 
-        // Extract header/footer blobs into well-known properties
-        // backend field names we check: header_url, footer_url, headerUrl, footerUrl
         const headerCandidates = [
           resolved.header_url,
           resolved.headerUrl,
@@ -544,7 +490,6 @@ export default function TemplateBuilder() {
           resolved.footer,
         ];
 
-        // _headerBlob / _footerBlob will be used by this component to render non-editable overlays
         const headerBlob = headerCandidates.find(
           (x) => typeof x === "string" && x
         );
@@ -555,8 +500,6 @@ export default function TemplateBuilder() {
         if (headerBlob) resolved._headerBlob = headerBlob;
         if (footerBlob) resolved._footerBlob = footerBlob;
 
-        // Optionally remove the in-template references so editor won't render them itself
-        // (safer as we render them separately)
         if (headerBlob) {
           if (resolved.header_url) resolved.header_url = null;
           if (resolved.headerUrl) resolved.headerUrl = null;
@@ -575,13 +518,10 @@ export default function TemplateBuilder() {
         console.warn("chooseBasic: resolveTemplateProtectedAssets failed", err);
       }
     }
+
     setGenerated(template);
     setAppMode("basic");
   }
-
-  /* -------------------------
-     Save handling (same as your file)
-     ------------------------- */
 
   function handleUploadSaved() {
     if (!orgId) {
@@ -656,10 +596,6 @@ export default function TemplateBuilder() {
       alert("Save failed: " + (err.message || "error"));
     }
   }
-
-  /* -------------------------
-     Filters and editor helpers (same)
-     ------------------------- */
 
   const filteredPublic = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -766,9 +702,162 @@ export default function TemplateBuilder() {
     handleCustomSave(data);
   }
 
-  /* -------------------------
-     Render
-     ------------------------- */
+  function onHeaderLoad(e) {
+    const img = e.target;
+    if (!editorWrapperRef.current) return;
+    const wrapperWidth =
+      editorWrapperRef.current.clientWidth || img.clientWidth;
+    const ratio = img.naturalHeight / img.naturalWidth || 0;
+    const h = Math.round(wrapperWidth * ratio);
+    setHeaderHeight(h);
+  }
+  function onFooterLoad(e) {
+    const img = e.target;
+    if (!editorWrapperRef.current) return;
+    const wrapperWidth =
+      editorWrapperRef.current.clientWidth || img.clientWidth;
+    const ratio = img.naturalHeight / img.naturalWidth || 0;
+    const h = Math.round(wrapperWidth * ratio);
+    setFooterHeight(h);
+  }
+
+  async function openSavedTemplate(template) {
+    if (!template) return;
+    const cat = template.category || inferCategory(template);
+    const isUpload =
+      cat === "saved_uploads" ||
+      String(template.template_type || "").toLowerCase() === "scan";
+
+    if (!isUpload) {
+      return chooseBasic(template);
+    }
+
+    async function ensureBlobUrl(src) {
+      if (!src) return null;
+      if (
+        src.startsWith("blob:") ||
+        src.startsWith("data:") ||
+        /^https?:\/\//i.test(src)
+      ) {
+        return src;
+      }
+
+      if (
+        !src.startsWith("/api/") &&
+        !/^https?:\/\//i.test(src) &&
+        /^[^\/\\]+\.(png|jpe?g|svg|gif|webp)$/i.test(src)
+      ) {
+        if (BACKEND_URL && orgId) {
+          src = `${BACKEND_URL.replace(
+            /\/$/,
+            ""
+          )}/api/orgs/${orgId}/uploads/${src}`;
+        } else {
+        }
+      }
+
+      if (src.startsWith("/api/")) {
+        if (BACKEND_URL) {
+          src = `${BACKEND_URL.replace(/\/$/, "")}${src}`;
+        } else {
+          console.warn(
+            "ensureBlobUrl: BACKEND_URL missing, cannot build full url for",
+            src
+          );
+        }
+      }
+
+      try {
+        const blobUrl = await fetchProtectedImage(src, API_KEY);
+        if (blobUrl) return blobUrl;
+      } catch (e) {
+        console.warn("ensureBlobUrl: fetchProtectedImage failed for", src, e);
+      }
+      return src;
+    }
+
+    function collectUploadStrings(obj, out = new Set()) {
+      if (!obj) return out;
+      if (typeof obj === "string") {
+        if (
+          /\/api\/orgs\/\d+\/uploads\/[^"'\s]+/i.test(obj) ||
+          /^[^\/\\]+\.(png|jpe?g|svg|gif|webp)$/i.test(obj)
+        ) {
+          out.add(obj);
+        }
+        return out;
+      }
+      if (Array.isArray(obj)) {
+        for (const v of obj) collectUploadStrings(v, out);
+        return out;
+      }
+      if (typeof obj === "object") {
+        for (const k of Object.keys(obj)) {
+          try {
+            collectUploadStrings(obj[k], out);
+          } catch (e) {}
+        }
+      }
+      return out;
+    }
+
+    try {
+      let resolved = template;
+      try {
+        resolved = await resolveTemplateProtectedAssets(
+          template,
+          API_KEY,
+          BACKEND_URL
+        );
+      } catch (e) {
+        console.warn(
+          "openSavedTemplate: resolveTemplateProtectedAssets failed",
+          e
+        );
+      }
+
+      const headerCandidates = [
+        resolved.header_url,
+        resolved.headerUrl,
+        resolved.header,
+        resolved._headerBlob,
+        resolved.imageUrl,
+        resolved.cleanedUrl,
+        resolved.thumbnail,
+      ];
+      const footerCandidates = [
+        resolved.footer_url,
+        resolved.footerUrl,
+        resolved.footer,
+        resolved._footerBlob,
+      ];
+
+      let rawHeader =
+        headerCandidates.find((x) => typeof x === "string" && x) || null;
+      let rawFooter =
+        footerCandidates.find((x) => typeof x === "string" && x) || null;
+
+      if (!rawHeader || !rawFooter) {
+        const found = Array.from(collectUploadStrings(resolved));
+        if (!rawHeader && found.length >= 1) rawHeader = found[0];
+        if (!rawFooter && found.length >= 2) rawFooter = found[1];
+      }
+
+      const headerBlobUrl = await ensureBlobUrl(rawHeader);
+      const footerBlobUrl = await ensureBlobUrl(rawFooter);
+
+      setPreviewHeaderUrl(headerBlobUrl || null);
+      setPreviewFooterUrl(footerBlobUrl || null);
+
+      setAppMode("upload");
+      setShowSavedPane(true);
+
+      return;
+    } catch (err) {
+      console.warn("openSavedTemplate: unexpected error", err);
+      return chooseBasic(template);
+    }
+  }
 
   return (
     <div className={styles.container}>
@@ -856,7 +945,7 @@ export default function TemplateBuilder() {
                   <button
                     key={t.id || t.name || Math.random()}
                     className={styles.card}
-                    onClick={() => chooseBasic(t)}
+                    onClick={() => openSavedTemplate(t)}
                     title={t.name}
                     aria-label={`Choose ${t.name}`}
                   >
@@ -926,7 +1015,7 @@ export default function TemplateBuilder() {
                   className={styles.modeBtn}
                   onClick={actionTogglePreview}
                 >
-                  Toggle Preview
+                  Preview
                 </button>
                 <button
                   className={styles.modeBtn}
@@ -987,11 +1076,17 @@ export default function TemplateBuilder() {
             apiKey={process.env.NEXT_PUBLIC_API_KEY}
             controlsOnly={true}
             onPreviewChange={({ headerUrl, footerUrl }) => {
-              setPreviewHeaderUrl(headerUrl || null);
-              setPreviewFooterUrl(footerUrl || null);
+              setPreviewHeaderUrl((prev) =>
+                prev === headerUrl ? prev : headerUrl || null
+              );
+              setPreviewFooterUrl((prev) =>
+                prev === footerUrl ? prev : footerUrl || null
+              );
             }}
             onSaved={handleUploadSaved}
             a4PreviewWidth={420}
+            initialHeaderUrl={previewHeaderUrl}
+            initialFooterUrl={previewFooterUrl}
           />
         )}
 
@@ -1042,6 +1137,7 @@ export default function TemplateBuilder() {
         <div
           className={styles.editorContainer}
           data-testid="template-editor-container"
+          ref={editorWrapperRef}
         >
           {mode === "upload" && (previewHeaderUrl || previewFooterUrl) && (
             <A4Preview
@@ -1061,15 +1157,15 @@ export default function TemplateBuilder() {
           {mode === "basic" &&
             generated &&
             (generated.html && generated.html.trim() ? (
-              // Wrap BasicTemplateEditor with a non-editable header/footer overlay
               <div style={{ position: "relative" }}>
-                {/* non-editable header overlay */}
                 {generated._headerBlob && (
                   <img
+                    ref={headerImgRef}
                     src={generated._headerBlob}
                     alt="Header"
                     draggable={false}
                     onDragStart={(e) => e.preventDefault()}
+                    onLoad={onHeaderLoad}
                     style={{
                       position: "absolute",
                       top: 0,
@@ -1083,82 +1179,35 @@ export default function TemplateBuilder() {
                   />
                 )}
 
-                <BasicTemplateEditor
-                  ref={basicEditorRef}
-                  key={generated.id || generated.file || Math.random()}
-                  initialHtml={generated.html}
-                  initialJson={generated.grapesJson}
-                  baseUrl={"/commonTemplates/basic/"}
-                  onSave={(payload) =>
-                    handleCustomSave({
-                      ...payload,
-                      templateId: generated.id || generated.name,
-                    })
-                  }
-                />
+                <div
+                  style={{
+                    paddingTop: headerHeight,
+                    paddingBottom: footerHeight,
+                  }}
+                >
+                  <BasicTemplateEditor
+                    ref={basicEditorRef}
+                    key={generated.id || generated.file || Math.random()}
+                    initialHtml={generated.html}
+                    initialJson={generated.grapesJson}
+                    baseUrl={"/commonTemplates/basic/"}
+                    onSave={(payload) =>
+                      handleCustomSave({
+                        ...payload,
+                        templateId: generated.id || generated.name,
+                      })
+                    }
+                  />
+                </div>
 
-                {/* non-editable footer overlay */}
                 {generated._footerBlob && (
                   <img
+                    ref={footerImgRef}
                     src={generated._footerBlob}
                     alt="Footer"
                     draggable={false}
                     onDragStart={(e) => e.preventDefault()}
-                    style={{
-                      position: "absolute",
-                      bottom: 0,
-                      left: 0,
-                      right: 0,
-                      width: "100%",
-                      display: "block",
-                      pointerEvents: "none",
-                      userSelect: "none",
-                    }}
-                  />
-                )}
-              </div>
-            ) : generated ? (
-              // CustomTemplateEditor (non-html / grapes JSON)
-              <div style={{ position: "relative" }}>
-                {generated._headerBlob && (
-                  <img
-                    src={generated._headerBlob}
-                    alt="Header"
-                    draggable={false}
-                    onDragStart={(e) => e.preventDefault()}
-                    style={{
-                      position: "absolute",
-                      top: 0,
-                      left: 0,
-                      right: 0,
-                      width: "100%",
-                      display: "block",
-                      pointerEvents: "none",
-                      userSelect: "none",
-                    }}
-                  />
-                )}
-
-                <CustomTemplateEditor
-                  ref={basicEditorRef}
-                  key={
-                    generated.id ||
-                    generated.name ||
-                    generated.file ||
-                    Math.random()
-                  }
-                  background={generated.thumbnail || generated.imageUrl || null}
-                  initialBoxes={templateToBoxes(generated)}
-                  onSave={handleCustomSave}
-                  canvasWidthPx={794}
-                />
-
-                {generated._footerBlob && (
-                  <img
-                    src={generated._footerBlob}
-                    alt="Footer"
-                    draggable={false}
-                    onDragStart={(e) => e.preventDefault()}
+                    onLoad={onFooterLoad}
                     style={{
                       position: "absolute",
                       bottom: 0,
@@ -1173,10 +1222,79 @@ export default function TemplateBuilder() {
                 )}
               </div>
             ) : (
-              <div className={styles.placeholder}>
-                Choose a template from the left to open it here.
+              <div style={{ position: "relative" }}>
+                {generated._headerBlob && (
+                  <img
+                    ref={headerImgRef}
+                    src={generated._headerBlob}
+                    alt="Header"
+                    draggable={false}
+                    onDragStart={(e) => e.preventDefault()}
+                    onLoad={onHeaderLoad}
+                    style={{
+                      position: "absolute",
+                      top: 0,
+                      left: 0,
+                      right: 0,
+                      width: "100%",
+                      display: "block",
+                      pointerEvents: "none",
+                      userSelect: "none",
+                    }}
+                  />
+                )}
+
+                <div
+                  style={{
+                    paddingTop: headerHeight,
+                    paddingBottom: footerHeight,
+                  }}
+                >
+                  <CustomTemplateEditor
+                    ref={basicEditorRef}
+                    key={
+                      generated.id ||
+                      generated.name ||
+                      generated.file ||
+                      Math.random()
+                    }
+                    background={
+                      generated.thumbnail || generated.imageUrl || null
+                    }
+                    initialBoxes={templateToBoxes(generated)}
+                    onSave={handleCustomSave}
+                    canvasWidthPx={794}
+                  />
+                </div>
+
+                {generated._footerBlob && (
+                  <img
+                    ref={footerImgRef}
+                    src={generated._footerBlob}
+                    alt="Footer"
+                    draggable={false}
+                    onDragStart={(e) => e.preventDefault()}
+                    onLoad={onFooterLoad}
+                    style={{
+                      position: "absolute",
+                      bottom: 0,
+                      left: 0,
+                      right: 0,
+                      width: "100%",
+                      display: "block",
+                      pointerEvents: "none",
+                      userSelect: "none",
+                    }}
+                  />
+                )}
               </div>
             ))}
+
+          {!generated && mode === "basic" && (
+            <div className={styles.placeholder}>
+              Choose a template from the left to open it here.
+            </div>
+          )}
 
           {mode === "scratch" && (
             <CustomTemplateEditor

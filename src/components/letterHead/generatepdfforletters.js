@@ -40,7 +40,6 @@ const loadImageElement = (dataUrl) =>
 
 const imgElementToDataUrl = async (imgEl) => {
   if (!imgEl) return null;
-  // if <img> element
   if (imgEl.tagName && imgEl.tagName.toLowerCase() === "img" && imgEl.src) {
     try {
       if (imgEl.src.startsWith("data:") || imgEl.src.startsWith("blob:"))
@@ -52,7 +51,6 @@ const imgElementToDataUrl = async (imgEl) => {
     }
   }
 
-  // if node contains an <img> inside (e.g. wrapper div.template-header)
   const innerImg = imgEl.querySelector && imgEl.querySelector("img");
   if (innerImg && innerImg.src) {
     try {
@@ -68,16 +66,9 @@ const imgElementToDataUrl = async (imgEl) => {
   return null;
 };
 
-/**
- * Attempts to find header/footer elements by:
- * 1) direct query selectors (alt/class),
- * 2) scanning siblings of the content area (previous elements -> header, next elements -> footer),
- * 3) fallback to first/last images inside the container.
- */
 const findHeaderFooterElements = (container, contentEl) => {
   if (!container) return { headerEl: null, footerEl: null };
 
-  // direct known selectors first
   const directHeader =
     container.querySelector('img[alt="Header"]') ||
     container.querySelector(".template-header") ||
@@ -91,7 +82,6 @@ const findHeaderFooterElements = (container, contentEl) => {
     return { headerEl: directHeader, footerEl: directFooter };
   }
 
-  // if content element exists, inspect previous siblings for header-like nodes
   const isHeaderLike = (el) => {
     if (!el || el.nodeType !== 1) return false;
     const tag = el.tagName.toLowerCase();
@@ -110,7 +100,7 @@ const findHeaderFooterElements = (container, contentEl) => {
     if (cls.includes("template-header") || id.includes("template-header"))
       return true;
     if (tag === "div" && el.querySelector && el.querySelector("img"))
-      return true; // wrapper with img
+      return true;
     return false;
   };
   const isFooterLike = (el) => {
@@ -139,14 +129,12 @@ const findHeaderFooterElements = (container, contentEl) => {
   let footerEl = null;
 
   if (contentEl) {
-    // previousElementSibling chain -> header candidate(s)
     let prev = contentEl.previousElementSibling;
     while (prev) {
       if (isHeaderLike(prev)) {
         headerEl = prev;
         break;
       }
-      // if we hit something that looks like body text, stop scanning
       if (
         prev.matches &&
         prev.matches(
@@ -157,7 +145,6 @@ const findHeaderFooterElements = (container, contentEl) => {
       prev = prev.previousElementSibling;
     }
 
-    // nextElementSibling chain -> footer candidate(s)
     let next = contentEl.nextElementSibling;
     while (next) {
       if (isFooterLike(next)) {
@@ -173,7 +160,6 @@ const findHeaderFooterElements = (container, contentEl) => {
     }
   }
 
-  // as a last resort, pick the first image in container for header and last image for footer
   if (!headerEl) {
     const imgs = container.querySelectorAll("img");
     if (imgs && imgs.length > 0) headerEl = imgs[0];
@@ -218,7 +204,6 @@ const generatePDF = async (
     const baseLineHeight = 14;
     const paragraphSpacing = 15;
 
-    // locate content element (editable area) and attempt to find header/footer elements robustly
     const contentElement =
       element?.querySelector?.(".letterhead-content-area") ||
       element?.querySelector('[contenteditable="true"]') ||
@@ -228,7 +213,6 @@ const generatePDF = async (
     const { headerEl: foundHeaderEl, footerEl: foundFooterEl } =
       findHeaderFooterElements(element, contentElement);
 
-    // pick up data URLs for header/footer images
     let headerImageDataUrl = null;
     let footerImageDataUrl = null;
     try {
@@ -237,7 +221,6 @@ const generatePDF = async (
       if (foundFooterEl)
         footerImageDataUrl = await imgElementToDataUrl(foundFooterEl);
 
-      // fallback to provided logoUrl if header not found
       if (!headerImageDataUrl && logoUrl) {
         const fetched = await fetchUrlToDataUrl(logoUrl);
         if (fetched) headerImageDataUrl = fetched;
@@ -378,7 +361,6 @@ const generatePDF = async (
     const headerBottom = addHeader();
     let yPosition = headerBottom + 20;
 
-    // Date (try to read from any date input inside element)
     if (element) {
       const dateInput =
         element.querySelector?.(
@@ -397,7 +379,6 @@ const generatePDF = async (
       yPosition += baseLineHeight + paragraphSpacing;
     }
 
-    // Subject: prefer subject input; if not present, do not use letterType as a body substitute.
     doc.setFont("helvetica", "bold");
     doc.setFontSize(12);
     const subjectInput =
@@ -414,7 +395,6 @@ const generatePDF = async (
       yPosition += subjectLines.length * baseLineHeight + paragraphSpacing;
     }
 
-    // Salutation / recipient
     doc.setFont("helvetica", "normal");
     doc.setFontSize(11);
     const titleInput =
@@ -438,7 +418,6 @@ const generatePDF = async (
       yPosition += recipientLines.length * baseLineHeight + paragraphSpacing;
     }
 
-    // Address
     const addressVal =
       address ||
       element?.querySelector('.letterhead-input-field[placeholder="Address"]')
@@ -454,18 +433,15 @@ const generatePDF = async (
       yPosition += addressLines.length * baseLineHeight + paragraphSpacing;
     }
 
-    // Content: gather HTML from content area, with fallbacks
     let htmlContent = "";
     if (contentElement) htmlContent = contentElement.innerHTML || "";
 
-    // If the content area is empty or just equals the letterType (common bug), try alternate selectors:
     const looksLikeEmptyOrLetterType =
       !htmlContent ||
       htmlContent.trim() === "" ||
       htmlContent.trim() === (letterType || "").trim();
 
     if (looksLikeEmptyOrLetterType) {
-      // try selectors that might contain the template body
       const altSelectors = [
         ".template-body",
         ".template-content",
@@ -481,7 +457,6 @@ const generatePDF = async (
         }
       }
 
-      // try reading a selected saved template's data-content attribute if available
       if (
         (!htmlContent || htmlContent.trim() === "") &&
         element.querySelector
@@ -493,7 +468,6 @@ const generatePDF = async (
           savedSelect.selectedOptions[0]
         ) {
           const opt = savedSelect.selectedOptions[0];
-          // developer may add data-content on option — use it if present
           if (opt.dataset && opt.dataset.content) {
             htmlContent = opt.dataset.content;
           }
@@ -501,12 +475,10 @@ const generatePDF = async (
       }
     }
 
-    // final guard: ensure htmlContent is at least something; if still empty, use a simple placeholder
     if (!htmlContent || htmlContent.trim() === "") {
       htmlContent = "<p></p>";
     }
 
-    // Replace placeholders with provided values
     const replacements = {
       "\\[Recipient Name\\]": recipientName || "",
       "\\[Employee Name\\]": employeeName || "",
@@ -524,7 +496,6 @@ const generatePDF = async (
       }
     });
 
-    // Parse HTML into nodes for printing
     const parser = new DOMParser();
     const docHTML = parser.parseFromString(
       `<div>${htmlContent || ""}</div>`,
@@ -532,7 +503,6 @@ const generatePDF = async (
     );
     const contentNodes = docHTML.querySelector("div").childNodes;
 
-    // Convert HTML nodes into printable segments
     const contentSegments = [];
     const processNode = (node, inheritedStyles = {}) => {
       if (node.nodeType === Node.TEXT_NODE) {
@@ -574,7 +544,6 @@ const generatePDF = async (
 
     contentNodes.forEach((n) => processNode(n));
 
-    // Render segments
     for (let i = 0; i < contentSegments.length; i++) {
       const seg = contentSegments[i];
       if (seg.isBreak) {
@@ -641,7 +610,6 @@ const generatePDF = async (
         continue;
       }
 
-      // normal text
       doc.setFont("helvetica", seg.styles?.bold ? "bold" : "normal");
       doc.setFontSize(seg.styles?.fontSize || 11);
       const words = seg.text
@@ -659,7 +627,6 @@ const generatePDF = async (
       yPosition += paragraphSpacing;
     }
 
-    // Signature (if any)
     const sigField = element?.querySelector?.(
       '.letterhead-input-field[placeholder="Signature (Your Name, Designation)"]'
     );
@@ -677,7 +644,6 @@ const generatePDF = async (
       yPosition += sigLines.length * baseLineHeight + paragraphSpacing;
     }
 
-    // draw footer on last page
     addFooter(doc.getNumberOfPages(), doc.getNumberOfPages());
 
     if (preview) {

@@ -112,6 +112,20 @@ const AdminQuery = () => {
       }
     };
 
+    const onConnect = () => {
+      console.log("[socket] connected", socketRef.current?.id);
+      fetchQueries?.();
+    };
+
+    const onDisconnect = (reason) => {
+      console.log("[socket] disconnected:", reason);
+    };
+
+    const onConnectError = (err) => {
+      console.error("[socket] connect_error:", err);
+      showAlert("Realtime connection failed. Some updates may be delayed.");
+    };
+
     socket.on("connect", onConnect);
     socket.on("disconnect", onDisconnect);
     socket.on("connect_error", onConnectError);

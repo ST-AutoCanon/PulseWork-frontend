@@ -193,6 +193,12 @@ const LetterHead = () => {
   };
 
   useEffect(() => {
+    if (showPopup && contentRef.current) {
+      contentRef.current.innerHTML = formData.body || "";
+    }
+  }, [showPopup]);
+
+  useEffect(() => {
     let mounted = true;
     async function fetchData() {
       setLoading(true);
@@ -380,10 +386,8 @@ const LetterHead = () => {
     }
   };
 
-  // replaces the old findFooterNode
   const findFooterNode = (container) => {
     if (!container) return null;
-    // look for common footer selectors anywhere inside the container
     const selectors = [
       ".template-footer",
       'img[alt="Footer"]',
@@ -396,47 +400,38 @@ const LetterHead = () => {
       nodes.push(...Array.from(container.querySelectorAll(sel)));
     });
     if (nodes.length === 0) return null;
-    // querySelectorAll returns nodes in document order — last one is the bottom-most footer
     return nodes[nodes.length - 1];
   };
 
-  // replaces the old replaceEditorBody
   const replaceEditorBody = (newBodyHtml = "") => {
     if (!contentRef.current) return;
     const editor = contentRef.current;
 
-    // header node (search anywhere, not only direct child)
     const headerNode =
       editor.querySelector(".template-header") ||
       editor.querySelector('img[alt="Header"]') ||
       editor.querySelector('img[class*="header"]') ||
       null;
 
-    // footer node (search anywhere and pick last occurrence)
     const footerNode = findFooterNode(editor);
 
     let headerHtml = "";
     let footerHtml = "";
 
-    // If header exists, prefer the wrapper (.template-header) if present
     if (headerNode) {
       const headerWrapper = headerNode.closest
         ? headerNode.closest(".template-header") || headerNode
         : headerNode;
       try {
         headerHtml = headerWrapper.outerHTML;
-        // remove the wrapper (wherever it is) so we can re-insert cleanly
         if (headerWrapper.parentElement && editor.contains(headerWrapper)) {
           headerWrapper.remove();
         }
-      } catch (e) {
-        // ignore removal errors
-      }
+      } catch (e) {}
     } else if (headerBlobRef.current) {
       headerHtml = `<div class="template-header"><img src="${headerBlobRef.current}" alt="Header" style="max-width:100%;height:auto;" /></div>`;
     }
 
-    // If footer exists, prefer the wrapper (.template-footer) if present
     if (footerNode) {
       const footerWrapper = footerNode.closest
         ? footerNode.closest(".template-footer") || footerNode
@@ -446,20 +441,15 @@ const LetterHead = () => {
         if (footerWrapper.parentElement && editor.contains(footerWrapper)) {
           footerWrapper.remove();
         }
-      } catch (e) {
-        // ignore removal errors
-      }
+      } catch (e) {}
     } else if (footerBlobRef.current) {
       footerHtml = `<div class="template-footer"><img src="${footerBlobRef.current}" alt="Footer" style="max-width:100%;height:auto;" /></div>`;
     }
 
-    // Trim any accidental leading/trailing whitespace to avoid stray text nodes
     const bodyHtml = (newBodyHtml || "").toString().trim();
 
-    // Rebuild the editor contents: header + body + footer
     editor.innerHTML = `${headerHtml}${bodyHtml}${footerHtml}`;
 
-    // update form state
     setFormData((prev) => ({ ...prev, body: editor.innerHTML }));
   };
 
@@ -684,13 +674,11 @@ const LetterHead = () => {
       }
 
       if (contentRef.current) {
-        // inject final HTML into editor so header/footer exist inside editor DOM
         contentRef.current.innerHTML = finalBodyHtml || "";
         setFormData((prev) => ({
           ...prev,
           body: contentRef.current.innerHTML,
         }));
-        // keep header/footer blobs in refs for PDF generation; hide external preview urls
         setHeaderBlobUrl(null);
         setFooterBlobUrl(null);
       } else {
@@ -1097,7 +1085,6 @@ const LetterHead = () => {
     }
   };
 
-  // REPLACED handleLetterTypeChange: only replace editor body, preserve header/footer
   const handleLetterTypeChange = (e) => {
     const selectedType = e.target.value;
     setLetterType(selectedType);
@@ -1116,7 +1103,6 @@ const LetterHead = () => {
       ? parseTemplateToHTML(selectedTemplateItem.content || "")
       : "";
 
-    // Decide whether to replace only the body (preserve header/footer)
     const editorHasHeader =
       !!contentRef.current &&
       !!contentRef.current.querySelector(".template-header");
@@ -1146,7 +1132,6 @@ const LetterHead = () => {
         cin_number: selectedTemplateItem?.cin_number || prev.cin_number,
       }));
     } else {
-      // fallback: use mergeBodyKeepingHeaderFooter which uses headerBlobRef/footerBlobRef if needed
       if (contentRef.current) {
         mergeBodyKeepingHeaderFooter(newBodyHtml);
         setFormData((prev) => ({
@@ -1629,7 +1614,8 @@ const LetterHead = () => {
                       onChange={handleLetterTypeChange}
                       className="letterhead-letter-type-select letterhead-highlighted-select"
                     >
-                      {templates.length > 0 ? (
+                      <option value="">Select letter type</option>
+                      {templates.length > 0 &&
                         templates.map((template) => (
                           <option
                             key={template.letter_type}
@@ -1637,10 +1623,7 @@ const LetterHead = () => {
                           >
                             {template.letter_type}
                           </option>
-                        ))
-                      ) : (
-                        <option value="">Select letter type</option>
-                      )}
+                        ))}
                     </select>
                   </div>
                 </div>
@@ -1752,7 +1735,7 @@ const LetterHead = () => {
                       aria-label="Letter content editor"
                       onKeyDown={handleKeyDown}
                       onInput={handleContentChange}
-                      dangerouslySetInnerHTML={{ __html: formData.body || "" }}
+                      suppressContentEditableWarning
                     />
                   </div>
                 </div>

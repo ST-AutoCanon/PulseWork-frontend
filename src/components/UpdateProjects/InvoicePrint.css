@@ -66,7 +66,7 @@
 }
 
 .invoice-title-block {
-  color: #0f6679;
+  color: #000;
   text-align: center;
   font-weight: bold;
   font-size: 30px;
@@ -76,7 +76,7 @@
 .bill-header {
   display: flex;
   justify-content: space-between;
-  background-color: #0f6679;
+  background-color: #000;
   color: #fff;
 }
 
@@ -114,7 +114,7 @@
 }
 
 .in-print-table th {
-  background-color: #0f6679;
+  background-color: #000;
   color: #fff;
   border: 2px solid #7e7e7e;
   padding: 8px;
@@ -140,7 +140,6 @@
   text-align: center;
 }
 
-/* Avoid clipped tables across pages */
 .in-print-table,
 .in-print-table tr,
 .in-print-table td,
@@ -160,7 +159,7 @@
 }
 
 .amount-in-words {
-  background-color: #0f6679;
+  background-color: #000;
   color: #fff;
   padding: 2%;
   margin: 1% 0;
@@ -172,7 +171,7 @@
 }
 
 .amounts {
-  background-color: #0f6679;
+  background-color: #000;
   color: #fff;
   padding: 2%;
   margin: 1% 0 0 1%;
@@ -198,7 +197,7 @@
 }
 
 .invoice-footer h4 {
-  background-color: #0f6679;
+  background-color: #000;
   color: #fff;
   padding: 2%;
   margin: 0;
@@ -261,7 +260,7 @@
 .tax-box {
   display: flex;
   justify-content: space-between;
-  background-color: #0f6679;
+  background-color: #000;
   color: #fff;
   font-weight: bold;
   margin: 1% 0;
@@ -306,5 +305,5 @@
 
 .invoice-footer,
 .note {
-  position: static; /* ensure not fixed */
+  position: static;
 }

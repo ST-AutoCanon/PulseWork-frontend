@@ -14,13 +14,41 @@ import { FiDownload } from "react-icons/fi";
 import { GrStatusGood } from "react-icons/gr";
 import { FiEye } from "react-icons/fi";
 import Modal from "../Modal/Modal.client";
-import { useAuth } from "../../context/AuthProvider.client"; // <- added
+import { useAuth } from "../../context/AuthProvider.client";
+
+const protectedImageCache = new Map();
+async function fetchProtectedImageAsBlobUrl(src, apiKey) {
+  if (!src) return null;
+  if (src.startsWith("blob:") || src.startsWith("data:")) return src;
+  const cached = protectedImageCache.get(src);
+  if (cached) return cached;
+  try {
+    const res = await fetch(src, {
+      method: "GET",
+      headers: { "x-api-key": apiKey || "" },
+      credentials: "include",
+    });
+    if (!res.ok) throw new Error(`Image fetch failed (${res.status})`);
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    protectedImageCache.set(src, url);
+    return url;
+  } catch (err) {
+    console.warn(
+      "fetchProtectedImageAsBlobUrl failed",
+      src,
+      err && err.message
+    );
+    return src;
+  }
+}
 
 const Invoice = ({ onBack, project }) => {
   const { user } = useAuth();
-
-  // env + headers
-  const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
+  const BACKEND_URL = (process.env.NEXT_PUBLIC_BACKEND_URL || "").replace(
+    /\/$/,
+    ""
+  );
   const API_KEY = process.env.NEXT_PUBLIC_API_KEY;
   const orgId = user?.orgId ?? user?.org_id ?? null;
 
@@ -39,9 +67,15 @@ const Invoice = ({ onBack, project }) => {
   const [invoiceUpdates, setInvoiceUpdates] = useState({});
   const [showInvoiceForm, setShowInvoiceForm] = useState(false);
   const [invoiceType, setInvoiceType] = useState("tax");
-  const [showSealModal, setShowSealModal] = useState(false);
-  const [printWithSeal, setPrintWithSeal] = useState(true);
   const [selectedInvoice, setSelectedInvoice] = useState(null);
+  const [savedTemplates, setSavedTemplates] = useState([]);
+  const [showTemplatesModal, setShowTemplatesModal] = useState(false);
+  const [templatesLoading, setTemplatesLoading] = useState(false);
+  const [appliedHeaderUrl, setAppliedHeaderUrl] = useState(null);
+  const [appliedFooterUrl, setAppliedFooterUrl] = useState(null);
+
+  const [downloadAfterApply, setDownloadAfterApply] = useState(false);
+
   const [terms, setTerms] = useState(
     `1) Payment Terms:
   a) Initial Invoice: 15% of the total cost
@@ -104,7 +138,6 @@ const Invoice = ({ onBack, project }) => {
         throw new Error("Error fetching invoices");
       }
       const data = await response.json();
-      // tolerate different payload shapes
       const invoices = data.invoices ?? data.message ?? data ?? [];
       setInvoiceList(Array.isArray(invoices) ? invoices : []);
     } catch (error) {
@@ -114,10 +147,228 @@ const Invoice = ({ onBack, project }) => {
   };
 
   useEffect(() => {
-    // refetch when project or user changes (auth hydration)
     if (project?.id) fetchInvoices();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [project?.id, user?.employeeId, BACKEND_URL]);
+
+  const fetchSavedTemplates = async () => {
+    if (!BACKEND_URL || !orgId) return;
+    setTemplatesLoading(true);
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/orgs/${orgId}/templates`, {
+        method: "GET",
+        headers: { "x-api-key": API_KEY || "" },
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error(`Templates fetch failed (${res.status})`);
+      const data = await res.json();
+      const arr = Array.isArray(data)
+        ? data
+        : data.templates || data.data || [];
+      setSavedTemplates(arr);
+    } catch (err) {
+      console.error("fetchSavedTemplates failed", err);
+      showAlert("Failed to load saved templates.");
+    } finally {
+      setTemplatesLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (orgId) fetchSavedTemplates();
+  }, [orgId, BACKEND_URL]);
+
+  function normalizeUploadUrl(src) {
+    if (!src) return src;
+    if (src.startsWith("blob:") || src.startsWith("data:")) return src;
+    try {
+      const url = new URL(src, window.location.origin);
+      if (url.protocol === "http:" || url.protocol === "https:") {
+        const frontendOrigin = window.location.origin.replace(/\/$/, "");
+        if (BACKEND_URL && url.origin === frontendOrigin) {
+          return BACKEND_URL + url.pathname + url.search + url.hash;
+        }
+        return src;
+      }
+    } catch (e) {}
+    if (src.startsWith("/api/") && BACKEND_URL) {
+      return `${BACKEND_URL}${src}`;
+    }
+    if (
+      /^[^\/\\]+\.(png|jpe?g|svg|gif|webp)$/i.test(src) &&
+      BACKEND_URL &&
+      orgId
+    ) {
+      return `${BACKEND_URL}/api/orgs/${orgId}/uploads/${src}`;
+    }
+    return src;
+  }
+
+  async function replaceUploadUrlsInHtml(html = "") {
+    if (!html || typeof html !== "string") return html;
+
+    const uploadRegex =
+      /https?:\/\/[^"'()\s]*\/api\/orgs\/\d+\/uploads\/[A-Za-z0-9._-]+|\/api\/orgs\/\d+\/uploads\/[A-Za-z0-9._-]+/g;
+    const matches = html.match(uploadRegex);
+    if (!matches || matches.length === 0) return html;
+
+    const unique = Array.from(new Set(matches));
+    const replacements = {};
+
+    await Promise.all(
+      unique.map(async (m) => {
+        try {
+          const normalized = normalizeUploadUrl(m);
+          const blob = await fetchProtectedImageAsBlobUrl(normalized, API_KEY);
+          replacements[m] = blob || normalized;
+        } catch (err) {
+          replacements[m] = m;
+        }
+      })
+    );
+
+    let out = html;
+    Object.keys(replacements).forEach((orig) => {
+      const safe = orig.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      out = out.replace(new RegExp(safe, "g"), replacements[orig]);
+    });
+
+    return out;
+  }
+
+  async function resolveHeaderFooterUrlsFromTemplate(tpl) {
+    if (!tpl) return { headerUrl: null, footerUrl: null };
+
+    const headerCandidates = [
+      tpl.header_url,
+      tpl.headerUrl,
+      tpl.header,
+      tpl._headerBlob,
+      tpl.imageUrl,
+      tpl.cleanedUrl,
+      tpl.thumbnail,
+    ];
+    const footerCandidates = [
+      tpl.footer_url,
+      tpl.footerUrl,
+      tpl.footer,
+      tpl._footerBlob,
+    ];
+
+    const pickFirst = (arr) =>
+      arr.find((x) => typeof x === "string" && x && x.length) || null;
+
+    let rawHeader = pickFirst(headerCandidates);
+    let rawFooter = pickFirst(footerCandidates);
+
+    const contentHtml = tpl.html || tpl.content || tpl.template || "";
+    if (
+      (!rawHeader || !rawFooter) &&
+      typeof contentHtml === "string" &&
+      contentHtml
+    ) {
+      try {
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(contentHtml, "text/html");
+        const imgs = Array.from(doc.querySelectorAll("img"));
+
+        if (!rawHeader && imgs.length > 0) {
+          const headerImg =
+            imgs.find((i) => (i.alt || "").toLowerCase().includes("header")) ||
+            imgs[0];
+          if (headerImg) rawHeader = headerImg.getAttribute("src");
+        }
+
+        if (!rawFooter && imgs.length > 0) {
+          const footerImg =
+            imgs
+              .slice()
+              .reverse()
+              .find((i) => (i.alt || "").toLowerCase().includes("footer")) ||
+            imgs[imgs.length - 1];
+          if (footerImg) rawFooter = footerImg.getAttribute("src");
+        }
+      } catch (e) {}
+    }
+
+    const normalize = (src) => {
+      if (!src) return null;
+      if (
+        src.startsWith("http") ||
+        src.startsWith("blob:") ||
+        src.startsWith("data:")
+      )
+        return src;
+      return normalizeUploadUrl(src);
+    };
+
+    rawHeader = normalize(rawHeader);
+    rawFooter = normalize(rawFooter);
+
+    const headerUrl = rawHeader
+      ? await fetchProtectedImageAsBlobUrl(rawHeader, API_KEY)
+      : null;
+    const footerUrl = rawFooter
+      ? await fetchProtectedImageAsBlobUrl(rawFooter, API_KEY)
+      : null;
+
+    return { headerUrl, footerUrl };
+  }
+
+  const applyTemplateToInvoice = async (tpl) => {
+    if (!tpl) {
+      setAppliedHeaderUrl(null);
+      setAppliedFooterUrl(null);
+      showAlert("No template selected.");
+      return;
+    }
+
+    try {
+      let contentHtml = tpl.html || tpl.content || tpl.template || "";
+      if (
+        typeof contentHtml === "string" &&
+        /\/api\/orgs\/\d+\/uploads\//.test(contentHtml)
+      ) {
+        contentHtml = await replaceUploadUrlsInHtml(contentHtml);
+      }
+
+      const { headerUrl, footerUrl } =
+        await resolveHeaderFooterUrlsFromTemplate({
+          ...tpl,
+          html: contentHtml,
+        });
+
+      setAppliedHeaderUrl(headerUrl);
+      setAppliedFooterUrl(footerUrl);
+
+      setShowTemplatesModal(false);
+      showAlert("Applied template header/footer to invoice.");
+
+      if (downloadAfterApply) {
+        setDownloadAfterApply(false);
+        setTimeout(() => {
+          try {
+            if (selectedInvoice) {
+              handleDownloadInvoice(selectedInvoice);
+            } else {
+              showAlert("No invoice selected to download.");
+            }
+          } catch (err) {
+            console.error("Auto-download failed", err);
+            showAlert("Auto-download failed.");
+          }
+        }, 350);
+      }
+    } catch (err) {
+      console.error("applyTemplateToInvoice failed", err);
+      showAlert("Failed to apply template.");
+    }
+  };
+
+  const removeAppliedTemplate = () => {
+    setAppliedHeaderUrl(null);
+    setAppliedFooterUrl(null);
+    showAlert("Custom header/footer removed. Default header/footer restored.");
+  };
 
   useEffect(() => {
     let newSubTotal = 0;
@@ -130,7 +381,6 @@ const Invoice = ({ onBack, project }) => {
     });
     setSubTotal(newSubTotal);
     setLineItems(updated);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lineItems.map((li) => `${li.quantity}:${li.rate}`).join("|")]);
 
   useEffect(() => {
@@ -252,7 +502,6 @@ const Invoice = ({ onBack, project }) => {
           prev.map((inv) => (inv.id === editingInvoiceId ? savedInvoice : inv))
         );
       } else {
-        // push new invoice and refresh list
         setInvoiceList((prev) => [...prev, savedInvoice]);
         await fetchInvoices();
       }
@@ -315,51 +564,45 @@ const Invoice = ({ onBack, project }) => {
     setShowInvoiceForm(true);
   };
 
-  const handleDownloadInvoiceWithSeal = async () => {
-    setShowSealModal(false);
+  const handleDownloadInvoice = async (invoice) => {
+    try {
+      setSelectedInvoice(invoice || null);
 
-    const invoiceWithSeal = {
-      ...selectedInvoice,
-      withSeal: printWithSeal,
-    };
-    setSelectedInvoice(invoiceWithSeal);
+      await new Promise((resolve) => setTimeout(resolve, 300));
 
-    await new Promise((resolve) => setTimeout(resolve, 300));
+      const element = document.getElementById("printableArea");
+      if (!element) {
+        console.error("Printable area not found");
+        showAlert("Printable area not found");
+        return;
+      }
 
-    const element = document.getElementById("printableArea");
-    if (!element) {
-      console.error("Printable area not found");
-      showAlert("Printable area not found");
-      return;
-    }
+      const waitForImagesToLoad = (rootEl, timeout = 7000) =>
+        new Promise((resolve) => {
+          const imgs = Array.from(rootEl.querySelectorAll("img"));
+          if (imgs.length === 0) return resolve();
 
-    const waitForImagesToLoad = (rootEl, timeout = 5000) =>
-      new Promise((resolve) => {
-        const imgs = Array.from(rootEl.querySelectorAll("img"));
-        if (imgs.length === 0) return resolve();
+          let loaded = 0;
+          const onLoadOrError = () => {
+            loaded++;
+            if (loaded >= imgs.length) resolve();
+          };
 
-        let loaded = 0;
-        const onLoadOrError = () => {
-          loaded++;
-          if (loaded >= imgs.length) resolve();
-        };
+          imgs.forEach((img) => {
+            if (img.complete && img.naturalWidth !== 0) {
+              onLoadOrError();
+            } else {
+              try {
+                img.crossOrigin = "anonymous";
+              } catch (e) {}
+              img.addEventListener("load", onLoadOrError);
+              img.addEventListener("error", onLoadOrError);
+            }
+          });
 
-        imgs.forEach((img) => {
-          if (img.complete && img.naturalWidth !== 0) {
-            onLoadOrError();
-          } else {
-            try {
-              img.crossOrigin = "anonymous";
-            } catch (e) {}
-            img.addEventListener("load", onLoadOrError);
-            img.addEventListener("error", onLoadOrError);
-          }
+          setTimeout(resolve, timeout);
         });
 
-        setTimeout(resolve, timeout);
-      });
-
-    try {
       await waitForImagesToLoad(element, 7000);
 
       const canvas = await html2canvas(element, {
@@ -388,17 +631,15 @@ const Invoice = ({ onBack, project }) => {
       const ratio = imgWidth / canvasWidth;
       const imgHeight = canvasHeight * ratio;
 
-      let remainingHeight = imgHeight;
-      let position = 10;
       const pageInnerHeight = pdfHeight - 20;
 
       if (imgHeight <= pageInnerHeight) {
-        pdf.addImage(imgData, "PNG", 10, position, imgWidth, imgHeight);
+        pdf.addImage(imgData, "PNG", 10, 10, imgWidth, imgHeight);
       } else {
         let heightLeft = imgHeight;
         let pageCount = 0;
         while (heightLeft > 0) {
-          const y = position - pageCount * pageInnerHeight;
+          const y = 10 - pageCount * pageInnerHeight;
           pdf.addImage(imgData, "PNG", 10, y, imgWidth, imgHeight);
           heightLeft -= pageInnerHeight;
           pageCount++;
@@ -406,7 +647,7 @@ const Invoice = ({ onBack, project }) => {
         }
       }
 
-      pdf.save(`Invoice-${invoiceWithSeal.invoiceNo || Date.now()}.pdf`);
+      pdf.save(`Invoice-${invoice.invoiceNo || Date.now()}.pdf`);
       showAlert("Invoice PDF downloaded.");
     } catch (err) {
       console.error("Error generating PDF", err);
@@ -467,18 +708,21 @@ const Invoice = ({ onBack, project }) => {
   };
 
   const handleUpdateInvoice = async (invoice) => {
-    const updateData = invoiceUpdates[invoice.id];
-    if (!updateData) {
-      console.warn("No update data set for invoice", invoice.id);
-      return;
-    }
+    const updateData = invoiceUpdates[invoice.id] || {};
+
+    const val = (field) =>
+      typeof updateData[field] !== "undefined"
+        ? updateData[field]
+        : invoice[field];
 
     const updatedInvoice = {
       ...invoice,
-      gstPayment: updateData.gstPayment,
-      milestoneId: updateData.milestoneId,
-      status: updateData.status,
-      tdsAmount: updateData.tdsAmount,
+
+      gstPayment: val("gstPayment"),
+      milestoneId: val("milestoneId"),
+      status: val("status"),
+      tdsDeducted: val("tdsDeducted"),
+      tdsAmount: val("tdsAmount"),
     };
 
     try {
@@ -525,6 +769,18 @@ const Invoice = ({ onBack, project }) => {
       const trimmedWords = value.trim().split(/\s+/).slice(0, MAX_WORDS);
       setTerms(trimmedWords.join(" "));
     }
+  };
+
+  const openTemplatesModal = (invoice, forDownload = false) => {
+    setSelectedInvoice(invoice || null);
+    setDownloadAfterApply(Boolean(forDownload));
+    if (orgId) fetchSavedTemplates();
+    setShowTemplatesModal(true);
+  };
+
+  const closeTemplatesModal = () => {
+    setShowTemplatesModal(false);
+    setDownloadAfterApply(false);
   };
 
   return (
@@ -690,7 +946,9 @@ const Invoice = ({ onBack, project }) => {
                       />
                       <FiEye
                         className="in-view-icon"
-                        onClick={() => setSelectedInvoice(inv)}
+                        onClick={() => {
+                          openTemplatesModal(inv, false);
+                        }}
                       />
                     </div>
                   </td>
@@ -703,8 +961,7 @@ const Invoice = ({ onBack, project }) => {
                       <FiDownload
                         className="in-download-icon"
                         onClick={() => {
-                          setSelectedInvoice(inv);
-                          setShowSealModal(true);
+                          openTemplatesModal(inv, true);
                         }}
                       />
                     </div>
@@ -716,9 +973,17 @@ const Invoice = ({ onBack, project }) => {
         ) : (
           <p>No invoices available.</p>
         )}
+
         <div id="printableArea">
           {selectedInvoice && (
-            <InvoicePrint invoiceData={{ ...selectedInvoice, project }} />
+            <InvoicePrint
+              invoiceData={{
+                ...selectedInvoice,
+                project,
+                headerUrl: appliedHeaderUrl,
+                footerUrl: appliedFooterUrl,
+              }}
+            />
           )}
         </div>
       </div>
@@ -763,31 +1028,64 @@ const Invoice = ({ onBack, project }) => {
         </div>
       )}
 
-      {showSealModal && (
-        <div className="popup-overlay">
-          <div className="popup-modal">
-            <h3 className="popup-title">Download Invoice</h3>
-            <div className="popup-checkbox">
-              <input
-                type="checkbox"
-                checked={printWithSeal}
-                onChange={(e) => setPrintWithSeal(e.target.checked)}
-              />
-              <label>Print with Seal</label>
+      {showTemplatesModal && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          className="templates-modal-overlay"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) closeTemplatesModal();
+          }}
+        >
+          <div className="templates-modal">
+            <div className="templates-modal-header">
+              <div className="templates-modal-title">
+                Choose saved template (applies header & footer)
+              </div>
+              <div className="templates-modal-close-container">
+                <button
+                  className="modeBtn templates-close-btn"
+                  onClick={closeTemplatesModal}
+                  aria-label="Close templates modal"
+                >
+                  X
+                </button>
+              </div>
             </div>
-            <div className="popup-actions">
-              <button
-                className="btn cancel"
-                onClick={() => setShowSealModal(false)}
-              >
-                Cancel
-              </button>
-              <button
-                className="btn confirm"
-                onClick={handleDownloadInvoiceWithSeal}
-              >
-                Confirm & Download
-              </button>
+
+            <div className="templates-modal-body">
+              {templatesLoading ? (
+                <div className="templates-loading">Loading templates…</div>
+              ) : savedTemplates.length === 0 ? (
+                <div className="templates-empty">No saved templates found.</div>
+              ) : (
+                <div className="templates-grid">
+                  {savedTemplates.map((tpl) => (
+                    <div
+                      key={tpl.id || tpl.name || Math.random()}
+                      className="template-card"
+                    >
+                      <div className="template-title">
+                        {tpl.name || tpl.id || "Untitled"}
+                      </div>
+                      <div className="template-desc">
+                        {tpl.description || tpl.template_type || ""}
+                      </div>
+
+                      <div className="template-actions">
+                        <button
+                          className="modeBtn template-apply-btn"
+                          onClick={async () => {
+                            await applyTemplateToInvoice(tpl);
+                          }}
+                        >
+                          Apply
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -1021,6 +1319,7 @@ const Invoice = ({ onBack, project }) => {
           </div>
         </div>
       )}
+
       <Modal
         isVisible={alertModal.isVisible}
         title={alertModal.title}

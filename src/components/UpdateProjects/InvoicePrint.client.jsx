@@ -71,6 +71,8 @@ const InvoicePrint = React.forwardRef(({ invoiceData = {} }, ref) => {
     totalIncludingTax: rawTotalIncl = 0,
     advance: rawAdvance = 0,
     project = {},
+    headerUrl = null,
+    footerUrl = null,
   } = invoiceData;
 
   const gst = safeNumber(rawGst);
@@ -96,7 +98,6 @@ const InvoicePrint = React.forwardRef(({ invoiceData = {} }, ref) => {
     0
   );
 
-  // Prefer explicit gstAmount (server-side) but fall back to computed
   const effectiveGstAmount = gstAmount || Number(totalGSTFromLines.toFixed(2));
   const grossTotal = totals.total + effectiveGstAmount;
 
@@ -105,21 +106,15 @@ const InvoicePrint = React.forwardRef(({ invoiceData = {} }, ref) => {
 
   return (
     <div ref={ref} className="invoice-print-container">
-      <header className="invoice-print-header">
-        <div className="invoice-logo-section">
-          <img src="/images/company-logo.png" alt="Company Logo" />
+      {headerUrl ? (
+        <div className="invoice-print-header custom-header">
+          <img
+            src={headerUrl}
+            alt="Custom header"
+            style={{ width: "100%", display: "block", objectFit: "contain" }}
+          />
         </div>
-        <div className="in-company-address">
-          <h2 className="in-company-name">Sukalpa Tech Solutions Pvt Ltd</h2>
-          <p>MSME/Udyam No: : UDYAM-KR-04-0106460</p>
-          <p>#71,Sarathi Nagar, Near Sahyadri Nagar,Belagavi -591108</p>
-          <p>State:29-Karnataka</p>
-          <p>Phone no.: 9686465612</p>
-          <p>Email: om@sukalpatechsolutions.com</p>
-          <p>GSTIN: 29ABICS7525C1Z6</p>
-          <p>PAN: ABICS7525C</p>
-        </div>
-      </header>
+      ) : null}
 
       <div className="invoice-title-section">
         <div className="invoice-title-block">
@@ -328,50 +323,15 @@ const InvoicePrint = React.forwardRef(({ invoiceData = {} }, ref) => {
         </div>
       </div>
 
-      <footer className="invoice-footer">
-        <div className="footer-partition">
-          <strong>
-            <h4>Bank Details</h4>
-          </strong>
-          <div className="bank-details">
-            <div className="qr-code">
-              <img src="/images/upi-qr-code.png" alt="UPI QR Code" />
-            </div>
-            <p>
-              Name: HDFC BANK, BELGAUM
-              <br />
-              <br />
-              Account No: 50200089573214
-              <br />
-              <br />
-              IFSC code: HDFC0000253
-              <br />
-              <br />
-              Account holder's name: Sukalpa Tech Solutions Pvt Ltd
-            </p>
-          </div>
-        </div>
-
-        <div className="seal-signs">
-          <p>For: Sukalpa Tech Solutions Pvt Ltd</p>
-          {withSeal ? (
-            <div className="seal">
-              <img src="/images/seal.png" alt="SEAL" />
-            </div>
-          ) : (
-            <div className="no-seal" />
-          )}
-          <strong>
-            <p className="authorized">Authorized Signatory</p>
-          </strong>
-        </div>
-      </footer>
-
-      <p className="note">
-        Note: We are a registered MSME under the MSMED Act. As per Section 15,
-        kindly ensure payment within 45 days from the invoice date. <br />
-        Timely payment supports small businesses like ours
-      </p>
+      {footerUrl ? (
+        <footer className="invoice-footer custom-footer">
+          <img
+            src={footerUrl}
+            alt="Custom footer"
+            style={{ width: "100%", display: "block", objectFit: "contain" }}
+          />
+        </footer>
+      ) : null}
     </div>
   );
 });

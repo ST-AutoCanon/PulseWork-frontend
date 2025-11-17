@@ -153,121 +153,162 @@ const StepFour = ({
                 </thead>
                 <tbody>
                   {Array.isArray(formData.financialDetails) &&
-                    formData.financialDetails.map((finance, index) => (
-                      <tr
-                        key={index}
-                        style={{
-                          backgroundColor: statusBg(
-                            formData.milestones?.[index]?.status
-                          ),
-                        }}
-                      >
-                        <td>{index + 1}</td>
-                        <td>
-                          <input
-                            type="text"
-                            value={finance.milestone_details || ""}
-                            onChange={(e) => handleFinanceChange(index, e)}
-                            readOnly={!editable}
-                          />
-                        </td>
-                        <td>
-                          <div className="step-four-group2">
-                            <div className="small-input2">
+                    formData.financialDetails.map((finance, index) => {
+                      // parse numeric fields safely
+                      const mActualAmountNum =
+                        Number(finance.m_actual_amount) || 0;
+                      const mTdsAmountRaw = finance.m_tds_amount;
+                      const mTdsAmountNum =
+                        mTdsAmountRaw === "" ||
+                        mTdsAmountRaw === null ||
+                        typeof mTdsAmountRaw === "undefined"
+                          ? NaN
+                          : Number(mTdsAmountRaw);
+
+                      const hasTdsAmount = !Number.isNaN(mTdsAmountNum);
+
+                      // derive percentage from amount if possible
+                      const derivedTdsPercentage =
+                        hasTdsAmount && mActualAmountNum > 0
+                          ? (mTdsAmountNum / mActualAmountNum) * 100
+                          : null;
+
+                      // display priority: derived percentage (if we have tds amount & actual amount) -> stored percentage -> empty
+                      const displayTdsPercentage =
+                        derivedTdsPercentage !== null
+                          ? Number(derivedTdsPercentage.toFixed(2))
+                          : finance.m_tds_percentage ?? "";
+
+                      return (
+                        <tr
+                          key={index}
+                          style={{
+                            backgroundColor: statusBg(
+                              formData.milestones?.[index]?.status
+                            ),
+                          }}
+                        >
+                          <td>{index + 1}</td>
+                          <td>
+                            <input
+                              type="text"
+                              value={finance.milestone_details || ""}
+                              onChange={(e) => handleFinanceChange(index, e)}
+                              readOnly={!editable}
+                            />
+                          </td>
+                          <td>
+                            <div className="step-four-group2">
+                              <div className="small-input2">
+                                <input
+                                  type="number"
+                                  name="m_actual_percentage"
+                                  value={finance.m_actual_percentage ?? ""}
+                                  onChange={(e) =>
+                                    handleFinanceChange(index, e)
+                                  }
+                                  readOnly={!editable}
+                                />
+                              </div>
+                              <span>%</span>
                               <input
                                 type="number"
-                                name="m_actual_percentage"
-                                value={finance.m_actual_percentage ?? ""}
+                                name="m_actual_amount"
+                                value={finance.m_actual_amount ?? ""}
+                                onChange={(e) => handleFinanceChange(index, e)}
+                                readOnly
+                              />
+                            </div>
+                          </td>
+                          <td>
+                            <div className="step-four-group2">
+                              <div className="small-input2">
+                                {/* show derived or stored percentage */}
+                                <input
+                                  type="number"
+                                  name="m_tds_percentage"
+                                  value={displayTdsPercentage}
+                                  onChange={(e) =>
+                                    handleFinanceChange(index, e)
+                                  }
+                                  readOnly={!editable}
+                                />
+                              </div>
+                              <span>%</span>
+                              <input
+                                type="number"
+                                name="m_tds_amount"
+                                value={
+                                  finance.m_tds_amount === null ||
+                                  typeof finance.m_tds_amount === "undefined"
+                                    ? ""
+                                    : finance.m_tds_amount
+                                }
                                 onChange={(e) => handleFinanceChange(index, e)}
                                 readOnly={!editable}
                               />
                             </div>
-                            <span>%</span>
-                            <input
-                              type="number"
-                              name="m_actual_amount"
-                              value={finance.m_actual_amount ?? ""}
-                              onChange={(e) => handleFinanceChange(index, e)}
-                              readOnly
-                            />
-                          </div>
-                        </td>
-                        <td>
-                          <div className="step-four-group2">
-                            <div className="small-input2">
+                          </td>
+                          <td>
+                            <div className="step-four-group2">
+                              <div className="small-input2">
+                                <input
+                                  type="number"
+                                  name="m_gst_percentage"
+                                  value={finance.m_gst_percentage ?? ""}
+                                  onChange={(e) =>
+                                    handleFinanceChange(index, e)
+                                  }
+                                  readOnly={!editable}
+                                />
+                              </div>
+                              <span>%</span>
                               <input
                                 type="number"
-                                name="m_tds_percentage"
-                                value={finance.m_tds_percentage ?? ""}
+                                name="m_gst_amount"
+                                value={finance.m_gst_amount ?? ""}
                                 onChange={(e) => handleFinanceChange(index, e)}
-                                readOnly={!editable}
+                                readOnly
                               />
                             </div>
-                            <span>%</span>
+                          </td>
+                          <td>
                             <input
                               type="number"
-                              name="m_tds_amount"
-                              value={finance.m_tds_amount ?? ""}
+                              name="m_total_amount"
+                              value={finance.m_total_amount ?? ""}
                               onChange={(e) => handleFinanceChange(index, e)}
-                              readOnly
+                              readOnly={!editable}
                             />
-                          </div>
-                        </td>
-                        <td>
-                          <div className="step-four-group2">
-                            <div className="small-input2">
-                              <input
-                                type="number"
-                                name="m_gst_percentage"
-                                value={finance.m_gst_percentage ?? ""}
-                                onChange={(e) => handleFinanceChange(index, e)}
-                                readOnly={!editable}
-                              />
-                            </div>
-                            <span>%</span>
-                            <input
-                              type="number"
-                              name="m_gst_amount"
-                              value={finance.m_gst_amount ?? ""}
-                              onChange={(e) => handleFinanceChange(index, e)}
-                              readOnly
-                            />
-                          </div>
-                        </td>
-                        <td>
-                          <input
-                            type="number"
-                            name="m_total_amount"
-                            value={finance.m_total_amount ?? ""}
-                            onChange={(e) => handleFinanceChange(index, e)}
-                            readOnly={!editable}
-                          />
-                        </td>
-                        <td>
-                          <select
-                            value={finance.status || "not Initiated"}
-                            onChange={(e) =>
-                              handleStatusChange(index, e.target.value)
-                            }
-                            disabled={!editable}
-                          >
-                            <option value="not Initiated">not Initiated</option>
-                            <option value="Pending">Pending</option>
-                            <option value="Received">Received</option>
-                          </select>
-                        </td>
-                        <td>
-                          {finance.status === "Received" &&
-                          finance.completed_date ? (
-                            <span className="completed-date">
-                              📅 {finance.completed_date}
-                            </span>
-                          ) : (
-                            ""
-                          )}
-                        </td>
-                      </tr>
-                    ))}
+                          </td>
+                          <td>
+                            <select
+                              value={finance.status || "not Initiated"}
+                              onChange={(e) =>
+                                handleStatusChange(index, e.target.value)
+                              }
+                              disabled={!editable}
+                            >
+                              <option value="not Initiated">
+                                not Initiated
+                              </option>
+                              <option value="Pending">Pending</option>
+                              <option value="Received">Received</option>
+                            </select>
+                          </td>
+                          <td>
+                            {finance.status === "Received" &&
+                            finance.completed_date ? (
+                              <span className="completed-date">
+                                📅 {finance.completed_date}
+                              </span>
+                            ) : (
+                              ""
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
                 </tbody>
                 <tfoot>
                   <tr>

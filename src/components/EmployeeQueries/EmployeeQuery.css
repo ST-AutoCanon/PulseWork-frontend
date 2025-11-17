@@ -1,7 +1,7 @@
 .emp-query-container {
   display: flex;
   flex-direction: column;
-  height: 100vh; /* Adjust as needed */
+  height: 100vh;
   width: 100%;
 }
 
@@ -14,9 +14,10 @@
 
 .emp-query-content {
   display: flex;
-  flex: 1; /* Takes up full height */
+  flex: 1;
   padding: 0;
   gap: 2%;
+  padding: 0 2%;
 }
 
 .emp-sidebar {
@@ -171,7 +172,6 @@
   flex-grow: 1;
 }
 
-/* Hide scrollbar */
 .emp-chat-messages {
   display: flex;
   flex-direction: column-reverse;
@@ -181,12 +181,10 @@
   -ms-overflow-style: none;
 }
 
-/* Hide scrollbar for WebKit (Chrome, Safari) */
 .emp-chat-messages::-webkit-scrollbar {
   display: none;
 }
 
-/* Disabled input and button styles */
 .emp-chat-input input:disabled,
 .emp-chat-input button:disabled {
   background: #e0e0e0;
@@ -204,15 +202,15 @@
   margin-bottom: 5px;
   font-size: 14px;
   color: #555;
-  text-align: left; /* Default alignment for left */
+  text-align: left;
 }
 
 .emp-message-container.right .emp-message-header {
-  text-align: right; /* Align to the right for 'You' */
+  text-align: right;
 }
 
 .emp-message-container.left .emp-message-header {
-  text-align: left; /* Align to the left for others' names */
+  text-align: left;
 }
 
 .emp-message {
@@ -263,7 +261,7 @@
 
 .message-input {
   width: 90%;
-  padding: 1.5% 50px 1.5% 10px; /* Reduced right padding to make room for icon and suffix */
+  padding: 1.5% 50px 1.5% 10px;
   border: 1px solid #ccc;
   border-radius: 5px;
   font-size: 16px;
@@ -297,7 +295,6 @@
   color: #333;
 }
 
-/* For employee submit button, same interactive styles */
 .emp-submit-btn {
   background-color: #7fbd2c;
   width: 10%;
@@ -311,7 +308,7 @@
 }
 
 .emp-submit-btn:hover {
-  background-color: #68a822; /* Slightly darker */
+  background-color: #68a822;
   box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
 }
 
@@ -536,7 +533,7 @@
 }
 
 .compose-button:hover {
-  background-color: #006bb3; /* Slightly darker blue */
+  background-color: #006bb3;
   box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
 }
 
@@ -871,27 +868,20 @@
     padding-bottom: env(safe-area-inset-bottom, 16px);
   }
 
-  /* =========================
-   Mobile modal / form fixes
-   Paste inside or after your @media (max-width: 768px) block
-   ========================= */
-
-  /* make overlay sit above everything */
   .employee-query-modal-overlay {
-    z-index: 4000; /* stronger than other UI elements */
+    z-index: 4000;
     -webkit-overflow-scrolling: touch;
   }
 
-  /* modal becomes a scrollable panel so dropdowns/keyboard don't clip */
   .employee-query-modal {
-    position: fixed; /* keep it fixed so keyboard/resizing behaves well */
+    position: fixed;
     left: 50%;
     top: 10%;
     transform: translateX(-50%);
     width: 92%;
     max-width: 480px;
-    max-height: 80vh; /* keep room for keyboard */
-    overflow-y: auto; /* let content scroll inside modal */
+    max-height: 80vh;
+    overflow-y: auto;
     background-color: #e8e9ea;
     padding-bottom: env(safe-area-inset-bottom, 16px);
     border-radius: 12px;
@@ -899,10 +889,9 @@
     box-sizing: border-box;
   }
 
-  /* header: keep title centered; close button absolute so it doesn't move layout */
   .emp-form-header {
     position: relative;
-    padding: 12px 48px 12px 16px; /* space for close button on right */
+    padding: 12px 48px 12px 16px;
     display: flex;
     align-items: center;
     justify-content: flex-start;
@@ -913,7 +902,6 @@
     border-top-right-radius: 12px;
   }
 
-  /* make icon behave like a real button and sit at top-right */
   .emp-close-button {
     position: absolute;
     right: 8px;
@@ -921,7 +909,7 @@
     background: transparent;
     border: none;
     color: #fff;
-    font-size: 22px; /* big enough for touch */
+    font-size: 22px;
     padding: 6px;
     border-radius: 6px;
     cursor: pointer;
@@ -937,14 +925,12 @@
     outline: 2px solid rgba(255, 255, 255, 0.25);
   }
 
-  /* make form spacing comfortable on mobile */
   .employee-query-form {
     padding: 14px;
     width: 100%;
     box-sizing: border-box;
   }
 
-  /* inputs & select: large touch targets and full width */
   .employee-query-select,
   .employee-query-input,
   .employee-query-textarea {
@@ -955,7 +941,6 @@
     box-sizing: border-box;
   }
 
-  /* improve native select tapability (appearance left to browser) */
   .employee-query-select {
     -webkit-appearance: none;
     -moz-appearance: none;
@@ -969,7 +954,6 @@
     padding-right: 40px;
   }
 
-  /* action buttons: stack vertically, full width, large tappable areas */
   .emp-form-actions {
     display: flex;
     flex-direction: column;
@@ -987,12 +971,11 @@
     box-sizing: border-box;
   }
 
-  /* visual treatment: secondary cancel, primary submit */
   .empform-cancel-button {
     background: transparent;
-    border: 1px solid #cddc39; /* greenish border to match theme */
+    border: 1px solid #cddc39;
     color: #333;
-    order: 2; /* show cancel below submit if you want reversed, change if needed */
+    order: 2;
     margin: 0;
   }
 
@@ -1000,11 +983,10 @@
     background: #79c42b;
     color: #fff;
     border: 1px solid #79c42b;
-    order: 1; /* primary on top */
+    order: 1;
     margin: 0;
   }
 
-  /* make buttons respond */
   .empform-cancel-button:active,
   .employee-query-button:active {
     transform: translateY(1px);
@@ -1014,24 +996,20 @@
     outline: 2px solid rgba(0, 0, 0, 0.08);
   }
 
-  /* if you want Cancel visually lighter */
   .empform-cancel-button {
     opacity: 0.95;
   }
 
-  /* ensure any dropdown popup is visible above overlay (some browsers use native popups) */
   .employee-query-modal * {
     z-index: 1;
   }
 
-  /* avoid the phone's bottom safe area covering controls */
   @supports (padding: env(safe-area-inset-bottom)) {
     .employee-query-modal {
       padding-bottom: calc(env(safe-area-inset-bottom) + 16px);
     }
   }
 
-  /* Mobile: end-button on topbar */
   .mobile-end-btn {
     margin-left: auto;
     background: transparent;
@@ -1053,13 +1031,11 @@
     cursor: not-allowed;
   }
 
-  /* Make feedback modal behave well on mobile (fixed, scrollable, safe area) */
   .employee-query-modal-overlay {
     z-index: 4000;
     -webkit-overflow-scrolling: touch;
   }
 
-  /* Feedback / End Query modal panel */
   .employee-query-modal {
     position: fixed;
     left: 50%;
@@ -1076,7 +1052,6 @@
     box-sizing: border-box;
   }
 
-  /* Keep header compact and close button tappable */
   .emp-form-header {
     position: relative;
     padding: 12px 48px 12px 16px;
@@ -1089,7 +1064,6 @@
     border-top-right-radius: 12px;
   }
 
-  /* close icon (X) */
   .emp-close-button {
     position: absolute;
     right: 8px;
@@ -1109,13 +1083,11 @@
     outline: 2px solid rgba(255, 255, 255, 0.2);
   }
 
-  /* stars larger for touch */
   .stars-container {
     font-size: 26px;
     gap: 10px;
   }
 
-  /* textarea and label spacing */
   .employee-query-form {
     padding: 14px;
   }
@@ -1123,7 +1095,6 @@
     min-height: 120px;
   }
 
-  /* Stack form actions vertically on mobile and make them full-width */
   .emp-form-actions {
     display: flex;
     flex-direction: column;
@@ -1149,7 +1120,6 @@
     color: #333;
   }
 
-  /* safe area bottom so the End button isn't hidden by the iOS bar */
   .emp-chat-container,
   .emp-query-list,
   .employee-query-modal {

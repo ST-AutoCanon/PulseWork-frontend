@@ -5,7 +5,7 @@ import axios from "axios";
 import EmployeeFormEmployee from "./EmployeeFormEmployee.client";
 import "./Profile.css";
 import { MdOutlineCancel } from "react-icons/md";
-import { useAuth } from "../../context/AuthProvider.client"; // adjust if needed
+import { useAuth } from "../../context/AuthProvider.client";
 
 export default function UpdateProfileEmployee({
   profile,
@@ -15,11 +15,10 @@ export default function UpdateProfileEmployee({
   departments = [],
   employeeId: propEmployeeId,
 }) {
-  const { user } = useAuth(); // should provide user.employeeId and user.orgId
+  const { user } = useAuth();
   const API_KEY = process.env.NEXT_PUBLIC_API_KEY;
   const BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
 
-  // prefer explicit propEmployeeId, then authenticated user, then profile fallback
   const employeeId =
     propEmployeeId || user?.employeeId || profile?.employee_id || null;
   const orgId = user?.orgId || profile?.org_id || null;
@@ -28,7 +27,6 @@ export default function UpdateProfileEmployee({
   const showAlert = (msg) => setAlert({ isVisible: true, message: msg });
   const closeAlert = () => setAlert({ isVisible: false, message: "" });
 
-  // prevent body scroll when modal is open
   useEffect(() => {
     if (!isVisible) return;
     const prev = document.body.style.overflow;
@@ -46,7 +44,7 @@ export default function UpdateProfileEmployee({
         headers: {
           "x-api-key": API_KEY ?? "",
           "x-employee-id": employeeId ?? "",
-          "x-org-id": orgId ?? "", // ✅ added organization ID here
+          "x-org-id": orgId ?? "",
         },
       });
 

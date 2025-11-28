@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useEffect, useState, useMemo } from "react";
@@ -26,7 +25,8 @@ import Vendors from "../vendors/vendors.client";
 import Chat from "../Chat/ChatPage.client";
 import EmployeeLogin from "../EmployeeLogin/EmployeeLogin.client";
 import CreateOrganization from "../CreateOrganization/CreateOrganization.client";
-// import TemplateBuilder from "../TemplateBuilder/TemplateBuilder";
+import TemplateBuilder from "../TemplateBuilder/TemplateBuilder.client";
+import LetterHead from "../letterHead/letterhead.client";
 import TaskManagement from "../TaskManagement/TaskManagement.client";
 import TaskManagementEmployee from "../TaskManagementEmployee/EmpTaskManagement.client";
 import TaskManagementAdmin from "../TaskManagementAdmin/TaskManagementAdmin.client";
@@ -92,6 +92,7 @@ const Sidebar = ({ setActiveContent }) => {
       "/employeeQueries": (role) =>
         role === "Admin" ? <AdminQuery /> : <EmployeeQuery />,
       "/TemplateBuilder": () => <TemplateBuilder />,
+      "/letterHead": () => <LetterHead />,
       "/assets": () => <Assets />,
       "/vendors": () => <Vendors />,
       "/EmployeeLogin": () => <EmployeeLogin />,
@@ -169,7 +170,10 @@ const Sidebar = ({ setActiveContent }) => {
 
   // ✅ SUPERVISOR POPUP UI
   const SupervisorTaskChoice = () => (
-    <div className="task-choice-overlay" onClick={() => setShowTaskChoice(false)}>
+    <div
+      className="task-choice-overlay"
+      onClick={() => setShowTaskChoice(false)}
+    >
       <div className="task-choice-box" onClick={(e) => e.stopPropagation()}>
         <h3>Select View</h3>
 

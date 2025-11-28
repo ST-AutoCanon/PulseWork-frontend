@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { FaEye, FaEyeSlash } from "react-icons/fa";
 import "./Login.css";
@@ -37,6 +37,13 @@ export default function Login({ onClose }) {
     setIsModalOpen(false);
     if (onClose) onClose();
   };
+
+  useEffect(() => {
+    if (typeof router.prefetch === "function") {
+      router.prefetch("/dashboard");
+      router.prefetch("/FacePunch");
+    }
+  }, [router]);
 
   const handleForgotPassword = async (e) => {
     e?.preventDefault();
@@ -94,13 +101,14 @@ export default function Login({ onClose }) {
         }
       );
 
-      const data = await response.json();
+      const data = await response.json().catch(() => ({}));
       if (!response.ok) {
         setErrorMessage(data.message || "Invalid credentials.");
         return;
       }
 
       const payload = data.message || {};
+
       const serverUser = {
         id: payload.id ?? payload.employeeId ?? payload.employee_id ?? null,
         employeeId:
@@ -119,7 +127,7 @@ export default function Login({ onClose }) {
         raw: payload,
       };
 
-      await login(serverUser);
+      login(serverUser);
       closeModal();
 
       if (

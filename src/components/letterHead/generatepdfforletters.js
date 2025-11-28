@@ -30,6 +30,7 @@ const loadImageElement = (dataUrl) =>
   new Promise((resolve) => {
     if (!dataUrl) return resolve(null);
     const img = new Image();
+    img.crossOrigin = "anonymous";
     img.onload = () => resolve(img);
     img.onerror = (e) => {
       console.warn("Image load failed", e);
@@ -170,6 +171,27 @@ const findHeaderFooterElements = (container, contentEl) => {
   }
 
   return { headerEl, footerEl };
+};
+
+const parseLength = (val, reference) => {
+  // val: '50%', '200px', '200', 'auto' or number
+  if (val === undefined || val === null) return null;
+  if (typeof val === "number") return val;
+  const s = String(val).trim();
+  if (s === "" || s === "auto") return null;
+  if (s.endsWith("%")) {
+    const pct = parseFloat(s.slice(0, -1));
+    if (!isNaN(pct)) return (reference * pct) / 100;
+    return null;
+  }
+  if (s.endsWith("px")) {
+    const px = parseFloat(s.slice(0, -2));
+    if (!isNaN(px)) return px;
+    return null;
+  }
+  const num = parseFloat(s);
+  if (!isNaN(num)) return num;
+  return null;
 };
 
 const generatePDF = async (
@@ -357,6 +379,50 @@ const generatePDF = async (
       const headerBottomNew = addHeader();
       return headerBottomNew + 20;
     };
+
+    // --------- NEW: detect watermark element and prepare its image ----------
+    const watermarkEl = element?.querySelector?.(".pdf-watermark") || null;
+    let watermarkDataUrl = null;
+    let watermarkImgElement = null;
+    let watermarkStyle = null;
+    if (watermarkEl) {
+      try {
+        watermarkDataUrl = await imgElementToDataUrl(watermarkEl);
+        if (watermarkDataUrl) {
+          watermarkImgElement = await loadImageElement(watermarkDataUrl);
+        }
+      } catch (e) {
+        console.warn("Watermark load failed:", e);
+      }
+
+      // capture inline style values (left/top/width/height/opacity/transform)
+      watermarkStyle = {
+        left:
+          watermarkEl.style?.left ||
+          watermarkEl.getAttribute("data-left") ||
+          null,
+        top:
+          watermarkEl.style?.top ||
+          watermarkEl.getAttribute("data-top") ||
+          null,
+        width:
+          watermarkEl.style?.width ||
+          watermarkEl.getAttribute("data-width") ||
+          null,
+        height:
+          watermarkEl.style?.height ||
+          watermarkEl.getAttribute("data-height") ||
+          null,
+        opacity:
+          watermarkEl.style && watermarkEl.style.opacity
+            ? parseFloat(watermarkEl.style.opacity)
+            : watermarkEl.getAttribute("data-opacity")
+            ? parseFloat(watermarkEl.getAttribute("data-opacity"))
+            : null,
+        transform: watermarkEl.style?.transform || null,
+      };
+    }
+    // -----------------------------------------------------------------------
 
     const headerBottom = addHeader();
     let yPosition = headerBottom + 20;
@@ -645,6 +711,121 @@ const generatePDF = async (
     }
 
     addFooter(doc.getNumberOfPages(), doc.getNumberOfPages());
+
+    // --------- NEW: draw watermark on every page (if available) ----------
+    if (watermarkDataUrl && watermarkImgElement && watermarkStyle) {
+      try {
+        const totalPages = doc.getNumberOfPages();
+        // compute width/height (in pts) from watermarkStyle (which could be percent or px)
+        const computeTarget = (styleW, styleH, imgEl) => {
+          // styleW/styleH may be string like '60%', '200px', 'auto', or null
+          let tgtW = parseLength(styleW, pageWidth);
+          let tgtH = parseLength(styleH, pageHeight);
+
+          if (tgtW && !tgtH && imgEl) {
+            // preserve aspect
+            const ratio =
+              (imgEl.naturalHeight || imgEl.height) /
+              (imgEl.naturalWidth || imgEl.width);
+            tgtH = tgtW * ratio;
+          } else if (!tgtW && tgtH && imgEl) {
+            const ratio =
+              (imgEl.naturalWidth || imgEl.width) /
+              (imgEl.naturalHeight || imgEl.height);
+            tgtW = tgtH * ratio;
+          } else if (!tgtW && !tgtH && imgEl) {
+            // default: scale to 60% of page width
+            tgtW = pageWidth * 0.6;
+            const ratio =
+              (imgEl.naturalHeight || imgEl.height) /
+              (imgEl.naturalWidth || imgEl.width);
+            tgtH = tgtW * ratio;
+          }
+          return { tgtW, tgtH };
+        };
+
+        const { tgtW, tgtH } = computeTarget(
+          watermarkStyle.width,
+          watermarkStyle.height,
+          watermarkImgElement
+        );
+
+        // compute center position (left/top are center because clone used translate(-50%, -50%))
+        const computeCenter = (leftStyle, topStyle, width, height) => {
+          const xCenter = (() => {
+            const px = parseLength(leftStyle, pageWidth);
+            if (px != null) return px;
+            return pageWidth / 2;
+          })();
+          const yCenter = (() => {
+            const py = parseLength(topStyle, pageHeight);
+            if (py != null) return py;
+            return pageHeight / 2;
+          })();
+          const x = xCenter - (width || 0) / 2;
+          const y = yCenter - (height || 0) / 2;
+          return { x, y };
+        };
+
+        const opacity =
+          typeof watermarkStyle.opacity === "number" &&
+          !isNaN(watermarkStyle.opacity)
+            ? watermarkStyle.opacity
+            : 0.12;
+
+        for (let p = 1; p <= totalPages; p++) {
+          doc.setPage(p);
+          try {
+            setGStateSafe(opacity);
+          } catch (e) {}
+          const { x, y } = computeCenter(
+            watermarkStyle.left,
+            watermarkStyle.top,
+            tgtW,
+            tgtH
+          );
+          try {
+            // addImage expects format, try PNG first
+            doc.addImage(
+              watermarkDataUrl,
+              "PNG",
+              x,
+              y,
+              tgtW,
+              tgtH,
+              undefined,
+              "FAST"
+            );
+          } catch (err) {
+            try {
+              doc.addImage(
+                watermarkDataUrl,
+                "JPEG",
+                x,
+                y,
+                tgtW,
+                tgtH,
+                undefined,
+                "FAST"
+              );
+            } catch (err2) {
+              try {
+                doc.addImage(watermarkDataUrl, x, y, tgtW, tgtH);
+              } catch (err3) {
+                console.warn("Failed to draw watermark image on page", p, err3);
+              }
+            }
+          }
+          // reset gstate (try to set opacity back to fully opaque)
+          try {
+            setGStateSafe(1);
+          } catch (e) {}
+        }
+      } catch (e) {
+        console.warn("Failed to render watermark across pages:", e);
+      }
+    }
+    // ---------------------------------------------------------------------
 
     if (preview) {
       return doc.output("blob");

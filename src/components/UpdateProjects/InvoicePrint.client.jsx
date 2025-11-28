@@ -323,6 +323,45 @@ const InvoicePrint = React.forwardRef(({ invoiceData = {} }, ref) => {
         </div>
       </div>
 
+      <footer className="invoice-footer">
+        <div className="footer-partition">
+          <strong>
+            <h4>Bank Details</h4>
+          </strong>
+          <div className="bank-details">
+            <div className="qr-code">
+              <img src="/images/upi-qr-code.png" alt="UPI QR Code" />
+            </div>
+            <p>
+              Name: HDFC BANK, BELGAUM
+              <br />
+              <br />
+              Account No: 50200089573214
+              <br />
+              <br />
+              IFSC code: HDFC0000253
+              <br />
+              <br />
+              Account holder's name: Sukalpa Tech Solutions Pvt Ltd
+            </p>
+          </div>
+        </div>
+
+        <div className="seal-signs">
+          <p>For: Sukalpa Tech Solutions Pvt Ltd</p>
+          {withSeal ? (
+            <div className="seal">
+              <img src="/images/seal.png" alt="SEAL" />
+            </div>
+          ) : (
+            <div className="no-seal" />
+          )}
+          <strong>
+            <p className="authorized">Authorized Signatory</p>
+          </strong>
+        </div>
+      </footer>
+
       {footerUrl ? (
         <footer className="invoice-footer custom-footer">
           <img

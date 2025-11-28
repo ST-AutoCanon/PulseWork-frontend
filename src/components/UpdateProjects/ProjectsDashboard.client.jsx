@@ -60,7 +60,9 @@ const ProjectCard = ({
     <div className="add-project-card" style={{ cursor: "pointer" }}>
       <div className="company">
         <h3>{company}</h3>
-        {(userRole === "Admin" || userRole === "Manager") && (
+        {(userRole === "Admin" ||
+          userRole === "Manager" ||
+          userRole === "Supervisor") && (
           <MdUpdate
             onClick={(e) => {
               e.stopPropagation();

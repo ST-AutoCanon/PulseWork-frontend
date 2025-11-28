@@ -1,14 +1,22 @@
 "use client";
 
-import React, { useState, useEffect, useMemo, useRef } from "react";
+import React, {
+  useState,
+  useEffect,
+  useMemo,
+  useRef,
+  useCallback,
+} from "react";
 import BasicTemplateEditor from "./BasicTemplateEditor.client";
 import CustomTemplateEditor from "./CustomTemplateEditor.client";
 import UploadScan from "./UploadScan.client";
 import A4Preview from "./A4Preview";
+import TemplateEditor from "./TemplateEditor";
 import { useAuth } from "../../context/AuthProvider.client";
 import Modal from "../Modal/Modal.client";
 import styles from "./TemplateBuilder.module.css";
 import ProtectedImg from "./ProtectedImg.client";
+import { PRESET_FIELDS, BODY_TYPES, fieldsToBoxes } from "./templatePresets";
 
 const DOC_CATEGORIES = [
   { key: "all", label: "All" },
@@ -19,7 +27,7 @@ const DOC_CATEGORIES = [
 ];
 
 const SAVED_CATEGORIES = [
-  { key: "all", label: "All saved" },
+  { key: "all", label: "All" },
   { key: "saved_uploads", label: "Uploads" },
   { key: "saved_scratch", label: "Scratch" },
   { key: "saved_basic", label: "Basic" },
@@ -296,6 +304,7 @@ async function resolveTemplateProtectedAssets(
 export default function TemplateBuilder() {
   const { user } = useAuth();
   const [mode, setMode] = useState("upload");
+  const [viewingTemplate, setViewingTemplate] = useState(null);
   const [generated, setGenerated] = useState(null);
 
   const [publicTemplates, setPublicTemplates] = useState([]);
@@ -307,6 +316,18 @@ export default function TemplateBuilder() {
   const [query, setQuery] = useState("");
   const [previewHeaderUrl, setPreviewHeaderUrl] = useState(null);
   const [previewFooterUrl, setPreviewFooterUrl] = useState(null);
+  const [previewWatermarkUrl, setPreviewWatermarkUrl] = useState(null);
+
+  const [watermarkProps, setWatermarkProps] = useState({
+    xPct: "50%",
+    yPct: "50%",
+    wPct: "60%",
+    hPct: "60%",
+    opacity: 0.12,
+  });
+  const [watermarkEnabled, setWatermarkEnabled] = useState(false);
+
+  const [bodyType, setBodyType] = useState("letter");
   const [savedModalVisible, setSavedModalVisible] = useState(false);
   const [saveModalOpen, setSaveModalOpen] = useState(false);
   const [saveName, setSaveName] = useState("");
@@ -315,6 +336,11 @@ export default function TemplateBuilder() {
   const headerImgRef = useRef(null);
   const footerImgRef = useRef(null);
   const editorWrapperRef = useRef(null);
+
+  const [bodyBoxes, setBodyBoxes] = useState(() =>
+    fieldsToBoxes(PRESET_FIELDS[bodyType] || [])
+  );
+  const [showEditor, setShowEditor] = useState(false);
 
   const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "";
   const API_KEY = process.env.NEXT_PUBLIC_API_KEY || "";
@@ -330,16 +356,59 @@ export default function TemplateBuilder() {
     if (parsedOrg) fetchSavedTemplates(parsedOrg);
   }, [orgId]);
 
+  useEffect(() => {
+    const fields = PRESET_FIELDS[bodyType] || [];
+    const boxes = fieldsToBoxes(fields || []);
+
+    const clampToPrintable = (box) => {
+      const numericH = Number(String(box.hPct || "6%").replace("%", "")) || 6;
+      let numericY = Number(String(box.yPct || "5%").replace("%", "")) || 5;
+      if (numericY + numericH > 94) {
+        numericY = Math.max(5, 94 - numericH);
+        box.yPct = `${numericY}%`;
+      }
+    };
+
+    for (const b of boxes) {
+      b.style = { ...(b.style || {}) };
+      if (!("textAlign" in b.style)) b.style.textAlign = "left";
+
+      if (
+        (b.fieldName &&
+          String(b.fieldName).toLowerCase() === "documenttitle") ||
+        (b.label && String(b.label).toLowerCase().includes("document title")) ||
+        (b.label && String(b.label).toLowerCase().includes("documenttitle")) ||
+        (b.content && String(b.content).trim().toLowerCase() === "tax invoice")
+      ) {
+        b.style.textAlign = "center";
+        b.xPct = b.xPct || "5%";
+        b.wPct = b.wPct || "90%";
+        if (!b.style.fontSize) b.style.fontSize = 18;
+        if (!b.style.fontWeight) b.style.fontWeight = 700;
+      }
+
+      clampToPrintable(b);
+    }
+
+    setBodyBoxes(boxes);
+    setShowEditor(false);
+  }, [bodyType]);
+
   const saveUrl = orgId ? `${BACKEND_URL}/api/orgs/${orgId}/templates` : null;
 
   function setAppMode(newMode) {
     setMode((cur) => (cur === newMode ? cur : newMode));
+    setShowSavedPane(newMode === "saved");
     if (newMode !== "basic") {
       setGenerated(null);
     }
-    if (newMode !== "upload") {
+    if (newMode !== "upload" && newMode !== "view") {
       setPreviewHeaderUrl(null);
       setPreviewFooterUrl(null);
+      setPreviewWatermarkUrl(null);
+    }
+    if (newMode !== "view") {
+      setViewingTemplate(null);
     }
   }
 
@@ -479,6 +548,22 @@ export default function TemplateBuilder() {
           BACKEND_URL
         );
 
+        try {
+          const rawLayout =
+            resolved.layout ||
+            resolved.layout_json ||
+            (resolved.meta &&
+              (resolved.meta.layout || resolved.meta.layout_json));
+          if (rawLayout) {
+            let parsed = null;
+            if (typeof rawLayout === "string") parsed = JSON.parse(rawLayout);
+            else parsed = rawLayout;
+            if (Array.isArray(parsed)) setBodyBoxes(parsed);
+          } else {
+            setBodyBoxes(fieldsToBoxes(PRESET_FIELDS[bodyType] || []));
+          }
+        } catch (e) {}
+
         const headerCandidates = [
           resolved.header_url,
           resolved.headerUrl,
@@ -523,15 +608,272 @@ export default function TemplateBuilder() {
     setAppMode("basic");
   }
 
-  function handleUploadSaved() {
-    if (!orgId) {
+  const handleWatermarkChange = useCallback((next) => {
+    setWatermarkProps((prev) => ({ ...prev, ...(next || {}) }));
+  }, []);
+
+  const handleUploadSaved = useCallback(
+    async (savedData) => {
+      if (savedData && orgId) {
+        try {
+          const entry = savedData;
+          let grapesJson = entry.grapes_json || entry.grapesJson || null;
+          try {
+            if (typeof grapesJson === "string" && grapesJson.trim())
+              grapesJson = JSON.parse(grapesJson);
+          } catch (e) {}
+
+          let thumbnail = entry.thumbnail_url || entry.thumbnail || null;
+          if (thumbnail && !thumbnail.startsWith("http")) {
+            try {
+              const base = BACKEND_URL.replace(/\/$/, "");
+              thumbnail = `${base}/api/orgs/${orgId}/uploads/${thumbnail}`;
+            } catch (e) {}
+          }
+
+          const normalized = {
+            ...entry,
+            grapesJson,
+            html: entry.html || null,
+            thumbnail,
+
+            template_type: entry.template_type || entry.templateType || "scan",
+            category: entry.category || inferCategory(entry) || "saved_uploads",
+            origin: "saved",
+          };
+
+          setSavedModalVisible(true);
+          setShowSavedPane(true);
+
+          setSavedTemplates((prev) => {
+            try {
+              const exists = prev.some(
+                (t) => String(t.id) === String(normalized.id)
+              );
+              if (exists)
+                return prev.map((t) =>
+                  String(t.id) === String(normalized.id) ? normalized : t
+                );
+              return [normalized, ...prev];
+            } catch (e) {
+              return prev;
+            }
+          });
+
+          try {
+            const resolved = await resolveTemplateProtectedAssets(
+              normalized,
+              API_KEY,
+              BACKEND_URL
+            );
+
+            const headerCandidates = [
+              resolved.header_url,
+              resolved.headerUrl,
+              resolved.header,
+              resolved._headerBlob,
+              resolved.imageUrl,
+              resolved.cleanedUrl,
+              resolved.thumbnail,
+            ];
+            const footerCandidates = [
+              resolved.footer_url,
+              resolved.footerUrl,
+              resolved.footer,
+              resolved._footerBlob,
+            ];
+
+            const headerRaw =
+              headerCandidates.find((x) => typeof x === "string" && x) || null;
+            const footerRaw =
+              footerCandidates.find((x) => typeof x === "string" && x) || null;
+
+            let watermarkUrl = null;
+            let watermarkPlacementProps = null;
+            if (resolved.grapesJson && resolved.grapesJson.watermark) {
+              const wmData = resolved.grapesJson.watermark;
+              if (wmData && wmData.url) {
+                watermarkUrl = wmData.url;
+                watermarkPlacementProps = {
+                  xPct: wmData.xPct || "50%",
+                  yPct: wmData.yPct || "50%",
+                  wPct: wmData.wPct || "60%",
+                  hPct: wmData.hPct || "60%",
+                  opacity:
+                    typeof wmData.opacity === "number" ? wmData.opacity : 0.12,
+                };
+              }
+            }
+            if (!watermarkUrl && resolved.meta && resolved.meta.watermark) {
+              const wp = resolved.meta.watermarkPlacement;
+              if (wp) {
+                watermarkPlacementProps = {
+                  xPct: wp.xPct || "50%",
+                  yPct: wp.yPct || "50%",
+                  wPct: wp.wPct || "60%",
+                  hPct: wp.hPct || "60%",
+                  opacity: typeof wp.opacity === "number" ? wp.opacity : 0.12,
+                };
+              }
+              if (typeof resolved.meta.watermark === "string")
+                watermarkUrl = resolved.meta.watermark;
+            }
+
+            async function ensureBlobUrl(src) {
+              if (!src) return null;
+              if (
+                src.startsWith("blob:") ||
+                src.startsWith("data:") ||
+                /^https?:\/\//i.test(src)
+              ) {
+                return src;
+              }
+
+              if (
+                !src.startsWith("/api/") &&
+                !/^https?:\/\//i.test(src) &&
+                /^[^\/\\]+\.(png|jpe?g|svg|gif|webp)$/i.test(src)
+              ) {
+                if (BACKEND_URL && orgId) {
+                  src = `${BACKEND_URL.replace(
+                    /\/$/,
+                    ""
+                  )}/api/orgs/${orgId}/uploads/${src}`;
+                }
+              }
+
+              if (src.startsWith("/api/")) {
+                if (BACKEND_URL) {
+                  src = `${BACKEND_URL.replace(/\/$/, "")}${src}`;
+                }
+              }
+
+              try {
+                const blobUrl = await fetchProtectedImage(src, API_KEY);
+                if (blobUrl) return blobUrl;
+              } catch (e) {
+                console.warn(
+                  "handleUploadSaved: fetchProtectedImage failed for",
+                  src,
+                  e
+                );
+              }
+              return src;
+            }
+
+            const headerUrlResolved = await ensureBlobUrl(headerRaw);
+            const footerUrlResolved = await ensureBlobUrl(footerRaw);
+            const watermarkUrlResolved = watermarkUrl
+              ? await ensureBlobUrl(watermarkUrl)
+              : null;
+
+            console.log(
+              "handleUploadSaved: converted URLs — header:",
+              headerUrlResolved?.slice(0, 50),
+              "footer:",
+              footerUrlResolved?.slice(0, 50),
+              "watermark:",
+              watermarkUrlResolved?.slice(0, 50)
+            );
+
+            let finalHeaderUrl = headerUrlResolved;
+            let finalFooterUrl = footerUrlResolved;
+
+            if (watermarkUrlResolved && finalHeaderUrl && finalFooterUrl) {
+              if (finalHeaderUrl === watermarkUrlResolved)
+                finalHeaderUrl = null;
+              if (finalFooterUrl === watermarkUrlResolved)
+                finalFooterUrl = null;
+            }
+
+            if (
+              finalHeaderUrl &&
+              finalFooterUrl &&
+              finalHeaderUrl === finalFooterUrl
+            ) {
+              finalFooterUrl = null;
+            }
+
+            console.log(
+              "handleUploadSaved: after duplicate check — header:",
+              finalHeaderUrl?.slice(0, 50),
+              "footer:",
+              finalFooterUrl?.slice(0, 50),
+              "watermark:",
+              watermarkUrlResolved?.slice(0, 50)
+            );
+
+            setViewingTemplate({
+              name: normalized.name || normalized.meta?.name || "",
+              headerUrl: finalHeaderUrl,
+              footerUrl: finalFooterUrl,
+              watermarkUrl: watermarkUrlResolved,
+              watermarkProps: watermarkPlacementProps ||
+                watermarkProps || {
+                  xPct: "50%",
+                  yPct: "50%",
+                  wPct: "60%",
+                  hPct: "60%",
+                  opacity: 0.12,
+                },
+              bodyBoxes: bodyBoxes,
+            });
+
+            setAppMode("view");
+            setShowSavedPane(true);
+            setSavedModalVisible(true);
+            return;
+          } catch (e) {
+            console.warn(
+              "handleUploadSaved: resolve failed, falling back to refresh",
+              e
+            );
+          }
+        } catch (e) {
+          console.warn("handleUploadSaved/openSavedTemplate failed", e);
+        }
+      }
+
+      if (!orgId) {
+        setSavedModalVisible(true);
+        return;
+      }
+      fetchSavedTemplates(orgId);
+      setShowSavedPane(true);
       setSavedModalVisible(true);
-      return;
+    },
+    [orgId]
+  );
+
+  const handlePreviewChange = useCallback(
+    ({ headerUrl, footerUrl, watermarkUrl }) => {
+      setPreviewHeaderUrl((prev) => {
+        if (prev === headerUrl) return prev;
+        return headerUrl || null;
+      });
+      setPreviewFooterUrl((prev) => {
+        if (prev === footerUrl) return prev;
+        return footerUrl || null;
+      });
+
+      setPreviewWatermarkUrl((prev) => {
+        const newVal = watermarkUrl || null;
+        if (prev === newVal) return prev;
+        return newVal;
+      });
+    },
+    []
+  );
+
+  useEffect(() => {
+    if (previewWatermarkUrl && !watermarkEnabled) setWatermarkEnabled(true);
+  }, [previewWatermarkUrl, watermarkEnabled]);
+
+  useEffect(() => {
+    if (viewingTemplate && viewingTemplate.watermarkUrl) {
+      setWatermarkEnabled(true);
     }
-    fetchSavedTemplates(orgId);
-    setShowSavedPane(true);
-    setSavedModalVisible(true);
-  }
+  }, [viewingTemplate]);
 
   async function handleCustomSave(payload) {
     if (!saveUrl) {
@@ -566,6 +908,24 @@ export default function TemplateBuilder() {
     const css = payload.css || (parsedTemplate && parsedTemplate.css) || null;
     const thumbnail_url = payload.thumbnail || payload.thumbnail_url || null;
 
+    const explicitLayout =
+      payload.layout ||
+      (payload.meta && (payload.meta.layout || payload.meta.layout_json));
+
+    let layoutToPersist = null;
+    try {
+      if (explicitLayout) {
+        layoutToPersist =
+          typeof explicitLayout === "string"
+            ? explicitLayout
+            : JSON.stringify(explicitLayout);
+      } else {
+        layoutToPersist = JSON.stringify(bodyBoxes || []);
+      }
+    } catch (e) {
+      layoutToPersist = JSON.stringify(bodyBoxes || []);
+    }
+
     const bodyPayload = {
       name: payload.meta?.name || payload.name || "Untitled Template",
       template_type: "custom",
@@ -573,6 +933,7 @@ export default function TemplateBuilder() {
       html: html || null,
       css: css || null,
       thumbnail_url: thumbnail_url || null,
+      layout: layoutToPersist,
     };
 
     try {
@@ -588,9 +949,65 @@ export default function TemplateBuilder() {
       const data = await resp.json();
       if (!resp.ok) throw new Error(data.error || "Save failed");
 
+      const normalized = (function (entry) {
+        if (!entry) return entry;
+        let grapesJson = entry.grapes_json || entry.grapesJson || null;
+        try {
+          if (typeof grapesJson === "string" && grapesJson.trim())
+            grapesJson = JSON.parse(grapesJson);
+        } catch (e) {}
+
+        let thumbnail = entry.thumbnail_url || entry.thumbnail || null;
+        if (
+          thumbnail &&
+          !thumbnail.startsWith("http") &&
+          BACKEND_URL &&
+          orgId
+        ) {
+          try {
+            const base = BACKEND_URL.replace(/\/$/, "");
+            thumbnail = `${base}/api/orgs/${orgId}/uploads/${thumbnail}`;
+          } catch (e) {}
+        }
+
+        const category = inferCategory(entry);
+
+        return {
+          ...entry,
+          grapesJson,
+          html: entry.html || null,
+          thumbnail,
+          category,
+          origin: "saved",
+        };
+      })(data);
+
       setSavedModalVisible(true);
       setShowSavedPane(true);
-      fetchSavedTemplates(orgId);
+
+      setSavedTemplates((prev) => {
+        try {
+          if (!normalized) return prev;
+          const exists = prev.some(
+            (t) => String(t.id) === String(normalized.id)
+          );
+          if (exists)
+            return prev.map((t) =>
+              String(t.id) === String(normalized.id) ? normalized : t
+            );
+          return [normalized, ...prev];
+        } catch (e) {
+          return prev;
+        }
+      });
+
+      setAppMode("saved");
+      try {
+        await openSavedTemplate(normalized);
+      } catch (e) {
+        console.warn("openSavedTemplate failed for newly saved template", e);
+        fetchSavedTemplates(orgId);
+      }
     } catch (err) {
       console.error("save failed", err);
       alert("Save failed: " + (err.message || "error"));
@@ -673,6 +1090,143 @@ export default function TemplateBuilder() {
     setSaveModalOpen(true);
   }
 
+  async function editSavedTemplate(entry) {
+    if (!entry) return;
+    try {
+      const resolved = await resolveTemplateProtectedAssets(
+        entry,
+        API_KEY,
+        BACKEND_URL
+      );
+
+      const cat = entry.category || inferCategory(entry);
+      const isUpload =
+        cat === "saved_uploads" ||
+        String(entry.template_type || "").toLowerCase() === "scan";
+
+      if (isUpload) {
+        const headerCandidates = [
+          resolved.header_url,
+          resolved.headerUrl,
+          resolved.header,
+          resolved._headerBlob,
+          resolved.imageUrl,
+          resolved.cleanedUrl,
+          resolved.thumbnail,
+        ];
+        const footerCandidates = [
+          resolved.footer_url,
+          resolved.footerUrl,
+          resolved.footer,
+          resolved._footerBlob,
+        ];
+
+        const headerRaw =
+          headerCandidates.find((x) => typeof x === "string" && x) || null;
+        const footerRaw =
+          footerCandidates.find((x) => typeof x === "string" && x) || null;
+
+        setPreviewHeaderUrl(headerRaw);
+        setPreviewFooterUrl(footerRaw);
+
+        let watermarkUrl = null;
+        let watermarkPlacementProps = null;
+        if (resolved.grapesJson && resolved.grapesJson.watermark) {
+          const wm = resolved.grapesJson.watermark;
+          watermarkUrl = wm?.url || null;
+          watermarkPlacementProps = {
+            xPct: wm?.xPct || "50%",
+            yPct: wm?.yPct || "50%",
+            wPct: wm?.wPct || "60%",
+            hPct: wm?.hPct || "60%",
+            opacity: typeof wm?.opacity === "number" ? wm.opacity : 0.12,
+          };
+        } else if (resolved.meta && resolved.meta.watermark) {
+          watermarkUrl =
+            typeof resolved.meta.watermark === "string"
+              ? resolved.meta.watermark
+              : null;
+          const wp = resolved.meta.watermarkPlacement;
+          if (wp)
+            watermarkPlacementProps = {
+              xPct: wp.xPct || "50%",
+              yPct: wp.yPct || "50%",
+              wPct: wp.wPct || "60%",
+              hPct: wp.hPct || "60%",
+              opacity: typeof wp.opacity === "number" ? wp.opacity : 0.12,
+            };
+        }
+
+        setPreviewWatermarkUrl(watermarkUrl);
+        if (watermarkPlacementProps) setWatermarkProps(watermarkPlacementProps);
+
+        setBodyBoxes((prev) => {
+          try {
+            const rawLayout =
+              resolved.layout ||
+              resolved.layout_json ||
+              resolved.meta?.layout ||
+              resolved.meta?.layout_json;
+            if (rawLayout) {
+              return typeof rawLayout === "string"
+                ? JSON.parse(rawLayout)
+                : rawLayout;
+            }
+          } catch (e) {}
+          return prev;
+        });
+
+        setAppMode("upload");
+        setShowEditor(true);
+        return;
+      }
+
+      setGenerated(resolved || entry);
+      setAppMode("basic");
+      setShowEditor(true);
+    } catch (err) {
+      console.error("editSavedTemplate failed", err);
+      alert("Failed to open template for editing.");
+    }
+  }
+
+  async function deleteSavedTemplate(entry) {
+    if (!entry || !orgId) return;
+    const id = entry.id || entry._id || entry.template_id;
+    if (!id) {
+      alert("Cannot delete: missing template id");
+      return;
+    }
+    if (
+      !confirm(`Delete template "${entry.name || id}"? This cannot be undone.`)
+    )
+      return;
+    try {
+      const base = BACKEND_URL.replace(/\/$/, "");
+      const url = `${base}/api/orgs/${orgId}/templates/${id}`;
+      const res = await fetch(url, {
+        method: "DELETE",
+        headers: { "x-api-key": API_KEY || "" },
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error(`Delete failed (${res.status})`);
+      setSavedTemplates((prev) =>
+        prev.filter((t) => String(t.id || t._id) !== String(id))
+      );
+      if (
+        viewingTemplate &&
+        (String(viewingTemplate.id) === String(id) ||
+          viewingTemplate.name === entry.name)
+      ) {
+        setViewingTemplate(null);
+        setAppMode("upload");
+      }
+    } catch (err) {
+      console.error("deleteSavedTemplate failed", err);
+      alert("Failed to delete template: " + (err.message || "error"));
+    }
+  }
+
   async function confirmSaveFromEditor() {
     const r = getActiveEditorRef();
     if (!r || !r.current) {
@@ -699,6 +1253,14 @@ export default function TemplateBuilder() {
 
     if (!data) return;
     data.meta = { ...(data.meta || {}), name: saveName };
+
+    try {
+      data.layout =
+        data.layout || data.meta.layout || JSON.stringify(bodyBoxes || []);
+    } catch (e) {
+      data.layout = JSON.stringify(bodyBoxes || []);
+    }
+
     handleCustomSave(data);
   }
 
@@ -816,9 +1378,50 @@ export default function TemplateBuilder() {
         );
       }
 
+      try {
+        const rawLayout =
+          resolved.layout ||
+          resolved.layout_json ||
+          (resolved.meta &&
+            (resolved.meta.layout || resolved.meta.layout_json));
+        if (rawLayout) {
+          let parsed = null;
+          if (typeof rawLayout === "string") parsed = JSON.parse(rawLayout);
+          else parsed = rawLayout;
+          if (Array.isArray(parsed)) setBodyBoxes(parsed);
+        } else {
+          setBodyBoxes(fieldsToBoxes(PRESET_FIELDS[bodyType] || []));
+        }
+      } catch (e) {}
+
+      const explicitHeader = resolved.header_url || resolved.headerUrl || null;
+      const explicitFooter = resolved.footer_url || resolved.footerUrl || null;
+
+      console.log(
+        "DEBUG openSavedTemplate: resolved object keys =",
+        Object.keys(resolved).filter((k) => !k.startsWith("_"))
+      );
+      console.log(
+        "DEBUG openSavedTemplate: explicitHeader =",
+        explicitHeader?.slice(0, 60),
+        "explicitFooter =",
+        explicitFooter?.slice(0, 60)
+      );
+      console.log(
+        "DEBUG openSavedTemplate: resolved.header_url =",
+        resolved.header_url?.slice(0, 60),
+        "resolved.footer_url =",
+        resolved.footer_url?.slice(0, 60)
+      );
+      console.log(
+        "DEBUG openSavedTemplate: resolved.headerUrl =",
+        resolved.headerUrl?.slice(0, 60),
+        "resolved.footerUrl =",
+        resolved.footerUrl?.slice(0, 60)
+      );
+
       const headerCandidates = [
-        resolved.header_url,
-        resolved.headerUrl,
+        explicitHeader,
         resolved.header,
         resolved._headerBlob,
         resolved.imageUrl,
@@ -826,11 +1429,26 @@ export default function TemplateBuilder() {
         resolved.thumbnail,
       ];
       const footerCandidates = [
-        resolved.footer_url,
-        resolved.footerUrl,
+        explicitFooter,
         resolved.footer,
         resolved._footerBlob,
       ];
+
+      let watermarkUrl = null;
+      let watermarkPlacementProps = null;
+      if (resolved.grapesJson && resolved.grapesJson.watermark) {
+        const wmData = resolved.grapesJson.watermark;
+        if (wmData && wmData.url) {
+          watermarkUrl = wmData.url;
+          watermarkPlacementProps = {
+            xPct: wmData.xPct || "50%",
+            yPct: wmData.yPct || "50%",
+            wPct: wmData.wPct || "60%",
+            hPct: wmData.hPct || "60%",
+            opacity: typeof wmData.opacity === "number" ? wmData.opacity : 0.12,
+          };
+        }
+      }
 
       let rawHeader =
         headerCandidates.find((x) => typeof x === "string" && x) || null;
@@ -839,24 +1457,161 @@ export default function TemplateBuilder() {
 
       if (!rawHeader || !rawFooter) {
         const found = Array.from(collectUploadStrings(resolved));
-        if (!rawHeader && found.length >= 1) rawHeader = found[0];
-        if (!rawFooter && found.length >= 2) rawFooter = found[1];
+
+        console.log(
+          "openSavedTemplate: template.name =",
+          template.name,
+          "explicit header =",
+          explicitHeader?.slice(0, 50),
+          "explicit footer =",
+          explicitFooter?.slice(0, 50),
+          "grapesJson.watermark =",
+          resolved.grapesJson?.watermark,
+          "meta.watermark =",
+          resolved.meta?.watermark,
+          "found uploads =",
+          found
+        );
+
+        if (!watermarkUrl && resolved.meta && resolved.meta.watermark) {
+          const wmCandidates = found.filter((u) => {
+            if (!u) return false;
+            if (explicitHeader && u === explicitHeader) return false;
+            if (explicitFooter && u === explicitFooter) return false;
+            if (rawHeader && u === rawHeader) return false;
+            if (rawFooter && u === rawFooter) return false;
+            return true;
+          });
+          console.log("wmCandidates for watermark:", wmCandidates);
+          if (wmCandidates.length) {
+            watermarkUrl = wmCandidates[0];
+            const wp = resolved.meta.watermarkPlacement;
+            if (wp) {
+              watermarkPlacementProps = {
+                xPct: wp.xPct || "50%",
+                yPct: wp.yPct || "50%",
+                wPct: wp.wPct || "60%",
+                hPct: wp.hPct || "60%",
+                opacity: typeof wp.opacity === "number" ? wp.opacity : 0.12,
+              };
+            }
+          }
+        }
+
+        const filteredFound = found.filter((url) => {
+          if (!url) return false;
+          if (explicitHeader && url === explicitHeader) return false;
+          if (explicitFooter && url === explicitFooter) return false;
+          if (watermarkUrl && url === watermarkUrl) return false;
+          return true;
+        });
+
+        if (!rawHeader && filteredFound.length >= 1)
+          rawHeader = filteredFound[0];
+        if (!rawFooter && filteredFound.length >= 2)
+          rawFooter = filteredFound[1];
       }
 
-      const headerBlobUrl = await ensureBlobUrl(rawHeader);
-      const footerBlobUrl = await ensureBlobUrl(rawFooter);
+      let headerBlobUrl = await ensureBlobUrl(rawHeader);
+      let footerBlobUrl = await ensureBlobUrl(rawFooter);
+      const watermarkBlobUrl = watermarkUrl
+        ? await ensureBlobUrl(watermarkUrl)
+        : null;
 
-      setPreviewHeaderUrl(headerBlobUrl || null);
-      setPreviewFooterUrl(footerBlobUrl || null);
+      console.log(
+        "openSavedTemplate: before duplicate check — header:",
+        headerBlobUrl?.slice(0, 50),
+        "footer:",
+        footerBlobUrl?.slice(0, 50),
+        "watermark:",
+        watermarkBlobUrl?.slice(0, 50)
+      );
 
-      setAppMode("upload");
-      setShowSavedPane(true);
+      if (watermarkBlobUrl) {
+        if (headerBlobUrl && headerBlobUrl === watermarkBlobUrl) {
+          console.warn(
+            "openSavedTemplate: clearing header because it matched watermark"
+          );
+          headerBlobUrl = null;
+        }
+        if (footerBlobUrl && footerBlobUrl === watermarkBlobUrl) {
+          console.warn(
+            "openSavedTemplate: clearing footer because it matched watermark"
+          );
+          footerBlobUrl = null;
+        }
+      }
+
+      if (headerBlobUrl && footerBlobUrl && headerBlobUrl === footerBlobUrl) {
+        try {
+          const allFound = Array.from(collectUploadStrings(resolved));
+          const prefer = allFound.filter((u) => {
+            if (!u) return false;
+            if (watermarkUrl && u === watermarkUrl) return false;
+            if (rawHeader && u === rawHeader) return false;
+            if (rawFooter && u === rawFooter) return false;
+            return true;
+          });
+
+          for (const cand of prefer) {
+            try {
+              const candBlob = await ensureBlobUrl(cand);
+              if (!candBlob) continue;
+              if (candBlob !== headerBlobUrl && candBlob !== watermarkBlobUrl) {
+                footerBlobUrl = candBlob;
+                break;
+              }
+            } catch (e) {}
+          }
+        } catch (e) {}
+
+        if (headerBlobUrl && footerBlobUrl && headerBlobUrl === footerBlobUrl) {
+          footerBlobUrl = null;
+        }
+      }
+
+      console.log(
+        "openSavedTemplate: after duplicate check — header:",
+        headerBlobUrl?.slice(0, 50),
+        "footer:",
+        footerBlobUrl?.slice(0, 50),
+        "watermark:",
+        watermarkBlobUrl?.slice(0, 50)
+      );
+
+      setViewingTemplate({
+        name: template.name,
+        headerUrl: headerBlobUrl,
+        footerUrl: footerBlobUrl,
+        watermarkUrl: watermarkBlobUrl,
+        watermarkProps: watermarkPlacementProps || {
+          xPct: "50%",
+          yPct: "50%",
+          wPct: "60%",
+          hPct: "60%",
+          opacity: 0.12,
+        },
+        bodyBoxes: bodyBoxes,
+      });
+
+      setAppMode("view");
+      setShowEditor(false);
+
+      if (orgId) fetchSavedTemplates(orgId);
 
       return;
     } catch (err) {
       console.warn("openSavedTemplate: unexpected error", err);
       return chooseBasic(template);
     }
+  }
+
+  function toggleEditor() {
+    setShowEditor((s) => !s);
+  }
+  function resetToPreset() {
+    setBodyBoxes(fieldsToBoxes(PRESET_FIELDS[bodyType] || []));
+    setShowEditor(false);
   }
 
   return (
@@ -895,20 +1650,17 @@ export default function TemplateBuilder() {
 
           <button
             className={`${styles.modeBtn} ${
-              showSavedPane ? styles.active : ""
+              mode === "saved" ? styles.active : ""
             }`}
-            onClick={() => {
-              setShowSavedPane((s) => !s);
-              if (!showSavedPane) fetchSavedTemplates(orgId);
-            }}
-            aria-pressed={showSavedPane}
+            onClick={() => setAppMode("saved")}
+            aria-pressed={mode === "saved"}
             title="Toggle saved templates"
           >
             Saved Templates
           </button>
         </div>
 
-        {showSavedPane && (
+        {mode === "saved" && (
           <div className={styles.templatesWrap}>
             <div className={styles.savedHeader}>
               <h4 className={styles.sectionTitle}>Saved templates</h4>
@@ -1075,18 +1827,22 @@ export default function TemplateBuilder() {
             backendUrl={process.env.NEXT_PUBLIC_BACKEND_URL}
             apiKey={process.env.NEXT_PUBLIC_API_KEY}
             controlsOnly={true}
-            onPreviewChange={({ headerUrl, footerUrl }) => {
-              setPreviewHeaderUrl((prev) =>
-                prev === headerUrl ? prev : headerUrl || null
-              );
-              setPreviewFooterUrl((prev) =>
-                prev === footerUrl ? prev : footerUrl || null
-              );
-            }}
+            onPreviewChange={handlePreviewChange}
             onSaved={handleUploadSaved}
             a4PreviewWidth={420}
             initialHeaderUrl={previewHeaderUrl}
             initialFooterUrl={previewFooterUrl}
+            bodyType={bodyType}
+            onBodyTypeChange={(bt) => setBodyType(bt)}
+            bodyBoxes={bodyBoxes}
+            setBodyBoxes={setBodyBoxes}
+            showEditor={showEditor}
+            setShowEditor={setShowEditor}
+            watermarkUrl={previewWatermarkUrl}
+            watermarkProps={watermarkProps}
+            onWatermarkChange={handleWatermarkChange}
+            watermarkEditable={watermarkEnabled || showEditor}
+            useWatermarkInitial={watermarkEnabled}
           />
         )}
 
@@ -1139,18 +1895,79 @@ export default function TemplateBuilder() {
           data-testid="template-editor-container"
           ref={editorWrapperRef}
         >
-          {mode === "upload" && (previewHeaderUrl || previewFooterUrl) && (
-            <A4Preview
-              headerUrl={previewHeaderUrl}
-              footerUrl={previewFooterUrl}
-              width={560}
-            />
+          {mode === "upload" && (
+            <div style={{ marginBottom: 12 }}>
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  marginBottom: 8,
+                }}
+              >
+                <div style={{ display: "flex", gap: 8 }}>
+                  <button className={styles.modeBtn} onClick={toggleEditor}>
+                    {showEditor ? "Close Editor" : "Customize fields"}
+                  </button>
+                  <button className={styles.modeBtn} onClick={resetToPreset}>
+                    Reset to Preset
+                  </button>
+                </div>
+                <div style={{ fontSize: 13, color: "#6b7280" }}>
+                  You can move fields and change their colors only
+                </div>
+              </div>
+
+              {showEditor ? (
+                <TemplateEditor
+                  boxes={bodyBoxes}
+                  onChange={(next) => setBodyBoxes(next)}
+                  width={560}
+                />
+              ) : (
+                <A4Preview
+                  headerUrl={previewHeaderUrl}
+                  footerUrl={previewFooterUrl}
+                  watermarkUrl={previewWatermarkUrl}
+                  watermarkProps={watermarkEnabled ? watermarkProps : null}
+                  onWatermarkChange={handleWatermarkChange}
+                  editable={showEditor || watermarkEnabled}
+                  bodyBoxes={bodyBoxes}
+                  width={560}
+                />
+              )}
+            </div>
           )}
 
-          {mode === "upload" && !previewHeaderUrl && !previewFooterUrl && (
-            <div className={styles.placeholder}>
-              Use the Upload controls on the left to select header and footer —
-              preview will appear here.
+          {mode === "view" && viewingTemplate && (
+            <div
+              style={{
+                marginBottom: 12,
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+              }}
+            >
+              <div style={{ fontSize: 13, color: "#6b7280", marginBottom: 12 }}>
+                Viewing: {viewingTemplate.name}
+              </div>
+              <div
+                style={{
+                  width: "100%",
+                  display: "flex",
+                  justifyContent: "center",
+                }}
+              >
+                <A4Preview
+                  headerUrl={viewingTemplate.headerUrl}
+                  footerUrl={viewingTemplate.footerUrl}
+                  watermarkUrl={viewingTemplate.watermarkUrl}
+                  watermarkProps={viewingTemplate.watermarkProps}
+                  editable={false}
+                  bodyBoxes={viewingTemplate.bodyBoxes}
+                  width={560}
+                />
+              </div>
             </div>
           )}
 
@@ -1190,6 +2007,7 @@ export default function TemplateBuilder() {
                     key={generated.id || generated.file || Math.random()}
                     initialHtml={generated.html}
                     initialJson={generated.grapesJson}
+                    initialFields={PRESET_FIELDS[bodyType] || null}
                     baseUrl={"/commonTemplates/basic/"}
                     onSave={(payload) =>
                       handleCustomSave({
@@ -1261,7 +2079,31 @@ export default function TemplateBuilder() {
                     background={
                       generated.thumbnail || generated.imageUrl || null
                     }
-                    initialBoxes={templateToBoxes(generated)}
+                    initialBoxes={(function () {
+                      try {
+                        if (generated.layout) {
+                          if (typeof generated.layout === "string")
+                            return JSON.parse(generated.layout);
+                          return generated.layout;
+                        } else if (generated.layout_json) {
+                          if (typeof generated.layout_json === "string")
+                            return JSON.parse(generated.layout_json);
+                          return generated.layout_json;
+                        } else if (generated.initialBoxes) {
+                          return generated.initialBoxes;
+                        } else {
+                          return (
+                            templateToBoxes(generated) ||
+                            fieldsToBoxes(PRESET_FIELDS[bodyType] || [])
+                          );
+                        }
+                      } catch (e) {
+                        return (
+                          templateToBoxes(generated) ||
+                          fieldsToBoxes(PRESET_FIELDS[bodyType] || [])
+                        );
+                      }
+                    })()}
                     onSave={handleCustomSave}
                     canvasWidthPx={794}
                   />
@@ -1301,7 +2143,8 @@ export default function TemplateBuilder() {
               ref={scratchEditorRef}
               key={"scratch-" + Date.now()}
               background={null}
-              initialBoxes={[]}
+              initialBoxes={fieldsToBoxes(PRESET_FIELDS[bodyType] || [])}
+              initialBodyType={bodyType}
               onSave={handleCustomSave}
               canvasWidthPx={794}
             />

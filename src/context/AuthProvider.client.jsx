@@ -124,30 +124,52 @@ export function AuthProvider({ children }) {
   };
 
   const logout = async ({ redirect = true } = {}) => {
-    setIsLoggingOut(true);
-    if (typeof window !== "undefined") window.__APP_LOGGING_OUT = true;
-
     setUser(null);
     try {
       localStorage.removeItem("auth:employeeId");
     } catch (e) {}
 
-    if (redirect) router.push("/");
+    if (typeof window !== "undefined") window.__APP_LOGGING_OUT = true;
 
-    if (BACKEND_URL) {
-      fetch(`${BACKEND_URL}/logout`, {
-        method: "POST",
-        credentials: "include",
-        headers: {
-          "x-api-key": API_KEY || "",
-          "Content-Type": "application/json",
-        },
-      })
-        .catch((err) => console.error("logout request failed:", err))
-        .finally(() => {
-          if (typeof window !== "undefined") window.__APP_LOGGING_OUT = false;
-          setIsLoggingOut(false);
+    if (redirect) {
+      router.push("/");
+
+      if (BACKEND_URL) {
+        fetch(`${BACKEND_URL}/logout`, {
+          method: "POST",
+          credentials: "include",
+          headers: {
+            "x-api-key": API_KEY || "",
+            "Content-Type": "application/json",
+          },
+        })
+          .catch((err) => console.error("logout request failed:", err))
+          .finally(() => {
+            if (typeof window !== "undefined") window.__APP_LOGGING_OUT = false;
+          });
+      } else {
+        if (typeof window !== "undefined") window.__APP_LOGGING_OUT = false;
+      }
+      return;
+    }
+
+    setIsLoggingOut(true);
+    try {
+      if (BACKEND_URL) {
+        await fetch(`${BACKEND_URL}/logout`, {
+          method: "POST",
+          credentials: "include",
+          headers: {
+            "x-api-key": API_KEY || "",
+            "Content-Type": "application/json",
+          },
         });
+      }
+    } catch (err) {
+      console.error("logout request failed:", err);
+    } finally {
+      if (typeof window !== "undefined") window.__APP_LOGGING_OUT = false;
+      setIsLoggingOut(false);
     }
   };
 

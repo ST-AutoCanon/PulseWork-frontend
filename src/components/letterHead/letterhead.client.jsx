@@ -88,6 +88,15 @@ async function replaceUploadUrlsInHtml(html = "", apiKey, backendBase) {
   return out;
 }
 
+function ensurePercent(v) {
+  if (v === null || v === undefined) return undefined;
+  if (typeof v === "number") return `${v}%`;
+  if (typeof v === "string") {
+    return v.trim().endsWith("%") ? v.trim() : `${v.trim()}%`;
+  }
+  return String(v);
+}
+
 const LetterHead = () => {
   const { user } = useAuth();
   const [showPopup, setShowPopup] = useState(false);
@@ -108,6 +117,9 @@ const LetterHead = () => {
 
   const headerBlobRef = useRef(null);
   const footerBlobRef = useRef(null);
+
+  const watermarkBlobRef = useRef(null);
+  const watermarkSourceRef = useRef(null);
 
   const originalLogo = null;
   const API_KEY = process.env.NEXT_PUBLIC_API_KEY;
@@ -161,6 +173,14 @@ const LetterHead = () => {
 
   const [headerBlobUrl, setHeaderBlobUrl] = useState(null);
   const [footerBlobUrl, setFooterBlobUrl] = useState(null);
+  const [watermarkBlobUrl, setWatermarkBlobUrl] = useState(null);
+  const [watermarkPropsState, setWatermarkPropsState] = useState({
+    xPct: "50%",
+    yPct: "50%",
+    wPct: "60%",
+    hPct: "60%",
+    opacity: 0.12,
+  });
 
   const [isGenerating, setIsGenerating] = useState(false);
 
@@ -594,6 +614,7 @@ const LetterHead = () => {
         } else {
           headerBlobRef.current = headerVal;
         }
+        setHeaderBlobUrl(headerBlobRef.current || null);
       }
 
       if (footerVal) {
@@ -615,6 +636,7 @@ const LetterHead = () => {
         } else {
           footerBlobRef.current = footerVal;
         }
+        setFooterBlobUrl(footerBlobRef.current || null);
       }
 
       const { headerHtml, bodyHtml, footerHtml } =
@@ -679,15 +701,154 @@ const LetterHead = () => {
           ...prev,
           body: contentRef.current.innerHTML,
         }));
-        setHeaderBlobUrl(null);
-        setFooterBlobUrl(null);
+        setHeaderBlobUrl(headerBlobRef.current || null);
+        setFooterBlobUrl(footerBlobRef.current || null);
       } else {
         setFormData((prev) => ({
           ...prev,
           body: (finalBodyHtml || "").toString(),
         }));
-        setHeaderBlobUrl(null);
-        setFooterBlobUrl(null);
+        setHeaderBlobUrl(headerBlobRef.current || null);
+        setFooterBlobUrl(footerBlobRef.current || null);
+      }
+
+      try {
+        let wmUrl = null;
+        let wp = null;
+
+        const grapes = template.grapesJson || template.grapes_json || null;
+        let grapesObj = grapes;
+        if (grapesObj && typeof grapesObj === "string") {
+          try {
+            grapesObj = JSON.parse(grapesObj);
+          } catch (e) {
+            grapesObj = grapesObj;
+          }
+        }
+        if (grapesObj && grapesObj.watermark && grapesObj.watermark.url) {
+          wmUrl = grapesObj.watermark.url;
+          wp = {
+            xPct: grapesObj.watermark.xPct || "50%",
+            yPct: grapesObj.watermark.yPct || "50%",
+            wPct: grapesObj.watermark.wPct || "60%",
+            hPct: grapesObj.watermark.hPct || "60%",
+            opacity:
+              typeof grapesObj.watermark.opacity === "number"
+                ? grapesObj.watermark.opacity
+                : 0.12,
+          };
+        }
+
+        if (!wmUrl && template.meta && template.meta.watermark) {
+          const explicitHeader =
+            template.header_url || template.headerUrl || null;
+          const explicitFooter =
+            template.footer_url || template.footerUrl || null;
+
+          console.log(
+            "DEBUG watermark detect: explicitHeader =",
+            explicitHeader?.slice(0, 60),
+            "explicitFooter =",
+            explicitFooter?.slice(0, 60),
+            "template keys =",
+            Object.keys(template).filter((k) => !k.startsWith("_"))
+          );
+
+          const candidatesSet = new Set();
+          [
+            template.header_url,
+            template.footer_url,
+            template.thumbnail,
+            template.imageUrl,
+            template.cleaned_url,
+            template.cleanedUrl,
+          ].forEach((v) => v && typeof v === "string" && candidatesSet.add(v));
+
+          function collectFromNode(node) {
+            if (!node) return;
+            if (typeof node === "string") {
+              if (
+                node.match(/\/api\/orgs\/\d+\/uploads\//) ||
+                node.match(/^[0-9]{6,}_[A-Za-z0-9._-]+/)
+              ) {
+                candidatesSet.add(node);
+              }
+              return;
+            }
+            if (Array.isArray(node)) {
+              node.forEach(collectFromNode);
+              return;
+            }
+            if (typeof node === "object") {
+              if (node.attributes && typeof node.attributes.src === "string") {
+                candidatesSet.add(node.attributes.src);
+              }
+              for (const k of Object.keys(node)) collectFromNode(node[k]);
+            }
+          }
+          if (grapesObj) collectFromNode(grapesObj);
+
+          const htmlToScan =
+            contentHtml || template.html || template.content || "";
+          try {
+            const uploadRegex =
+              /\/api\/orgs\/\d+\/uploads\/[A-Za-z0-9._-]+|[0-9]{6,}_[A-Za-z0-9._-]+/g;
+            const matches = (htmlToScan && htmlToScan.match(uploadRegex)) || [];
+            matches.forEach((m) => candidatesSet.add(m));
+          } catch (e) {}
+
+          const candidates = Array.from(candidatesSet).filter((v) => {
+            if (!v || typeof v !== "string") return false;
+            if (explicitHeader && v === explicitHeader) return false;
+            if (explicitFooter && v === explicitFooter) return false;
+            return true;
+          });
+
+          console.log(
+            "DEBUG watermark candidates after filtering =",
+            candidates
+          );
+
+          if (candidates.length > 0) {
+            wmUrl = candidates[0];
+            const wpMeta = template.meta.watermarkPlacement;
+            if (wpMeta) {
+              wp = {
+                xPct: wpMeta.xPct || "50%",
+                yPct: wpMeta.yPct || "50%",
+                wPct: wpMeta.wPct || "60%",
+                hPct: wpMeta.hPct || "60%",
+                opacity:
+                  typeof wpMeta.opacity === "number" ? wpMeta.opacity : 0.12,
+              };
+            }
+          }
+        }
+
+        console.log(
+          "DEBUG watermark final: wmUrl =",
+          wmUrl?.slice(0, 60),
+          "wp =",
+          wp
+        );
+
+        if (wmUrl) {
+          const normalized = normalizeUploadUrl(wmUrl, BACKEND_URL);
+          const blob = await fetchProtectedBlobUrl(
+            normalized,
+            API_KEY,
+            BACKEND_URL
+          );
+          console.log("DEBUG watermark blob result:", !!blob);
+          setWatermarkBlobUrl(blob || normalized);
+          setWatermarkPropsState(wp || watermarkPropsState);
+        } else {
+          console.log("DEBUG watermark: no wmUrl found, clearing watermark");
+          setWatermarkBlobUrl(null);
+        }
+      } catch (e) {
+        console.warn("watermark detect failed", e);
+        setWatermarkBlobUrl(null);
       }
     } catch (err) {
       console.error("applySavedTemplate error:", err);
@@ -778,6 +939,35 @@ const LetterHead = () => {
       try {
         temps.forEach((n) => n.remove());
       } catch (e) {}
+    };
+  };
+
+  const injectWatermarkIntoLetterRef = () => {
+    const el = letterRef.current;
+    if (!el || !watermarkBlobUrl) return () => {};
+
+    if (el.querySelector(".pdf-watermark")) return () => {};
+
+    const wm = document.createElement("img");
+    wm.src = watermarkBlobUrl;
+    wm.alt = "Watermark";
+    wm.className = "pdf-watermark";
+    wm.style.position = "absolute";
+    wm.style.left = ensurePercent(watermarkPropsState.xPct) || "50%";
+    wm.style.top = ensurePercent(watermarkPropsState.yPct) || "50%";
+    wm.style.width = ensurePercent(watermarkPropsState.wPct) || "60%";
+    wm.style.height = watermarkPropsState.hPct
+      ? ensurePercent(watermarkPropsState.hPct)
+      : "auto";
+    wm.style.transform = "translate(-50%, -50%)";
+    wm.style.opacity = String(watermarkPropsState.opacity ?? 0.12);
+    wm.style.pointerEvents = "none";
+    wm.style.zIndex = "1";
+    el.style.position = "relative";
+    el.appendChild(wm);
+
+    return () => {
+      wm.remove();
     };
   };
 
@@ -1261,6 +1451,7 @@ const LetterHead = () => {
     try {
       setIsGenerating(true);
       const cleanup = injectHeaderFooterIntoLetterRef();
+      const cleanupWatermark = injectWatermarkIntoLetterRef();
       try {
         await waitForImagesToLoad(letterRef.current);
         const pdfBlob = await generatePDF(
@@ -1286,6 +1477,7 @@ const LetterHead = () => {
         }));
       } finally {
         cleanup();
+        cleanupWatermark();
       }
     } catch (error) {
       console.error("Error generating PDF preview:", error);
@@ -1524,7 +1716,12 @@ const LetterHead = () => {
 
       {showPopup && (
         <div className="letterhead-popup-overlay">
-          <div className="letterhead-popup-content" ref={letterRef}>
+          {/* MAIN WRAPPER that we pass to generatePDF when cloning */}
+          <div
+            className="letterhead-popup-content"
+            ref={letterRef}
+            style={{ position: "relative" }}
+          >
             {showExternalHeader ? (
               <div style={{ textAlign: "center", marginBottom: 8 }}>
                 <img
@@ -1756,20 +1953,224 @@ const LetterHead = () => {
               <button onClick={handleCancel} className="letterhead-cancel-btn">
                 Cancel
               </button>
+
+              {/* PREVIEW: clone DOM, inject watermark into clone (offscreen), generate PDF from clone (watermark WILL be included) */}
               <button
-                onClick={handlePreview}
+                onClick={async () => {
+                  if (!letterRef.current || !contentRef.current) {
+                    showAlert("Form is not ready. Please try again.");
+                    return;
+                  }
+                  try {
+                    setIsGenerating(true);
+
+                    // Build an offscreen clone so editor never shows the watermark
+                    const clone = letterRef.current.cloneNode(true);
+
+                    // Ensure clone can be measured/layouted by browser
+                    clone.style.position = "absolute";
+                    clone.style.left = "-9999px";
+                    clone.style.top = "-9999px";
+                    clone.style.visibility = "visible";
+                    // Append clone to body temporarily
+                    document.body.appendChild(clone);
+
+                    // Remove any existing watermark nodes in the clone first
+                    clone.querySelectorAll &&
+                      clone
+                        .querySelectorAll(".pdf-watermark")
+                        ?.forEach((n) => n.remove());
+
+                    // Inject watermark into clone if available
+                    if (watermarkBlobUrl) {
+                      try {
+                        const wm = document.createElement("img");
+                        wm.src = watermarkBlobUrl;
+                        wm.alt = "Watermark";
+                        wm.className = "pdf-watermark";
+                        wm.style.position = "absolute";
+                        wm.style.left =
+                          ensurePercent(watermarkPropsState.xPct) || "50%";
+                        wm.style.top =
+                          ensurePercent(watermarkPropsState.yPct) || "50%";
+                        wm.style.width =
+                          ensurePercent(watermarkPropsState.wPct) || "60%";
+                        wm.style.height = watermarkPropsState.hPct
+                          ? ensurePercent(watermarkPropsState.hPct)
+                          : "auto";
+                        wm.style.transform = "translate(-50%, -50%)";
+                        wm.style.opacity = String(
+                          watermarkPropsState.opacity ?? 0.12
+                        );
+                        wm.style.pointerEvents = "none";
+                        // make sure watermark sits above content in the clone
+                        wm.style.zIndex = "9999";
+                        // ensure the clone has a positioned ancestor
+                        if (getComputedStyle(clone).position === "static") {
+                          clone.style.position = "relative";
+                        }
+                        clone.appendChild(wm);
+                      } catch (e) {
+                        console.warn(
+                          "Failed to inject watermark into clone:",
+                          e
+                        );
+                      }
+                    }
+
+                    // Wait for images inside clone (header/footer/watermark/content images)
+                    await waitForImagesToLoad(clone);
+
+                    // Generate PDF from the clone. (pass `true` to indicate preview if your generatePDF uses that flag)
+                    const pdfBlob = await generatePDF(
+                      clone,
+                      letterType,
+                      originalLogo,
+                      formData.recipient_name,
+                      formData.employee_name,
+                      formData.position,
+                      formData.effective_date,
+                      formData.company_name,
+                      formData.gstin_number,
+                      formData.cin_number,
+                      formData.address,
+                      true // preview mode (matching your previous handlePreview)
+                    );
+
+                    // cleanup clone
+                    try {
+                      document.body.removeChild(clone);
+                    } catch (e) {}
+
+                    // Show the preview
+                    const pdfUri = URL.createObjectURL(pdfBlob);
+                    setPdfUrl(pdfUri);
+                    setShowPreview(true);
+                    setFormData((prev) => ({
+                      ...prev,
+                      body: contentRef.current.innerHTML,
+                    }));
+                  } catch (error) {
+                    console.error(
+                      "Error generating PDF preview (clone):",
+                      error
+                    );
+                    showAlert(
+                      `Failed to generate PDF preview: ${
+                        error?.message || error
+                      }`
+                    );
+                  } finally {
+                    setIsGenerating(false);
+                  }
+                }}
                 className="letterhead-preview-btn"
                 disabled={isGenerating}
               >
                 {isGenerating ? "Preparing preview..." : "Preview"}
               </button>
+
+              {/* GENERATE: clone DOM, inject watermark into clone (offscreen), then generate PDF (final generation) */}
               <button
-                onClick={handleGenerate}
+                onClick={async () => {
+                  if (!letterRef.current || !contentRef.current) {
+                    showAlert("Form is not ready. Please try again.");
+                    return;
+                  }
+                  try {
+                    setIsGenerating(true);
+
+                    // create offscreen clone
+                    const clone = letterRef.current.cloneNode(true);
+                    clone.style.position = "absolute";
+                    clone.style.left = "-9999px";
+                    clone.style.top = "-9999px";
+                    clone.style.visibility = "visible";
+                    document.body.appendChild(clone);
+
+                    // remove any existing watermark nodes
+                    clone.querySelectorAll &&
+                      clone
+                        .querySelectorAll(".pdf-watermark")
+                        ?.forEach((n) => n.remove());
+
+                    if (watermarkBlobUrl) {
+                      try {
+                        const wm = document.createElement("img");
+                        wm.src = watermarkBlobUrl;
+                        wm.alt = "Watermark";
+                        wm.className = "pdf-watermark";
+                        wm.style.position = "absolute";
+                        wm.style.left =
+                          ensurePercent(watermarkPropsState.xPct) || "50%";
+                        wm.style.top =
+                          ensurePercent(watermarkPropsState.yPct) || "50%";
+                        wm.style.width =
+                          ensurePercent(watermarkPropsState.wPct) || "60%";
+                        wm.style.height = watermarkPropsState.hPct
+                          ? ensurePercent(watermarkPropsState.hPct)
+                          : "auto";
+                        wm.style.transform = "translate(-50%, -50%)";
+                        wm.style.opacity = String(
+                          watermarkPropsState.opacity ?? 0.12
+                        );
+                        wm.style.pointerEvents = "none";
+                        wm.style.zIndex = "9999";
+                        if (getComputedStyle(clone).position === "static") {
+                          clone.style.position = "relative";
+                        }
+                        clone.appendChild(wm);
+                      } catch (e) {
+                        console.warn(
+                          "Failed to inject watermark into clone for generate:",
+                          e
+                        );
+                      }
+                    }
+
+                    await waitForImagesToLoad(clone);
+
+                    // call your generatePDF the same way handleGenerate used to (no preview flag)
+                    await generatePDF(
+                      clone,
+                      letterType,
+                      originalLogo,
+                      formData.recipient_name,
+                      formData.employee_name,
+                      formData.position,
+                      formData.effective_date,
+                      formData.company_name,
+                      formData.gstin_number,
+                      formData.cin_number,
+                      formData.address
+                    );
+
+                    // cleanup clone
+                    try {
+                      document.body.removeChild(clone);
+                    } catch (e) {}
+
+                    // ensure editor body state is up-to-date
+                    setFormData((prev) => ({
+                      ...prev,
+                      body: contentRef.current.innerHTML,
+                    }));
+                  } catch (error) {
+                    console.error("Error generating PDF (clone):", error);
+                    showAlert(
+                      `Failed to generate PDF: ${error?.message || error}`
+                    );
+                  } finally {
+                    setIsGenerating(false);
+                  }
+                }}
                 className="letterhead-save-btn"
                 disabled={isGenerating}
               >
                 {isGenerating ? "Generating..." : "Generate PDF"}
               </button>
+
+              {/* KEEP the Save button tied to handleSave (which validates & uploads) */}
               <button
                 onClick={handleSave}
                 className="letterhead-save-btn"

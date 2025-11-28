@@ -443,9 +443,10 @@
 
   /* Filters Section */
   .leave-filters {
-    flex-direction: column;
+    /* flex-direction: column; */
     align-items: stretch;
     gap: 5px;
+    margin-left: -10px;
   }
 
   .leave-filters label {
@@ -1280,56 +1281,147 @@
   margin-top: 4px;
   max-width: 420px;
 }
-
-/* Responsive adjustments */
-@media (max-width: 480px) {
-  .lop-modal-content {
-    padding: 14px;
-    max-width: 360px;
+@media (max-width: 768px) {
+  .self-compact-list { margin: 16px 8px; }
+  .compact-item {
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    margin-bottom: 12px;
+    overflow: hidden;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.05);
   }
-  .lop-value-big {
-    font-size: 28px;
+  .compact-summary {
+    list-style: none;
+    padding: 14px 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+    font-weight: 500;
   }
-  .lop-month-title {
-    min-width: 120px;
+  .compact-main strong { font-size: 15px; color: #1e293b; }
+  .compact-dates { font-size: 13px; color: #64748b; margin-left: 8px; }
+  .compact-details {
+    padding: 0 16px 16px;
+    border-top: 1px solid #f1f5f9;
     font-size: 14px;
+    color: #475569;
   }
-  .recompute-button {
-    padding: 8px 10px;
-    min-height: 36px;
-    font-size: 14px;
+  .compact-details > div { margin-top: 10px; }
+  .compact-actions {
+    margin-top: 14px;
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
+  }
+  .compact-actions button {
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 13px;
+    cursor: pointer;
+  }
+  .compact-actions button:first-child { background: #00468c; color: #fff; border: none; }
+  .compact-actions button:last-child { background: #fee2e2; color: #dc2626; border: 1px solid #fecaca; }
+}
+
+/* ULTRA COMPACT MOBILE FILTER – Takes minimum space */
+@media (max-width: 768px) {
+  .desktop-only { display: none !important; }
+
+  .mobile-compact-filter {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 12px 14px;
+    background: #ffffff;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 12px;
+    margin: 12px 10px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+    font-size: 14.5px;
+  }
+
+  /* Row 1: From → to → To */
+  .compact-date-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 600;
+    color: #475569;
+  }
+
+  .compact-date-row input[type="date"] {
+    padding: 10px 8px;
+    border: 1.5px solid #cbd5e1;
+    border-radius: 10px;
+    background: white;
+    font-size: 14.5px;
+    flex: 1;
+  }
+
+  .compact-date-row span {
+    color: #64748b;
+    font-size: 13px;
+  }
+
+  /* Row 2: Team search + status (only if canViewTeam) */
+  .compact-team-row {
+    display: flex;
+    gap: 8px;
+  }
+
+  .compact-team-row input,
+  .compact-team-row select {
+    flex: 1;
+    padding: 10px 12px;
+    border: 1.5px solid #cbd5e1;
+    border-radius: 10px;
+    background: white;
+    font-size: 14.5px;
+  }
+
+  .compact-team-row input::placeholder {
+    color: #94a3b8;
+  }
+
+  /* Row 3: Two buttons */
+  .compact-buttons {
+    display: flex;
+    gap: 10px;
+  }
+
+  .compact-buttons button {
+    flex: 1;
+    padding: 12px;
+    border: none;
+    border-radius: 10px;
+    font-weight: 600;
+    font-size: 14.5px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+  }
+
+  .compact-buttons button:first-child {
+    background: #00468c;
+    color: white;
+  }
+
+  .compact-buttons button.primary {
+    background: #7ac142;
+    color: white;
+  }
+
+  .compact-buttons button:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 16px rgba(0,0,0,0.15);
   }
 }
 
-.lop-title {
-  margin: 0;
-  font-size: 25px;
-  margin-top: 2%;
-  color: #ed363f;
-}
-
-.team-search-input {
-  width: 140px;
-  display: flex;
-  align-items: center;
-  white-space: nowrap;
-  margin: 0px;
-  padding: 12px;
-  border: 1px solid #ccc;
-  border-radius: 5px;
-}
-
-.team-search-input label {
-  font-size: medium;
-  font-weight: bold;
-  white-space: nowrap;
-  margin: 0px;
-}
-
-.team-search-input input {
-  flex: 1;
-  border: 1px solid #ccc;
-  border-radius: 4px;
-  width: 160px;
-  margin-bottom: 0px;
+/* Desktop – keep everything exactly as before */
+@media (min-width: 769px) {
+  .mobile-compact-filter { display: none !important; }
 }

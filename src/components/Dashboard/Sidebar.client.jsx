@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useEffect, useState, useMemo } from "react";
@@ -25,11 +26,10 @@ import Vendors from "../vendors/vendors.client";
 import Chat from "../Chat/ChatPage.client";
 import EmployeeLogin from "../EmployeeLogin/EmployeeLogin.client";
 import CreateOrganization from "../CreateOrganization/CreateOrganization.client";
-import TemplateBuilder from "../TemplateBuilder/TemplateBuilder.client";
+// import TemplateBuilder from "../TemplateBuilder/TemplateBuilder";
 import TaskManagement from "../TaskManagement/TaskManagement.client";
 import TaskManagementEmployee from "../TaskManagementEmployee/EmpTaskManagement.client";
 import TaskManagementAdmin from "../TaskManagementAdmin/TaskManagementAdmin.client";
-import LetterHead from "../letterHead/letterhead.client";
 
 const Sidebar = ({ setActiveContent }) => {
   const { user, hydrated } = useAuth();
@@ -39,6 +39,7 @@ const Sidebar = ({ setActiveContent }) => {
   const [activeNav, setActiveNav] = useState("/dashboard");
   const [showMobileMenu, setShowMobileMenu] = useState(false);
 
+  // ✅ NEW STATE FOR SUPERVISOR CHOICE
   const [showTaskChoice, setShowTaskChoice] = useState(false);
 
   const defaultMenuItems = useMemo(
@@ -94,13 +95,14 @@ const Sidebar = ({ setActiveContent }) => {
       "/assets": () => <Assets />,
       "/vendors": () => <Vendors />,
       "/EmployeeLogin": () => <EmployeeLogin />,
-      "/letterHead": () => <LetterHead />,
+
+      // ✅ CHANGED ONLY THIS PART
       "/TaskManagement": (role) => {
         if (role === "Admin") return <TaskManagementAdmin />;
 
         if (role === "Supervisor") {
-          setShowTaskChoice(true);
-          return null;
+          setShowTaskChoice(true); // show selection
+          return null; // prevent auto load
         }
 
         return <TaskManagementEmployee />;
@@ -165,11 +167,9 @@ const Sidebar = ({ setActiveContent }) => {
     return MdIcons.MdOutlineDashboard;
   };
 
+  // ✅ SUPERVISOR POPUP UI
   const SupervisorTaskChoice = () => (
-    <div
-      className="task-choice-overlay"
-      onClick={() => setShowTaskChoice(false)}
-    >
+    <div className="task-choice-overlay" onClick={() => setShowTaskChoice(false)}>
       <div className="task-choice-box" onClick={(e) => e.stopPropagation()}>
         <h3>Select View</h3>
 
@@ -310,6 +310,7 @@ const Sidebar = ({ setActiveContent }) => {
             >
               ✖
             </button>
+            {/* inside the mobile-menu JSX */}
             <ul>
               {menuItems && menuItems.length > 0 ? (
                 menuItems.map((item, index) => {

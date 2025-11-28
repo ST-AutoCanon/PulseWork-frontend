@@ -81,50 +81,30 @@ export default function SelfTable({ leaveRequests, onEdit, onCancel }) {
       </div>
 
       {/* Mobile cards */}
-      <div className="mobile-view">
-        {sortedRequests.map((request) => (
-          <div key={request.id || request.leave_id} className="leave-card">
-            <div className="leave-header">
-              <span className="leave-type">{request.leave_type}</span>
-              {renderStatusLabel(request.status)}
-            </div>
-            <div className="leave-details">
-              <p>
-                <strong>Start:</strong> {parseLocalDate(request.start_date)}
-              </p>
-              <p>
-                <strong>End:</strong> {parseLocalDate(request.end_date)}
-              </p>
-              <p>
-                <strong>Day Type:</strong> {request.H_F_day}
-              </p>
-              <p>
-                <strong>Reason:</strong> {request.reason}
-              </p>
-              <p>
-                <strong>Comments:</strong> {request.comments}
-              </p>
-            </div>
-            <div className="leave-actions">
-              <MdOutlineEdit
-                onClick={() => isEditable(request.status) && onEdit(request)}
-                className={`action-button ${
-                  !isEditable(request.status) ? "disabled" : ""
-                }`}
-              />
-              <MdDeleteOutline
-                onClick={() =>
-                  isEditable(request.status) &&
-                  onCancel(request.id || request.leave_id)
-                }
-                className={`action-button ${
-                  !isEditable(request.status) ? "disabled" : ""
-                }`}
-              />
-            </div>
-          </div>
-        ))}
+      <div className="self-compact-list">
+  {sortedRequests.map((request) => (
+    <details key={request.id || request.leave_id} className="compact-item">
+      <summary className="compact-summary">
+        <div className="compact-main">
+          <strong>{request.leave_type}</strong>
+          <span className="compact-dates">
+            {parseLocalDate(request.start_date)} - {parseLocalDate(request.end_date)}
+          </span>
+        </div>
+        {renderStatusLabel(request.status)}
+      </summary>
+      <div className="compact-details">
+        <div><strong>Type:</strong> {request.H_F_day}</div>
+        {request.reason && <div><strong>Reason:</strong> {request.reason}</div>}
+        {request.comments && <div><strong>Comments:</strong> {request.comments}</div>}
+        <div className="compact-actions">
+          <button disabled={!isEditable(request.status)} onClick={() => onEdit(request)}>Edit</button>
+          <button disabled={!isEditable(request.status)} onClick={() => onCancel(request.id || request.leave_id)}>Cancel</button>
+        </div>
       </div>
+    </details>
+  ))}
+</div>
     </>
   );
 }

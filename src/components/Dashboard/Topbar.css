@@ -1,223 +1,363 @@
+/* ==================== TOPBAR – ORIGINAL CLEAN DESIGN ==================== */
+
 .topbar1 {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  height: 2%;
-  padding: 40px 20px 20px 30px;
-  background-color: #fff;
-  color: black;
+  height: 80px;
+  padding: 0 32px;
+  background: #ffffff;
+  border-bottom: 1px solid #e2e8f0;
   position: sticky;
-  top: 0%;
-  left: 0;
-  right: 0;
-  width: 100%;
-  flex-shrink: 0;
-  margin-left: -20%;
-  z-index: 10;
+  top: 0;
+  z-index: 50;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
+  transition: all 0.3s ease;
 }
 
 .profile-section {
   display: flex;
   align-items: center;
-  margin-left: 7%;
-  margin-bottom: 1%;
+  gap: 14px;
 }
 
 .profile-img {
-  width: 60px;
-  height: 60px;
+  width: 52px;
+  height: 52px;
   border-radius: 50%;
-  margin-left: -15%;
+  object-fit: cover;
+  border: 2.5px solid #e2e8f0;
+  transition: transform 0.2s ease;
+}
+
+.profile-img:hover {
+  transform: scale(1.05);
+}
+
+.profile-placeholder {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: linear-gradient(45deg, #e0e7ff, #c7d2fe);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  color: #6366f1;
+  font-size: 18px;
 }
 
 .profile-info {
-  margin-left: 5%;
-  gap: 5px;
-  white-space: nowrap;
   display: flex;
   flex-direction: column;
+  gap: 2px;
 }
+
 .profile-namedash {
   font-size: 16px;
-  white-space: nowrap;
-  font-weight: bold;
-  display: inline-block;
-  max-width: 100%;
+  font-weight: 600;
+  color: #1e293b;
+  letter-spacing: -0.2px;
 }
+
 .profile-designation {
-  font-size: 14px;
-  color: #727272;
-  margin-right: 30%;
-  display: inline-block;
+  font-size: 13px;
+  color: #64748b;
+  font-weight: 500;
 }
 
-.icon-section {
-  display: flex;
-  gap: 40%;
-  margin-right: 7%;
-  font-size: 200%;
-  margin-bottom: 2%;
-}
-
-.icon {
-  font-size: 20px;
-  cursor: pointer;
-  transition: transform 0.3s ease;
-}
-
-.icon:hover {
-  transform: scale(1.1);
-}
-
-.calendar-dropdown {
-  position: absolute;
-  top: 10%;
-  right: 0.1%;
-  font-size: small;
-  background: white;
-  border-radius: 10px;
-  box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.2);
-  z-index: 1000;
-}
-
-.close-btn {
-  position: absolute;
-  top: 0;
-  right: 0;
-  background: none;
-  border: none;
-  padding: 2% 3%;
-  border-radius: 50%;
-  cursor: pointer;
-  font-size: large;
-  z-index: 10;
-}
-.close-btn:hover {
-  color: red;
-}
-
-.fa-icon {
-  color: #000;
-  cursor: pointer;
-  transition: transform 0.1s ease, color 0.3s ease;
-}
-
-.fa-icon:hover {
-  transform: scale(1.1);
-  color: #ffca28;
-}
-
-.fas.fa-calendar-alt:active,
-.fas.fa-power-off:active {
-  transform: scale(0.95);
-}
-
+/* ==================== ORG NAME – COLORED TEXT ONLY (DESKTOP) ==================== */
 .org-name-section {
-  flex-grow: 1;
-  text-align: center;
+  flex: 1;
+  display: flex;
+  justify-content: center;
   padding: 0 20px;
 }
 
-.org-name-gradient {
+.org-name-text {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 800;
   font-size: 24px;
-  font-weight: 700;
-  background: linear-gradient(to bottom, #156178, #0f98c2);
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
-  -webkit-text-stroke: 0.4px rgba(0, 0, 0, 0.08);
-  display: inline-block;
-  white-space: nowrap;
+  letter-spacing: -0.5px;
+  text-transform: uppercase;
+  color: #1e40af;
+  background: none;
+  padding: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.org-name-text .org-icon-text {
+  font-size: 20px;
+  color: #1e40af;
+}
+
+/* ==================== ICON SECTION ==================== */
+.icon-section {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.fa-icon {
+  font-size: 22px;
+  color: #475569;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  padding: 8px;
+  border-radius: 50%;
+}
+
+.fa-icon:hover {
+  color: #3b82f6;
+  background: #eff6ff;
+  transform: translateY(-2px);
 }
 
 .notification-icon {
-  color: #fff;
   position: relative;
-  display: inline-block;
-  cursor: pointer;
-  z-index: 1000;
 }
 
 .notification-badge {
   position: absolute;
-  top: -2px;
-  right: -5px;
-  background: #0078ce;
+  top: 4px;
+  right: 4px;
+  background: #ef4444;
   color: white;
+  font-size: 10px;
+  font-weight: 700;
+  min-width: 18px;
+  height: 18px;
   border-radius: 50%;
-  padding: 2px 6px;
-  font-size: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid white;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
 }
 
-@media screen and (max-width: 768px) {
-  .topbar1 {
-    padding: 0px;
-    height: auto;
-    margin: 0;
-    flex-direction: column;
-    align-items: stretch;
-    background-color: #ffffff;
-  }
+/* ==================== DESKTOP CALENDAR – FIXED OVERLAY ==================== */
 
-  .org-name-section {
-    order: -1;
-    width: 100%;
-    text-align: center;
-    padding: 12px 16px;
-    box-sizing: border-box;
-  }
+.desktop-calendar-overlay {
+  position: fixed;
+  top: 90px;
+  right: 20px;
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.18);
+  z-index: 1000;
+  max-width: 380px;
+  width: 100%;
+  overflow: hidden;
+  animation: fadeIn 0.2s ease-out;
+}
 
-  .org-name-gradient {
-    font-size: 20px;
-    font-weight: 700;
-    display: inline-block;
-    white-space: nowrap;
-  }
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
 
-  .profile-section {
-    order: 0;
-    flex-direction: row;
-    align-items: center;
-    margin-left: 8%;
-    z-index: 1000;
-  }
+/* ==================== MOBILE TOPBAR V2 – FULL COLOR HEADER ==================== */
 
-  .profile-img {
-    width: 40px;
-    height: 40px;
-    margin: 0 12px 0 0;
-  }
+.mobile-topbar-v2 {
+  display: flex;
+  flex-direction: column;
+  background: transparent;
+  position: sticky;
+  top: 0;
+  z-index: 60;
+  padding-top: env(safe-area-inset-top, 12px);
+}
 
-  .profile-info {
-    margin-left: 0;
-    margin-top: 0;
-    color: rgb(10, 22, 32);
-  }
+.mobile-header-colored {
+  background: linear-gradient(to bottom, #156178, #0f98c2);
+  text-align: center;
+  box-shadow: 0 4px 12px rgba(30, 64, 175, 0.3);
+}
 
-  .icon-section {
-    order: 1;
-    position: relative;
-    top: -40px;
-    right: -20px;
-    gap: 16px;
-    font-size: 120%;
-    padding: 6px;
-    border-radius: 6px;
-    align-self: flex-end;
-  }
+.mobile-org-card {
+  color: white;
+  padding: 8px 24px;
+  border-radius: 14px;
+  font-weight: 800;
+  font-size: 17px;
+  letter-spacing: -0.3px;
+  text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  position: relative;
+  overflow: hidden;
+}
 
-  .icon {
-    font-size: 100%;
-  }
+.mobile-org-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(45deg, rgba(255,255,255,0.2), transparent);
+  border-radius: 14px;
+  pointer-events: none;
+}
 
-  .calendar-dropdown {
-    top: auto;
-    margin-top: 120px;
-    font-size: small;
-    margin-right: 2.5%;
-  }
+.mobile-main-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 18px;
+  background: white;
+  border-radius: 0 0 16px 16px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+}
 
-  .close-btn {
-    font-size: 12px;
-    padding: 5px 8px;
-  }
+.mobile-profile-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.mobile-avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2.5px solid #e0e7ff;
+  box-shadow: 0 2px 6px rgba(99, 102, 241, 0.2);
+}
+
+.mobile-avatar-placeholder {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-weight: 700;
+  font-size: 18px;
+  text-transform: uppercase;
+  box-shadow: 0 2px 6px rgba(99, 102, 241, 0.3);
+}
+
+.mobile-user-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.mobile-user-name {
+  font-weight: 600;
+  font-size: 15px;
+  color: #1e293b;
+}
+
+.mobile-user-role {
+  font-size: 12.5px;
+  color: #64748b;
+  font-weight: 500;
+}
+
+.mobile-action-buttons {
+  display: flex;
+  gap: 16px;
+}
+
+.mobile-action-btn {
+  position: relative;
+  background: #f8f9ff;
+  border: none;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+  color: #475569;
+  font-size: 20px;
+}
+
+.mobile-action-btn:hover {
+  background: #e0e7ff;
+  transform: translateY(-2px) scale(1.05);
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.25);
+  color: #3b82f6;
+}
+
+.mobile-action-btn:active {
+  transform: translateY(0) scale(0.98);
+}
+
+.mobile-logout-btn {
+  background: #fef2f2;
+  color: #dc2626;
+}
+
+.mobile-logout-btn:hover {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.mobile-badge {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  background: #ef4444;
+  color: white;
+  font-size: 10px;
+  font-weight: 700;
+  min-width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid white;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+/* ==================== MOBILE CALENDAR – FIXED OVERLAY ==================== */
+
+.mobile-calendar-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 1000;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding-top: 100px;
+  overflow-y: auto;
+}
+
+.mobile-calendar-inline {
+  position: fixed;
+  top: 100px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+  z-index: 1000;
+  max-width: 90%;
+  width: 100%;
+  max-height: 80vh;
+  overflow-y: auto;
+}
+
+/* RESPONSIVE */
+@media (max-width: 768px) {
+  .topbar1 { display: none; }
+  .content-container { padding-bottom: 90px !important; }
+}
+
+@media (min-width: 769px) {
+  .mobile-topbar-v2 { display: none; }
 }

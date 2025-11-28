@@ -517,358 +517,707 @@
   display: none;
 }
 
-/* Responsive Mobile View */
-@media (max-width: 768px) {
-  .reimbursement-table {
-    display: none;
-  }
 
-  .filter-container {
-    flex-direction: column;
+/* Hide mobile list on desktop, hide table on mobile */
+.rb-mobile-only {
+  display: block;
+}
 
-    margin: 4%;
-    gap: 10px;
-    padding: 15px;
-  }
-  .rb-form-header {
-    margin: 10%;
-  }
-  .filter-container label {
-    font-size: 13px;
-    margin-right: 80%;
-  }
+.rb-desktop-only {
+  display: none;
+}
+.rb-bottom-bar
+{
+  display: none;
+}
 
-  .filter-container select {
-    width: 100%;
-    font-size: medium;
-    padding: 10px;
+/* Tablet & Desktop: Show table, hide mobile list */
+@media (min-width: 768px) {
+  .rb-mobile-only {
+    display: none !important;
   }
-  .filter-container input {
-    width: 94%;
-    font-size: medium;
-    padding: 10px;
+  .rb-desktop-only {
+    display: block !important;
   }
-
-  .search-btn,
-  .apply-btn {
-    width: 100%;
-    font-size: 13px;
-    padding: 12px;
+  .reimbursement-table-scroll {
+    overflow-x: auto;
   }
 }
 
+/* Optional: Extra breathing room on mobile */
+.rb-flat-mobile {
+  min-height: 68vh;
+  padding-bottom: 120px;
+}
+/* ──────────────────────────────────────────────────────────────
+   PROFESSIONAL RESPONSIVE MOBILE VIEW (replaces cards)
+/* PURE FLAT BANKING APP STYLE - NO CARDS, NO DOTS, NO SHADOWS */
 @media (max-width: 768px) {
-  .reimbursement-table-wrapper {
-    display: none;
-  }
-
+  .reimbursement-table,
   .rb-reimbursement-cards {
-    display: flex;
-    flex-direction: column;
-    gap: 15px;
-    margin: 8%;
-  }
-
-  .rb-reimbursement-card {
-    background: white;
-    padding: 30px;
-    border-radius: 10px;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-    display: flex;
-    flex-direction: column;
-  }
-
-  .rb-card-header {
-    display: flex;
-    flex-direction: column; /* Arrange items in a row */
-    justify-content: space-between; /* Push items apart */
-    align-items: center; /* Align items properly */
-    font-weight: bold;
-    border-bottom: 1px solid #ddd;
-    padding-bottom: 5px;
-    margin-left: 70%;
-  }
-
-  .rb-status {
-    font-size: 14px;
-    font-weight: bold;
-    color: green; /* Change based on status */
-  }
-
-  .rb-card-body {
-    display: flex;
-    flex-direction: column;
-    gap: 5px;
-  }
-
-  .rb-form-grid {
-    display: flex;
-    flex-direction: column;
-    gap: 5px; /* Reduce gap for better UX */
-  }
-  .rb-form1-grid {
-    display: flex;
-    flex-direction: column;
-    gap: 5px; /* Reduce gap for better UX */
-  }
-  .rb-form2-grid {
-    display: flex;
-    flex-direction: column;
-    gap: 5px; /* Reduce gap for better UX */
-  }
-  .rb-form3-grid {
-    display: flex;
-    flex-direction: column;
-    gap: 5px; /* Reduce gap for better UX */
-  }
-  .rb-groups {
-    flex-direction: column; /* Stack elements in a column */
-    align-items: stretch; /* Ensure full width */
-    gap: 10px; /* Spacing between fields */
-  }
-
-  .rb-groups label {
-    display: block; /* Place label above input */
-    margin-bottom: 5px; /* Spacing between label and input */
-    font-size: 15px;
-  }
-
-  .rb-groups input {
-    width: 95%;
-    padding: 10px;
-  }
-  .rb-groups select {
-    padding: 10px;
-    width: 100%; /* Make inputs/selects full width */
-    display: block; /* Ensure they stack */
-  }
-
-  .hidden-file-input {
-    display: none;
-  }
-
-  .purpose-attachment {
-    display: flex;
-    flex-direction: column !important;
-    gap: 5px;
-  }
-  .pa-groups {
-    flex-direction: column !important; /* Stack elements in a column */
-    align-items: stretch; /* Ensure full width */
-    gap: 10px; /* Spacing between fields */
-  }
-
-  .pa-groups label {
-    display: block; /* Place label above input */
-    margin-bottom: 5px; /* Spacing between label and input */
-    font-size: 15px;
-  }
-
-  .pa-groups input {
-    padding: 2%;
-    border: 1px solid #ccc;
-    background-color: #fff;
-    border-radius: 5px;
-    width: 96%;
-    height: 80px;
-  }
-  .custom-file-upload {
-    margin-left: -40px;
-    padding: 10px;
-  }
-  .hidden-file-input {
     display: none !important;
   }
 
-  .rb-card-body p {
-    margin: 5px 0;
-  }
+  /* ===== MOBILE LIST HEIGHT FIX – GUARANTEED TO WORK ===== */
+.rb-flat-mobile {
+  min-height: 68vh !important;
+  padding-top: 12px !important;
+  padding-bottom: 110px !important;
+  overflow-y: auto !important;
+}
 
-  .rb-card-footer {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-  }
+.rb-flat-row {
+  padding: 20px 16px !important;
+  min-height: 90px !important;
+  align-items: center !important;
+}
 
-  .rb-card-actions {
-    display: flex;
-    gap: 10px;
-  }
+/* Prevent bottom bar from covering last item */
+.rb-bottom-bar {
+  padding-bottom: calc(20px + env(safe-area-inset-bottom)) !important;
+}
 
-  .rb-edit-icon,
-  .rb-delete-icon {
-    cursor: pointer;
-    font-size: 20px;
+/* Extra safety for iPhone notch */
+@supports (padding-bottom: env(safe-area-inset-bottom)) {
+  .rb-flat-mobile {
+    padding-bottom: calc(110px + env(safe-area-inset-bottom)) !important;
   }
 }
 
-/* Mobile View */
-@media (max-width: 768px) {
-  .rb-modal {
+  .rb-no-records {
+    text-align: center;
+    padding: 60px 20px;
+    color: #777;
+    font-size: 16px;
+  }
+
+  .rb-flat-row {
+    background: white;
+    padding: 16px 0;
+    border-bottom: 1px solid #eee;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    cursor: default;
+  }
+
+  .rb-flat-row:active {
+    background: #f5f5f5;
+  }
+
+  .rb-flat-left {
+    flex: 1;
+  }
+
+  .rb-form-header
+  {
+   size: 20px; 
+  }
+  .reimbursement-table-scroll
+  {
+    margin-top:-80px;
+   max-height: 800px; 
+  }
+  .rb-flat-header {
     display: flex;
     align-items: center;
-    justify-content: center;
-    padding: 0px;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 6px;
   }
 
-  .rb-modal-content {
-    width: 92%;
-    max-width: 100%;
+  .rb-serial {
+    background: #00468c;
+    color: white;
+    font-size: 11px;
+    padding: 4px 8px;
+    border-radius: 6px;
+    font-weight: bold;
+  }
+
+  .rb-claim-type {
+    font-weight: 600;
+    color: #222;
+    font-size: 15px;
+  }
+
+  .rb-status-tag {
+    font-size: 10px;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-weight: bold;
+    text-transform: uppercase;
+  }
+  .rb-status-tag.pending   { background: #fef3cd; color: #d97706; }
+  .rb-status-tag.approved  { background: #d4edda; color: #155724; }
+  .rb-status-tag.rejected  { background: #f8d7da; color: #721c24; }
+
+  .rb-flat-date {
+    font-size: 13px;
+    color: #00468c;
+    margin-bottom: 4px;
+  }
+
+  .rb-flat-purpose {
+    font-size: 13.5px;
+    color: #444;
+    line-height: 1.4;
+    margin-top: 4px;
+  }
+
+  .rb-flat-right {
+    text-align: right;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 8px;
+  }
+
+  .rb-flat-amount {
+    font-size: 18px;
+    font-weight: bold;
+    color: #00468c;
+  }
+
+  .rb-flat-icons {
+    display: flex;
+    gap: 14px;
+  }
+
+  .rb-flat-icons .icon {
+    font-size: 21px;
+    padding: 6px;
+    border-radius: 8px;
+    background: transparent;
+    transition: background 0.2s;
+  }
+
+  .icon.view  { color: #2e7d32; }
+  .icon.edit  { color: #1976d2; }
+  .icon.delete { color: #d32f2f; }
+
+  .icon:hover {
+    background: #f0f0f0;
+  }
+
+  /* Bottom Fixed Bar */
+  .rb-bottom-bar {
+    position: fixed;
+    bottom: 40px;
+    left: 0;
+    right: 0;
+    background: #00468c;
+    color: white;
+    padding: 14px 20px;
+    display: flex;
+    justify-content: space-around;
+    font-size: 14px;
+    box-shadow: 0 -4px 10px rgba(0,0,0,0.1);
+  }
+
+  .rb-bottom-bar div {
+    text-align: center;
+  }
+
+  .rb-bottom-bar strong {
+    display: block;
+    font-size: 18px;
+    font-weight: bold;
+    margin-top: 4px;
+  }
+}
+/* Icons only in mobile view */
+@media (max-width: 768px) {
+  .mobile-claim-icon {
+    font-size: 19px;
+    margin-right: 8px;
+    vertical-align: -4px;
+    color: #00468c;
+  }
+
+  .rb-claim-type {
+    display: flex;
+    align-items: center;
+    font-weight: 600;
+    font-size: 15px;
+  }
+}
+/* Hide original filter on mobile, show only mobile top bar */
+@media (max-width: 768px) {
+  .filter-container {
+    display: none !important;
+  }
+
+  .mobile-only-top-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 14px 5%;
     background: #fff;
-    border-radius: 12px;
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
-    overflow-y: auto;
-    max-height: 90vh;
+    border-bottom: 1px solid #eee;
+    position: sticky;
+    margin-top: 30px;
+    z-index: 00;
+    box-shadow: 0 3px 10px rgba(0,0,0,0.08);
   }
 
-  .claim-form-header {
+  .mobile-status-dropdown {
+    padding: 11px 16px;
+    border: 2px solid #00468c;
+    border-radius: 10px;
+    font-size: 15px;
+    font-weight: 600;
+    color: #00468c;
+    background: white;
+    min-width: 140px;
+  }
+
+  .mobile-apply-claim-btn {
+    background: #00468c;
+    color: white;
+    border: none;
+    padding: 11px 22px;
+    border-radius: 10px;
+    font-size: 15px;
+    font-weight: bold;
+    box-shadow: 0 3px 10px rgba(0,70,140,0.3);
+  }
+
+  /* Push the list down so it's not hidden under the top bar */
+  .rb-flat-mobile {
+    padding-top: 78px !important;
+  }
+}
+
+/* Desktop: Hide mobile bar, keep original filter */
+@media (min-width: 769px) {
+  .mobile-only-top-bar {
+    display: none !important;
+  }
+}
+/* Mobile Stepper – 100% working & no conflict */
+@media (max-width: 768px) {
+  .hide-on-mobile, .show-on-desktop { display: none !important; }
+
+  .mb-stepper-root {
+    position: fixed;
+    inset: 0;
+    background: #f8f9ff;
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .mb-stepper-header {
+    background: #00468c;
+    color: white;
+    padding: 16px;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding-bottom: 12px;
-    border-bottom: 1px solid #ddd;
+    font-weight: bold;
+    font-size: 18px;
   }
 
-  .claim-form-title {
+  .mb-back-btn, .mb-close-btn {
+    background: none;
+    border: none;
+    color: white;
+    font-size: 28px;
+    padding: 0 10px;
+  }
+
+  .mb-stepper-content { flex: 1; overflow-y: auto; padding: 20px 5%; }
+
+  .mb-select {
+    width: 100%;
+    padding: 18px;
+    font-size: 17px;
+    border: 2px solid #00468c;
+    border-radius: 12px;
+    margin-top: 10px;
+  }
+
+  .mb-grid, .mb-column {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-top: 20px;
+  }
+
+  .mb-column { grid-template-columns: 1fr; }
+
+  .mb-card {
+    background: white;
+    padding: 24px 12px;
+    border-radius: 16px;
+    text-align: center;
+    font-weight: 600;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    border: 3px solid transparent;
+  }
+
+  .mb-card svg { font-size: 34px; margin-bottom: 10px; color: #00468c; }
+  .mb-card.mb-active { border-color: #00468c; background: #e6f0ff; }
+
+  .mb-final-step { margin-top: 10px; }
+  .mb-fields { padding: 0 4%; }
+  .mb-actions {
+    position: sticky;
+    bottom: 0;
+    background: white;
+    padding: 20px;
+    display: flex;
+    gap: 12px;
+    border-top: 1px solid #eee;
+  }
+
+  .mb-cancel-btn {
+    flex: 1;
+    padding: 16px;
+    background: #f0f0f0;
+    border: none;
+    border-radius: 12px;
+    font-weight: bold;
+  }
+
+  .mb-submit-btn {
+    flex: 2;
+    padding: 16px;
+    background: #00468c;
+    color: white;
+    border: none;
+    border-radius: 12px;
+    font-weight: bold;
+  }
+}
+
+@media (min-width: 769px) {
+  .mb-stepper-root { display: none !important; }
+  .hide-on-mobile { display: flex !important; }
+}
+/* ==================== MOBILE FORM - PERFECT & CENTERED ==================== */
+@media (max-width: 768px) {
+  .desktop-form-only,
+  .rb-modal {
+    display: none !important;
+  }
+
+  .mbf-stepper-container {
+    position: fixed;
+    inset: 0;
+    background: #f9f9ff;
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    font-family: system-ui, -apple-system, sans-serif;
+  }
+
+  .mbf-header {
+    background: #00468c;
+    color: white;
+    padding: 16px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
     font-size: 18px;
     font-weight: 600;
   }
 
-  .claim-form-close {
-    font-size: 24px;
-    cursor: pointer;
-    color: #fff;
-  }
-
-  .rb-tabs {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-    justify-content: center;
-    margin-top: 12px;
-  }
-
-  .rb-tab {
-    font-size: 14px;
-    padding: 10px 0;
-    border-radius: 8px;
-    background: #f3f3f3;
-    transition: all 0.3s ease;
-  }
-
-  .rb-tab.active {
-    background: #79c42b;
+  .mbf-back, .mbf-close {
+    background: none;
+    border: none;
     color: white;
-    font-weight: 600;
-  }
-
-  .reimbursement-form {
+    font-size: 28px;
+    width: 50px;
+    height: 50px;
     display: flex;
-    flex-direction: column;
-    gap: 12px;
-    margin-top: 15px;
+    align-items: center;
+    justify-content: center;
   }
 
-  .reimbursement-form input {
+  .mbf-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px 5%;
+  }
+
+  .mbf-center {
     display: flex;
-    flex-direction: column;
-  }
-  .reimbursement-form select {
-    width: 60%;
-
-    padding: 12px;
-    font-size: 14px;
-    border-radius: 6px;
-    border: 1px solid #ccc;
-    background: #f9f9f9;
-    transition: border 0.3s ease;
+    justify-content: center;
+    margin-top: 20px;
   }
 
-  .reimbursement-form input:focus {
-    width: 95%;
-  }
-  .reimbursement-form select:focus {
-    border-color: #79c42b;
+  .mbf-select {
+    width: 100%;
+    max-width: 400px;
+    padding: 18px;
+    font-size: 17px;
+    border: 2px solid #00468c;
+    border-radius: 14px;
     background: white;
   }
 
-  .reimbursement-form-button {
+  .mbf-grid, .mbf-column {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 18px;
+    margin-top: 20px;
+  }
+
+  .mbf-column { grid-template-columns: 1fr; }
+
+  .mbf-card {
+    background: white;
+    padding: 26px 16px;
+    border-radius: 18px;
+    text-align: center;
+    font-weight: 600;
+    font-size: 16px;
+    box-shadow: 0 6px 16px rgba(0,0,0,0.1);
+    border: 3px solid transparent;
+    transition: all 0.2s;
+  }
+
+  .mbf-card svg {
+    font-size: 38px;
+    margin-bottom: 12px;
+    color: #00468c;
+  }
+
+  .mbf-selected {
+    border-color: #00468c !important;
+    background: #e6f0ff !important;
+  }
+
+  /* FINAL FORM - ONE FIELD PER LINE, CENTERED */
+  .mbf-final-form {
+    margin-top: 10px;
+  }
+
+  .mbf-field-group {
     display: flex;
     flex-direction: column;
-    gap: 12px;
-    margin-top: 15px;
+    gap: 20px;
+    max-width: 500px;
+    margin: 0 auto;
   }
 
-  .rb-radio {
-    padding: 0%;
-    font-weight: bold;
-    font-size: 20%;
-  }
-  .rb-radio-options {
-    font-size: 20%;
-  }
-  .rb-radio label {
-    font-size: medium;
+  .mbf-field {
+    display: flex;
+    flex-direction: column;
   }
 
-  .rb-close,
-  .rb-submit {
-    width: 100%;
-    font-size: 14px;
-    padding: 14px;
-
-    border-radius: 8px;
+  .mbf-field label {
     font-weight: 600;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    align-items: stretch;
+    margin-bottom: 8px;
+    color: #222;
   }
 
-  .rb-close {
-    background: #ddd;
-    color: #333;
+  .mbf-input, .mbf-textarea {
+    padding: 16px;
+    border: 2px solid #ccc;
+    border-radius: 12px;
+    font-size: 16px;
+    background: white;
   }
 
-  .rb-submit {
-    background: #79c42b;
+  .mbf-textarea {
+    height: 100px;
+    resize: none;
+  }
+
+  .mbf-info {
+    background: #e6f0ff;
+    padding: 12px;
+    border-radius: 10px;
+    font-size: 15px;
+    text-align: center;
+    margin-bottom: 16px;
+  }
+
+  .mbf-submit-bar {
+    position: sticky;
+    bottom: 0;
+    background: white;
+    padding: 20px;
+    display: flex;
+    gap: 14px;
+    border-top: 1px solid #eee;
+    box-shadow: 0 -6px 20px rgba(0,0,0,0.08);
+  }
+
+  .mbf-cancel {
+    flex: 1;
+    padding: 16px;
+    background: #f0f0f0;
+    border: none;
+    border-radius: 14px;
+    font-weight: bold;
+    font-size: 16px;
+  }
+
+  .mbf-submit {
+    flex: 2;
+    padding: 16px;
+    background: #00468c;
     color: white;
-  }
-
-  .rb-close:hover {
-    background: #bbb;
-  }
-
-  .rb-submit:hover {
-    background: #79c42b;
+    border: none;
+    border-radius: 14px;
+    font-weight: bold;
+    font-size: 16px;
   }
 }
 
+@media (min-width: 769px) {
+  .mbf-stepper-container { display: none !important; }
+}
+
+/* ONLY AFFECTS MOBILE — DESKTOP 100% UNCHANGED */
 @media (max-width: 768px) {
-  .sub-tabs {
+  /* Force every .rb-groups to be full width and stacked */
+  .rb-groups,
+  .purpose-attachment > .pa-groups,
+  .rb-form-grid {
+    width: 100% !important;
+    margin: 0 auto 20px !important;
+    max-width: 500px;
+  }
+
+  .rb-form-grid {
+    grid-template-columns: 1fr !important;
+    gap: 0 !important;
+  }
+
+  .rb-groups input,
+  .rb-groups select,
+  .pa-groups textarea,
+  .attachment-wrapper {
+    width: 100% !important;
+    padding: 16px !important;
+    border: 2px solid #ccc !important;
+    border-radius: 12px !important;
+    font-size: 16px !important;
+    box-sizing: border-box !important;
+  }
+
+  .pa-groups textarea {
+    height: 110px !important;
+    resize: none;
+  }
+
+  .rb-groups label,
+  .pa-groups label {
+    font-weight: 600 !important;
+    margin-bottom: 8px !important;
+    display: block !important;
+  }
+
+  .purpose-attachment {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Center everything nicely */
+  .rb-main-form {
     display: flex;
-    flex-wrap: wrap;
+    flex-direction: column;
+    align-items: center;
+  }
+}
+
+/* ================ MOBILE FORM CONSISTENCY FIX - ALL CLAIM TYPES ================ */
+@media (max-width: 768px) {
+  /* Force ALL form grids (1, 2, or 4 columns) to stack vertically in mobile */
+  .rb-form-grid,
+  .rb-form1-grid,
+  .rb-form2-grid {
+    grid-template-columns: 1fr !important;
+    gap: 20px !important;
+    padding: 0 !important;
+  }
+
+  /* Ensure every field group takes full width and has consistent spacing */
+  .rb-groups,
+  .pa-groups,
+  .purpose-attachment > div {
+    width: 100% !important;
+    max-width: 500px !important;
+    margin: 0 auto 24px auto !important;
+  }
+
+  /* Standardize all inputs, selects, textarea in mobile */
+  .rb-groups input,
+  .rb-groups select,
+  .pa-groups textarea,
+  .attachment-wrapper {
+    width: 100% !important;
+    padding: 16px !important;
+    font-size: 16px !important;
+    border: 2px solid #ccc !important;
+    border-radius: 12px !important;
+    background: white !important;
+    box-sizing: border-box !important;
+  }
+
+  /* Fix textarea height */
+  .pa-groups textarea {
+    min-height: 110px !important;
+    resize: none;
+  }
+
+  /* Labels - consistent bold and spacing */
+  .rb-groups label,
+  .pa-groups label {
+    display: block !important;
+    font-weight: 600 !important;
+    margin-bottom: 8px !important;
+    font-size: 15px !important;
+    color: #222;
+  }
+
+  /* Purpose & Attachment side-by-side → stacked on mobile */
+  .purpose-attachment {
+    grid-template-columns: 1fr !important;
+    gap: 24px !important;
+  }
+
+  /* Center the entire form content */
+  .rb-main-form {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 10px 0;
+  }
+
+  /* Optional: Add subtle top margin to first field after sub-tabs */
+  .sub-tabs + .rb-main-form,
+  .rb-radio + .rb-main-form {
+    margin-top: 20px;
+  }
+
+  /* Radio buttons - better spacing */
+  .rb-radio-options {
     justify-content: center;
-    gap: 10px;
-    padding: 10px;
+    gap: 30px !important;
+    margin-top: 12px;
+  }
+
+  /* Sub-tabs (Outstation/Intercity/Fuel) - better mobile look */
+  .sub-tabs {
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 12px;
   }
 
   .sub-tab {
-    flex: 1;
-    max-width: 140px;
-    background-color: white;
-    color: black;
-    padding: 12px;
-    border: 2px solid #79c42b;
-    border-radius: 6px;
-    font-weight: bold;
-    text-align: center;
-    cursor: pointer;
-    transition: all 0.3s ease-in-out;
+    padding: 10px 20px !important;
+    font-size: 15px;
+    border-bottom: 3px solid transparent;
   }
 
   .sub-tab.active {
-    background-color: #79c42b;
-    color: white;
-    border-color: #79c42b;
+    border-bottom: 3px solid #00468c;
+    color: #00468c;
+    font-weight: bold;
   }
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { IoSearch } from "react-icons/io5";
+import { IoSearch, IoCalendarOutline } from "react-icons/io5";
 
 export default function FiltersPanel({
   filters,
@@ -21,45 +21,50 @@ export default function FiltersPanel({
 
   return (
     <div className="leave-filters">
-      <label htmlFor="from_date">From:</label>
-      <input
-        id="from_date"
-        type="date"
-        name="from_date"
-        value={filters.from_date || ""}
-        onChange={handleFilterChange}
-        className="date-filter-input"
-      />
+      {/* ULTRA COMPACT MOBILE-ONLY VERSION */}
+      <div className="mobile-compact-filter">
+        <div className="compact-date-row">
+          <input type="date" name="from_date" value={filters.from_date || ""} onChange={handleFilterChange} />
+          {/* <span>to</span> */}
+          <input type="date" name="to_date" value={filters.to_date || ""} onChange={handleFilterChange} />
+        </div>
 
-      <label htmlFor="to_date">To:</label>
-      <input
-        id="to_date"
-        type="date"
-        name="to_date"
-        value={filters.to_date || ""}
-        onChange={handleFilterChange}
-        className="date-filter-input"
-      />
+        {canViewTeam && (
+          <div className="compact-team-row">
+            <input
+              type="text"
+              placeholder="Search..."
+              value={teamSearch || ""}
+              onChange={(e) => setTeamSearch(e.target.value)}
+            />
+            <select value={teamStatus || ""} onChange={(e) => setTeamStatus(e.target.value)}>
+              <option value="">All</option>
+              <option value="pending">Pending</option>
+              <option value="Approved">Approved</option>
+              <option value="Rejected">Rejected</option>
+            </select>
+          </div>
+        )}
+
+        <div className="compact-buttons">
+          <button onClick={onSearch}><IoSearch /></button>
+          <button onClick={onOpenForm} className="primary">Apply Leave</button>
+        </div>
+      </div>
+
+      {/* ORIGINAL DESKTOP VERSION – UNTOUCHED */}
+      <label className="desktop-only">From:</label>
+      <input className="date-filter-input desktop-only" type="date" name="from_date" value={filters.from_date || ""} onChange={handleFilterChange} />
+
+      <label className="desktop-only">To:</label>
+      <input className="date-filter-input desktop-only" type="date" name="to_date" value={filters.to_date || ""} onChange={handleFilterChange} />
 
       {canViewTeam && (
         <>
-          <label htmlFor="teamSearch">Search:</label>
-          <input
-            id="teamSearch"
-            type="text"
-            placeholder="Name, Emp ID, Reason"
-            value={teamSearch || ""}
-            onChange={(e) => setTeamSearch(e.target.value)}
-            className="team-search-input"
-          />
-
-          <label htmlFor="teamStatus">Status:</label>
-          <select
-            id="teamStatus"
-            className="team-search-input"
-            value={teamStatus || ""}
-            onChange={(e) => setTeamStatus(e.target.value)}
-          >
+          <label>Search:</label>
+          <input type="text" placeholder="Name, Emp ID, Reason" value={teamSearch || ""} onChange={(e) => setTeamSearch(e.target.value)} className="team-search-input" />
+          <label>Status:</label>
+          <select value={teamStatus || ""} onChange={(e) => setTeamStatus(e.target.value)} className="team-search-input">
             <option value="">All</option>
             <option value="pending">Pending</option>
             <option value="Approved">Approved</option>
@@ -68,13 +73,8 @@ export default function FiltersPanel({
         </>
       )}
 
-      <button type="button" className="filter-button" onClick={onSearch}>
-        <IoSearch /> Search
-      </button>
-
-      <button type="button" className="leave-form-button" onClick={onOpenForm}>
-        Leave Request
-      </button>
+      <button className="filter-button desktop-only" onClick={onSearch}><IoSearch /> Search</button>
+      <button className="leave-form-button desktop-only" onClick={onOpenForm}>Leave Request</button>
     </div>
   );
 }

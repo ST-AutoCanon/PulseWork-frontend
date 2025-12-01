@@ -431,7 +431,7 @@
 @media (max-width: 768px) {
   /* Container */
   .leave-container {
-    margin: 8%;
+    margin: 2%;
     align-items: stretch;
   }
 
@@ -1092,6 +1092,7 @@
   position: relative;
 }
 
+
 /* a little responsive resizing */
 @media (max-width: 900px) {
   .venn-nav-column {
@@ -1133,6 +1134,10 @@
   }
 }
 
+.search-leave-1
+{
+  display: none;
+}
 /* a bit of breathing room on small screens */
 @media (max-width: 520px) {
   .venn-card.venn-card-fixed {
@@ -1175,7 +1180,7 @@
 .lop-modal-content {
   box-sizing: border-box;
   width: 100%;
-  max-width: 320px; /* modal inner width */
+   /* modal inner width */
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -1280,6 +1285,10 @@
   text-align: center;
   margin-top: 4px;
   max-width: 420px;
+}
+.self-compact-list
+{
+  display: none;
 }
 @media (max-width: 768px) {
   .self-compact-list { margin: 16px 8px; }
@@ -1424,4 +1433,278 @@
 /* Desktop – keep everything exactly as before */
 @media (min-width: 769px) {
   .mobile-compact-filter { display: none !important; }
+}
+@media (max-width: 768px) {
+  .desktop-view { display: none; }
+}
+@media (min-width: 769px) {
+  .mobile-view { display: none; }
+}
+/* ----------------------------------------- */
+/* FIX DESKTOP SPACING (NO SIZE CHANGES)     */
+/* ----------------------------------------- */
+
+@media (min-width: 769px) {
+  .leave-filters {
+    display: flex;
+    align-items: center;
+    gap: 12px;        /* restores spacing */
+    padding: 8px 10px;  /* adds top-bottom padding */
+  }
+
+  /* Date inputs spacing already good; match others */
+  .team-search-input {
+    padding: 8px 10px;       /* same height feel as date inputs */
+    border: 1px solid #ccc;
+    border-radius: 6px;
+  }
+
+  .filter-button,
+  .leave-form-button {
+    padding: 8px 12px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    white-space: nowrap;
+  }
+
+  /* Labels need spacing so they don’t stick to inputs */
+  .leave-filters label {
+    margin-right: 4px;
+    font-weight: 500;
+  }
+
+  /* Ensure the alignment line is clean */
+  .date-filter-input {
+    padding: 8px 10px;
+  }
+}
+
+/* ------------------------ */
+/*    MOBILE VIEW ONLY      */
+/* ------------------------ */
+@media (max-width: 768px) {
+
+  /* Overall section padding */
+  .venn-balance-section {
+    padding: 12px;
+    background: #f9fafb; /* subtle light bg for separation */
+    border-radius: 14px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  }
+
+  /* Policy period card */
+  .policy-period {
+    width: 100%;
+    margin-bottom: 12px;
+  }
+
+  .policy-period-row {
+    flex-direction: column;
+    gap: 6px;
+    text-align: center;
+  }
+
+  .date-label {
+    font-size: 14px;
+    font-weight: 500;
+    color: #555;
+  }
+
+  .date-value {
+    font-size: 15px;
+    font-weight: 600;
+    color: #1f2937;
+  }
+
+  .show-lop-btn {
+    width: 80%;
+    margin-top: 6px;
+    padding: 10px 0;
+    font-size: 15px;
+    font-weight: 600;
+    border-radius: 10px;
+    background: #00468c;
+    color: #fff;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.12);
+    transition: background 0.2s ease, transform 0.1s ease;
+  }
+  .show-lop-btn:hover {
+    background: #0052a0;
+    transform: translateY(-1px);
+  }
+
+  /* Venn Grid - stacked for mobile */
+  .venn-grid-with-nav {
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .venn-nav-column {
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    margin: 6px 0;
+  }
+
+  .venn-nav-btn {
+    width: 98%;
+    padding: 10px 0;
+    font-size: 18px;
+    font-weight: 700;
+    border-radius: 8px;
+    background: #e6e9ee;
+    transition: background 0.2s ease, transform 0.1s ease;
+  }
+
+  .venn-nav-btn:disabled {
+    opacity: 0.4;
+    cursor: default;
+  }
+
+  .venn-cards-container {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    width: 100%;
+  }
+
+  .venn-card-wrapper {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+  }
+
+  /* Venn card styling */
+  .venn-card {
+    width: 100%;
+    max-width: 320px;
+    padding: 14px 12px;
+    border-radius: 14px;
+    background: #fff;
+    box-shadow: 0 1px 6px rgba(0,0,0,0.08);
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+  }
+  .venn-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 3px 12px rgba(0,0,0,0.12);
+  }
+
+  .venn-label {
+    font-size: 16px;
+    font-weight: 700;
+    text-align: center;
+    margin-bottom: 12px;
+    color: #1f2937;
+  }
+
+  .venn-svg {
+    width: 100%;
+    height: auto;
+  }
+
+  /* Reduce circle diagram sizes on mobile */
+  .venn-svg circle {
+    r: 60 !important;
+  }
+
+  /* Adjust text sizes inside diagram */
+  .venn-svg text {
+    font-size: 14px !important;
+  }
+
+  .venn-svg text[font-size="22"],
+  .venn-svg text[font-size="25"] {
+    font-size: 18px !important;
+  }
+
+  .venn-svg text[font-size="16"] {
+    font-size: 14px !important;
+  }
+
+  /* Card spacing */
+  .venn-card-fixed {
+    margin: 0 auto;
+  }
+}
+
+/* Hide desktop table on mobile */
+.desktop-view {
+  display: block;
+}
+.self-compact-list {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .desktop-view {
+    display: none;
+  }
+  .self-compact-list {
+    display: block;
+  }
+}
+
+/* Nice styling for mobile cards */
+.compact-item {
+  margin-bottom: 12px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #fff;
+}
+
+.compact-summary {
+  padding: 14px;
+  background: #f8f9fa;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-weight: 500;
+}
+
+.compact-details {
+  padding: 16px;
+  background: white;
+  border-top: 1px solid #eee;
+}
+
+.compact-form-section {
+  margin-bottom: 14px;
+}
+
+.compact-form-section label {
+  display: block;
+  margin-bottom: 6px;
+  font-weight: 600;
+  color: #333;
+}
+
+.mobile-status-select,
+.comments-input {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  font-size: 1em;
+}
+
+.compact-actions button {
+  width: 100%;
+  padding: 12px;
+  background: #1976d2;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  font-size: 1em;
+  cursor: pointer;
+}
+
+/* REMOVE THESE – they are redundant and can cause leaks */
+.desktop-only { display: none !important; }
+@media (max-width: 768px) {
+  .desktop-only { display: none !important; }
 }

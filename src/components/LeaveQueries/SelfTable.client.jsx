@@ -1,4 +1,3 @@
-// src/components/LeaveQueries/SelfTable.client.jsx
 "use client";
 
 import React from "react";
@@ -26,7 +25,6 @@ export default function SelfTable({ leaveRequests, onEdit, onCancel }) {
     <>
       <h4 className="my-leaves">My Leave Requests</h4>
 
-      {/* Desktop table */}
       <div className="leave-request-table desktop-view">
         <table className="leave-requests">
           <thead>
@@ -80,31 +78,54 @@ export default function SelfTable({ leaveRequests, onEdit, onCancel }) {
         </table>
       </div>
 
-      {/* Mobile cards */}
       <div className="self-compact-list">
-  {sortedRequests.map((request) => (
-    <details key={request.id || request.leave_id} className="compact-item">
-      <summary className="compact-summary">
-        <div className="compact-main">
-          <strong>{request.leave_type}</strong>
-          <span className="compact-dates">
-            {parseLocalDate(request.start_date)} - {parseLocalDate(request.end_date)}
-          </span>
-        </div>
-        {renderStatusLabel(request.status)}
-      </summary>
-      <div className="compact-details">
-        <div><strong>Type:</strong> {request.H_F_day}</div>
-        {request.reason && <div><strong>Reason:</strong> {request.reason}</div>}
-        {request.comments && <div><strong>Comments:</strong> {request.comments}</div>}
-        <div className="compact-actions">
-          <button disabled={!isEditable(request.status)} onClick={() => onEdit(request)}>Edit</button>
-          <button disabled={!isEditable(request.status)} onClick={() => onCancel(request.id || request.leave_id)}>Cancel</button>
-        </div>
+        {sortedRequests.map((request) => (
+          <details
+            key={request.id || request.leave_id}
+            className="compact-item"
+          >
+            <summary className="compact-summary">
+              <div className="compact-main">
+                <strong>{request.leave_type}</strong>
+                <span className="compact-dates">
+                  {parseLocalDate(request.start_date)} -{" "}
+                  {parseLocalDate(request.end_date)}
+                </span>
+              </div>
+              {renderStatusLabel(request.status)}
+            </summary>
+            <div className="compact-details">
+              <div>
+                <strong>Type:</strong> {request.H_F_day}
+              </div>
+              {request.reason && (
+                <div>
+                  <strong>Reason:</strong> {request.reason}
+                </div>
+              )}
+              {request.comments && (
+                <div>
+                  <strong>Comments:</strong> {request.comments}
+                </div>
+              )}
+              <div className="compact-actions">
+                <button
+                  disabled={!isEditable(request.status)}
+                  onClick={() => onEdit(request)}
+                >
+                  Edit
+                </button>
+                <button
+                  disabled={!isEditable(request.status)}
+                  onClick={() => onCancel(request.id || request.leave_id)}
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </details>
+        ))}
       </div>
-    </details>
-  ))}
-</div>
     </>
   );
 }

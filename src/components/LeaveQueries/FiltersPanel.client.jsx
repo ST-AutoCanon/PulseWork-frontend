@@ -1,10 +1,8 @@
-
-
 "use client";
 
 import React from "react";
 import { IoSearch, IoCalendarOutline, IoAdd } from "react-icons/io5";
-import { useMediaQuery } from "react-responsive"; // Install: npm install react-responsive
+import { useMediaQuery } from "react-responsive";
 
 export default function FiltersPanel({
   filters,
@@ -24,7 +22,6 @@ export default function FiltersPanel({
     setFilters((prev) => ({ ...prev, [name]: value }));
   };
 
-  // Mobile Compact Version
   if (isMobile) {
     return (
       <div className="mobile-compact-filter">
@@ -75,7 +72,6 @@ export default function FiltersPanel({
     );
   }
 
-  // Desktop Version
   return (
     <div className="leave-filters">
       <label>From:</label>

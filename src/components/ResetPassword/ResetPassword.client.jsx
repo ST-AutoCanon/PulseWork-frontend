@@ -16,12 +16,11 @@ export default function ResetPassword() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  // Extract token from URL query parameters
   useEffect(() => {
     const tokenFromUrl = searchParams?.get?.("token");
     if (tokenFromUrl) {
       setToken(tokenFromUrl);
-      setError(""); // Clear any previous error
+      setError("");
     } else {
       setError("Invalid or missing token");
     }
@@ -51,6 +50,7 @@ export default function ResetPassword() {
         `${process.env.NEXT_PUBLIC_BACKEND_URL}/password-reset`,
         { resetToken: token, newPassword: password },
         {
+          withCredentials: true,
           headers: {
             "Content-Type": "application/json",
             "x-api-key": process.env.NEXT_PUBLIC_API_KEY,
@@ -61,7 +61,6 @@ export default function ResetPassword() {
       if (response.status === 200) {
         setSuccess(true);
         setError("");
-        // short delay then redirect to login/home
         setTimeout(() => router.push("/"), 1500);
       } else {
         setError("Failed to reset password. Please try again.");
@@ -69,7 +68,6 @@ export default function ResetPassword() {
       }
     } catch (err) {
       console.error("Reset password error:", err);
-      // try to surface backend message when present
       const msg =
         err?.response?.data?.message ||
         err?.response?.data?.error ||

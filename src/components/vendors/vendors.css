@@ -55,14 +55,6 @@
   border-color: #00468c;
 }
 
-/* .search-input {
-  flex: 1;
-  border: none;
-  font-size: 14px;
-  outline: none;
-  background-color: transparent;
-} */
-
 .search-icon {
   color: #666;
   font-size: 14px;
@@ -284,43 +276,36 @@
 
 .vendor-table th:nth-child(1),
 .vendor-table td:nth-child(1) {
-  /* Vendor ID */
   width: 60px;
 }
 
 .vendor-table th:nth-child(2),
 .vendor-table td:nth-child(2) {
-  /* Company Name */
   width: 150px;
 }
 
 .vendor-table th:nth-child(3),
 .vendor-table td:nth-child(3) {
-  /* Company Details */
   width: 100px;
 }
 
 .vendor-table th:nth-child(4),
 .vendor-table td:nth-child(4) {
-  /* Contact Details */
   width: 100px;
 }
 
 .vendor-table th:nth-child(5),
 .vendor-table td:nth-child(5) {
-  /* Bank Details */
   width: 100px;
 }
 
 .vendor-table th:nth-child(6),
 .vendor-table td:nth-child(6) {
-  /* Business Information */
   width: 120px;
 }
 
 .vendor-table th:nth-child(7),
 .vendor-table td:nth-child(7) {
-  /* Documents */
   min-width: 120px !important;
   text-align: center;
   white-space: nowrap;
@@ -661,17 +646,6 @@
   margin: 0 auto;
 }
 
-/* .header-container {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 20px;
-  padding: 10px 20px;
-  background-color: #f8f9fa;
-  border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-} */
-
 .add-vendor-btn {
   padding: 12px 24px;
   background-color: #7fbd2c;
@@ -688,22 +662,6 @@
 .add-vendor-btn:active {
   transform: translateY(0);
 }
-
-/* .search-container {
-  display: flex;
-  align-items: center;
-  width: 250px;
-  background-color: #fff;
-  border: 1px solid #ccc;
-  border-radius: 6px;
-  padding: 8px 12px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  transition: border-color 0.2s ease;
-} */
-
-/* .search-container:focus-within {
-  border-color: #00468C;
-} */
 
 .search-input {
   flex: 1;
@@ -934,43 +892,36 @@
 
 .vendor-table th:nth-child(1),
 .vendor-table td:nth-child(1) {
-  /* Vendor ID */
   width: 60px;
 }
 
 .vendor-table th:nth-child(2),
 .vendor-table td:nth-child(2) {
-  /* Company Name */
   width: 150px;
 }
 
 .vendor-table th:nth-child(3),
 .vendor-table td:nth-child(3) {
-  /* Company Details */
   width: 100px;
 }
 
 .vendor-table th:nth-child(4),
 .vendor-table td:nth-child(4) {
-  /* Contact Details */
   width: 100px;
 }
 
 .vendor-table th:nth-child(5),
 .vendor-table td:nth-child(5) {
-  /* Bank Details */
   width: 100px;
 }
 
 .vendor-table th:nth-child(6),
 .vendor-table td:nth-child(6) {
-  /* Business Information */
   width: 120px;
 }
 
 .vendor-table th:nth-child(7),
 .vendor-table td:nth-child(7) {
-  /* Documents */
   min-width: 120px !important;
   text-align: center;
   white-space: nowrap;
@@ -1330,7 +1281,6 @@
   background-color: #7fbd2c;
 }
 
-/* Responsive Design */
 @media (max-width: 768px) {
   .header-container {
     flex-direction: column;
@@ -1407,7 +1357,6 @@
   color: red;
 }
 
-/* Responsive Design */
 @media (max-width: 768px) {
   .header-container {
     flex-direction: column;

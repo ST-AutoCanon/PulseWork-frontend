@@ -1,7 +1,7 @@
 .admin-query-container {
   display: flex;
   flex-direction: column;
-  height: 100vh; /* Adjust as needed */
+  height: 100vh;
   width: 100%;
 }
 
@@ -14,7 +14,7 @@
 
 .admin-query-content {
   display: flex;
-  flex: 1; /* Takes up full height */
+  flex: 1;
   padding: 0 2%;
   gap: 2%;
 }
@@ -181,7 +181,6 @@
   flex-grow: 1;
 }
 
-/* Hide scrollbar */
 .chat-messages {
   display: flex;
   flex-direction: column-reverse;
@@ -191,12 +190,10 @@
   -ms-overflow-style: none;
 }
 
-/* Hide scrollbar for WebKit (Chrome, Safari) */
 .chat-messages::-webkit-scrollbar {
   display: none;
 }
 
-/* Disabled input and button styles */
 .chat-input input:disabled,
 .chat-input button:disabled {
   background: #e0e0e0;
@@ -214,15 +211,15 @@
   margin-bottom: 5px;
   font-size: 14px;
   color: #555;
-  text-align: left; /* Default alignment for left */
+  text-align: left;
 }
 
 .message-container.right .message-header {
-  text-align: right; /* Align to the right for 'You' */
+  text-align: right;
 }
 
 .message-container.left .message-header {
-  text-align: left; /* Align to the left for others' names */
+  text-align: left;
 }
 
 .message {
@@ -272,7 +269,7 @@
 
 .message-input {
   width: 100%;
-  padding: 1.5% 50px 1.5% 10px; /* Reduced right padding to make room for icon and suffix */
+  padding: 1.5% 50px 1.5% 10px;
   border: 1px solid #ccc;
   border-radius: 5px;
   font-size: 16px;
@@ -280,7 +277,7 @@
 
 .attachment-suffix {
   position: absolute;
-  right: 40px; /* leave space for the icon */
+  right: 40px;
   top: 50%;
   transform: translateY(-50%);
   color: #333;
@@ -319,7 +316,7 @@
 }
 
 .submit-btn:hover {
-  background-color: #68a822; /* Slightly darker */
+  background-color: #68a822;
   box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
 }
 

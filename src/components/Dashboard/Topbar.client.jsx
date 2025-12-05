@@ -1,5 +1,3 @@
-
-
 "use client";
 
 import React, { useEffect, useState, useCallback, useRef } from "react";
@@ -18,9 +16,6 @@ import {
 import "./Topbar.css";
 import { useAuth } from "../../context/AuthProvider.client";
 
-/* -------------------------------------------------
-   MOBILE TOPBAR
-   ------------------------------------------------- */
 function MobileTopbar(props) {
   const {
     userName,
@@ -43,15 +38,12 @@ function MobileTopbar(props) {
 
   return (
     <div className="mobile-topbar-v2">
-      {/* FULL-COLOR HEADER */}
       <div className="mobile-header-colored">
         <div className="mobile-org-card">
-          {/* <FontAwesomeIcon icon={faBuilding} className="org-icon" /> */}
           <span>{String(orgName || "").toUpperCase()}</span>
         </div>
       </div>
 
-      {/* Main Row */}
       <div className="mobile-main-row">
         <div className="mobile-profile-card">
           {avatar ? (
@@ -99,7 +91,6 @@ function MobileTopbar(props) {
         </div>
       </div>
 
-      {/* Portals */}
       <Notifications
         visible={showNotifications}
         onClose={() => setShowNotifications(false)}
@@ -122,9 +113,6 @@ function MobileTopbar(props) {
   );
 }
 
-/* -------------------------------------------------
-   MAIN TOPBAR
-   ------------------------------------------------- */
 export default function Topbar() {
   const router = useRouter();
   const { user, logout, hydrated } = useAuth();
@@ -149,7 +137,6 @@ export default function Topbar() {
     ? { "x-api-key": API_KEY || "", "x-employee-id": meId }
     : { "x-api-key": API_KEY || "" };
 
-  /* USER NAME / ROLE */
   useEffect(() => {
     if (!hydrated) return;
     if (user) {
@@ -161,14 +148,18 @@ export default function Topbar() {
     }
   }, [hydrated, user]);
 
-  /* NOTIFICATION COUNT */
   const fetchNotificationCount = useCallback(() => {
     if (!hydrated || !BACKEND_URL || !meId) return;
     axios
-      .get(`${BACKEND_URL}/api/notifications`, { headers })
+      .get(`${BACKEND_URL}/api/notifications`, {
+        withCredentials: true,
+        headers,
+      })
       .then((res) => {
         const list = res?.data?.notifications || res?.data?.message || [];
-        setNotificationCount(Array.isArray(list) ? list.length : list?.length || 0);
+        setNotificationCount(
+          Array.isArray(list) ? list.length : list?.length || 0
+        );
       })
       .catch((err) => console.error("Error fetching notification count", err));
   }, [BACKEND_URL, meId, headers, hydrated]);
@@ -180,7 +171,6 @@ export default function Topbar() {
     return () => clearInterval(interval);
   }, [fetchNotificationCount, hydrated]);
 
-  /* AVATAR & ORG NAME */
   useEffect(() => {
     if (!hydrated) {
       setAvatar(null);
@@ -198,11 +188,15 @@ export default function Topbar() {
         ? "/images/female-avatar.jpeg"
         : "/images/male-avatar.jpeg";
 
-    const defaultPath = defaultAvatar(user?.role, user?.gender ?? user?.dashboard?.gender);
+    const defaultPath = defaultAvatar(
+      user?.role,
+      user?.gender ?? user?.dashboard?.gender
+    );
 
     const normalizeInputUrl = (maybe) => {
       if (!maybe) return null;
-      if (Array.isArray(maybe)) return maybe.length > 0 ? normalizeInputUrl(maybe[0]) : null;
+      if (Array.isArray(maybe))
+        return maybe.length > 0 ? normalizeInputUrl(maybe[0]) : null;
       if (typeof maybe === "object") {
         return maybe.url || maybe.path || maybe.file || null;
       }
@@ -224,7 +218,9 @@ export default function Topbar() {
       if (!u) return null;
       if (/^https?:\/\//i.test(u)) return u;
       const base = BACKEND_URL.replace(/\/+$/g, "");
-      return u.startsWith("/docs") ? `${base}${u}` : `${base}/docs${u.startsWith("/") ? u : `/${u}`}`;
+      return u.startsWith("/docs")
+        ? `${base}${u}`
+        : `${base}/docs${u.startsWith("/") ? u : `/${u}`}`;
     };
 
     const dashboard = user?.dashboard ?? {};
@@ -242,7 +238,11 @@ export default function Topbar() {
       if (!fetchUrl) return mounted && setAvatar(defaultPath);
 
       try {
-        const resp = await axios.get(fetchUrl, { headers, responseType: "blob" });
+        const resp = await axios.get(fetchUrl, {
+          withCredentials: true,
+          headers,
+          responseType: "blob",
+        });
         if (!mounted) return;
         if (objectUrl) URL.revokeObjectURL(objectUrl);
         objectUrl = URL.createObjectURL(resp.data);
@@ -259,9 +259,12 @@ export default function Topbar() {
       if (!orgId || !BACKEND_URL) return setOrgName("Unknown Organization");
       try {
         const resp = await axios.get(`${BACKEND_URL}/org/${orgId}`, {
+          withCredentials: true,
           headers: { "x-api-key": API_KEY || "", "x-employee-id": meId || "0" },
         });
-        setOrgName(resp?.data?.Name ? String(resp.data.Name) : "Unknown Organization");
+        setOrgName(
+          resp?.data?.Name ? String(resp.data.Name) : "Unknown Organization"
+        );
       } catch {
         setOrgName("Unknown Organization");
       }
@@ -273,21 +276,26 @@ export default function Topbar() {
     };
   }, [hydrated, user, BACKEND_URL, API_KEY, meId]);
 
-  /* PORTAL & REFS */
-  const portalRoot = typeof document !== "undefined" ? document.getElementById("portal-root") : null;
+  const portalRoot =
+    typeof document !== "undefined"
+      ? document.getElementById("portal-root")
+      : null;
   const wrapperRef = useRef(null);
   const notifRef = useRef(null);
   const calToggleRef = useRef(null);
 
   const getCalendarNode = () => {
     if (portalRoot) {
-      const node = portalRoot.querySelector(".desktop-calendar-overlay, .mobile-calendar-overlay, .calendar-dropdown-inline");
+      const node = portalRoot.querySelector(
+        ".desktop-calendar-overlay, .mobile-calendar-overlay, .calendar-dropdown-inline"
+      );
       if (node) return node;
     }
-    return document.querySelector(".calendar-dropdown-inline, .mobile-calendar-overlay, .desktop-calendar-overlay");
+    return document.querySelector(
+      ".calendar-dropdown-inline, .mobile-calendar-overlay, .desktop-calendar-overlay"
+    );
   };
 
-  /* OUTSIDE CLICK & ESC */
   useEffect(() => {
     const onClick = (e) => {
       if (!showCalendar) return;
@@ -300,7 +308,10 @@ export default function Topbar() {
       setPendingNotifications(false);
     };
 
-    const onEsc = (e) => e.key === "Escape" && showCalendar && (setShowCalendar(false), setPendingNotifications(false));
+    const onEsc = (e) =>
+      e.key === "Escape" &&
+      showCalendar &&
+      (setShowCalendar(false), setPendingNotifications(false));
 
     document.addEventListener("mousedown", onClick);
     document.addEventListener("touchstart", onClick);
@@ -313,7 +324,6 @@ export default function Topbar() {
     };
   }, [showCalendar, portalRoot]);
 
-  /* NOTIFICATION HANDLER */
   const handleNotificationClick = () => {
     fetchNotificationCount();
     if (pendingNotifications) return;
@@ -325,7 +335,8 @@ export default function Topbar() {
     setShowNotifications((v) => !v);
   };
 
-  const handleNotificationKeyDown = (e) => e.key === "Enter" && handleNotificationClick();
+  const handleNotificationKeyDown = (e) =>
+    e.key === "Enter" && handleNotificationClick();
 
   useEffect(() => {
     if (pendingNotifications && !showCalendar) {
@@ -340,7 +351,6 @@ export default function Topbar() {
     setShowCalendar((s) => !s);
   };
 
-  /* MOBILE DETECTION */
   useEffect(() => {
     const check = () => setIsMobile(window.innerWidth <= 768);
     check();
@@ -349,16 +359,27 @@ export default function Topbar() {
   }, []);
 
   const mobileProps = {
-    userName, userRole, avatar, orgName, notificationCount,
-    showCalendar, setShowCalendar, showNotifications, setShowNotifications,
-    handleNotificationClick, handleCalendarToggle, fetchNotificationCount,
-    logout, portalRoot, calToggleRef, notifRef,
+    userName,
+    userRole,
+    avatar,
+    orgName,
+    notificationCount,
+    showCalendar,
+    setShowCalendar,
+    showNotifications,
+    setShowNotifications,
+    handleNotificationClick,
+    handleCalendarToggle,
+    fetchNotificationCount,
+    logout,
+    portalRoot,
+    calToggleRef,
+    notifRef,
   };
 
   return isMobile ? (
     <MobileTopbar {...mobileProps} />
   ) : (
-    /* DESKTOP – COLORED TEXT ONLY */
     <div className="topbar1" ref={wrapperRef}>
       <div className="profile-section">
         {avatar ? (
@@ -374,7 +395,6 @@ export default function Topbar() {
 
       <div className="org-name-section">
         <div className="org-name-text">
-          {/* <FontAwesomeIcon icon={faBuilding} className="org-icon-text" /> */}
           <span>{String(orgName || "").toUpperCase()}</span>
         </div>
       </div>

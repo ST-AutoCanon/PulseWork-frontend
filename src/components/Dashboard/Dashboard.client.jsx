@@ -35,7 +35,7 @@ const Dashboard = () => {
       try {
         const response = await axios.get(
           `${BACKEND_URL}/api/employee/birthday/${email}`,
-          { headers }
+          { withCredentials: true, headers }
         );
         const { full_name, first_name, dob } = response.data || {};
         const nameToUse = full_name || first_name || "there";

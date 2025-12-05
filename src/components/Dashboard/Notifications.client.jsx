@@ -43,6 +43,7 @@ export default function Notifications({
       try {
         const res = await axios.get(`/api/notifications`, {
           baseURL: process.env.NEXT_PUBLIC_BACKEND_URL || undefined,
+          withCredentials: true,
           headers: getHeaders(),
           signal: controller.signal,
         });
@@ -110,6 +111,7 @@ export default function Notifications({
         {},
         {
           baseURL: process.env.NEXT_PUBLIC_BACKEND_URL || undefined,
+          withCredentials: true,
           headers: getHeaders(),
         }
       );
@@ -198,7 +200,6 @@ export default function Notifications({
     }
   }, [visible, anchorRef]);
 
-  // accessibility: focus dropdown when visible
   useEffect(() => {
     if (visible && dropdownRef.current) {
       try {
@@ -228,7 +229,6 @@ export default function Notifications({
         aria-modal="true"
         tabIndex={-1}
       >
-        {/* Mobile-only close button (visible via CSS on small screens) */}
         <button
           className="mobile-close-btn"
           onClick={() => onClose?.()}

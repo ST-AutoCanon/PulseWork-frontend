@@ -16,7 +16,6 @@ import "./LeaveRequest.css";
 export default function LeaveRequest() {
   const hook = useLeaveRequest();
 
-  // UI: Venn navigation
   const [vennStartIndex, setVennStartIndex] = useState(0);
   const [vennVisibleCount, setVennVisibleCount] = useState(() => {
     if (typeof window === "undefined") return 6;
@@ -36,7 +35,6 @@ export default function LeaveRequest() {
       )
     );
 
-  // leaveTypeOptions: policy or defaults
   const leaveTypeOptions = useMemo(() => {
     const settings =
       hook.activePolicy?.leave_settings?.length > 0
@@ -56,7 +54,6 @@ export default function LeaveRequest() {
       }));
   }, [hook.activePolicy]);
 
-  // Lop modal controls
   const [isLopModalOpen, setIsLopModalOpen] = useState(false);
   const prevLopMonth = () => {
     if (hook.lopMonth === 1) {

@@ -51,14 +51,11 @@ export default function Purchase({ onClose }) {
     OFFICE_EMAIL
   )}&subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
 
-  // Explicit actions (called from menu)
   const openMailClient = (evt) => {
     evt && evt.preventDefault();
-    // Try to open default mail client
     try {
       window.location.href = mailtoWithParams;
     } catch (err) {
-      // last-resort
       window.open(mailtoWithParams, "_self");
     }
     setEmailMenuOpen(false);
@@ -66,7 +63,6 @@ export default function Purchase({ onClose }) {
 
   const openGmail = (evt) => {
     evt && evt.preventDefault();
-    // open in new tab so popup blockers are less likely to block
     window.open(gmailCompose, "_blank", "noopener,noreferrer");
     setEmailMenuOpen(false);
   };
@@ -85,7 +81,6 @@ export default function Purchase({ onClose }) {
         setCopied(true);
         setTimeout(() => setCopied(false), 2500);
       } else {
-        // fallback: create a temporary input to copy
         const tmp = document.createElement("input");
         tmp.value = OFFICE_EMAIL;
         document.body.appendChild(tmp);
@@ -96,7 +91,6 @@ export default function Purchase({ onClose }) {
         setTimeout(() => setCopied(false), 2500);
       }
     } catch (err) {
-      // eslint-disable-next-line no-alert
       alert(`Couldn't copy email. Please use: ${OFFICE_EMAIL}`);
     } finally {
       setEmailMenuOpen(false);
@@ -143,7 +137,6 @@ export default function Purchase({ onClose }) {
               <a
                 href={`mailto:${OFFICE_EMAIL}`}
                 onClick={(e) => {
-                  // normal click on the inline email address: open mail client directly
                   e.preventDefault();
                   openMailClient();
                 }}

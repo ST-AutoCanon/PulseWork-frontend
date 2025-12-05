@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
 import "./EmpLeaveTracker.css";
-import { useAuth } from "../../context/AuthProvider.client"; // adjust path to your auth provider
+import { useAuth } from "../../context/AuthProvider.client";
 
 export default function EmpLeaveTracker() {
   const { user } = useAuth();
@@ -20,7 +20,6 @@ export default function EmpLeaveTracker() {
     ""
   );
 
-  // build headers based on availability
   function makeHeaders() {
     const headers = {};
     if (API_KEY) headers["x-api-key"] = API_KEY;
@@ -41,23 +40,18 @@ export default function EmpLeaveTracker() {
         return;
       }
 
-      if (!API_KEY) {
-        console.warn("EmpLeaveTracker: NEXT_PUBLIC_API_KEY is not set");
-        // still try the API without the api key header in case backend allows it
-      }
-
       const apiUrl = `${BACKEND_URL}/leave-queries/${encodeURIComponent(
         employeeIdFromUser
       )}`;
 
       try {
         const response = await axios.get(apiUrl, {
+          withCredentials: true,
           headers: makeHeaders(),
         });
 
         if (canceled) return;
 
-        // handle multiple possible shapes
         const payload = response?.data || {};
         const leaveQueries =
           Array.isArray(payload.leaveQueries) &&
@@ -101,7 +95,6 @@ export default function EmpLeaveTracker() {
     return () => {
       canceled = true;
     };
-    // employeeIdFromUser intentionally included
   }, [employeeIdFromUser, API_KEY, BACKEND_URL]);
 
   const formatDate = (dateString) => {

@@ -22,7 +22,6 @@ import { getDateLabel } from "./DateLabels";
 import "./ChatWindow.css";
 
 async function getLocationAndAddress() {
-  // unchanged
   return new Promise((resolve) => {
     if (!navigator.geolocation) {
       return resolve({
@@ -88,7 +87,6 @@ export default function ChatWindow({ room, onBack }) {
   const [showMembers, setShowMembers] = useState(false);
   const [members, setMembers] = useState([]);
 
-  // selected File object (not uploaded yet)
   const [selectedFile, setSelectedFile] = useState(null);
   const selectedFileRef = useRef(null);
 
@@ -133,6 +131,7 @@ export default function ChatWindow({ room, onBack }) {
     if (!room || room.isNew) return;
     axios
       .get(`${process.env.NEXT_PUBLIC_BACKEND_URL}/rooms/${room.id}/messages`, {
+        withCredentials: true,
         headers,
       })
       .then((r) => {
@@ -210,19 +209,16 @@ export default function ChatWindow({ room, onBack }) {
       ""
     );
     const url = `${base}/ChatUploads`;
-    const resp = await axios.post(url, fd, { headers });
+    const resp = await axios.post(url, fd, { withCredentials: true, headers });
     return resp.data?.url;
   };
 
-  // send: uses selectedFile if present. caption = txt without filename token.
   const send = async () => {
-    // if nothing typed and no selected file => nothing to send
     if ((!txt.trim() && !selectedFile) || !room) return;
 
     if (selectedFile) {
       try {
         const uploadedUrl = await uploadFile(selectedFile);
-        // remove filename token from caption
         const filenameToken = `[${selectedFile.name}]`;
         const caption = txt.replace(filenameToken, "").trim();
         await doSend({
@@ -249,18 +245,15 @@ export default function ChatWindow({ room, onBack }) {
     }
   };
 
-  // handler to receive File object from FileUpload
   const handleFileSelect = (file) => {
     if (!file) return;
 
-    // remove previous filename token if present
     const prevName = selectedFileRef.current?.name;
     setTxt((prev) => {
       let newTxt = prev || "";
 
       if (prevName) {
         const prevToken = `[${prevName}]`;
-        // remove ALL occurrences of previous token (trim extra spaces)
         newTxt = newTxt
           .split(prevToken)
           .join("")
@@ -270,12 +263,10 @@ export default function ChatWindow({ room, onBack }) {
       }
 
       const token = `[${file.name}]`;
-      // if token already present somewhere, avoid duplicating
       if (newTxt.includes(token)) return newTxt + " ";
       return (newTxt + token + " ").trim() + " ";
     });
 
-    // set selected file state and update ref
     setSelectedFile(file);
     selectedFileRef.current = file;
   };
@@ -296,7 +287,7 @@ export default function ChatWindow({ room, onBack }) {
         ""
       );
       const url = `${base}${filename}`;
-      const resp = await fetch(url, { headers });
+      const resp = await fetch(url, { credentials: "include", headers });
       if (!resp.ok) throw new Error(`status ${resp.status}`);
       const blob = await resp.blob();
       const a = document.createElement("a");
@@ -317,9 +308,7 @@ export default function ChatWindow({ room, onBack }) {
       axios
         .get(
           `${process.env.NEXT_PUBLIC_BACKEND_URL}/rooms/${room.id}/members`,
-          {
-            headers,
-          }
+          { withCredentials: true, headers }
         )
         .then((r) => setMembers(r.data))
         .catch(console.error);
@@ -451,7 +440,7 @@ export default function ChatWindow({ room, onBack }) {
                             onConfirm: async () => {
                               await axios.delete(
                                 `${process.env.NEXT_PUBLIC_BACKEND_URL}/rooms/${room.id}/messages/${m.id}`,
-                                { headers }
+                                { withCredentials: true, headers }
                               );
                               setMsgs((old) =>
                                 old.filter((x) => x.id !== m.id)
@@ -493,15 +482,11 @@ export default function ChatWindow({ room, onBack }) {
           )}
         </div>
 
-        {/* FileUpload now provides a file via onSelect (File object). It still renders its paperclip button */}
         <FileUpload
           onSelect={handleFileSelect}
           employeeId={meId}
           orgId={orgId}
         />
-
-        {/* NOTE: we no longer show a separate preview or remove button.
-            The filename token is injected into the textarea instead. */}
 
         <textarea
           className="m-input"

@@ -2,14 +2,14 @@
 
 import React from "react";
 import { getStatusBgColor } from "./utils.client";
-import { useAuth } from "../../context/AuthProvider.client"; // adjust path if needed
+import { useAuth } from "../../context/AuthProvider.client";
 
 const StepThree = ({
   formData,
   addMilestone,
   handleMilestoneChange,
   stsOwners,
-  editable, // optional: if undefined we infer from user's role
+  editable,
 }) => {
   const { user } = useAuth();
   const userRole = user?.role ?? "Employee";

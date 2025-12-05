@@ -33,10 +33,9 @@
   box-sizing: border-box;
 }
 
-/* Employee card styles */
 .employee-card-hover {
   position: relative;
-  width: 220px; /* Smaller width for more cards in a row */
+  width: 220px;
   border: 1px solid #ccc;
   border-radius: 10px;
   background-color: white;
@@ -55,7 +54,6 @@
   width: 100%;
 }
 
-/* Profile Section */
 .profile-section-admin {
   display: flex !important;
   align-items: center !important;
@@ -70,7 +68,6 @@
   margin-left: -3% !important;
 }
 
-/* Time Section */
 .time-section-centered {
   display: flex;
   justify-content: space-around;
@@ -119,7 +116,6 @@
   color: #777;
 }
 
-/* Location Section */
 .location-section {
   display: flex;
   align-items: center;
@@ -130,7 +126,6 @@
   margin-top: 4px;
 }
 
-/* Icon at top */
 .device-icon {
   position: absolute;
   top: 8px;
@@ -143,19 +138,18 @@
   font-size: 1.2rem;
   color: #555;
   user-select: none;
-  background-color: #f0f0f0; /* Light gray background */
-  padding: 4px; /* Inner space around the icon */
-  border-radius: 4px; /* Slightly rounded corners */
-  border: 1px solid #ccc; /* Optional border */
+  background-color: #f0f0f0;
+  padding: 4px;
+  border-radius: 4px;
+  border: 1px solid #ccc;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 24px; /* Fixed width */
-  height: 24px; /* Fixed height */
-  cursor: pointer; /* Make it look clickable */
+  width: 24px;
+  height: 24px;
+  cursor: pointer;
 }
 
-/* Popup Styles */
 .card-popup {
   position: absolute;
   top: -130px;
@@ -180,17 +174,14 @@
   color: #333;
 }
 
-/* Define background for Office HQ */
 .bg-office-hq {
-  background-color: #ddd !important; /* DodgerBlue for distinct color */
+  background-color: #ddd !important;
 }
 
-/* Define default background */
 .bg-default {
-  background-color: #ffffff !important; /* White */
+  background-color: #ffffff !important;
 }
 
-/* Punch History */
 .punch-history {
   display: flex;
   flex-direction: column;
@@ -214,7 +205,6 @@
   margin-bottom: 0;
 }
 
-/* Hover Indicator */
 .hover-indicator {
   position: absolute;
   top: 6px;
@@ -234,7 +224,6 @@
   opacity: 1;
 }
 
-/* Divider */
 .divider {
   border: none;
   border-top: 1px solid #e0e0e0;

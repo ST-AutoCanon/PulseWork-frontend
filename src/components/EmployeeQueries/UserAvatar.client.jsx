@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import axios from "axios";
-import { useAuth } from "../../context/AuthProvider.client"; // adjust path if needed
+import { useAuth } from "../../context/AuthProvider.client";
 
 const defaultAvatars = {
   admin: "/images/admin-avatar.png",
@@ -42,11 +42,11 @@ const UserAvatar = ({ photoUrl, role, gender, apiKey, className, alt }) => {
         };
 
         const base = process.env.NEXT_PUBLIC_BACKEND_URL || "";
-        // Ensure leading slash for docs path
         const docsPath = photoUrl.startsWith("/") ? photoUrl : `/${photoUrl}`;
         const url = `${base}/docs${docsPath}`;
 
         const resp = await axios.get(url, {
+          withCredentials: true,
           responseType: "blob",
           headers,
         });
@@ -69,7 +69,6 @@ const UserAvatar = ({ photoUrl, role, gender, apiKey, className, alt }) => {
         URL.revokeObjectURL(objectUrl);
       }
     };
-    // We intentionally depend on photoUrl/role/gender/apiKey/userEmployeeId/orgId
   }, [photoUrl, role, gender, apiKey, userEmployeeId, orgId]);
 
   const fallback = (() => {
@@ -84,7 +83,6 @@ const UserAvatar = ({ photoUrl, role, gender, apiKey, className, alt }) => {
       alt={alt ?? "Profile"}
       className={className}
       onError={(e) => {
-        // in case the blob url or fallback fails for some reason
         e.currentTarget.src = fallback;
       }}
     />

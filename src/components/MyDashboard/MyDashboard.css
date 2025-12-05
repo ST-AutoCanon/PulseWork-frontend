@@ -25,11 +25,7 @@
   justify-content: center;
 }
 
-/* ---------- Mobile / Responsive tweaks for MyDashboard ---------- */
-
-/* phones & small tablets */
 @media (max-width: 768px) {
-  /* Make the login graph full-width and stacked */
   .dashboard-logingraph {
     display: block;
     margin-top: 4%;
@@ -43,7 +39,6 @@
     max-width: 100% !important;
   }
 
-  /* Stack the three pie charts vertically, make them responsive */
   .admindashboardpiecharts {
     display: flex;
     flex-direction: column;
@@ -61,7 +56,6 @@
     margin: 0;
   }
 
-  /* Dashboard cards container: stack cards vertically */
   .dashboard-card-containers {
     display: flex;
     flex-direction: column;
@@ -73,7 +67,6 @@
     max-width: 100%;
   }
 
-  /* Project table section (if used) stack as well */
   .dashboard-Projecttable {
     display: block;
     padding: 0 12px;
@@ -82,17 +75,14 @@
     gap: 12px;
   }
 
-  /* Make child components (charts/cards) visually consistent:
-     ensure they use full available width and comfortable height on mobile */
   .dashboard-logingraph > *,
   .admindashboardpiecharts > *,
   .dashboard-card-containers > * {
-    min-height: 220px; /* charts should have usable height on phones */
+    min-height: 220px;
     border-radius: 8px;
     background-clip: padding-box;
   }
 
-  /* Reduce gaps and font sizes for very narrow screens */
   @media (max-width: 420px) {
     .dashboard-logingraph > *,
     .admindashboardpiecharts > *,
@@ -102,7 +92,6 @@
   }
 }
 
-/* ---------- Optional: medium screens between phone and desktop ---------- */
 @media (min-width: 769px) and (max-width: 1024px) {
   .dashboard-logingraph,
   .admindashboardpiecharts,
@@ -113,7 +102,6 @@
 
   .admindashboardpiecharts {
     gap: 18px;
-    /* allow two-column where space allows: first two side-by-side, third below */
     display: grid;
     grid-template-columns: 1fr 1fr;
     grid-auto-rows: minmax(220px, auto);
@@ -126,7 +114,7 @@
   }
 
   .admindashboardpiecharts > :nth-child(3) {
-    grid-column: 1 / -1; /* third element spans full width under the two */
+    grid-column: 1 / -1;
   }
 
   .dashboard-logingraph > * {

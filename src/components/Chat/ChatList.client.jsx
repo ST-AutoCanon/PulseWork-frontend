@@ -61,7 +61,7 @@ export default function ChatList({ onSelect }) {
     let mounted = true;
 
     axios
-      .get(`${BASE_URL}/rooms`, { headers })
+      .get(`${BASE_URL}/rooms`, { withCredentials: true, headers })
       .then((r) => {
         if (!mounted) return;
         setRooms(r.data || []);
@@ -90,7 +90,7 @@ export default function ChatList({ onSelect }) {
     let mounted = true;
 
     axios
-      .get(`${BASE_URL}/employees`, { headers })
+      .get(`${BASE_URL}/employees`, { withCredentials: true, headers })
       .then((r) => {
         if (!mounted) return;
         setEmployees(r.data?.data || []);
@@ -119,7 +119,10 @@ export default function ChatList({ onSelect }) {
       message: "Are you sure you want to delete this group permanently?",
       onConfirm: async () => {
         try {
-          await axios.delete(`${BASE_URL}/rooms/${roomId}`, { headers });
+          await axios.delete(`${BASE_URL}/rooms/${roomId}`, {
+            withCredentials: true,
+            headers,
+          });
           setRooms((rs) => rs.filter((r) => r.id !== roomId));
           if (activeId === roomId) setActiveId(null);
         } catch (err) {
@@ -247,7 +250,7 @@ export default function ChatList({ onSelect }) {
           <div key={r.id} className="chat-list-item-wrapper">
             <div
               className={`chat-list-item ${activeId === r.id ? "active" : ""}`}
-              onMouseDown={(e) => e.preventDefault()} // prevent focus scroll
+              onMouseDown={(e) => e.preventDefault()}
               onClick={(e) => {
                 e.preventDefault();
                 setActiveId(r.id);

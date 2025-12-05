@@ -28,9 +28,7 @@ const Assets = () => {
   const BACKEND = process.env.NEXT_PUBLIC_BACKEND_URL || "";
 
   const isReadyForApi = () => {
-    return (
-      !!BACKEND && !!(process.env.NEXT_PUBLIC_API_KEY || API_KEY) && !!user
-    );
+    return !!BACKEND && !!user;
   };
 
   const getHeaders = (opts = {}) => {
@@ -123,6 +121,7 @@ const Assets = () => {
     if (assetId) {
       fetch(`${BACKEND}/api/assets/assigned/${assetId}`, {
         method: "GET",
+        credentials: "include",
         headers: getHeaders(),
       })
         .then((response) => {
@@ -164,9 +163,7 @@ const Assets = () => {
           `${BACKEND}/api/assets/search-employees?q=${encodeURIComponent(
             value
           )}`,
-          {
-            headers: getHeaders(),
-          }
+          { withCredentials: true, headers: getHeaders() }
         );
 
         const suggestions = (response.data.data || []).map((emp) => ({
@@ -195,7 +192,7 @@ const Assets = () => {
     try {
       const response = await axios.get(
         `${BACKEND}/api/assets/search-employees?q=${encodeURIComponent(value)}`,
-        { headers: getHeaders() }
+        { withCredentials: true, headers: getHeaders() }
       );
 
       const suggestions = (response.data.data || []).map((emp) => ({
@@ -236,11 +233,10 @@ const Assets = () => {
 
   const [assetCounts, setAssetCounts] = useState([]);
 
-  // derive assetCounts structure locally from assets array so header updates immediately
   const computeCountsFromAssets = (assetsArr = []) => {
     const total_assets = Array.isArray(assetsArr) ? assetsArr.length : 0;
 
-    const map = {}; // category -> { category_total, sub: { subCategory: count } }
+    const map = {};
 
     assetsArr.forEach((a) => {
       const category = a.category || "Uncategorized";
@@ -252,10 +248,8 @@ const Assets = () => {
     });
 
     const result = [];
-    // keep the same convention your UI expects: first element holds total_assets
     result.push({ total_assets });
 
-    // then push rows for each subcategory (category_total repeated for ease of grouping)
     Object.entries(map).forEach(([category, data]) => {
       Object.entries(data.sub).forEach(([sub_category, sub_category_count]) => {
         result.push({
@@ -327,6 +321,7 @@ const Assets = () => {
     if (!isReadyForApi()) return;
     try {
       const res = await fetch(`${BACKEND}/api/assets/counts`, {
+        credentials: "include",
         headers: getHeaders(),
       });
       const data = await res.json().catch(() => null);
@@ -345,13 +340,13 @@ const Assets = () => {
     if (!isReadyForApi()) return;
     try {
       const response = await axios.get(`${BACKEND}/api/assets/list`, {
+        withCredentials: true,
         headers: getHeaders(),
       });
 
       const assetsData = response.data?.data ?? response.data ?? [];
       const list = Array.isArray(assetsData) ? assetsData : [];
       setAssets(list);
-      // compute counts from assets you just fetched
       setAssetCounts(computeCountsFromAssets(list));
     } catch (error) {
       console.error(
@@ -401,6 +396,7 @@ const Assets = () => {
   const viewDocument = async (path) => {
     try {
       const response = await axios.get(`${BACKEND}/uploads/${orgId}/${path}`, {
+        withCredentials: true,
         headers: getHeaders(),
         responseType: "blob",
       });
@@ -528,9 +524,7 @@ const Assets = () => {
       const response = await axios.post(
         `${BACKEND}/api/assets/assign`,
         firstAssignment,
-        {
-          headers: getHeaders(),
-        }
+        { withCredentials: true, headers: getHeaders() }
       );
 
       showAlert("Asset Assigned successfully ");
@@ -558,10 +552,7 @@ const Assets = () => {
 
       const response = await axios.get(
         `${BACKEND}/api/assets/download/${encodeURIComponent(fileName)}`,
-        {
-          headers: getHeaders(),
-          responseType: "blob",
-        }
+        { withCredentials: true, headers: getHeaders(), responseType: "blob" }
       );
 
       const blob = new Blob([response.data]);
@@ -593,6 +584,7 @@ const Assets = () => {
       )}`;
 
       const response = await axios.get(fileUrl, {
+        withCredentials: true,
         headers: getHeaders(),
         responseType: "blob",
       });
@@ -657,18 +649,16 @@ const Assets = () => {
       delete headersForForm["Content-Type"];
 
       const response = await axios.post(`${BACKEND}/api/assets/add`, formData, {
+        withCredentials: true,
         headers: headersForForm,
       });
 
-      // try to get the created asset object from backend response
       const created =
         (response.data &&
           (response.data.data || response.data.asset || response.data)) ||
         null;
 
-      // If backend returned the created asset, use it. If not, build a light-weight local record:
       const createdAssetLocal = created || {
-        // some fields that your table uses — keep them in sync if your backend differs
         id: `local-${Date.now()}`,
         asset_id: created?.asset_id || `TEMP-${Date.now()}`,
         asset_code: created?.asset_code || "",
@@ -682,15 +672,12 @@ const Assets = () => {
         document_path: created?.document_path || null,
       };
 
-      // 1) insert into local assets immediately so the table updates
       setAssets((prev) => [createdAssetLocal, ...(prev || [])]);
 
-      // 2) recompute counts locally from the updated assets array (immediate header update)
       setAssetCounts((prevAssetsCounts) =>
         computeCountsFromAssets([createdAssetLocal, ...(assets || [])])
       );
 
-      // 3) still re-sync with server counts to ensure accuracy
       fetchAssetCounts().catch((e) => console.warn("refresh counts failed", e));
 
       showAlert("Asset saved successfully!");
@@ -721,9 +708,7 @@ const Assets = () => {
 
       const response = await axios.get(
         `${BACKEND}/api/assets/assigned/${assetIdParam}`,
-        {
-          headers: getHeaders(),
-        }
+        { withCredentials: true, headers: getHeaders() }
       );
 
       if (response.data.length === 0) {
@@ -773,9 +758,7 @@ const Assets = () => {
           employeeName: formDataLocal.employeeName,
           returnDate: formDataLocal.returnDate,
         },
-        {
-          headers: getHeaders(),
-        }
+        { withCredentials: true, headers: getHeaders() }
       );
       showAlert("Return date updated successfully!");
       setAssets((prevAssets) => {
@@ -810,6 +793,7 @@ const Assets = () => {
       };
       const response = await fetch("/api/assets/assign", {
         method: "POST",
+        credentials: "include",
         headers: headersForSubmit,
         body: JSON.stringify(assignments),
       });
@@ -881,6 +865,7 @@ const Assets = () => {
   useEffect(() => {
     if (assetId) {
       fetch(`${BACKEND}/api/assets/assigned/${assetId}`, {
+        credentials: "include",
         headers: getHeaders(),
       })
         .then((res) => res.json())

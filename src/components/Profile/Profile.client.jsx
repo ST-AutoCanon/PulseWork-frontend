@@ -150,6 +150,7 @@ const Profile = ({ onClose, notificationId = null }) => {
     const fetchUrl = buildFetchUrl(url);
     if (!fetchUrl) throw new Error("Invalid URL for fetchBlob");
     const res = await axios.get(fetchUrl, {
+      withCredentials: true,
       headers: {
         "x-api-key": API_KEY ?? "",
         ...(employeeId ? { "x-employee-id": employeeId } : {}),
@@ -192,6 +193,7 @@ const Profile = ({ onClose, notificationId = null }) => {
 
       const resp = await axios.get(fetchUrl, {
         responseType: "arraybuffer",
+        withCredentials: true,
         headers: {
           "x-api-key": API_KEY ?? "",
           ...(employeeId ? { "x-employee-id": employeeId } : {}),
@@ -221,6 +223,7 @@ const Profile = ({ onClose, notificationId = null }) => {
 
       const resp = await axios.get(fetchUrl, {
         responseType: "arraybuffer",
+        withCredentials: true,
         headers: {
           "x-api-key": API_KEY ?? "",
           ...(employeeId ? { "x-employee-id": employeeId } : {}),
@@ -272,6 +275,7 @@ const Profile = ({ onClose, notificationId = null }) => {
         `${BASE_URL}/api/notifications/${id}/read`,
         {},
         {
+          withCredentials: true,
           headers: {
             "x-api-key": API_KEY ?? "",
             ...(employeeId ? { "x-employee-id": employeeId } : {}),
@@ -305,6 +309,7 @@ const Profile = ({ onClose, notificationId = null }) => {
     const fetchProfile = async () => {
       try {
         const r = await axios.get(`${BASE_URL}/full/${employeeId}`, {
+          withCredentials: true,
           headers: {
             "x-api-key": API_KEY ?? "",
             "Content-Type": "application/json",
@@ -350,6 +355,7 @@ const Profile = ({ onClose, notificationId = null }) => {
         const r = await axios.get(
           `${BASE_URL}/assets/assigned-assets/${employeeId}`,
           {
+            withCredentials: true,
             headers: {
               "x-api-key": API_KEY ?? "",
               ...(employeeId ? { "x-employee-id": employeeId } : {}),

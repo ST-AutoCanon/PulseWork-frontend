@@ -392,7 +392,10 @@ const Salary_Statement = () => {
       const response = await axios.post(
         `${BACKEND_URL}/salary/upload`,
         formData,
-        { headers: { ...headers, "Content-Type": "multipart/form-data" } }
+        {
+          withCredentials: true,
+          headers: { ...headers, "Content-Type": "multipart/form-data" },
+        }
       );
 
       if (response.data.message) {
@@ -504,7 +507,7 @@ const Salary_Statement = () => {
     try {
       const response = await axios.get(
         `${BACKEND_URL}/api/salary-statement/${month.toLowerCase()}/${year}`,
-        { headers }
+        { withCredentials: true, headers }
       );
 
       if (response.data && response.data.length > 0) {
@@ -548,7 +551,10 @@ const Salary_Statement = () => {
     try {
       const apiUrl = `${BACKEND_URL}/api/salary-statement/${month.toLowerCase()}/${year}`;
 
-      const response = await axios.get(apiUrl, { headers });
+      const response = await axios.get(apiUrl, {
+        withCredentials: true,
+        headers,
+      });
 
       if (
         response.data &&

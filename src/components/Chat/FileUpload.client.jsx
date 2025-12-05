@@ -26,15 +26,12 @@ export default function FileUpload({
     if (!e.target.files || !e.target.files[0]) return;
     const file = e.target.files[0];
 
-    // If caller wants the File object and will handle upload
     if (typeof onSelect === "function") {
       onSelect(file);
-      // reset input so same file can be selected again later if needed
       e.target.value = "";
       return;
     }
 
-    // Fallback: original behavior -> upload immediately and call onUpload(url)
     if (typeof onUpload === "function") {
       const fd = new FormData();
       fd.append("file", file);
@@ -42,7 +39,7 @@ export default function FileUpload({
         const { data } = await axios.post(
           `${process.env.NEXT_PUBLIC_BACKEND_URL}/ChatUploads`,
           fd,
-          { headers }
+          { withCredentials: true, headers }
         );
         onUpload(data.url);
       } catch (err) {
@@ -56,7 +53,6 @@ export default function FileUpload({
 
   return (
     <>
-      {/* support render-prop children: children is a function that receives open() */}
       {typeof children === "function" ? (
         children(pick)
       ) : (

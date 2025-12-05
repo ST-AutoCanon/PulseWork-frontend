@@ -5,7 +5,7 @@ import { Doughnut } from "react-chartjs-2";
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from "chart.js";
 import ChartDataLabels from "chartjs-plugin-datalabels";
 import axios from "axios";
-import { useAuth } from "../../context/AuthProvider.client"; // adjust path to your auth provider
+import { useAuth } from "../../context/AuthProvider.client";
 import "./EmpWorkDays.css";
 
 ChartJS.register(ArcElement, Tooltip, Legend, ChartDataLabels);
@@ -21,7 +21,6 @@ export default function EmpWorkDays() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // keep mounted ref to avoid setState after unmount
   const mountedRef = useRef(true);
   useEffect(() => {
     mountedRef.current = true;
@@ -32,7 +31,6 @@ export default function EmpWorkDays() {
 
   useEffect(() => {
     if (!meId) {
-      // If user not available yet, don't attempt fetch — show nothing or a message
       setLoading(false);
       setError("User not authenticated");
       return;
@@ -44,14 +42,6 @@ export default function EmpWorkDays() {
     const fetchWorkDaysData = async () => {
       setLoading(true);
       setError(null);
-
-      if (!API_KEY) {
-        if (mountedRef.current && !cancelled) {
-          setError("API Key is missing.");
-          setLoading(false);
-        }
-        return;
-      }
 
       try {
         const apiUrl = `${BACKEND_URL.replace(
@@ -66,13 +56,13 @@ export default function EmpWorkDays() {
         if (orgId) headers["x-org-id"] = orgId;
 
         const response = await axios.get(apiUrl, {
+          withCredentials: true,
           headers,
           signal: controller.signal,
         });
 
         if (cancelled || !mountedRef.current) return;
 
-        // Expected: response.data.attendanceStats
         if (
           response.status === 200 &&
           response.data &&
@@ -101,7 +91,6 @@ export default function EmpWorkDays() {
         }
       } catch (err) {
         if (axios.isCancel && axios.isCancel(err)) {
-          // request cancelled
           return;
         }
         if (!cancelled && mountedRef.current) {
@@ -122,7 +111,6 @@ export default function EmpWorkDays() {
       cancelled = true;
       controller.abort();
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [meId, BACKEND_URL, API_KEY, orgId]);
 
   if (loading) return <p>Loading...</p>;
@@ -163,7 +151,6 @@ export default function EmpWorkDays() {
     },
   };
 
-  // plugin for center text
   const centerTextPluginWorkDays = {
     id: "centerTextWorkDays",
     afterDraw: (chart) => {

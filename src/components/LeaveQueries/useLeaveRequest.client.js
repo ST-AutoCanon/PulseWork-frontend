@@ -24,7 +24,7 @@ const rolesWithTeamView = new Set([
 ]);
 
 export default function useLeaveRequest() {
-  const { user } = useAuth(); // user object from your AuthProvider
+  const { user } = useAuth();
   const employeeId = user?.employeeId;
   const orgId = user?.orgId || user?.org_id;
   const employeeName = user?.name;
@@ -41,7 +41,6 @@ export default function useLeaveRequest() {
     "x-org-id": orgId,
   };
 
-  // ----- UI state -----
   const [isFormVisible, setFormVisible] = useState(false);
   const [formData, setFormData] = useState({
     reason: "",
@@ -96,7 +95,6 @@ export default function useLeaveRequest() {
 
   const [leaveBalancesCache, setLeaveBalancesCache] = useState({});
 
-  // ----- Alert/Confirm helpers -----
   const showAlert = (message, title = "") => {
     setLopModal((m) => ({ ...m, isVisible: false }));
     setTimeout(() => setAlertModal({ isVisible: true, title, message }), 120);
@@ -109,13 +107,8 @@ export default function useLeaveRequest() {
   const closeConfirm = () =>
     setConfirmModal({ isVisible: false, message: "", onConfirm: null });
 
-  // ----- status updates (for team approvals) -----
   const [statusUpdates, setStatusUpdates] = useState({});
 
-  /**
-   * handleStatusChange: update local statusUpdates state immediately.
-   * Called by TeamTable when user changes dropdown or comments.
-   */
   const handleStatusChange = (leaveId, field, value) => {
     setStatusUpdates((prev) => ({
       ...prev,
@@ -123,18 +116,8 @@ export default function useLeaveRequest() {
     }));
   };
 
-  /**
-   * handleUpdate: call backend to commit status change for a leave request.
-   * - leaveId: id of leave request
-   * - payload: optional, object of { status, comments } (fall back to statusUpdates[leaveId])
-   *
-   * NOTE: replace the endpoint URL below if your API differs.
-   */
-  // Replace existing handleUpdate with this implementation
   const handleUpdate = async (leaveId, payload = null) => {
-    // prefer explicit payload param, otherwise the local statusUpdates entry
     const update = payload || statusUpdates[leaveId] || {};
-    // pull basic fields
     const status = update.status || "";
     const comments = update.comments || "";
 
@@ -148,7 +131,6 @@ export default function useLeaveRequest() {
       return;
     }
 
-    // optimistic UI update: mark request as updated locally so table responds immediately
     setLeaveRequests((prev) => {
       const nextTeam = (prev.team || []).map((r) =>
         String(r.leave_id || r.id) === String(leaveId)
@@ -158,14 +140,12 @@ export default function useLeaveRequest() {
       return { ...prev, team: nextTeam };
     });
 
-    // clear the local status update (we'll re-fetch or handle result below)
     setStatusUpdates((prev) => {
       const clone = { ...prev };
       delete clone[leaveId];
       return clone;
     });
 
-    // ----- normalize any split fields that might be in payload -----
     const normalizeBoolean = (v) => {
       if (v === true || v === false) return v;
       if (typeof v === "string") {
@@ -187,7 +167,6 @@ export default function useLeaveRequest() {
       return 0;
     };
 
-    // collect split fields from many possible keys (frontend might use snake/camel)
     const compensated =
       pickNumber(
         update.compensated_days,
@@ -209,7 +188,6 @@ export default function useLeaveRequest() {
         update.loss_of_pay,
         0
       ) || 0;
-    // preserved may be intentionally null
     const preservedRaw =
       update.preserved_leave_days ??
       update.preservedLeaveDays ??
@@ -220,7 +198,6 @@ export default function useLeaveRequest() {
         ? null
         : Number(preservedRaw);
 
-    // total_days: prefer explicit payload, otherwise compute from local leaveRequests entry
     let totalDays = pickNumber(
       update.total_days,
       update.totalDays,
@@ -228,14 +205,12 @@ export default function useLeaveRequest() {
     );
 
     if (!totalDays) {
-      // try to compute from cached leaveRequests (fall back)
       const row =
         (leaveRequests.team || []).find(
           (r) => String(r.leave_id || r.id) === String(leaveId)
         ) || null;
       if (row) {
         try {
-          // use your util calculateDays (imported)
           totalDays = calculateDays(row.start_date, row.end_date, row.H_F_day);
         } catch {
           totalDays = 0;
@@ -243,12 +218,10 @@ export default function useLeaveRequest() {
       }
     }
 
-    // is_defaulted boolean (accept both keys)
     const isDefaultedFlag = normalizeBoolean(
       update.is_defaulted ?? update.isDefaulted ?? false
     );
 
-    // Build final body to send to server (include both snake_case & camelCase where helpful)
     const body = {
       status,
       comments,
@@ -271,11 +244,9 @@ export default function useLeaveRequest() {
       total_days: Number(totalDays),
       totalDays: Number(totalDays),
 
-      // send boolean flag (backend accepts it)
       is_defaulted: Boolean(isDefaultedFlag),
       isDefaulted: Boolean(isDefaultedFlag),
 
-      // actor / approver id: set caller approverId (backend expects actorId optionally)
       actorId: employeeId,
       approverId: employeeId,
     };
@@ -284,12 +255,12 @@ export default function useLeaveRequest() {
       const url = `${BACKEND}/admin/leave/${leaveId}`;
       const res = await fetch(url, {
         method: "PUT",
+        credentials: "include",
         headers,
         body: JSON.stringify(body),
       });
 
       if (!res.ok) {
-        // backend failed — show message and rollback by refetching list
         let json = null;
         try {
           json = await res.json();
@@ -299,25 +270,22 @@ export default function useLeaveRequest() {
         return;
       }
 
-      // success — refresh list & balances
       showAlert("Leave status updated.");
       await fetchLeaveRequests();
       await fetchLeaveBalance();
     } catch (err) {
       console.error("handleUpdate error:", err);
       showAlert("Failed to update leave (network error).");
-      // rollback by re-fetching
       await fetchLeaveRequests();
     }
   };
 
-  // ----- Fetchers -----
   const fetchLeaveBalance = async () => {
     if (!employeeId) return;
     try {
       const res = await fetch(
         `${BACKEND}/api/leave-policies/employee/${employeeId}/leave-balance`,
-        { headers }
+        { credentials: "include", headers }
       );
       if (!res.ok) throw new Error("Failed to load leave balance");
       const json = await res.json();
@@ -331,7 +299,10 @@ export default function useLeaveRequest() {
 
   const fetchPolicies = async () => {
     try {
-      const res = await fetch(`${BACKEND}/api/leave-policies`, { headers });
+      const res = await fetch(`${BACKEND}/api/leave-policies`, {
+        credentials: "include",
+        headers,
+      });
       const json = await res.json();
       setPolicies(json.data || []);
     } catch (err) {
@@ -369,7 +340,6 @@ export default function useLeaveRequest() {
     );
   }, [policies]);
 
-  // ----- Leave Requests -----
   useEffect(() => {
     if (employeeId) fetchLeaveRequests();
   }, [employeeId, teamSearch, teamStatus, filters.from_date, filters.to_date]);
@@ -391,7 +361,6 @@ export default function useLeaveRequest() {
     try {
       if (!employeeId) return;
 
-      // Self leaves
       const selfUrl = `${BACKEND}/employee/leave/${employeeId}`;
       const selfParams = new URLSearchParams();
       if (filters.from_date) selfParams.append("from_date", filters.from_date);
@@ -400,7 +369,10 @@ export default function useLeaveRequest() {
         ? `${selfUrl}?${selfParams}`
         : selfUrl;
 
-      const selfResponse = await fetch(selfFinalUrl, { headers });
+      const selfResponse = await fetch(selfFinalUrl, {
+        credentials: "include",
+        headers,
+      });
       let selfRequests = [];
       if (selfResponse.ok) {
         const selfResult = await selfResponse.json();
@@ -410,7 +382,6 @@ export default function useLeaveRequest() {
           extractArrayFromTeamResult(selfResult);
       }
 
-      // Team leaves
       let teamRequests = [];
       if (canViewTeam) {
         const teamUrl = `${BACKEND}/team-lead/${employeeId}`;
@@ -424,7 +395,10 @@ export default function useLeaveRequest() {
           ? `${teamUrl}?${teamParams}`
           : teamUrl;
 
-        const teamResponse = await fetch(teamFinalUrl, { headers });
+        const teamResponse = await fetch(teamFinalUrl, {
+          credentials: "include",
+          headers,
+        });
         if (teamResponse.ok) {
           const teamResult = await teamResponse.json();
           teamRequests = extractArrayFromTeamResult(
@@ -449,7 +423,7 @@ export default function useLeaveRequest() {
 
     try {
       const url = `${BACKEND}/api/leave-policies/employee/${employeeIdToLoad}/leave-balance`;
-      const res = await fetch(url, { headers });
+      const res = await fetch(url, { credentials: "include", headers });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const json = await res.json();
       const arr = json.data || [];
@@ -471,7 +445,6 @@ export default function useLeaveRequest() {
     );
   };
 
-  // ----- Form & UI Actions -----
   const resetForm = () => {
     setFormData({
       reason: "",
@@ -527,7 +500,7 @@ export default function useLeaveRequest() {
         try {
           const response = await fetch(
             `${BACKEND}/cancel/${id}/${employeeId}`,
-            { method: "DELETE", headers }
+            { method: "DELETE", credentials: "include", headers }
           );
           if (response.ok) {
             showAlert("Leave request cancelled successfully!");
@@ -640,6 +613,7 @@ export default function useLeaveRequest() {
       try {
         const response = await fetch(submitUrl, {
           method: submitMethod,
+          credentials: "include",
           headers,
           body: JSON.stringify(data),
         });
@@ -683,7 +657,6 @@ export default function useLeaveRequest() {
   };
 
   return {
-    // states
     isFormVisible,
     formData,
     editingId,
@@ -701,11 +674,9 @@ export default function useLeaveRequest() {
     handleStatusChange,
     handleUpdate,
 
-    // mappings
     defaultLeaveSettings,
     canViewTeam,
 
-    // actions
     openForm,
     closeForm,
     handleInputChange,
@@ -713,7 +684,6 @@ export default function useLeaveRequest() {
     handleEdit,
     handleCancel,
 
-    // filters
     filters,
     setFilters,
     teamSearch,
@@ -722,13 +692,12 @@ export default function useLeaveRequest() {
     setTeamStatus,
     fetchLeaveRequests,
 
-    // modals & LOP
     setLopModal,
     fetchMonthlyLop: async (m, y) => {
       if (!employeeId) return 0;
       try {
         const url = `${BACKEND}/api/leave-policies/employee/${employeeId}/monthly-lop?month=${m}&year=${y}`;
-        const res = await fetch(url, { headers });
+        const res = await fetch(url, { credentials: "include", headers });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const json = await res.json();
         const payload = json?.data || {};
@@ -749,6 +718,7 @@ export default function useLeaveRequest() {
         const url = `${BACKEND}/api/leave-policies/employee/${employeeId}/compute-monthly-lop`;
         const res = await fetch(url, {
           method: "POST",
+          credentials: "include",
           headers,
           body: JSON.stringify({ month: m, year: y }),
         });
@@ -767,13 +737,11 @@ export default function useLeaveRequest() {
       }
     },
 
-    // alert helpers
     showAlert,
     closeAlert,
     showConfirm,
     closeConfirm,
 
-    // misc setters
     setFormData,
     setEditingId,
     setAlertModal,

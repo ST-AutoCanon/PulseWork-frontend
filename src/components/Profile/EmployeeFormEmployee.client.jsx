@@ -8,7 +8,7 @@ import StepBankDetails from "../EmployeeDetails/steps/StepBankDetails.client";
 import StepFamilyDetails from "../EmployeeDetails/steps/StepFamilyDetails.client";
 import StepProfessionalEmployee from "./StepProfessionalEmployee.client";
 import "../EmployeeDetails/EmployeeDetails.css";
-import { useAuth } from "../../context/AuthProvider.client"; // adjust path if your auth provider is elsewhere
+import { useAuth } from "../../context/AuthProvider.client";
 
 const STEPS = [
   "personal",
@@ -25,7 +25,7 @@ export default function EmployeeFormEmployee({
   onCancel,
   departments = [],
 }) {
-  const { user } = useAuth(); // provide x-employee-id if needed
+  const { user } = useAuth();
   const [currentStep, setCurrentStep] = useState(0);
   const [error, setError] = useState("");
   const formRef = useRef();
@@ -78,12 +78,10 @@ export default function EmployeeFormEmployee({
   const goToStep = (targetIndex) => {
     setError("");
     if (targetIndex === currentStep) return;
-    // allow going backwards without validation
     if (targetIndex < currentStep) {
       setCurrentStep(targetIndex);
       return;
     }
-    // going forward: validate current step first (same as Next)
     if (!validateStep()) return;
     setCurrentStep(targetIndex);
   };
@@ -199,19 +197,18 @@ export default function EmployeeFormEmployee({
           const employeeId = initialData.employee_id;
           const today = new Date().toISOString().slice(0, 10);
 
-          // Use NEXT_PUBLIC env var names in Next.js apps
           const BACKEND = process.env.NEXT_PUBLIC_BACKEND_URL;
           const API_KEY = process.env.NEXT_PUBLIC_API_KEY;
 
           const headers = {
             "Content-Type": "application/json",
             "x-api-key": API_KEY ?? "",
-            // include x-employee-id from auth if available
             ...(user?.employeeId ? { "x-employee-id": user.employeeId } : {}),
           };
 
           await fetch(`${BACKEND}/supervisor/assign`, {
             method: "POST",
+            credentials: "include",
             headers,
             body: JSON.stringify({
               employeeId,

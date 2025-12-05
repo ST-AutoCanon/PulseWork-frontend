@@ -86,7 +86,6 @@ const Vendors = () => {
       null;
 
     return {
-      "x-api-key": process.env.NEXT_PUBLIC_API_KEY || "",
       "x-employee-id": user.employeeId || user.id || "0",
       ...(orgId ? { "x-org-id": String(orgId) } : {}),
     };
@@ -180,7 +179,7 @@ const Vendors = () => {
     try {
       const response = await axios.get(
         `${process.env.NEXT_PUBLIC_BACKEND_URL}/vendors/list`,
-        { headers }
+        { withCredentials: true, headers }
       );
       if (response.data && response.data.success) {
         setVendors(response.data.data);
@@ -191,7 +190,6 @@ const Vendors = () => {
     }
   }, [headers, showAlert]);
 
-  // call once on mount / when headers change
   useEffect(() => {
     fetchVendors();
   }, [fetchVendors]);
@@ -265,6 +263,7 @@ const Vendors = () => {
       }/vendors/download/${orgId}/${encodeURIComponent(fileName)}`;
 
       const response = await axios.get(fileUrl, {
+        withCredentials: true,
         headers,
         responseType: "blob",
       });
@@ -304,7 +303,7 @@ const Vendors = () => {
       const fileName = documentPath.split(/[/\\]/).pop();
       const response = await axios.get(
         `${process.env.NEXT_PUBLIC_BACKEND_URL}/vendors/download/${orgId}/${fileName}`,
-        { headers, responseType: "blob" }
+        { withCredentials: true, headers, responseType: "blob" }
       );
 
       const blob = new Blob([response.data]);
@@ -462,6 +461,7 @@ const Vendors = () => {
           `${base}/vendors/update/${editingVendorId}`,
           formPayload,
           {
+            withCredentials: true,
             headers: {
               ...(headers || {}),
               "Content-Type": "multipart/form-data",
@@ -470,10 +470,6 @@ const Vendors = () => {
         );
 
         if (resp.data && resp.data.success) {
-          // Optionally keep the optimistic update:
-          // setVendors(prev => prev.map(...))
-
-          // Re-fetch remote list so UI matches server
           await fetchVendors();
 
           showAlert("Vendor updated successfully");
@@ -483,6 +479,7 @@ const Vendors = () => {
         }
       } else {
         const resp = await axios.post(`${base}/vendors/add`, formPayload, {
+          withCredentials: true,
           headers: {
             ...(headers || {}),
             "Content-Type": "multipart/form-data",
@@ -490,7 +487,6 @@ const Vendors = () => {
         });
 
         if (resp.data && resp.data.success) {
-          // Re-fetch from server
           await fetchVendors();
 
           showAlert("Vendor added successfully");

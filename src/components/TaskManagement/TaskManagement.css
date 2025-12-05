@@ -162,12 +162,9 @@
 }
 
 .task-title {
-  /* font-weight: 500; */
   font-size: 1rem;
   color: #1f2937;
-  /* text-transform: none; */
   overflow: hidden;
-  /* text-overflow: ellipsis; */
 }
 
 .task-id-chip {
@@ -241,16 +238,9 @@
 
 .task-start,
 .task-end {
-  /* background-color: #d1d5db; */
   padding: 4px 10px;
-  /* color: #374151; */
   font-size: 0.75rem;
 }
-
-/* .task-overdue {
-  background-color: #fee2e2;
-  color: #dc2626;
-} */
 
 .task-arrow {
   color: #6b7280;
@@ -732,7 +722,6 @@
   background-color: #28a745;
   transform: translateY(-1px);
 }
-/* ... Existing CSS remains unchanged ... */
 
 @media (max-width: 640px) {
   .task-board {
@@ -744,7 +733,7 @@
     margin: 20px;
   }
   .task-tab-header {
-    flex-direction: row; /* Row for left-right layout */
+    flex-direction: row;
     overflow-x: auto;
     white-space: nowrap;
     border-bottom: none;
@@ -762,14 +751,14 @@
     font-size: 0.9rem;
     margin: 0;
     scroll-snap-align: center;
-    background-color: #f3f4f6; /* Default background for inactive */
-    color: #6b7280; /* Default text color */
+    background-color: #f3f4f6;
+    color: #6b7280;
     transition: background-color 0.2s ease, color 0.2s ease;
   }
   .task-tab-btn.task-active {
-    background-color: #28a745; /* Active background (green) */
-    color: #ffffff; /* Active text color: white */
-    border-color: #28a745; /* Match border to background */
+    background-color: #28a745;
+    color: #ffffff;
+    border-color: #28a745;
     font-weight: 600;
   }
   .task-tab-btn:hover {
@@ -777,7 +766,7 @@
     color: #374151;
   }
   .task-tab-btn.task-active:hover {
-    background-color: #218838; /* Slightly darker green on hover for active */
+    background-color: #218838;
     color: #ffffff;
   }
   .assign-task-modal .form-row {
@@ -788,7 +777,6 @@
     width: 100%;
   }
 
-  /* Hide scrollbar */
   .task-tab-header::-webkit-scrollbar {
     display: none;
   }
@@ -797,5 +785,3 @@
     scrollbar-width: none;
   }
 }
-
-/* ... Rest of the CSS ... */

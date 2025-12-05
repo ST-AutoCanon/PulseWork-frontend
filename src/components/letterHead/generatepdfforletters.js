@@ -174,7 +174,6 @@ const findHeaderFooterElements = (container, contentEl) => {
 };
 
 const parseLength = (val, reference) => {
-  // val: '50%', '200px', '200', 'auto' or number
   if (val === undefined || val === null) return null;
   if (typeof val === "number") return val;
   const s = String(val).trim();
@@ -380,7 +379,6 @@ const generatePDF = async (
       return headerBottomNew + 20;
     };
 
-    // --------- NEW: detect watermark element and prepare its image ----------
     const watermarkEl = element?.querySelector?.(".pdf-watermark") || null;
     let watermarkDataUrl = null;
     let watermarkImgElement = null;
@@ -395,7 +393,6 @@ const generatePDF = async (
         console.warn("Watermark load failed:", e);
       }
 
-      // capture inline style values (left/top/width/height/opacity/transform)
       watermarkStyle = {
         left:
           watermarkEl.style?.left ||
@@ -422,7 +419,6 @@ const generatePDF = async (
         transform: watermarkEl.style?.transform || null,
       };
     }
-    // -----------------------------------------------------------------------
 
     const headerBottom = addHeader();
     let yPosition = headerBottom + 20;
@@ -712,18 +708,14 @@ const generatePDF = async (
 
     addFooter(doc.getNumberOfPages(), doc.getNumberOfPages());
 
-    // --------- NEW: draw watermark on every page (if available) ----------
     if (watermarkDataUrl && watermarkImgElement && watermarkStyle) {
       try {
         const totalPages = doc.getNumberOfPages();
-        // compute width/height (in pts) from watermarkStyle (which could be percent or px)
         const computeTarget = (styleW, styleH, imgEl) => {
-          // styleW/styleH may be string like '60%', '200px', 'auto', or null
           let tgtW = parseLength(styleW, pageWidth);
           let tgtH = parseLength(styleH, pageHeight);
 
           if (tgtW && !tgtH && imgEl) {
-            // preserve aspect
             const ratio =
               (imgEl.naturalHeight || imgEl.height) /
               (imgEl.naturalWidth || imgEl.width);
@@ -734,7 +726,6 @@ const generatePDF = async (
               (imgEl.naturalHeight || imgEl.height);
             tgtW = tgtH * ratio;
           } else if (!tgtW && !tgtH && imgEl) {
-            // default: scale to 60% of page width
             tgtW = pageWidth * 0.6;
             const ratio =
               (imgEl.naturalHeight || imgEl.height) /
@@ -750,7 +741,6 @@ const generatePDF = async (
           watermarkImgElement
         );
 
-        // compute center position (left/top are center because clone used translate(-50%, -50%))
         const computeCenter = (leftStyle, topStyle, width, height) => {
           const xCenter = (() => {
             const px = parseLength(leftStyle, pageWidth);
@@ -785,7 +775,6 @@ const generatePDF = async (
             tgtH
           );
           try {
-            // addImage expects format, try PNG first
             doc.addImage(
               watermarkDataUrl,
               "PNG",
@@ -816,7 +805,6 @@ const generatePDF = async (
               }
             }
           }
-          // reset gstate (try to set opacity back to fully opaque)
           try {
             setGStateSafe(1);
           } catch (e) {}
@@ -825,7 +813,6 @@ const generatePDF = async (
         console.warn("Failed to render watermark across pages:", e);
       }
     }
-    // ---------------------------------------------------------------------
 
     if (preview) {
       return doc.output("blob");

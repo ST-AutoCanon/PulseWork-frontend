@@ -13,21 +13,10 @@ import {
 } from "react-icons/fa";
 import { useAuth } from "../../context/AuthProvider.client";
 
-/**
- * Parse a server timestamp into a local-friendly string.
- *
- * Rules:
- * - If timestamp contains explicit timezone info (Z or ±HH:MM) => parse as-is.
- * - If it's a numeric epoch (10s or 13s) => treat as seconds/ms epoch.
- * - If it's a date/time with no timezone (e.g. "2025-10-18 07:00:00" or "2025-10-18T07:00:00")
- *   treat it as LOCAL time (do NOT append "Z").
- * - Fallback: try a few parse attempts and return "NA" if parse fails.
- */
 const parseServerTimestampToLocalString = (ts) => {
   if (!ts && ts !== 0) return "NA";
   const s = String(ts).trim();
 
-  // Numeric epoch? (10-digit seconds or 13-digit ms)
   if (/^\d{10}$/.test(s) || /^\d{13}$/.test(s)) {
     const n = s.length === 10 ? Number(s) * 1000 : Number(s);
     const d = new Date(n);
@@ -35,27 +24,19 @@ const parseServerTimestampToLocalString = (ts) => {
     return "NA";
   }
 
-  // If string already contains timezone (Z or +HH:MM / -HH:MM) -> parse as-is
   if (/\d{4}-\d{2}-\d{2}T.*(Z|[+\-]\d{2}:\d{2})$/i.test(s)) {
     const d = new Date(s);
     return isNaN(d.getTime()) ? "NA" : d.toLocaleString();
   }
 
-  // Likely "YYYY-MM-DD HH:MM:SS" or "YYYY-MM-DDTHH:MM:SS" without timezone
-  // Treat it as LOCAL time (do NOT append 'Z').
-  // Replace space with 'T' to make it ISO-like for Date parsing on most engines.
   let localIso = s.replace(" ", "T");
 
-  // Some browsers require seconds fraction or timezone; but many accept YYYY-MM-DDTHH:MM:SS as LOCAL.
   let dLocal = new Date(localIso);
   if (!isNaN(dLocal.getTime())) return dLocal.toLocaleString();
 
-  // Last resort: try parsing original string directly
   const dFallback = new Date(s);
   if (!isNaN(dFallback.getTime())) return dFallback.toLocaleString();
 
-  // As absolute last resort (if server truly sent UTC but without TZ) we try appended Z,
-  // but this will convert from UTC -> local; keep as fallback only.
   const dUtcGuess = new Date(localIso + "Z");
   if (!isNaN(dUtcGuess.getTime())) return dUtcGuess.toLocaleString();
 
@@ -94,7 +75,10 @@ export default function EmpDashCards() {
           employeeId
         )}/latest-punch`;
 
-        const response = await axios.get(url, { headers });
+        const response = await axios.get(url, {
+          withCredentials: true,
+          headers,
+        });
         const latestPunch = response.data?.data;
 
         if (!mounted) return;
@@ -249,7 +233,7 @@ export default function EmpDashCards() {
 
       const resp = await axios.get(
         `${BACKEND_URL}/api/face-data/${encodeURIComponent(employeeId)}`,
-        { headers }
+        { withCredentials: true, headers }
       );
 
       const descriptors =
@@ -309,7 +293,7 @@ export default function EmpDashCards() {
 
   const handlePunch = async () => {
     setErrorMessage("");
-    if (!employeeId || !API_KEY) {
+    if (!employeeId) {
       setErrorMessage("Session expired. Please login again.");
       return;
     }
@@ -343,6 +327,7 @@ export default function EmpDashCards() {
 
       const response = await fetch(url, {
         method: "POST",
+        credentials: "include",
         headers: {
           "Content-Type": "application/json",
           "x-api-key": API_KEY,
@@ -372,7 +357,7 @@ export default function EmpDashCards() {
               `${BACKEND_URL}/attendance/employee/${encodeURIComponent(
                 employeeId
               )}/latest-punch`,
-              { headers }
+              { withCredentials: true, headers }
             );
             const latestPunch = resp.data?.data;
             if (latestPunch) {

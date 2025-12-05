@@ -11,9 +11,6 @@ const WeeklyTaskPlanner = ({
   employeeId,
   userContext,
 }) => {
-  /* --------------------------------------------------------------- */
-  /* 1. Guard – wait for userContext */
-  /* --------------------------------------------------------------- */
   if (!userContext) {
     return (
       <div className="weekly-planner-container">
@@ -22,13 +19,11 @@ const WeeklyTaskPlanner = ({
     );
   }
 
-  /* --------------------------------------------------------------- */
-  /* 2. Auth-request helper */
-  /* --------------------------------------------------------------- */
   const authRequest = async (config) => {
     return axios({
       ...config,
       baseURL: process.env.NEXT_PUBLIC_BACKEND_URL,
+      withCredentials: true,
       headers: {
         "x-employee-id": userContext.employeeId,
         "x-role": userContext.role,
@@ -39,9 +34,6 @@ const WeeklyTaskPlanner = ({
     });
   };
 
-  /* --------------------------------------------------------------- */
-  /* 3. DYNAMIC WEEK LOGIC – uses real today */
-  /* --------------------------------------------------------------- */
   const [weekOffset, setWeekOffset] = useState(0);
 
   const today = new Date();
@@ -90,9 +82,6 @@ const WeeklyTaskPlanner = ({
     weekDates.push(dateStr);
   }
 
-  /* --------------------------------------------------------------- */
-  /* 4. State */
-  /* --------------------------------------------------------------- */
   const [tasksData, setTasksData] = useState(
     weekDates.map((date) => ({ date, tasks: [] }))
   );
@@ -132,8 +121,8 @@ const WeeklyTaskPlanner = ({
     message: "",
   });
   const [dropdownOpen, setDropdownOpen] = useState({});
-  const [freezeDays, setFreezeDays] = useState(0); // effective freeze days
-  const [orgFreezeDays, setOrgFreezeDays] = useState(0); // org-specific (optional)
+  const [freezeDays, setFreezeDays] = useState(0);
+  const [orgFreezeDays, setOrgFreezeDays] = useState(0);
   const [mobileTooltip, setMobileTooltip] = useState({
     isVisible: false,
     content: "",
@@ -143,9 +132,6 @@ const WeeklyTaskPlanner = ({
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
   const tooltipRef = useRef(null);
 
-  /* --------------------------------------------------------------- */
-  /* 5. Resize & tooltip */
-  /* --------------------------------------------------------------- */
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth <= 768);
     window.addEventListener("resize", handleResize);
@@ -193,9 +179,6 @@ const WeeklyTaskPlanner = ({
     }));
   };
 
-  /* --------------------------------------------------------------- */
-  /* 6. Helpers */
-  /* --------------------------------------------------------------- */
   const showAlert = (message, title = "") => {
     setAlertModal({ isVisible: true, title, message });
   };
@@ -226,27 +209,23 @@ const WeeklyTaskPlanner = ({
     return `${year}-${month}-${day}`;
   };
 
-  // Effective freeze days: org-specific > global > 0
   const effectiveFreezeDays = freezeDays;
 
   const isTaskEditable = (taskDate) => {
     if (!taskDate) return false;
 
     const today = new Date();
-    today.setHours(0, 0, 0, 0); // today 00:00
+    today.setHours(0, 0, 0, 0);
 
     const task = new Date(taskDate);
     task.setHours(0, 0, 0, 0);
 
-    const diffDays = (today - task) / (1000 * 3600 * 24); // positive = past
+    const diffDays = (today - task) / (1000 * 3600 * 24);
 
-    // Future days → always editable
     if (diffDays < 0) return true;
 
-    // Today → always editable
     if (diffDays === 0) return true;
 
-    // Past days → editable only within freeze window
     return diffDays <= effectiveFreezeDays;
   };
 
@@ -291,9 +270,6 @@ const WeeklyTaskPlanner = ({
     };
   };
 
-  /* --------------------------------------------------------------- */
-  /* 7. fetchData – freeze-days per orgId */
-  /* --------------------------------------------------------------- */
   const fetchData = async () => {
     if (!employeeId) {
       showAlert("Employee ID is required to fetch data.");
@@ -306,22 +282,19 @@ const WeeklyTaskPlanner = ({
     setError(null);
     setNoTasks(false);
     try {
-      /* ---------- CONFIG (freeze-days) ---------- */
       const cfg = await withRetry(() =>
         authRequest({ method: "GET", url: "/api/config" })
       );
 
-      // cfg.data?.data is now an object { key: value }
       const configObj = cfg.data?.data ?? {};
 
       const freezeValue = configObj.freeze_days_employee ?? 0;
       let finalDays = Number(freezeValue);
       if (isNaN(finalDays) || finalDays < 0) finalDays = 0;
 
-      setFreezeDays(finalDays); // effective freeze days
+      setFreezeDays(finalDays);
       setOrgFreezeDays(userContext.orgId ? finalDays : 0);
 
-      /* ---------- HOLIDAYS ---------- */
       const hol = await withRetry(() =>
         authRequest({
           method: "GET",
@@ -333,7 +306,6 @@ const WeeklyTaskPlanner = ({
         : [];
       setHolidays(holidayList.length > 0 ? holidayList : ["2025-12-25"]);
 
-      /* ---------- APPROVED LEAVES ---------- */
       const lv = await withRetry(() =>
         authRequest({ method: "GET", url: `/employee/leave/${employeeId}` })
       );
@@ -342,7 +314,6 @@ const WeeklyTaskPlanner = ({
         : [];
       setApprovedLeaves(approved);
 
-      /* ---------- PROJECTS ---------- */
       const proj = await withRetry(() =>
         authRequest({
           method: "GET",
@@ -354,7 +325,6 @@ const WeeklyTaskPlanner = ({
       (proj.data.projects || []).forEach((p) => (projMap[p.id] = p.project));
       setProjects(projMap);
 
-      /* ---------- TASKS ---------- */
       const tsk = await withRetry(() =>
         authRequest({
           method: "GET",
@@ -401,9 +371,6 @@ const WeeklyTaskPlanner = ({
     else showAlert("Backend URL not configured.");
   }, [employeeId, weekId, weekOffset, userContext]);
 
-  /* --------------------------------------------------------------- */
-  /* 8. Navigation: ±3 weeks from today */
-  /* --------------------------------------------------------------- */
   const handlePreviousWeek = () => {
     setWeekOffset((prev) => Math.max(prev - 1, -3));
   };
@@ -411,9 +378,6 @@ const WeeklyTaskPlanner = ({
     setWeekOffset((prev) => Math.min(prev + 1, 3));
   };
 
-  /* --------------------------------------------------------------- */
-  /* 9. All handlers */
-  /* --------------------------------------------------------------- */
   const toggleExpand = (date) => {
     setExpandedDates((prev) => ({ ...prev, [date]: !prev[date] }));
   };
@@ -1005,9 +969,6 @@ const WeeklyTaskPlanner = ({
     setDropdownOpen({});
   };
 
-  /* --------------------------------------------------------------- */
-  /* 10. UI */
-  /* --------------------------------------------------------------- */
   const statusColors = {
     completed: "#28a745",
     "add on": "#17a2b8",
@@ -1037,7 +998,6 @@ const WeeklyTaskPlanner = ({
 
   return (
     <div className="week-task-weekly-task-planner">
-      {/* HEADER */}
       <div className="week-task-planner-header">
         <h2>
           Weekly Task Planner{" "}
@@ -1086,20 +1046,9 @@ const WeeklyTaskPlanner = ({
           >
             Assign New Tasks
           </button>
-          {/* {userRole === "supervisor" && !supReviewMode && (
-            <button className="week-task-review-button" onClick={handleEnterReview}>
-              Supervisor Review
-            </button>
-          )}
-          {userRole === "supervisor" && supReviewMode && (
-            <button className="week-task-exit-review-button" onClick={handleExitReview}>
-              Exit Review
-            </button>
-          )} */}
         </div>
       </div>
 
-      {/* LOADING / ERRORS */}
       {(loading || loadingHolidays || loadingLeaves) && (
         <div>Loading data…</div>
       )}
@@ -1117,7 +1066,6 @@ const WeeklyTaskPlanner = ({
         </div>
       )}
 
-      {/* MOBILE TOOLTIP */}
       {mobileTooltip.isVisible && (
         <div
           ref={tooltipRef}
@@ -1133,7 +1081,6 @@ const WeeklyTaskPlanner = ({
         </div>
       )}
 
-      {/* ASSIGN FORM MODAL */}
       {showAssignForm && (
         <div className="week-task-assign-form-modal">
           <div className="week-task-assign-form-empdriven">
@@ -1264,7 +1211,6 @@ const WeeklyTaskPlanner = ({
         </div>
       )}
 
-      {/* REPLACEMENT MODAL */}
       {userRole === "supervisor" && strikeTaskId && (
         <div className="week-task-replacement-modal">
           <div className="week-task-replacement-form">
@@ -1327,7 +1273,6 @@ const WeeklyTaskPlanner = ({
         </div>
       )}
 
-      {/* TASK GRID */}
       {!loading &&
         !error &&
         !noTasks &&

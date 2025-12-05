@@ -19,7 +19,6 @@ export default function LeaveFormModal({
 }) {
   if (!isVisible) return null;
 
-  // Called when user selects a leave type — updates form and shows notice if needed
   const onLeaveTypeChange = (e) => {
     handleInputChange(e);
 

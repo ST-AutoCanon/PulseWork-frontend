@@ -1,4 +1,3 @@
-// src/components/LeaveQueries/VennBalances.client.js
 "use client";
 
 import React from "react";

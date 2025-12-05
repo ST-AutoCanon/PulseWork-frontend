@@ -145,7 +145,10 @@ export default function Admin({ openPolicyId = null }) {
     try {
       const url = `${API_BASE}/api/leave-policies`;
 
-      const res = await fetch(url, { headers: buildHeaders() });
+      const res = await fetch(url, {
+        credentials: "include",
+        headers: buildHeaders(),
+      });
       const json = await res.json().catch(() => null);
 
       setPolicies((json && (json.data || json.policies)) || []);
@@ -184,7 +187,10 @@ export default function Admin({ openPolicyId = null }) {
       const params = new URLSearchParams(paramsObj).toString();
       const url = `${API_BASE}/admin/leave${params ? `?${params}` : ""}`;
 
-      const res = await fetch(url, { headers: buildHeaders() });
+      const res = await fetch(url, {
+        credentials: "include",
+        headers: buildHeaders(),
+      });
       let json = null;
       try {
         json = await res.json();
@@ -217,6 +223,7 @@ export default function Admin({ openPolicyId = null }) {
       const body = { extensionDays: 90, actorId };
       const resp = await fetch(url, {
         method: "POST",
+        credentials: "include",
         headers: buildHeaders(),
         body: JSON.stringify(body),
       });
@@ -242,7 +249,10 @@ export default function Admin({ openPolicyId = null }) {
     try {
       const url = `${API_BASE}/api/leave-policies/employee/${employeeId}/leave-balance`;
 
-      const res = await fetch(url, { headers: buildHeaders() });
+      const res = await fetch(url, {
+        credentials: "include",
+        headers: buildHeaders(),
+      });
       let json = null;
       try {
         json = await res.json();
@@ -268,6 +278,7 @@ export default function Admin({ openPolicyId = null }) {
     try {
       const res = await fetch(`${API_BASE}/api/leave-policies/${id}`, {
         method: "DELETE",
+        credentials: "include",
         headers: buildHeaders(),
       });
       if (!res.ok) throw new Error("Delete failed");
@@ -390,6 +401,7 @@ export default function Admin({ openPolicyId = null }) {
 
       const res = await fetch(url, {
         method: "PUT",
+        credentials: "include",
         headers: headersForReq,
         body: JSON.stringify(fullPayload),
       });
@@ -437,9 +449,6 @@ export default function Admin({ openPolicyId = null }) {
     }
   };
 
-  /**
-   * Helper: findActivePolicyForRequestDate
-   */
   const findActivePolicyForRequestDate = (request) => {
     if (!request) return null;
     if (!Array.isArray(policies) || policies.length === 0) return null;
@@ -481,14 +490,10 @@ export default function Admin({ openPolicyId = null }) {
       const activePolicyForRequest = findActivePolicyForRequestDate(query);
 
       if (!activePolicyForRequest) {
-        // No active policy: perform a simple approve WITHOUT opening the compensation popup.
-        // Default behaviour here: treat the full requested days as Loss-of-Pay (LoP).
-        // Set is_defaulted = true so backend knows this was a system/default approval path.
         const simplePayload = {
           ...(upd || {}),
           status: "Approved",
 
-          // default splits
           compensated_days: 0,
           compensatedDays: 0,
           compensated: 0,
@@ -835,7 +840,6 @@ export default function Admin({ openPolicyId = null }) {
         openPolicyId={openPolicyId}
       />
 
-      {/* Policy Alerts Modal */}
       <Modal
         isVisible={showPolicyAlertsModal}
         onClose={() => setShowPolicyAlertsModal(false)}
@@ -915,7 +919,6 @@ export default function Admin({ openPolicyId = null }) {
         </div>
       </Modal>
 
-      {/* Filters Section */}
       <div className="filters">
         <div className="status-filter">
           <label>Status Filter</label>
@@ -981,7 +984,6 @@ export default function Admin({ openPolicyId = null }) {
                 .sort((a, b) => (b.leave_id || 0) - (a.leave_id || 0))
                 .map((query) => {
                   const update = statusUpdates[query.leave_id] || {};
-                  // prefer the update.status if present, otherwise use the server value
                   const currentStatus = update.status || query.status || "";
                   const statusClass =
                     currentStatus === "Approved"

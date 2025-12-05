@@ -133,7 +133,6 @@
   padding: 10px;
 }
 
-/* Mobile menu — stack icon above label */
 .mobile-menu li {
   display: flex;
   flex-direction: column;
@@ -144,25 +143,22 @@
   transition: background 0.3s;
 }
 
-/* slightly larger icon and spacing */
 .mobile-menu li .icon {
-  font-size: 28px; /* increase if you want bigger icons */
+  font-size: 28px;
   line-height: 1;
   display: block;
-  margin: 0; /* reset any previous margin */
+  margin: 0;
 }
 
-/* label under the icon */
 .mobile-menu li .label {
   font-size: 13px;
   margin-top: 0;
   display: block;
   text-align: center;
   color: black;
-  white-space: nowrap; /* prevent wrapping if you prefer */
+  white-space: nowrap;
 }
 
-/* keep active state style */
 .mobile-menu li.active {
   background: rgba(200, 200, 200, 0.364);
 }
@@ -189,7 +185,7 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0,0,0,0.5);
+  background: rgba(0, 0, 0, 0.5);
   display: flex;
   justify-content: center;
   align-items: center;

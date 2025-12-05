@@ -90,6 +90,7 @@ const RbAdmin = () => {
           ...(orgId ? { "x-org-id": orgId } : {}),
         };
         const response = await axios.get(`${BACKEND_URL}/projectdrop`, {
+          withCredentials: true,
           headers,
         });
         setProjects(response.data);
@@ -128,6 +129,7 @@ const RbAdmin = () => {
       };
 
       const response = await axios.get(`${BACKEND_URL}/reimbursements`, {
+        withCredentials: true,
         headers,
         params,
       });
@@ -159,7 +161,6 @@ const RbAdmin = () => {
     try {
       const authToken = user?.token;
 
-      // keep only valid file objects with filename matching your expected format
       const validFiles = (files || []).filter(
         (file) =>
           file &&
@@ -174,12 +175,11 @@ const RbAdmin = () => {
       const fetchedFiles = await Promise.all(
         validFiles.map(async (file) => {
           const match = file.filename.match(/^(\d{4})-(\d{2})-\d{2}/);
-          if (!match) return null; // extra guard
+          if (!match) return null;
 
           const year = match[1];
           const month = match[2];
 
-          // ensure required path parts exist
           if (!orgId || !claim?.employee_id) {
             console.error("Missing orgId or employeeId for attachment URL", {
               orgId,
@@ -189,13 +189,11 @@ const RbAdmin = () => {
             return null;
           }
 
-          // encode filename and other path segments
           const safeFilename = encodeURIComponent(file.filename);
           const safeOrgId = encodeURIComponent(String(orgId));
           const safeEmployeeId = encodeURIComponent(String(claim.employee_id));
           const fileUrl = `${BACKEND_URL}/reimbursement/${safeOrgId}/${year}/${month}/${safeEmployeeId}/${safeFilename}`;
 
-          // debug log — very helpful to match server logs
           console.debug(
             "Fetching attachment URL:",
             fileUrl,
@@ -204,6 +202,7 @@ const RbAdmin = () => {
           );
 
           const response = await axios.get(fileUrl, {
+            withCredentials: true,
             headers: {
               "x-api-key": API_KEY,
               "x-employee-id": employeeId,
@@ -288,6 +287,7 @@ const RbAdmin = () => {
           project,
         },
         {
+          withCredentials: true,
           headers: {
             "x-api-key": API_KEY,
             "x-org-id": orgId,
@@ -329,6 +329,7 @@ const RbAdmin = () => {
           user_role: "admin",
         },
         {
+          withCredentials: true,
           headers: {
             "x-api-key": API_KEY,
             "x-org-id": orgId,
@@ -355,6 +356,7 @@ const RbAdmin = () => {
   const handleDownloadPDF = async (claim) => {
     try {
       const response = await axios.get(`${BACKEND_URL}/download/${claim.id}`, {
+        withCredentials: true,
         headers: {
           "x-api-key": API_KEY,
           "x-org-id": orgId,
@@ -414,6 +416,7 @@ const RbAdmin = () => {
       };
 
       const resp = await axios.get(`${BACKEND_URL}/reimbursements/export`, {
+        withCredentials: true,
         headers,
         params,
         responseType: "blob",
@@ -858,6 +861,7 @@ const RbAdmin = () => {
                       user_role: "admin",
                     },
                     {
+                      withCredentials: true,
                       headers: {
                         "x-api-key": API_KEY,
                         "x-org-id": orgId,

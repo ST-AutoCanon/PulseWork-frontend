@@ -108,7 +108,6 @@ const StepTwo = ({
           <div className="add-employee">
             <div
               className="employee-list"
-              /* prevent pointer interaction when not editable */
               style={{
                 pointerEvents: isEditable ? "auto" : "none",
                 opacity: isEditable ? 1 : 0.6,
@@ -137,7 +136,6 @@ const StepTwo = ({
                   )
                 )
               ) : (
-                // when not editable, show a helpful read-only list or nothing.
                 <div style={{ color: "#444", padding: 8 }}>
                   Employee search and selection disabled.
                 </div>

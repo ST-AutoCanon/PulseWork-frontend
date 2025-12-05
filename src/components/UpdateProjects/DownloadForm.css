@@ -79,7 +79,7 @@
   width: 30px;
   display: flex;
   align-items: flex-end;
-  padding-top: 1rem; /* aligns the button with input bottoms */
+  padding-top: 1rem;
 }
 
 .download-add-line-item-btn {

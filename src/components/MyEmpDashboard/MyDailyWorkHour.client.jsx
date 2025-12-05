@@ -13,7 +13,7 @@ import {
   Legend,
 } from "chart.js";
 import ChartDataLabels from "chartjs-plugin-datalabels";
-import { useAuth } from "../../context/AuthProvider.client"; // adjust this path to your auth provider
+import { useAuth } from "../../context/AuthProvider.client";
 import "./MyDailyWorkHour.css";
 
 ChartJS.register(
@@ -39,7 +39,6 @@ export default function MyDailyWorkHour() {
   const API_KEY = process.env.NEXT_PUBLIC_API_KEY;
   const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "";
 
-  // mounted guard to avoid setState after unmount
   const mountedRef = useRef(true);
   useEffect(() => {
     mountedRef.current = true;
@@ -62,14 +61,6 @@ export default function MyDailyWorkHour() {
       setLoading(true);
       setError(null);
 
-      if (!API_KEY) {
-        if (mountedRef.current && !cancelled) {
-          setError("API Key is missing.");
-          setLoading(false);
-        }
-        return;
-      }
-
       try {
         const url = `${BACKEND_URL.replace(
           /\/$/,
@@ -81,13 +72,13 @@ export default function MyDailyWorkHour() {
         if (orgId) headers["x-org-id"] = orgId;
 
         const res = await axios.get(url, {
+          withCredentials: true,
           headers,
           signal: controller.signal,
         });
 
         if (cancelled || !mountedRef.current) return;
 
-        // Expecting array like in original code — reduce to map keyed by view
         if (res.status === 200 && Array.isArray(res.data)) {
           const dataMap = res.data.reduce((acc, item) => {
             acc[item.view] = item.data;
@@ -95,7 +86,6 @@ export default function MyDailyWorkHour() {
           }, {});
           if (mountedRef.current && !cancelled) setWorkHourData(dataMap);
         } else if (res.status === 200 && typeof res.data === "object") {
-          // if backend returns object structure directly
           const dataMap =
             Array.isArray(res.data) === false ? res.data : { Daily: res.data };
           if (mountedRef.current && !cancelled) setWorkHourData(dataMap);
@@ -123,7 +113,6 @@ export default function MyDailyWorkHour() {
 
     fetchWorkHourData();
 
-    // cleanup
     return () => {
       cancelled = true;
       controller.abort();

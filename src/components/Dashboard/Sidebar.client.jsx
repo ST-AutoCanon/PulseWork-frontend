@@ -39,7 +39,6 @@ const Sidebar = ({ setActiveContent }) => {
   const [activeNav, setActiveNav] = useState("/dashboard");
   const [showMobileMenu, setShowMobileMenu] = useState(false);
 
-  // ✅ NEW STATE FOR SUPERVISOR CHOICE
   const [showTaskChoice, setShowTaskChoice] = useState(false);
 
   const defaultMenuItems = useMemo(
@@ -97,13 +96,12 @@ const Sidebar = ({ setActiveContent }) => {
       "/vendors": () => <Vendors />,
       "/EmployeeLogin": () => <EmployeeLogin />,
 
-      // ✅ CHANGED ONLY THIS PART
       "/TaskManagement": (role) => {
         if (role === "Admin") return <TaskManagementAdmin />;
 
         if (role === "Supervisor") {
-          setShowTaskChoice(true); // show selection
-          return null; // prevent auto load
+          setShowTaskChoice(true);
+          return null;
         }
 
         return <TaskManagementEmployee />;
@@ -168,7 +166,6 @@ const Sidebar = ({ setActiveContent }) => {
     return MdIcons.MdOutlineDashboard;
   };
 
-  // ✅ SUPERVISOR POPUP UI
   const SupervisorTaskChoice = () => (
     <div
       className="task-choice-overlay"
@@ -314,7 +311,6 @@ const Sidebar = ({ setActiveContent }) => {
             >
               ✖
             </button>
-            {/* inside the mobile-menu JSX */}
             <ul>
               {menuItems && menuItems.length > 0 ? (
                 menuItems.map((item, index) => {

@@ -40,7 +40,7 @@ const HolidayCalendar = ({ closeCalendar }) => {
 
   const fetchHolidays = async (cancelToken) => {
     try {
-      const config = { headers };
+      const config = { withCredentials: true, headers };
       if (cancelToken) config.cancelToken = cancelToken;
       const res = await axios.get(`${BACKEND_URL}/holidays`, config);
       const data = res?.data?.message ?? res?.data ?? [];
@@ -72,6 +72,7 @@ const HolidayCalendar = ({ closeCalendar }) => {
     const fetchWithCancel = async () => {
       try {
         const res = await axios.get(`${BACKEND_URL}/holidays${orgQuery}`, {
+          withCredentials: true,
           headers,
           cancelToken: source.token,
         });
@@ -122,8 +123,6 @@ const HolidayCalendar = ({ closeCalendar }) => {
     const hasTooltip = Boolean(holiday) || isSunday;
     if (!hasTooltip) return null;
 
-    // Prefer holiday occasion if a holiday exists on that date,
-    // otherwise show "Sunday".
     const tooltipContent = holiday?.occasion || (isSunday ? "Sunday" : "");
 
     return (
@@ -133,7 +132,6 @@ const HolidayCalendar = ({ closeCalendar }) => {
         data-tooltip-content={tooltipContent}
         onClick={() => handleChange(tileDate)}
       >
-        {/* show sunday dot only when there is no holiday defined that day */}
         {!holiday && isSunday && <div className={styles.sundayDot} />}
         {holiday && holiday.type === "Optional" && (
           <div className={`${styles.holidayDot} ${styles.optionalDot}`} />
@@ -317,23 +315,21 @@ const HolidayCalendar = ({ closeCalendar }) => {
       };
 
       const res = await axios.post(`${BACKEND_URL}/holidays/upload`, formData, {
+        withCredentials: true,
         headers: uploadHeaders,
       });
 
-      // handle success message from backend
       const respData = res?.data ?? {};
       const msg = respData?.message || "Upload successful";
       const affected =
         respData?.affectedRows ?? respData?.inserted ?? respData?.insertedCount;
       setFileNote(affected ? `${msg} — ${affected} row(s)` : msg);
 
-      // clear selected file and parsed rows
       setSelectedFile(null);
       parsedRowsRef.current = null;
       setValidatedRowCount(0);
       if (fileInputRef.current) fileInputRef.current.value = "";
 
-      // refresh holidays after successful upload
       await fetchHolidays();
     } catch (err) {
       console.error("Upload error:", err);
@@ -372,6 +368,7 @@ const HolidayCalendar = ({ closeCalendar }) => {
     setErrorMessage("");
     try {
       const resp = await axios.get(`${BACKEND_URL}/holidays/template`, {
+        withCredentials: true,
         responseType: "blob",
         headers: {
           "x-api-key": API_KEY ?? "",

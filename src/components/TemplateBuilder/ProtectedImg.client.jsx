@@ -43,6 +43,7 @@ export default function ProtectedImg({
         setBlobUrl(null);
         const opts = {
           method: "GET",
+          credentials: "include",
           signal: ac.signal,
           headers: {},
         };

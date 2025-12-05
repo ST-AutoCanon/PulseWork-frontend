@@ -1,11 +1,8 @@
-/* DemoRequest.module.css - custom modal + nice background for DemoRequest component */
-
 .wrapper {
   display: inline-block;
   font-family: "Segoe UI", sans-serif;
 }
 
-/* Trigger button (placed in the top tabs bar) */
 .triggerButton {
   background: transparent;
   color: rgba(255, 255, 255, 0.95);
@@ -22,7 +19,6 @@
   transform: translateY(-1px);
 }
 
-/* Fullscreen overlay with subtle frosted/gradient background + animated shapes */
 .overlay {
   position: fixed;
   inset: 0;
@@ -35,7 +31,6 @@
   -webkit-backdrop-filter: blur(6px) saturate(1.05);
 }
 
-/* Floating decorative shapes behind modal */
 .overlay::before,
 .overlay::after {
   content: "";
@@ -85,7 +80,6 @@
   }
 }
 
-/* Modal card */
 .modal {
   width: 520px;
   max-width: calc(100% - 48px);
@@ -240,7 +234,6 @@
   margin-top: 8px;
 }
 
-/* Decorative accent inside modal (subtle diagonal gradient blob) */
 .decor {
   position: absolute;
   right: -60px;
@@ -259,7 +252,6 @@
   z-index: 0;
 }
 
-/* Alert dialog styles (reuses overlay) */
 .alert {
   width: 420px;
   max-width: calc(100% - 48px);
@@ -292,7 +284,6 @@
   margin-top: 12px;
 }
 
-/* Responsive adjustments */
 @media (max-width: 560px) {
   .modal {
     width: 92vw;

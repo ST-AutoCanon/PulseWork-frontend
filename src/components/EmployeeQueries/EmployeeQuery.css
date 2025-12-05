@@ -388,7 +388,6 @@
   font-size: large;
 }
 
-/* Form Fields */
 .employee-query-form {
   margin: 0;
   padding: 5%;
@@ -437,7 +436,6 @@
   margin: 0 0 2% 60%;
 }
 
-/* Buttons */
 .employee-query-button {
   padding: 1%;
   font-size: 1rem;

@@ -38,7 +38,6 @@
   width: 100%;
 }
 
-/* Step Circle */
 .pj-step-circle {
   width: 20px;
   height: 20px;
@@ -54,17 +53,14 @@
   margin-bottom: 2%;
 }
 
-/* Active step (current step) */
 .pj-step-circle.active {
-  background: #00468c; /* Blue */
+  background: #00468c;
 }
 
-/* Completed step */
 .pj-step-circle.completed {
   background: #7ac127;
 }
 
-/* Gray background line */
 .pj-step-bg {
   position: absolute;
   top: 18%;
@@ -75,7 +71,6 @@
   z-index: 0;
 }
 
-/* Green progress line */
 .pj-step-line {
   position: absolute;
   top: 18%;
@@ -121,7 +116,6 @@
   margin: 0 0 0 10%;
 }
 
-/* Form Inputs */
 .pj-form-grid input {
   margin: 0 0 0 10%;
   padding: 2%;
@@ -172,7 +166,7 @@
 }
 
 .pj-attachment {
-  flex: 1; /* Attachment section smaller */
+  flex: 1;
   display: flex;
   flex-direction: column;
 }
@@ -244,7 +238,7 @@
 }
 
 .pj-next-btn:hover {
-  background: #68a822; /* Slightly darker */
+  background: #68a822;
   box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
 }
 
@@ -308,7 +302,6 @@
   margin: 0 0 0 5%;
 }
 
-/* Form Inputs */
 .step-two-grid input {
   margin: 0 0 0 5%;
   padding: 2%;
@@ -458,7 +451,6 @@
   color: #333;
 }
 
-/* Style options based on their value */
 select option[value="Active"] {
   background-color: #d1ecf1;
 }
@@ -661,7 +653,7 @@ select option[value="Completed"] {
 }
 
 input[type="checkbox"] {
-  appearance: none; /* Remove default styling */
+  appearance: none;
   width: 15px;
   height: 15px;
   margin: 0;
@@ -693,7 +685,7 @@ input[type="checkbox"]::after {
 }
 
 input[type="checkbox"]:checked::after {
-  display: block; /* Show tick when checked */
+  display: block;
 }
 
 .custom-dropdown {
@@ -719,9 +711,9 @@ input[type="checkbox"]:checked::after {
 }
 
 .dropdown-header:hover {
-  white-space: normal; /* Allow full text to be seen on hover */
+  white-space: normal;
   height: auto;
-  max-height: 200px; /* Prevent too much expansion */
+  max-height: 200px;
 }
 
 .dropdown-menu {
@@ -836,23 +828,21 @@ input[type="checkbox"]:checked::after {
   font-size: larger;
 }
 
-/* radio group: keep inline, center vertically and space nicely */
 .sp2-radio {
-  display: inline-flex; /* inline group so it sits next to search box */
-  align-items: center; /* vertically center radio and label text */
-  gap: 12px; /* spacing between radio options */
-  margin-left: 6px; /* small left gap from the search box */
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  margin-left: 6px;
   vertical-align: middle;
   flex-wrap: nowrap;
 }
 
-/* make each option's label align items and provide gap */
 .sp2-radio label {
   display: inline-flex;
   align-items: center;
-  gap: 6px; /* space between dot and text */
+  gap: 6px;
   cursor: pointer;
-  font-weight: 600; /* match other labels (optional) */
+  font-weight: 600;
   font-size: 0.95rem;
   margin: 0;
 }

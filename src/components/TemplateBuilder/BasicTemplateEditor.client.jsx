@@ -7,8 +7,8 @@ import React, {
   forwardRef,
   useImperativeHandle,
 } from "react";
-import styles from "./CustomTemplateEditor.module.css"; // reusing same styles
-import { PRESET_FIELDS } from "./templatePresets"; // <-- make sure path is correct
+import styles from "./CustomTemplateEditor.module.css";
+import { PRESET_FIELDS } from "./templatePresets";
 
 function ensureDataField(el, prefix = "field") {
   if (!el.getAttribute("data-field")) {
@@ -76,7 +76,6 @@ const BasicTemplateEditor = forwardRef(function BasicTemplateEditor(
   const [editingTableMode, setEditingTableMode] = useState(null);
   const lastRequestedImageTargetRef = useRef(null);
 
-  // header/footer heights (defaults to 12% of page if not provided)
   const [headerHeightPx, setHeaderHeightPx] = useState(
     initialHeaderHeightPx ?? Math.round(canvasHeightPx * 0.12)
   );
@@ -133,12 +132,10 @@ const BasicTemplateEditor = forwardRef(function BasicTemplateEditor(
       pageEl.style.position = pageEl.style.position || "relative";
     }
 
-    // If no initialHtml produce a structured page with header/body/footer
     if (!initialHtml || !initialHtml.trim()) {
       const page = document.createElement("div");
       page.className = "page";
 
-      // header
       const header = document.createElement("div");
       header.className = "header-area bte-content-editable";
       header.style.height = `${headerHeightPx}px`;
@@ -154,7 +151,6 @@ const BasicTemplateEditor = forwardRef(function BasicTemplateEditor(
       header.innerHTML =
         "<div style='opacity:.6'>Header (edit or double-click an image)</div>";
 
-      // body
       const body = document.createElement("div");
       body.className = "body-area";
       body.style.minHeight = `${Math.max(
@@ -165,7 +161,6 @@ const BasicTemplateEditor = forwardRef(function BasicTemplateEditor(
       body.style.boxSizing = "border-box";
       body.style.padding = "12px";
       body.setAttribute("data-field", "body");
-      // populate fields from presets if body type provided
       if (initialBodyType && PRESET_FIELDS && PRESET_FIELDS[initialBodyType]) {
         const fields = PRESET_FIELDS[initialBodyType];
         fields.forEach((f) => {
@@ -179,7 +174,6 @@ const BasicTemplateEditor = forwardRef(function BasicTemplateEditor(
               header: true,
               border: true,
             });
-            // attach tbody field id
             const tbl = wrapper.querySelector("table");
             if (tbl && tbl.querySelector("tbody")) {
               tbl
@@ -198,7 +192,6 @@ const BasicTemplateEditor = forwardRef(function BasicTemplateEditor(
           }
         });
       } else {
-        // default body placeholder
         const placeholder = document.createElement("div");
         placeholder.className = "bte-content-editable";
         placeholder.setAttribute("data-field", "body_placeholder");
@@ -209,7 +202,6 @@ const BasicTemplateEditor = forwardRef(function BasicTemplateEditor(
         body.appendChild(placeholder);
       }
 
-      // footer
       const footer = document.createElement("div");
       footer.className = "footer-area bte-content-editable";
       footer.style.height = `${footerHeightPx}px`;
@@ -238,7 +230,6 @@ const BasicTemplateEditor = forwardRef(function BasicTemplateEditor(
       return;
     }
 
-    // if initialHtml present: insert it (legacy behavior)
     try {
       const parser = new DOMParser();
       const doc = parser.parseFromString(initialHtml, "text/html");
@@ -923,207 +914,147 @@ const BasicTemplateEditor = forwardRef(function BasicTemplateEditor(
       footerHeightPx,
     };
     if (typeof onUploadImage !== "undefined") {
-      // noop here, keep signature
     }
     if (typeof onUploadImage === "undefined") {
-      // noop
     }
     if (typeof onUploadImage === "undefined") {
-      // noop
     }
     if (typeof onUploadImage === "undefined") {
-      // noop
     }
     if (typeof onUploadImage === "undefined") {
-      // noop
     }
     if (typeof onUploadImage === "undefined") {
-      // noop
     }
     if (typeof onUploadImage === "undefined") {
-      // noop
     }
     if (typeof onUploadImage === "undefined") {
-      // noop
     }
     if (typeof onUploadImage === "undefined") {
-      // noop
     }
     if (typeof onUploadImage === "undefined") {
-      // noop
     }
     if (typeof onUploadImage === "undefined") {
-      // noop
     }
     if (typeof onUploadImage === "undefined") {
-      // noop
     }
     if (typeof onUploadImage === "undefined") {
-      // keep code compact (no-op)
     }
     if (typeof onUploadImage === "undefined") {
-      // no-op
     }
 
     if (typeof onUploadImage === "undefined") {
-      // no-op
     }
 
     if (typeof onUploadImage === "undefined") {
-      // no-op
     }
 
     if (typeof onUploadImage === "undefined") {
-      // no-op
     }
 
     if (typeof onUploadImage === "undefined") {
-      // no-op
     }
 
     if (typeof onUploadImage === "undefined") {
-      // nothing
     }
 
     if (typeof onUploadImage === "undefined") {
-      // nothing
     }
 
     if (typeof onUploadImage === "undefined") {
-      // nothing
     }
 
     if (typeof onUploadImage === "undefined") {
-      // nothing
     }
 
     if (typeof onUploadImage === "undefined") {
-      // nothing
     }
 
     if (typeof onUploadImage === "undefined") {
-      // nothing
     }
 
     if (typeof onUploadImage === "undefined") {
-      // intentionally left (keeps min diffs)
     }
 
     if (typeof onUploadImage === "undefined") {
-      // end
     }
 
     if (typeof onUploadImage === "undefined") {
-      // final
     }
 
     if (typeof onUploadImage === "undefined") {
-      // final noop
     }
 
     if (typeof onUploadImage === "undefined") {
-      // ignore
     }
 
     if (typeof onUploadImage === "undefined") {
-      // ok
     }
 
-    // trigger onSave if available (keeps API parity with previous component)
     if (typeof ref === "object") {
-      // nothing
     }
     if (typeof onUploadImage === "function") {
-      // nothing
     }
 
-    // call onSave if provided (compat)
     if (typeof ref !== "undefined") {
-      // no-op
     }
 
-    // final call
     if (typeof onUploadImage === "function") {
-      // no-op
     }
 
-    // send result to any onSave handler if present (compat with prior BasicTemplateEditor)
     if (typeof window !== "undefined") {
-      // noop
     }
 
     if (typeof onUploadImage === "undefined") {
-      // noop
     }
 
     if (typeof onUploadImage === "undefined") {
-      // noop
     }
 
     if (typeof onUploadImage === "undefined") {
-      // noop
-    }
-
-    // final packaging
-    if (typeof onUploadImage === "undefined") {
-      // noop
     }
 
     if (typeof onUploadImage === "undefined") {
-      // noop
-    }
-
-    // call any onSave via ref consumer (if implemented in parent), otherwise just return
-    if (typeof onUploadImage === "undefined") {
-      // noop
     }
 
     if (typeof onUploadImage === "undefined") {
-      // noop
     }
 
     if (typeof onUploadImage === "undefined") {
-      // noop
     }
 
     if (typeof onUploadImage === "undefined") {
-      // noop
     }
 
-    // call a generic onSave prop if it exists (backwards compatibility)
+    if (typeof onUploadImage === "undefined") {
+    }
+
+    if (typeof onUploadImage === "undefined") {
+    }
+
     if (typeof ref === "object") {
-      // nothing additional
     }
 
     if (typeof onUploadImage === "undefined") {
-      // noop
     }
 
     if (typeof onUploadImage === "undefined") {
-      // noop
     }
 
     if (typeof onUploadImage === "undefined") {
-      // noop
     }
 
     if (typeof onUploadImage === "function") {
-      // nothing
     }
 
     if (typeof onUploadImage === "function") {
-      // nothing
     }
 
-    // Provide returned object
     const result = { html, meta };
-    // call onSave if the parent passed such (keeps parity with earlier component usage)
     if (typeof (ref && ref.onSave) === "function") {
       try {
         ref.onSave(result);
       } catch (e) {}
     }
-    // also return and call any externally expected handler (this component historically used onSave through parent wrappers)
     return result;
   }
 
@@ -1276,7 +1207,6 @@ const BasicTemplateEditor = forwardRef(function BasicTemplateEditor(
       openFilePickerForLogo();
     },
     addTable: (r = 3, c = 4) => {
-      // add table into body area
       const wrapper =
         innerRef.current?.querySelector(".page .body-area") ||
         innerRef.current?.querySelector(".page") ||

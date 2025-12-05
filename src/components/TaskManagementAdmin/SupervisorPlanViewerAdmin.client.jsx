@@ -17,7 +17,6 @@ import "./SupervisorPlanViewerAdmin.css";
 const SupervisorPlanViewerAdmin = () => {
   const { user, hydrated } = useAuth();
 
-  // ────────────────────── 1. ALL STATE HOOKS ──────────────────────
   const [supervisorId, setSupervisorId] = useState(null);
   const [employees, setEmployees] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
@@ -45,7 +44,6 @@ const SupervisorPlanViewerAdmin = () => {
   const [loadingConfig, setLoadingConfig] = useState(false);
   const [pendingReviewChanges, setPendingReviewChanges] = useState({});
 
-  // ────────────────────── 2. CENTRALIZED HEADERS ──────────────────────
   const apiHeaders = useMemo(
     () => ({
       "x-employee-id": supervisorId,
@@ -56,7 +54,6 @@ const SupervisorPlanViewerAdmin = () => {
     [supervisorId, user?.role]
   );
 
-  // ────────────────────── 3. ALL EFFECTS ──────────────────────
   useEffect(() => {
     if (!hydrated) return;
     if (user?.employeeId) {
@@ -74,7 +71,7 @@ const SupervisorPlanViewerAdmin = () => {
       try {
         const response = await axios.get(
           `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/weekly_task_supervisor/employees/all`,
-          { headers: apiHeaders, timeout: 10000 }
+          { withCredentials: true, headers: apiHeaders, timeout: 10000 }
         );
         const empData = Array.isArray(response.data.employees)
           ? response.data.employees.map((emp) => ({
@@ -105,7 +102,7 @@ const SupervisorPlanViewerAdmin = () => {
       try {
         const response = await axios.get(
           `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/weekly_task_supervisor/holidays/all`,
-          { headers: apiHeaders, timeout: 10000 }
+          { withCredentials: true, headers: apiHeaders, timeout: 10000 }
         );
         setHolidays(
           Array.isArray(response.data.holidays)
@@ -126,6 +123,7 @@ const SupervisorPlanViewerAdmin = () => {
           `${process.env.NEXT_PUBLIC_BACKEND_URL}/admin/leave`,
           {
             params: { status: "Approved" },
+            withCredentials: true,
             headers: apiHeaders,
             timeout: 10000,
           }
@@ -159,7 +157,7 @@ const SupervisorPlanViewerAdmin = () => {
       try {
         const res = await axios.get(
           `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/weekly_task_supervisor`,
-          { headers: apiHeaders, timeout: 10000 }
+          { withCredentials: true, headers: apiHeaders, timeout: 10000 }
         );
         const validStatuses = [
           "not started",
@@ -186,7 +184,6 @@ const SupervisorPlanViewerAdmin = () => {
           );
           const currentWeek = getISOWeek(new Date());
 
-          // Only set current week on first load if prop says so
           if (defaultToCurrentWeek && selectedWeekId === null) {
             setSelectedWeekId(
               taskWeekIds.includes(currentWeek)
@@ -197,7 +194,6 @@ const SupervisorPlanViewerAdmin = () => {
             setSelectedWeekId(taskWeekIds[taskWeekIds.length - 1]);
           }
         } else if (selectedWeekId === null) {
-          // No tasks → still show current week
           setSelectedWeekId(getISOWeek(new Date()));
         }
         setError(null);
@@ -227,6 +223,7 @@ const SupervisorPlanViewerAdmin = () => {
           `${process.env.NEXT_PUBLIC_BACKEND_URL}/projects/employeeProjects`,
           {
             params: { employeeId: selectedEmployee },
+            withCredentials: true,
             headers: apiHeaders,
             timeout: 10000,
           }
@@ -247,17 +244,14 @@ const SupervisorPlanViewerAdmin = () => {
     fetchProjects();
   }, [selectedEmployee, apiHeaders]);
 
-  // ────────────────────── 4. CONFIG MODAL HANDLERS ──────────────────────
-  // ────────────────────── 4. CONFIG MODAL HANDLERS ──────────────────────
   const fetchConfig = async () => {
     setLoadingConfig(true);
     try {
       const response = await axios.get(
         `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/config`,
-        { headers: apiHeaders }
+        { withCredentials: true, headers: apiHeaders }
       );
 
-      // Expecting: { data: { freeze_days_employee: "2", freeze_days_supervisor: "3" } }
       const data = response.data.data || {};
 
       setConfigModal({
@@ -290,17 +284,16 @@ const SupervisorPlanViewerAdmin = () => {
 
     setLoadingConfig(true);
     try {
-      // CORRECT ENDPOINT: /api/config
       await Promise.all([
         axios.put(
           `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/config`,
           { key: "freeze_days_supervisor", value: freezeDaysSupervisor },
-          { headers: apiHeaders }
+          { withCredentials: true, headers: apiHeaders }
         ),
         axios.put(
           `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/config`,
           { key: "freeze_days_employee", value: freezeDaysEmployee },
-          { headers: apiHeaders }
+          { withCredentials: true, headers: apiHeaders }
         ),
       ]);
 
@@ -316,7 +309,6 @@ const SupervisorPlanViewerAdmin = () => {
       setLoadingConfig(false);
     }
   };
-  // ────────────────────── 5. TASK UPDATE LOGIC ──────────────────────
   const updateTaskField = (taskId, field, value) => {
     setTasks((prev) =>
       prev.map((task) => {
@@ -405,14 +397,14 @@ const SupervisorPlanViewerAdmin = () => {
         const response = await axios.post(
           `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/weekly_task_supervisor`,
           newTaskData,
-          { headers: apiHeaders, timeout: 10000 }
+          { withCredentials: true, headers: apiHeaders, timeout: 10000 }
         );
 
         updateData.sup_status = "re-work";
         await axios.put(
           `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/weekly_task_supervisor/${taskId}`,
           updateData,
-          { headers: apiHeaders, timeout: 10000 }
+          { withCredentials: true, headers: apiHeaders, timeout: 10000 }
         );
 
         showAlert(response.data.message || "New task created successfully");
@@ -445,7 +437,7 @@ const SupervisorPlanViewerAdmin = () => {
         await axios.put(
           `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/weekly_task_supervisor/${taskId}`,
           updateData,
-          { headers: apiHeaders, timeout: 10000 }
+          { withCredentials: true, headers: apiHeaders, timeout: 10000 }
         );
         showAlert("Task updated successfully");
       }
@@ -456,10 +448,9 @@ const SupervisorPlanViewerAdmin = () => {
         return newPrev;
       });
 
-      // Refresh tasks
       const res = await axios.get(
         `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/weekly_task_supervisor`,
-        { headers: apiHeaders, timeout: 10000 }
+        { withCredentials: true, headers: apiHeaders, timeout: 10000 }
       );
       const validStatuses = [
         "not started",
@@ -486,7 +477,6 @@ const SupervisorPlanViewerAdmin = () => {
     }
   };
 
-  // ────────────────────── 6. UTILS ──────────────────────
   const showAlert = (message) => {
     setAlertModal({ isVisible: true, message });
     setTimeout(() => setAlertModal({ isVisible: false, message: "" }), 5000);
@@ -618,7 +608,6 @@ const SupervisorPlanViewerAdmin = () => {
     }
   };
 
-  // ────────────────────── 7. useMemo ──────────────────────
   const weekIds = useMemo(
     () => [...new Set(tasks.map((t) => t.week_id))].sort((a, b) => a - b),
     [tasks]
@@ -677,7 +666,6 @@ const SupervisorPlanViewerAdmin = () => {
       setSelectedWeekId(weekIds[currentWeekIndex + 1]);
   };
 
-  // ────────────────────── 8. EARLY RETURNS ──────────────────────
   if (!hydrated)
     return <div className="supervisor-plan-admin-wrapper">Loading user...</div>;
   if (!user)
@@ -697,7 +685,6 @@ const SupervisorPlanViewerAdmin = () => {
       </div>
     );
 
-  // ────────────────────── 9. RENDER ──────────────────────
   return (
     <div className="supervisor-plan-admin-wrapper">
       <Modal

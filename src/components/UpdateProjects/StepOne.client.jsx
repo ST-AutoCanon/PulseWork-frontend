@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { useAuth } from "../../context/AuthProvider.client"; // adjust path if needed
+import { useAuth } from "../../context/AuthProvider.client";
 
 const StepOne = ({
   formData,
@@ -17,11 +17,10 @@ const StepOne = ({
   selectedFiles,
   handleFileUpload,
   openAttachment,
-  editable, // optional: if undefined we infer from user's role
+  editable,
 }) => {
   const { user } = useAuth();
   const userRole = user?.role ?? "Employee";
-  // If parent didn't pass `editable`, make Admin/Manager/SuperAdmin roles editable by default.
   const isEditable =
     typeof editable === "boolean"
       ? editable

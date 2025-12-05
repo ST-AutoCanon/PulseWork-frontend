@@ -17,7 +17,6 @@
   border-radius: 8px;
 }
 
-/* Anchor all react-calendar selectors under the local wrapper so selectors remain "pure" */
 .calendarWrapper :global(.react-calendar) {
   height: 100%;
   background: #ffffff;
@@ -68,7 +67,6 @@
   cursor: pointer;
 }
 
-/* target the abbr inside the tile */
 .calendarWrapper :global(.react-calendar__tile) abbr {
   position: relative;
   z-index: 5;
@@ -105,9 +103,6 @@
 .companyDot {
   background-color: #9090fd;
 }
-
-/* NOTE: react-tooltip is global and may be appended to the body.
-   Move the real tooltip rules into globals.css (see below). */
 
 .calendarWrapper :global(.react-calendar__tile--active) {
   background-color: #fae5a4 !important;
@@ -226,7 +221,6 @@
   color: #d32f2f;
 }
 
-/* Responsive */
 @media (max-width: 600px) {
   .calendarContainer {
     width: calc(100vw - 18px);

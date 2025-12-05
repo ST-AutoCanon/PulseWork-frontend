@@ -54,11 +54,6 @@
   margin-right: 5px;
 }
 
-/* ----------------------
-   Mobile styles for TotalEmployee
-   (append to TotalEmployee.css)
-   ---------------------- */
-
 @media (max-width: 768px) {
   .total-employees {
     width: calc(100vw - 20px);
@@ -83,7 +78,7 @@
   .admindashtotalemployee-chart {
     width: 100%;
     height: auto;
-    min-height: 220px; /* gives chart usable height on phones */
+    min-height: 220px;
     display: flex;
     justify-content: center;
     align-items: center;
@@ -93,14 +88,12 @@
     background: transparent;
   }
 
-  /* Force chart canvas to be responsive and fill the area */
   .admindashtotalemployee-chart canvas {
     width: 100% !important;
     height: auto !important;
     max-height: 260px;
   }
 
-  /* Legend container: wrap and center with smaller text */
   .total-employees .legend-container {
     margin-top: 10px;
     display: flex;
@@ -124,13 +117,10 @@
     margin-right: 6px;
   }
 
-  /* Small screens: slightly smaller center text in chart */
-  /* Chart center text is drawn by plugin; reduce font via canvas scaling hack by setting container font-size */
   .total-employees {
-    --donut-center-font-scale: 0.9; /* used if plugin reads CSS var, otherwise helps keep spacing */
+    --donut-center-font-scale: 0.9;
   }
 
-  /* Quiet error text sizing */
   .total-employees .error {
     font-size: 13px;
     text-align: center;
@@ -138,7 +128,6 @@
   }
 }
 
-/* medium phones / small tablets */
 @media (min-width: 421px) and (max-width: 1024px) {
   .total-employees {
     width: calc(100% - 28px);

@@ -176,7 +176,6 @@
   font-style: italic;
 }
 
-/* Modal override */
 .modal-content {
   border: 2px solid var(--teal-dark) !important;
 }
@@ -201,11 +200,6 @@
   border: 1px solid #ffcccc;
   white-space: nowrap;
 }
-
-/* --------------------------
-   Mobile / Responsive tweaks
-   (append to Profile.css)
-   -------------------------- */
 
 @media (max-width: 768px) {
   .profile-content {
@@ -238,7 +232,6 @@
     font-size: 0.85rem;
   }
 
-  /* Tabs -> wrap & become touch friendly */
   .tabs {
     flex-wrap: wrap;
     gap: 6px;
@@ -251,7 +244,7 @@
   }
 
   .tab-panel {
-    max-height: 56vh; /* keep room for close button */
+    max-height: 56vh;
     overflow-y: auto;
     padding-right: 8px;
   }
@@ -260,7 +253,6 @@
     gap: 10px;
   }
 
-  /* Two-column pairs collapse to single column */
   .field-pair {
     grid-template-columns: 1fr;
   }
@@ -285,7 +277,6 @@
     border-radius: 6px;
   }
 
-  /* Documents and assets */
   .documents {
     margin: 8% 6%;
     font-size: 0.95rem;
@@ -300,7 +291,6 @@
     font-size: 0.95rem;
   }
 
-  /* Modal override for small screen: full-screen feeling */
   .profile-popup {
     align-items: flex-start;
     padding-top: 6%;
@@ -310,7 +300,6 @@
     box-shadow: 0 6px 18px rgba(0, 0, 0, 0.2);
   }
 
-  /* Close button bigger and easier to tap */
   .profile-close {
     top: 8px;
     right: 8px;
@@ -320,7 +309,6 @@
     border-radius: 6px;
   }
 
-  /* Missing bubbles: wrap nicely */
   .missing-fields {
     gap: 6px;
   }
@@ -330,7 +318,6 @@
   }
 }
 
-/* Extra small phones */
 @media (max-width: 420px) {
   .profile-content {
     width: calc(100vw - 12px);

@@ -28,6 +28,7 @@ const AddDepartment = () => {
         `${process.env.NEXT_PUBLIC_BACKEND_URL}/departments?orgId=${orgId}`,
         {
           method: "GET",
+          credentials: "include",
           headers: {
             "x-api-key": API_KEY,
             "x-org-id": orgId,
@@ -44,6 +45,7 @@ const AddDepartment = () => {
                 const imgResponse = await fetch(
                   `${process.env.NEXT_PUBLIC_BACKEND_URL}${dept.icon}`,
                   {
+                    credentials: "include",
                     headers: {
                       "x-api-key": API_KEY,
                       "x-org-id": orgId,
@@ -110,13 +112,14 @@ const AddDepartment = () => {
     const formData = new FormData();
     formData.append("name", name);
     formData.append("icon", icon);
-    formData.append("orgId", orgId); // send orgId to backend
+    formData.append("orgId", orgId);
 
     try {
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_BACKEND_URL}/departments/add`,
         {
           method: "POST",
+          credentials: "include",
           headers: {
             "x-api-key": API_KEY,
             "x-org-id": orgId,

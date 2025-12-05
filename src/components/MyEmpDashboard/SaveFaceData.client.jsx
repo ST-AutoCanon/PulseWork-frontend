@@ -21,7 +21,6 @@ export default function SaveFaceData({ onClose }) {
   const [modelsLoaded, setModelsLoaded] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
 
-  // Instruction / overlay messages shown during capture
   const [instruction, setInstruction] = useState("");
   const [samplesCount, setSamplesCount] = useState(0);
 
@@ -54,7 +53,6 @@ export default function SaveFaceData({ onClose }) {
       stopCamera();
       clearInterval(intervalRef.current);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [employeeIdFromAuth]);
 
   useEffect(() => {
@@ -70,7 +68,6 @@ export default function SaveFaceData({ onClose }) {
   const closeAlert = () =>
     setAlertModal({ isVisible: false, title: "", message: "" });
 
-  // returns { exists: boolean, count: number | null, raw }
   const interpretFaceCheck = (respData) => {
     if (!respData) return { exists: false, count: null, raw: respData };
 
@@ -95,8 +92,8 @@ export default function SaveFaceData({ onClose }) {
   };
 
   async function checkExistingFace(employeeId) {
-    if (!BACKEND_URL || !API_KEY) {
-      console.warn("Missing backend or API key while checking existing face");
+    if (!BACKEND_URL) {
+      console.warn("Missing backend while checking existing face");
       return null;
     }
     try {
@@ -108,9 +105,7 @@ export default function SaveFaceData({ onClose }) {
         `${BACKEND_URL.replace(/\/$/, "")}/api/face/check/${encodeURIComponent(
           employeeId
         )}`,
-        {
-          headers,
-        }
+        { credentials: "include", headers }
       );
 
       const parsed = await resp.json().catch(() => null);
@@ -125,7 +120,6 @@ export default function SaveFaceData({ onClose }) {
     }
   }
 
-  // On mount: load models and pre-check if face exists
   useEffect(() => {
     let canceled = false;
     const loadModels = async () => {
@@ -171,7 +165,6 @@ export default function SaveFaceData({ onClose }) {
     return () => {
       canceled = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userName]);
 
   const checkCameraAvailability = async () => {
@@ -218,7 +211,6 @@ export default function SaveFaceData({ onClose }) {
       } catch (e) {}
       canvasRef.current = null;
     }
-    // clear any overlay instruction when camera stops
     setInstruction("");
     setSamplesCount(0);
   };
@@ -328,13 +320,11 @@ export default function SaveFaceData({ onClose }) {
             faceapi.draw.drawDetections(canvasRef.current, resized);
           }
 
-          // No detections
           if (!detections || detections.length === 0) {
             setInstruction("🕵️‍♂️ No face detected. Please look at the camera.");
             return;
           }
 
-          // Multiple faces
           if (detections.length > 1) {
             setInstruction(
               "👥 Multiple faces found. Ensure only one person is in front of the camera."
@@ -342,7 +332,6 @@ export default function SaveFaceData({ onClose }) {
             return;
           }
 
-          // bounding box too small -> move closer
           const box = detections[0].detection.box;
           if (box.width < 100 || box.height < 100) {
             setInstruction(
@@ -351,7 +340,6 @@ export default function SaveFaceData({ onClose }) {
             return;
           }
 
-          // brightness check
           const brightness = estimateVideoBrightness(videoRef.current);
           if (brightness < 40) {
             setInstruction(
@@ -360,7 +348,6 @@ export default function SaveFaceData({ onClose }) {
             return;
           }
 
-          // passed checks -> capture descriptor
           capturedDescriptors.push(Array.from(detections[0].descriptor));
           setSamplesCount(capturedDescriptors.length);
           setInstruction(
@@ -426,8 +413,8 @@ export default function SaveFaceData({ onClose }) {
       descriptors: descriptorsToSend,
     };
 
-    if (!BACKEND_URL || !API_KEY) {
-      showAlert("Missing backend configuration (API key / URL).");
+    if (!BACKEND_URL) {
+      showAlert("Missing backend configuration (URL).");
       return;
     }
 
@@ -449,6 +436,7 @@ export default function SaveFaceData({ onClose }) {
         `${BACKEND_URL.replace(/\/$/, "")}/api/face/save-face-data`,
         {
           method: "POST",
+          credentials: "include",
           headers,
           body: JSON.stringify(body),
         }
@@ -506,7 +494,6 @@ export default function SaveFaceData({ onClose }) {
             boxShadow: "0 0 12px rgba(0,0,0,0.25)",
           }}
         />
-        {/* Instruction overlay (react state driven) */}
         <div className="instruction" role="status" aria-live="polite">
           {instruction}
         </div>

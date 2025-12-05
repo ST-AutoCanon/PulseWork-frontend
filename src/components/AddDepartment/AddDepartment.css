@@ -1,11 +1,10 @@
 .department-container {
   display: flex;
   flex-direction: column;
-  height: 100vh; /* Adjust as needed */
+  height: 100vh;
   width: 100%;
 }
 
-/* Header */
 .dp-header {
   display: flex;
   justify-content: space-between;
@@ -31,7 +30,7 @@
 }
 
 .add-dp:hover {
-  background-color: #68a822; /* Slightly darker */
+  background-color: #68a822;
   box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
 }
 
@@ -60,7 +59,7 @@
 }
 
 .add-new:hover {
-  background-color: #e0e0e0; /* Slightly darker */
+  background-color: #e0e0e0;
   box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
 }
 
@@ -84,7 +83,6 @@
   margin: 0 2%;
 }
 
-/* Department List */
 .department-section {
   margin-bottom: 5%;
 }
@@ -136,7 +134,6 @@
   font-size: x-large;
 }
 
-/* 🔹 Pop-up Overlay */
 .popup-overlay {
   position: fixed;
   top: 0;
@@ -150,7 +147,6 @@
   z-index: 1000;
 }
 
-/* 🔹 Pop-up Content */
 .popup-content {
   background: #e8e9ea;
   width: 30%;
@@ -173,7 +169,6 @@
   padding: 5%;
 }
 
-/* 🔹 Close Button */
 .close-popup {
   background: none;
   border: none;
@@ -183,7 +178,7 @@
 
 .custom-file-button {
   position: absolute;
-  right: 2%; /* Adjusted to the right */
+  right: 2%;
   top: 50%;
   transform: translateY(-50%);
   cursor: pointer;
@@ -200,7 +195,7 @@
 }
 
 .custom-file-button:hover {
-  background-color: #68a822; /* slightly darker */
+  background-color: #68a822;
   box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
 }
 
@@ -214,7 +209,6 @@
   outline-offset: 2px;
 }
 
-/* 🔹 Add Button */
 .add-button {
   background: #79c42b;
   color: white;
@@ -228,7 +222,7 @@
 }
 
 .add-button:hover {
-  background: #68a822; /* slightly darker */
+  background: #68a822;
   box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
 }
 
@@ -242,7 +236,6 @@
   outline-offset: 2px;
 }
 
-/* DP Cancel Button */
 .dp-cancel {
   color: #000;
   padding: 2% 4%;
@@ -290,7 +283,7 @@
   border-radius: 5px;
   font-size: medium;
   background-color: #f8f9fa;
-  padding-right: 100px; /* Space for the button */
+  padding-right: 100px;
 }
 
 .input-group {

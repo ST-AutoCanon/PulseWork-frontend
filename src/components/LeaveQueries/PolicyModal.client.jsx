@@ -24,12 +24,10 @@ export default function PolicyModal({
   onSaved,
   openPolicyId = null,
 }) {
-  // use 'user' from your AuthProvider (your provider exposes 'user', not 'userData')
   const { user } = useAuth();
   const employeeId = user?.employeeId ?? null;
   const orgId = user?.orgId ?? user?.org_id ?? null;
 
-  // only include headers when values exist
   const headers = {
     "x-api-key": process.env.NEXT_PUBLIC_API_KEY,
     "Content-Type": "application/json",
@@ -107,7 +105,6 @@ export default function PolicyModal({
     setPolicyAlerts(computePolicyAlerts(policies));
   }, [policies]);
 
-  // persist alerts to localStorage (no setUserData call)
   useEffect(() => {
     try {
       const toStore = (policyAlerts || []).map((a) => ({
@@ -129,7 +126,6 @@ export default function PolicyModal({
         triggered_at: new Date().toISOString(),
       }));
       localStorage.setItem("policyAlerts", JSON.stringify(toStore));
-      // removed setUserData call since AuthProvider doesn't expose it
     } catch (err) {
       console.error("Failed to persist policy alerts:", err);
     }
@@ -145,6 +141,7 @@ export default function PolicyModal({
       clearAlert();
       try {
         const res = await fetch(`${API_BASE}/api/leave-policies`, {
+          credentials: "include",
           headers,
           signal: aborter.signal,
         });
@@ -172,8 +169,7 @@ export default function PolicyModal({
     autoOpenedRef.current = null;
 
     return () => aborter.abort();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen, employeeId, orgId]); // refresh when auth/org changes
+  }, [isOpen, employeeId, orgId]);
 
   useEffect(() => {
     if (!isOpen || openPolicyId == null) return;
@@ -347,11 +343,15 @@ export default function PolicyModal({
     try {
       const res = await fetch(url, {
         method: id ? "PUT" : "POST",
+        credentials: "include",
         headers,
         body: JSON.stringify(payload),
       });
       if (!res.ok) throw new Error(`Save failed ${res.status}`);
-      const fresh = await fetch(`${API_BASE}/api/leave-policies`, { headers });
+      const fresh = await fetch(`${API_BASE}/api/leave-policies`, {
+        credentials: "include",
+        headers,
+      });
       if (fresh.ok) {
         const json = await fresh.json();
         const list = json.data || [];
@@ -400,10 +400,14 @@ export default function PolicyModal({
     try {
       const res = await fetch(`${API_BASE}/api/leave-policies/${id}`, {
         method: "DELETE",
+        credentials: "include",
         headers,
       });
       if (!res.ok) throw new Error("Delete failed");
-      const fresh = await fetch(`${API_BASE}/api/leave-policies`, { headers });
+      const fresh = await fetch(`${API_BASE}/api/leave-policies`, {
+        credentials: "include",
+        headers,
+      });
       if (fresh.ok) {
         const json = await fresh.json();
         setPolicies(json.data || []);
@@ -495,6 +499,7 @@ export default function PolicyModal({
 
       const res = await fetch(`${API_BASE}/api/leave-policies/${policy.id}`, {
         method: "PUT",
+        credentials: "include",
         headers,
         body: JSON.stringify(payload),
       });
@@ -505,7 +510,10 @@ export default function PolicyModal({
 
       localStorage.setItem(extendedKey, newEndISO);
 
-      const fresh = await fetch(`${API_BASE}/api/leave-policies`, { headers });
+      const fresh = await fetch(`${API_BASE}/api/leave-policies`, {
+        credentials: "include",
+        headers,
+      });
       if (fresh.ok) {
         const json = await fresh.json();
         setPolicies(json.data || []);

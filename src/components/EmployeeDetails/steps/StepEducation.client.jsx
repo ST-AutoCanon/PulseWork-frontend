@@ -31,7 +31,6 @@ export default function StepEducation({ data, onChange }) {
   return (
     <div className="step-professional">
       <div className="step-education">
-        {/* SSLC (10th) */}
         <label>
           SSLC(10th) Institution<span className="required">*</span>
           <input
@@ -88,7 +87,6 @@ export default function StepEducation({ data, onChange }) {
           onChange={onChange}
         />
 
-        {/* PUC (12th) / Diploma */}
         <label>
           12th/Diploma Institution<span className="required">*</span>
           <input
@@ -145,7 +143,6 @@ export default function StepEducation({ data, onChange }) {
           onChange={onChange}
         />
 
-        {/* Undergraduate */}
         <label>
           UG Institution
           <input
@@ -197,7 +194,6 @@ export default function StepEducation({ data, onChange }) {
           onChange={onChange}
         />
 
-        {/* Postgraduate */}
         <label>
           PG Institution
           <input

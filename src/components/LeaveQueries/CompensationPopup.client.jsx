@@ -4,7 +4,7 @@ import React, { useEffect, useRef, useState } from "react";
 import "./CompensationPopup.css";
 
 export default function CompensationPopup({ lopModal, setLopModal }) {
-  const [loadingAction, setLoadingAction] = useState(null); // null | 'approve' | 'compensated' | 'deducted' | 'apply'
+  const [loadingAction, setLoadingAction] = useState(null);
   const mountedRef = useRef(true);
 
   useEffect(() => {
@@ -19,11 +19,9 @@ export default function CompensationPopup({ lopModal, setLopModal }) {
   const days = Number(lopModal.days) || Number(lopModal.deficit) || 0;
   const remaining = Number(lopModal.remaining) || 0;
 
-  // -- helpers
   const toNumberSafe = (v) =>
     v === "" || v === null || v === undefined ? 0 : Number(v) || 0;
 
-  // update one of the numeric fields in parent state, allow empty string so user can type
   const updateField = (key, value) => {
     if (value === "" || value === null || value === undefined) {
       setLopModal((m) => ({ ...m, [key]: "", error: "" }));
@@ -76,7 +74,6 @@ export default function CompensationPopup({ lopModal, setLopModal }) {
 
   const runHandler = async (actionKey, handler, ...args) => {
     if (typeof handler !== "function") {
-      // fallback: close if handler missing
       close();
       return;
     }
@@ -88,7 +85,6 @@ export default function CompensationPopup({ lopModal, setLopModal }) {
       if (!mountedRef.current) return;
 
       if (!result || result.ok === false) {
-        // extract message from result
         let msg = "Action failed";
         if (result && result.body) {
           if (typeof result.body === "string") msg = result.body;
@@ -96,13 +92,10 @@ export default function CompensationPopup({ lopModal, setLopModal }) {
           else msg = JSON.stringify(result.body);
         } else if (result && result.message) msg = result.message;
 
-        // only update parent's error if popup still visible
         if (lopModal.isVisible) {
           setLopModal((m) => ({ ...m, error: msg }));
         }
       } else {
-        // success: Admin will typically close the popup & show global alert.
-        // We don't force-close here; Admin.showAlert closes the popup first.
       }
     } catch (err) {
       console.error("[CompensationPopup] handler threw:", err);
@@ -115,7 +108,6 @@ export default function CompensationPopup({ lopModal, setLopModal }) {
     }
   };
 
-  // Whether to disable form controls while some action is running
   const anyRunning = Boolean(loadingAction);
 
   return (
@@ -332,7 +324,6 @@ export default function CompensationPopup({ lopModal, setLopModal }) {
                   return;
                 }
 
-                // pass numeric values
                 await runHandler(
                   "apply",
                   lopModal.applyFlexibleSplit,

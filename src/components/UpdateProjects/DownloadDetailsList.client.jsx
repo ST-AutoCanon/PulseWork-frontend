@@ -53,6 +53,7 @@ const DownloadDetailsList = () => {
         if (meId) headers["x-employee-id"] = String(meId);
 
         const resp = await fetch(`${BACKEND_URL}/download-details`, {
+          credentials: "include",
           headers,
         });
         if (!resp.ok) throw new Error(`Error ${resp.status}`);

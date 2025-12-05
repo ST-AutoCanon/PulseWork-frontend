@@ -44,7 +44,7 @@ export default function Dashboardcard() {
   const API_KEY = process.env.NEXT_PUBLIC_API_KEY || "";
 
   const meId = user?.employeeId ?? user?.id ?? null;
-  const orgId = user?.orgId ?? user?.org_id ?? null; // ✅ get orgId from user context
+  const orgId = user?.orgId ?? user?.org_id ?? null;
 
   useEffect(() => {
     if (!BACKEND) {
@@ -56,7 +56,7 @@ export default function Dashboardcard() {
     const controller = new AbortController();
     const headers = { "x-api-key": API_KEY };
     if (meId) headers["x-employee-id"] = meId;
-    if (orgId) headers["x-org-id"] = orgId; // ✅ add orgId header
+    if (orgId) headers["x-org-id"] = orgId;
 
     let finished = { payroll: false, reimbursement: false };
     const markDone = (k) => {
@@ -67,7 +67,6 @@ export default function Dashboardcard() {
     setLoading(true);
     setError(null);
 
-    // === Fetch previous month's salary ===
     (async () => {
       try {
         const res = await fetch(`${BACKEND}/salary/last-month-total`, {
@@ -106,7 +105,6 @@ export default function Dashboardcard() {
       }
     })();
 
-    // === Fetch previous month's reimbursement ===
     (async () => {
       try {
         const res = await fetch(
@@ -152,7 +150,7 @@ export default function Dashboardcard() {
     })();
 
     return () => controller.abort();
-  }, [BACKEND, API_KEY, meId, orgId]); // ✅ added orgId dependency
+  }, [BACKEND, API_KEY, meId, orgId]);
 
   if (loading) return <p>Loading...</p>;
 

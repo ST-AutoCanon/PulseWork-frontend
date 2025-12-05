@@ -48,32 +48,25 @@
   color: #555;
 }
 
-/* -----------------------
-   Mobile styles for Dashboardcard
-   (append to Dashboardcard.css)
-   ----------------------- */
-
-/* Phones & small tablets: horizontal scroll "card carousel" with snap */
 @media (max-width: 768px) {
   .dashboard-card-containers {
     display: flex;
-    flex-direction: row; /* keep horizontal flow for swipe */
+    flex-direction: row;
     justify-content: flex-start;
     gap: 12px;
     padding: 12px;
     box-sizing: border-box;
-    overflow-x: auto; /* keep horizontal scrolling */
+    overflow-x: auto;
     -webkit-overflow-scrolling: touch;
     scroll-snap-type: x mandatory;
     scroll-padding: 12px;
   }
 
-  /* make each card a swipeable panel, slightly wider for readability */
   .dashboard-card-containers .card {
     flex: 0 0 auto;
-    min-width: calc(80vw); /* nearly full viewport width on phones */
+    min-width: calc(80vw);
     max-width: 420px;
-    width: auto; /* allow min-width to control sizing */
+    width: auto;
     margin: 0;
     padding: 14px;
     border-radius: 10px;
@@ -83,7 +76,6 @@
     gap: 12px;
   }
 
-  /* center content and increase touch target sizes */
   .card {
     display: flex;
     flex-direction: row;
@@ -125,14 +117,12 @@
     color: #444;
   }
 
-  /* allow a little end padding so last card isn't flush to screen edge */
   .dashboard-card-containers::after {
     content: "";
     flex: 0 0 12px;
   }
 }
 
-/* Extra-small phones: stack vertically for best readability */
 @media (max-width: 420px) {
   .dashboard-card-containers {
     display: flex;
@@ -166,7 +156,6 @@
   }
 }
 
-/* Medium phones / small desktops: give slightly wider cards */
 @media (min-width: 769px) and (max-width: 1024px) {
   .dashboard-card-containers {
     gap: 14px;

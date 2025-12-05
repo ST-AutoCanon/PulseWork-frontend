@@ -8,7 +8,6 @@ export default function StepFamilyDetails({ data, onChange }) {
 
   return (
     <div className="step-personal">
-      {/* Father */}
       <label>
         Father’s Name
         <input
@@ -36,7 +35,6 @@ export default function StepFamilyDetails({ data, onChange }) {
         onChange={onChange}
       />
 
-      {/* Mother */}
       <label>
         Mother’s Name
         <input
@@ -64,7 +62,6 @@ export default function StepFamilyDetails({ data, onChange }) {
         onChange={onChange}
       />
 
-      {/* Marital Status */}
       <label>
         Marital Status<span className="required">*</span>
         <select
@@ -81,7 +78,6 @@ export default function StepFamilyDetails({ data, onChange }) {
 
       {data.marital_status === "Married" && (
         <>
-          {/* Marriage Details */}
           <label>
             Marriage Date<span className="required">*</span>
             <input
@@ -125,7 +121,6 @@ export default function StepFamilyDetails({ data, onChange }) {
             required
           />
 
-          {/* Children (up to 3) */}
           {[1, 2, 3].map((i) => (
             <React.Fragment key={i}>
               <label>

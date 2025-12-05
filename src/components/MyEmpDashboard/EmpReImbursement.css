@@ -10,7 +10,7 @@
   flex-direction: column;
   justify-content: flex-start;
   align-items: center;
-  overflow: visible; /* CHANGED: was hidden → blocks clicks! */
+  overflow: visible;
   position: relative;
 }
 
@@ -28,7 +28,6 @@
   align-self: flex-start;
 }
 
-/* Tabs Container */
 .reimbursement-tabs {
   display: flex;
   justify-content: center;
@@ -38,43 +37,38 @@
   z-index: 10;
 }
 
-/* Tab Button (now <button>) */
 .tab-item {
-  padding: 10px 16px;           /* Bigger click area */
-  min-width: 44px;              /* Mobile tap target */
-  min-height: 44px;             /* WCAG compliant */
+  padding: 10px 16px;
+  min-width: 44px;
+  min-height: 44px;
   background: transparent;
   border: none;
   border-bottom: 3px solid transparent;
   font-weight: bold;
   font-size: 14px;
   color: #555;
-  cursor: pointer;              /* Hand cursor */
-  user-select: none;            /* No text selection */
+  cursor: pointer;
+  user-select: none;
   transition: all 0.3s ease;
   border-radius: 4px 4px 0 0;
   outline: none;
 }
 
-/* Hover */
 .tab-item:hover {
   color: #3498db;
   background: rgba(52, 152, 219, 0.1);
 }
 
-/* Active */
 .tab-item.active {
   color: #3498db;
   border-bottom-color: #3498db;
 }
 
-/* Focus (keyboard) */
 .tab-item:focus-visible {
   outline: 2px solid #3498db;
   outline-offset: 2px;
 }
 
-/* Chart */
 .chart-container-reimbursement {
   width: 70%;
   height: 160px;

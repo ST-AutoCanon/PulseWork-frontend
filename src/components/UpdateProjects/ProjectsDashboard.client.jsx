@@ -162,6 +162,7 @@ const ProjectsDashboard = () => {
 
       const response = await fetch(url, {
         method: "GET",
+        credentials: "include",
         headers: buildHeaders(),
       });
 
@@ -200,9 +201,7 @@ const ProjectsDashboard = () => {
     try {
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_BACKEND_URL}/invoice/template-number?invoiceType=${invoiceTypeKey}`,
-        {
-          headers: buildHeaders(),
-        }
+        { credentials: "include", headers: buildHeaders() }
       );
       if (!response.ok) throw new Error("Failed to fetch invoice number");
       const data = await response.json();
@@ -220,6 +219,7 @@ const ProjectsDashboard = () => {
         `${process.env.NEXT_PUBLIC_BACKEND_URL}/invoice/sequence/${invoiceTypeKey}`,
         {
           method: "PUT",
+          credentials: "include",
           headers: buildHeaders(),
           body: JSON.stringify({}),
         }
@@ -258,6 +258,7 @@ const ProjectsDashboard = () => {
 
       await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/download-details`, {
         method: "POST",
+        credentials: "include",
         headers: buildHeaders(),
         body: JSON.stringify({
           invoiceType: invoiceTypeKey,

@@ -182,15 +182,13 @@ export default function TotalEmployee() {
     id: "centerText",
     beforeDraw: (chart) => {
       const { ctx, chartArea } = chart;
-      if (!chartArea) return; // defensive: chartArea may be undefined early
+      if (!chartArea) return;
 
       ctx.save();
 
-      // compute center of the actual chart area (the donut itself)
       const centerX = (chartArea.left + chartArea.right) / 2;
       const centerY = (chartArea.top + chartArea.bottom) / 2;
 
-      // base font size on the chart-area inner dimension so it scales nicely
       const innerWidth = chartArea.right - chartArea.left;
       const innerHeight = chartArea.bottom - chartArea.top;
       const fontSize = Math.max(

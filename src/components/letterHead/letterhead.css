@@ -5,11 +5,10 @@
   min-height: 100vh;
 }
 
-/* Wrapper to align button to the right */
 .letterhead-button-wrapper {
   display: flex;
   justify-content: flex-end;
-  margin-bottom: 20px; /* Optional spacing */
+  margin-bottom: 20px;
 }
 
 .letterhead-open-popup-btn {
@@ -381,7 +380,7 @@
   background-color: white;
   border-radius: 8px;
 
-  max-height: 800px; /* or any height you prefer */
+  max-height: 800px;
   overflow-y: auto;
 }
 

@@ -17,9 +17,9 @@ export default function GeneratePayslip() {
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [employeeData, setEmployeeData] = useState([]); // table data (unchanged)
+  const [employeeData, setEmployeeData] = useState([]);
   const [filteredEmployeeData, setFilteredEmployeeData] = useState([]);
-  const [formEmployeeList, setFormEmployeeList] = useState([]); // used only for the form dropdown (/payslip/employees)
+  const [formEmployeeList, setFormEmployeeList] = useState([]);
   const [editingEmployeeId, setEditingEmployeeId] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [viewDetailsModal, setViewDetailsModal] = useState({
@@ -38,7 +38,6 @@ export default function GeneratePayslip() {
     ...(meId ? { "x-employee-id": meId } : {}),
   };
 
-  // Note: employeeId is intentionally first in the form order as requested.
   const initialFormData = {
     employeeId: "PW-000001",
     employeeName: "",
@@ -81,12 +80,12 @@ export default function GeneratePayslip() {
   const closeViewDetails = () =>
     setViewDetailsModal({ isVisible: false, employee: null });
 
-  // Fetch employee data for table (unchanged)
   useEffect(() => {
     let mounted = true;
     const fetchEmployeeData = async () => {
       try {
         const resp = await fetch(`${BACKEND_URL}/old-employee/list`, {
+          credentials: "include",
           headers,
         });
         if (!resp.ok) {
@@ -113,12 +112,12 @@ export default function GeneratePayslip() {
     };
   }, [BACKEND_URL, API_KEY, meId]);
 
-  // Fetch employee list specifically for the form dropdown - use /payslip/employees as requested
   useEffect(() => {
     let mounted = true;
     const fetchFormEmployees = async () => {
       try {
         const resp = await fetch(`${BACKEND_URL}/payslip/employees`, {
+          credentials: "include",
           headers,
         });
         if (!resp.ok) {
@@ -128,8 +127,6 @@ export default function GeneratePayslip() {
         const data = await resp.json();
         if (!mounted) return;
 
-        // The API sometimes returns: an array OR { data: [...] } OR { message: { data: [...] } }
-        // Normalize to a flat array and then normalize item keys so the rest of the component can rely on consistent fields.
         let list = [];
         if (Array.isArray(data)) list = data;
         else if (Array.isArray(data.data)) list = data.data;
@@ -147,7 +144,6 @@ export default function GeneratePayslip() {
             item.departmentName ||
             item.department ||
             "",
-          // unify joining date key to date_of_joining (ISO string or null)
           date_of_joining:
             item.joining_date ||
             item.date_of_joining ||
@@ -165,7 +161,6 @@ export default function GeneratePayslip() {
         setFormEmployeeList(normalized);
       } catch (err) {
         console.error("Form employee fetch error:", err);
-        // We intentionally do not block other functionality if this fails, but show an alert so devs know.
         showAlert(
           "Error fetching payslip employee list (form dropdown): " +
             (err.message || err),
@@ -202,7 +197,6 @@ export default function GeneratePayslip() {
   const handleChange = (e) => {
     const { name, value } = e.target;
 
-    // When employeeId is changed via dropdown, auto-fill the related fields BUT keep them editable after that.
     if (name === "employeeId") {
       const selected = formEmployeeList.find(
         (emp) => (emp.employee_id || emp.employeeId || "") === value
@@ -229,7 +223,6 @@ export default function GeneratePayslip() {
           pfNumber: selected.pf_number || selected.pfNumber || p.pfNumber,
         }));
       } else {
-        // If user clears selection or selects a non-matching value, just set the ID
         setFormData((p) => ({ ...p, employeeId: value }));
       }
     } else if (name === "selectedMonth") {
@@ -490,11 +483,8 @@ export default function GeneratePayslip() {
       return;
     }
 
-    if (!API_KEY || !BACKEND_URL) {
-      showAlert(
-        "API key or backend URL not configured.",
-        "Configuration Error"
-      );
+    if (!BACKEND_URL) {
+      showAlert("backend URL not configured.", "Configuration Error");
       return;
     }
 
@@ -512,6 +502,7 @@ export default function GeneratePayslip() {
     try {
       const resp = await fetch(url, {
         method,
+        credentials: "include",
         headers: {
           ...headers,
           "x-org-id": orgId,
@@ -533,6 +524,7 @@ export default function GeneratePayslip() {
       );
 
       const updatedResponse = await fetch(`${BACKEND_URL}/old-employee/list`, {
+        credentials: "include",
         headers,
       });
       if (updatedResponse.ok) {
@@ -774,7 +766,6 @@ export default function GeneratePayslip() {
     "Download",
   ];
 
-  // Explicit field order for the form so employeeId appears first
   const fieldOrder = [
     "employeeId",
     "employeeName",
@@ -976,7 +967,6 @@ export default function GeneratePayslip() {
                           )}
                         </label>
 
-                        {/* special handling for employeeId: a dropdown (non-editable) that auto-fills other fields */}
                         {field === "employeeId" ? (
                           <select
                             id="employeeId"
@@ -1000,8 +990,7 @@ export default function GeneratePayslip() {
                                   }`}
                                 </option>
                               ))
-                            ) : // fallback when payslip API returns a non-array (avoid .map error)
-                            formData.employeeId ? (
+                            ) : formData.employeeId ? (
                               <option
                                 key={formData.employeeId}
                                 value={formData.employeeId}

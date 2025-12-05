@@ -34,7 +34,6 @@ export default function UploadScan({
   watermarkEditable = false,
   useWatermarkInitial = false,
 }) {
-  // All useState and useRef hooks must be declared first, before useEffect
   const [headerFile, setHeaderFile] = useState(null);
   const [footerFile, setFooterFile] = useState(null);
   const [headerUrl, setHeaderUrl] = useState(null);
@@ -75,7 +74,6 @@ export default function UploadScan({
   const fileInputFooterRef = useRef(null);
   const fileInputWatermarkRef = useRef(null);
 
-  // All useEffect hooks come after all useState/useRef declarations
   useEffect(() => {
     if (bodyTypeProp && bodyTypeProp !== localBodyType) {
       setLocalBodyType(bodyTypeProp);
@@ -256,6 +254,7 @@ export default function UploadScan({
 
       const resp = await fetch(url, {
         method: "POST",
+        credentials: "include",
         headers: { "x-api-key": apiKey || "" },
         credentials: "include",
         body: fd,

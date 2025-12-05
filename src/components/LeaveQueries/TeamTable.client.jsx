@@ -1,5 +1,3 @@
-
-
 "use client";
 
 import React, { useState, useEffect } from "react";
@@ -97,18 +95,24 @@ export default function TeamTable({
 
   const normalizeIsDefaulted = (payload) => {
     if (!payload) return false;
-    if (Object.prototype.hasOwnProperty.call(payload, "is_defaulted")) return normalizeBoolean(payload.is_defaulted);
-    if (Object.prototype.hasOwnProperty.call(payload, "isDefaulted")) return normalizeBoolean(payload.isDefaulted);
+    if (Object.prototype.hasOwnProperty.call(payload, "is_defaulted"))
+      return normalizeBoolean(payload.is_defaulted);
+    if (Object.prototype.hasOwnProperty.call(payload, "isDefaulted"))
+      return normalizeBoolean(payload.isDefaulted);
     return false;
   };
 
   const handleUpdateClick = (leave) => {
     if (!onUpdate) return;
 
-    const rawPayload = localInputs[leave.leave_id] || statusUpdates?.[leave.leave_id] || {};
+    const rawPayload =
+      localInputs[leave.leave_id] || statusUpdates?.[leave.leave_id] || {};
     let isDefaultedFlag = normalizeIsDefaulted(rawPayload);
 
-    const effectiveStatus = rawPayload.status ?? statusUpdates?.[leave.leave_id]?.status ?? leave.status;
+    const effectiveStatus =
+      rawPayload.status ??
+      statusUpdates?.[leave.leave_id]?.status ??
+      leave.status;
 
     if (!isDefaultedFlag && effectiveStatus === "Approved") {
       const policy = findPolicyForRequest(leave);
@@ -134,17 +138,21 @@ export default function TeamTable({
 
   const renderStatusBadge = (status) => {
     const className = getStatusClass(status);
-    return <span className={`leave-status-label ${className}`}>{status || "Pending"}</span>;
+    return (
+      <span className={`leave-status-label ${className}`}>
+        {status || "Pending"}
+      </span>
+    );
   };
 
   const isAlreadyUpdated = (leave) => leave.status !== "pending";
-  const isPending = (leave) => (getCurrentStatus(leave) || "pending") === "pending";
+  const isPending = (leave) =>
+    (getCurrentStatus(leave) || "pending") === "pending";
 
   return (
     <>
       <h4 className="my-leaves">Team Leave Requests</h4>
 
-      {/* Desktop Table */}
       <div className="leave-request-table desktop-view">
         <table className="leave-requests">
           <thead>
@@ -166,28 +174,51 @@ export default function TeamTable({
             {sortedLeaves.map((leave) => {
               const local = localInputs[leave.leave_id] || {};
               const update = statusUpdates?.[leave.leave_id] || {};
-              const currentStatus = local.status ?? update.status ?? leave.status ?? "pending";
-              const days = calculateDays(leave.start_date, leave.end_date, leave.H_F_day);
+              const currentStatus =
+                local.status ?? update.status ?? leave.status ?? "pending";
+              const days = calculateDays(
+                leave.start_date,
+                leave.end_date,
+                leave.H_F_day
+              );
 
               return (
-                <tr key={leave.leave_id} className={isAlreadyUpdated(leave) ? "row-updated" : ""}>
-                  <td>{leave.name || `${leave.first_name || ""} ${leave.last_name || ""}`.trim()}</td>
+                <tr
+                  key={leave.leave_id}
+                  className={isAlreadyUpdated(leave) ? "row-updated" : ""}
+                >
+                  <td>
+                    {leave.name ||
+                      `${leave.first_name || ""} ${
+                        leave.last_name || ""
+                      }`.trim()}
+                  </td>
                   <td>{leave.employee_id}</td>
                   <td>{leave.leave_type}</td>
                   <td>{leave.H_F_day}</td>
                   <td>{parseLocalDate(leave.start_date)}</td>
                   <td>{parseLocalDate(leave.end_date)}</td>
-                  <td className="comments-col"><div className="comment-preview">{leave.reason}</div></td>
+                  <td className="comments-col">
+                    <div className="comment-preview">{leave.reason}</div>
+                  </td>
                   <td>{days}</td>
                   <td>
                     <select
                       value={currentStatus}
                       onChange={(e) => {
                         const val = e.target.value;
-                        setLocalInputs(prev => ({ ...prev, [leave.leave_id]: { ...prev[leave.leave_id], status: val } }));
+                        setLocalInputs((prev) => ({
+                          ...prev,
+                          [leave.leave_id]: {
+                            ...prev[leave.leave_id],
+                            status: val,
+                          },
+                        }));
                         handleStatusChange?.(leave.leave_id, "status", val);
                       }}
-                      className={`status-dropdown ${getStatusClass(currentStatus)}`}
+                      className={`status-dropdown ${getStatusClass(
+                        currentStatus
+                      )}`}
                       disabled={isAlreadyUpdated(leave)}
                     >
                       <option value="pending">Pending</option>
@@ -216,8 +247,13 @@ export default function TeamTable({
                   <td>
                     <button
                       onClick={() => handleUpdateClick(leave)}
-                      disabled={isAlreadyUpdated(leave) || !local.status && !local.comments}
-                      className={`update-button ${isAlreadyUpdated(leave) ? "disabled-button" : ""}`}
+                      disabled={
+                        isAlreadyUpdated(leave) ||
+                        (!local.status && !local.comments)
+                      }
+                      className={`update-button ${
+                        isAlreadyUpdated(leave) ? "disabled-button" : ""
+                      }`}
                     >
                       {isAlreadyUpdated(leave) ? "Updated" : "Update"}
                     </button>
@@ -229,14 +265,20 @@ export default function TeamTable({
         </table>
       </div>
 
-      {/* Mobile Cards - Same Style as SelfTable */}
       <div className="self-compact-list">
         {sortedLeaves.map((leave) => {
           const local = localInputs[leave.leave_id] || {};
           const update = statusUpdates?.[leave.leave_id] || {};
-          const currentStatus = local.status ?? update.status ?? leave.status ?? "pending";
-          const days = calculateDays(leave.start_date, leave.end_date, leave.H_F_day);
-          const name = leave.name || `${leave.first_name || ""} ${leave.last_name || ""}`.trim();
+          const currentStatus =
+            local.status ?? update.status ?? leave.status ?? "pending";
+          const days = calculateDays(
+            leave.start_date,
+            leave.end_date,
+            leave.H_F_day
+          );
+          const name =
+            leave.name ||
+            `${leave.first_name || ""} ${leave.last_name || ""}`.trim();
 
           return (
             <details key={leave.leave_id} className="compact-item">
@@ -244,7 +286,8 @@ export default function TeamTable({
                 <div className="compact-main">
                   <strong>{name}</strong>
                   <span className="compact-dates">
-                    {parseLocalDate(leave.start_date)} → {parseLocalDate(leave.end_date)}
+                    {parseLocalDate(leave.start_date)} →{" "}
+                    {parseLocalDate(leave.end_date)}
                   </span>
                   <div style={{ fontSize: "0.9em", color: "#555" }}>
                     {leave.leave_type} • {days} {days === 1 ? "day" : "days"}
@@ -254,19 +297,32 @@ export default function TeamTable({
               </summary>
 
               <div className="compact-details">
-                <div><strong>Employee ID:</strong> {leave.employee_id}</div>
-                <div><strong>Type:</strong> {leave.H_F_day || "Full Day"}</div>
-                {leave.reason && <div><strong>Reason:</strong> {leave.reason}</div>}
+                <div>
+                  <strong>Employee ID:</strong> {leave.employee_id}
+                </div>
+                <div>
+                  <strong>Type:</strong> {leave.H_F_day || "Full Day"}
+                </div>
+                {leave.reason && (
+                  <div>
+                    <strong>Reason:</strong> {leave.reason}
+                  </div>
+                )}
 
                 <div className="compact-form-section">
-                  <label><strong>Status</strong></label>
+                  <label>
+                    <strong>Status</strong>
+                  </label>
                   <select
                     value={currentStatus}
                     onChange={(e) => {
                       const val = e.target.value;
-                      setLocalInputs(prev => ({
+                      setLocalInputs((prev) => ({
                         ...prev,
-                        [leave.leave_id]: { ...prev[leave.leave_id], status: val },
+                        [leave.leave_id]: {
+                          ...prev[leave.leave_id],
+                          status: val,
+                        },
                       }));
                       handleStatusChange?.(leave.leave_id, "status", val);
                     }}
@@ -280,9 +336,13 @@ export default function TeamTable({
                 </div>
 
                 <div className="compact-form-section">
-                  <label><strong>Comment (optional)</strong></label>
+                  <label>
+                    <strong>Comment (optional)</strong>
+                  </label>
                   {leave.comments ? (
-                    <p style={{ margin: "8px 0", color: "#d32f2f" }}>{leave.comments}</p>
+                    <p style={{ margin: "8px 0", color: "#d32f2f" }}>
+                      {leave.comments}
+                    </p>
                   ) : (
                     <input
                       type="text"
@@ -302,7 +362,10 @@ export default function TeamTable({
                 <div className="compact-actions">
                   <button
                     onClick={() => handleUpdateClick(leave)}
-                    disabled={isAlreadyUpdated(leave) || (!local.status && !local.comments)}
+                    disabled={
+                      isAlreadyUpdated(leave) ||
+                      (!local.status && !local.comments)
+                    }
                     style={{
                       opacity: isAlreadyUpdated(leave) ? 0.6 : 1,
                       background: isAlreadyUpdated(leave) ? "#ccc" : "#1976d2",

@@ -23,7 +23,6 @@
   background: transparent;
 }
 
-/* Mobile-only close button (hidden on desktop) */
 .mobile-close-btn {
   display: none;
   position: absolute;
@@ -38,7 +37,6 @@
   cursor: pointer;
 }
 
-/* fallback styling for empty state */
 .notifications-dropdown .empty {
   text-align: center;
   color: #ccc;
@@ -102,7 +100,6 @@
   background: rgba(255, 255, 255, 0.05);
 }
 
-/* ================== Mobile / bottom sheet adjustments ================== */
 @media screen and (max-width: 600px) {
   .notifications-dropdown {
     position: fixed;
@@ -113,14 +110,14 @@
     width: 100%;
     max-height: 100vh;
     border-radius: 12px 12px 0 0;
-    padding: 0 0 18% 0; /* space for swipe/overscroll */
+    padding: 0 0 18% 0;
     box-shadow: 0 -6px 20px rgba(92, 92, 92, 0.5);
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
   }
 
   .notifications-dropdown h4 {
-    padding: 14px 48px 14px 16px; /* room for close button */
+    padding: 14px 48px 14px 16px;
     text-align: left;
     border-bottom: 1px solid rgba(255, 255, 255, 0.06);
     position: sticky;
@@ -133,7 +130,6 @@
     );
   }
 
-  /* show mobile close button */
   .mobile-close-btn {
     display: block;
     color: #fff;
@@ -171,13 +167,11 @@
     font-size: 16px;
   }
 
-  /* make sure the portal covers safe-area on modern phones */
   .notifications-dropdown {
     padding-bottom: calc(env(safe-area-inset-bottom, 16px) + 24px);
   }
 }
 
-/* small accessibility improvements */
 .notification-item:focus,
 .notification-item[tabindex="0"]:focus {
   outline: 2px solid rgba(255, 255, 255, 0.12);

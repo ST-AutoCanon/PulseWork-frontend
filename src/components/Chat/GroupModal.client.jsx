@@ -26,7 +26,6 @@ export default function GroupModal({ onCreate, onClose, employeeId }) {
   const [selected, setSelected] = useState([]);
   const [name, setName] = useState("");
 
-  // Helper to normalize employee identifier & display fields
   const idOf = (u) => String(u?.employee_id ?? u?.employeeId ?? u?.id ?? "");
   const nameOf = (u) => u?.name ?? u?.fullName ?? "";
 
@@ -35,7 +34,10 @@ export default function GroupModal({ onCreate, onClose, employeeId }) {
     let mounted = true;
 
     axios
-      .get(`${process.env.NEXT_PUBLIC_BACKEND_URL}/employees`, { headers })
+      .get(`${process.env.NEXT_PUBLIC_BACKEND_URL}/employees`, {
+        withCredentials: true,
+        headers,
+      })
       .then((r) => {
         if (!mounted) return;
         setEmployees(r.data?.data || []);
@@ -48,9 +50,8 @@ export default function GroupModal({ onCreate, onClose, employeeId }) {
     return () => {
       mounted = false;
     };
-  }, [meId]); // don't depend on headers object reference
+  }, [meId]);
 
-  // lock body scroll while modal is open
   useEffect(() => {
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";

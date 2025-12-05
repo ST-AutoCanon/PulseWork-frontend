@@ -10,10 +10,9 @@ import {
   Legend,
   Colors,
 } from "chart.js";
-import { useAuth } from "../../context/AuthProvider.client"; // adjust path if needed
+import { useAuth } from "../../context/AuthProvider.client";
 import "./EmpReImbursement.css";
 
-// register chartjs components once
 ChartJS.register(ArcElement, Tooltip, Legend, Colors);
 
 export default function EmpReImbursement() {
@@ -40,8 +39,6 @@ export default function EmpReImbursement() {
       setLoading(true);
       setError(null);
       try {
-        if (!API_KEY) throw new Error("API Key is missing.");
-
         const apiUrl = `${BACKEND_URL}/reimbursement/stats/${encodeURIComponent(
           meId
         )}`;
@@ -49,11 +46,13 @@ export default function EmpReImbursement() {
         const headers = {
           "x-api-key": API_KEY,
         };
-        // optional employee header for backend auth
         if (meId) headers["x-employee-id"] = meId;
         if (user?.orgId) headers["x-org-id"] = user.orgId;
 
-        const response = await axios.get(apiUrl, { headers });
+        const response = await axios.get(apiUrl, {
+          withCredentials: true,
+          headers,
+        });
 
         if (cancelled) return;
 
@@ -108,7 +107,6 @@ export default function EmpReImbursement() {
     return () => {
       cancelled = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [meId, BACKEND_URL, API_KEY, user?.orgId]);
 
   if (loading) return <p>Loading...</p>;
@@ -151,26 +149,26 @@ export default function EmpReImbursement() {
           year: "numeric",
         })}
       </p>
-<div className="reimbursement-tabs" role="tablist">
-  <button
-    type="button"
-    role="tab"
-    aria-selected={activeTab === "current"}
-    className={`tab-item ${activeTab === "current" ? "active" : ""}`}
-    onClick={() => setActiveTab("current")}
-  >
-    Current Month
-  </button>
-  <button
-    type="button"
-    role="tab"
-    aria-selected={activeTab === "previous"}
-    className={`tab-item ${activeTab === "previous" ? "active" : ""}`}
-    onClick={() => setActiveTab("previous")}
-  >
-    Prev Month
-  </button>
-</div>
+      <div className="reimbursement-tabs" role="tablist">
+        <button
+          type="button"
+          role="tab"
+          aria-selected={activeTab === "current"}
+          className={`tab-item ${activeTab === "current" ? "active" : ""}`}
+          onClick={() => setActiveTab("current")}
+        >
+          Current Month
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={activeTab === "previous"}
+          className={`tab-item ${activeTab === "previous" ? "active" : ""}`}
+          onClick={() => setActiveTab("previous")}
+        >
+          Prev Month
+        </button>
+      </div>
       <div className="chart-container-reimbursement" style={{ height: 260 }}>
         <Pie
           data={chartData}
@@ -181,8 +179,6 @@ export default function EmpReImbursement() {
           }}
         />
       </div>
-
-      {/* <CustomLegend chartData={chartData} /> */}
     </div>
   );
 }

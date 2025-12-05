@@ -41,6 +41,7 @@ export default function UpdateProfileEmployee({
   const handleSubmit = async (formData) => {
     try {
       const res = await axios.put(`${BASE_URL}/full/${employeeId}`, formData, {
+        withCredentials: true,
         headers: {
           "x-api-key": API_KEY ?? "",
           "x-employee-id": employeeId ?? "",

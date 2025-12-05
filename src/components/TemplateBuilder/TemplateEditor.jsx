@@ -129,6 +129,16 @@ export default function TemplateEditor({ boxes = [], onChange, width = 420 }) {
     });
   }
 
+  function removeBox(boxId) {
+    setLocalBoxes((prev) => {
+      const next = (prev || []).filter((b) => b.id !== boxId);
+      if (typeof onChange === "function")
+        onChange(JSON.parse(JSON.stringify(next || [])));
+      return next;
+    });
+    setActiveBoxId(null);
+  }
+
   function renderTablePreview(box, s) {
     const cellAlign = s.textAlign || "left";
     return (
@@ -408,6 +418,32 @@ export default function TemplateEditor({ boxes = [], onChange, width = 420 }) {
                     />
                   </>
                 )}
+
+                <button
+                  data-no-drag="true"
+                  onClick={() => {
+                    if (
+                      window.confirm(
+                        `Remove field "${
+                          box.label || box.fieldName || box.id
+                        }"?`
+                      )
+                    ) {
+                      removeBox(box.id);
+                    }
+                  }}
+                  style={{
+                    border: "1px solid #ef4444",
+                    background: "#fff",
+                    color: "#ef4444",
+                    padding: "6px 8px",
+                    borderRadius: 4,
+                    cursor: "pointer",
+                  }}
+                  title="Remove this field"
+                >
+                  Remove
+                </button>
               </div>
             )}
           </div>

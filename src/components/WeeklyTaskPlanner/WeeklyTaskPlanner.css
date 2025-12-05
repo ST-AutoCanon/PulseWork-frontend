@@ -1,4 +1,3 @@
-/* General container for the weekly planner */
 .week-task-weekly-task-planner {
   display: flex;
   flex-direction: column;
@@ -9,7 +8,6 @@
   background-color: #f9fafb;
 }
 
-/* Planner header */
 .week-task-planner-header {
   display: flex;
   justify-content: space-between;
@@ -26,59 +24,55 @@
   gap: 12px;
 }
 
-/* Week ID styling */
 .week-task-week-id {
   font-size: 16px;
   font-style: italic;
   color: #4b5563;
 }
 
-/* Week navigation container */
 .week-task-week-navigation {
   display: flex;
   align-items: center;
-  gap: 12px; /* Increased gap for better spacing */
+  gap: 12px;
   position: relative;
 }
 
-/* Navigation button */
 .week-task-nav-button-task {
-  background: #218838; /* Softer blue for modern look */
+  background: #218838;
   color: #fff;
   border: none;
-  padding: 10px; /* Square padding for icon buttons */
-  border-radius: 50%; /* Circular buttons */
+  padding: 10px;
+  border-radius: 50%;
   cursor: pointer;
-  width: 30px; /* Fixed size for circular buttons */
+  width: 30px;
   height: 30px;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); /* Subtle shadow */
-  transition: background-color 0.2s ease, transform 0.1s ease, box-shadow 0.2s ease;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  transition: background-color 0.2s ease, transform 0.1s ease,
+    box-shadow 0.2s ease;
 }
 
 .week-task-nav-button:hover:not(:disabled) {
-  background: #218838; /* Darker blue on hover */
-  transform: translateY(-1px); /* Slight lift effect */
+  background: #218838;
+  transform: translateY(-1px);
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
 }
 
 .week-task-nav-button:disabled {
-  background: #9ca3af; /* Light gray for disabled */
+  background: #9ca3af;
   cursor: not-allowed;
   opacity: 0.7;
   box-shadow: none;
   transform: none;
 }
 
-/* Navigation icon */
 .week-task-nav-icon {
   width: 16px;
   height: 16px;
 }
 
-/* Decorative dots between buttons */
 .week-task-nav-dots {
   display: flex;
   gap: 6px;
@@ -87,18 +81,16 @@
 .week-task-dot {
   width: 6px;
   height: 6px;
-  background: #6b7280; /* Gray dots for subtle decoration */
+  background: #6b7280;
   border-radius: 50%;
   opacity: 0.5;
 }
 
-/* Header buttons */
 .week-task-header-buttons {
   display: flex;
   gap: 10px;
 }
 
-/* Assign task button */
 .week-task-assign-task-button {
   background: #218838;
   color: #fff;
@@ -114,7 +106,6 @@
   background: #218838;
 }
 
-/* Review button (visible only to supervisors) */
 .week-task-review-button {
   background: #28a745;
   color: #fff;
@@ -130,7 +121,6 @@
   background: #218838;
 }
 
-/* Exit review button (visible only to supervisors) */
 .week-task-exit-review-button {
   background: #6b7280;
   color: #fff;
@@ -146,7 +136,6 @@
   background: #4b5563;
 }
 
-/* Assign task form modal */
 .week-task-assign-form-modal {
   position: fixed;
   top: 0;
@@ -195,9 +184,8 @@
   cursor: pointer;
 }
 
-/* Form header */
 .week-task-form-header {
-  background: #3067bb; /* Blue header like screenshot */
+  background: #3067bb;
   color: #fff;
   padding: 10px 15px;
   display: flex;
@@ -228,7 +216,6 @@
   color: #ccc;
 }
 
-/* Empty state */
 .week-task-empty-state {
   text-align: center;
   padding: 20px 10px;
@@ -255,7 +242,6 @@
   background: #218838;
 }
 
-/* Tasks form container */
 .week-task-tasks-form-container {
   display: flex;
   flex-direction: column;
@@ -264,7 +250,6 @@
   padding: 0 15px;
 }
 
-/* Task form row */
 .week-task-task-form-row {
   background: #f8fafc;
   border: 1px solid #e5e7eb;
@@ -272,7 +257,6 @@
   padding: 10px;
 }
 
-/* Form row header */
 .week-task-form-row-header {
   display: flex;
   justify-content: space-between;
@@ -305,7 +289,6 @@
   background: #c82333;
 }
 
-/* Form grid */
 .week-task-form-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
@@ -313,7 +296,6 @@
   margin-bottom: 12px;
 }
 
-/* Form group */
 .week-task-form-group-task {
   display: flex;
   flex-direction: column;
@@ -335,7 +317,7 @@
   width: 100%;
   box-sizing: border-box;
   transition: border-color 0.2s;
-  background: #f0f0f0; /* Light gray like screenshot */
+  background: #f0f0f0;
 }
 
 .week-task-form-group-task input:focus,
@@ -345,14 +327,10 @@
   box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.1);
 }
 
-/* Checkbox group */
 .week-task-checkbox-group {
-  /* display: flex; */
-  /* flex-wrap: wrap; */
   gap: 8px;
 }
 
-/* Checkbox label */
 .week-task-checkbox-label {
   display: flex;
   align-items: center;
@@ -366,7 +344,6 @@
   text-overflow: ellipsis;
 }
 
-/* Checkbox input */
 .week-task-checkbox-label input[type="checkbox"] {
   width: 12px;
   height: 12px;
@@ -376,12 +353,10 @@
   flex-shrink: 0;
 }
 
-/* Hover effect for checkboxes */
 .week-task-checkbox-label input[type="checkbox"]:hover {
   outline: 1px solid #218838;
 }
 
-/* Multi-select dropdown */
 .week-task-multi-select-dropdown {
   position: relative;
   width: 100%;
@@ -391,13 +366,12 @@
   flex-shrink: 0;
 }
 
-/* Dropdown header */
 .week-task-dropdown-header-task {
   border: 1px solid #d1d5db;
   border-radius: 4px;
   padding: 6px 8px;
   cursor: pointer;
-  background: #f0f0f0; /* Light gray like screenshot */
+  background: #f0f0f0;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -408,7 +382,6 @@
   min-width: 220px;
 }
 
-/* Dropdown list */
 .week-task-dropdown-list {
   position: absolute;
   top: 100%;
@@ -427,7 +400,6 @@
   box-sizing: border-box;
 }
 
-/* Action buttons */
 .week-task-add-task-button {
   background: #218838;
   color: #fff;
@@ -455,7 +427,7 @@
 }
 
 .week-task-save-button {
-  background: #28a745; /* Green like screenshot */
+  background: #28a745;
   color: #fff;
   border: none;
   padding: 8px 16px;
@@ -484,7 +456,6 @@
   background: #4b5563;
 }
 
-/* Review icons in task name */
 .week-task-review-status-icon {
   margin-left: 8px;
   font-size: 14px;
@@ -511,7 +482,6 @@
   stroke: darken(stroke, 10%);
 }
 
-/* Replacement modal (visible only to supervisors) */
 .week-task-replacement-modal {
   position: fixed;
   top: 0;
@@ -558,10 +528,9 @@
   padding: 8px;
   border: 1px solid #d1d5db;
   border-radius: 4px;
-  background: #f0f0f0; /* Light gray like screenshot */
+  background: #f0f0f0;
 }
 
-/* Day card styling */
 .week-task-day-card {
   display: flex;
   background: #ffffff;
@@ -571,7 +540,6 @@
   margin-bottom: 20px;
 }
 
-/* Left column (date and projects) */
 .week-task-day-left-column {
   background: #f8fafc;
   border-right: 1px solid #e5e7eb;
@@ -584,7 +552,6 @@
   border-bottom-left-radius: 8px;
 }
 
-/* Date header */
 .week-task-day-date {
   font-weight: 600;
   color: #111827;
@@ -594,9 +561,8 @@
   border-radius: 4px;
 }
 
-/* Date-specific classes */
 .week-task-day-date.week-task-day-date-leave {
-  background-color: #F5F501;
+  background-color: #f5f501;
   color: white;
   padding: 2px 6px;
   border-radius: 4px;
@@ -621,7 +587,6 @@
   color: #333;
 }
 
-/* Projects column */
 .week-task-projects-column {
   display: flex;
   flex-direction: column;
@@ -629,14 +594,12 @@
   align-items: center;
 }
 
-/* Circle container for project and task ID circles */
 .week-task-circle-container {
   display: flex;
   gap: 8px;
   align-items: center;
 }
 
-/* Project circle */
 .week-task-project-circle {
   width: 28px;
   height: 28px;
@@ -650,7 +613,6 @@
   cursor: pointer;
 }
 
-/* Task ID circle */
 .week-task-task-id-circle {
   width: 24px;
   height: 24px;
@@ -664,7 +626,6 @@
   cursor: pointer;
 }
 
-/* Task ID in task name */
 .week-task-task-id {
   font-size: 12px;
   font-style: italic;
@@ -672,14 +633,12 @@
   margin-right: 6px;
 }
 
-/* Tasks section (right side) */
 .week-task-tasks-section {
   flex: 1;
   padding: 16px;
-  position: relative; /* Ensure popups can position within this */
+  position: relative;
 }
 
-/* Task header row */
 .week-task-tasks-header {
   display: grid;
   grid-template-columns: 1fr 200px 200px;
@@ -692,41 +651,36 @@
   border-bottom: 1px solid #e5e7eb;
 }
 
-/* Header labels */
 .week-task-header-task,
 .week-task-header-employee,
 .week-task-header-supervisor {
   padding-left: 8px;
 }
 
-/* Tasks list container */
 .week-task-tasks-list {
   display: flex;
   flex-direction: column;
   gap: 8px;
 }
 
-/* Individual task row */
 .week-task-task-row {
   display: grid;
-  grid-template-columns: 1fr 200px 200px; /* Maintain fixed widths for employee and supervisor columns */
+  grid-template-columns: 1fr 200px 200px;
   gap: 10px;
-  align-items: start; /* Align items to top to handle varying heights */
+  align-items: start;
   padding: 8px;
   border-radius: 6px;
   border: 1px solid #e5e7eb;
   background: #fff;
   transition: box-shadow 0.2s ease, min-height 0.3s ease;
-  min-height: 40px; /* Minimum height for consistency */
+  min-height: 40px;
 }
 
-/* Hover effect on the entire row */
 .week-task-task-row:hover {
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
-  min-height: auto; /* Allow row to expand vertically */
+  min-height: auto;
 }
 
-/* Task name */
 .week-task-task-name {
   font-weight: 600;
   font-size: 13px;
@@ -736,63 +690,57 @@
   text-overflow: ellipsis;
   display: flex;
   align-items: center;
-  max-width: 100%; /* Constrain to column width */
+  max-width: 100%;
   cursor: pointer;
-  padding-right: 8px; /* Prevent overlap with icons */
+  padding-right: 8px;
 }
 
-/* Employee and Supervisor comments */
 .week-task-comment {
   font-size: 12px;
   color: #6b7280;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 100%; /* Constrain to column width */
+  max-width: 100%;
   cursor: pointer;
 }
 
-/* On hover of the row, allow text to wrap but constrain width */
 .week-task-task-row:hover .week-task-task-name,
 .week-task-task-row:hover .week-task-comment {
-  white-space: normal; /* Allow text to wrap */
-  overflow: visible; /* Show full text */
-  text-overflow: clip; /* Remove ellipsis */
-  max-width: 100%; /* Keep within column bounds */
-  word-break: break-word; /* Break long words to prevent overflow */
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+  max-width: 100%;
+  word-break: break-word;
 }
 
-/* Ensure status container and sections align properly */
 .week-task-update-section,
 .week-task-supervisor-section {
   display: flex;
   align-items: center;
   gap: 6px;
   position: relative;
-  min-height: 30px; /* Consistent height for alignment */
-  max-width: 100%; /* Prevent overflow beyond column */
-  flex-wrap: wrap; /* Allow wrapping within the section */
+  min-height: 30px;
+  max-width: 100%;
+  flex-wrap: wrap;
 }
 
-/* Status container */
 .week-task-status-container {
   display: flex;
   align-items: center;
   gap: 6px;
   width: 100%;
-  flex-wrap: wrap; /* Allow wrapping for long comments */
+  flex-wrap: wrap;
 }
 
-/* Tasks section (ensure it doesn't overflow) */
 .week-task-tasks-section {
   flex: 1;
   padding: 16px;
   position: relative;
-  overflow: visible; /* Allow popups to extend outside */
-  max-width: 100%; /* Prevent section from growing too wide */
+  overflow: visible;
+  max-width: 100%;
 }
 
-/* Status dots wrapper */
 .week-task-status-dots {
   display: flex;
   align-items: center;
@@ -800,7 +748,6 @@
   margin-left: auto;
 }
 
-/* Comment text */
 .week-task-comment {
   font-size: 12px;
   color: #6b7280;
@@ -819,7 +766,6 @@
   text-overflow: clip;
 }
 
-/* Status dot */
 .week-task-status-dot {
   width: 10px;
   height: 10px;
@@ -829,7 +775,6 @@
   cursor: pointer;
 }
 
-/* Edit icon */
 .week-task-edit-icon {
   cursor: pointer;
   flex-shrink: 0;
@@ -839,7 +784,6 @@
   stroke: #218838;
 }
 
-/* Expand/Collapse icon */
 .week-task-expand-icon-task {
   cursor: pointer;
   display: block;
@@ -850,7 +794,6 @@
   stroke: #218838;
 }
 
-/* Edit section (when updating task) */
 .week-task-edit-section {
   display: flex;
   align-items: center;
@@ -866,7 +809,6 @@
   justify-content: space-between;
 }
 
-/* Edit form inputs and select */
 .week-task-edit-task-input {
   padding: 5px 6px;
   font-size: 11px;
@@ -902,7 +844,6 @@
   box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2);
 }
 
-/* Save button */
 .week-task-edit-save-button {
   background: #28a745;
   color: #fff;
@@ -918,30 +859,27 @@
   background: #218838;
 }
 
-/* Edit popup - Base desktop style (simple, as before) */
 .week-task-edit-popup {
   position: absolute;
-  top: 100%; /* Position below the edit icon */
-  right: 0; /* Align to the right of the status-container */
+  top: 100%;
+  right: 0;
   background: #fff;
   border: 1px solid #ddd;
   border-radius: 8px;
   padding: 10px;
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
-  z-index: 20; /* Higher than dropdown-list */
+  z-index: 20;
   display: flex;
   flex-direction: column;
   gap: 8px;
   min-width: 200px;
-  transform: translateY(5px); /* Small offset for better alignment */
+  transform: translateY(5px);
 }
 
-/* Ensure popups stay within bounds */
 .week-task-tasks-section {
-  overflow: visible; /* Allow popups to extend outside */
+  overflow: visible;
 }
 
-/* Alert modal */
 .week-task-alert-modal {
   position: fixed;
   top: 0;
@@ -984,25 +922,23 @@
   background: #218838;
 }
 
-/* Mobile-specific tooltip for status dots */
 .week-task-mobile-tooltip {
   position: absolute;
-  background: #1f2937; /* Dark background for contrast */
+  background: #1f2937;
   color: #fff;
   padding: 6px 10px;
   border-radius: 4px;
   font-size: 12px;
   font-weight: 500;
-  z-index: 1003; /* Above other elements */
+  z-index: 1003;
   white-space: nowrap;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-  transform: translateX(-50%); /* Center horizontally relative to dot */
-  pointer-events: none; /* Prevent tooltip from blocking clicks */
+  transform: translateX(-50%);
+  pointer-events: none;
 }
 
-/* Triangle pointer below the tooltip */
 .week-task-mobile-tooltip::after {
-  content: '';
+  content: "";
   position: absolute;
   top: -6px;
   left: 50%;
@@ -1012,9 +948,7 @@
   border-bottom: 6px solid #1f2937;
 }
 
-/* Mobile design (≤ 768px) - Keep simple like desktop, no fancy enhancements except for edit popup as requested */
 @media (max-width: 768px) {
-  /* Main layout adjustments - keep similar to desktop but stack for small screens */
   .week-task-weekly-task-planner {
     padding: 10px;
     gap: 15px;
@@ -1063,10 +997,9 @@
     font-size: 13px;
   }
 
-  /* Day Card layout - stack columns */
   .week-task-day-card {
     flex-direction: column;
-    border-radius: 8px; /* Match desktop */
+    border-radius: 8px;
     overflow: hidden;
   }
 
@@ -1076,42 +1009,41 @@
     width: 100%;
     border-right: none;
     border-bottom: 1px solid #e5e7eb;
-    padding: 16px; /* Match desktop padding */
+    padding: 16px;
     border-top-left-radius: 8px;
-    border-top-right-radius: 8px; /* Adjust for stacked layout */
+    border-top-right-radius: 8px;
     background: #f8fafc;
-    gap: 20px; /* Match desktop */
+    gap: 20px;
   }
 
   .week-task-day-date {
-    font-size: 16px; /* Match desktop */
+    font-size: 16px;
   }
 
   .week-task-projects-column {
     flex-direction: row;
     flex-wrap: wrap;
-    gap: 14px; /* Match desktop */
+    gap: 14px;
     align-items: center;
   }
 
   .week-task-project-circle,
   .week-task-task-id-circle {
-    width: 28px; /* Match desktop */
+    width: 28px;
     height: 28px;
-    font-size: 11px; /* Match desktop */
+    font-size: 11px;
   }
 
-  /* Tasks section */
   .week-task-tasks-section {
-    padding: 16px; /* Match desktop */
+    padding: 16px;
   }
 
   .week-task-tasks-header {
-    display: none; /* Hide header on mobile as in original, but styling matches if shown */
+    display: none;
   }
 
   .week-task-tasks-list {
-    gap: 8px; /* Match desktop */
+    gap: 8px;
   }
 
   .week-task-task-row {
@@ -1123,16 +1055,16 @@
     border: 1px solid #e5e7eb;
     border-radius: 6px;
     background: #fff;
-    min-height: auto; /* Allow dynamic height */
+    min-height: auto;
   }
 
   .week-task-task-name,
   .week-task-comment {
     max-width: 100%;
-    white-space: normal; /* Always wrap on mobile */
+    white-space: normal;
     overflow: visible;
     text-overflow: clip;
-    word-break: break-word; /* Break long words */
+    word-break: break-word;
   }
 
   .week-task-update-section,
@@ -1143,10 +1075,9 @@
     flex-direction: row;
     align-items: center;
     flex-wrap: wrap;
-    max-width: 100%; /* Prevent overflow */
+    max-width: 100%;
   }
 
-  /* No hover effects on mobile since text is already fully visible */
   .week-task-task-row:hover .week-task-task-name,
   .week-task-task-row:hover .week-task-comment {
     white-space: normal;
@@ -1162,35 +1093,30 @@
   }
 
   .week-task-status-dot {
-    width: 12px; /* Slightly larger for touch */
+    width: 12px;
     height: 12px;
-    cursor: pointer; /* Ensure tap is recognized */
+    cursor: pointer;
   }
 
-  .week-task-edit-icon {
-    /* Keep desktop size, but ensure touch-friendly if needed */
-  }
-
-  /* Assign Task Form Modal - Make identical to desktop in style */
   .week-task-assign-form-modal {
-    padding: 10px; /* Match desktop */
+    padding: 10px;
   }
 
   .week-task-assign-form-empdriven {
-    background: #ffffff; /* Match */
+    background: #ffffff;
     padding: 0 0 15px 0;
     border-radius: 8px;
     width: 95%;
     max-width: 800px;
     max-height: 80vh;
     overflow-y: auto;
-    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2); /* Match */
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
   }
 
   .week-task-form-header {
-    background: #3067bb; /* Exact match */
+    background: #3067bb;
     color: #fff;
-    padding: 10px 15px; /* Match */
+    padding: 10px 15px;
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -1201,7 +1127,7 @@
   .week-task-form-header h3,
   .week-task-form-header h4 {
     margin: 0;
-    font-size: 18px; /* Match */
+    font-size: 18px;
     font-weight: 600;
   }
 
@@ -1209,46 +1135,46 @@
     background: none;
     border: none;
     color: #fff;
-    font-size: 20px; /* Match */
+    font-size: 20px;
     cursor: pointer;
     padding: 0;
     line-height: 1;
   }
 
   .week-task-close-button:hover {
-    color: #ccc; /* Match */
+    color: #ccc;
   }
 
   .week-task-tasks-form-container {
     display: flex;
     flex-direction: column;
-    gap: 8px; /* Match */
+    gap: 8px;
     margin-top: 10px;
-    padding: 0 15px; /* Match */
+    padding: 0 15px;
   }
 
   .week-task-task-form-row {
-    background: #f8fafc; /* Match */
+    background: #f8fafc;
     border: 1px solid #e5e7eb;
     border-radius: 6px;
-    padding: 10px; /* Match */
+    padding: 10px;
   }
 
   .week-task-form-row-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 8px; /* Match */
+    margin-bottom: 8px;
   }
 
   .week-task-form-row-header h4 {
-    font-size: 16px; /* Match */
+    font-size: 16px;
     color: #111827;
     margin: 0;
   }
 
   .week-task-remove-task-button {
-    background: #dc3545; /* Match */
+    background: #dc3545;
     color: #fff;
     border: none;
     width: 24px;
@@ -1262,13 +1188,13 @@
   }
 
   .week-task-remove-task-button:hover {
-    background: #c82333; /* Match */
+    background: #c82333;
   }
 
   .week-task-form-grid {
     display: grid;
-    grid-template-columns: 1fr; /* Stack columns for mobile */
-    gap: 12px; /* Match */
+    grid-template-columns: 1fr;
+    gap: 12px;
     margin-bottom: 12px;
   }
 
@@ -1278,7 +1204,7 @@
   }
 
   .week-task-form-group-task label {
-    font-size: 12px; /* Match */
+    font-size: 12px;
     font-weight: 500;
     color: #374151;
     margin-bottom: 4px;
@@ -1286,26 +1212,25 @@
 
   .week-task-form-group-task input,
   .week-task-form-group-task select {
-    padding: 6px; /* Match */
+    padding: 6px;
     font-size: 12px;
     border: 1px solid #d1d5db;
     border-radius: 4px;
     width: 100%;
     box-sizing: border-box;
-    background: #f0f0f0; /* Match */
+    background: #f0f0f0;
   }
 
   .week-task-form-group-task input:focus,
   .week-task-form-group-task select:focus {
     outline: none;
-    border-color: #218838; /* Match */
+    border-color: #218838;
     box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.1);
   }
 
   .week-task-checkbox-group {
     display: flex;
-    /* flex-wrap: wrap; */
-    gap: 8px; /* Match */
+    gap: 8px;
   }
 
   .week-task-checkbox-label {
@@ -1333,7 +1258,7 @@
   .week-task-multi-select-dropdown {
     position: relative;
     width: 100%;
-    min-width: unset; /* Adjust for mobile */
+    min-width: unset;
     max-width: unset;
     font-size: 13px;
   }
@@ -1368,7 +1293,7 @@
   }
 
   .week-task-add-task-button {
-    background: #218838; /* Match */
+    background: #218838;
     color: #fff;
     border: none;
     padding: 8px 16px;
@@ -1378,7 +1303,7 @@
     align-self: flex-start;
     transition: background-color 0.2s;
     margin: 10px 0;
-    width: 100%; /* Full width for mobile touch */
+    width: 100%;
   }
 
   .week-task-add-task-button:hover {
@@ -1386,17 +1311,17 @@
   }
 
   .week-task-form-actions {
-    gap: 80px; /* Match */
+    gap: 80px;
     justify-content: center;
     margin-top: 10px;
     padding-top: 10px;
     margin: 10px;
     border-top: 1px solid #e5e7eb;
-    flex-direction: row; /* Stack buttons for mobile */
+    flex-direction: row;
   }
 
   .week-task-save-button {
-    background: #28a745; /* Match */
+    background: #28a745;
   }
 
   .week-task-save-button:hover {
@@ -1404,14 +1329,13 @@
   }
 
   .week-task-cancel-button {
-    background: #6b7280; /* Match */
+    background: #6b7280;
   }
 
   .week-task-cancel-button:hover {
     background: #4b5563;
   }
 
-  /* Edit section - keep simple like desktop */
   .week-task-edit-section {
     display: flex;
     align-items: center;
@@ -1477,7 +1401,6 @@
     background: #218838;
   }
 
-  /* Edit popup - Enhanced on mobile as requested (using the fancy design from your example) */
   .week-task-edit-popup {
     position: fixed;
     top: 50%;
@@ -1490,8 +1413,7 @@
     overflow-y: auto;
     background: #ffffff;
     border: 1px solid #e2e8f0;
-    box-shadow: 
-      0 20px 25px -5px rgba(0, 0, 0, 0.1),
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1),
       0 10px 10px -5px rgba(0, 0, 0, 0.04);
     padding: 20px;
   }
@@ -1524,21 +1446,18 @@
     background: #ffffff;
   }
 
-  /* Alert modal */
   .week-task-alert-content {
     max-width: 90%;
     padding: 20px;
   }
 
-  /* Other elements like dots, icons - scale slightly if needed but keep styles */
   .week-task-dot {
     width: 6px;
     height: 6px;
   }
 
-  /* Date classes - keep colors */
   .week-task-day-date.week-task-day-date-leave {
-    background-color: #F5F501;
+    background-color: #f5f501;
     color: black;
   }
 
@@ -1557,7 +1476,6 @@
     color: #333;
   }
 
-  /* Dropdown adjustments for mobile */
   .week-task-dropdown-list {
     max-height: 150px;
   }
@@ -1575,7 +1493,7 @@
   white-space: nowrap;
 }
 .week-task-mobile-tooltip::after {
-  content: '';
+  content: "";
   position: absolute;
   top: 100%;
   left: 50%;

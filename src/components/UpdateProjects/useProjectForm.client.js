@@ -148,7 +148,10 @@ export default function useProjectForm({
     };
 
     axios
-      .get(`${process.env.NEXT_PUBLIC_BACKEND_URL}/employees`, { headers })
+      .get(`${process.env.NEXT_PUBLIC_BACKEND_URL}/employees`, {
+        withCredentials: true,
+        headers,
+      })
       .then((response) => {
         const employeesData = response.data.data || response.data || [];
         setAllEmployees(employeesData);
@@ -660,6 +663,7 @@ export default function useProjectForm({
         `${process.env.NEXT_PUBLIC_BACKEND_URL}/pjattachments/${fileName}`,
         {
           method: "GET",
+          credentials: "include",
           headers: {
             "x-api-key": process.env.NEXT_PUBLIC_API_KEY,
             ...(orgId ? { "x-org-id": orgId } : {}),

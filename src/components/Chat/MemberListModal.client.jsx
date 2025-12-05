@@ -57,7 +57,10 @@ export default function MemberListModal({
     if (!roomId) return;
     let mounted = true;
     axios
-      .get(`${BASE_URL}/rooms/${roomId}/members`, { headers })
+      .get(`${BASE_URL}/rooms/${roomId}/members`, {
+        withCredentials: true,
+        headers,
+      })
       .then((res) => {
         if (!mounted) return;
         const data = res.data || [];
@@ -75,7 +78,7 @@ export default function MemberListModal({
   useEffect(() => {
     let mounted = true;
     axios
-      .get(`${BASE_URL}/employees`, { headers })
+      .get(`${BASE_URL}/employees`, { withCredentials: true, headers })
       .then((r) => {
         if (!mounted) return;
         setAllEmployees(r.data?.data || []);
@@ -103,9 +106,10 @@ export default function MemberListModal({
       await axios.post(
         `${BASE_URL}/rooms/${roomId}/members`,
         { employeeId: empId },
-        { headers }
+        { withCredentials: true, headers }
       );
       const { data } = await axios.get(`${BASE_URL}/rooms/${roomId}/members`, {
+        withCredentials: true,
         headers,
       });
       if (typeof setMembers === "function") setMembers(data);
@@ -123,11 +127,12 @@ export default function MemberListModal({
       onConfirm: async () => {
         try {
           await axios.delete(`${BASE_URL}/rooms/${roomId}/members/${empId}`, {
+            withCredentials: true,
             headers,
           });
           const { data } = await axios.get(
             `${BASE_URL}/rooms/${roomId}/members`,
-            { headers }
+            { withCredentials: true, headers }
           );
           if (typeof setMembers === "function") setMembers(data);
         } catch (err) {

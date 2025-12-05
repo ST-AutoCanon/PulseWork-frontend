@@ -154,7 +154,6 @@ const StepFour = ({
                 <tbody>
                   {Array.isArray(formData.financialDetails) &&
                     formData.financialDetails.map((finance, index) => {
-                      // parse numeric fields safely
                       const mActualAmountNum =
                         Number(finance.m_actual_amount) || 0;
                       const mTdsAmountRaw = finance.m_tds_amount;
@@ -167,13 +166,11 @@ const StepFour = ({
 
                       const hasTdsAmount = !Number.isNaN(mTdsAmountNum);
 
-                      // derive percentage from amount if possible
                       const derivedTdsPercentage =
                         hasTdsAmount && mActualAmountNum > 0
                           ? (mTdsAmountNum / mActualAmountNum) * 100
                           : null;
 
-                      // display priority: derived percentage (if we have tds amount & actual amount) -> stored percentage -> empty
                       const displayTdsPercentage =
                         derivedTdsPercentage !== null
                           ? Number(derivedTdsPercentage.toFixed(2))
@@ -223,7 +220,6 @@ const StepFour = ({
                           <td>
                             <div className="step-four-group2">
                               <div className="small-input2">
-                                {/* show derived or stored percentage */}
                                 <input
                                   type="number"
                                   name="m_tds_percentage"

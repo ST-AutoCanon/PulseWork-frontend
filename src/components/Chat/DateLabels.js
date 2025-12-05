@@ -14,11 +14,9 @@ export function getDateLabel(d) {
 
   const diffDays = Math.floor((today - msgDate) / (1000 * 60 * 60 * 24));
   if (diffDays < 7 && diffDays >= 0) {
-    // Within past week → weekday
     return msgDate.toLocaleDateString(undefined, { weekday: "long" });
   }
 
-  // Fallback → localized date
   return msgDate.toLocaleDateString(undefined, {
     year: "numeric",
     month: "short",

@@ -5,11 +5,11 @@ import { useRouter } from "next/navigation";
 import "./EmployeeLogin.css";
 import { Eye } from "lucide-react";
 import axios from "axios";
-import { useAuth } from "../../context/AuthProvider.client"; // adjust path if your auth provider lives elsewhere
+import { useAuth } from "../../context/AuthProvider.client";
 
 const EmployeeCardWithHover = ({ employeePunches, meIdFromAuth }) => {
   const [hovered, setHovered] = useState(false);
-  const [avatar, setAvatar] = useState("/images/smily.png"); // Default avatar
+  const [avatar, setAvatar] = useState("/images/smily.png");
 
   if (
     !employeePunches ||
@@ -35,7 +35,6 @@ const EmployeeCardWithHover = ({ employeePunches, meIdFromAuth }) => {
   const lastName = latest.last_name || "";
   const photoUrl = latest.photo_url || null;
 
-  // prefer meId passed from parent (from auth). Fallback to undefined.
   const role = latest.role || "Employee";
   const gender = latest.gender || "Male";
 
@@ -74,15 +73,11 @@ const EmployeeCardWithHover = ({ employeePunches, meIdFromAuth }) => {
     };
 
     if (photoUrl) {
-      // ensure no leading slash duplication
       const url = BACKEND_URL
         ? `${BACKEND_URL}/${photoUrl.replace(/^\/+/, "")}`
         : photoUrl;
       axios
-        .get(url, {
-          headers,
-          responseType: "blob",
-        })
+        .get(url, { withCredentials: true, headers, responseType: "blob" })
         .then((response) => {
           if (cancelled) return;
           imageUrl = URL.createObjectURL(response.data);
@@ -102,7 +97,6 @@ const EmployeeCardWithHover = ({ employeePunches, meIdFromAuth }) => {
         URL.revokeObjectURL(imageUrl);
       }
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [photoUrl, role, gender, firstName, lastName]);
 
   const formatTime = (time) => {
@@ -116,7 +110,6 @@ const EmployeeCardWithHover = ({ employeePunches, meIdFromAuth }) => {
       }
       const date = new Date(time);
       if (isNaN(date.getTime())) return "—";
-      // convert to IST for display
       const istDate = new Date(date.getTime() + 5.5 * 60 * 60 * 1000);
       return istDate.toLocaleTimeString("en-IN", {
         hour: "2-digit",
@@ -290,7 +283,7 @@ const TimeSlotGroup = ({
 };
 
 const EmployeeLogin = () => {
-  const { user } = useAuth(); // get current user (employeeId, orgId, role, gender, ...)
+  const { user } = useAuth();
   const router = useRouter();
 
   const [activeTab, setActiveTab] = useState("today");
@@ -434,16 +427,13 @@ const EmployeeLogin = () => {
         const API_KEY = process.env.NEXT_PUBLIC_API_KEY;
         const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
 
-        if (!API_KEY) throw new Error("API Key is missing.");
         if (!backendUrl) throw new Error("Backend URL is missing.");
         if (!meId) throw new Error("Employee ID is missing.");
 
-        // include org_id in query as requested
         let url = `${backendUrl}/api/employeelogin/today-yesterday-punches?org_id=${encodeURIComponent(
           orgId
         )}`;
 
-        // if selecting a custom range, include from/to
         if (activeTab === "select" && fromDate && toDate) {
           url += `&from=${encodeURIComponent(fromDate)}&to=${encodeURIComponent(
             toDate
@@ -451,6 +441,7 @@ const EmployeeLogin = () => {
         }
 
         const response = await axios.get(url, {
+          withCredentials: true,
           headers: {
             "x-api-key": API_KEY,
             "x-employee-id": meId,
@@ -511,7 +502,6 @@ const EmployeeLogin = () => {
     };
 
     fetchPunchData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab, fromDate, toDate, orgId, meId]);
 
   const setSlotOpen = (slot, isOpen) => {
@@ -549,7 +539,6 @@ const EmployeeLogin = () => {
       const API_KEY = process.env.NEXT_PUBLIC_API_KEY;
       const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
 
-      if (!API_KEY) throw new Error("API Key is missing.");
       if (!backendUrl) throw new Error("Backend URL is missing.");
       if (!meId) throw new Error("Employee ID is missing.");
 
@@ -558,6 +547,7 @@ const EmployeeLogin = () => {
       )}&to=${encodeURIComponent(toDate)}&org_id=${encodeURIComponent(orgId)}`;
 
       const response = await axios.get(url, {
+        withCredentials: true,
         headers: {
           "x-api-key": API_KEY,
           "x-employee-id": meId,
@@ -566,14 +556,12 @@ const EmployeeLogin = () => {
       });
 
       const contentType = response.headers["content-type"];
-      // Accept common Excel content type
       if (
         !contentType ||
         !contentType.includes(
           "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
       ) {
-        // try to parse error body (rare)
         try {
           const text = new TextDecoder().decode(response.data);
           const parsed = JSON.parse(text);

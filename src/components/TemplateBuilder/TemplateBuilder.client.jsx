@@ -127,6 +127,7 @@ async function fetchProtectedImage(src, apiKey) {
   try {
     const res = await fetch(src, {
       method: "GET",
+      credentials: "include",
       headers: { "x-api-key": apiKey || "" },
       credentials: "include",
     });
@@ -184,7 +185,7 @@ async function resolveTemplateProtectedAssets(
   apiKey,
   backendBase
 ) {
-  if (!template || !apiKey) return template;
+  if (!template) return template;
 
   const t = { ...template };
 
@@ -317,6 +318,8 @@ export default function TemplateBuilder() {
   const [previewHeaderUrl, setPreviewHeaderUrl] = useState(null);
   const [previewFooterUrl, setPreviewFooterUrl] = useState(null);
   const [previewWatermarkUrl, setPreviewWatermarkUrl] = useState(null);
+  const [activeSection, setActiveSection] = useState("upload");
+  const [templateSource, setTemplateSource] = useState(null);
 
   const [watermarkProps, setWatermarkProps] = useState({
     xPct: "50%",
@@ -348,6 +351,12 @@ export default function TemplateBuilder() {
 
   const basicEditorRef = useRef(null);
   const scratchEditorRef = useRef(null);
+
+  useEffect(() => {
+    if (mode === "view") {
+      setShowSavedPane(true);
+    }
+  }, [mode]);
 
   useEffect(() => {
     const parsedOrg = orgId ? Number(orgId) : null;
@@ -397,8 +406,18 @@ export default function TemplateBuilder() {
   const saveUrl = orgId ? `${BACKEND_URL}/api/orgs/${orgId}/templates` : null;
 
   function setAppMode(newMode) {
-    setMode((cur) => (cur === newMode ? cur : newMode));
-    setShowSavedPane(newMode === "saved");
+    setMode(newMode);
+
+    if (newMode === "upload" || newMode === "scratch") {
+      setTemplateSource(null);
+    }
+
+    if (newMode === "saved" || newMode === "view") {
+      setShowSavedPane(true);
+    } else if (newMode !== "basic" || templateSource !== "saved") {
+      setShowSavedPane(false);
+    }
+
     if (newMode !== "basic") {
       setGenerated(null);
     }
@@ -483,24 +502,25 @@ export default function TemplateBuilder() {
   }
 
   async function fetchSavedTemplates(org) {
-    if (!org) return;
+    if (!org) return [];
     setLoading(true);
     try {
       const res = await fetch(`${BACKEND_URL}/api/orgs/${org}/templates`, {
         method: "GET",
+        credentials: "include",
         headers: { "x-api-key": API_KEY || "" },
         credentials: "include",
       });
       if (!res.ok) {
         console.warn("Failed to fetch saved templates", res.status);
         setLoading(false);
-        return;
+        return [];
       }
       const data = await res.json();
       if (!Array.isArray(data)) {
         console.warn("Unexpected saved templates response:", data);
         setLoading(false);
-        return;
+        return [];
       }
 
       const normalized = data.map((entry) => {
@@ -531,8 +551,10 @@ export default function TemplateBuilder() {
       });
 
       setSavedTemplates(normalized);
+      return normalized;
     } catch (err) {
       console.error("fetchSavedTemplates failed", err);
+      return [];
     } finally {
       setLoading(false);
     }
@@ -541,6 +563,7 @@ export default function TemplateBuilder() {
   async function chooseBasic(template) {
     if (!template) return;
     if (template.origin === "saved") {
+      setTemplateSource("saved");
       try {
         const resolved = await resolveTemplateProtectedAssets(
           template,
@@ -603,7 +626,7 @@ export default function TemplateBuilder() {
         console.warn("chooseBasic: resolveTemplateProtectedAssets failed", err);
       }
     }
-
+    setTemplateSource("public");
     setGenerated(template);
     setAppMode("basic");
   }
@@ -767,15 +790,6 @@ export default function TemplateBuilder() {
               ? await ensureBlobUrl(watermarkUrl)
               : null;
 
-            console.log(
-              "handleUploadSaved: converted URLs — header:",
-              headerUrlResolved?.slice(0, 50),
-              "footer:",
-              footerUrlResolved?.slice(0, 50),
-              "watermark:",
-              watermarkUrlResolved?.slice(0, 50)
-            );
-
             let finalHeaderUrl = headerUrlResolved;
             let finalFooterUrl = footerUrlResolved;
 
@@ -793,15 +807,6 @@ export default function TemplateBuilder() {
             ) {
               finalFooterUrl = null;
             }
-
-            console.log(
-              "handleUploadSaved: after duplicate check — header:",
-              finalHeaderUrl?.slice(0, 50),
-              "footer:",
-              finalFooterUrl?.slice(0, 50),
-              "watermark:",
-              watermarkUrlResolved?.slice(0, 50)
-            );
 
             setViewingTemplate({
               name: normalized.name || normalized.meta?.name || "",
@@ -939,6 +944,7 @@ export default function TemplateBuilder() {
     try {
       const resp = await fetch(saveUrl, {
         method: "POST",
+        credentials: "include",
         headers: {
           "Content-Type": "application/json",
           "x-api-key": API_KEY || "",
@@ -946,6 +952,7 @@ export default function TemplateBuilder() {
         credentials: "include",
         body: JSON.stringify(bodyPayload),
       });
+
       const data = await resp.json();
       if (!resp.ok) throw new Error(data.error || "Save failed");
 
@@ -1001,12 +1008,29 @@ export default function TemplateBuilder() {
         }
       });
 
+      if (orgId) {
+        try {
+          const refreshed = await fetchSavedTemplates(orgId);
+          const idToFind = normalized?.id || data?.id;
+          const found = Array.isArray(refreshed)
+            ? refreshed.find((t) => String(t.id) === String(idToFind))
+            : null;
+          if (found) {
+            setAppMode("saved");
+            await openSavedTemplate(found);
+            return;
+          }
+        } catch (e) {
+          console.warn("Opening saved template after refresh failed", e);
+        }
+      }
+
       setAppMode("saved");
       try {
         await openSavedTemplate(normalized);
       } catch (e) {
         console.warn("openSavedTemplate failed for newly saved template", e);
-        fetchSavedTemplates(orgId);
+        if (orgId) fetchSavedTemplates(orgId);
       }
     } catch (err) {
       console.error("save failed", err);
@@ -1206,6 +1230,7 @@ export default function TemplateBuilder() {
       const url = `${base}/api/orgs/${orgId}/templates/${id}`;
       const res = await fetch(url, {
         method: "DELETE",
+        credentials: "include",
         headers: { "x-api-key": API_KEY || "" },
         credentials: "include",
       });
@@ -1285,6 +1310,9 @@ export default function TemplateBuilder() {
 
   async function openSavedTemplate(template) {
     if (!template) return;
+    setTemplateSource("saved");
+    setShowSavedPane(true);
+
     const cat = template.category || inferCategory(template);
     const isUpload =
       cat === "saved_uploads" ||
@@ -1397,29 +1425,6 @@ export default function TemplateBuilder() {
       const explicitHeader = resolved.header_url || resolved.headerUrl || null;
       const explicitFooter = resolved.footer_url || resolved.footerUrl || null;
 
-      console.log(
-        "DEBUG openSavedTemplate: resolved object keys =",
-        Object.keys(resolved).filter((k) => !k.startsWith("_"))
-      );
-      console.log(
-        "DEBUG openSavedTemplate: explicitHeader =",
-        explicitHeader?.slice(0, 60),
-        "explicitFooter =",
-        explicitFooter?.slice(0, 60)
-      );
-      console.log(
-        "DEBUG openSavedTemplate: resolved.header_url =",
-        resolved.header_url?.slice(0, 60),
-        "resolved.footer_url =",
-        resolved.footer_url?.slice(0, 60)
-      );
-      console.log(
-        "DEBUG openSavedTemplate: resolved.headerUrl =",
-        resolved.headerUrl?.slice(0, 60),
-        "resolved.footerUrl =",
-        resolved.footerUrl?.slice(0, 60)
-      );
-
       const headerCandidates = [
         explicitHeader,
         resolved.header,
@@ -1458,21 +1463,6 @@ export default function TemplateBuilder() {
       if (!rawHeader || !rawFooter) {
         const found = Array.from(collectUploadStrings(resolved));
 
-        console.log(
-          "openSavedTemplate: template.name =",
-          template.name,
-          "explicit header =",
-          explicitHeader?.slice(0, 50),
-          "explicit footer =",
-          explicitFooter?.slice(0, 50),
-          "grapesJson.watermark =",
-          resolved.grapesJson?.watermark,
-          "meta.watermark =",
-          resolved.meta?.watermark,
-          "found uploads =",
-          found
-        );
-
         if (!watermarkUrl && resolved.meta && resolved.meta.watermark) {
           const wmCandidates = found.filter((u) => {
             if (!u) return false;
@@ -1482,7 +1472,6 @@ export default function TemplateBuilder() {
             if (rawFooter && u === rawFooter) return false;
             return true;
           });
-          console.log("wmCandidates for watermark:", wmCandidates);
           if (wmCandidates.length) {
             watermarkUrl = wmCandidates[0];
             const wp = resolved.meta.watermarkPlacement;
@@ -1517,15 +1506,6 @@ export default function TemplateBuilder() {
       const watermarkBlobUrl = watermarkUrl
         ? await ensureBlobUrl(watermarkUrl)
         : null;
-
-      console.log(
-        "openSavedTemplate: before duplicate check — header:",
-        headerBlobUrl?.slice(0, 50),
-        "footer:",
-        footerBlobUrl?.slice(0, 50),
-        "watermark:",
-        watermarkBlobUrl?.slice(0, 50)
-      );
 
       if (watermarkBlobUrl) {
         if (headerBlobUrl && headerBlobUrl === watermarkBlobUrl) {
@@ -1569,15 +1549,6 @@ export default function TemplateBuilder() {
           footerBlobUrl = null;
         }
       }
-
-      console.log(
-        "openSavedTemplate: after duplicate check — header:",
-        headerBlobUrl?.slice(0, 50),
-        "footer:",
-        footerBlobUrl?.slice(0, 50),
-        "watermark:",
-        watermarkBlobUrl?.slice(0, 50)
-      );
 
       setViewingTemplate({
         name: template.name,
@@ -1650,17 +1621,24 @@ export default function TemplateBuilder() {
 
           <button
             className={`${styles.modeBtn} ${
-              mode === "saved" ? styles.active : ""
+              mode === "saved" ||
+              mode === "view" ||
+              (mode === "basic" && templateSource === "saved")
+                ? styles.active
+                : ""
             }`}
-            onClick={() => setAppMode("saved")}
-            aria-pressed={mode === "saved"}
-            title="Toggle saved templates"
+            onClick={() => {
+              setAppMode("saved");
+              setTemplateSource("saved");
+            }}
           >
             Saved Templates
           </button>
         </div>
 
-        {mode === "saved" && (
+        {(mode === "saved" ||
+          mode === "view" ||
+          (mode === "basic" && templateSource === "saved")) && (
           <div className={styles.templatesWrap}>
             <div className={styles.savedHeader}>
               <h4 className={styles.sectionTitle}>Saved templates</h4>
@@ -1686,7 +1664,6 @@ export default function TemplateBuilder() {
                 </div>
               </div>
             </div>
-
             <div className={styles.templatesList}>
               {loading && <div className={styles.loading}>Loading…</div>}
               {!loading && filteredSaved.length === 0 && (

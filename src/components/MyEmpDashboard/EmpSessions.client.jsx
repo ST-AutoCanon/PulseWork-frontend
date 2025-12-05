@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useEffect, useState } from "react";
@@ -38,7 +37,10 @@ const EmpSessions = () => {
     const h = Math.floor(s / 3600);
     const m = Math.floor((s % 3600) / 60);
     const sec = s % 60;
-    return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(sec).padStart(2, "0")}`;
+    return `${String(h).padStart(2, "0")}:${String(m).padStart(
+      2,
+      "0"
+    )}:${String(sec).padStart(2, "0")}`;
   };
 
   const buildChartFromSegments = (segments) => ({
@@ -65,10 +67,15 @@ const EmpSessions = () => {
       setError(null);
 
       try {
-        if (!API_KEY) throw new Error("API Key is missing.");
         if (!BACKEND) throw new Error("Backend URL is missing.");
-        const apiUrl = `${BACKEND.replace(/\/$/, "")}/today-punch/${encodeURIComponent(employeeId)}`;
-        const { data } = await axios.get(apiUrl, { headers });
+        const apiUrl = `${BACKEND.replace(
+          /\/$/,
+          ""
+        )}/today-punch/${encodeURIComponent(employeeId)}`;
+        const { data } = await axios.get(apiUrl, {
+          withCredentials: true,
+          headers,
+        });
 
         if (cancelled) return;
 
@@ -82,7 +89,9 @@ const EmpSessions = () => {
           let idleSec = 0;
 
           if (punchData.length > 0) {
-            const firstIn = punchData[0].punchin_time ? new Date(punchData[0].punchin_time) : null;
+            const firstIn = punchData[0].punchin_time
+              ? new Date(punchData[0].punchin_time)
+              : null;
             if (firstIn) {
               const midnight = new Date(firstIn);
               midnight.setHours(0, 0, 0, 0);
@@ -120,7 +129,11 @@ const EmpSessions = () => {
           });
 
           const remaining = Math.max(0, SECONDS_IN_DAY - (workSec + idleSec));
-          segments.push({ label: "Remaining", value: remaining, color: "#E8E9EA" });
+          segments.push({
+            label: "Remaining",
+            value: remaining,
+            color: "#E8E9EA",
+          });
 
           const merged = [];
           for (const seg of segments) {
@@ -140,7 +153,9 @@ const EmpSessions = () => {
           setChartData(null);
         }
       } catch (err) {
-        setError(err.response?.data?.message || err.message || "Failed to load data.");
+        setError(
+          err.response?.data?.message || err.message || "Failed to load data."
+        );
       } finally {
         setLoading(false);
       }

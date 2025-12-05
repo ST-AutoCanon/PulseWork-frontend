@@ -53,7 +53,6 @@ export default function EmployeeForm({
   };
 
   const [formData, setFormData] = useState({
-    // personal
     first_name: "",
     last_name: "",
     dob: null,
@@ -67,7 +66,6 @@ export default function EmployeeForm({
     emergency_number: "",
     address: "",
     photo: null,
-    // government
     aadhaar_number: "",
     aadhaar_doc: null,
     pan_number: "",
@@ -81,7 +79,6 @@ export default function EmployeeForm({
     uan_number: "",
     pf_number: "",
     esi_number: "",
-    // education
     tenth_institution: "",
     tenth_year: "",
     tenth_board: "",
@@ -103,7 +100,6 @@ export default function EmployeeForm({
     pg_score: "",
     pg_cert: sanitizedInitialData.pg_cert,
     additional_certs: sanitizedInitialData.additional_certs,
-    // professional
     domain: "",
     employee_type: "",
     joining_date: null,
@@ -115,12 +111,12 @@ export default function EmployeeForm({
     experience: sanitizedInitialData.experience,
     other_docs: sanitizedInitialData.other_docs,
     resume: null,
-    // bank
+
     bank_name: "",
     account_number: "",
     ifsc_code: "",
     branch_name: "",
-    // family
+
     father_name: "",
     father_dob: null,
     father_gov_doc: null,
@@ -437,10 +433,8 @@ export default function EmployeeForm({
         }
       }
 
-      // call parent onSubmit (which should handle API headers); pass FormData
       await onSubmit(fd);
 
-      // If supervisor changed for an existing employee, call supervisor assign endpoint
       if (
         initialData.employee_id &&
         initialData.supervisor_id !== formData.supervisor_id
@@ -458,6 +452,7 @@ export default function EmployeeForm({
 
           const r = await fetch(assignUrl, {
             method: "POST",
+            credentials: "include",
             headers,
             body: JSON.stringify({
               employeeId: initialData.employee_id,
@@ -466,7 +461,6 @@ export default function EmployeeForm({
             }),
           });
 
-          // optional: log if assign failed
           try {
             const json = await r.json();
             if (!r.ok || (json && json.success === false)) {

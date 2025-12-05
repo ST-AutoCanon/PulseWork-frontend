@@ -25,6 +25,7 @@ async function fetchProtectedImageAsBlobUrl(src, apiKey) {
   try {
     const res = await fetch(src, {
       method: "GET",
+      credentials: "include",
       headers: { "x-api-key": apiKey || "" },
       credentials: "include",
     });
@@ -131,6 +132,7 @@ const Invoice = ({ onBack, project }) => {
         `${BACKEND_URL}/invoice?projectId=${project.id}`,
         {
           method: "GET",
+          credentials: "include",
           headers: buildHeaders(),
         }
       );
@@ -156,6 +158,7 @@ const Invoice = ({ onBack, project }) => {
     try {
       const res = await fetch(`${BACKEND_URL}/api/orgs/${orgId}/templates`, {
         method: "GET",
+        credentials: "include",
         headers: { "x-api-key": API_KEY || "" },
         credentials: "include",
       });
@@ -480,12 +483,14 @@ const Invoice = ({ onBack, project }) => {
       if (editingInvoiceId) {
         response = await fetch(`${BACKEND_URL}/invoice/${editingInvoiceId}`, {
           method: "PUT",
+          credentials: "include",
           headers: buildHeaders(),
           body: JSON.stringify(newInvoice),
         });
       } else {
         response = await fetch(`${BACKEND_URL}/invoice`, {
           method: "POST",
+          credentials: "include",
           headers: buildHeaders(),
           body: JSON.stringify(newInvoice),
         });
@@ -730,6 +735,7 @@ const Invoice = ({ onBack, project }) => {
         `${BACKEND_URL}/invoice-extra/${invoice.id}`,
         {
           method: "PUT",
+          credentials: "include",
           headers: buildHeaders(),
           body: JSON.stringify(updatedInvoice),
         }

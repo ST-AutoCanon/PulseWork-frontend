@@ -7,11 +7,10 @@ export default function StepPersonal({ data, onChange }) {
   const today = new Date().toISOString().split("T")[0];
   const eighteenYearsAgo = new Date();
   eighteenYearsAgo.setFullYear(eighteenYearsAgo.getFullYear() - 18);
-  const maxDob = eighteenYearsAgo.toISOString().split("T")[0]; // YYYY-MM-DD
+  const maxDob = eighteenYearsAgo.toISOString().split("T")[0];
 
   return (
     <div className="step-personal">
-      {/* Basic Info */}
       <label>
         First Name<span className="required">*</span>
         <input

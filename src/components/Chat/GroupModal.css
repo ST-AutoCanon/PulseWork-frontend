@@ -1,7 +1,6 @@
-/* overlay + centering */
 .modal {
   position: fixed;
-  inset: 0; /* top:0; right:0; bottom:0; left:0; */
+  inset: 0;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -10,7 +9,6 @@
   padding: 16px;
 }
 
-/* container */
 .modal-content {
   width: 100%;
   max-width: 480px;
@@ -22,7 +20,6 @@
   overflow-y: auto;
 }
 
-/* chips */
 .selected-chips {
   display: flex;
   flex-wrap: wrap;
@@ -56,7 +53,6 @@
   color: #555;
 }
 
-/* inputs */
 .group-name-input,
 .msg-search {
   width: 100%;
@@ -67,7 +63,6 @@
   box-sizing: border-box;
 }
 
-/* suggestions */
 .suggestions-list {
   max-height: 220px;
   overflow-y: auto;
@@ -103,7 +98,6 @@
   text-align: center;
 }
 
-/* buttons */
 .modal-actions {
   display: flex;
   justify-content: flex-end;
@@ -130,7 +124,6 @@
   cursor: pointer;
 }
 
-/* accessible focus */
 .suggestion-item:focus {
   outline: 2px solid #0078d4;
   outline-offset: 2px;

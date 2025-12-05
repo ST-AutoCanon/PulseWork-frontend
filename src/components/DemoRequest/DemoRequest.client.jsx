@@ -4,12 +4,6 @@ import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import styles from "./DemoRequest.module.css";
 
-/**
- * DemoRequest
- * - On success alert OK: navigate to home (or call externalOnClose if provided)
- * - On modal close (×) and Cancel: navigate to home
- * - Dispatches "demoRequest:submitted" on success before navigation
- */
 export default function DemoRequest({ onClose: externalOnClose } = {}) {
   const router = useRouter();
 
@@ -39,7 +33,6 @@ export default function DemoRequest({ onClose: externalOnClose } = {}) {
     };
   }, [isOpen]);
 
-  // helper: prefer externalOnClose (parent hook) otherwise client-side navigate
   const navigateHome = () => {
     if (typeof externalOnClose === "function") {
       try {
@@ -82,11 +75,9 @@ export default function DemoRequest({ onClose: externalOnClose } = {}) {
   const showAlert = (message, title = "", isSuccess = false) =>
     setAlertModal({ isVisible: true, title, message, isSuccess });
 
-  // Dismiss alert. If it was a success alert, dispatch event then navigate home.
   const closeAlert = () => {
     const wasSuccess = alertModal.isSuccess;
 
-    // Close the alert UI immediately
     setAlertModal({
       isVisible: false,
       title: "",
@@ -95,7 +86,6 @@ export default function DemoRequest({ onClose: externalOnClose } = {}) {
     });
 
     if (wasSuccess) {
-      // dispatch event so parent can react if desired
       try {
         const detail = { message: alertModal.message || "submitted" };
         window.dispatchEvent(
@@ -108,7 +98,6 @@ export default function DemoRequest({ onClose: externalOnClose } = {}) {
         );
       }
 
-      // close modal and navigate home
       setIsOpen(false);
       navigateHome();
     }
@@ -144,6 +133,7 @@ export default function DemoRequest({ onClose: externalOnClose } = {}) {
         `${process.env.NEXT_PUBLIC_BACKEND_URL}/contact`,
         {
           method: "POST",
+          credentials: "include",
           headers: {
             "Content-Type": "application/json",
             "x-api-key": process.env.NEXT_PUBLIC_API_KEY,
@@ -171,7 +161,6 @@ export default function DemoRequest({ onClose: externalOnClose } = {}) {
         return;
       }
 
-      // SUCCESS: show alert and mark isSuccess true.
       showAlert(
         data.message ||
           "Your demo request has been sent. We'll contact you shortly.",
@@ -179,7 +168,6 @@ export default function DemoRequest({ onClose: externalOnClose } = {}) {
         true
       );
 
-      // clear local form (modal will close when user dismisses success alert)
       setForm({
         name: "",
         email: "",
@@ -212,7 +200,6 @@ export default function DemoRequest({ onClose: externalOnClose } = {}) {
           role="dialog"
           aria-modal="true"
           onMouseDown={(e) => {
-            // If an alert is visible, ignore outside clicks so that nothing accidentally closes the modal
             if (e.target === e.currentTarget && !alertModal.isVisible)
               closeModalAndNavigate();
           }}

@@ -165,7 +165,6 @@ const CustomTemplateEditor = forwardRef(function CustomTemplateEditor(
   const [canvasHeightActual, setCanvasHeightActual] = useState(
     Math.round(canvasWidthPx * A4_RATIO)
   );
-  // page background state (editable from props bar)
   const [pageBackground, setPageBackground] = useState("#ffffff");
 
   const pendingLogoTargetRef = useRef(null);
@@ -174,7 +173,6 @@ const CustomTemplateEditor = forwardRef(function CustomTemplateEditor(
   const dragEndedRef = useRef(null);
   const dragAllowMs = 300;
 
-  // initialize pageBackground from incoming prop `background` if provided
   useEffect(() => {
     if (background) {
       setPageBackground(background);
@@ -690,7 +688,6 @@ const CustomTemplateEditor = forwardRef(function CustomTemplateEditor(
               Select a box to edit its properties.
             </div>
 
-            {/* Page background control visible even when no box is selected */}
             <div
               className={styles["props-section"]}
               style={{ marginLeft: "auto" }}
@@ -732,7 +729,6 @@ const CustomTemplateEditor = forwardRef(function CustomTemplateEditor(
           </>
         ) : (
           <>
-            {/* LEFT: main text properties */}
             <div
               className={styles["props-left"] + " " + styles["props-section"]}
             >
@@ -896,9 +892,7 @@ const CustomTemplateEditor = forwardRef(function CustomTemplateEditor(
               </div>
             </div>
 
-            {/* RIGHT: per-type actions */}
             <div className={styles["props-right"]}>
-              {/* Logo actions */}
               {selectedBox.type === "logo" && (
                 <div
                   className={styles["props-section"]}
@@ -924,7 +918,6 @@ const CustomTemplateEditor = forwardRef(function CustomTemplateEditor(
                 </div>
               )}
 
-              {/* Table tools (improved UI) */}
               {selectedBox.type === "table" && (
                 <div
                   className={styles["props-section"]}
@@ -1169,7 +1162,6 @@ const CustomTemplateEditor = forwardRef(function CustomTemplateEditor(
                 </div>
               )}
 
-              {/* Text / placeholder actions */}
               {(selectedBox.type === "text" ||
                 selectedBox.type === "placeholder") && (
                 <div

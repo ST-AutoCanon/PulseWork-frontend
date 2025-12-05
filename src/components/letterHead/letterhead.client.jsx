@@ -224,18 +224,24 @@ const LetterHead = () => {
       setLoading(true);
       try {
         const templatesResp = await axios
-          .get(`${BACKEND_URL}/api/templates/list`, { headers })
+          .get(`${BACKEND_URL}/api/templates/list`, {
+            withCredentials: true,
+            headers,
+          })
           .catch(() => ({ data: { data: [] } }));
 
         const letterheadsResp = await axios
-          .get(`${BACKEND_URL}/api/letterheads/list`, { headers })
+          .get(`${BACKEND_URL}/api/letterheads/list`, {
+            withCredentials: true,
+            headers,
+          })
           .catch(() => ({ data: { data: [] } }));
 
         let saved = [];
         if (orgId) {
           const savedResp = await axios.get(
             `${BACKEND_URL}/api/orgs/${orgId}/templates`,
-            { headers }
+            { withCredentials: true, headers }
           );
           saved = Array.isArray(savedResp.data)
             ? savedResp.data
@@ -745,15 +751,6 @@ const LetterHead = () => {
           const explicitFooter =
             template.footer_url || template.footerUrl || null;
 
-          console.log(
-            "DEBUG watermark detect: explicitHeader =",
-            explicitHeader?.slice(0, 60),
-            "explicitFooter =",
-            explicitFooter?.slice(0, 60),
-            "template keys =",
-            Object.keys(template).filter((k) => !k.startsWith("_"))
-          );
-
           const candidatesSet = new Set();
           [
             template.header_url,
@@ -804,11 +801,6 @@ const LetterHead = () => {
             return true;
           });
 
-          console.log(
-            "DEBUG watermark candidates after filtering =",
-            candidates
-          );
-
           if (candidates.length > 0) {
             wmUrl = candidates[0];
             const wpMeta = template.meta.watermarkPlacement;
@@ -825,13 +817,6 @@ const LetterHead = () => {
           }
         }
 
-        console.log(
-          "DEBUG watermark final: wmUrl =",
-          wmUrl?.slice(0, 60),
-          "wp =",
-          wp
-        );
-
         if (wmUrl) {
           const normalized = normalizeUploadUrl(wmUrl, BACKEND_URL);
           const blob = await fetchProtectedBlobUrl(
@@ -839,11 +824,9 @@ const LetterHead = () => {
             API_KEY,
             BACKEND_URL
           );
-          console.log("DEBUG watermark blob result:", !!blob);
           setWatermarkBlobUrl(blob || normalized);
           setWatermarkPropsState(wp || watermarkPropsState);
         } else {
-          console.log("DEBUG watermark: no wmUrl found, clearing watermark");
           setWatermarkBlobUrl(null);
         }
       } catch (e) {
@@ -874,10 +857,7 @@ const LetterHead = () => {
     try {
       const response = await axios.get(
         `${BACKEND_URL}/api/letterheads/download/${filename}`,
-        {
-          headers,
-          responseType: "blob",
-        }
+        { withCredentials: true, headers, responseType: "blob" }
       );
       const blob = new Blob([response.data], { type: "application/pdf" });
       const url = window.URL.createObjectURL(blob);
@@ -1203,6 +1183,7 @@ const LetterHead = () => {
           `${BACKEND_URL}/api/letterheads/update/${editingId}`,
           formDataToSend,
           {
+            withCredentials: true,
             headers: { ...headers, "Content-Type": "multipart/form-data" },
           }
         );
@@ -1214,6 +1195,7 @@ const LetterHead = () => {
           `${BACKEND_URL}/api/letterheads/add`,
           formDataToSend,
           {
+            withCredentials: true,
             headers: { ...headers, "Content-Type": "multipart/form-data" },
           }
         );
@@ -1221,7 +1203,7 @@ const LetterHead = () => {
       }
       const updatedResponse = await axios.get(
         `${BACKEND_URL}/api/letterheads/list`,
-        { headers }
+        { withCredentials: true, headers }
       );
       setLetterheads(updatedResponse.data.data || []);
       setShowPopup(false);
@@ -1716,7 +1698,6 @@ const LetterHead = () => {
 
       {showPopup && (
         <div className="letterhead-popup-overlay">
-          {/* MAIN WRAPPER that we pass to generatePDF when cloning */}
           <div
             className="letterhead-popup-content"
             ref={letterRef}
@@ -1954,7 +1935,6 @@ const LetterHead = () => {
                 Cancel
               </button>
 
-              {/* PREVIEW: clone DOM, inject watermark into clone (offscreen), generate PDF from clone (watermark WILL be included) */}
               <button
                 onClick={async () => {
                   if (!letterRef.current || !contentRef.current) {
@@ -1964,24 +1944,19 @@ const LetterHead = () => {
                   try {
                     setIsGenerating(true);
 
-                    // Build an offscreen clone so editor never shows the watermark
                     const clone = letterRef.current.cloneNode(true);
 
-                    // Ensure clone can be measured/layouted by browser
                     clone.style.position = "absolute";
                     clone.style.left = "-9999px";
                     clone.style.top = "-9999px";
                     clone.style.visibility = "visible";
-                    // Append clone to body temporarily
                     document.body.appendChild(clone);
 
-                    // Remove any existing watermark nodes in the clone first
                     clone.querySelectorAll &&
                       clone
                         .querySelectorAll(".pdf-watermark")
                         ?.forEach((n) => n.remove());
 
-                    // Inject watermark into clone if available
                     if (watermarkBlobUrl) {
                       try {
                         const wm = document.createElement("img");
@@ -2003,9 +1978,7 @@ const LetterHead = () => {
                           watermarkPropsState.opacity ?? 0.12
                         );
                         wm.style.pointerEvents = "none";
-                        // make sure watermark sits above content in the clone
                         wm.style.zIndex = "9999";
-                        // ensure the clone has a positioned ancestor
                         if (getComputedStyle(clone).position === "static") {
                           clone.style.position = "relative";
                         }
@@ -2018,10 +1991,8 @@ const LetterHead = () => {
                       }
                     }
 
-                    // Wait for images inside clone (header/footer/watermark/content images)
                     await waitForImagesToLoad(clone);
 
-                    // Generate PDF from the clone. (pass `true` to indicate preview if your generatePDF uses that flag)
                     const pdfBlob = await generatePDF(
                       clone,
                       letterType,
@@ -2034,15 +2005,13 @@ const LetterHead = () => {
                       formData.gstin_number,
                       formData.cin_number,
                       formData.address,
-                      true // preview mode (matching your previous handlePreview)
+                      true
                     );
 
-                    // cleanup clone
                     try {
                       document.body.removeChild(clone);
                     } catch (e) {}
 
-                    // Show the preview
                     const pdfUri = URL.createObjectURL(pdfBlob);
                     setPdfUrl(pdfUri);
                     setShowPreview(true);
@@ -2070,7 +2039,6 @@ const LetterHead = () => {
                 {isGenerating ? "Preparing preview..." : "Preview"}
               </button>
 
-              {/* GENERATE: clone DOM, inject watermark into clone (offscreen), then generate PDF (final generation) */}
               <button
                 onClick={async () => {
                   if (!letterRef.current || !contentRef.current) {
@@ -2080,7 +2048,6 @@ const LetterHead = () => {
                   try {
                     setIsGenerating(true);
 
-                    // create offscreen clone
                     const clone = letterRef.current.cloneNode(true);
                     clone.style.position = "absolute";
                     clone.style.left = "-9999px";
@@ -2088,7 +2055,6 @@ const LetterHead = () => {
                     clone.style.visibility = "visible";
                     document.body.appendChild(clone);
 
-                    // remove any existing watermark nodes
                     clone.querySelectorAll &&
                       clone
                         .querySelectorAll(".pdf-watermark")
@@ -2130,7 +2096,6 @@ const LetterHead = () => {
 
                     await waitForImagesToLoad(clone);
 
-                    // call your generatePDF the same way handleGenerate used to (no preview flag)
                     await generatePDF(
                       clone,
                       letterType,
@@ -2145,12 +2110,10 @@ const LetterHead = () => {
                       formData.address
                     );
 
-                    // cleanup clone
                     try {
                       document.body.removeChild(clone);
                     } catch (e) {}
 
-                    // ensure editor body state is up-to-date
                     setFormData((prev) => ({
                       ...prev,
                       body: contentRef.current.innerHTML,
@@ -2170,7 +2133,6 @@ const LetterHead = () => {
                 {isGenerating ? "Generating..." : "Generate PDF"}
               </button>
 
-              {/* KEEP the Save button tied to handleSave (which validates & uploads) */}
               <button
                 onClick={handleSave}
                 className="letterhead-save-btn"

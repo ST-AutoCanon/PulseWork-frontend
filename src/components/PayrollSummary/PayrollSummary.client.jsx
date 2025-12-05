@@ -35,8 +35,6 @@ const PayrollSummary = () => {
     setSelectedDate({ month: parseInt(month), year: parseInt(year) });
   };
 
-  // inside PayrollSummary component
-
   const handleDownload = () => {
     try {
       const blob = generatePayslipPDF(
@@ -77,7 +75,7 @@ const PayrollSummary = () => {
       try {
         const res = await fetch(
           `${BACKEND_URL}/api/salary-slip?employee_id=${employeeId}&month=${selectedDate.month}&year=${selectedDate.year}`,
-          { headers }
+          { credentials: "include", headers }
         );
         const result = await res.json();
 
@@ -98,7 +96,7 @@ const PayrollSummary = () => {
       try {
         const res = await fetch(
           `${BACKEND_URL}/api/bank-details/${employeeId}`,
-          { headers }
+          { credentials: "include", headers }
         );
         const result = await res.json();
         setBankDetails(res.ok ? result : null);
@@ -111,7 +109,7 @@ const PayrollSummary = () => {
       try {
         const res = await fetch(
           `${BACKEND_URL}/api/employee-details/${employeeId}`,
-          { headers }
+          { credentials: "include", headers }
         );
         const result = await res.json();
         setEmployeeDetails(res.ok ? result : null);
@@ -123,6 +121,7 @@ const PayrollSummary = () => {
     const fetchAttendanceData = async () => {
       try {
         const res = await fetch(`${BACKEND_URL}/attendance/${employeeId}`, {
+          credentials: "include",
           headers,
         });
         const result = await res.json();
@@ -142,7 +141,6 @@ const PayrollSummary = () => {
     <div className="payroll-container">
       <h1 className="payroll-title">Employee Payslip</h1>
 
-      {/* Month & Year Dropdown */}
       <div className="payroll-controls">
         <label className="payroll-label">Select Month & Year:</label>
         <select
@@ -166,7 +164,6 @@ const PayrollSummary = () => {
         </select>
       </div>
 
-      {/* Payroll Rendering */}
       {loading ? (
         <p>Loading payroll data...</p>
       ) : error ? (

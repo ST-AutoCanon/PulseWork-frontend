@@ -240,14 +240,13 @@ export default function EmployeeDetails() {
         if (meId) headers["x-employee-id"] = meId;
         if (orgId) headers["x-org-id"] = orgId;
 
-        // Include orgId as a query parameter when available
         let url = `${BASE_URL}/departments`;
         if (orgId) {
           const sep = url.includes("?") ? "&" : "?";
           url = `${url}${sep}orgId=${encodeURIComponent(orgId)}`;
         }
 
-        const res = await axios.get(url, { headers });
+        const res = await axios.get(url, { withCredentials: true, headers });
         setDepartments(res.data.departments || []);
       } catch (err) {
         console.error("Failed to load departments:", err);
@@ -258,7 +257,6 @@ export default function EmployeeDetails() {
 
   useEffect(() => {
     fetchEmployees();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchTerm, fromDate, toDate, orgId, meId]);
 
   const fetchEmployees = async () => {
@@ -277,7 +275,7 @@ export default function EmployeeDetails() {
       if (meId) headers["x-employee-id"] = meId;
       if (orgId) headers["x-org-id"] = orgId;
 
-      const res = await axios.get(url, { headers });
+      const res = await axios.get(url, { withCredentials: true, headers });
       const list =
         res.data?.message?.data ||
         res.data?.message ||
@@ -389,7 +387,10 @@ export default function EmployeeDetails() {
       if (meId) headers["x-employee-id"] = meId;
       if (orgId) headers["x-org-id"] = orgId;
 
-      const res = await axios.get(`${BASE_URL}/full/${empId}`, { headers });
+      const res = await axios.get(`${BASE_URL}/full/${empId}`, {
+        withCredentials: true,
+        headers,
+      });
       const d = res.data.data || {};
 
       const personal = [
@@ -507,6 +508,7 @@ export default function EmployeeDetails() {
         try {
           const resp = await axios.get(`${BASE_URL}/docs${url}`, {
             responseType: "blob",
+            withCredentials: true,
             headers: {
               "x-api-key": API_KEY,
               ...(meId ? { "x-employee-id": meId } : {}),
@@ -530,6 +532,7 @@ export default function EmployeeDetails() {
         try {
           const resp = await axios.get(`${BASE_URL}/docs${url}`, {
             responseType: "blob",
+            withCredentials: true,
             headers: {
               "x-api-key": API_KEY,
               ...(meId ? { "x-employee-id": meId } : {}),
@@ -569,25 +572,25 @@ export default function EmployeeDetails() {
 
   const handleAdd = async (data) => {
     try {
-      // Prepare headers (don't set Content-Type here if sending FormData,
-      // axios will set the proper multipart boundary automatically).
       const baseHeaders = {
         "x-api-key": API_KEY,
       };
       if (meId) baseHeaders["x-employee-id"] = meId;
       if (orgId) baseHeaders["x-org-id"] = orgId;
 
-      // If caller passed FormData -> append orgId if missing.
       if (typeof FormData !== "undefined" && data instanceof FormData) {
         if (orgId && !data.has("orgId")) {
           data.append("orgId", orgId);
         }
-        await axios.post(`${BASE_URL}/full`, data, { headers: baseHeaders });
+        await axios.post(`${BASE_URL}/full`, data, {
+          withCredentials: true,
+          headers: baseHeaders,
+        });
       } else {
-        // It's probably a plain object — include orgId in the JSON body.
         const body = { ...(data || {}) };
         if (orgId) body.orgId = orgId;
         await axios.post(`${BASE_URL}/full`, body, {
+          withCredentials: true,
           headers: { ...baseHeaders, "Content-Type": "application/json" },
         });
       }
@@ -616,12 +619,14 @@ export default function EmployeeDetails() {
           formData.append("orgId", orgId);
         }
         await axios.put(`${BASE_URL}/full/${id}`, formData, {
+          withCredentials: true,
           headers: baseHeaders,
         });
       } else {
         const body = { ...(formData || {}) };
         if (orgId) body.orgId = orgId;
         await axios.put(`${BASE_URL}/full/${id}`, body, {
+          withCredentials: true,
           headers: { ...baseHeaders, "Content-Type": "application/json" },
         });
       }
@@ -641,7 +646,10 @@ export default function EmployeeDetails() {
       if (meId) headers["x-employee-id"] = meId;
       if (orgId) headers["x-org-id"] = orgId;
 
-      const res = await axios.get(`${BASE_URL}/full/${id}`, { headers });
+      const res = await axios.get(`${BASE_URL}/full/${id}`, {
+        withCredentials: true,
+        headers,
+      });
       setSelectedEmployee(res.data.data);
       setFormMode("edit");
     } catch (err) {
@@ -664,7 +672,7 @@ export default function EmployeeDetails() {
       await axios.put(
         `${BASE_URL}/admin/employees/${deleteEmployeeId}/deactivate`,
         {},
-        { headers }
+        { withCredentials: true, headers }
       );
 
       setDeleteEmployeeId(null);

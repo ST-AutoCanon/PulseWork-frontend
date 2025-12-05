@@ -1,8 +1,3 @@
-// src/components/LeaveQueries/leaveUtils.js
-
-/**
- * Safely parse a date string or Date object into YYYY-MM-DD format.
- */
 export const parseLocalDate = (dateStr) => {
   if (!dateStr) return "";
   if (typeof dateStr === "string" && dateStr.length === 10) return dateStr;
@@ -10,15 +5,10 @@ export const parseLocalDate = (dateStr) => {
   const d = new Date(dateStr);
   if (isNaN(d.getTime())) return "";
 
-  // Adjust for timezone offset to get local date
   d.setMinutes(d.getMinutes() + d.getTimezoneOffset());
   return d.toISOString().split("T")[0];
 };
 
-/**
- * Parse a date-only value from ISO string or YYYY-MM-DD.
- * Returns a Date object at 00:00 local time.
- */
 export const parseDateOnly = (isoDate) => {
   if (!isoDate) return null;
   const d = new Date(isoDate);
@@ -33,9 +23,6 @@ export const parseDateOnly = (isoDate) => {
   return null;
 };
 
-/**
- * Calculate total leave days between start and end, accounting for half-day.
- */
 export const calculateDays = (startDate, endDate, h_f_day = "") => {
   const s = parseDateOnly(startDate);
   const e = parseDateOnly(endDate);
@@ -54,9 +41,6 @@ export const calculateDays = (startDate, endDate, h_f_day = "") => {
   return diffDays;
 };
 
-/**
- * Extract advance notice days from a leave setting object.
- */
 export const getAdvanceNoticeDays = (setting) => {
   if (!setting) return 0;
 
@@ -71,9 +55,6 @@ export const getAdvanceNoticeDays = (setting) => {
   return Number.isFinite(num) ? Math.max(0, Math.floor(num)) : 0;
 };
 
-/**
- * Compute requested leave days from start/end and half/full day.
- */
 export const computeRequestedDays = (start, end, h_f_day) => {
   if (!start || !end) return 0;
   const s = new Date(start);
@@ -86,9 +67,6 @@ export const computeRequestedDays = (start, end, h_f_day) => {
   return diff;
 };
 
-/**
- * Default leave types/settings.
- */
 export const defaultLeaveSettings = [
   {
     type: "casual",
@@ -124,8 +102,5 @@ export const defaultLeaveSettings = [
   },
 ];
 
-/**
- * Get short month name from month number (1–12) and year.
- */
 export const monthName = (m, year) =>
   new Date(year, m - 1, 1).toLocaleString(undefined, { month: "short" });

@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from "react";
 import FileInput from "../EmployeeDetails/FileInput.client";
 import { MdOutlineCancel } from "react-icons/md";
-import { useAuth } from "../../context/AuthProvider.client"; // adjust path if your auth provider is located elsewhere
+import { useAuth } from "../../context/AuthProvider.client";
 
 const READ_ONLY_FIELDS = [
   "domain",
@@ -23,15 +23,13 @@ export default function StepProfessionalEmployee({
   onChange,
   departments = [],
 }) {
-  // auth available for components that need current user (if required)
-  const { user } = useAuth(); // currently not used directly but kept for future needs
+  const { user } = useAuth();
   const [roleOptions, setRoleOptions] = useState([]);
   const [positionsList, setPositionsList] = useState([]);
   const [supervisorsList, setSupervisorsList] = useState([]);
   const [prevSupervisor, setPrevSupervisor] = useState(null);
   const [historyFetched, setHistoryFetched] = useState(false);
 
-  // Use Next.js public env variables
   const API_KEY = process.env.NEXT_PUBLIC_API_KEY;
   const BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
 
@@ -46,6 +44,7 @@ export default function StepProfessionalEmployee({
     setHistoryFetched(false);
 
     fetch(`${BASE_URL}/supervisor/history/${data.employee_id}`, {
+      credentials: "include",
       headers: { "x-api-key": API_KEY ?? "" },
     })
       .then((res) => res.json())
@@ -103,7 +102,10 @@ export default function StepProfessionalEmployee({
   }, [data.employee_id, API_KEY, BASE_URL]);
 
   useEffect(() => {
-    fetch(`${BASE_URL}/user_roles`, { headers: { "x-api-key": API_KEY ?? "" } })
+    fetch(`${BASE_URL}/user_roles`, {
+      credentials: "include",
+      headers: { "x-api-key": API_KEY ?? "" },
+    })
       .then((r) => r.json())
       .then((json) => setRoleOptions(json.data || []))
       .catch((err) => {
@@ -121,7 +123,10 @@ export default function StepProfessionalEmployee({
     const url = `${BASE_URL}/positions?role=${encodeURIComponent(
       data.role
     )}&department_id=${encodeURIComponent(deptParam)}`;
-    fetch(url, { headers: { "x-api-key": API_KEY ?? "" } })
+    fetch(url, {
+      credentials: "include",
+      headers: { "x-api-key": API_KEY ?? "" },
+    })
       .then((res) => res.json())
       .then((json) => setPositionsList(json.data || []))
       .catch((err) => {
@@ -139,7 +144,10 @@ export default function StepProfessionalEmployee({
     const url = `${BASE_URL}/positions/supervisors?position=${encodeURIComponent(
       data.position
     )}&department_id=${encodeURIComponent(deptParam)}`;
-    fetch(url, { headers: { "x-api-key": API_KEY ?? "" } })
+    fetch(url, {
+      credentials: "include",
+      headers: { "x-api-key": API_KEY ?? "" },
+    })
       .then((res) => res.json())
       .then((json) => setSupervisorsList(json.data || []))
       .catch((err) => {

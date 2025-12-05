@@ -118,18 +118,13 @@ const CreateOrganization = ({ employeeId: propEmployeeId = null }) => {
     [API_KEY, employeeId]
   );
 
-  // convert various date representations to YYYY-MM-DD for <input type="date">
   const toInputDate = (val) => {
     if (!val && val !== 0) return "";
-    // If already a simple YYYY-MM-DD string
     if (typeof val === "string") {
-      // If it starts with YYYY-MM-DD (covers 'YYYY-MM-DD' and ISO 'YYYY-MM-DDTHH:MM:SSZ')
       const m = val.match(/^(\d{4}-\d{2}-\d{2})/);
       if (m) return m[1];
-      // fallback: try Date parsing below
     }
 
-    // If it's a Date object or other parseable string, use UTC parts to avoid tz shifts
     const d = new Date(val);
     if (isNaN(d.getTime())) return "";
     const yyyy = d.getUTCFullYear();
@@ -174,7 +169,6 @@ const CreateOrganization = ({ employeeId: propEmployeeId = null }) => {
     message: "",
   });
 
-  // NEW: confirmation modal state for delete
   const [confirmDelete, setConfirmDelete] = useState({
     isVisible: false,
     orgId: null,
@@ -183,7 +177,6 @@ const CreateOrganization = ({ employeeId: propEmployeeId = null }) => {
   const [openDropdownId, setOpenDropdownId] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // NEW: Employee ID Prefix (2-4 uppercase letters)
   const [employeePrefix, setEmployeePrefix] = useState("");
 
   const roles = ["Admin", "Manager", "Supervisor", "Employee", "General"];
@@ -234,8 +227,6 @@ const CreateOrganization = ({ employeeId: propEmployeeId = null }) => {
       : "End date cannot be before start date.";
   };
 
-  // Simplified validation: rely on HTML `required` for simple presence checks
-  // keep JS validation for patterns and related rules
   const validateForm = (currentStep) => {
     const newErrors = {};
     let errorMessages = [];
@@ -369,6 +360,7 @@ const CreateOrganization = ({ employeeId: propEmployeeId = null }) => {
       try {
         const res = await fetch(`${BASE_URL}/api/sidebar-menu`, {
           method: "GET",
+          credentials: "include",
           headers,
         });
         if (!res.ok) {
@@ -405,6 +397,7 @@ const CreateOrganization = ({ employeeId: propEmployeeId = null }) => {
             `${BASE_URL}/api/sidebar-access?orgId=${currentOrgId}`,
             {
               method: "GET",
+              credentials: "include",
               headers,
             }
           );
@@ -439,6 +432,7 @@ const CreateOrganization = ({ employeeId: propEmployeeId = null }) => {
     const fetchOrganizations = async () => {
       try {
         const res = await fetch(`${BASE_URL}/api/organizations`, {
+          credentials: "include",
           headers,
         });
         if (!res.ok)
@@ -534,6 +528,7 @@ const CreateOrganization = ({ employeeId: propEmployeeId = null }) => {
     try {
       const response = await fetch(`${BASE_URL}/api/organizations/${orgId}`, {
         method: "DELETE",
+        credentials: "include",
         headers,
       });
 
@@ -657,6 +652,7 @@ const CreateOrganization = ({ employeeId: propEmployeeId = null }) => {
       const response = await fetch(url, {
         method,
         headers,
+        credentials: "include",
         body: JSON.stringify({ orgData, sidebarAccess: sidebarAccessData }),
       });
 
@@ -685,6 +681,7 @@ const CreateOrganization = ({ employeeId: propEmployeeId = null }) => {
           );
         } else {
           const res = await fetch(`${BASE_URL}/api/organizations`, {
+            credentials: "include",
             headers,
           });
           if (!res.ok)
@@ -860,7 +857,6 @@ const CreateOrganization = ({ employeeId: propEmployeeId = null }) => {
                       )}
                     </div>
 
-                    {/* NEW: Employee ID Prefix field (required, 2-4 uppercase letters) */}
                     <div className="orgprefix-form-field">
                       <label>
                         Employee ID Prefix<span className="red">*</span>
@@ -1274,7 +1270,6 @@ const CreateOrganization = ({ employeeId: propEmployeeId = null }) => {
         </Modal>
       )}
 
-      {/* NEW: confirmation modal uses existing Modal component */}
       {confirmDelete.isVisible && (
         <Modal
           isVisible={confirmDelete.isVisible}

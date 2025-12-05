@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useMemo, useState, useEffect } from "react";
@@ -8,9 +7,6 @@ import { useAuth } from "../../context/AuthProvider.client";
 import Modal from "../Modal/Modal.client";
 import WeeklyTaskPlanner from "../WeeklyTaskPlanner/WeeklyTaskPlanner.client";
 
-/* ------------------------------------------------------------------ */
-/*  Helper functions                                                  */
-/* ------------------------------------------------------------------ */
 const getProgressColor = (p) => {
   if (p < 40) return "#ef4444";
   if (p < 70) return "#f59e0b";
@@ -30,7 +26,8 @@ const parseDate = (dateStr) => {
 
 const formatDate = (date) => {
   if (!date) return "";
-  const d = date instanceof Date && !isNaN(date.getTime()) ? date : new Date(date);
+  const d =
+    date instanceof Date && !isNaN(date.getTime()) ? date : new Date(date);
   if (isNaN(d.getTime())) return "";
   const day = String(d.getDate()).padStart(2, "0");
   const month = String(d.getMonth() + 1).padStart(2, "0");
@@ -45,9 +42,6 @@ const displayDate = (date) => {
   return parseDate(d);
 };
 
-/* ------------------------------------------------------------------ */
-/*  Main Component                                                    */
-/* ------------------------------------------------------------------ */
 const EmpTaskManagement = () => {
   const { user, hydrated } = useAuth();
   const [userContext, setUserContext] = useState(null);
@@ -63,9 +57,11 @@ const EmpTaskManagement = () => {
   const [tempProgress, setTempProgress] = useState(0);
   const [tempStatus, setTempStatus] = useState("");
   const [activeSection, setActiveSection] = useState("Tasks");
-  const [alertModal, setAlertModal] = useState({ isVisible: false, message: "" });
+  const [alertModal, setAlertModal] = useState({
+    isVisible: false,
+    message: "",
+  });
 
-  /* ---------- sync auth ---------- */
   useEffect(() => {
     if (!hydrated) return;
     if (user?.employeeId) {
@@ -81,7 +77,6 @@ const EmpTaskManagement = () => {
     }
   }, [user, hydrated]);
 
-  /* ---------- Headers Helper ---------- */
   const getHeaders = () => ({
     "x-employee-id": userContext?.employeeId || "",
     "x-role": userContext?.role || "",
@@ -89,7 +84,6 @@ const EmpTaskManagement = () => {
     "x-api-key": process.env.NEXT_PUBLIC_API_KEY || "",
   });
 
-  /* ---------- FETCH TASKS ---------- */
   useEffect(() => {
     if (!employeeId || !userContext) return;
 
@@ -99,7 +93,7 @@ const EmpTaskManagement = () => {
       try {
         const res = await axios.get(
           `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/task-emp-emp/employee/${employeeId}`,
-          { headers: getHeaders() }
+          { withCredentials: true, headers: getHeaders() }
         );
 
         const raw = res.data;
@@ -136,7 +130,10 @@ const EmpTaskManagement = () => {
         setTasks(formatted);
       } catch (e) {
         if (e.response?.status === 404) setTasks([]);
-        else setError(e.response?.data?.error || e.message || "Failed to load tasks");
+        else
+          setError(
+            e.response?.data?.error || e.message || "Failed to load tasks"
+          );
       } finally {
         setLoadingTasks(false);
       }
@@ -145,7 +142,6 @@ const EmpTaskManagement = () => {
     fetch();
   }, [employeeId, userContext]);
 
-  /* ---------- FETCH MESSAGES ---------- */
   useEffect(() => {
     if (!selectedTaskId || !employeeId || !userContext) return;
     const task = tasks.find((t) => t.id === selectedTaskId);
@@ -156,23 +152,28 @@ const EmpTaskManagement = () => {
       try {
         const res = await axios.get(
           `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/messages/${task.dbId}`,
-          { headers: getHeaders() }
+          { withCredentials: true, headers: getHeaders() }
         );
 
         if (res.data.success) {
-          const { progressMessages = [], clarificationMessages = [] } = res.data;
+          const { progressMessages = [], clarificationMessages = [] } =
+            res.data;
           const all = [
             ...progressMessages.map((m) => ({
               ...m,
-              senderName: String(m.sender) === employeeId ? "You" : "Supervisor",
+              senderName:
+                String(m.sender) === employeeId ? "You" : "Supervisor",
               type: "Progress",
             })),
             ...clarificationMessages.map((m) => ({
               ...m,
-              senderName: String(m.sender) === employeeId ? "You" : "Supervisor",
+              senderName:
+                String(m.sender) === employeeId ? "You" : "Supervisor",
               type: "Clarification",
             })),
-          ].sort((a, b) => new Date(a.time).getTime() - new Date(b.time).getTime());
+          ].sort(
+            (a, b) => new Date(a.time).getTime() - new Date(b.time).getTime()
+          );
 
           setTasks((prev) =>
             prev.map((t) =>
@@ -185,7 +186,9 @@ const EmpTaskManagement = () => {
           setError(e.response?.data?.error || e.message);
         }
         setTasks((prev) =>
-          prev.map((t) => (t.id === selectedTaskId ? { ...t, messages: [] } : t))
+          prev.map((t) =>
+            t.id === selectedTaskId ? { ...t, messages: [] } : t
+          )
         );
       } finally {
         setLoadingMessages(false);
@@ -195,7 +198,6 @@ const EmpTaskManagement = () => {
     fetch();
   }, [selectedTaskId, employeeId, userContext]);
 
-  /* ---------- UI LOGIC ---------- */
   const columns = useMemo(
     () => [
       { key: "Yet to Start", title: "Yet to Start", color: "#7c7d1e" },
@@ -206,7 +208,10 @@ const EmpTaskManagement = () => {
     []
   );
 
-  const dropdownColumns = useMemo(() => columns.filter(col => col.key !== "Completed"), [columns]);
+  const dropdownColumns = useMemo(
+    () => columns.filter((col) => col.key !== "Completed"),
+    [columns]
+  );
 
   const selectedTask = useMemo(
     () => tasks.find((t) => t.id === selectedTaskId) || null,
@@ -248,7 +253,6 @@ const EmpTaskManagement = () => {
     setTempStatus(e.target.value);
   };
 
-  /* ---------- SAVE PROGRESS (DB only) ---------- */
   const saveProgress = async () => {
     if (!selectedTask || !userContext) return;
     const dbId = selectedTask.dbId;
@@ -256,7 +260,9 @@ const EmpTaskManagement = () => {
     try {
       setTasks((prev) =>
         prev.map((t) =>
-          t.id === selectedTask.id ? { ...t, status: tempStatus, progress: tempProgress } : t
+          t.id === selectedTask.id
+            ? { ...t, status: tempStatus, progress: tempProgress }
+            : t
         )
       );
 
@@ -267,7 +273,7 @@ const EmpTaskManagement = () => {
           percentage: tempProgress,
           progress_percentage: tempProgress,
         },
-        { headers: getHeaders() }
+        { withCredentials: true, headers: getHeaders() }
       );
 
       showAlert("Task updated successfully");
@@ -276,7 +282,11 @@ const EmpTaskManagement = () => {
       setTasks((prev) =>
         prev.map((t) =>
           t.id === selectedTask.id
-            ? { ...t, progress: selectedTask.progress, status: selectedTask.status }
+            ? {
+                ...t,
+                progress: selectedTask.progress,
+                status: selectedTask.status,
+              }
             : t
         )
       );
@@ -291,7 +301,6 @@ const EmpTaskManagement = () => {
     setTempStatus(selectedTask?.status ?? "");
   };
 
-  /* ---------- SEND MESSAGE (Pure Chat) ---------- */
   const handleAddMessage = async (e) => {
     e.preventDefault();
     const text = messageText.trim();
@@ -313,7 +322,8 @@ const EmpTaskManagement = () => {
             ? {
                 ...t,
                 messages: [...t.messages, newMsg].sort(
-                  (a, b) => new Date(a.time).getTime() - new Date(b.time).getTime()
+                  (a, b) =>
+                    new Date(a.time).getTime() - new Date(b.time).getTime()
                 ),
               }
             : t
@@ -323,16 +333,21 @@ const EmpTaskManagement = () => {
       await axios.post(
         `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/messages`,
         { taskId: dbId, sender: employeeId, type: activeTab, text },
-        { headers: getHeaders() }
+        { withCredentials: true, headers: getHeaders() }
       );
 
       setMessageText("");
     } catch (e) {
-      setError(e.response?.data?.error || e.message || "Failed to send message");
+      setError(
+        e.response?.data?.error || e.message || "Failed to send message"
+      );
       setTasks((prev) =>
         prev.map((t) =>
           t.id === selectedTask.id
-            ? { ...t, messages: t.messages.filter((m) => m.time !== newMsg.time) }
+            ? {
+                ...t,
+                messages: t.messages.filter((m) => m.time !== newMsg.time),
+              }
             : t
         )
       );
@@ -342,8 +357,8 @@ const EmpTaskManagement = () => {
   const showAlert = (msg) => setAlertModal({ isVisible: true, message: msg });
   const closeAlert = () => setAlertModal({ isVisible: false, message: "" });
 
-  /* ---------- RENDER ---------- */
-  if (!hydrated) return <div className="emp-task-board-container">Loading user...</div>;
+  if (!hydrated)
+    return <div className="emp-task-board-container">Loading user...</div>;
   if (!user) {
     return (
       <div className="emp-task-board-container">
@@ -365,27 +380,31 @@ const EmpTaskManagement = () => {
 
   return (
     <div className="emp-task-board-container-1">
-      {/* SECTION SWITCHER */}
       <div className="emp-task-sections">
         <button
-          className={`emp-section-btn ${activeSection === "Tasks" ? "emp-active" : ""}`}
+          className={`emp-section-btn ${
+            activeSection === "Tasks" ? "emp-active" : ""
+          }`}
           onClick={() => setActiveSection("Tasks")}
         >
           Supervisor Driven
         </button>
         <button
-          className={`emp-section-btn ${activeSection === "WeeklyTasks" ? "emp-active" : ""}`}
+          className={`emp-section-btn ${
+            activeSection === "WeeklyTasks" ? "emp-active" : ""
+          }`}
           onClick={() => setActiveSection("WeeklyTasks")}
         >
           Employee Driven
         </button>
       </div>
 
-      {/* SUPERVISOR DRIVEN */}
       {activeSection === "Tasks" && (
         <>
           {error && <div className="emp-task-error-message">{error}</div>}
-          {loadingTasks && <div className="emp-task-loading-message">Loading tasks...</div>}
+          {loadingTasks && (
+            <div className="emp-task-loading-message">Loading tasks...</div>
+          )}
           {!loadingTasks && tasks.length === 0 && !error && (
             <div className="emp-task-no-tasks">No tasks assigned yet</div>
           )}
@@ -394,13 +413,22 @@ const EmpTaskManagement = () => {
             {columns.map((col) => {
               const colTasks = tasks
                 .filter((t) => t.status === col.key)
-                .sort((a, b) => new Date(a.endDate).getTime() - new Date(b.endDate).getTime());
+                .sort(
+                  (a, b) =>
+                    new Date(a.endDate).getTime() -
+                    new Date(b.endDate).getTime()
+                );
 
               return (
                 <div className="emp-task-column" key={col.key}>
-                  <div className="emp-task-column-header" style={{ backgroundColor: col.color }}>
+                  <div
+                    className="emp-task-column-header"
+                    style={{ backgroundColor: col.color }}
+                  >
                     <span>{col.title}</span>
-                    <span className="emp-task-count-badge">{colTasks.length}</span>
+                    <span className="emp-task-count-badge">
+                      {colTasks.length}
+                    </span>
                   </div>
 
                   <div className="emp-task-list">
@@ -410,8 +438,12 @@ const EmpTaskManagement = () => {
                       </div>
                     ) : (
                       colTasks.map((task) => {
-                        const isOverdue = task.status !== "Completed" && new Date(task.endDate) < currentDate;
-                        const ringColor = isOverdue ? "#ef4444" : getProgressColor(task.progress);
+                        const isOverdue =
+                          task.status !== "Completed" &&
+                          new Date(task.endDate) < currentDate;
+                        const ringColor = isOverdue
+                          ? "#ef4444"
+                          : getProgressColor(task.progress);
 
                         return (
                           <div
@@ -421,12 +453,22 @@ const EmpTaskManagement = () => {
                           >
                             <div className="emp-task-header">
                               <div className="emp-task-title-group">
-                                <div className="emp-task-title">{task.title}</div>
-                                <div className="emp-task-id-chip">{task.id}</div>
+                                <div className="emp-task-title">
+                                  {task.title}
+                                </div>
+                                <div className="emp-task-id-chip">
+                                  {task.id}
+                                </div>
                               </div>
 
-                              <div className="emp-task-progress-wrapper" title={`${task.progress}%`}>
-                                <svg viewBox="0 0 36 36" className="emp-task-progress-ring">
+                              <div
+                                className="emp-task-progress-wrapper"
+                                title={`${task.progress}%`}
+                              >
+                                <svg
+                                  viewBox="0 0 36 36"
+                                  className="emp-task-progress-ring"
+                                >
                                   <path
                                     className="emp-task-circle-bg"
                                     d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
@@ -460,7 +502,9 @@ const EmpTaskManagement = () => {
 
                             <div className="emp-task-dates">
                               <div className="emp-task-date-group">
-                                <span className="emp-task-date-label">Start</span>
+                                <span className="emp-task-date-label">
+                                  Start
+                                </span>
                                 <span className="emp-task-date-pill emp-task-start">
                                   {displayDate(task.startDate)}
                                 </span>
@@ -469,7 +513,9 @@ const EmpTaskManagement = () => {
                               <div className="emp-task-date-group">
                                 <span className="emp-task-date-label">End</span>
                                 <span
-                                  className={`emp-task-date-pill emp-task-end ${isOverdue ? "emp-task-overdue" : ""}`}
+                                  className={`emp-task-date-pill emp-task-end ${
+                                    isOverdue ? "emp-task-overdue" : ""
+                                  }`}
                                 >
                                   {displayDate(task.endDate)}
                                 </span>
@@ -478,8 +524,15 @@ const EmpTaskManagement = () => {
 
                             <div className="emp-task-footer">
                               <div className="emp-task-spacer" />
-                              <div className="emp-task-msg-wrap" title="Open messages">
-                                <span className="emp-task-message-icon" role="img" aria-label="messages">
+                              <div
+                                className="emp-task-msg-wrap"
+                                title="Open messages"
+                              >
+                                <span
+                                  className="emp-task-message-icon"
+                                  role="img"
+                                  aria-label="messages"
+                                >
                                   💬
                                 </span>
                               </div>
@@ -493,16 +546,22 @@ const EmpTaskManagement = () => {
               );
             })}
 
-            {/* TASK DETAILS MODAL */}
             {selectedTask && (
               <div className="emp-task-details-backdrop" onClick={closeDetails}>
-                <div className="emp-task-details" onClick={(e) => e.stopPropagation()}>
+                <div
+                  className="emp-task-details"
+                  onClick={(e) => e.stopPropagation()}
+                >
                   <div className="emp-task-details-header">
                     <div className="emp-task-details-title">
                       <div className="emp-task-pill">{selectedTask.id}</div>
                       <h3>{selectedTask.title}</h3>
                     </div>
-                    <button className="emp-task-close-btn" onClick={closeDetails} aria-label="Close">
+                    <button
+                      className="emp-task-close-btn"
+                      onClick={closeDetails}
+                      aria-label="Close"
+                    >
                       ✕
                     </button>
                   </div>
@@ -511,11 +570,16 @@ const EmpTaskManagement = () => {
                     <div className="emp-task-meta-row">
                       <div className="emp-task-status-line">
                         <span className="emp-task-label">Status:</span>
-                        <span className="emp-task-value">{selectedTask.status}</span>
+                        <span className="emp-task-value">
+                          {selectedTask.status}
+                        </span>
                       </div>
 
                       <div className="emp-task-progress-wrapper">
-                        <svg viewBox="0 0 36 36" className="emp-task-progress-ring">
+                        <svg
+                          viewBox="0 0 36 36"
+                          className="emp-task-progress-ring"
+                        >
                           <path
                             className="emp-task-circle-bg"
                             d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
@@ -529,7 +593,8 @@ const EmpTaskManagement = () => {
                             strokeDashoffset={100 - selectedTask.progress}
                             d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
                             stroke={
-                              selectedTask.status !== "Completed" && new Date(selectedTask.endDate) < currentDate
+                              selectedTask.status !== "Completed" &&
+                              new Date(selectedTask.endDate) < currentDate
                                 ? "#ef4444"
                                 : getProgressColor(selectedTask.progress)
                             }
@@ -556,7 +621,13 @@ const EmpTaskManagement = () => {
                           onClick={startEditingProgress}
                           title="Edit Progress"
                         >
-                          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                          <svg
+                            width="20"
+                            height="20"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            xmlns="http://www.w3.org/2000/svg"
+                          >
                             <path
                               d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"
                               stroke="#6b7280"
@@ -589,7 +660,9 @@ const EmpTaskManagement = () => {
                             onChange={handleSliderChange}
                             className="emp-task-progress-slider"
                           />
-                          <span className="emp-task-slider-value">{tempProgress}%</span>
+                          <span className="emp-task-slider-value">
+                            {tempProgress}%
+                          </span>
                         </div>
 
                         <div className="emp-task-status-container">
@@ -609,10 +682,16 @@ const EmpTaskManagement = () => {
                         </div>
 
                         <div className="emp-task-editor-actions">
-                          <button onClick={saveProgress} className="emp-task-save-btn">
+                          <button
+                            onClick={saveProgress}
+                            className="emp-task-save-btn"
+                          >
                             Update Progress
                           </button>
-                          <button onClick={cancelEditing} className="emp-task-cancel-btn">
+                          <button
+                            onClick={cancelEditing}
+                            className="emp-task-cancel-btn"
+                          >
                             Cancel
                           </button>
                         </div>
@@ -626,7 +705,8 @@ const EmpTaskManagement = () => {
                       <span className="emp-task-arrow">→</span>
                       <span
                         className={`emp-task-date-pill emp-task-end ${
-                          selectedTask.status !== "Completed" && new Date(selectedTask.endDate) < currentDate
+                          selectedTask.status !== "Completed" &&
+                          new Date(selectedTask.endDate) < currentDate
                             ? "emp-task-overdue"
                             : ""
                         }`}
@@ -638,27 +718,34 @@ const EmpTaskManagement = () => {
                     <div className="emp-task-description">
                       <h4>Description</h4>
                       <p>
-                        {selectedTask.description.split("\n").map((line, idx) => (
-                          <span key={idx}>
-                            {line.startsWith("- ") ? `• ${line.slice(2)}` : line}
-                            <br />
-                          </span>
-                        ))}
+                        {selectedTask.description
+                          .split("\n")
+                          .map((line, idx) => (
+                            <span key={idx}>
+                              {line.startsWith("- ")
+                                ? `• ${line.slice(2)}`
+                                : line}
+                              <br />
+                            </span>
+                          ))}
                       </p>
                     </div>
                   </div>
 
-                  {/* TABS */}
                   <div className="emp-task-tabs">
                     <div className="emp-task-tab-header">
                       <button
-                        className={`emp-task-tab-btn ${activeTab === "Progress" ? "emp-task-active" : ""}`}
+                        className={`emp-task-tab-btn ${
+                          activeTab === "Progress" ? "emp-task-active" : ""
+                        }`}
                         onClick={() => setActiveTab("Progress")}
                       >
                         Progress
                       </button>
                       <button
-                        className={`emp-task-tab-btn ${activeTab === "Clarification" ? "emp-task-active" : ""}`}
+                        className={`emp-task-tab-btn ${
+                          activeTab === "Clarification" ? "emp-task-active" : ""
+                        }`}
                         onClick={() => setActiveTab("Clarification")}
                       >
                         Clarification
@@ -670,17 +757,27 @@ const EmpTaskManagement = () => {
                         <div className="emp-task-progress-tab">
                           <h4>Progress Updates</h4>
                           {loadingMessages ? (
-                            <p className="emp-task-loading-message">Loading progress messages...</p>
-                          ) : selectedTask.messages.filter((msg) => msg.type === "Progress").length > 0 ? (
+                            <p className="emp-task-loading-message">
+                              Loading progress messages...
+                            </p>
+                          ) : selectedTask.messages.filter(
+                              (msg) => msg.type === "Progress"
+                            ).length > 0 ? (
                             <div className="emp-task-messages">
                               {selectedTask.messages
                                 .filter((msg) => msg.type === "Progress")
                                 .map((msg, idx) => (
                                   <div
                                     key={idx}
-                                    className={`emp-task-message ${msg.senderName === "You" ? "emp-task-sent" : "emp-task-received"}`}
+                                    className={`emp-task-message ${
+                                      msg.senderName === "You"
+                                        ? "emp-task-sent"
+                                        : "emp-task-received"
+                                    }`}
                                   >
-                                    <div className="emp-task-message-content">{msg.text}</div>
+                                    <div className="emp-task-message-content">
+                                      {msg.text}
+                                    </div>
                                     <div className="emp-task-message-meta">
                                       <span>{displayDate(msg.time)}</span>
                                       <span>{msg.senderName}</span>
@@ -689,9 +786,14 @@ const EmpTaskManagement = () => {
                                 ))}
                             </div>
                           ) : (
-                            <p className="emp-task-no-msg">No progress updates yet.</p>
+                            <p className="emp-task-no-msg">
+                              No progress updates yet.
+                            </p>
                           )}
-                          <form className="emp-task-chat-input" onSubmit={handleAddMessage}>
+                          <form
+                            className="emp-task-chat-input"
+                            onSubmit={handleAddMessage}
+                          >
                             <input
                               type="text"
                               placeholder="Type a progress comment…"
@@ -699,7 +801,10 @@ const EmpTaskManagement = () => {
                               onChange={(e) => setMessageText(e.target.value)}
                               disabled={loadingMessages}
                             />
-                            <button type="submit" disabled={loadingMessages || !messageText.trim()}>
+                            <button
+                              type="submit"
+                              disabled={loadingMessages || !messageText.trim()}
+                            >
                               Send
                             </button>
                           </form>
@@ -710,17 +815,27 @@ const EmpTaskManagement = () => {
                         <div className="emp-task-clarification-tab">
                           <h4>Clarification</h4>
                           {loadingMessages ? (
-                            <p className="emp-task-loading-message">Loading clarification messages...</p>
-                          ) : selectedTask.messages.filter((msg) => msg.type === "Clarification").length > 0 ? (
+                            <p className="emp-task-loading-message">
+                              Loading clarification messages...
+                            </p>
+                          ) : selectedTask.messages.filter(
+                              (msg) => msg.type === "Clarification"
+                            ).length > 0 ? (
                             <div className="emp-task-messages">
                               {selectedTask.messages
                                 .filter((msg) => msg.type === "Clarification")
                                 .map((msg, idx) => (
                                   <div
                                     key={idx}
-                                    className={`emp-task-message ${msg.senderName === "You" ? "emp-task-sent" : "emp-task-received"}`}
+                                    className={`emp-task-message ${
+                                      msg.senderName === "You"
+                                        ? "emp-task-sent"
+                                        : "emp-task-received"
+                                    }`}
                                   >
-                                    <div className="emp-task-message-content">{msg.text}</div>
+                                    <div className="emp-task-message-content">
+                                      {msg.text}
+                                    </div>
                                     <div className="emp-task-message-meta">
                                       <span>{displayDate(msg.time)}</span>
                                       <span>{msg.senderName}</span>
@@ -729,9 +844,14 @@ const EmpTaskManagement = () => {
                                 ))}
                             </div>
                           ) : (
-                            <p className="emp-task-no-msg">No clarifications yet.</p>
+                            <p className="emp-task-no-msg">
+                              No clarifications yet.
+                            </p>
                           )}
-                          <form className="emp-task-chat-input" onSubmit={handleAddMessage}>
+                          <form
+                            className="emp-task-chat-input"
+                            onSubmit={handleAddMessage}
+                          >
                             <input
                               type="text"
                               placeholder="Type a clarification message…"
@@ -739,7 +859,10 @@ const EmpTaskManagement = () => {
                               onChange={(e) => setMessageText(e.target.value)}
                               disabled={loadingMessages}
                             />
-                            <button type="submit" disabled={loadingMessages || !messageText.trim()}>
+                            <button
+                              type="submit"
+                              disabled={loadingMessages || !messageText.trim()}
+                            >
                               Send
                             </button>
                           </form>
@@ -762,18 +885,18 @@ const EmpTaskManagement = () => {
         </>
       )}
 
-      {/* EMPLOYEE DRIVEN */}
-      {activeSection === "WeeklyTasks" && (
-        userContext ? (
+      {activeSection === "WeeklyTasks" &&
+        (userContext ? (
           <WeeklyTaskPlanner
             userRole={userContext.role?.toLowerCase() || "employee"}
             employeeId={employeeId}
             userContext={userContext}
           />
         ) : (
-          <div className="emp-task-loading-message">Loading user session...</div>
-        )
-      )}
+          <div className="emp-task-loading-message">
+            Loading user session...
+          </div>
+        ))}
     </div>
   );
 };

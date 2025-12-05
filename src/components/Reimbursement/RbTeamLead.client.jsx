@@ -66,6 +66,7 @@ const RbTeamLead = () => {
     const fetchProjects = async () => {
       try {
         const response = await axios.get(`${BACKEND_URL}/projectdrop`, {
+          withCredentials: true,
           headers: {
             "x-api-key": API_KEY,
             "x-org-id": orgId,
@@ -89,6 +90,7 @@ const RbTeamLead = () => {
       const response = await axios.get(
         `${BACKEND_URL}/team/${teamLeadId}/reimbursements`,
         {
+          withCredentials: true,
           headers: {
             "Content-Type": "application/json",
             "x-api-key": API_KEY,
@@ -140,6 +142,7 @@ const RbTeamLead = () => {
           const [year, month] = match.slice(1, 3);
           const fileUrl = `${BACKEND_URL}/reimbursement/${orgId}/${year}/${month}/${claim.employee_id}/${file.filename}`;
           const response = await axios.get(fileUrl, {
+            withCredentials: true,
             headers: {
               "x-api-key": API_KEY,
               "x-org-id": orgId,
@@ -200,6 +203,7 @@ const RbTeamLead = () => {
           project,
         },
         {
+          withCredentials: true,
           headers: {
             "x-api-key": API_KEY,
             "x-org-id": orgId,
@@ -222,7 +226,10 @@ const RbTeamLead = () => {
           payment_status: selectedOption === "paid" ? "paid" : "pending",
           user_role: "Manager",
         },
-        { headers: { "x-api-key": API_KEY, "x-org-id": orgId } }
+        {
+          withCredentials: true,
+          headers: { "x-api-key": API_KEY, "x-org-id": orgId },
+        }
       );
 
       const returned = (res.data && (res.data.data || res.data)) || {};
@@ -249,6 +256,7 @@ const RbTeamLead = () => {
   const handleDownloadPDF = async (claim) => {
     try {
       const response = await axios.get(`${BACKEND_URL}/download/${claim.id}`, {
+        withCredentials: true,
         headers: { "x-api-key": API_KEY, "x-org-id": orgId },
         responseType: "blob",
       });

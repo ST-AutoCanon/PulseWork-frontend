@@ -170,7 +170,7 @@ const EmployeeQuery = () => {
       const url = `${BACKEND_URL}/threads/employee/${encodeURIComponent(
         employeeId
       )}`;
-      const response = await axios.get(url, { headers });
+      const response = await axios.get(url, { withCredentials: true, headers });
       const payload = response.data;
       const data = payload?.data ?? payload?.threads ?? payload?.result ?? [];
       setQueries(Array.isArray(data) ? data : []);
@@ -196,7 +196,7 @@ const EmployeeQuery = () => {
         const headers = buildHeaders();
         const res = await axios.get(
           `${BACKEND_URL}/threads/${selectedQuery.id}/messages`,
-          { headers }
+          { withCredentials: true, headers }
         );
         const msgs = res.data?.data ?? res.data ?? [];
         setMessages(Array.isArray(msgs) ? msgs : []);
@@ -211,7 +211,7 @@ const EmployeeQuery = () => {
         await axios.put(
           `${BACKEND_URL}/threads/${selectedQuery.id}/messages/read`,
           { sender_id: employeeId },
-          { headers }
+          { withCredentials: true, headers }
         );
         setQueries((prev) =>
           prev.map((q) =>
@@ -256,7 +256,7 @@ const EmployeeQuery = () => {
         const res = await axios.post(
           `${BACKEND_URL}/threads/${selectedQuery.id}/messages`,
           formData,
-          { headers }
+          { withCredentials: true, headers }
         );
         const newMsg = res.data?.data?.message ?? res.data?.data ?? res.data;
         setInputMessage("");
@@ -293,7 +293,7 @@ const EmployeeQuery = () => {
             const res = await axios.post(
               `${BACKEND_URL}/threads/${selectedQuery.id}/messages`,
               payload,
-              { headers }
+              { withCredentials: true, headers }
             );
             const newMsg =
               res.data?.data?.message ?? res.data?.data ?? res.data;
@@ -310,7 +310,7 @@ const EmployeeQuery = () => {
         const res = await axios.post(
           `${BACKEND_URL}/threads/${selectedQuery.id}/messages`,
           payload,
-          { headers }
+          { withCredentials: true, headers }
         );
         const newMsg = res.data?.data?.message ?? res.data?.data ?? res.data;
         setInputMessage("");
@@ -337,6 +337,7 @@ const EmployeeQuery = () => {
         message: queryText,
       };
       const res = await axios.post(`${BACKEND_URL}/threads`, payload, {
+        withCredentials: true,
         headers,
       });
       const tid =
@@ -351,7 +352,10 @@ const EmployeeQuery = () => {
       if (isMobile && tid) {
         const found = (
           await axios
-            .get(`${BACKEND_URL}/threads/${tid}`, { headers: buildHeaders() })
+            .get(`${BACKEND_URL}/threads/${tid}`, {
+              withCredentials: true,
+              headers: buildHeaders(),
+            })
             .catch(() => null)
         )?.data;
         if (found) {
@@ -379,7 +383,7 @@ const EmployeeQuery = () => {
       await axios.put(
         `${BACKEND_URL}/threads/${threadToClose}/close`,
         { feedback, note: queryText },
-        { headers }
+        { withCredentials: true, headers }
       );
       showAlert("Thread closed successfully.");
       setShowFeedbackModal(false);
@@ -410,7 +414,7 @@ const EmployeeQuery = () => {
       const headers = buildHeaders();
       const response = await axios.get(
         `${BACKEND_URL}/attachments/${encodeURIComponent(filename)}`,
-        { headers, responseType: "blob" }
+        { withCredentials: true, headers, responseType: "blob" }
       );
       const blob = new Blob([response.data]);
       const link = document.createElement("a");
@@ -430,6 +434,7 @@ const EmployeeQuery = () => {
     try {
       const headers = buildHeaders();
       const res = await axios.get(`${BACKEND_URL}/threads/${q.id}/messages`, {
+        withCredentials: true,
         headers,
       });
       const msgs = res.data?.data ?? res.data ?? [];
@@ -437,7 +442,10 @@ const EmployeeQuery = () => {
       await axios.put(
         `${BACKEND_URL}/threads/${q.id}/messages/read`,
         { sender_id: employeeId },
-        { headers: buildHeaders({ "Content-Type": "application/json" }) }
+        {
+          withCredentials: true,
+          headers: buildHeaders({ "Content-Type": "application/json" }),
+        }
       );
       setQueries((prev) =>
         prev.map((item) =>

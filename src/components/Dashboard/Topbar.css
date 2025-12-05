@@ -1,5 +1,3 @@
-/* ==================== TOPBAR – ORIGINAL CLEAN DESIGN ==================== */
-
 .topbar1 {
   display: flex;
   justify-content: space-between;
@@ -66,7 +64,6 @@
   font-weight: 500;
 }
 
-/* ==================== ORG NAME – COLORED TEXT ONLY (DESKTOP) ==================== */
 .org-name-section {
   flex: 1;
   display: flex;
@@ -94,7 +91,6 @@
   color: #1e40af;
 }
 
-/* ==================== ICON SECTION ==================== */
 .icon-section {
   display: flex;
   align-items: center;
@@ -138,8 +134,6 @@
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
 }
 
-/* ==================== DESKTOP CALENDAR – FIXED OVERLAY ==================== */
-
 .desktop-calendar-overlay {
   position: fixed;
   top: 90px;
@@ -155,11 +149,15 @@
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(-8px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
-
-/* ==================== MOBILE TOPBAR V2 – FULL COLOR HEADER ==================== */
 
 .mobile-topbar-v2 {
   display: flex;
@@ -194,10 +192,10 @@
 }
 
 .mobile-org-card::before {
-  content: '';
+  content: "";
   position: absolute;
   inset: 0;
-  background: linear-gradient(45deg, rgba(255,255,255,0.2), transparent);
+  background: linear-gradient(45deg, rgba(255, 255, 255, 0.2), transparent);
   border-radius: 14px;
   pointer-events: none;
 }
@@ -320,8 +318,6 @@
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
 }
 
-/* ==================== MOBILE CALENDAR – FIXED OVERLAY ==================== */
-
 .mobile-calendar-overlay {
   position: fixed;
   top: 0;
@@ -352,12 +348,17 @@
   overflow-y: auto;
 }
 
-/* RESPONSIVE */
 @media (max-width: 768px) {
-  .topbar1 { display: none; }
-  .content-container { padding-bottom: 90px !important; }
+  .topbar1 {
+    display: none;
+  }
+  .content-container {
+    padding-bottom: 90px !important;
+  }
 }
 
 @media (min-width: 769px) {
-  .mobile-topbar-v2 { display: none; }
+  .mobile-topbar-v2 {
+    display: none;
+  }
 }

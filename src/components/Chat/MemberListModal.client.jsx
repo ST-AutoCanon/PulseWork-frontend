@@ -28,7 +28,13 @@ export default function MemberListModal({
   const [creatorId, setCreatorId] = useState(null);
 
   const meId = employeeId || user?.employeeId || null;
-  const orgId = user?.orgId || null;
+  const orgId =
+    user?.orgId ??
+    user?.org_id ??
+    user?.raw?.org_id ??
+    user?.Org_id ??
+    user?.raw?.Org_id ??
+    null;
 
   const API_KEY = apiKey || process.env.NEXT_PUBLIC_API_KEY;
   const BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL;

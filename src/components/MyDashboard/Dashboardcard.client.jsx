@@ -54,9 +54,11 @@ export default function Dashboardcard() {
     }
 
     const controller = new AbortController();
-    const headers = { "x-api-key": API_KEY };
-    if (meId) headers["x-employee-id"] = meId;
-    if (orgId) headers["x-org-id"] = orgId;
+    const headers = {
+      "x-api-key": API_KEY,
+      "x-employee-id": meId,
+      "x-org-id": orgId,
+    };
 
     let finished = { payroll: false, reimbursement: false };
     const markDone = (k) => {

@@ -108,31 +108,22 @@ export default function Login({ onClose }) {
       }
 
       const payload = data.message || {};
-
-      const serverUser = {
+      const minimalUser = {
         id: payload.id ?? payload.employeeId ?? payload.employee_id ?? null,
         employeeId:
-          payload.dashboard?.employeeId ??
-          payload.employeeId ??
-          payload.employee_id ??
-          null,
+          payload.employeeId ?? payload.employee_id ?? payload.id ?? null,
         role: payload.role ?? "",
         name: payload.name ?? payload.dashboard?.name ?? "",
-        departmentId:
-          payload.department_id ?? payload.dashboard?.department_id ?? "",
-        gender: payload.gender ?? payload.dashboard?.gender ?? null,
         orgId: payload.org_id ?? payload.orgId ?? payload.Org_id ?? null,
-        dashboard: payload.dashboard ?? {},
-        sidebarMenu: payload.sidebarMenu ?? [],
-        raw: payload,
       };
 
-      login(serverUser);
+      await login(minimalUser);
+
       closeModal();
 
       if (
         username.toLowerCase() === "manish.p@yopmail.com" &&
-        (serverUser.role || "").toLowerCase() === "general"
+        (minimalUser.role || "").toLowerCase() === "general"
       ) {
         router.push("/FacePunch");
       } else {

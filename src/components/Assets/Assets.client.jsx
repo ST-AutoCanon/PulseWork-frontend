@@ -23,12 +23,20 @@ import { MdOutlineCancel } from "react-icons/md";
 import { useAuth } from "../../context/AuthProvider.client";
 
 const Assets = () => {
-  const { user } = useAuth();
+  const { user, hydrated } = useAuth();
+  const orgId =
+    user?.orgId ??
+    user?.org_id ??
+    user?.raw?.org_id ??
+    user?.Org_id ??
+    user?.raw?.Org_id ??
+    null;
+
   const API_KEY = process.env.NEXT_PUBLIC_API_KEY || "";
   const BACKEND = process.env.NEXT_PUBLIC_BACKEND_URL || "";
 
   const isReadyForApi = () => {
-    return !!BACKEND && !!user;
+    return !!BACKEND && !!user && !!hydrated;
   };
 
   const getHeaders = (opts = {}) => {
@@ -37,13 +45,21 @@ const Assets = () => {
       "Content-Type": "application/json",
     };
     const actorId = user?.employeeId ?? user?.id ?? null;
-    const orgId = user?.orgId || user?.org_id || null;
-    if (actorId) base["x-employee-id"] = String(actorId);
-    if (orgId) base["x-org-id"] = String(orgId);
-    return { ...base, ...opts };
-  };
+    const resolvedOrg =
+      user?.orgId ??
+      user?.org_id ??
+      user?.raw?.org_id ??
+      user?.Org_id ??
+      user?.raw?.Org_id ??
+      null;
 
-  const orgId = user?.orgId || user?.org_id || null;
+    if (actorId) base["x-employee-id"] = String(actorId);
+    if (resolvedOrg) base["x-org-id"] = String(resolvedOrg);
+
+    const headers = { ...base, ...opts };
+    console.debug("getHeaders ->", headers);
+    return headers;
+  };
 
   const [showPopup, setShowPopup] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState("");
@@ -108,14 +124,30 @@ const Assets = () => {
 
   useEffect(() => {
     if (!isReadyForApi()) return;
+
     axios.defaults.headers.common["x-api-key"] = API_KEY;
-    if (user?.employeeId)
+
+    if (user?.employeeId) {
       axios.defaults.headers.common["x-employee-id"] = String(user.employeeId);
-    if (user?.orgId || user?.org_id)
+    } else {
+      delete axios.defaults.headers.common["x-employee-id"];
+    }
+
+    if (hydrated && (user?.orgId || user?.org_id)) {
       axios.defaults.headers.common["x-org-id"] = String(
-        user.orgId || user.org_id
+        user?.orgId || user?.org_id
       );
-  }, [user, API_KEY, BACKEND]);
+    } else {
+      delete axios.defaults.headers.common["x-org-id"];
+      console.debug(
+        "x-org-id not set on axios.defaults (hydrated or orgId missing)",
+        {
+          hydrated,
+          orgId,
+        }
+      );
+    }
+  }, [user, API_KEY, BACKEND, hydrated, orgId]);
 
   useEffect(() => {
     if (assetId) {

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useState, useMemo, useRef } from "react";
 import * as MdIcons from "react-icons/md";
 import { useAuth } from "../../context/AuthProvider.client";
 import "./Sidebar.css";
@@ -38,8 +38,9 @@ const Sidebar = ({ setActiveContent }) => {
   const [showProfile, setShowProfile] = useState(false);
   const [activeNav, setActiveNav] = useState("/dashboard");
   const [showMobileMenu, setShowMobileMenu] = useState(false);
-
   const [showTaskChoice, setShowTaskChoice] = useState(false);
+
+  const cancelRef = useRef(false);
 
   const defaultMenuItems = useMemo(
     () => ({
@@ -95,7 +96,6 @@ const Sidebar = ({ setActiveContent }) => {
       "/assets": () => <Assets />,
       "/vendors": () => <Vendors />,
       "/EmployeeLogin": () => <EmployeeLogin />,
-
       "/TaskManagement": (role) => {
         if (role === "Admin") return <TaskManagementAdmin />;
 
@@ -110,28 +110,73 @@ const Sidebar = ({ setActiveContent }) => {
     []
   );
 
+  const normalizeMenu = (items = []) =>
+    (items || []).map((it) => ({
+      label: it.label ?? it.name ?? "Unnamed",
+      path: it.path ?? it.route ?? "/dashboard",
+      icon: it.icon ?? it.iconName ?? "MdOutlineDashboard",
+    }));
+
+  useEffect(() => {
+    cancelRef.current = false;
+    return () => {
+      cancelRef.current = true;
+    };
+  }, []);
+
   useEffect(() => {
     if (!hydrated) return;
 
     const role = user?.role ?? "Employee";
 
     if (Array.isArray(user?.sidebarMenu) && user.sidebarMenu.length > 0) {
-      const normalized = user.sidebarMenu.map((it) => ({
-        label: it.label ?? it.name ?? "Unnamed",
-        path: it.path ?? it.route ?? "/dashboard",
-        icon: it.icon ?? it.iconName ?? "MdOutlineDashboard",
-      }));
-      setMenuItems(normalized);
+      setMenuItems(normalizeMenu(user.sidebarMenu));
     } else {
-      setMenuItems(defaultMenuItems[role] || defaultMenuItems.Employee);
+      (async () => {
+        try {
+          const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
+          const API_KEY = process.env.NEXT_PUBLIC_API_KEY;
+          if (!BACKEND_URL) {
+            setMenuItems(defaultMenuItems[role] || defaultMenuItems.Employee);
+            return;
+          }
+
+          const meId = user?.employeeId ?? user?.id ?? null;
+          const headers = meId
+            ? { "x-api-key": API_KEY, "x-employee-id": meId }
+            : { "x-api-key": API_KEY };
+
+          const resp = await fetch(`${BACKEND_URL}/sidebar`, {
+            method: "GET",
+            credentials: "include",
+            headers,
+          });
+
+          const json = await resp.json().catch(() => null);
+          const payload = (json && (json.message ?? json)) || [];
+
+          if (cancelRef.current) return;
+
+          if (Array.isArray(payload) && payload.length > 0) {
+            setMenuItems(normalizeMenu(payload));
+          } else {
+            setMenuItems(defaultMenuItems[role] || defaultMenuItems.Employee);
+          }
+        } catch (err) {
+          console.error("Error fetching sidebar:", err);
+          if (!cancelRef.current) {
+            const role = user?.role ?? "Employee";
+            setMenuItems(defaultMenuItems[role] || defaultMenuItems.Employee);
+          }
+        }
+      })();
     }
 
+    const defaultPath =
+      role === "SuperAdmin" ? "/CreateOrganization" : "/dashboard";
+    const resolver = pathToComponent[defaultPath] || (() => <MyEmpDashboard />);
+    const defaultComp = resolver(role);
     if (setActiveContent) {
-      const defaultPath =
-        role === "SuperAdmin" ? "/CreateOrganization" : "/dashboard";
-      const resolver =
-        pathToComponent[defaultPath] || (() => <MyEmpDashboard />);
-      const defaultComp = resolver(role);
       setActiveContent(defaultComp);
       setActiveItem(defaultPath);
       setActiveNav(defaultPath);

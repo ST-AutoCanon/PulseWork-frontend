@@ -18,7 +18,13 @@ export default function ChatList({ onSelect }) {
   const BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
 
   const meId = user?.employeeId ?? null;
-  const orgId = user?.orgId ?? user?.org_id ?? null;
+  const orgId =
+    user?.orgId ??
+    user?.org_id ??
+    user?.raw?.org_id ??
+    user?.Org_id ??
+    user?.raw?.Org_id ??
+    null;
 
   const headers = useMemo(() => {
     const h = {

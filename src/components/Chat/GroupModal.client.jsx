@@ -11,7 +11,13 @@ export default function GroupModal({ onCreate, onClose, employeeId }) {
   const { user } = useAuth();
   const socket = useSocket();
   const meId = employeeId || user?.employeeId || null;
-  const orgId = user?.orgId || user?.org_id || null;
+  const orgId =
+    user?.orgId ??
+    user?.org_id ??
+    user?.raw?.org_id ??
+    user?.Org_id ??
+    user?.raw?.Org_id ??
+    null;
 
   const headers = {
     "x-api-key": process.env.NEXT_PUBLIC_API_KEY,

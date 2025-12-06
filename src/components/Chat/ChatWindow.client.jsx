@@ -76,7 +76,13 @@ async function getLocationAndAddress() {
 export default function ChatWindow({ room, onBack }) {
   const { user } = useAuth();
   const meId = user?.employeeId ?? null;
-  const orgId = user?.orgId ?? user?.org_id ?? null;
+  const orgId =
+    user?.orgId ??
+    user?.org_id ??
+    user?.raw?.org_id ??
+    user?.Org_id ??
+    user?.raw?.Org_id ??
+    null;
   const socket = useSocket();
   const messagesRef = useRef(null);
 

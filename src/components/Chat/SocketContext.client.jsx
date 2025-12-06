@@ -19,7 +19,16 @@ export function SocketProvider({ children }) {
   const [connecting, setConnecting] = useState(true);
 
   const userId = useMemo(() => user?.employeeId ?? null, [user]);
-  const orgId = useMemo(() => user?.orgId ?? null, [user]);
+  const orgId = useMemo(
+    () =>
+      user?.orgId ??
+      user?.org_id ??
+      user?.raw?.org_id ??
+      user?.Org_id ??
+      user?.raw?.Org_id ??
+      null,
+    [user]
+  );
 
   const BACKEND_URL = useMemo(() => {
     if (typeof process !== "undefined") {

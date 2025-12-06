@@ -32,8 +32,14 @@ const claimTypes = [
   },
 ];
 const Reimbursement = () => {
-  const { user } = useAuth();
-  const orgId = user?.orgId || user?.org_id || null;
+  const { user, hydrated } = useAuth();
+  const orgId =
+    user?.orgId ??
+    user?.org_id ??
+    user?.raw?.org_id ??
+    user?.Org_id ??
+    user?.raw?.Org_id ??
+    null;
   const role = user?.role || " ";
   const authToken = user?.token;
   const employeeId = user?.employeeId;

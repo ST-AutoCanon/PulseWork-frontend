@@ -79,10 +79,11 @@ const Vendors = () => {
   const headers = useMemo(() => {
     if (!user) return null;
     const orgId =
-      user.orgId ||
-      user.org_id ||
-      (user.org && user.org.id) ||
-      (user.organization && user.organization.id) ||
+      user?.orgId ??
+      user?.org_id ??
+      user?.raw?.org_id ??
+      user?.Org_id ??
+      user?.raw?.Org_id ??
       null;
 
     return {
@@ -91,11 +92,11 @@ const Vendors = () => {
     };
   }, [
     user?.employeeId,
-    user?.id,
     user?.orgId,
-    user?.organizationId,
-    user?.org?.id,
-    user?.organization?.id,
+    user?.org_id,
+    user?.raw?.org_id,
+    user?.Org_id,
+    user?.raw?.Org_id,
   ]);
 
   useEffect(() => {

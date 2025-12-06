@@ -347,7 +347,13 @@ export default function TemplateBuilder() {
 
   const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "";
   const API_KEY = process.env.NEXT_PUBLIC_API_KEY || "";
-  const orgId = user?.orgId ?? user?.org_id ?? null;
+  const orgId =
+    user?.orgId ??
+    user?.org_id ??
+    user?.raw?.org_id ??
+    user?.Org_id ??
+    user?.raw?.Org_id ??
+    null;
 
   const basicEditorRef = useRef(null);
   const scratchEditorRef = useRef(null);

@@ -116,22 +116,43 @@ export default function EmpReImbursement() {
     return <p>No reimbursement records available.</p>;
   }
 
-  const CustomLegend = ({ chartData }) => {
-    if (!chartData || !chartData.labels) return null;
+  const StatusLegend = ({ chartData }) => {
+    if (!chartData || !chartData.labels || !chartData.datasets) return null;
+
+    const expectedOrder = ["Pending", "Approved", "Rejected"];
+    const dataArr = chartData.datasets?.[0]?.data || [];
+    const colors = chartData.datasets?.[0]?.backgroundColor || [
+      "#82DAFE",
+      "#004DC6",
+      "#E8E9EA",
+    ];
+
+    const indexOfLabel = (label) => {
+      const lower = label.toLowerCase();
+      return chartData.labels.findIndex(
+        (l) => String(l).toLowerCase() === lower
+      );
+    };
+
     return (
-      <div className="custom-legend">
-        {chartData.labels.map((label, index) => (
-          <div key={index} className="legend-item">
-            <span
-              className="legend-color"
-              style={{
-                backgroundColor:
-                  chartData.datasets?.[0]?.backgroundColor?.[index] || "#ccc",
-              }}
-            />
-            <span className="legend-label">{label}</span>
-          </div>
-        ))}
+      <div className="re-custom-legend" aria-hidden="false">
+        {expectedOrder.map((label, idx) => {
+          const i = indexOfLabel(label);
+          const value = i >= 0 ? dataArr[i] || 0 : 0;
+          const color = i >= 0 ? colors[i] || "#ccc" : colors[idx] || "#ccc";
+          return (
+            <div key={label} className="legend-item">
+              <span
+                className="legend-color"
+                style={{ backgroundColor: color }}
+                aria-hidden="true"
+              />
+              <span className="legend-label">
+                {label} <span className="legend-value">({value})</span>
+              </span>
+            </div>
+          );
+        })}
       </div>
     );
   };
@@ -179,6 +200,8 @@ export default function EmpReImbursement() {
           }}
         />
       </div>
+
+      <StatusLegend chartData={chartData} />
     </div>
   );
 }

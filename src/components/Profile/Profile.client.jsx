@@ -344,6 +344,7 @@ const Profile = ({ onClose, notificationId = null }) => {
         }
       } catch (err) {
         console.error("Failed to load profile:", err);
+        // keep profile failure visible as it is more critical
         showAlert("Failed to load profile");
       } finally {
         setLoading(false);
@@ -364,8 +365,13 @@ const Profile = ({ onClose, notificationId = null }) => {
         );
         setAssignedAssets(r.data.data || []);
       } catch (err) {
-        console.error("Failed to load assets:", err);
-        showAlert("Failed to load assets");
+        // <--- IMPORTANT CHANGE: do NOT show a blocking modal for transient asset-fetch errors.
+        // Log the error and continue with an empty asset list. This prevents the "Failed to load assets"
+        // modal from appearing on login when the assets endpoint behaves intermittently.
+        console.warn("Failed to load assets (non-blocking):", err);
+        setAssignedAssets([]);
+        // Optionally: implement a non-blocking toast here instead of showAlert
+        // e.g. toast.warn('Some assets failed to load — will retry in background')
       }
     };
 

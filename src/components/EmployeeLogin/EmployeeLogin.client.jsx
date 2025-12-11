@@ -326,8 +326,8 @@ const EmployeeLogin = () => {
 
     const diffTime = toDateObj - fromDateObj;
     const diffDays = diffTime / (1000 * 60 * 60 * 24);
-    if (diffDays > 5) {
-      return { valid: false, error: "Date range must not exceed 5 days." };
+    if (diffDays > 7) {
+      return { valid: false, error: "Date range must not exceed 7 days." };
     }
 
     return { valid: true };

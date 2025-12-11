@@ -118,6 +118,41 @@ const Sidebar = ({ setActiveContent }) => {
     }));
 
   useEffect(() => {
+    const onNavigate = (e) => {
+      try {
+        const path = e?.detail?.path;
+        if (!path) return;
+
+        const role = user?.role ?? "Employee";
+        const resolver = pathToComponent[path];
+
+        if (resolver) {
+          const comp = resolver(role);
+          if (comp) {
+            setActiveContent(comp);
+            setActiveItem(path);
+            setActiveNav(path);
+            setShowMobileMenu(false);
+          } else {
+            setActiveContent(<p>Content not available</p>);
+            setActiveItem(path);
+            setActiveNav(path);
+          }
+        } else {
+          setActiveContent(<p>Not found: {path}</p>);
+          setActiveItem(path);
+          setActiveNav(path);
+        }
+      } catch (err) {
+        console.error("app:navigate handler error:", err);
+      }
+    };
+
+    window.addEventListener("app:navigate", onNavigate);
+    return () => window.removeEventListener("app:navigate", onNavigate);
+  }, [pathToComponent, setActiveContent, user?.role]);
+
+  useEffect(() => {
     cancelRef.current = false;
     return () => {
       cancelRef.current = true;

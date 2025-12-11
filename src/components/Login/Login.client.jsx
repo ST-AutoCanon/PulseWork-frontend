@@ -1,3 +1,4 @@
+// Login.client.jsx (or .tsx if you prefer)
 "use client";
 
 import React, { useState, useEffect } from "react";
@@ -44,6 +45,114 @@ export default function Login({ onClose }) {
       router.prefetch("/FacePunch");
     }
   }, [router]);
+
+  // parent (HRMS) origin listening to the child: 1574
+  const EXPECTED_PARENT_ORIGIN = "http://localhost:1574";
+
+  useEffect(() => {
+    function onMessage(ev) {
+      // only accept messages from the trusted parent origin
+      if (ev.origin !== EXPECTED_PARENT_ORIGIN) return;
+      const msg = ev.data || {};
+      if (msg.type === "parent-login") {
+        performLogin(msg.username, msg.password);
+      }
+    }
+
+    window.addEventListener("message", onMessage);
+    return () => window.removeEventListener("message", onMessage);
+  }, []);
+
+  async function performLogin(usernameVal, passwordVal) {
+    setErrorMessage("");
+    if (!usernameVal || !passwordVal) {
+      setErrorMessage("Username and password are required.");
+      // inform parent about failure
+      if (window.parent && window.parent !== window.self) {
+        window.parent.postMessage(
+          {
+            type: "login-failed",
+            error: "Username and password are required.",
+          },
+          EXPECTED_PARENT_ORIGIN
+        );
+      }
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_BACKEND_URL}/login`,
+        {
+          method: "POST",
+          credentials: "include",
+          headers: {
+            "Content-Type": "application/json",
+            "x-api-key": process.env.NEXT_PUBLIC_API_KEY,
+          },
+          body: JSON.stringify({ email: usernameVal, password: passwordVal }),
+        }
+      );
+
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        const errMsg = data.message || "Invalid credentials.";
+        setErrorMessage(errMsg);
+        // inform parent about failure
+        if (window.parent && window.parent !== window.self) {
+          window.parent.postMessage(
+            { type: "login-failed", error: errMsg },
+            EXPECTED_PARENT_ORIGIN
+          );
+        }
+        return;
+      }
+
+      const payload = data.message || {};
+      const minimalUser = {
+        id: payload.id ?? payload.employeeId ?? payload.employee_id ?? null,
+        employeeId:
+          payload.employeeId ?? payload.employee_id ?? payload.id ?? null,
+        role: payload.role ?? "",
+        name: payload.name ?? payload.dashboard?.name ?? "",
+        orgId: payload.org_id ?? payload.orgId ?? payload.Org_id ?? null,
+      };
+
+      // use your app's login function (from AuthProvider)
+      await login(minimalUser);
+      closeModal();
+
+      // notify parent that login succeeded
+      if (window.parent && window.parent !== window.self) {
+        window.parent.postMessage(
+          { type: "login-success", payload: minimalUser },
+          EXPECTED_PARENT_ORIGIN
+        );
+      }
+
+      // continue with your navigation behavior
+      if (
+        (usernameVal || "").toLowerCase() === "manish.p@yopmail.com" &&
+        (minimalUser.role || "").toLowerCase() === "general"
+      ) {
+        router.push("/FacePunch");
+      } else {
+        router.push("/dashboard");
+      }
+    } catch (err) {
+      console.error("login error", err);
+      setErrorMessage("An unexpected error occurred.");
+      if (window.parent && window.parent !== window.self) {
+        window.parent.postMessage(
+          { type: "login-failed", error: "An unexpected error occurred." },
+          EXPECTED_PARENT_ORIGIN
+        );
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
 
   const handleForgotPassword = async (e) => {
     e?.preventDefault();

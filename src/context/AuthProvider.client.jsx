@@ -119,6 +119,8 @@ export function AuthProvider({ children }) {
           dashboard: body.dashboard ?? {},
           sidebarMenu: body.sidebarMenu ?? [],
           raw: body,
+          orgId: body.org_id ?? body.orgId ?? null,
+          orgName: body.orgName ?? body.org_name ?? null,
         };
 
         try {
@@ -188,6 +190,8 @@ export function AuthProvider({ children }) {
         dashboard: body.dashboard ?? {},
         sidebarMenu: body.sidebarMenu ?? [],
         raw: body,
+        orgId: body.org_id ?? body.orgId ?? null,
+        orgName: body.orgName ?? body.org_name ?? null,
       };
 
       try {
@@ -269,15 +273,21 @@ export function AuthProvider({ children }) {
   };
 
   const logout = async ({ redirect = true } = {}) => {
-    setUser(null);
-    try {
-      localStorage.removeItem("auth:employeeId");
-    } catch (e) {}
-
-    if (typeof window !== "undefined") window.__APP_LOGGING_OUT = true;
-
     if (redirect) {
-      router.push("/");
+      try {
+        router.push("/");
+      } catch (err) {
+        console.warn("router.push('/') failed:", err);
+      }
+
+      setUser(null);
+      try {
+        localStorage.removeItem("auth:employeeId");
+      } catch (e) {
+        console.warn("localStorage remove failed:", e);
+      }
+
+      if (typeof window !== "undefined") window.__APP_LOGGING_OUT = true;
 
       if (BACKEND_URL) {
         fetch(`${BACKEND_URL}/logout`, {
@@ -295,10 +305,20 @@ export function AuthProvider({ children }) {
       } else {
         if (typeof window !== "undefined") window.__APP_LOGGING_OUT = false;
       }
+
       return;
     }
 
     setIsLoggingOut(true);
+    setUser(null);
+    try {
+      localStorage.removeItem("auth:employeeId");
+    } catch (e) {
+      console.warn("localStorage remove failed:", e);
+    }
+
+    if (typeof window !== "undefined") window.__APP_LOGGING_OUT = true;
+
     try {
       if (BACKEND_URL) {
         await fetch(`${BACKEND_URL}/logout`, {

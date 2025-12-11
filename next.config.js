@@ -1,4 +1,3 @@
-// next.config.js
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   async rewrites() {
@@ -18,6 +17,23 @@ const nextConfig = {
     ];
   },
 
+  async headers() {
+    return [
+      {
+        source: "/(.*)",
+        headers: [
+          {
+            key: "Content-Security-Policy",
+            // allow only this parent origin to frame the app
+            value: "frame-ancestors http://localhost:1574;",
+          },
+          // Note: ALLOW-FROM is deprecated in many browsers; CSP frame-ancestors is the reliable mechanism.
+          { key: "X-Frame-Options", value: "ALLOW-FROM http://localhost:1574" },
+        ],
+      },
+    ];
+  },
+
   webpack: (config, { isServer }) => {
     if (!isServer) {
       config.resolve = config.resolve || {};
@@ -26,7 +42,6 @@ const nextConfig = {
         fs: false,
         net: false,
         tls: false,
-        // ensure encoding resolves (we installed it above)
         encoding: require.resolve("encoding"),
       };
     }

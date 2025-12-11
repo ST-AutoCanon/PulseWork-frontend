@@ -392,70 +392,71 @@ export default function EmpDashCards() {
   };
 
   return (
-    <div className="emp-dash-cards">
-      {showCamera && (
-        <div className="camera-popup">
-          <h3 className="camera-title">Face Verification</h3>
-          <video ref={videoRef} autoPlay muted className="camera-video" />
-          <p className="camera-status">Verifying face, please wait...</p>
-        </div>
-      )}
+    <div>
+      <div className="emp-dash-cards">
+        {showCamera && (
+          <div className="camera-popup">
+            <h3 className="camera-title">Face Verification</h3>
+            <video ref={videoRef} autoPlay muted className="camera-video" />
+            <p className="camera-status">Verifying face, please wait...</p>
+          </div>
+        )}
 
-      <button
-        className={`emp-card emp-punch-in ${
-          isPunchedIn ? "emp-punched-out" : ""
-        }`}
-        onClick={handlePunch}
-        disabled={loading}
-      >
-        <div className="emp-card-content">
-          <FaFingerprint className="emp-icon" />
-          <div>
-            <span className="emp-text">
-              {loading
-                ? "Verifying..."
-                : isPunchedIn
-                ? "Punch Out"
-                : "Punch In"}
-            </span>
+        <button
+          className={`emp-card emp-punch-in ${
+            isPunchedIn ? "emp-punched-out" : ""
+          }`}
+          onClick={handlePunch}
+          disabled={loading}
+        >
+          <div className="emp-card-content">
+            <FaFingerprint className="emp-icon" />
+            <div>
+              <span className="emp-text">
+                {loading
+                  ? "Verifying..."
+                  : isPunchedIn
+                  ? "Punch Out"
+                  : "Punch In"}
+              </span>
+            </div>
+          </div>
+        </button>
+
+        <div className="emp-card">
+          <div className="emp-card-content">
+            <FaRegClock className="emp-icon" />
+            <div>
+              <span className="emp-text">{punchData.time}</span>
+              <span className="emp-label">Time</span>
+            </div>
           </div>
         </div>
-      </button>
 
-      <div className="emp-card">
-        <div className="emp-card-content">
-          <FaRegClock className="emp-icon" />
-          <div>
-            <span className="emp-text">{punchData.time}</span>
-            <span className="emp-label">Time</span>
+        <div className="emp-card">
+          <div className="emp-card-content">
+            <FaMapMarkerAlt className="emp-icon" />
+            <div>
+              <span className="emp-text">{punchData.location}</span>
+              <span className="emp-label">Location</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="emp-card">
+          <div className="emp-card-content">
+            {punchData.device === "Mobile" ? (
+              <FaMobileAlt className="emp-icon" />
+            ) : (
+              <FaDesktop className="emp-icon" />
+            )}
+            <div>
+              <span className="emp-text">{punchData.device}</span>
+              <span className="emp-label">Device</span>
+            </div>
           </div>
         </div>
       </div>
-
-      <div className="emp-card">
-        <div className="emp-card-content">
-          <FaMapMarkerAlt className="emp-icon" />
-          <div>
-            <span className="emp-text">{punchData.location}</span>
-            <span className="emp-label">Location</span>
-          </div>
-        </div>
-      </div>
-
-      <div className="emp-card">
-        <div className="emp-card-content">
-          {punchData.device === "Mobile" ? (
-            <FaMobileAlt className="emp-icon" />
-          ) : (
-            <FaDesktop className="emp-icon" />
-          )}
-          <div>
-            <span className="emp-text">{punchData.device}</span>
-            <span className="emp-label">Device</span>
-          </div>
-        </div>
-      </div>
-
       {errorMessage && <p className="error-text">{errorMessage}</p>}
     </div>
   );

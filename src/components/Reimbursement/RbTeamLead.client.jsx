@@ -121,10 +121,22 @@ const RbTeamLead = () => {
       setEmployees(Object.values(grouped));
 
       const attachmentsMap = {};
+      const initialProjectSelections = {};
       response.data.forEach((claim) => {
         attachmentsMap[claim.id] = claim.attachments || [];
+        if (
+          claim.project !== undefined &&
+          claim.project !== null &&
+          String(claim.project).trim() !== ""
+        ) {
+          initialProjectSelections[claim.id] = String(claim.project);
+        }
       });
       setAttachments(attachmentsMap);
+      setProjectSelections((prev) => ({
+        ...initialProjectSelections,
+        ...prev,
+      }));
     } catch (error) {
       console.error("Error fetching employees:", error);
       showAlert("Error fetching employees.");
@@ -147,7 +159,9 @@ const RbTeamLead = () => {
           const match = file.filename.match(/^(\d{4})-(\d{2})-\d{2}/);
           if (!match) return null;
           const [year, month] = match.slice(1, 3);
-          const fileUrl = `${BACKEND_URL}/reimbursement/${orgId}/${year}/${month}/${claim.employee_id}/${file.filename}`;
+          const fileUrl = `${BACKEND_URL}/reimbursement/${orgId}/${year}/${month}/${
+            claim.employee_id
+          }/${encodeURIComponent(file.filename)}`;
           const response = await axios.get(fileUrl, {
             withCredentials: true,
             headers: {
@@ -192,6 +206,42 @@ const RbTeamLead = () => {
     );
   };
 
+  // Updated: accept 3 options (rejected / pending / paid)
+  const updatePaymentStatus = async (claimId, selectedOption) => {
+    try {
+      const res = await axios.put(
+        `${BACKEND_URL}/reimbursement/payment-status/${claimId}`,
+        {
+          payment_status: selectedOption,
+          user_role: "Manager",
+        },
+        {
+          withCredentials: true,
+          headers: { "x-api-key": API_KEY, "x-org-id": orgId },
+        }
+      );
+
+      const returned = (res.data && (res.data.data || res.data)) || {};
+
+      const newStatus =
+        returned.payment_status ||
+        (typeof selectedOption === "string" ? selectedOption : "pending");
+      const paidDate = returned.paid_date || returned.paidDate || null;
+
+      applyPaymentUpdateToState(claimId, {
+        payment_status: newStatus,
+        paid_date: paidDate,
+      });
+
+      showAlert("Payment status updated successfully.");
+      return { success: true, returned };
+    } catch (err) {
+      console.error("Error updating payment status:", err);
+      showAlert("Could not update payment status. Please try again.");
+      return { success: false };
+    }
+  };
+
   const updateStatus = async (id) => {
     const updatedStatus = statusUpdates[id];
     if (!updatedStatus) return showAlert("Please select a status.");
@@ -222,41 +272,6 @@ const RbTeamLead = () => {
     } catch (error) {
       console.error("Error updating status:", error);
       showAlert("Status update failed. Try again later.");
-    }
-  };
-
-  const updatePaymentStatus = async (claimId, selectedOption) => {
-    try {
-      const res = await axios.put(
-        `${BACKEND_URL}/reimbursement/payment-status/${claimId}`,
-        {
-          payment_status: selectedOption === "paid" ? "paid" : "pending",
-          user_role: "Manager",
-        },
-        {
-          withCredentials: true,
-          headers: { "x-api-key": API_KEY, "x-org-id": orgId },
-        }
-      );
-
-      const returned = (res.data && (res.data.data || res.data)) || {};
-
-      const newStatus =
-        returned.payment_status ||
-        (selectedOption === "paid" ? "paid" : "pending");
-      const paidDate = returned.paid_date || returned.paidDate || null;
-
-      applyPaymentUpdateToState(claimId, {
-        payment_status: newStatus,
-        paid_date: paidDate,
-      });
-
-      showAlert("Payment status updated successfully.");
-      return { success: true, returned };
-    } catch (err) {
-      console.error("Error updating payment status:", err);
-      showAlert("Could not update payment status. Please try again.");
-      return { success: false };
     }
   };
 
@@ -535,7 +550,11 @@ const RbTeamLead = () => {
                                         className="pending-payment-btn"
                                         onClick={() => {
                                           setSelectedPaymentClaim(rb);
-                                          setSelectedPaymentOption("");
+                                          setSelectedPaymentOption(
+                                            (
+                                              rb.payment_status || ""
+                                            ).toLowerCase()
+                                          );
                                           setIsPaymentModalOpen(true);
                                         }}
                                       >
@@ -591,6 +610,7 @@ const RbTeamLead = () => {
       ) : (
         <Reimbursement />
       )}
+
       {isModalOpen && (
         <div className="att-modal-overlay">
           <div className="att-modal-content">
@@ -648,12 +668,13 @@ const RbTeamLead = () => {
                 <input
                   type="radio"
                   name="paymentOption"
-                  value="paid"
-                  checked={selectedPaymentOption === "paid"}
+                  value="rejected"
+                  checked={selectedPaymentOption === "rejected"}
                   onChange={(e) => setSelectedPaymentOption(e.target.value)}
                 />
-                Payable
+                Reject
               </label>
+
               <label style={{ marginLeft: "20px" }}>
                 <input
                   type="radio"
@@ -663,6 +684,16 @@ const RbTeamLead = () => {
                   onChange={(e) => setSelectedPaymentOption(e.target.value)}
                 />
                 Pending
+              </label>
+              <label style={{ marginLeft: "20px" }}>
+                <input
+                  type="radio"
+                  name="paymentOption"
+                  value="paid"
+                  checked={selectedPaymentOption === "paid"}
+                  onChange={(e) => setSelectedPaymentOption(e.target.value)}
+                />
+                Payable
               </label>
             </div>
             <p>I'll make sure to process the payment today</p>
@@ -681,6 +712,7 @@ const RbTeamLead = () => {
 
                   if (result.success) {
                     setIsPaymentModalOpen(false);
+                    fetchEmployees();
                   }
                 } catch (error) {
                   console.error("Error updating payment status:", error);
@@ -695,6 +727,7 @@ const RbTeamLead = () => {
           </div>
         </Modal>
       )}
+
       <Modal
         isVisible={alertModal.isVisible}
         onClose={closeAlert}

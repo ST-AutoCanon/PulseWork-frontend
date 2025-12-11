@@ -27,6 +27,8 @@ export default function EmployeeForm({
   const { user } = useAuth();
   const meId = user?.employeeId ?? user?.id ?? null;
   const orgId = user?.orgId ?? user?.raw?.org_id ?? null;
+  const orgName = user?.orgName ?? null;
+  const userName = user?.name ?? null;
 
   const [currentStep, setCurrentStep] = useState(0);
   const [error, setError] = useState("");
@@ -137,6 +139,8 @@ export default function EmployeeForm({
     child3_name: "",
     child3_dob: null,
     child3_gov_doc: null,
+    inviterName: userName,
+    orgName: orgName,
     ...sanitizedInitialData,
   });
 

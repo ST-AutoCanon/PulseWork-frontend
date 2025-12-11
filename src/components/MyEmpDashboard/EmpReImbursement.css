@@ -16,13 +16,12 @@
 
 .emp-reimbursement h3 {
   font-weight: bold;
-  margin: 0 0 8px 0;
+  margin: -8px 0 8px 0;
   align-self: flex-start;
-  font-size: 16px;
 }
 
 .emp-reimbursement > p {
-  margin: 0 0 16px 0;
+  margin: 0;
   color: #686868;
   font-size: 12px;
   align-self: flex-start;
@@ -32,7 +31,6 @@
   display: flex;
   justify-content: center;
   gap: 16px;
-  margin-bottom: 16px;
   width: 100%;
   z-index: 10;
 }
@@ -70,11 +68,17 @@
 }
 
 .chart-container-reimbursement {
-  width: 70%;
-  height: 160px;
-  margin: 0 auto;
+  width: 50%;
+  margin-top: -60px;
   flex-grow: 1;
   display: flex;
   justify-content: center;
   align-items: center;
+}
+
+.re-custom-legend {
+  display: flex;
+  justify-content: center;
+  gap: 15px;
+  margin-top: -50px;
 }

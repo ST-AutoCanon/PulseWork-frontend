@@ -1768,11 +1768,16 @@ const LetterHead = () => {
                         }}
                       >
                         <span>No saved templates for this org.</span>
+
                         <button
-                          onClick={() =>
-                            (window.location.href = BUILD_TEMPLATE_ROUTE)
-                          }
-                          className="letterhead-build-template-btn"
+                          onClick={() => {
+                            window.dispatchEvent(
+                              new CustomEvent("app:navigate", {
+                                detail: { path: "/TemplateBuilder" },
+                              })
+                            );
+                          }}
+                          className="letterhead-open-popup-btn"
                         >
                           Build Template
                         </button>

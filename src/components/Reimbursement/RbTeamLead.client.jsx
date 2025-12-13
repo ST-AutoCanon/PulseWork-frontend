@@ -206,7 +206,6 @@ const RbTeamLead = () => {
     );
   };
 
-  // Updated: accept 3 options (rejected / pending / paid)
   const updatePaymentStatus = async (claimId, selectedOption) => {
     try {
       const res = await axios.put(

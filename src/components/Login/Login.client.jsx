@@ -1,4 +1,3 @@
-// Login.client.jsx (or .tsx if you prefer)
 "use client";
 
 import React, { useState, useEffect } from "react";
@@ -46,12 +45,10 @@ export default function Login({ onClose }) {
     }
   }, [router]);
 
-  // parent (HRMS) origin listening to the child: 1574
-  const EXPECTED_PARENT_ORIGIN = "http://localhost:1574";
+  const EXPECTED_PARENT_ORIGIN = "https://crestline.sts-test.site";
 
   useEffect(() => {
     function onMessage(ev) {
-      // only accept messages from the trusted parent origin
       if (ev.origin !== EXPECTED_PARENT_ORIGIN) return;
       const msg = ev.data || {};
       if (msg.type === "parent-login") {
@@ -67,7 +64,6 @@ export default function Login({ onClose }) {
     setErrorMessage("");
     if (!usernameVal || !passwordVal) {
       setErrorMessage("Username and password are required.");
-      // inform parent about failure
       if (window.parent && window.parent !== window.self) {
         window.parent.postMessage(
           {
@@ -99,7 +95,6 @@ export default function Login({ onClose }) {
       if (!response.ok) {
         const errMsg = data.message || "Invalid credentials.";
         setErrorMessage(errMsg);
-        // inform parent about failure
         if (window.parent && window.parent !== window.self) {
           window.parent.postMessage(
             { type: "login-failed", error: errMsg },
@@ -119,11 +114,9 @@ export default function Login({ onClose }) {
         orgId: payload.org_id ?? payload.orgId ?? payload.Org_id ?? null,
       };
 
-      // use your app's login function (from AuthProvider)
       await login(minimalUser);
       closeModal();
 
-      // notify parent that login succeeded
       if (window.parent && window.parent !== window.self) {
         window.parent.postMessage(
           { type: "login-success", payload: minimalUser },
@@ -131,7 +124,6 @@ export default function Login({ onClose }) {
         );
       }
 
-      // continue with your navigation behavior
       if (
         (usernameVal || "").toLowerCase() === "manish.p@yopmail.com" &&
         (minimalUser.role || "").toLowerCase() === "general"

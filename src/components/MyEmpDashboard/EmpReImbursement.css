@@ -82,3 +82,9 @@
   gap: 15px;
   margin-top: -50px;
 }
+
+@media (max-width: 780px) {
+  .emp-reimbursement {
+    margin-bottom: 20px;
+  }
+}

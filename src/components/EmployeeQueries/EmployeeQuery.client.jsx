@@ -61,6 +61,81 @@ const EmployeeQuery = () => {
     };
   }, []);
 
+  const initialMountRef = useRef(true);
+
+  useEffect(() => {
+    if (!initialMountRef.current) return;
+    if (loading) return;
+
+    initialMountRef.current = false;
+
+    const findNearestScrollable = (el) => {
+      while (el && el !== document.body && el !== document.documentElement) {
+        try {
+          const style = window.getComputedStyle(el);
+          const overflowY = style.overflowY;
+          const isScrollable =
+            (overflowY === "auto" ||
+              overflowY === "scroll" ||
+              overflowY === "overlay") &&
+            el.scrollHeight > el.clientHeight;
+          if (isScrollable) return el;
+          el = el.parentElement;
+        } catch (e) {
+          el = el.parentElement;
+        }
+      }
+      return document.scrollingElement || document.documentElement;
+    };
+
+    const safeSetScrollTop = (el) => {
+      try {
+        if (!el) return;
+        if (el === window) {
+          if (typeof window.scrollTo === "function") window.scrollTo(0, 0);
+          return;
+        }
+        if (el === document.body || el === document.documentElement) {
+          (document.scrollingElement || document.documentElement).scrollTop = 0;
+          return;
+        }
+        el.scrollTop = 0;
+      } catch (e) {}
+    };
+
+    const attemptScroll = () => {
+      safeSetScrollTop(window);
+      safeSetScrollTop(document.scrollingElement || document.documentElement);
+      safeSetScrollTop(document.body);
+
+      const root = document.querySelector(".emp-query-container");
+      const list = document.querySelector(".emp-query-list");
+
+      safeSetScrollTop(root);
+      safeSetScrollTop(list);
+
+      if (root && root.parentElement) {
+        const parentScrollable = findNearestScrollable(root.parentElement);
+        safeSetScrollTop(parentScrollable);
+      }
+
+      try {
+        if (chatContainerRef.current) {
+          chatContainerRef.current.scrollTop = 0;
+        }
+      } catch (e) {}
+    };
+
+    requestAnimationFrame(attemptScroll);
+    const t1 = setTimeout(() => requestAnimationFrame(attemptScroll), 50);
+    const t2 = setTimeout(() => requestAnimationFrame(attemptScroll), 300);
+
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+    };
+  }, [loading, queries.length]);
+
   const buildHeaders = (extra = {}) => ({
     "x-api-key": API_KEY,
     ...(employeeId ? { "x-employee-id": employeeId } : {}),

@@ -177,7 +177,6 @@
 .mobile-org-card {
   color: white;
   padding: 8px 24px;
-  border-radius: 14px;
   font-weight: 800;
   font-size: 17px;
   letter-spacing: -0.3px;
@@ -195,7 +194,6 @@
   position: absolute;
   inset: 0;
   background: linear-gradient(45deg, rgba(255, 255, 255, 0.2), transparent);
-  border-radius: 14px;
   pointer-events: none;
 }
 

@@ -120,7 +120,6 @@ export function AuthProvider({ children }) {
           sidebarMenu: body.sidebarMenu ?? [],
           raw: body,
           orgId: body.org_id ?? body.orgId ?? null,
-          orgName: body.orgName ?? body.org_name ?? null,
         };
 
         try {
@@ -191,7 +190,6 @@ export function AuthProvider({ children }) {
         sidebarMenu: body.sidebarMenu ?? [],
         raw: body,
         orgId: body.org_id ?? body.orgId ?? null,
-        orgName: body.orgName ?? body.org_name ?? null,
       };
 
       try {

@@ -287,6 +287,8 @@
 @media (max-width: 560px) {
   .modal {
     width: 92vw;
+    height: 80vh;
+    overflow-y: auto;
     border-radius: 12px;
   }
   .overlay::before,

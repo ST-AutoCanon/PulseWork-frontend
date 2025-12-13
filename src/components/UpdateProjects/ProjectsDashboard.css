@@ -213,7 +213,7 @@
 
 @media (max-width: 768px) {
   .project-dashboard {
-    padding: 30px;
+    padding: 10px 10px 50px 10px;
   }
   .project-header {
     flex-direction: column;

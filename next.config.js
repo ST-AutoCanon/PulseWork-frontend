@@ -24,11 +24,12 @@ const nextConfig = {
         headers: [
           {
             key: "Content-Security-Policy",
-            // allow only this parent origin to frame the app
-            value: "frame-ancestors http://localhost:1574;",
+            value: "frame-ancestors https://crestline.sts-test.site;",
           },
-          // Note: ALLOW-FROM is deprecated in many browsers; CSP frame-ancestors is the reliable mechanism.
-          { key: "X-Frame-Options", value: "ALLOW-FROM http://localhost:1574" },
+          {
+            key: "X-Frame-Options",
+            value: "ALLOW-FROM https://crestline.sts-test.site",
+          },
         ],
       },
     ];

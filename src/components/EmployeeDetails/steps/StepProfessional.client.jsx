@@ -276,7 +276,7 @@ export default function StepProfessional({ data, onChange, departments = [] }) {
           prevSupervisor ? (
             <div className="previous-supervisor">
               <label>
-                Previous Supervisor :
+                Previously Reporting To :
                 <br />
                 &nbsp;
                 <strong>{prevSupervisor.supervisor_name}</strong>
@@ -287,17 +287,17 @@ export default function StepProfessional({ data, onChange, departments = [] }) {
             </div>
           ) : (
             <div className="previous-supervisor">
-              <small>No previous supervisor on record.</small>
+              <small>No previously reporting to on record.</small>
             </div>
           )
         ) : (
           <div className="previous-supervisor">
-            <small>Loading previous supervisor…</small>
+            <small>Loading previously reporting to…</small>
           </div>
         )}
 
         <label>
-          Supervisor<span className="required">*</span>
+          Reporting To<span className="required">*</span>
           <select
             name="supervisor_id"
             value={data.supervisor_id || ""}

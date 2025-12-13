@@ -612,6 +612,7 @@
     width: 100%;
     flex: 1 1 auto;
     overflow: hidden;
+    padding: 0;
   }
 
   .emp-sidebar {
@@ -708,6 +709,8 @@
     flex-direction: column;
     background: #ffffff;
     overflow: hidden;
+    padding: 0;
+    margin: 0;
   }
 
   .mobile-chat-topbar {
@@ -749,6 +752,7 @@
   }
 
   .emp-chat-messages {
+    height: 360px;
     padding: 12px;
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
@@ -802,7 +806,7 @@
     display: flex;
     gap: 8px;
     padding: 10px;
-    margin-bottom: 2%;
+    margin-bottom: 10%;
     border-top: 1px solid #eee;
     background: #fff;
     align-items: center;
@@ -861,7 +865,6 @@
     border-radius: 8px;
   }
 
-  .emp-chat-container,
   .emp-query-list {
     padding-bottom: env(safe-area-inset-bottom, 16px);
   }
@@ -903,7 +906,7 @@
   .emp-close-button {
     position: absolute;
     right: 8px;
-    top: 8px;
+    top: 24px;
     background: transparent;
     border: none;
     color: #fff;
@@ -1062,25 +1065,6 @@
     border-top-right-radius: 12px;
   }
 
-  .emp-close-button {
-    position: absolute;
-    right: 8px;
-    top: 8px;
-    background: transparent;
-    border: none;
-    color: #fff;
-    font-size: 22px;
-    padding: 6px;
-    border-radius: 6px;
-    cursor: pointer;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-  }
-  .emp-close-button:focus {
-    outline: 2px solid rgba(255, 255, 255, 0.2);
-  }
-
   .stars-container {
     font-size: 26px;
     gap: 10px;
@@ -1118,7 +1102,6 @@
     color: #333;
   }
 
-  .emp-chat-container,
   .emp-query-list,
   .employee-query-modal {
     padding-bottom: env(safe-area-inset-bottom, 16px);

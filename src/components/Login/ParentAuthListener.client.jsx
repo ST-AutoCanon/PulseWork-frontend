@@ -1,20 +1,9 @@
-// src/components/ParentAuthListener.client.jsx
 "use client";
 
 import React, { useEffect, useCallback } from "react";
 
-/**
- * Minimal ParentAuthListener
- * - Accepts messages from allowed parent origins and forwards them same-origin
- *   (so Login can pick them up whether it mounts early or late).
- * - Acknowledges the parent with a small 'forwarded' message.
- */
-
 export default function ParentAuthListener() {
-  const ALLOWED_PARENT_ORIGINS = [
-    "http://localhost:1574",
-    "http://localhost:8080",
-  ];
+  const ALLOWED_PARENT_ORIGINS = ["https://crestline.sts-test.site"];
   const LOCAL_ORIGIN =
     typeof window !== "undefined" ? window.location.origin : "";
 
@@ -31,7 +20,6 @@ export default function ParentAuthListener() {
   useEffect(() => {
     function handleParentMessage(ev) {
       try {
-        // Accept only from configured parent origins
         if (!ALLOWED_PARENT_ORIGINS.includes(ev.origin)) return;
         const msg = ev.data || {};
         if (msg.type !== "parent-login") return;
@@ -45,7 +33,6 @@ export default function ParentAuthListener() {
           return;
         }
 
-        // stash a short-lived copy for late-mounted login component
         try {
           window.__PARENT_LOGIN_PENDING = {
             username,
@@ -53,11 +40,8 @@ export default function ParentAuthListener() {
             sourceOrigin: ev.origin,
             createdAt: Date.now(),
           };
-        } catch (e) {
-          // non-fatal
-        }
+        } catch (e) {}
 
-        // forward as same-origin message (so local Login listener gets it)
         try {
           window.postMessage(
             {

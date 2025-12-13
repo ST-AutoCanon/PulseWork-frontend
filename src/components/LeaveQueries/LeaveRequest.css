@@ -347,6 +347,9 @@
   .mobile-view {
     display: block;
   }
+  .lv-policy-header {
+    margin: 3% 0;
+  }
 }
 
 @media (min-width: 769px) {
@@ -413,7 +416,7 @@
 
 @media (max-width: 768px) {
   .leave-container {
-    margin: 2%;
+    margin: 2% 2% 10% 2%;
     align-items: stretch;
   }
 
@@ -1198,7 +1201,8 @@
 }
 @media (max-width: 768px) {
   .self-compact-list {
-    margin: 16px 8px;
+    padding: 16px 8px;
+    padding-bottom: 30px;
   }
   .compact-item {
     background: #fff;
@@ -1405,7 +1409,6 @@
 
 @media (max-width: 768px) {
   .venn-balance-section {
-    padding: 12px;
     background: #f9fafb;
     border-radius: 14px;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);

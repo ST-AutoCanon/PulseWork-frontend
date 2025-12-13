@@ -455,7 +455,7 @@
     padding: 15px;
   }
   .rb-form-header {
-    margin: 10%;
+    margin: 5%;
   }
   .filter-container label {
     font-size: 13px;
@@ -764,6 +764,7 @@
 
   .mobile-cards {
     padding: 16px;
+    padding-bottom: 40px;
     display: flex;
     flex-direction: column;
     gap: 12px;

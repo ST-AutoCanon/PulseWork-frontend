@@ -217,7 +217,7 @@ export default function Notifications({
         left: `${pos.left}px`,
         zIndex: 999999,
       }
-    : { position: "fixed", top: "48px", right: "0", zIndex: 999999 };
+    : { position: "fixed", top: "0", right: "0", zIndex: 999999 };
 
   return (
     <Portal>
@@ -229,15 +229,16 @@ export default function Notifications({
         aria-modal="true"
         tabIndex={-1}
       >
-        <button
-          className="mobile-close-btn"
-          onClick={() => onClose?.()}
-          aria-label="Close notifications"
-        >
-          ✕
-        </button>
-
-        <h4>Notifications</h4>
+        <h4>
+          Notifications
+          <button
+            className="mobile-close-btn"
+            onClick={() => onClose?.()}
+            aria-label="Close notifications"
+          >
+            ✕
+          </button>
+        </h4>
 
         {notifications.length === 0 ? (
           <p className="empty">No new notifications</p>

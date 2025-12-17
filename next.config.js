@@ -24,17 +24,13 @@ const nextConfig = {
         headers: [
           {
             key: "Content-Security-Policy",
-            value: "frame-ancestors https://crestline.sts-test.site;",
-          },
-          {
-            key: "X-Frame-Options",
-            value: "ALLOW-FROM https://crestline.sts-test.site",
+            value:
+              "frame-ancestors http://localhost:1574 http://localhost:1574;",
           },
         ],
       },
     ];
   },
-
   webpack: (config, { isServer }) => {
     if (!isServer) {
       config.resolve = config.resolve || {};

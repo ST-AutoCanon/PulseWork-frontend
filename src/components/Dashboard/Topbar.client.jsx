@@ -16,6 +16,8 @@ import {
 import "./Topbar.css";
 import { useAuth } from "../../context/AuthProvider.client";
 
+const PARENT_ORIGIN = "http://localhost:1574";
+
 function MobileTopbar(props) {
   const {
     userName,
@@ -34,6 +36,7 @@ function MobileTopbar(props) {
     portalRoot,
     calToggleRef,
     notifRef,
+    onLogout,
   } = props;
 
   return (
@@ -82,7 +85,7 @@ function MobileTopbar(props) {
           </button>
 
           <button
-            onClick={() => setTimeout(() => logout({ redirect: true }), 0)}
+            onClick={onLogout}
             className="mobile-action-btn mobile-logout-btn"
             aria-label="Logout"
           >
@@ -358,6 +361,33 @@ export default function Topbar() {
     return () => window.removeEventListener("resize", check);
   }, []);
 
+  const handleLogout = async () => {
+    try {
+      await logout({ redirect: false });
+    } catch (err) {
+      console.warn("logout error (child)", err);
+    }
+
+    try {
+      if (
+        typeof window !== "undefined" &&
+        window.parent &&
+        window.parent !== window.self
+      ) {
+        window.parent.postMessage({ type: "child-logged-out" }, PARENT_ORIGIN);
+        return;
+      }
+    } catch (err) {
+      console.warn("Failed to postMessage to parent on logout", err);
+    }
+
+    try {
+      router.push("/");
+    } catch (err) {
+      window.location.href = "/";
+    }
+  };
+
   const mobileProps = {
     userName,
     userRole,
@@ -375,6 +405,7 @@ export default function Topbar() {
     portalRoot,
     calToggleRef,
     notifRef,
+    onLogout: handleLogout,
   };
 
   return isMobile ? (
@@ -449,8 +480,8 @@ export default function Topbar() {
         <div
           role="button"
           tabIndex={0}
-          onClick={() => setTimeout(() => logout({ redirect: true }), 0)}
-          onKeyDown={(e) => e.key === "Enter" && logout({ redirect: true })}
+          onClick={handleLogout}
+          onKeyDown={(e) => e.key === "Enter" && handleLogout()}
         >
           <FontAwesomeIcon icon={faPowerOff} className="fa-icon" />
         </div>

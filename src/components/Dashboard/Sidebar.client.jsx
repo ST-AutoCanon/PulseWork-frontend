@@ -32,8 +32,8 @@ import TaskManagementEmployee from "../TaskManagementEmployee/EmpTaskManagement.
 import TaskManagementAdmin from "../TaskManagementAdmin/TaskManagementAdmin.client";
 
 // NEW COMPENSATION COMPONENTS
-import CreateCompensation from "../Compensation/createCompensation.client";
-import AssignCompensation from "../Compensation/assignCompensation.client";
+//import CreateCompensation from "../Compensation/createCompensation.client";
+//import AssignCompensation from "../Compensation/assignCompensation.client";
 import CompensationWrapper from "../Compensation/CompensationWrapper.client";
 // import SalaryBreakup from "../Compensation/SalaryBreakup.client"; // Uncomment when ready
 // import SalaryDetails from "../Compensation/SalaryDetails.client"; // Uncomment when ready

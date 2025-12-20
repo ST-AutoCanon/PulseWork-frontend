@@ -1,0 +1,149 @@
+/* Overlay */
+.am-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+/* Modal container */
+.am-modal {
+  background: #ccc; /* container background */
+  border-radius: 10px;
+  width: 420px;
+  max-width: 90%;
+  padding: 0;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+  font-family: "Segoe UI", Roboto, sans-serif;
+  overflow: hidden;
+}
+
+/* Header */
+.am-modal-header {
+  display: flex;
+  justify-content: center; /* center the title */
+  align-items: center;
+  background: #001D4A; /* green header */
+  color: #fff;
+  padding: 15px;
+  position: relative;
+}
+
+.am-modal-header h2 {
+  margin: 0;
+  font-size: 1.4rem;
+  font-weight: 600;
+  text-align: center;
+  flex: 1;
+}
+
+.am-modal-close {
+  background: none;
+  border: none;
+  font-size: 1.2rem;
+  cursor: pointer;
+  color: #fff;
+  position: absolute;
+  right: 15px;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+/* Content */
+.am-modal-content {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  padding: 20px;
+}
+
+.am-modal-error {
+  color: #d32f2f;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+/* Fields */
+.am-modal-field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.am-modal-field label {
+  font-weight: bold;
+  color: #333;
+}
+
+.am-modal-field input,
+.am-modal-field select {
+  padding: 8px;
+  border: 1px solid #bbb;
+  border-radius: 6px;
+  font-size: 1rem;
+  outline: none;
+  transition: border 0.2s, box-shadow 0.2s;
+}
+
+.am-modal-field input:focus,
+.am-modal-field select:focus {
+  border-color: #79C42B;
+  box-shadow: 0 0 4px rgba(121, 196, 43, 0.5);
+}
+
+/* Actions */
+.am-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 15px 20px 20px;
+}
+
+.am-modal-cancel,
+.am-modal-submit {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: background 0.3s;
+}
+
+/* Cancel button */
+.am-modal-cancel {
+  background: #9a9898;
+  color: #fff;
+}
+
+.am-modal-cancel:hover {
+  background: #a7a3a3;
+}
+
+/* Submit button */
+.am-modal-submit {
+  background: #79C42B;
+  color: #fff;
+}
+
+.am-modal-submit:hover {
+  background: #66a628;
+}
+
+.am-modal-submit:disabled {
+  background: #aaa;
+  cursor: not-allowed;
+}
+
+/* Note style */
+.am-modal-note {
+  font-size: 0.85rem;
+  color: #444;
+  font-style: italic;
+  margin-top: 5px;
+}

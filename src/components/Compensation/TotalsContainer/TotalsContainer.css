@@ -1,0 +1,55 @@
+.sb-totals-container {
+  margin-bottom: 30px;
+}
+
+.sb-totals-total-payroll {
+  font-size: 20px;
+  font-weight: bold;
+  color: #333;
+  margin-bottom: 15px;
+}
+
+.sb-totals-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 15px;
+}
+
+.sb-totals-card {
+  display: flex;
+  align-items: center;
+  padding: 15px;
+  background-color: #fff;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+.sb-totals-card-icon {
+  font-size: 24px;
+  margin-right: 10px;
+  color: #555;
+}
+
+.sb-totals-card-title {
+  display: block;
+  font-size: 14px;
+  color: #666;
+}
+
+.sb-totals-card-value {
+  font-size: 18px;
+  font-weight: bold;
+  color: #333;
+}
+
+.sb-payable { background-color: #e6f3ff; }
+.sb-gross { background-color: #e6ffe6; }
+.sb-tds { background-color: #ffe6e6; }
+.sb-advance { background-color: #fff3e6; }
+.sb-overtime { background-color: #f3e6ff; }
+.sb-bonus { background-color: #e6fff3; }
+.sb-pf-employee { background-color: #e6f3ff; }
+.sb-pf-employer { background-color: #e6ffe6; }
+.sb-insurance { background-color: #ffe6e6; }
+.sb-lop { background-color: #fff3e6; }

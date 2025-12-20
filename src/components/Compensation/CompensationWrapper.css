@@ -1,0 +1,39 @@
+/* File: src/components/Compensation/CompensationWrapper.css (optional) */
+.compensation-wrapper {
+  padding: 2rem;
+  max-width: 1300px;
+  margin: 0 auto;
+  text-align: center;
+}
+
+.compensation-wrapper h2 {
+  margin-bottom: 1rem;
+  color: #333;
+}
+
+.compensation-wrapper p {
+  margin-bottom: 2rem;
+  color: #666;
+}
+
+.buttons-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.compensation-btn {
+  padding: 1rem;
+  background-color: #007bff;
+  color: white;
+  border: none;
+  border-radius: 0.5rem;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.compensation-btn:hover {
+  background-color: #0056b3;
+}

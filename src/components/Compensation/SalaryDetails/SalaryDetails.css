@@ -1,0 +1,708 @@
+/* SalaryDetails.css - Styles for the Employee Salary Overview Table */
+
+/* Container for the entire component */
+.sd-container {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background-color: #f8f9fa;
+  padding: 20px;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+.sd-row-disabled {
+  background-color: #f8f9fa !important;
+  color: #6c757d !important;
+  pointer-events: none;
+}
+.sd-status-approved {
+  background: #d4edda;
+  color: #155724;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: bold;
+}
+
+.sd-status-enabled {
+  background: #d1ecf1;
+  color: #0c5460;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+}
+
+.sd-status-disabled {
+  background: #f8d7da;
+  color: #721c24;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+}
+
+.sd-toggle-btn {
+  padding: 4px 8px;
+  font-size: 11px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  min-width: 60px;
+  font-weight: 500;
+}
+
+.sd-toggle-btn.sd-enabled {
+  background: #dc3545;
+  color: white;
+}
+
+.sd-toggle-btn.sd-disabled {
+  background: #28a745;
+  color: white;
+}
+/* SalaryDetails.css */
+.sd-row-disabled {
+  background: #f8f9fa;
+  opacity: 0.65;
+  pointer-events: none;          /* disables hover */
+}
+.sd-row-disabled input[type="checkbox"] {
+  cursor: not-allowed;
+}
+
+.sd-locked {
+  color: #6c757d;
+  font-style: italic;
+  font-size: 12px;
+}
+.sd-row-disabled input[type="checkbox"] {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+/* Header section */
+.sd-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+  padding-bottom: 10px;
+  border-bottom: 2px solid #e9ecef;
+}
+
+.sd-header-title {
+  font-size: 24px;
+  font-weight: bold;
+  color: #333;
+  margin: 0;
+}
+
+/* Search container */
+.sd-search-container {
+  margin-bottom: 20px;
+  width: 100%;
+  max-width: 200px;
+  margin-left:-30px;
+}
+
+/* .sd-search-input {
+  width: 100%;
+  padding: 10px 15px;
+  border: 1px solid #ced4da;
+  border-radius: 6px;
+  font-size: 16px;
+  outline: none;
+  transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+} */
+
+.sd-search-input:focus {
+  border-color: #80bdff;
+  box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+}
+
+/* Loading state */
+.sd-loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  font-size: 18px;
+  color: #6c757d;
+}
+
+/* Table container */
+.sd-table-container {
+  flex: 1;
+  overflow: hidden;
+  border: 1px solid #dee2e6;
+  border-radius: 8px;
+  background-color: white;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  width: 1200px;
+}
+
+.sd-table-wrapper {
+  height: 100%;
+  max-height: 400px; /* FIXED height for ~10 rows */
+  overflow-y: auto; /* Vertical scroll for more rows */
+  overflow-x: auto; /* Horizontal scroll for columns */
+  position: relative; /* Helps with sticky layering */
+}
+
+/* Table styles */
+.sd-table {
+  width: 100%;
+  min-width: 1400px; /* Adjusted to accommodate new column widths */
+  border-collapse: collapse;
+  font-size: 14px;
+  table-layout: auto; /* Auto layout to respect content and min-widths */
+  background-color: white; /* Ensure table base bg */
+}
+
+.sd-table-header,
+.sd-table-cell {
+  padding: 12px 8px;
+  text-align: left;
+  border-bottom: 1px solid #dee2e6;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis; /* Handle overflow in cells */
+}
+
+.sd-table-header {
+  background-color: #f8f9fa;
+  font-weight: 600;
+  color: #495057;
+  position: sticky;
+  top: 0;
+  z-index: 11;
+}
+
+.sd-sticky-col {
+  position: sticky;
+  background-color: white !important; /* Force white bg; use inherit if dynamic */
+  background-clip: padding-box; /* Prevent bg bleed on edges */
+  z-index: 10; /* Base for cells */
+  overflow: visible; /* Change from hidden to prevent clipping numbers/names */
+  text-overflow: clip; /* Change to clip instead of ellipsis to show full end numbers */
+  box-shadow: inset 0 0 0 1px #dee2e6; /* Optional: subtle border to separate during scroll */
+  border-right: 1px solid #dee2e6 !important; /* Add separator border to all sticky cols */
+}
+
+.sd-table-header.sd-sticky-col {
+  background-color: #f8f9fa !important; /* Header-specific bg */
+  z-index: 13; /* Above cells */
+  overflow: visible;
+  text-overflow: clip;
+  border-right: 1px solid #dee2e6 !important;
+}
+
+/* Alignment classes */
+.sd-align-left {
+  text-align: left;
+}
+
+.sd-align-right {
+  text-align: right;
+}
+
+.sd-align-center {
+  text-align: center;
+}
+
+/* Column min-widths to prevent minimizing, but keep more compact */
+.sd-select-column {
+  min-width: 40px;
+  width: 40px;
+}
+
+.sd-id-column {
+  min-width: 70px !important; /* Increase from 50px to fully show longer IDs */
+  width: 70px;
+  text-align: center !important; /* Center ID for better visibility */
+  padding: 12px 4px !important;
+  white-space: nowrap;
+  overflow: visible;
+  text-overflow: visible;
+}
+
+.sd-name-column {
+  min-width: 150px !important; /* Increase from 100px to prevent name overlap/cutoff */
+  width: 150px;
+  text-align: left !important;
+}
+
+/* General min-width for other columns - further reduced to 70px */
+.sd-table th:not(.sd-select-column):not(.sd-id-column):not(.sd-name-column):not(.sd-sticky-ctc),
+.sd-table td:not(.sd-select-column):not(.sd-id-column):not(.sd-name-column):not(.sd-sticky-ctc) {
+  min-width: 70px;
+}
+
+.sd-sticky-ctc {
+  min-width: 100px;
+  width: 100px;
+}
+
+/* Deduction styling */
+.sd-deduction {
+  color: #dc3545;
+}
+
+/* Table body */
+.sd-table-body tr {
+  background-color: white; /* Default row bg to prevent transparency */
+  transition: background-color 0.15s ease-in-out;
+}
+
+.sd-table-body tr:hover {
+  background-color: #f8f9f9fa; /* Hover row bg */
+}
+
+.sd-table-body tr:hover .sd-sticky-col {
+  background-color: #f8f9fa !important; /* Match hover on sticky during row hover */
+}
+
+.sd-table-body .sd-table-cell {
+  border-bottom: 1px solid #dee2e6;
+}
+
+/* No data message */
+.sd-no-data {
+  text-align: center;
+  padding: 40px;
+  color: #6c757d;
+  font-size: 16px;
+  margin: 0;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .sd-container {
+    padding: 10px;
+  }
+
+  .sd-header-title {
+    font-size: 20px;
+  }
+
+  .sd-table {
+    font-size: 12px;
+    min-width: 900px; /* Adjusted further for mobile */
+  }
+
+  .sd-table-header,
+  .sd-table-cell {
+    padding: 8px 4px;
+  }
+
+  .sd-search-container {
+    max-width: 100%;
+  }
+
+  .sd-sticky-col {
+    position: static !important; /* Optional: Turn off sticky on small screens to avoid issues */
+    background-color: transparent !important;
+    border-right: none !important;
+  }
+
+  .sd-id-column { 
+    min-width: 60px !important; 
+  }
+
+  /* Do not hide columns; allow horizontal scroll on mobile */
+}
+
+/* Custom scrollbar for better UX */
+.sd-table-wrapper::-webkit-scrollbar {
+  height: 8px;
+}
+
+.sd-table-wrapper::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+.sd-table-wrapper::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 4px;
+}
+
+.sd-table-wrapper::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
+}
+
+/* Wrapper for proceed button - placed inside container, below wrapper */
+.sd-proceed-wrapper {
+  display: flex;
+  justify-content: flex-end; /* Right-aligned */
+  padding: 15px;
+  background-color: white;
+  border-top: 1px solid #dee2e6;
+}
+
+/* Proceed button styling */
+.sd-proceed-button {
+  background-color: #28a745; /* Green for "proceed" action */
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 6px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.15s ease-in-out;
+}
+
+.sd-proceed-button:hover {
+  background-color: #218838;
+}
+
+.sd-proceed-button:active {
+  background-color: #1e7e34;
+}
+
+/* Wrapper for table + proceed (replaces footer) */
+.sd-table-section {
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 160px); /* Increased offset for header + info bar */
+  overflow: hidden;
+}
+
+/* New info bar above table */
+.sd-info-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  padding: 10px 0;
+  border-bottom: 1px solid #e9ecef; /* Optional separator */
+}
+
+.sd-working-days {
+  font-size: 16px;
+  font-weight: 600;
+  color: #333;
+}
+
+/* Right controls wrapper */
+.sd-controls-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* Search container (now inside info bar, right-aligned) */
+.sd-info-bar .sd-search-container {
+  width: auto;
+  max-width: 300px; /* Adjust as needed */
+  margin-right:30px;
+  margin-top:20px;
+}
+
+.sd-info-bar .sd-search-input {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid #ced4da;
+  border-radius: 6px;
+  font-size: 14px;
+  
+}
+
+/* Preview modal overlay */
+.sd-preview-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sd-preview-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+}
+
+.sd-preview-content {
+  position: relative;
+  background-color: white;
+  border-radius: 8px;
+  width: 95%;
+  max-width: 800px; /* Increased to match table min-width for horizontal scroll */
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+}
+
+/* Preview header */
+.sd-preview-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px;
+  border-bottom: 1px solid #dee2e6;
+  background-color: #f8f9fa;
+}
+
+.sd-preview-header h2 {
+  margin: 0;
+  font-size: 20px;
+  color: #333;
+}
+
+.sd-close-button {
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  color: #6c757d;
+  padding: 0;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sd-close-button:hover {
+  color: #dc3545;
+}
+
+/* Preview table wrapper */
+.sd-preview-table-wrapper {
+  flex: 1;
+  overflow: auto; /* Ensure both axes scroll */
+  width: 100%; /* Explicit width for horizontal scroll */
+  max-height: calc(90vh - 140px);
+}
+
+.sd-preview-table {
+  width: 100%;
+  min-width: 600px; /* Adjusted to match main table */
+  border-collapse: collapse;
+  font-size: 12px;
+  table-layout: auto;
+}
+
+.sd-preview-table th,
+.sd-preview-table-cell {
+  padding: 8px;
+  text-align: left;
+  border-bottom: 1px solid #dee2e6;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 10px; /* Compact min-width to match */
+}
+
+.sd-preview-table th {
+  background-color: #f8f9fa;
+  font-weight: 600;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.sd-preview-table-cell {
+  background-color: white;
+}
+
+.sd-preview-table th.sd-align-right,
+.sd-preview-table-cell.sd-align-right {
+  text-align: right;
+}
+
+.sd-preview-table-cell.sd-deduction,
+.sd-preview-table th.sd-deduction {
+  color: #dc3545;
+}
+
+/* Preview footer */
+.sd-preview-footer {
+  display: flex;
+  justify-content: center;
+  padding: 20px;
+  border-top: 1px solid #dee2e6;
+  background-color: #f8f9fa;
+  gap: 10px; /* Space between buttons */
+}
+
+/* Download button in preview */
+.sd-download-button {
+  background-color: #007bff;
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 6px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.15s ease-in-out;
+}
+
+.sd-download-button:hover {
+  background-color: #0056b3;
+}
+
+.sd-download-button:active {
+  background-color: #004085;
+}
+
+/* Save button */
+.sd-save-button {
+  background-color: #28a745;
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 6px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.15s ease-in-out;
+}
+
+.sd-save-button:hover {
+  background-color: #218838;
+}
+
+/* PDF button */
+.sd-pdf-button {
+  background-color: #6f42c1;
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 6px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.15s ease-in-out;
+}
+
+.sd-pdf-button:hover {
+  background-color: #5a32a3;
+}
+
+/* Bank Report button */
+.sd-bank-button {
+  background-color: #17a2b8;
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 6px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.15s ease-in-out;
+}
+
+.sd-bank-button:hover {
+  background-color: #138496;
+}
+
+/* Responsive for preview on small screens */
+@media (max-width: 768px) {
+  .sd-preview-content {
+    width: 100%;
+    height: 100%;
+    border-radius: 0;
+    max-width: none; /* Allow full width on mobile */
+  }
+
+  .sd-preview-table {
+    font-size: 10px;
+    min-width: 100px;
+  }
+
+  .sd-preview-table th,
+  .sd-preview-table-cell {
+    padding: 6px 4px;
+    min-width: 60px;
+  }
+
+  .sd-preview-footer {
+    flex-direction: column; /* Stack buttons on small screens */
+    gap: 10px;
+  }
+
+  .sd-download-button,
+  .sd-save-button,
+  .sd-pdf-button,
+  .sd-bank-button {
+    width: 100%;
+    max-width: 200px;
+    margin: 0 auto;
+  }
+}
+
+/* Specific sticky left positions (overrides if needed) */
+.sd-sticky-checkbox { left: 0; }
+.sd-sticky-id { left: 40px !important; }
+.sd-sticky-name { left: 110px !important; }
+.sd-sticky-ctc { left: 260px !important; }
+
+/* If hover conflicts during scroll, override */
+.sd-table-wrapper {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch; /* Smoother on iOS */
+}
+
+/* For headers specifically */
+.sd-table-head th.sd-sticky-col {
+  box-shadow: inset 0 0 0 1px #dee2e6; /* Helps visibility */
+}
+
+/* If overlap persists on text, add padding or min-width adjustments */
+.sd-table td:not(.sd-sticky-col),
+.sd-table th:not(.sd-sticky-col) {
+  padding-left: 12px; /* Extra space to avoid visual clash */
+}
+
+/* Custom scrollbar for preview table */
+.sd-preview-table-wrapper::-webkit-scrollbar {
+  height: 8px;
+}
+
+.sd-preview-table-wrapper::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+.sd-preview-table-wrapper::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 4px;
+}
+
+.sd-preview-table-wrapper::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
+}
+.sd-bank-report-options {
+  display: flex;
+  flex-direction: column;
+  position: absolute;
+  background: #fff;
+  border: 1px solid #dee2e6;
+  border-radius: 4px;
+  padding: 10px;
+  margin-top: -90px;
+  margin-left:600px;
+  z-index: 100;
+}
+
+.sd-bank-report-options button {
+  margin: 5px 0;
+  padding: 8px 12px;
+  background: #f8f9fa;
+  border: 1px solid #ced4da;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.sd-bank-report-options button:hover {
+  background: #e9ecef;
+}

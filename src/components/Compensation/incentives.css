@@ -1,0 +1,73 @@
+.incentives-container {
+  padding: 20px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.header-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.incentive-search-container {
+  position: relative;
+  width: 300px;
+}
+
+.search-input {
+  width: 100%;
+  padding: 8px 30px 8px 10px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+.search-icon {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #666;
+}
+
+.table-scroll-wrapper {
+  overflow-x: auto;
+}
+
+.incentive-table {
+  width: 100%;
+  border-collapse: collapse;
+  background-color: #fff;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.incentive-table th,
+.incentive-table td {
+  padding: 12px;
+  text-align: left;
+  border-bottom: 1px solid #ddd;
+}
+
+.header-row {
+  background-color: #f4f4f4;
+  font-weight: bold;
+}
+
+.incentive-table tr:hover {
+  background-color: #f9f9f9;
+}
+
+.incentive-view-btn,
+.incentive-edit-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #007bff;
+  padding: 5px;
+}
+
+.incentive-view-btn:hover,
+.incentive-edit-btn:hover {
+  color: #0056b3;
+}

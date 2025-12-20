@@ -1,0 +1,207 @@
+/* Modal overlay styling */
+.im-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+/* Modal container styling */
+.im-modal {
+  background-color: #ffffff;
+  border-radius: 8px;
+  width: 100%;
+  max-width: 500px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  overflow: hidden;
+}
+
+/* Modal header styling */
+.im-modal-header {
+  background-color: #1e88e5; /* Professional blue header */
+  color: #ffffff;
+  padding: 16px 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.im-modal-header h2 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+}
+
+/* Close button styling */
+.im-modal-close {
+  background: none;
+  border: none;
+  color: #ffffff;
+  font-size: 24px;
+  cursor: pointer;
+  padding: 0 8px;
+  transition: color 0.2s ease;
+}
+
+.im-modal-close:hover {
+  color: #e0e0e0;
+}
+
+/* Modal content styling */
+.im-modal-content {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* Error message styling */
+.im-modal-error {
+  background-color: #ffebee;
+  color: #c62828;
+  padding: 12px;
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+/* Modal field styling */
+.im-modal-field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.im-modal-field label {
+  font-size: 14px;
+  font-weight: 500;
+  color: #333333;
+}
+
+/* Radio group styling */
+.im-radio-group {
+  display: flex;
+  gap: 20px;
+  margin-top: 8px;
+}
+
+.im-radio-group label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: #333333;
+}
+
+.im-radio-group input[type="radio"] {
+  margin: 0;
+  cursor: pointer;
+}
+
+/* Input and select styling */
+.im-modal-field input[type="number"],
+.im-modal-field select {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #cccccc;
+  border-radius: 4px;
+  font-size: 14px;
+  color: #333333;
+  background-color: #ffffff;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+/* Dropdown specific styling */
+.im-modal-field select {
+  max-height: 40px; /* Limit height for better appearance */
+  appearance: none; /* Remove default browser styling */
+  background-image: url('data:image/svg+xml;utf8,<svg fill="%23333333" height="24" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg"><path d="M7 10l5 5 5-5z"/><path d="M0 0h24v24H0z" fill="none"/></svg>'); /* Custom arrow */
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  background-size: 12px;
+}
+
+/* Scrollable dropdown for long lists */
+.im-modal-field select::-webkit-scrollbar {
+  width: 8px;
+}
+
+.im-modal-field select::-webkit-scrollbar-thumb {
+  background-color: #1e88e5;
+  border-radius: 4px;
+}
+
+.im-modal-field select::-webkit-scrollbar-track {
+  background-color: #f5f5f5;
+}
+
+.im-modal-field input[type="number"]:focus,
+.im-modal-field select:focus {
+  outline: none;
+  border-color: #1e88e5;
+  box-shadow: 0 0 4px rgba(30, 136, 229, 0.3);
+}
+
+/* Hover effect for dropdown options (where supported) */
+.im-modal-field select option {
+  background-color: #ffffff;
+  color: #333333;
+}
+
+/* Modal actions styling */
+.im-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+/* Button styling */
+.im-modal-cancel,
+.im-modal-submit {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 4px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.im-modal-cancel {
+  background-color: #e0e0e0;
+  color: #333333;
+}
+
+.im-modal-cancel:hover {
+  background-color: #d5d5d5;
+}
+
+.im-modal-submit {
+  background-color: #1e88e5;
+  color: #ffffff;
+}
+
+.im-modal-submit:hover {
+  background-color: #1565c0;
+}
+
+.im-modal-submit:disabled {
+  background-color: #90caf9;
+  cursor: not-allowed;
+}
+
+/* Responsive adjustments */
+@media (max-width: 600px) {
+  .im-modal {
+    width: 90%;
+  }
+
+  .im-radio-group {
+    flex-direction: column;
+    gap: 12px;
+  }
+}

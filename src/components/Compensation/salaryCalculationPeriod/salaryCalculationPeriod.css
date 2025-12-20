@@ -1,0 +1,276 @@
+
+
+.salary-period-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  padding: 20px;
+}
+
+.salary-period-modal {
+  background: #ffffff;
+  border-radius: 12px;
+  width: 100%;
+  max-width: 800px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+  display: flex;
+  flex-direction: column;
+}
+
+.salary-period-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 24px;
+  border-bottom: 1px solid #e0e0e0;
+  background-color: #001D4A;
+  border-radius: 12px 12px 0 0;
+}
+
+.salary-period-header h2 {
+  margin: 0;
+  color: #f4f7f9;
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+.salary-period-close {
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  color: #fafbfc;
+  padding: 4px;
+  border-radius: 4px;
+  transition: color 0.2s ease;
+}
+
+.salary-period-close:hover {
+  color: #f5eff0;
+  background-color: rgba(220, 53, 69, 0.1);
+}
+
+.salary-period-content {
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  flex: 1;
+}
+
+.salary-period-form-section,
+.salary-period-list-section {
+  flex: 1;
+}
+
+.salary-period-note {
+  font-style: italic;
+  color: #6c757d;
+  margin: 0 0 16px 0;
+  text-align: center;
+  font-size: 0.9rem;
+}
+
+.salary-period-form {
+  background: #f8f9fa;
+  padding: 20px;
+  border-radius: 8px;
+  border: 1px solid #e0e0e0;
+}
+
+.salary-period-form-group {
+  margin-bottom: 20px;
+}
+
+.salary-period-label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 600;
+  color: #2c3e50;
+  font-size: 0.95rem;
+}
+
+.salary-period-input {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #ced4da;
+  border-radius: 6px;
+  font-size: 16px;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.salary-period-input:focus {
+  outline: none;
+  border-color: #24e52b;
+  box-shadow: 0 0 0 0.2rem rgba(131, 150, 126, 0.25);
+}
+
+.salary-period-input.error {
+  border-color: #dc3545;
+}
+
+.salary-period-error {
+  color: #dc3545;
+  font-size: 0.875rem;
+  margin-top: 6px;
+  display: block;
+}
+
+.salary-period-error.general {
+  margin-top: 12px;
+  padding: 8px;
+  background-color: #f8d7da;
+  border: 1px solid #f5c6cb;
+  border-radius: 4px;
+}
+
+.salary-period-submit {
+  background-color: #79C42B;
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: 500;
+  width: 100%;
+  transition: background-color 0.2s ease;
+}
+
+.salary-period-submit:hover:not(:disabled) {
+  background-color: #79C42B;
+}
+
+.salary-period-submit:disabled {
+  background-color: #6c757d;
+  cursor: not-allowed;
+}
+
+.salary-period-list-section h3 {
+  margin: 0 0 16px 0;
+  color: #2c3e50;
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.salary-period-no-data {
+  text-align: center;
+  color: #6c757d;
+  font-style: italic;
+  padding: 20px;
+  background: #f8f9fa;
+  border-radius: 6px;
+  border: 1px dashed #dee2e6;
+}
+
+.salary-period-table-wrapper {
+  overflow-x: auto;
+  border-radius: 8px;
+  border: 1px solid #e0e0e0;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.salary-period-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: #ffffff;
+}
+
+.salary-period-table th,
+.salary-period-table td {
+  padding: 12px 16px;
+  text-align: left;
+  border-bottom: 1px solid #e0e0e0;
+  vertical-align: middle;
+}
+
+.salary-period-table th {
+  background-color: #f8f9fa;
+  font-weight: 600;
+  color: #2c3e50;
+  font-size: 0.9rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.salary-period-table tbody tr {
+  transition: background-color 0.2s ease;
+}
+
+.salary-period-table tbody tr:hover {
+  background-color: #f8f9fa;
+}
+
+.salary-period-table tbody tr.even-row {
+  background-color: #fafbfc;
+}
+
+.salary-period-actions {
+  text-align: center;
+  white-space: nowrap;
+}
+
+.salary-period-edit-btn {
+  background-color: #28a745;
+  color: white;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: background-color 0.2s ease;
+}
+
+.salary-period-edit-btn:hover {
+  background-color: #218838;
+}
+
+@media (max-width: 768px) {
+  .salary-period-modal {
+    margin: 10px;
+    max-width: calc(100% - 20px);
+  }
+
+  .salary-period-content {
+    padding: 16px;
+    gap: 16px;
+  }
+
+  .salary-period-table th,
+  .salary-period-table td {
+    padding: 8px 12px;
+    font-size: 0.875rem;
+  }
+
+  .salary-period-table-wrapper {
+    font-size: 0.875rem;
+  }
+}
+
+/* Reuse existing compensation styles for consistency */
+.salary-period-modal .compensation-create-button {
+  background-color: #007bff;
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: 500;
+  transition: background-color 0.2s ease;
+  margin-right: 10px;
+}
+
+.salary-period-modal .compensation-create-button:hover {
+  background-color: #0056b3;
+}

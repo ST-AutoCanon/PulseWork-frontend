@@ -1,0 +1,94 @@
+.asm-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.asm-modal {
+  background-color: #fff;
+  border-radius: 8px;
+  width: 400px;
+  max-width: 90%;
+}
+
+.asm-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15px;
+  border-bottom: 1px solid #ddd;
+}
+
+.asm-modal-header h2 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.asm-modal-close {
+  font-size: 20px;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+.asm-modal-content {
+  padding: 15px;
+}
+
+.asm-modal-error {
+  color: #d32f2f;
+  margin-bottom: 10px;
+}
+
+.asm-modal-field {
+  margin-bottom: 15px;
+}
+
+.asm-modal-field label {
+  display: block;
+  margin-bottom: 5px;
+  font-weight: bold;
+}
+
+.asm-modal-field select {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+
+.asm-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.asm-modal-cancel,
+.asm-modal-submit {
+  padding: 8px 15px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.asm-modal-cancel {
+  background-color: #f44336;
+  color: #fff;
+}
+
+.asm-modal-submit {
+  background-color: #28a745;
+  color: #fff;
+}
+
+.asm-modal-submit:disabled {
+  background-color: #ccc;
+  cursor: not-allowed;
+}

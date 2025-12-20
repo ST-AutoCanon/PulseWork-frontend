@@ -1,0 +1,240 @@
+
+.esd-container {
+  padding: 20px;
+  font-family: Arial, sans-serif;
+  max-width: calc(100vw - 250px); /* Adjust for sidebar width (assumed 200-250px) */
+  margin-left: -10px; /* Offset for sidebar */
+  box-sizing: border-box;
+}
+
+.esd-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 20px;
+  background: #001D4A;
+  padding: 15px;
+  border-radius: 8px;
+  color: white;
+}
+
+.esd-back-button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  margin-right: 10px;
+}
+
+.esd-back-icon {
+  width: 24px;
+  height: 24px;
+  stroke: white;
+}
+
+.esd-header-title {
+  font-size: 20px;
+  font-weight: bold;
+}
+
+.esd-search-container {
+  margin-bottom: 20px;
+}
+
+.esd-search-input {
+  padding: 8px;
+  width: 300px;
+  max-width: 100%;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+.esd-table-container {
+  display: flex;
+  max-width: 100%;
+  border-radius: 8px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.esd-table-wrapper {
+  display: flex;
+  width: 100%;
+}
+
+.esd-table {
+  border-collapse: collapse;
+  background-color: #fff;
+  font-size: 13px;
+}
+
+.esd-table-header {
+  background-color: #f4f4f4;
+  padding: 10px;
+  font-weight: bold;
+  text-transform: uppercase;
+  border-bottom: 1px solid #ddd;
+  white-space: nowrap;
+}
+
+.esd-table-header:not(.esd-scrollable) {
+  border-right: 1px solid #ddd;
+}
+
+.esd-align-left {
+  text-align: left;
+}
+
+.esd-align-right {
+  text-align: right;
+}
+
+.esd-id-column {
+  width: 80px;
+  min-width: 80px;
+}
+
+.esd-name-column {
+  width: 150px;
+  min-width: 150px;
+}
+
+.esd-table-header:not(.esd-id-column):not(.esd-name-column):not(.esd-scrollable),
+.esd-table-cell:not(.esd-id-column):not(.esd-name-column):not(.esd-scrollable) {
+  width: 100px;
+  min-width: 100px;
+}
+
+.esd-table-header.esd-scrollable,
+.esd-table-cell.esd-scrollable {
+  width: 80px;
+  min-width: 80px;
+}
+
+.esd-table-cell {
+  padding: 10px;
+  border-bottom: 1px solid #ddd;
+  white-space: nowrap;
+}
+
+.esd-table-cell:not(.esd-id-column):not(.esd-name-column):not(.esd-scrollable) {
+  border-right: 1px solid #ddd;
+}
+
+.esd-table-cell.esd-deduction {
+  background-color: #fff9e6; /* Light yellow for deductions */
+}
+
+.esd-table-body tr:hover {
+  background-color: #f9f9f9;
+}
+
+.esd-no-data {
+  text-align: center;
+  color: #666;
+  padding: 20px;
+  font-size: 14px;
+}
+
+/* Scrollable section */
+.esd-table-container {
+  overflow-x: hidden;
+}
+
+.esd-table-wrapper {
+  overflow-x: auto;
+}
+
+.esd-table-wrapper::-webkit-scrollbar {
+  height: 8px;
+}
+
+.esd-table-wrapper::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+.esd-table-wrapper::-webkit-scrollbar-thumb {
+  background: #888;
+  border-radius: 4px;
+}
+
+.esd-table-wrapper::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}
+
+@media (max-width: 1200px) {
+  .esd-container {
+    margin-left: 0; /* Remove sidebar offset on smaller screens */
+    max-width: 100%;
+  }
+
+  .esd-table {
+    font-size: 12px;
+  }
+
+  .esd-table-header,
+  .esd-table-cell {
+    padding: 8px;
+  }
+
+  .esd-id-column {
+    width: 60px;
+    min-width: 60px;
+  }
+
+  .esd-name-column {
+    width: 120px;
+    min-width: 120px;
+  }
+
+  .esd-table-header:not(.esd-id-column):not(.esd-name-column):not(.esd-scrollable),
+  .esd-table-cell:not(.esd-id-column):not(.esd-name-column):not(.esd-scrollable) {
+    width: 80px;
+    min-width: 80px;
+  }
+
+  .esd-table-header.esd-scrollable,
+  .esd-table-cell.esd-scrollable {
+    width: 70px;
+    min-width: 70px;
+  }
+}
+
+@media (max-width: 768px) {
+  .esd-search-input {
+    width: 100%;
+  }
+
+  .esd-header-title {
+    font-size: 18px;
+  }
+
+  .esd-table {
+    font-size: 11px;
+  }
+
+  .esd-table-header,
+  .esd-table-cell {
+    padding: 6px;
+  }
+
+  .esd-id-column {
+    width: 50px;
+    min-width: 50px;
+  }
+
+  .esd-name-column {
+    width: 100px;
+    min-width: 100px;
+  }
+
+  .esd-table-header:not(.esd-id-column):not(.esd-name-column):not(.esd-scrollable),
+  .esd-table-cell:not(.esd-id-column):not(.esd-name-column):not(.esd-scrollable) {
+    width: 70px;
+    min-width: 70px;
+  }
+
+  .esd-table-header.esd-scrollable,
+  .esd-table-cell.esd-scrollable {
+    width: 60px;
+    min-width: 60px;
+  }
+}

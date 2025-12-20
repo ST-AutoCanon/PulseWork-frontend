@@ -1,0 +1,149 @@
+.sb-table-main-content {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.sb-table-header-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.sb-table-heading {
+  font-size: 20px;
+  font-weight: bold;
+  color: #333;
+}
+
+.sb-table-search-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.sb-table-search-input {
+  padding: 8px 30px 8px 10px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  width: 250px;
+}
+
+.sb-table-search-icon {
+  position: absolute;
+  right: 10px;
+  color: #666;
+}
+
+.sb-table-and-details-container {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+
+.sb-table-wrapper {
+  flex: 1;
+  overflow-x: auto;
+  min-width: 0;
+}
+
+.sb-table-compressed {
+  flex: 0 0 calc(100% - 510px);
+}
+
+.sb-table {
+  width: 100%;
+  border-collapse: collapse;
+  background-color: #fff;
+  border: 1px solid #ddd;
+}
+
+.sb-table-header {
+  background-color: #f5f5f5;
+  padding: 10px;
+  font-weight: bold;
+  text-align: left;
+}
+
+.sb-table-align-left {
+  text-align: left;
+}
+
+.sb-table-align-center {
+  text-align: center;
+}
+
+.sb-table-cell {
+  padding: 10px;
+  border: 1px solid #ddd;
+}
+
+.sb-table-body-wrapper tr:hover {
+  background-color: #f9f9f9;
+}
+
+.sb-table-action-buttons {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+}
+
+.sb-table-view-button,
+.sb-table-advance-button {
+  padding: 8px 15px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.sb-table-view-button {
+  background-color: #007bff;
+  color: #fff;
+}
+
+.sb-table-advance-button {
+  background-color: #28a745;
+  color: #fff;
+}
+
+.sb-table-pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.sb-table-pagination-button {
+  padding: 8px 15px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background-color: #fff;
+  cursor: pointer;
+}
+
+.sb-table-pagination-button:disabled {
+  background-color: #f5f5f5;
+  cursor: not-allowed;
+}
+
+.sb-table-pagination-info {
+  font-size: 14px;
+  color: #666;
+}
+
+/* Existing styles remain unchanged, adding new style for incentive button */
+.sb-table-incentive-button {
+  padding: 6px 12px;
+  border: none;
+  border-radius: 4px;
+  background: #28a745;
+  color: white;
+  cursor: pointer;
+  margin-left: 5px;
+}
+
+.sb-table-incentive-button:hover {
+  background: #218838;
+}

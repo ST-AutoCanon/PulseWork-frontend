@@ -1,0 +1,194 @@
+/* src/pages/overtime/OvertimeDetails.css */
+.ot-container {
+  font-family: "Inter", "Segoe UI", sans-serif;
+  max-width: 1600px;
+  margin: 0 auto;
+  padding: 1.5rem;
+  background: #f8fafc;
+  min-height: 100vh;
+}
+.ot-header { margin-bottom: 1.5rem; }
+.ot-title { font-size: 1.8rem; font-weight: 600; color: #1e293b; }
+.ot-tabs {
+  display: flex;
+  justify-content: center;
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+}
+.ot-tab {
+  padding: 0.55rem 1.3rem;
+  font-weight: 500;
+  border: 1px solid #cbd5e0;
+  background: #fff;
+  border-radius: 0.4rem;
+  cursor: pointer;
+  transition: 0.2s;
+}
+.ot-tab:hover { background: #f1f5f9; }
+.ot-tab.active {
+  background: #3b82f6;
+  color: #fff;
+  border-color: #3b82f6;
+}
+.ot-controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+.ot-search {
+  padding: 0.55rem 0.85rem;
+  width: 300px;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.4rem;
+  font-size: 0.95rem;
+}
+.ot-bulk-actions { display: flex; gap: 0.5rem; }
+.ot-btn {
+  padding: 0.55rem 1.1rem;
+  border: none;
+  border-radius: 0.4rem;
+  font-weight: 500;
+  cursor: pointer;
+}
+.ot-btn-approve { background: #10b981; color: #fff; }
+.ot-btn-approve:hover { background: #059669; }
+.ot-btn-reject { background: #ef4444; color: #fff; }
+.ot-btn-reject:hover { background: #dc2626; }
+.ot-btn:disabled { background: #94a3b8; cursor: not-allowed; }
+.ot-table-wrapper {
+  overflow-x: auto;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.5rem;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+.ot-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed; /* Ensures consistent column widths */
+}
+.ot-th,
+.ot-td {
+  border: 1px solid #e2e8f0; /* Full borders for grid lines */
+  padding: 0.8rem 1rem;
+  text-align: left;
+  font-size: 0.9rem;
+  vertical-align: top; /* Aligns content to top for better rowSpan handling */
+}
+.ot-th {
+  background: #f8fafc;
+  font-weight: 600;
+  color: #475569;
+  position: sticky; /* Keeps header sticky on scroll if needed */
+  top: 0;
+}
+.ot-th-select { width: 50px; text-align: center; }
+.ot-th:not(:last-child) { border-right: 1px solid #e2e8f0; } /* Vertical lines between headers */
+.ot-align-right { text-align: right; }
+.ot-td:not(:last-child) { border-right: 1px solid #f1f5f9; } /* Lighter vertical lines for data rows */
+.ot-td-select { text-align: center; width: 50px; }
+.ot-td-actions { white-space: nowrap; text-align: center; }
+.ot-row-disabled {
+  background: #f8fafc !important;
+  color: #94a3b8;
+}
+.ot-row-disabled .ot-btn-small { display: none; }
+tr:hover:not(.ot-row-disabled) { background: #f1f5f9; }
+.ot-status {
+  padding: 0.25rem 0.6rem;
+  border-radius: 0.3rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+.ot-status-pending { background: #fff7ed; color: #f97316; }
+.ot-status-approved { background: #ecfdf5; color: #10b981; }
+.ot-status-rejected { background: #fee2e2; color: #ef4444; }
+.ot-btn-small {
+  padding: 0.3rem 0.6rem;
+  font-size: 0.8rem;
+  margin-right: 0.3rem;
+  border: none;
+  border-radius: 0.3rem;
+  cursor: pointer;
+}
+.ot-btn-small.ot-btn-approve { background: #10b981; color: #fff; }
+.ot-btn-small.ot-btn-reject { background: #ef4444; color: #fff; }
+.ot-loading,
+.ot-no-data {
+  text-align: center;
+  padding: 2.5rem;
+  font-size: 1.1rem;
+  color: #64748b;
+}
+/* Indeterminate state for Select All */
+.ot-th-select input:indeterminate {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='10' height='2' x='3' y='7' fill='%23333'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: center;
+}
+.ot-input-rate,
+.ot-input-comments {
+  width: 100%;
+  padding: 0.5rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.3rem;
+  font-size: 0.9rem;
+  background: white;
+}
+.ot-input-rate:focus,
+.ot-input-comments:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 2px rgba(59,130,246,0.1);
+}
+.ot-row-disabled input {
+  background: #f1f5f9;
+  color: #94a3b8;
+}
+.ot-project-tooltip {
+  display: inline-block;
+  max-width: 150px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  vertical-align: middle;
+  cursor: help;
+}
+/* Font Awesome action icons */
+.ot-btn-icon {
+  background: none;
+  border: none;
+  font-size: 1.1rem;
+  cursor: pointer;
+  padding: 0.3rem 0.4rem;
+  transition: transform 0.1s ease, color 0.2s ease;
+}
+
+.ot-btn-icon:hover {
+  transform: scale(1.2);
+}
+
+/* Approve icon (green) */
+.ot-btn-icon.ot-btn-approve i {
+  color: #10b981;
+}
+
+/* Reject icon (red) */
+.ot-btn-icon.ot-btn-reject i {
+  color: #ef4444;
+}
+
+/* Disable on approved rows */
+.ot-row-disabled .ot-btn-icon {
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+/* Reduce width of select checkbox column */
+.ot-th-select,
+.ot-td-select {
+  width: 35px !important;
+  text-align: center;
+}

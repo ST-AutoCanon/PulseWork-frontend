@@ -270,41 +270,71 @@ export function AuthProvider({ children }) {
     return minimalUser;
   };
 
-  const logout = async ({ redirect = true } = {}) => {
+  const PARENT_ORIGIN =
+    typeof window !== "undefined"
+      ? process.env.NEXT_PUBLIC_PARENT_ORIGIN || "http://localhost:1574"
+      : null;
+
+  const isFramed = () =>
+    typeof window !== "undefined" &&
+    window.parent &&
+    window.parent !== window.self;
+
+  const logout = async ({ redirect = true, reason } = {}) => {
     if (redirect) {
       try {
-        router.push("/");
+        if (
+          isFramed() &&
+          typeof window.parent !== "undefined" &&
+          PARENT_ORIGIN
+        ) {
+          try {
+            window.parent.postMessage(
+              { type: "child-logged-out", reason: reason ?? "unknown" },
+              PARENT_ORIGIN
+            );
+          } catch (err) {
+            console.warn("Failed to post child-logged-out to parent:", err);
+          }
+        }
+
+        try {
+          router.push("/");
+        } catch (err) {
+          console.warn("router.push('/') failed:", err);
+        }
+
+        setUser(null);
+        try {
+          localStorage.removeItem("auth:employeeId");
+        } catch (e) {
+          console.warn("localStorage remove failed:", e);
+        }
+
+        if (typeof window !== "undefined") window.__APP_LOGGING_OUT = true;
+
+        if (BACKEND_URL) {
+          fetch(`${BACKEND_URL}/logout`, {
+            method: "POST",
+            credentials: "include",
+            headers: {
+              "x-api-key": API_KEY || "",
+              "Content-Type": "application/json",
+            },
+          })
+            .catch((err) => console.error("logout request failed:", err))
+            .finally(() => {
+              if (typeof window !== "undefined")
+                window.__APP_LOGGING_OUT = false;
+            });
+        } else {
+          if (typeof window !== "undefined") window.__APP_LOGGING_OUT = false;
+        }
+
+        return;
       } catch (err) {
-        console.warn("router.push('/') failed:", err);
+        console.warn("logout (redirect=true) unexpected error:", err);
       }
-
-      setUser(null);
-      try {
-        localStorage.removeItem("auth:employeeId");
-      } catch (e) {
-        console.warn("localStorage remove failed:", e);
-      }
-
-      if (typeof window !== "undefined") window.__APP_LOGGING_OUT = true;
-
-      if (BACKEND_URL) {
-        fetch(`${BACKEND_URL}/logout`, {
-          method: "POST",
-          credentials: "include",
-          headers: {
-            "x-api-key": API_KEY || "",
-            "Content-Type": "application/json",
-          },
-        })
-          .catch((err) => console.error("logout request failed:", err))
-          .finally(() => {
-            if (typeof window !== "undefined") window.__APP_LOGGING_OUT = false;
-          });
-      } else {
-        if (typeof window !== "undefined") window.__APP_LOGGING_OUT = false;
-      }
-
-      return;
     }
 
     setIsLoggingOut(true);

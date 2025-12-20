@@ -25,6 +25,8 @@ export default function Login({ onClose }) {
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const [isFramed, setIsFramed] = useState(null);
+
   const toggleShowPassword = () => setShowPassword((p) => !p);
 
   const showAlert = (message, title = "") =>
@@ -45,7 +47,19 @@ export default function Login({ onClose }) {
     }
   }, [router]);
 
-  const EXPECTED_PARENT_ORIGIN = "https://crestline.sts-test.site";
+  const EXPECTED_PARENT_ORIGIN = "http://localhost:1574";
+
+  useEffect(() => {
+    try {
+      const framed =
+        typeof window !== "undefined" &&
+        window.parent &&
+        window.parent !== window.self;
+      setIsFramed(!!framed);
+    } catch (e) {
+      setIsFramed(false);
+    }
+  }, []);
 
   useEffect(() => {
     function onMessage(ev) {
@@ -238,6 +252,12 @@ export default function Login({ onClose }) {
     }
   };
 
+  if (isFramed === null) return null;
+
+  if (isFramed) {
+    return null;
+  }
+
   return (
     isModalOpen && (
       <div className="login-container">
@@ -362,3 +382,4 @@ export default function Login({ onClose }) {
     )
   );
 }
+

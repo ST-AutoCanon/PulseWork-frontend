@@ -1,0 +1,124 @@
+.bm-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.bm-modal {
+  background-color: #ccc; /* container background */
+  border-radius: 10px;
+  width: 420px;
+  max-width: 90%;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+  overflow: hidden;
+  font-family: "Segoe UI", Roboto, sans-serif;
+}
+
+.bm-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15px;
+  background: #001D4A; /* green header */
+  color: #fff;
+}
+
+.bm-modal-header h2 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.bm-modal-close {
+  font-size: 22px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #fff;
+}
+
+.bm-modal-content {
+  padding: 15px;
+}
+
+.bm-modal-error {
+  color: #c31818;
+  margin-bottom: 10px;
+  font-weight: 500;
+}
+
+.bm-modal-field {
+  margin-bottom: 15px;
+}
+
+.bm-modal-field label {
+  display: block;
+  margin-bottom: 5px;
+  font-weight: bold;
+  color: #333;
+}
+
+.bm-modal-field input,
+.bm-modal-field select {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid #bbb;
+  border-radius: 6px;
+  outline: none;
+  transition: border 0.2s;
+}
+
+.bm-modal-field input:focus,
+.bm-modal-field select:focus {
+  border: 1px solid #79C42B;
+  box-shadow: 0 0 4px rgba(121, 196, 43, 0.5);
+}
+
+.bm-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 10px 15px 15px;
+}
+
+.bm-modal-cancel,
+.bm-modal-submit {
+  padding: 8px 18px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: background 0.3s;
+}
+
+/* Cancel button */
+.bm-modal-cancel {
+  background-color: #918e8e;
+  color: #fff;
+}
+
+.bm-modal-cancel:hover {
+  background-color: #918e8e;
+}
+
+/* Submit button */
+.bm-modal-submit {
+  background-color: #79C42B;
+  color: #fff;
+}
+
+.bm-modal-submit:hover {
+  background-color: #66a628;
+}
+
+.bm-modal-submit:disabled {
+  background-color: #aaa;
+  cursor: not-allowed;
+}

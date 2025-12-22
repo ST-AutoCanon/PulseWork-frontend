@@ -81,8 +81,8 @@ const SalaryBreakup = () => {
   const tableRef = useRef(null);
   const rowsPerPage = 7;
   const API_KEY = process.env.REACT_APP_API_KEY;
-  const meId = JSON.parse(localStorage.getItem("dashboardData") || "{}").employeeId;
-
+const { user } = useAuth();
+  const meId = user?.employeeId ?? user?.id ?? user?.employee_id ?? null;
   // Debounced search term setter
   const debouncedSetSearchTerm = useCallback(
     debounce((value) => {

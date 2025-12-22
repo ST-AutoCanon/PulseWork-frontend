@@ -36,8 +36,8 @@ const TotalsContainer = () => {
   const [isLoading, setIsLoading] = useState(true);
   const API_KEY = process.env.REACT_APP_API_KEY;
   const BASE_URL = `${process.env.REACT_APP_BACKEND_URL}`;
-  const meId = JSON.parse(localStorage.getItem("dashboardData") || "{}").employeeId;
-
+const { user } = useAuth();
+  const meId = user?.employeeId ?? user?.id ?? user?.employee_id ?? null;
   // Helper function to calculate monthly bonus pay (copied from SalaryDetails)
   const calculateMonthlyBonusPay = (empCtc, bonusRecords) => {
     const currentDate = new Date();

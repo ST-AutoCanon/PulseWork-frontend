@@ -46,9 +46,8 @@ const OvertimeSupervisor = () => {
   ]);
   const [cutoffDate, setCutoffDate] = useState(30);
 
-  const meId = JSON.parse(
-    localStorage.getItem("dashboardData") || "{}"
-  ).employeeId;
+ const { user } = useAuth();
+   const meId = user?.employeeId ?? user?.id ?? user?.employee_id ?? null;
   const headers = { "x-api-key": API_KEY, "x-employee-id": meId };
 
   console.log("Supervisor ID (meId):", meId);

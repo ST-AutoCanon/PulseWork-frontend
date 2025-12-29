@@ -18,19 +18,31 @@ const nextConfig = {
   },
 
   async headers() {
+    const raw = process.env.NEXT_PUBLIC_ALLOWED_IFRAME_ORIGINS || "";
+    const origins = raw
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
+
+    const frameAncestorsValue = origins.length
+      ? `${origins.join(" ")}`
+      : "none";
+
+    const cspValue = `frame-ancestors ${frameAncestorsValue};`;
+
     return [
       {
         source: "/(.*)",
         headers: [
           {
             key: "Content-Security-Policy",
-            value:
-              "frame-ancestors http://localhost:1574 http://localhost:1574;",
+            value: cspValue,
           },
         ],
       },
     ];
   },
+
   webpack: (config, { isServer }) => {
     if (!isServer) {
       config.resolve = config.resolve || {};

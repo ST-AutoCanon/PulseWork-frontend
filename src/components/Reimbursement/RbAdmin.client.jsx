@@ -1,459 +1,252 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import axios from "axios";
 import "./RbAdmin.css";
+
 import { MdOutlineRemoveRedEye, MdOutlineCancel } from "react-icons/md";
 import { FaSearch, FaChevronDown, FaChevronUp } from "react-icons/fa";
 import { FiDownload } from "react-icons/fi";
 import { FaFileInvoice } from "react-icons/fa6";
-import axios from "axios";
+
 import Reimbursement from "./Reimbursement.client";
 import Modal from "../Modal/Modal.client";
+import ParticipantSelection from "./ParticipantSelection.client";
 import { useAuth } from "../../context/AuthProvider.client";
+
+/* ------------------------------------------------------- */
 
 const RbAdmin = () => {
   const { user, hydrated } = useAuth();
-  const orgId =
-    user?.orgId ??
-    user?.org_id ??
-    user?.raw?.org_id ??
-    user?.Org_id ??
-    user?.raw?.Org_id ??
-    null;
 
-  const employeeId = user?.employeeId;
+  const employeeId = user?.employeeId || null;
+  const userRole = user?.role?.toLowerCase?.() || "";
+  const isHR = userRole === "hr";
+
+  const BACKEND = process.env.NEXT_PUBLIC_BACKEND_URL;
+  const API_KEY = process.env.NEXT_PUBLIC_API_KEY;
+
+  const axiosConfig = {
+    withCredentials: true,
+    headers: {
+      "x-api-key": API_KEY || "",
+      ...(employeeId ? { "x-employee-id": String(employeeId) } : {}),
+    },
+  };
+
+  /* ---------------- STATE ---------------- */
 
   const [employees, setEmployees] = useState([]);
   const [expandedRows, setExpandedRows] = useState({});
+  const [expandedClaims, setExpandedClaims] = useState({});
   const [submittedFrom, setSubmittedFrom] = useState("");
   const [submittedTo, setSubmittedTo] = useState("");
-  const [attachments, setAttachments] = useState([]);
+  const [attachments, setAttachments] = useState({});
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState([]);
   const [selectedClaim, setSelectedClaim] = useState(null);
+
   const [statusUpdates, setStatusUpdates] = useState({});
-  const [paymentStatusUpdates, setPaymentStatusUpdates] = useState({});
   const [comments, setComments] = useState({});
+  const [paymentStatusUpdates, setPaymentStatusUpdates] = useState({});
   const [statusFilter, setStatusFilter] = useState("pending");
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const [view, setView] = useState("all");
+  const [projects, setProjects] = useState([]);
+  const [projectSelections, setProjectSelections] = useState({});
+
+  const [employeeOptions, setEmployeeOptions] = useState([]);
+  const [isParticipantsModalOpen, setIsParticipantsModalOpen] = useState(false);
+  const [participantsForEdit, setParticipantsForEdit] = useState([]);
+  const [participantsSaving, setParticipantsSaving] = useState(false);
+
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const [selectedPaymentClaim, setSelectedPaymentClaim] = useState(null);
   const [selectedPaymentOption, setSelectedPaymentOption] = useState("");
-  const [view, setView] = useState("all");
-  const [projects, setProjects] = useState([]);
-  const [selectedProject, setSelectedProject] = useState("");
-  const [projectSelections, setProjectSelections] = useState({});
-  const [searchQuery, setSearchQuery] = useState("");
-
-  const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
-  const API_KEY = process.env.NEXT_PUBLIC_API_KEY;
-
-  const formatDisplayDate = (raw) => {
-    if (!raw) return "N/A";
-    const d = raw instanceof Date ? raw : new Date(raw);
-    if (isNaN(d)) return raw;
-    const day = String(d.getDate()).padStart(2, "0");
-    const mon = d.toLocaleString("en-GB", { month: "short" });
-    const year = d.getFullYear();
-    return `${day}-${mon}-${year}`;
-  };
-
-  const filteredEmployees = employees
-    .map((emp) => ({
-      ...emp,
-      claims: emp.claims.filter((claim) => {
-        const status = claim.status?.toLowerCase().trim();
-        const pay = claim.payment_status?.toLowerCase().trim();
-
-        switch (statusFilter) {
-          case "approved":
-            return status === "approved";
-          case "rejected":
-            return status === "rejected";
-          case "pending":
-            return status === "pending";
-          case "approved_pending":
-            return status === "approved" && pay === "pending";
-          case "approved_paid":
-            return status === "approved" && pay === "paid";
-          default:
-            return false;
-        }
-      }),
-    }))
-    .filter((emp) => emp.claims.length > 0)
-    .filter((emp) => {
-      if (!searchQuery) return true;
-      const q = searchQuery.toLowerCase();
-      const name = (emp.claims[0]?.employee_name || "").toLowerCase();
-      const idStr = String(emp.employee_id).toLowerCase();
-      return name.includes(q) || idStr.includes(q);
-    });
-
-  useEffect(() => {
-    const fetchProjects = async () => {
-      try {
-        const headers = {
-          "x-api-key": API_KEY,
-          ...(orgId ? { "x-org-id": orgId } : {}),
-        };
-        const response = await axios.get(`${BACKEND_URL}/projectdrop`, {
-          withCredentials: true,
-          headers,
-        });
-        setProjects(response.data);
-      } catch (error) {
-        console.error("Error fetching projects:", error);
-      }
-    };
-    fetchProjects();
-  }, [BACKEND_URL, API_KEY]);
 
   const [alertModal, setAlertModal] = useState({
     isVisible: false,
     title: "",
     message: "",
   });
+
   const showAlert = (message, title = "") =>
     setAlertModal({ isVisible: true, title, message });
   const closeAlert = () =>
     setAlertModal({ isVisible: false, title: "", message: "" });
 
+  /* ---------------- HELPERS ---------------- */
+
+  const formatDisplayDate = (raw) => {
+    if (!raw) return " ";
+    const d = new Date(raw);
+    if (isNaN(d)) return raw;
+    return `${String(d.getDate()).padStart(2, "0")}-${d.toLocaleString(
+      "en-GB",
+      { month: "short" }
+    )}-${d.getFullYear()}`;
+  };
+
+  const parseAmount = (v) =>
+    Number(
+      String(v || "")
+        .replace(/,/g, "")
+        .replace(/[^\d.-]/g, "")
+    ) || 0;
+
+  const getClaimAmount = (claim) =>
+    parseAmount(
+      claim?.aggregated_total ?? claim?.total_amount ?? claim?.total ?? 0
+    );
+
+  /* ---------------- FETCH ---------------- */
+
   useEffect(() => {
-    if (!employeeId) return;
+    if (!hydrated) return;
+
     fetchEmployees();
-  }, [employeeId, submittedFrom, submittedTo, orgId, user]);
+    fetchProjects();
+    fetchEmployeeOptions();
+  }, [hydrated]);
 
-  const fetchEmployees = async () => {
+  const fetchProjects = async () => {
     try {
-      const params = {
-        submittedFrom: submittedFrom || null,
-        submittedTo: submittedTo || null,
-        ...(orgId ? { orgId } : {}),
-      };
-      const headers = {
-        "x-api-key": API_KEY,
-        ...(orgId ? { "x-org-id": orgId } : {}),
-      };
-
-      const response = await axios.get(`${BACKEND_URL}/reimbursements`, {
-        withCredentials: true,
-        headers,
-        params,
-      });
-      setEmployees(response.data);
-
-      const attachmentsMap = {};
-      const initialProjects = {};
-      response.data.forEach((emp) =>
-        emp.claims.forEach((claim) => {
-          attachmentsMap[claim.id] = claim.attachments || [];
-          if (claim.project) initialProjects[claim.id] = claim.project;
-        })
-      );
-      setAttachments(attachmentsMap);
-      setProjectSelections(initialProjects);
-    } catch (error) {
-      console.error(error);
-      showAlert("Error fetching employees.");
+      const res = await axios.get(`${BACKEND}/projectdrop`, axiosConfig);
+      setProjects(res.data || []);
+    } catch (e) {
+      console.error("Project fetch failed", e);
     }
   };
 
-  const toggleRow = (employeeId) =>
-    setExpandedRows((prev) => ({ ...prev, [employeeId]: !prev[employeeId] }));
+  const fetchEmployeeOptions = async () => {
+    try {
+      const res = await axios.get(
+        `${BACKEND}/reimbursement/employees`,
+        axiosConfig
+      );
+      const list = Array.isArray(res.data) ? res.data : res.data?.data || [];
+      setEmployeeOptions(
+        list.map((r) => ({
+          employee_id: r.employee_id || r.id || r.employeeId,
+          name:
+            r.name ||
+            r.employee_name ||
+            `${r.first_name || ""} ${r.last_name || ""}`.trim(),
+        }))
+      );
+    } catch {
+      setEmployeeOptions([]);
+    }
+  };
 
-  const handleOpenAttachments = async (files, claim) => {
-    if (!files || files.length === 0)
-      return showAlert("No attachments available.");
+  const fetchEmployees = async () => {
+    if (!hydrated) return;
 
     try {
-      const authToken = user?.token;
+      const res = await axios.get(`${BACKEND}/reimbursements`, {
+        ...axiosConfig,
+        params: {
+          submittedFrom: submittedFrom || null,
+          submittedTo: submittedTo || null,
+        },
+      });
 
-      const validFiles = (files || []).filter(
-        (file) =>
-          file &&
-          typeof file.filename === "string" &&
-          /^\d{4}-\d{2}-\d{2}/.test(file.filename)
+      setEmployees(res.data || []);
+
+      const att = {};
+      (res.data || []).forEach((emp) =>
+        emp.claims?.forEach((c) => (att[c.id] = c.attachments || []))
       );
+      setAttachments(att);
+    } catch (e) {
+      console.error(e);
+      showAlert("Failed to fetch reimbursements.");
+    }
+  };
 
-      if (validFiles.length === 0) {
-        return showAlert("No valid attachments available.");
-      }
+  /* ---------------- ATTACHMENTS ---------------- */
 
-      const fetchedFiles = await Promise.all(
-        validFiles.map(async (file) => {
-          const match = file.filename.match(/^(\d{4})-(\d{2})-\d{2}/);
-          if (!match) return null;
+  const handleOpenAttachments = async (files, claim) => {
+    try {
+      const fetched = await Promise.all(
+        (files || []).map(async (f) => {
+          const name = f.filename || f.file_name;
+          if (!name) return null;
 
-          const year = match[1];
-          const month = match[2];
+          const m = name.match(/^(\d{4})-(\d{2})/);
+          if (!m) return null;
 
-          if (!orgId || !claim?.employee_id) {
-            console.error("Missing orgId or employeeId for attachment URL", {
-              orgId,
-              employeeId: claim?.employee_id,
-              file,
-            });
-            return null;
-          }
-
-          const safeFilename = encodeURIComponent(file.filename);
-          const safeOrgId = encodeURIComponent(String(orgId));
-          const safeEmployeeId = encodeURIComponent(String(claim.employee_id));
-          const fileUrl = `${BACKEND_URL}/reimbursement/${safeOrgId}/${year}/${month}/${safeEmployeeId}/${safeFilename}`;
-
-          console.debug(
-            "Fetching attachment URL:",
-            fileUrl,
-            "originalFilename:",
-            file.filename
-          );
-
-          const response = await axios.get(fileUrl, {
-            withCredentials: true,
-            headers: {
-              "x-api-key": API_KEY,
-              "x-employee-id": employeeId,
-              "x-org-id": orgId,
-              Authorization: `Bearer ${authToken}`,
-            },
+          const url = `${BACKEND}/reimbursement/${m[1]}/${m[2]}/${claim.employee_id}/${name}`;
+          const res = await axios.get(url, {
+            ...axiosConfig,
             responseType: "blob",
           });
 
           return {
-            name: file.filename,
-            url: URL.createObjectURL(
-              new Blob([response.data], {
-                type: response.headers["content-type"],
-              })
-            ),
+            name,
+            url: URL.createObjectURL(res.data),
           };
         })
       );
 
-      setSelectedFiles(fetchedFiles.filter(Boolean));
+      setSelectedFiles(fetched.filter(Boolean));
       setSelectedClaim(claim);
       setIsModalOpen(true);
-    } catch (error) {
-      console.error("handleOpenAttachments error:", error);
-      showAlert("No attachments found for this claim.");
+    } catch {
+      showAlert("Unable to load attachments.");
     }
   };
 
-  const totalAmount = employees.reduce(
-    (sum, employee) =>
-      sum +
-      employee.claims.reduce(
-        (claimSum, claim) => claimSum + parseFloat(claim.total_amount || 0),
-        0
-      ),
-    0
-  );
-
-  const approvedAmount = employees.reduce(
-    (sum, employee) =>
-      sum +
-      employee.claims
-        .filter((claim) => claim.status === "approved")
-        .reduce(
-          (claimSum, claim) => claimSum + parseFloat(claim.total_amount || 0),
-          0
-        ),
-    0
-  );
-
-  const handleStatusChange = (id, value) => {
-    setStatusUpdates((prev) => ({ ...prev, [id]: value }));
-  };
-
-  const handlePaymentStatusChange = (id, value) => {
-    setPaymentStatusUpdates((prev) => ({ ...prev, [id]: value }));
-  };
+  /* ---------------- STATUS ---------------- */
 
   const updateStatus = async (id) => {
     if (!statusUpdates[id]) {
-      showAlert("Please select a status.");
+      showAlert("Select a status.");
       return;
     }
-
-    const project = projectSelections[id] || "";
-    if (!project) {
-      showAlert("Please select a project.");
-      return;
-    }
-
-    const updatedStatus = statusUpdates[id];
-    const approverComment = comments?.[id] || "";
 
     try {
       await axios.put(
-        `${BACKEND_URL}/reimbursement/status/${id}`,
+        `${BACKEND}/reimbursement/status/${id}`,
         {
-          status: updatedStatus,
-          approver_comments: approverComment,
+          status: statusUpdates[id],
+          approver_comments: comments[id] || "",
           approver_id: employeeId,
-          project,
+          project: projectSelections[id],
         },
-        {
-          withCredentials: true,
-          headers: {
-            "x-api-key": API_KEY,
-            "x-org-id": orgId,
-          },
-        }
+        axiosConfig
       );
-      showAlert(`Reimbursement ${updatedStatus} successfully.`);
-      setEmployees((prevEmployees) =>
-        prevEmployees.map((emp) => ({
-          ...emp,
-          claims: emp.claims.map((claim) =>
-            claim.id === id
-              ? {
-                  ...claim,
-                  status: updatedStatus,
-                  approver_comments: approverComment,
-                }
-              : claim
-          ),
-        }))
-      );
-    } catch (error) {
-      console.error("Error updating reimbursement status:", error);
-      showAlert("Status update was not successful. Try again later.");
-    }
-  };
-
-  const updatePaymentStatus = async (id) => {
-    if (!paymentStatusUpdates[id]) {
-      showAlert("Please select a payment status.");
-      return;
-    }
-    const updatedPaymentStatus = paymentStatusUpdates[id];
-    try {
-      await axios.put(
-        `${BACKEND_URL}/reimbursement/payment-status/${id}`,
-        {
-          payment_status: updatedPaymentStatus,
-          user_role: "admin",
-        },
-        {
-          withCredentials: true,
-          headers: {
-            "x-api-key": API_KEY,
-            "x-org-id": orgId,
-          },
-        }
-      );
-      showAlert("Payment status updated successfully.");
-      setEmployees((prevEmployees) =>
-        prevEmployees.map((emp) => ({
-          ...emp,
-          claims: emp.claims.map((claim) =>
-            claim.id === id
-              ? { ...claim, payment_status: updatedPaymentStatus }
-              : claim
-          ),
-        }))
-      );
-    } catch (error) {
-      console.error("Error updating payment status:", error);
-      showAlert("Payment status couldn't be updated at the moment.");
+      showAlert("Status updated.");
+      fetchEmployees();
+    } catch {
+      showAlert("Failed to update status.");
     }
   };
 
   const handleDownloadPDF = async (claim) => {
     try {
-      const response = await axios.get(`${BACKEND_URL}/download/${claim.id}`, {
-        withCredentials: true,
-        headers: {
-          "x-api-key": API_KEY,
-          "x-org-id": orgId,
-        },
+      const res = await axios.get(`${BACKEND}/download/${claim.id}`, {
+        ...axiosConfig,
         responseType: "blob",
       });
-
-      const cd = response.headers["content-disposition"];
-
-      let filename = "";
-
-      if (cd) {
-        const filenameRegex = /filename[^;=\n]*=(['"]?)([^;\n]*)\1/;
-        const matches = filenameRegex.exec(cd);
-        if (matches != null && matches[2]) {
-          filename = matches[2];
-        }
-      }
-
-      if (!filename) {
-        filename = `Reimbursement_${claim.id}.pdf`;
-      }
-
-      if (!filename.toLowerCase().endsWith(".pdf")) {
-        filename += ".pdf";
-      }
-
-      const blob = new Blob([response.data], { type: "application/pdf" });
-      const url = URL.createObjectURL(blob);
+      const url = URL.createObjectURL(res.data);
       const a = document.createElement("a");
       a.href = url;
-      a.download = filename;
-      document.body.appendChild(a);
+      a.download = `Reimbursement_${claim.id}.pdf`;
       a.click();
-      document.body.removeChild(a);
       URL.revokeObjectURL(url);
-    } catch (error) {
-      console.error("Error downloading reimbursement PDF:", error);
-      showAlert("There was an issue downloading the file.");
+    } catch {
+      showAlert("Download failed.");
     }
   };
 
-  const handleToggleChange = (e) => {
-    setView(e.target.checked ? "self" : "all");
-  };
-
-  const downloadExcel = async () => {
-    try {
-      const params = {
-        submittedFrom: submittedFrom || null,
-        submittedTo: submittedTo || null,
-        ...(orgId ? { orgId } : {}),
-      };
-      const headers = {
-        "x-api-key": API_KEY,
-        ...(orgId ? { "x-org-id": orgId } : {}),
-      };
-
-      const resp = await axios.get(`${BACKEND_URL}/reimbursements/export`, {
-        withCredentials: true,
-        headers,
-        params,
-        responseType: "blob",
-      });
-      const cd = resp.headers["content-disposition"];
-      let filename = "reimbursements.xlsx";
-      if (cd) {
-        const match = cd.match(/filename="?([^"]+)"?/);
-        if (match?.[1]) filename = match[1];
-      }
-      const blob = new Blob([resp.data], {
-        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-      });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(url);
-    } catch (err) {
-      console.error(err);
-      showAlert("Failed to download Excel. Please try again.");
-    }
-  };
+  /* ---------------- UI ---------------- */
 
   return (
     <div className="rb-admin">
       <h2>Reimbursement Requests</h2>
+
       <div className="tabs-container">
         <button
           className={`tab ${view === "all" ? "active" : ""}`}
@@ -468,430 +261,55 @@ const RbAdmin = () => {
           Self
         </button>
       </div>
-      {view === "all" ? (
-        <>
-          <div className="rb-filters">
-            <div className="rb-filter-group">
-              <input
-                type="text"
-                placeholder="Search by Name or ID…"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-            </div>
-            <div className="rb-filter-group">
-              <label>Status By</label>
-              <select
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-              >
-                <option value="approved">Approved</option>
-                <option value="rejected">Rejected</option>
-                <option value="pending">Pending</option>
-                <option value="approved_pending">Approved/Pending</option>
-                <option value="approved_paid">Approved/Paid</option>
-              </select>
-            </div>
 
-            <div className="rb-filter-group">
-              <label>Submitted From:</label>
-              <input
-                type="date"
-                value={submittedFrom}
-                onChange={(e) => setSubmittedFrom(e.target.value)}
-              />
-            </div>
-            <div className="rb-filter-group">
-              <label>To:</label>
-              <input
-                type="date"
-                value={submittedTo}
-                onChange={(e) => setSubmittedTo(e.target.value)}
-              />
-            </div>
-            <button className="rb-search" onClick={fetchEmployees}>
-              <FaSearch /> Search
-            </button>
-            <button
-              className="rb-search"
-              onClick={downloadExcel}
-              style={{ marginLeft: "8px" }}
-            >
-              <FiDownload /> Export
-            </button>
-          </div>
-          <div className="rb-atable-container">
-            {filteredEmployees.map((employee) => {
-              const filteredClaims = employee.claims;
-              if (!filteredClaims.length) return null;
-              return (
-                <div key={employee.employee_id} className="employee-section">
-                  <div
-                    className="employee-row"
-                    onClick={() => toggleRow(employee.employee_id)}
-                  >
-                    <div className="empId-rows">
-                      <span className="employee-name">
-                        {employee.claims[0]?.employee_name} -
-                      </span>
-                      <span className="employee-id">
-                        [{employee.employee_id}]
-                      </span>
-                    </div>
-                    <div className="emp-rows">
-                      Total Amount Claiming: Rs{" "}
-                      <span>
-                        {filteredClaims
-                          .reduce(
-                            (sum, claim) =>
-                              sum + parseFloat(claim.total_amount || 0),
-                            0
-                          )
-                          .toLocaleString("en-IN")}
-                      </span>
-                    </div>
-                    <div className="emp-rows">
-                      Amount Approved: Rs{" "}
-                      <span>
-                        {filteredClaims
-                          .filter((claim) => claim.status === "approved")
-                          .reduce(
-                            (sum, claim) =>
-                              sum + parseFloat(claim.total_amount || 0),
-                            0
-                          )
-                          .toLocaleString("en-IN")}
-                      </span>
-                    </div>
-                    <div className="toggle-btn">
-                      {expandedRows[employee.employee_id] ? (
-                        <FaChevronUp className="drop-icon" />
-                      ) : (
-                        <FaChevronDown className="drop-icon" />
-                      )}
-                    </div>
+      {view === "all" ? (
+        <div className="rb-atable-container">
+          {employees.map((emp) => (
+            <div key={emp.employee_id} className="employee-section">
+              <div
+                className="employee-row"
+                onClick={() =>
+                  setExpandedRows((p) => ({
+                    ...p,
+                    [emp.employee_id]: !p[emp.employee_id],
+                  }))
+                }
+              >
+                <span>{emp.employee_id}</span>
+                {expandedRows[emp.employee_id] ? (
+                  <FaChevronUp />
+                ) : (
+                  <FaChevronDown />
+                )}
+              </div>
+
+              {expandedRows[emp.employee_id] &&
+                emp.claims.map((c, i) => (
+                  <div key={c.id} className="claim-main-row">
+                    #{i + 1} – ₹{getClaimAmount(c)}
+                    <FaFileInvoice
+                      onClick={() => !isHR && updateStatus(c.id)}
+                    />
+                    <FiDownload onClick={() => handleDownloadPDF(c)} />
                   </div>
-                  {expandedRows[employee.employee_id] && (
-                    <div className="reimbursement-table-scroll">
-                      <div className="rb-sub-container">
-                        <table className="rb-sub-table">
-                          <thead>
-                            <tr>
-                              <th>Sl No</th>
-                              <th>Claim Type</th>
-                              <th>Date</th>
-                              <th>Amount</th>
-                              <th>Purpose</th>
-                              <th>Attachments</th>
-                              <th>Status</th>
-                              <th>Projects</th>
-                              <th>Approver Comments</th>
-                              <th>Payment Status</th>
-                              <th>Actions</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {filteredClaims.map((claim, index) => (
-                              <tr key={claim.id}>
-                                <td>{index + 1}</td>
-                                <td>{claim.claim_type}</td>
-                                <td>
-                                  {claim.date_range
-                                    ? claim.date_range
-                                        .split(" - ")
-                                        .map(formatDisplayDate)
-                                        .join(" - ")
-                                    : claim.date
-                                    ? formatDisplayDate(claim.date)
-                                    : "N/A"}
-                                </td>
-                                <td>₹{claim.total_amount}</td>
-                                <td
-                                  className="purpose-cell"
-                                  title={claim.purpose}
-                                >
-                                  {claim.purpose}
-                                </td>
-                                <td>
-                                  {attachments[claim.id] &&
-                                  attachments[claim.id].length > 0 ? (
-                                    <button
-                                      className="attachments-btn"
-                                      onClick={() =>
-                                        handleOpenAttachments(
-                                          attachments[claim.id],
-                                          claim
-                                        )
-                                      }
-                                    >
-                                      <MdOutlineRemoveRedEye className="eye-icon" />{" "}
-                                      View
-                                    </button>
-                                  ) : (
-                                    "No Attachments"
-                                  )}
-                                </td>
-                                <td>
-                                  {claim.status === "approved" ||
-                                  claim.status === "rejected" ? (
-                                    <span
-                                      className={`status-label ${claim.status}`}
-                                    >
-                                      <span className="status-dot"></span>
-                                      {claim.status.charAt(0).toUpperCase() +
-                                        claim.status.slice(1)}
-                                    </span>
-                                  ) : (
-                                    <select
-                                      className="rb-status-dropdown"
-                                      value={
-                                        statusUpdates[claim.id] || claim.status
-                                      }
-                                      onChange={(e) =>
-                                        handleStatusChange(
-                                          claim.id,
-                                          e.target.value
-                                        )
-                                      }
-                                    >
-                                      <option value="">Pending</option>
-                                      <option value="approved">Approve</option>
-                                      <option value="rejected">Reject</option>
-                                    </select>
-                                  )}
-                                </td>
-                                <td>
-                                  {claim.status === "approved" ||
-                                  claim.status === "rejected" ? (
-                                    <div className="rbadmin-comments">
-                                      {projectSelections[claim.id] ||
-                                        claim.project}
-                                    </div>
-                                  ) : (
-                                    <select
-                                      className="rb-status-dropdown"
-                                      value={projectSelections[claim.id] || ""}
-                                      onChange={(e) =>
-                                        setProjectSelections((prev) => ({
-                                          ...prev,
-                                          [claim.id]: e.target.value,
-                                        }))
-                                      }
-                                    >
-                                      <option value="">Select</option>
-                                      <option value="Company Claim">
-                                        Company Claim
-                                      </option>
-                                      {projects.map((project, index) => (
-                                        <option key={index} value={project}>
-                                          {project}
-                                        </option>
-                                      ))}
-                                    </select>
-                                  )}
-                                </td>
-                                <td>
-                                  {claim.status === "approved" ||
-                                  claim.status === "rejected" ? (
-                                    <div className="rbadmin-comments">
-                                      {claim.approver_comments || "No comments"}
-                                    </div>
-                                  ) : (
-                                    <input
-                                      type="text"
-                                      placeholder="Enter comments"
-                                      value={comments[claim.id] || ""}
-                                      onChange={(e) =>
-                                        setComments((prev) => ({
-                                          ...prev,
-                                          [claim.id]: e.target.value,
-                                        }))
-                                      }
-                                    />
-                                  )}
-                                </td>
-                                <td>
-                                  {claim.status?.toLowerCase().trim() ===
-                                  "approved" ? (
-                                    !claim.payment_status ||
-                                    claim.payment_status
-                                      ?.toLowerCase()
-                                      .trim() === "pending" ? (
-                                      <button
-                                        className="pending-payment-btn"
-                                        onClick={() => {
-                                          setSelectedPaymentClaim(claim);
-                                          setSelectedPaymentOption("");
-                                          setIsPaymentModalOpen(true);
-                                        }}
-                                      >
-                                        Pending
-                                      </button>
-                                    ) : (
-                                      <span>
-                                        {claim.payment_status
-                                          ? claim.payment_status
-                                              .charAt(0)
-                                              .toUpperCase() +
-                                            claim.payment_status.slice(1)
-                                          : "N/A"}
-                                        {claim.paid_date
-                                          ? ` (${formatDisplayDate(
-                                              claim.paid_date
-                                            )})`
-                                          : ""}
-                                      </span>
-                                    )
-                                  ) : (
-                                    <span>{claim.payment_status}</span>
-                                  )}
-                                </td>
-                                <td>
-                                  <FaFileInvoice
-                                    size={24}
-                                    className="update-btn"
-                                    onClick={() => updateStatus(claim.id)}
-                                    disabled={
-                                      claim.status === "approved" ||
-                                      claim.status === "rejected"
-                                    }
-                                  />
-                                  <FiDownload
-                                    size={24}
-                                    className="download-btn"
-                                    onClick={() => handleDownloadPDF(claim)}
-                                  />
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                          <tfoot>
-                            <tr className="total-row">
-                              <td
-                                colSpan="6"
-                                style={{
-                                  textAlign: "right",
-                                  color: "#949494",
-                                  fontWeight: "bold",
-                                }}
-                              >
-                                Total Amount Claiming:{" "}
-                                <span
-                                  style={{ fontWeight: "bold", color: "black" }}
-                                >
-                                  Rs {totalAmount}
-                                </span>
-                              </td>
-                              <td colSpan="5" style={{ textAlign: "right" }}>
-                                Amount Approved: Rs{" "}
-                                <span style={{ fontWeight: "bold" }}>
-                                  {approvedAmount}
-                                </span>
-                              </td>
-                            </tr>
-                          </tfoot>
-                        </table>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </>
+                ))}
+            </div>
+          ))}
+        </div>
       ) : (
         <Reimbursement />
       )}
 
-      {isPaymentModalOpen && (
-        <Modal
-          isVisible={isPaymentModalOpen}
-          onClose={() => setIsPaymentModalOpen(false)}
-          buttons={[]}
-        >
-          <div className="payment-modal-content">
-            <div className="payment-header">
-              <h3>Update Payment Status</h3>
-              <button
-                className="modal-cross-btn"
-                onClick={() => setIsPaymentModalOpen(false)}
-              >
-                ✖
-              </button>
-            </div>
-            <div className="payment-options">
-              <label>
-                <input
-                  type="radio"
-                  name="paymentOption"
-                  value="rejected"
-                  checked={selectedPaymentOption === "rejected"}
-                  onChange={(e) => setSelectedPaymentOption(e.target.value)}
-                />
-                Reject
-              </label>
+      {/* Alerts */}
+      <Modal
+        isVisible={alertModal.isVisible}
+        onClose={closeAlert}
+        buttons={[{ label: "OK", onClick: closeAlert }]}
+      >
+        <p>{alertModal.message}</p>
+      </Modal>
 
-              <label style={{ marginLeft: "20px" }}>
-                <input
-                  type="radio"
-                  name="paymentOption"
-                  value="pending"
-                  checked={selectedPaymentOption === "pending"}
-                  onChange={(e) => setSelectedPaymentOption(e.target.value)}
-                />
-                Pending
-              </label>
-              <label style={{ marginLeft: "20px" }}>
-                <input
-                  type="radio"
-                  name="paymentOption"
-                  value="paid"
-                  checked={selectedPaymentOption === "paid"}
-                  onChange={(e) => setSelectedPaymentOption(e.target.value)}
-                />
-                Payable
-              </label>
-            </div>
-            <p>I'll make sure to process the payment today</p>
-            <button
-              className="submit-payment-btn"
-              onClick={async () => {
-                if (!selectedPaymentOption) {
-                  showAlert("Please select an option.");
-                  return;
-                }
-                try {
-                  await axios.put(
-                    `${BACKEND_URL}/reimbursement/payment-status/${selectedPaymentClaim.id}`,
-                    {
-                      payment_status: selectedPaymentOption,
-                      user_role: "admin",
-                    },
-                    {
-                      withCredentials: true,
-                      headers: {
-                        "x-api-key": API_KEY,
-                        "x-org-id": orgId,
-                      },
-                    }
-                  );
-                  showAlert("Payment status updated successfully.");
-                  setIsPaymentModalOpen(false);
-                  fetchEmployees();
-                } catch (error) {
-                  console.error("Error updating payment status:", error);
-                  showAlert(
-                    "Could not update payment status. Please try again."
-                  );
-                }
-              }}
-            >
-              Submit
-            </button>
-          </div>
-        </Modal>
-      )}
-
+      {/* Attachments */}
       {isModalOpen && (
         <div className="att-modal-overlay">
           <div className="att-modal-content">
@@ -902,39 +320,16 @@ const RbAdmin = () => {
                 onClick={() => setIsModalOpen(false)}
               />
             </div>
-            <h4 className="att-files">
-              {selectedClaim?.claim_type
-                ? `${selectedClaim.claim_type} Bills`
-                : "Bills"}
-            </h4>
-            {selectedFiles.length > 0 ? (
-              selectedFiles.map((file, index) => (
-                <div className="att-files" key={index}>
-                  <a href={file.url} target="_blank" rel="noopener noreferrer">
-                    {file.name}
-                  </a>
-                </div>
-              ))
-            ) : (
-              <p>No attachments available</p>
-            )}
-            <button
-              className="att-close-btn"
-              onClick={() => setIsModalOpen(false)}
-            >
-              Close
-            </button>
+            {selectedFiles.map((f, i) => (
+              <div key={i} className="att-files">
+                <a href={f.url} target="_blank" rel="noopener noreferrer">
+                  {f.name}
+                </a>
+              </div>
+            ))}
           </div>
         </div>
       )}
-
-      <Modal
-        isVisible={alertModal.isVisible}
-        onClose={closeAlert}
-        buttons={[{ label: "OK", onClick: closeAlert }]}
-      >
-        <p>{alertModal.message}</p>
-      </Modal>
     </div>
   );
 };

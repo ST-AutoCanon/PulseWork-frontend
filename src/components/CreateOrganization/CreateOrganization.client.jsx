@@ -179,7 +179,12 @@ const CreateOrganization = ({ employeeId: propEmployeeId = null }) => {
 
   const [employeePrefix, setEmployeePrefix] = useState("");
 
-  const roles = ["Admin", "Manager", "Supervisor", "Employee", "General"];
+  // ---------------------------
+  // ROLES: dynamic fetch (replaces hardcoded roles)
+  // ---------------------------
+  const [roles, setRoles] = useState([]);
+  const [rolesLoading, setRolesLoading] = useState(false);
+
   const debouncedSearchTerm = useDebounce(searchTerm, 300);
 
   const validateEmail = (email) => {
@@ -326,6 +331,7 @@ const CreateOrganization = ({ employeeId: propEmployeeId = null }) => {
     setAlertModal({ isVisible: false, title: "", message: "" });
   };
 
+  // reset form when opened (same as original)
   useEffect(() => {
     if (showForm && !isEditing) {
       setStep(1);
@@ -355,6 +361,62 @@ const CreateOrganization = ({ employeeId: propEmployeeId = null }) => {
     }
   }, [showForm, isEditing]);
 
+  // ---------------------------
+  // Fetch roles dynamically when form opens & step 2 / editing
+  // ---------------------------
+  useEffect(() => {
+    // inside useEffect
+    const fetchRoles = async () => {
+      setRolesLoading(true);
+      try {
+        const res = await fetch(`${BASE_URL}/user_roles`, {
+          method: "GET",
+          credentials: "include",
+          headers,
+        });
+        if (!res.ok) {
+          throw new Error(`Failed to fetch roles: ${res.status}`);
+        }
+        const payload = await res.json();
+
+        // API returns { status: 'success', data: [ {id, name}, ... ] }
+        const list = Array.isArray(payload?.data)
+          ? payload.data
+          : Array.isArray(payload)
+          ? payload
+          : [];
+
+        const extracted = list.map((r) => {
+          if (typeof r === "string") return r;
+          return r.name || r.role_name || r.role || String(r.id);
+        });
+
+        const normalized = Array.from(new Set(extracted.filter(Boolean))).sort(
+          (a, b) => a.localeCompare(b)
+        );
+
+        setRoles(normalized);
+      } catch (err) {
+        console.error("Failed to fetch user roles:", err);
+        setRoles([]);
+        showAlert(
+          "Failed to load roles from server. Sidebar-role assignment will be disabled until roles load. Please retry or contact support.",
+          "Error"
+        );
+      } finally {
+        setRolesLoading(false);
+      }
+    };
+
+    // fetch roles when the form is opened and step 2 is shown (or editing an org)
+    if (showForm && (step === 2 || isEditing)) {
+      fetchRoles();
+    }
+  }, [showForm, step, isEditing, BASE_URL, headers]);
+
+  // ---------------------------
+  // Fetch sidebar items (original behavior) - unchanged
+  // ---------------------------
   useEffect(() => {
     const fetchSidebarItems = async () => {
       try {
@@ -389,6 +451,9 @@ const CreateOrganization = ({ employeeId: propEmployeeId = null }) => {
     }
   }, [showForm, step, isEditing, employeeId, headers, BASE_URL]);
 
+  // ---------------------------
+  // Fetch sidebar access when editing (original behavior) - unchanged
+  // ---------------------------
   useEffect(() => {
     const fetchSidebarAccess = async () => {
       if (isEditing && currentOrgId && sidebarItems.length > 0) {
@@ -428,6 +493,9 @@ const CreateOrganization = ({ employeeId: propEmployeeId = null }) => {
     fetchSidebarAccess();
   }, [isEditing, currentOrgId, sidebarItems, employeeId, headers, BASE_URL]);
 
+  // ---------------------------
+  // Organizations fetch (unchanged)
+  // ---------------------------
   useEffect(() => {
     const fetchOrganizations = async () => {
       try {
@@ -454,7 +522,7 @@ const CreateOrganization = ({ employeeId: propEmployeeId = null }) => {
     const filtered = orgTableData.filter((org) => {
       if (!lowerCaseSearchTerm) return true;
       return (
-        org.Name?.toLowerCase().includes(lowerCaseSearchTerm) ||
+        org.name?.toLowerCase().includes(lowerCaseSearchTerm) ||
         org.subdomain?.toLowerCase().includes(lowerCaseSearchTerm) ||
         org.id.toString().includes(lowerCaseSearchTerm) ||
         org.admin_email?.toLowerCase().includes(lowerCaseSearchTerm) ||
@@ -493,7 +561,7 @@ const CreateOrganization = ({ employeeId: propEmployeeId = null }) => {
   const handleEdit = async (org) => {
     setIsEditing(true);
     setCurrentOrgId(org.id);
-    setName(org.Name || "");
+    setName(org.name || "");
     setSubdomain(org.subdomain || "");
     setNoEmployees(org.no_employees || "");
     setCompanyAddress(org.company_address || "");
@@ -1183,15 +1251,18 @@ const CreateOrganization = ({ employeeId: propEmployeeId = null }) => {
                                 <span className="orgprefix-sidebar-label">
                                   {item.label}
                                 </span>
+                                {selectedRoles.length > 0 && (
+                                  <span className="orgprefix-selected-role-indicator">
+                                    Selected: {selectedRoles.join(", ")}
+                                  </span>
+                                )}
                                 <MultiSelectCheckbox
                                   options={roles}
                                   selectedValues={selectedRoles}
                                   onChange={(newRoles) =>
                                     handleSidebarRoleChange(item.id, newRoles)
                                   }
-                                  disabled={alertModal.message.includes(
-                                    "Failed to fetch sidebar menu items"
-                                  )}
+                                  disabled={roles.length === 0 || rolesLoading}
                                   isOpen={openDropdownId === item.id}
                                   onToggle={() =>
                                     setOpenDropdownId((prev) =>
@@ -1199,11 +1270,6 @@ const CreateOrganization = ({ employeeId: propEmployeeId = null }) => {
                                     )
                                   }
                                 />
-                                {selectedRoles.length > 0 && (
-                                  <span className="orgprefix-selected-role-indicator">
-                                    Selected: {selectedRoles.join(", ")}
-                                  </span>
-                                )}
                               </div>
                             );
                           })}
@@ -1235,12 +1301,8 @@ const CreateOrganization = ({ employeeId: propEmployeeId = null }) => {
                     <button
                       type="submit"
                       className="orgprefix-save-btn"
-                      disabled={
-                        isSubmitting ||
-                        alertModal.message.includes(
-                          "Failed to fetch sidebar menu items"
-                        )
-                      }
+                      disabled={isSubmitting || roles.length === 0}
+                      title={roles.length === 0 ? "Roles not loaded yet" : ""}
                     >
                       {isSubmitting
                         ? isEditing
@@ -1328,12 +1390,13 @@ const CreateOrganization = ({ employeeId: propEmployeeId = null }) => {
         </div>
       )}
 
+      {/* ... rest of table rendering (unchanged from your original) ... */}
       {filteredOrgData.length > 0 ? (
         <>
           <div className="orgprefix-mobile-cards">
             {filteredOrgData.map((org) => (
               <div className="orgprefix-org-card" key={org.id}>
-                <div className="orgprefix-org-card-header">{org.Name}</div>
+                <div className="orgprefix-org-card-header">{org.name}</div>
                 <div className="orgprefix-org-card-content">
                   <strong>ID:</strong> {org.id}
                 </div>
@@ -1390,8 +1453,8 @@ const CreateOrganization = ({ employeeId: propEmployeeId = null }) => {
                       </span>
                     </td>
                     <td>
-                      <span className="orgprefix-tooltip" title={org.Name}>
-                        {org.Name}
+                      <span className="orgprefix-tooltip" title={org.name}>
+                        {org.name}
                       </span>
                     </td>
                     <td>

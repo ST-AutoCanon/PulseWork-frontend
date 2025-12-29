@@ -10,6 +10,7 @@
   background: #fff;
   list-style-type: none;
   padding: 0;
+  margin-bottom: 100px;
 }
 
 .sidebar li {
@@ -133,7 +134,6 @@
   padding: 10px;
 }
 
-/* Mobile menu — stack icon above label */
 .mobile-menu li {
   display: flex;
   flex-direction: column;
@@ -144,25 +144,22 @@
   transition: background 0.3s;
 }
 
-/* slightly larger icon and spacing */
 .mobile-menu li .icon {
-  font-size: 28px; /* increase if you want bigger icons */
+  font-size: 28px;
   line-height: 1;
   display: block;
-  margin: 0; /* reset any previous margin */
+  margin: 0;
 }
 
-/* label under the icon */
 .mobile-menu li .label {
   font-size: 13px;
   margin-top: 0;
   display: block;
   text-align: center;
   color: black;
-  white-space: nowrap; /* prevent wrapping if you prefer */
+  white-space: nowrap;
 }
 
-/* keep active state style */
 .mobile-menu li.active {
   background: rgba(200, 200, 200, 0.364);
 }
@@ -189,7 +186,7 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0,0,0,0.5);
+  background: rgba(0, 0, 0, 0.5);
   display: flex;
   justify-content: center;
   align-items: center;
@@ -217,48 +214,6 @@
 
 .task-choice-btn:hover {
   opacity: 0.85;
-}.has-submenu {
-  position: relative;
-}
-
-.submenu-parent {
-  display: flex;
-  align-items: center;
-  padding: 12px 20px;
-  cursor: pointer;
-  color: #ccc;
-}
-
-.submenu-parent .arrow {
-  margin-left: auto;
-  transition: transform 0.2s;
-}
-
-.has-submenu:hover .arrow {
-  transform: rotate(180deg);
-}
-
-.submenu {
-  background: rgba(0, 0, 0, 0.3);
-  padding-left: 20px;
-  max-height: 0;
-  overflow: hidden;
-  transition: max-height 0.3s ease;
-}
-
-.has-submenu:hover .submenu {
-  max-height: 300px;
-}
-
-.submenu li {
-  padding: 10px 20px;
-  cursor: pointer;
-  font-size: 0.95rem;
-}
-
-.submenu li.active,
-.submenu li:hover {
-  background: rgba(255, 255, 255, 0.1);
 }
 
 .close-btn {

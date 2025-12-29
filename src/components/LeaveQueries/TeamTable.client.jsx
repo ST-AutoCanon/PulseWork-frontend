@@ -11,6 +11,9 @@ export default function TeamTable({
   canViewTeam,
   policies = [],
   activePolicy = null,
+  loadLeaveBalance,
+  lopModal,
+  setLopModal,
 }) {
   if (!canViewTeam) return null;
 
@@ -102,38 +105,321 @@ export default function TeamTable({
     return false;
   };
 
-  const handleUpdateClick = (leave) => {
+  const getRemainingForLeave = async (leave) => {
+    try {
+      if (typeof loadLeaveBalance === "function") {
+        const balances = await loadLeaveBalance(leave.employee_id);
+        if (Array.isArray(balances)) {
+          const b = balances.find(
+            (r) => String(r.type) === String(leave.leave_type)
+          );
+          if (b && b.remaining !== undefined) return Number(b.remaining) || 0;
+        }
+      }
+    } catch (e) {
+      // ignore and fallback
+    }
+    if (leave.remaining !== undefined) return Number(leave.remaining) || 0;
+    return 0;
+  };
+
+  const handleUpdateClick = async (leave) => {
     if (!onUpdate) return;
 
     const rawPayload =
       localInputs[leave.leave_id] || statusUpdates?.[leave.leave_id] || {};
-    let isDefaultedFlag = normalizeIsDefaulted(rawPayload);
-
     const effectiveStatus =
       rawPayload.status ??
       statusUpdates?.[leave.leave_id]?.status ??
       leave.status;
 
-    if (!isDefaultedFlag && effectiveStatus === "Approved") {
+    // If not approving, just send the payload (status change or comments)
+    if (effectiveStatus !== "Approved") {
+      try {
+        await onUpdate(leave.leave_id, rawPayload);
+      } catch (e) {
+        // onUpdate should handle errors & UI feedback
+      }
+      return;
+    }
+
+    // Approved flow starts here
+    // Determine whether payload explicitly marks as defaulted (or not)
+    let isDefaultedFlag = normalizeIsDefaulted(rawPayload);
+
+    // If not explicitly defaulted, check whether there's an active policy for the request date.
+    if (!isDefaultedFlag) {
       const policy = findPolicyForRequest(leave);
       if (!policy) isDefaultedFlag = true;
     }
 
     const days = calculateDays(leave.start_date, leave.end_date, leave.H_F_day);
 
-    const defaultedPayload = {
-      ...rawPayload,
-      compensated_days: 0,
-      deducted_days: 0,
-      loss_of_pay_days: Number(days),
-      total_days: Number(days),
-      preserved_leave_days: null,
-      is_defaulted: isDefaultedFlag,
-      isDefaulted: isDefaultedFlag,
-    };
+    // If defaulted (no active policy or explicitly defaulted) approve with defaulted payload
+    if (isDefaultedFlag) {
+      const defaultedPayload = {
+        ...rawPayload,
+        compensated_days: 0,
+        deducted_days: 0,
+        loss_of_pay_days: Number(days),
+        total_days: Number(days),
+        preserved_leave_days: null,
+        is_defaulted: true,
+        isDefaulted: true,
+        status: "Approved",
+      };
+      await onUpdate(leave.leave_id, defaultedPayload);
+      return;
+    }
 
-    const payloadToSend = isDefaultedFlag ? defaultedPayload : rawPayload;
-    onUpdate(leave.leave_id, payloadToSend);
+    // Not defaulted and status is Approved -> check remaining balance and deficit
+    const remaining = await getRemainingForLeave(leave);
+    const deficit = Math.max(0, days - remaining);
+    const EPS = 1e-6;
+
+    // Deficit exists — open compensation popup (if available) with handlers
+    if (typeof setLopModal === "function") {
+      const approveDeficit = async () => {
+        const preserved_leave_days = Number(remaining) || 0;
+        const lopDaysVal = Number(days) || 0;
+
+        const payload = {
+          ...(rawPayload || {}),
+          status: "Approved",
+
+          compensated_days: 0,
+          compensatedDays: 0,
+          compensated: 0,
+
+          deducted_days: 0,
+          deductedDays: 0,
+          deducted: 0,
+
+          loss_of_pay_days: lopDaysVal,
+          lopDays: lopDaysVal,
+          loss_of_pay: lopDaysVal,
+
+          preserved_leave_days,
+          preservedLeaveDays: preserved_leave_days,
+          preserved: preserved_leave_days,
+
+          total_days: Number(days),
+          totalDays: Number(days),
+
+          is_defaulted: false,
+          isDefaulted: false,
+        };
+
+        const result = await onUpdate(leave.leave_id, payload);
+        if (result && result.ok) {
+          setLopModal((m) => ({ ...m, isVisible: false }));
+        } else {
+          const serverMsg =
+            (result &&
+              (result.message || (result.body && result.body.message))) ||
+            JSON.stringify(result && result.body) ||
+            "Failed to approve as LoP — see modal.";
+          setLopModal((m) => ({ ...m, error: serverMsg }));
+        }
+        return result;
+      };
+
+      const setAllCompensated = async () => {
+        const compensated_days = Number(days) || 0;
+        const preserved_leave_days = Number(remaining) || 0;
+
+        const payload = {
+          ...(rawPayload || {}),
+          status: "Approved",
+
+          compensated_days: compensated_days,
+          compensatedDays: compensated_days,
+          compensated: compensated_days,
+
+          deducted_days: 0,
+          deductedDays: 0,
+          deducted: 0,
+
+          loss_of_pay_days: 0,
+          lopDays: 0,
+          loss_of_pay: 0,
+
+          preserved_leave_days,
+          preservedLeaveDays: preserved_leave_days,
+          preserved: preserved_leave_days,
+
+          total_days: Number(days),
+          totalDays: Number(days),
+
+          is_defaulted: false,
+          isDefaulted: false,
+        };
+
+        const result = await onUpdate(leave.leave_id, payload);
+        if (result && result.ok) {
+          setLopModal((m) => ({ ...m, isVisible: false }));
+        } else {
+          const serverMsg =
+            (result &&
+              (result.message || (result.body && result.body.message))) ||
+            JSON.stringify(result && result.body) ||
+            "Failed to set all compensated — see modal.";
+          setLopModal((m) => ({ ...m, error: serverMsg }));
+        }
+        return result;
+      };
+
+      const setAllDeducted = async () => {
+        const daysNum = Number(days) || 0;
+        const remainingNum = Number(remaining) || 0;
+        const deducted_clamped = Math.min(daysNum, remainingNum);
+        const lop_days = Math.max(0, daysNum - deducted_clamped);
+        const preserved_leave_days = Math.max(
+          0,
+          remainingNum - deducted_clamped
+        );
+
+        const payload = {
+          ...(rawPayload || {}),
+          status: "Approved",
+
+          compensated_days: 0,
+          compensatedDays: 0,
+          compensated: 0,
+
+          deducted_days: deducted_clamped,
+          deductedDays: deducted_clamped,
+          deducted: deducted_clamped,
+
+          loss_of_pay_days: lop_days,
+          lopDays: lop_days,
+          loss_of_pay: lop_days,
+
+          preserved_leave_days,
+          preservedLeaveDays: preserved_leave_days,
+          preserved: preserved_leave_days,
+
+          total_days: Number(days),
+          totalDays: Number(days),
+
+          is_defaulted: false,
+          isDefaulted: false,
+        };
+
+        const result = await onUpdate(leave.leave_id, payload);
+        if (result && result.ok) {
+          setLopModal((m) => ({ ...m, isVisible: false }));
+        } else {
+          const serverMsg =
+            (result &&
+              (result.message || (result.body && result.body.message))) ||
+            JSON.stringify(result && result.body) ||
+            "Failed to set all deducted — see modal.";
+          setLopModal((m) => ({ ...m, error: serverMsg }));
+        }
+        return result;
+      };
+
+      const applyFlexibleSplit = async (
+        compensatedDays,
+        deductedDays,
+        lopDays
+      ) => {
+        const c = Number(compensatedDays) || 0;
+        const d = Number(deductedDays) || 0;
+        const l = Number(lopDays) || 0;
+
+        if (Math.abs(c + d + l - days) > 1e-6) {
+          const msg = `Split values must add up to total requested days (${days}). Received: compensated=${c}, deducted=${d}, loss_of_pay=${l}.`;
+          setLopModal((m) => ({ ...m, error: msg }));
+          return { ok: false, message: "validation_failed", body: msg };
+        }
+
+        const deducted_clamped = Math.min(Number(remaining) || 0, d);
+        if (deducted_clamped + 1e-6 < d) {
+          const msg = `Deducted days (${d}) exceed remaining (${remaining}). Please adjust.`;
+          setLopModal((m) => ({ ...m, error: msg }));
+          return {
+            ok: false,
+            message: "deducted_exceeds_remaining",
+            body: msg,
+          };
+        }
+
+        let preserved_leave_days = Math.max(
+          0,
+          Number(remaining) - Number(deducted_clamped)
+        );
+        preserved_leave_days = Number(preserved_leave_days.toFixed(2));
+
+        const payload = {
+          ...(rawPayload || {}),
+          status: "Approved",
+
+          compensated_days: Number(c.toFixed(2)),
+          compensatedDays: Number(c.toFixed(2)),
+          compensated: Number(c.toFixed(2)),
+
+          deducted_days: Number(deducted_clamped.toFixed(2)),
+          deductedDays: Number(deducted_clamped.toFixed(2)),
+          deducted: Number(deducted_clamped.toFixed(2)),
+
+          loss_of_pay_days: Number(l.toFixed(2)),
+          lopDays: Number(l.toFixed(2)),
+          loss_of_pay: Number(l.toFixed(2)),
+
+          preserved_leave_days: preserved_leave_days,
+          preservedLeaveDays: preserved_leave_days,
+          preserved: preserved_leave_days,
+
+          total_days: Number(days),
+          totalDays: Number(days),
+
+          is_defaulted: false,
+          isDefaulted: false,
+        };
+
+        const result = await onUpdate(leave.leave_id, payload);
+        if (result && result.ok) {
+          setLopModal((m) => ({ ...m, isVisible: false }));
+        } else if (result && result.status >= 200 && result.status < 300) {
+          setLopModal((m) => ({ ...m, isVisible: false }));
+        } else {
+          const serverMsg =
+            (result &&
+              (result.message || (result.body && result.body.message))) ||
+            JSON.stringify(result && result.body) ||
+            "Failed to apply split — see modal.";
+          setLopModal((m) => ({ ...m, error: serverMsg }));
+        }
+        return result;
+      };
+
+      setLopModal({
+        isVisible: true,
+        leaveId: leave.leave_id,
+        deficit: Number(deficit),
+        days: Number(days),
+        remaining: Number(remaining),
+        message: `Employee requested ${days} day(s); remaining balance = ${remaining}. Deficit = ${deficit}. Choose how to allocate the ${days} requested days:`,
+        compensatedDays: 0,
+        deductedDays: Math.min(Number(remaining), Number(days)),
+        lopDays: Math.max(
+          0,
+          Number(days) - Math.min(Number(remaining), Number(days))
+        ),
+        approveDeficit,
+        setAllCompensated,
+        setAllDeducted,
+        applyFlexibleSplit,
+        error: "",
+      });
+
+      return;
+    }
+
+    // Fallback: if setLopModal is not available, send the raw payload as-is
+    await onUpdate(leave.leave_id, rawPayload);
   };
 
   const renderStatusBadge = (status) => {
@@ -146,8 +432,6 @@ export default function TeamTable({
   };
 
   const isAlreadyUpdated = (leave) => leave.status !== "pending";
-  const isPending = (leave) =>
-    (getCurrentStatus(leave) || "pending") === "pending";
 
   return (
     <>

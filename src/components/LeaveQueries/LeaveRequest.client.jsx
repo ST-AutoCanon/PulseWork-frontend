@@ -130,6 +130,9 @@ export default function LeaveRequest() {
         canViewTeam={hook.canViewTeam}
         policies={hook.policies}
         activePolicy={hook.activePolicy}
+        loadLeaveBalance={hook.loadLeaveBalance}
+        lopModal={hook.lopModal}
+        setLopModal={hook.setLopModal}
       />
 
       <SelfTable

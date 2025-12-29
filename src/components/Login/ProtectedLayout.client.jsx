@@ -60,9 +60,15 @@ export default function ProtectedLayout({ children }) {
 
       if (Date.now() - lastActivityRef.current > IDLE_TIMEOUT) {
         try {
-          sessionStorage.setItem("loggedOutDueToInactivity", "true");
-        } catch {}
-        await logout({ redirect: true, reason: "idle" });
+          // mark for other tabs / parent
+          try {
+            sessionStorage.setItem("loggedOutDueToInactivity", "true");
+          } catch {}
+          // call logout with redirect true so parent receives the message and can navigate
+          await logout({ redirect: true, reason: "idle" });
+        } catch (err) {
+          console.warn("idle logout failed", err);
+        }
       }
     };
 
@@ -77,7 +83,7 @@ export default function ProtectedLayout({ children }) {
       window.removeEventListener("storage", onStorage);
       clearInterval(id);
     };
-  }, [user, hydrated]);
+  }, [user, hydrated, logout]);
 
   return <>{children}</>;
 }

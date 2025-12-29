@@ -434,7 +434,6 @@ const HolidayCalendar = ({ closeCalendar }) => {
           onChange={handleChange}
           value={date}
           minDate={new Date(currentYear, 0, 1)}
-          maxDate={new Date(currentYear, 11, 31)}
           maxDetail="month"
           tileDisabled={({ date }) => date.getFullYear() !== currentYear}
           tileClassName={tileClassName}

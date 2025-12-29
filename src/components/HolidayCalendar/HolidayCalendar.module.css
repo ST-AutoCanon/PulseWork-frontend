@@ -118,7 +118,7 @@
 
 .holidayLegendTop {
   position: absolute;
-  top: 16%;
+  top: 14%;
   left: 50%;
   transform: translateX(-50%);
   display: flex;
@@ -161,7 +161,7 @@
 .adminButtons {
   position: absolute;
   bottom: 8px;
-  top: 70%;
+  top: 85%;
   left: 50%;
   transform: translateX(-50%);
   display: flex;

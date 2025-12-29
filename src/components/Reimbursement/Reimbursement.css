@@ -3,37 +3,64 @@
   margin: 3%;
   border-radius: 10px;
 }
+
 .reimbursement-table-scroll {
+  margin-top: 2%;
+  max-height: 400px;
   overflow-y: auto;
   overflow-x: auto;
   border: 1px solid #ddd;
+  margin-bottom: 3%;
+  max-width: 1160px;
 }
+
+.reimbursement-table-scroll2 {
+  margin-top: 2%;
+  max-height: 400px;
+  overflow-y: auto;
+  overflow-x: auto;
+  border: 1px solid #ddd;
+  margin-bottom: 3%;
+}
+
+.invoice-label::after {
+  content: " *";
+  color: #d32f2f;
+  margin-left: 4px;
+  font-weight: 700;
+}
+
 .rb-form-header {
   text-align: left;
   margin: 3% 0;
 }
+
 .filter-container {
   display: flex;
   justify-content: space-between;
   align-items: center;
   margin: 5% 0;
 }
+
 .filter-container label {
   font-weight: bold;
   text-align: center;
 }
+
 .filter-container input {
   padding: 1% 2%;
   border: 1px solid #ccc;
   border-radius: 5px;
   font-size: medium;
 }
+
 .filter-container select {
   padding: 0.9% 2%;
   border: 1px solid #ccc;
   border-radius: 5px;
   font-size: medium;
 }
+
 .search-btn,
 .apply-btn {
   background-color: #79c42b;
@@ -47,44 +74,382 @@
   align-items: center;
   gap: 5px;
 }
+
 .search-btn:hover,
 .apply-btn:hover {
   background-color: #0056b3;
 }
+
 .reimbursement-table {
   width: 100%;
   border-collapse: collapse;
   background: white;
   border-radius: 5px;
   overflow: hidden;
+  table-layout: fixed;
+  word-break: break-word;
 }
+
 .reimbursement-table th,
 .reimbursement-table td {
   border: 2px solid #d9d9d9;
-  padding: 0.5%;
   text-align: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
+
 .reimbursement-table td:nth-child(5) {
   text-align: right;
 }
+
 .reimbursement-table th {
   background-color: #f2f2f2;
 }
+
 .reimbursement-table td {
   background-color: #fff;
 }
-.rbcomments-column {
+
+.participants-cell {
   max-width: 200px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.rbcomments-column:hover {
+
+.participants-cell:hover {
   white-space: normal;
   overflow-y: auto;
   text-overflow: unset;
   max-height: 500px;
 }
+
+.purpose-attachment-invoices {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 0;
+  margin: 0;
+}
+
+.purpose-attachment-invoices .rb-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(220px, 1fr));
+  gap: 1rem;
+  align-items: start;
+}
+
+.purpose-attachment-invoices.two-col .rb-form-grid {
+  grid-template-columns: repeat(2, minmax(220px, 1fr));
+}
+.purpose-attachment-invoices.full-width .rb-form-grid {
+  grid-template-columns: 1fr;
+}
+
+.purpose-attachment-invoices .rb-groups label {
+  display: block;
+  margin-bottom: 6px;
+  font-weight: bold;
+}
+
+.purpose-attachment-invoices .invoice-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  width: 100%;
+  box-sizing: border-box;
+  justify-content: flex-start;
+}
+
+.purpose-attachment-invoices .invoice-input,
+.purpose-attachment-invoices input[type="text"][name^="invoice_"] {
+  padding: 2%;
+  border: 1px solid #ccc;
+  background-color: #fff;
+  border-radius: 5px;
+  font-size: 14px;
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 36px;
+  line-height: 1.2;
+  max-width: 100%;
+}
+
+.purpose-attachment-invoices .invoice-input {
+  flex: 1 1 auto;
+}
+
+.purpose-attachment-invoices .invoice-add-btn,
+.purpose-attachment-invoices .invoice-remove-btn {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  box-sizing: border-box;
+  background: transparent;
+  border: none;
+}
+
+.purpose-attachment-invoices .invoice-add-btn {
+  background: #79c42b;
+  color: #fff;
+  padding: 8px 10px;
+  border-radius: 6px;
+}
+
+.purpose-attachment-invoices .invoice-remove-btn {
+  color: #d32f2f;
+  background: none;
+}
+
+.purpose-attachment-invoices .invoice-add-btn svg,
+.purpose-attachment-invoices .invoice-remove-btn svg {
+  font-size: 18px;
+  vertical-align: middle;
+}
+
+.purpose-attachment-invoices .invoice-cell {
+  max-width: 180px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: inline-block;
+  vertical-align: middle;
+}
+
+.purpose-attachment-invoices .invoice-cell[title]:hover::after,
+.reimbursement-table td .invoice-cell[title]:hover::after,
+.file-links .file-name[title]:hover::after {
+  content: attr(title);
+  position: absolute;
+  left: 0;
+  top: 100%;
+  margin-top: 8px;
+  background: #fff;
+  color: #222;
+  padding: 8px 10px;
+  border-radius: 6px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12);
+  white-space: normal;
+  z-index: 9999;
+  display: block;
+  width: min(420px, 86vw);
+  max-height: 50vh;
+  overflow: auto;
+  line-height: 1.4;
+}
+
+.reimbursement-table td,
+.reimbursement-table th,
+.file-links {
+  position: relative;
+}
+
+/* --------------------------
+   Single-line row header CSS
+   -------------------------- */
+
+/* Row card base (keep existing card styles in your file) */
+.row-item {
+  background: #ffffff;
+  border: 1px solid #d9d9d9;
+  border-radius: 8px;
+  padding: 12px;
+  margin-bottom: 16px;
+  box-sizing: border-box;
+}
+
+.row-item.child-row,
+.row-item.main-row {
+  border: 2px solid #00468c;
+  background: #f7faff;
+}
+
+.row-item .row-header {
+  display: grid;
+  grid-auto-flow: column; /* place each .field in its own column (in DOM order) */
+  grid-auto-columns: minmax(
+    140px,
+    1fr
+  ); /* each column is at least 140px, expands to share space */
+  gap: 12px;
+  align-items: end;
+  width: 100%;
+  box-sizing: border-box;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  white-space: nowrap; /* helps prevent label/input wrapping inside the header */
+  padding-bottom: 6px;
+}
+
+/* Individual field remains column-oriented for label+input but placed as a column in header */
+.row-header .field {
+  display: flex;
+  flex-direction: column;
+  min-width: 0; /* critical to allow inputs to shrink inside grid cells */
+  box-sizing: border-box;
+}
+
+/* Labels + inputs */
+.row-header .field label {
+  font-size: 12px;
+  font-weight: 600;
+  margin-bottom: 6px;
+  color: #333;
+  white-space: normal; /* allow multi-line labels if needed */
+}
+
+.row-header .field input,
+.row-header .field select,
+.row-header .field textarea {
+  height: 36px;
+  padding: 6px 8px;
+  font-size: 14px;
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+}
+
+/* Make large inline fields (purpose, attachments, invoice) wider by setting min-width.
+   They will still be columns, but take more room when enough space exists. */
+.purpose-inline {
+  min-width: 260px;
+}
+.attachment-inline {
+  min-width: 180px;
+}
+.invoice-inline {
+  min-width: 220px;
+}
+.field.add-next-field {
+  min-width: 120px;
+}
+
+/* Inline attachment area: keep compact */
+.attachment-inline-wrapper {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: nowrap; /* keep inline controls on one line inside their column */
+  min-width: 0;
+}
+
+/* File-links inline should shrink/wrap within its column */
+.file-links-inline {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+}
+
+/* Invoice inline row: keep input and small button inline */
+.invoice-inline-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  min-width: 0;
+}
+
+/* keep invoice input flexible but not expanding too wildly */
+.invoice-input {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+/* Make 'Browse' used inline smaller — you had big % paddings causing overflow */
+.custom-file-upload.small,
+.custom-file-upload.inline {
+  background: #79c42b;
+  color: #fff;
+  padding: 6px 10px; /* smaller padding for inline buttons */
+  border-radius: 6px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+/* Add-next button style (small and inline) */
+.add-next-row-btn {
+  background: #79c42b;
+  color: #fff;
+  border: none;
+  padding: 8px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 600;
+  min-width: 0;
+}
+
+/* Mobile fallback: stack into rows under a narrow viewport */
+@media (max-width: 640px) {
+  .row-item .row-header,
+  .row-item.child-row .row-header {
+    display: grid;
+    grid-auto-flow: row; /* stack fields vertically on mobile */
+    grid-auto-columns: 1fr;
+    gap: 10px;
+    overflow-x: visible;
+    white-space: normal;
+  }
+
+  /* make "next" button full width on small screens */
+  .add-next-row-btn {
+    width: 100%;
+    align-self: stretch;
+  }
+}
+
+@media (max-width: 880px) {
+  .purpose-attachment-invoices .rb-form-grid,
+  .purpose-attachment-invoices.two-col .rb-form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .purpose-attachment-invoices .invoice-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .purpose-attachment-invoices .invoice-add-btn,
+  .purpose-attachment-invoices .invoice-remove-btn {
+    align-self: flex-start;
+    width: auto;
+    padding: 10px;
+  }
+
+  .purpose-attachment-invoices .invoice-input {
+    min-height: 44px;
+    padding: 10px;
+  }
+
+  .purpose-attachment-invoices .invoice-cell[title]::after,
+  .file-links .file-name[title]::after {
+    display: none;
+  }
+}
+
+.purpose-attachment-invoices,
+.purpose-attachment-invoices .rb-form-grid,
+.purpose-attachment-invoices .rb-groups {
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.file-links .file-name {
+  display: block;
+  font-size: 13px;
+  color: #00468c;
+  text-decoration: none;
+  cursor: default;
+  max-width: 220px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .status {
   padding: 6px 12px;
   border-radius: 12px;
@@ -92,24 +457,113 @@
   text-align: center;
   min-width: 100px;
 }
+
 .status.approved {
   background-color: #d7f2ce;
 }
+
 .status.rejected {
   background-color: #ffe5d2;
 }
-.edit-icon,
-.delete-icon {
+
+*/ .edit-icon,
+.delete-icon,
+.md-edit,
+.md-delete {
   cursor: pointer;
-  margin: 0 5px;
   font-size: x-large;
+  color: #000;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.12s ease, transform 0.06s ease;
 }
-.edit-icon:hover {
-  color: #007bff;
+
+.edit-icon:hover,
+.md-edit:hover {
+  color: #222;
+  transform: translateY(-1px);
 }
-.delete-icon:hover {
-  color: red;
+
+.delete-icon:hover,
+.md-delete:hover {
+  color: #d32f2f;
+  transform: translateY(-1px);
 }
+
+.icons-btn.black,
+.action-button.black {
+  background: #000;
+  color: #fff;
+}
+.icon-btn {
+  border: none !important;
+  outline: none !important;
+  background: transparent !important;
+}
+
+.icons-btn.black .md-edit,
+.icons-btn.black .md-delete,
+.action-button.black .md-edit,
+.action-button.black .md-delete {
+  color: #fff;
+}
+
+.icons-btn {
+  font-size: x-large;
+  padding: 0% 5%;
+}
+
+.pa-groups textarea,
+.attachment-wrapper textarea {
+  padding: 2%;
+  border: 1px solid #ccc;
+  background-color: #fff;
+  border-radius: 5px;
+  width: 96%;
+  height: 80px;
+  min-height: 80px;
+  resize: vertical;
+  box-sizing: border-box;
+  font-size: 14px;
+  line-height: 1.3;
+}
+
+.attachment-wrapper {
+  display: flex;
+  background-color: #fff;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  height: 80px;
+  width: 95%;
+  padding: 8px 10px;
+  box-sizing: border-box;
+  gap: 8px;
+  align-items: flex-start;
+}
+
+.file-links {
+  width: 80%;
+  color: #00468c;
+  text-decoration: none;
+  font-size: 14px;
+  overflow-x: auto;
+  overflow-y: auto;
+  position: relative;
+}
+
+.file-links .file-name {
+  display: block;
+  font-size: 13px;
+  color: #00468c;
+  text-decoration: none;
+  cursor: default;
+  max-width: 220px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .rb-modal {
   position: fixed;
   top: 0;
@@ -122,12 +576,16 @@
   align-items: center;
   z-index: 1000;
 }
+
 .rb-modal-content {
   background: #e8e9ea;
   padding: 0%;
-  width: 70%;
+  width: 90%;
+  max-height: 90vh;
   box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.2);
+  overflow-y: auto;
 }
+
 .claim-form-header {
   display: flex;
   justify-content: space-between;
@@ -136,18 +594,16 @@
   color: #fff;
   padding: 0 2%;
 }
+
 .claim-form-title {
   color: #fff;
+  margin: 1% 0;
 }
+
 .claim-form-close {
   font-size: x-large;
 }
-.rb-form-grid {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(20%, 1fr));
-  gap: 3%;
-  padding: 2%;
-}
+
 .rb-form1-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(20%, 1fr));
@@ -160,6 +616,7 @@
   gap: 3%;
   padding: 2%;
 }
+
 .claim-type {
   display: flex;
   margin: 2%;
@@ -167,10 +624,12 @@
   overflow-x: auto;
   flex-wrap: wrap;
 }
+
 .claim-type label {
   margin: 1%;
   font-weight: bold;
 }
+
 .rb-tabs {
   width: 100%;
   display: flex;
@@ -179,6 +638,7 @@
   max-width: 100%;
   overflow: hidden;
 }
+
 .rb-tab {
   flex: 1;
   min-width: 120px;
@@ -193,13 +653,16 @@
   text-align: center;
   white-space: nowrap;
 }
+
 .rb-tab.active {
   background-color: #e8e9ea;
   border-bottom: none;
 }
+
 .claim-icons {
   font-size: 20px;
 }
+
 .claim-type select {
   width: 300px;
   padding: 0.9% 2%;
@@ -208,32 +671,38 @@
   font-size: medium;
   margin-bottom: 2%;
 }
+
 .rb-groups {
   margin-bottom: 10%;
 }
+
 .rb-groups label {
   font-weight: bold;
   margin-bottom: 5%;
 }
+
 .rb-groups input {
   padding: 2%;
   border: 1px solid #ccc;
   background-color: #fff;
   border-radius: 5px;
-  width: 95%;
+  width: 100%;
 }
+
 .rb-groups select {
   padding: 2%;
   border: 1px solid #ccc;
   border-radius: 5px;
-  width: 99%;
+  width: 100%;
 }
+
 .reimbursement-form-button {
   display: flex;
   justify-content: flex-end;
   gap: 10%;
   margin: 2% 5%;
 }
+
 .rb-submit {
   background-color: #7fbd2c;
   color: white;
@@ -242,6 +711,7 @@
   cursor: pointer;
   border-radius: 5px;
 }
+
 .rb-close {
   color: #000;
   padding: 1% 6%;
@@ -249,11 +719,13 @@
   cursor: pointer;
   border-radius: 5px;
 }
+
 .radio-group {
   display: flex;
   gap: 4%;
   margin-top: 5px;
 }
+
 .radio-label {
   display: flex;
   align-items: center;
@@ -261,19 +733,26 @@
   cursor: pointer;
   font-weight: bold;
 }
+
 .sub-tabs {
   display: flex;
   gap: 2%;
   margin: 2%;
-  padding: 0 2%;
+  padding: 0;
   color: #000;
   font-weight: bold;
   cursor: pointer;
 }
+
 .sub-tab.active {
   color: #004dc6;
   border-bottom: 2px solid #004dc6;
 }
+
+.rb-main-form {
+  margin: 2%;
+}
+
 .rb-radio {
   display: flex;
   margin: 2%;
@@ -281,20 +760,24 @@
   font-weight: bold;
   font-size: medium;
 }
+
 .rb-radio label {
   display: flex;
   align-items: center;
   margin-right: 5%;
 }
+
 .rb-radio-options {
   display: flex;
   gap: 20px;
 }
+
 .rb-radio-options label {
   display: flex;
   align-items: center;
   gap: 5px;
 }
+
 .rb-status-label {
   padding: 6px;
   border-radius: 12px;
@@ -302,16 +785,20 @@
   text-align: center;
   min-width: 80px;
 }
+
 .rb-approved {
   background-color: #d7f2ce;
 }
+
 .rb-rejected {
   background-color: #ffe5d2;
 }
+
 .eye-icon {
   color: #949494;
   font-size: x-large;
 }
+
 .attachments-btn {
   display: flex;
   justify-content: space-around;
@@ -322,6 +809,7 @@
   border-radius: 50px;
   background-color: #f2f2f2;
 }
+
 .att-modal-overlay {
   position: fixed;
   top: 0;
@@ -334,11 +822,13 @@
   align-items: center;
   z-index: 1000;
 }
+
 .att-modal-content {
   background: #e8e9ea;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
   min-width: 300px;
 }
+
 .att-header {
   display: flex;
   justify-content: space-between;
@@ -347,9 +837,11 @@
   background-color: #00468c;
   color: #fff;
 }
+
 .att-close {
   font-size: xx-large;
 }
+
 .att-close-btn {
   background-color: #79c42b;
   color: white;
@@ -363,57 +855,41 @@
   margin: 5%;
   margin-left: 60%;
 }
+
 .att-files {
   padding: 2%;
   margin: 2% 5%;
 }
+
 .asterisk {
   color: red;
 }
+
 .purpose-attachment {
   display: grid;
   grid-template-columns: repeat(2, minmax(20%, 1fr));
   gap: 0.1%;
 }
+
 .pa-groups {
   padding: 4%;
 }
+
 .pa-groups label {
   font-weight: bold;
   margin-bottom: 5%;
 }
-.pa-groups textarea {
-  padding: 2%;
-  border: 1px solid #ccc;
-  background-color: #fff;
-  border-radius: 5px;
-  width: 96%;
-  height: 80px;
-}
-.attachment-wrapper {
-  display: flex;
-  background-color: #fff;
-  border: 1px solid #ccc;
-  border-radius: 5px;
-  height: 80px;
-  width: 95%;
-  padding: 2%;
-}
-.file-links {
-  width: 80%;
-  color: #00468c;
-  text-decoration: none;
-  font-size: 14px;
-  overflow-x: auto;
-  overflow-y: auto;
-}
+
 .attachment-upload {
   display: flex;
   align-items: center;
+  margin: 15px 15px 0 0;
 }
+
 .hidden-file-input {
   display: none;
 }
+
 .custom-file-upload {
   background: #79c42b;
   color: #fff;
@@ -423,31 +899,29 @@
   font-size: 16px;
   display: inline-block;
 }
+
 .rb-error-message {
   color: red;
   font-weight: bold;
-  margin-top: 10px;
-  text-align: center;
+  margin: 0;
+  text-align: left;
 }
+
 .disabled-icon {
   color: grey;
   pointer-events: none;
   opacity: 0.5;
 }
-.actions-column {
-  min-width: 75px;
-}
+
 .rb-reimbursement-cards {
   display: none;
 }
 
-.mobile-cards {
-  display: none;
-}
 @media (max-width: 768px) {
   .reimbursement-table {
     display: none;
   }
+
   .filter-container {
     flex-direction: column;
     margin: 4%;
@@ -455,12 +929,13 @@
     padding: 15px;
   }
   .rb-form-header {
-    margin: 5%;
+    margin: 8%;
   }
   .filter-container label {
     font-size: 13px;
     margin-right: 80%;
   }
+
   .filter-container select {
     width: 100%;
     font-size: medium;
@@ -471,6 +946,7 @@
     font-size: medium;
     padding: 10px;
   }
+
   .search-btn,
   .apply-btn {
     width: 100%;
@@ -478,62 +954,51 @@
     padding: 12px;
   }
 }
+
 @media (max-width: 768px) {
   .reimbursement-table-wrapper {
     display: none;
   }
+
   .rb-reimbursement-cards {
     display: flex;
     flex-direction: column;
     gap: 15px;
     margin: 8%;
   }
+
   .rb-reimbursement-card {
     background: white;
-    padding: 15px;
+    padding: 30px;
     border-radius: 10px;
     box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
     display: flex;
     flex-direction: column;
   }
+
   .rb-card-header {
     display: flex;
-    flex-direction: row;
-    justify-content: flex-end;
+    flex-direction: column;
+    justify-content: space-between;
     align-items: center;
     font-weight: bold;
     border-bottom: 1px solid #ddd;
     padding-bottom: 5px;
+    margin-left: 70%;
   }
+
   .rb-status {
     font-size: 14px;
     font-weight: bold;
     color: green;
   }
+
   .rb-card-body {
     display: flex;
     flex-direction: column;
-    gap: 3px;
+    gap: 5px;
   }
-  .rb-card-body p {
-    margin: 3px 0;
-    font-size: 14px;
-  }
-  .rb-card-footer {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-top: 10px;
-  }
-  .rb-card-actions {
-    display: flex;
-    gap: 10px;
-  }
-  .rb-edit-icon,
-  .rb-delete-icon {
-    cursor: pointer;
-    font-size: 20px;
-  }
+
   .rb-form-grid {
     display: flex;
     flex-direction: column;
@@ -549,16 +1014,23 @@
     flex-direction: column;
     gap: 5px;
   }
+  .rb-form3-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+  }
   .rb-groups {
     flex-direction: column;
     align-items: stretch;
     gap: 10px;
   }
+
   .rb-groups label {
     display: block;
     margin-bottom: 5px;
     font-size: 15px;
   }
+
   .rb-groups input {
     width: 95%;
     padding: 10px;
@@ -568,9 +1040,11 @@
     width: 100%;
     display: block;
   }
+
   .hidden-file-input {
     display: none;
   }
+
   .purpose-attachment {
     display: flex;
     flex-direction: column !important;
@@ -581,11 +1055,13 @@
     align-items: stretch;
     gap: 10px;
   }
+
   .pa-groups label {
     display: block;
     margin-bottom: 5px;
     font-size: 15px;
   }
+
   .pa-groups input {
     padding: 2%;
     border: 1px solid #ccc;
@@ -601,7 +1077,29 @@
   .hidden-file-input {
     display: none !important;
   }
+
+  .rb-card-body p {
+    margin: 5px 0;
+  }
+
+  .rb-card-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .rb-card-actions {
+    display: flex;
+    gap: 10px;
+  }
+
+  .rb-edit-icon,
+  .rb-delete-icon {
+    cursor: pointer;
+    font-size: 20px;
+  }
 }
+
 @media (max-width: 768px) {
   .rb-modal {
     display: flex;
@@ -609,15 +1107,18 @@
     justify-content: center;
     padding: 0px;
   }
+
   .rb-modal-content {
     width: 92%;
     max-width: 100%;
+    padding: 20px;
     background: #fff;
     border-radius: 12px;
     box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
     overflow-y: auto;
     max-height: 90vh;
   }
+
   .claim-form-header {
     display: flex;
     align-items: center;
@@ -625,15 +1126,18 @@
     padding-bottom: 12px;
     border-bottom: 1px solid #ddd;
   }
+
   .claim-form-title {
     font-size: 18px;
     font-weight: 600;
   }
+
   .claim-form-close {
     font-size: 24px;
     cursor: pointer;
     color: #fff;
   }
+
   .rb-tabs {
     display: flex;
     flex-wrap: wrap;
@@ -641,30 +1145,35 @@
     justify-content: center;
     margin-top: 12px;
   }
+
   .rb-tab {
     font-size: 14px;
-    padding: 10px 0;
+    padding: 10px;
     border-radius: 8px;
     background: #f3f3f3;
     transition: all 0.3s ease;
   }
+
   .rb-tab.active {
     background: #79c42b;
     color: white;
     font-weight: 600;
   }
+
   .reimbursement-form {
     display: flex;
     flex-direction: column;
     gap: 12px;
     margin-top: 15px;
   }
+
   .reimbursement-form input {
     display: flex;
     flex-direction: column;
   }
   .reimbursement-form select {
     width: 60%;
+
     padding: 12px;
     font-size: 14px;
     border-radius: 6px;
@@ -672,6 +1181,7 @@
     background: #f9f9f9;
     transition: border 0.3s ease;
   }
+
   .reimbursement-form input:focus {
     width: 95%;
   }
@@ -679,13 +1189,14 @@
     border-color: #79c42b;
     background: white;
   }
+
   .reimbursement-form-button {
     display: flex;
-    flex-direction: row;
+    flex-direction: column;
     gap: 12px;
     margin-top: 15px;
-    justify-content: space-between;
   }
+
   .rb-radio {
     padding: 0%;
     font-weight: bold;
@@ -697,37 +1208,39 @@
   .rb-radio label {
     font-size: medium;
   }
+
   .rb-close,
-  .rb-submit,
-  .rb-prev {
-    flex: 1;
+  .rb-submit {
+    width: 100%;
     font-size: 14px;
     padding: 14px;
+
     border-radius: 8px;
     font-weight: 600;
     cursor: pointer;
     transition: all 0.3s ease;
     align-items: stretch;
   }
+
   .rb-close {
     background: #ddd;
     color: #333;
   }
+
   .rb-submit {
     background: #79c42b;
     color: white;
   }
-  .rb-prev {
-    background: #bbb;
-    color: #333;
-  }
+
   .rb-close:hover {
     background: #bbb;
   }
+
   .rb-submit:hover {
     background: #79c42b;
   }
 }
+
 @media (max-width: 768px) {
   .sub-tabs {
     display: flex;
@@ -736,6 +1249,7 @@
     gap: 10px;
     padding: 10px;
   }
+
   .sub-tab {
     flex: 1;
     max-width: 140px;
@@ -749,6 +1263,7 @@
     cursor: pointer;
     transition: all 0.3s ease-in-out;
   }
+
   .sub-tab.active {
     background-color: #79c42b;
     color: white;
@@ -756,239 +1271,878 @@
   }
 }
 
+.participant-controls-wrapper {
+  margin: 12px 0;
+  width: 1240px;
+}
+
+.participant-mode-toggle {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.participant-mode-toggle .ps-mode-label {
+  display: inline-flex;
+  align-items: center;
+  text-align: left;
+  margin: 0;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.participant-single-inline {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+}
+
+.participant-row,
+.ps-item {
+  width: auto;
+}
+
+.ps-item,
+.participant-row {
+  box-sizing: border-box;
+}
+
+.attachment-wrapper .file-links .file-name {
+  margin: 4px 0;
+  font-size: 13px;
+  color: #333;
+}
+
+.participant-row-inline {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  margin: 8px 0;
+  font-weight: bold;
+}
+
+.participant-row-inline label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  padding: 6px 10px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  transition: background-color 0.12s, border-color 0.12s, transform 0.08s;
+}
+
+.participant-row-inline label:hover {
+  transform: translateY(-1px);
+}
+
+.participant-row-inline input[type="radio"] {
+  width: 18px;
+  height: 18px;
+  accent-color: #79c42b;
+}
+
+.participant-row-inline input[type="radio"]:checked + span {
+  background: linear-gradient(180deg, #eaf8ea, #daf2d9);
+  border-radius: 6px;
+  padding: 4px 8px;
+  color: #0b6620;
+}
+
+.employee-selection {
+  margin-top: 10px;
+  border: 1px solid #e7efe7;
+  background: #fbfffb;
+  padding: 10px;
+  border-radius: 8px;
+}
+
+.employee-selection .employee-search {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.employee-selection .employee-search input[type="text"] {
+  flex: 1;
+  padding: 8px 10px;
+  border-radius: 6px;
+  border: 1px solid #dcdcdc;
+  background: #fff;
+}
+
+.employee-selected-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.employee-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: #eaf8ea;
+  color: #175a19;
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid #d7efd7;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.08s;
+}
+
+.employee-chip:hover {
+  transform: translateY(-2px);
+}
+
+.participant-list-inline {
+  max-height: 220px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-right: 6px;
+}
+
+.participant-list-inline .participant-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px;
+  border-radius: 6px;
+  background: #fff;
+  border: 1px solid #f1f1f1;
+  cursor: pointer;
+  transition: background 0.12s, transform 0.06s;
+}
+
+.participant-list-inline .participant-row:hover {
+  background: #fbfdff;
+  transform: translateY(-1px);
+}
+
+.participant-list-inline input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  accent-color: #79c42b;
+}
+
+.participant-name {
+  font-weight: 700;
+  color: #222;
+  flex: 1;
+}
+.participant-meta {
+  font-size: 12px;
+  color: #666;
+  white-space: nowrap;
+}
+
+.participant-summary {
+  font-size: 13px;
+  color: #333;
+  margin-bottom: 8px;
+}
+
 @media (max-width: 768px) {
-  .reimbursement-table,
-  .reimbursement-table-wrapper {
-    display: none !important;
+  .participant-list-inline {
+    max-height: 160px;
   }
-
-  .mobile-cards {
-    padding: 16px;
-    padding-bottom: 40px;
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-  }
-
-  .expense-card {
-    background: #ffffff;
-    border-radius: 18px;
-    overflow: hidden;
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
-    transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
-    cursor: pointer;
-    border: 1px solid #f0f0f0;
-    max-height: 78px;
-  }
-
-  .expense-card.open {
-    max-height: 420px;
-    box-shadow: 0 14px 40px rgba(0, 0, 0, 0.15);
-  }
-
-  .card-top {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 16px 20px;
-  }
-
-  .left {
-    display: flex;
-    align-items: center;
-    gap: 14px;
-  }
-
-  .icon {
-    font-size: 28px;
-  }
-
-  .title {
-    font-size: 16px;
-    font-weight: 600;
-    color: #1a1a1a;
-  }
-
-  .date {
+  .employee-chip {
     font-size: 13px;
-    color: #888;
-    margin-top: 2px;
+    padding: 6px 8px;
   }
-
-  .right {
-    text-align: right;
+  .employee-selection {
+    padding: 8px;
   }
-
-  .amount {
-    font-weight: 700;
-    color: #000;
-    line-height: 1;
-  }
-
-  .tag {
-    margin-top: 6px;
-    padding: 4px 12px;
-    border-radius: 20px;
-    font-size: 10.5px;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.8px;
-  }
-
-  .tag.pending {
-    background: #fef3c7;
-    color: #92400e;
-  }
-  .tag.approved {
-    background: #d1fae5;
-    color: #065f46;
-  }
-  .tag.rejected {
-    background: #fecaca;
-    color: #991b1b;
-  }
-
-  .card-expand {
-    padding: 0 20px;
-    max-height: 0;
-    overflow: hidden;
-    transition: all 0.4s ease;
-    background: #fcfcfc;
-  }
-
-  .expense-card.open .card-expand {
-    padding: 20px 20px 16px;
-    max-height: 380px;
-  }
-
-  .info > div {
-    display: flex;
-    justify-content: space-between;
-    padding: 10px 0;
-    font-size: 14.5px;
-    border-bottom: 1px dashed #eee;
-  }
-
-  .info > div:last-child {
-    border-bottom: none;
-  }
-
-  .info span:first-child {
-    color: #666;
-    font-weight: 500;
-  }
-
-  .info span:last-child {
-    color: #222;
-    font-weight: 600;
-    text-align: right;
-    max-width: 60%;
-  }
-
-  .card-bottom {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-top: 16px;
-    padding-top: 16px;
-    border-top: 1px solid #eee;
-  }
-
-  .bills-btn {
-    background: none;
-    border: none;
-    color: #00468c;
-    font-weight: 600;
-    font-size: 14.5px;
-    cursor: pointer;
-  }
-
-  .no-bill {
-    color: #999;
+  .participant-row-inline label {
+    padding: 6px 8px;
     font-size: 14px;
   }
-
-  .icons {
-    display: flex;
-    gap: 24px;
-  }
-
-  .icons svg {
-    font-size: 23px;
-    cursor: pointer;
-  }
-
-  .icons .MdOutlineEdit {
-    color: #00468c;
-  }
-  .icons .MdDeleteOutline {
-    color: #dc2626;
-  }
-
-  .filter-container {
-    flex-direction: column;
-    gap: 14px;
-    padding: 16px;
-    background: #f8f9fa;
-    border-radius: 12px;
-    margin: 4%;
-  }
-  .filter-container label:nth-child(3),
-  .filter-container input:nth-child(4),
-  .filter-container label:nth-child(5),
-  .filter-container input:nth-child(6),
-  .filter-container .search-btn {
-    display: none !important;
-  }
-
-  .filter-container select,
-  .filter-container .apply-btn {
-    width: 100%;
-    padding: 14px;
-    font-size: 16px;
-  }
-
-  .filter-container .apply-btn {
-    margin-top: 10px;
-  }
 }
+
+.participant-row-inline input[type="radio"]:focus,
+.participant-list-inline input[type="checkbox"]:focus,
+.employee-selection .employee-search input[type="text"]:focus {
+  outline: 3px solid rgba(121, 196, 43, 0.14);
+  outline-offset: 2px;
+}
+
+.participant-modal-inner {
+  display: none !important;
+}
+
+.rb-modal-content .participant-row-inline {
+  margin: 10px 0 6px 0;
+  gap: 14px;
+  align-items: center;
+  font-size: 15px;
+}
+
+.rb-modal-content .employee-selection {
+  margin: 12px 18px;
+  border: 1px solid #e2efe2;
+  background: #ffffff;
+  padding: 12px;
+  border-radius: 8px;
+  box-shadow: 0 6px 20px rgba(10, 10, 10, 0.03);
+}
+
+.rb-modal-content .employee-selection .employee-search input[type="text"] {
+  padding: 10px 12px;
+  min-height: 40px;
+  font-size: 14px;
+}
+
+.rb-modal-content .employee-selected-chips {
+  margin-bottom: 12px;
+  gap: 10px;
+}
+.rb-modal-content .employee-chip {
+  padding: 6px 10px;
+  font-size: 13px;
+}
+
+.rb-modal-content .participant-list-inline {
+  max-height: 220px;
+  margin-top: 6px;
+  padding: 6px;
+  border-radius: 6px;
+  border: 1px solid #f1f1f1;
+  background: #fafafa;
+}
+
+.rb-modal-content .participant-list-inline .participant-row:hover {
+  background: #fff;
+  transform: none;
+}
+.rb-modal-content .participant-list-inline .participant-row.selected {
+  background: linear-gradient(180deg, #f7fff7, #eefcf0);
+  border-color: #d7efd7;
+}
+.rb-modal-content .participant-hint {
+  font-size: 13px;
+  color: #666;
+  margin-top: 6px;
+  margin-left: 4px;
+}
+
+.rb-modal-content .reimbursement-form-button {
+  padding: 0 18px 18px 18px;
+}
+
 @media (max-width: 768px) {
-  .filter-container > label,
-  .filter-container > select:not(.mobile-only-filter-row select),
-  .filter-container > input,
-  .filter-container > .search-btn,
-  .filter-container > .apply-btn:not(.mobile-only-filter-row .apply-btn) {
-    display: none !important;
+  .rb-modal-content .employee-selection {
+    margin: 10px 12px;
+    padding: 10px;
   }
-
-  .mobile-only-filter-row {
-    display: flex;
-    gap: 12px;
-    align-items: center;
-    margin-top: 8px;
+  .rb-modal-content .participant-list-inline {
+    max-height: 160px;
   }
-
-  .mobile-only-filter-row select {
-    padding: 14px 16px;
-    border: 1.5px solid #ccc;
-    border-radius: 12px;
-    font-size: 16px;
+  .rb-modal-content .employee-selection .employee-search input[type="text"] {
+    min-height: 42px;
   }
-
-  .mobile-only-filter-row .apply-btn {
-    padding: 14px 22px;
-    font-size: 15px;
-    margin-top: -2px;
-    font-weight: 600;
-    border-radius: 12px;
-    background: #79c42b;
-    color: white;
-    white-space: nowrap;
+  .rb-modal-content .employee-chip {
+    font-size: 12px;
+    padding: 6px 8px;
   }
 }
 
-@media (min-width: 769px) {
-  .mobile-only-filter-row {
-    display: none !important;
+.rb-modal-content .participant-row-inline input[type="radio"]:focus,
+.rb-modal-content .participant-list-inline input[type="checkbox"]:focus {
+  outline: 3px solid rgba(121, 196, 43, 0.12);
+  outline-offset: 2px;
+}
+
+.rb-modal-content .employee-selection {
+  display: none;
+  transition: all 0.18s ease;
+  will-change: opacity, transform;
+  opacity: 0;
+  transform: translateY(-6px);
+}
+
+.rb-modal-content.show-participants .employee-selection,
+.rb-modal-content.participant-visible .employee-selection {
+  display: block;
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.rb-modal-content:has(input[name="participant"][value="group"]:checked)
+  .employee-selection {
+  display: block;
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.rb-modal-content.transport-claim.subtype-selected .employee-selection {
+  display: block;
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.rb-modal-content:has(.rb-tab.active[data-claim="Transportation"])
+  .employee-selection,
+.rb-modal-content:has(.transport-claim .sub-tab.active) .employee-selection {
+  display: block;
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.claim-main-row {
+  background: #fff;
+}
+
+.claim-line-row {
+  background: #fbfdff;
+  border-top: 1px solid #eef6ff;
+}
+
+.claim-main-row > td button {
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  padding: 2px 6px;
+  background: transparent;
+  cursor: pointer;
+}
+
+@media (max-width: 640px) {
+  .rb-modal-content {
+    width: 94%;
+    min-width: auto;
+    min-height: 420px;
+    max-height: 88vh;
   }
+}
+
+.rb-modal-content .participant-list-inline {
+  max-height: calc(80vh - 220px);
+  overflow-y: auto;
+}
+
+.rb-modal-content img,
+.rb-modal-content iframe,
+.rb-modal-content .attachment-wrapper,
+.rb-modal-content .file-links {
+  max-width: 100%;
+}
+
+.rb-modal-content textarea,
+.rb-modal-content input[type="text"],
+.rb-modal-content input[type="number"],
+.rb-modal-content select {
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.rb-modal-content .reimbursement-form-button {
+  position: relative;
+  z-index: 4;
+}
+
+.rb-modal-content .employee-selection {
+  transform-origin: top center;
+}
+
+.sub-tabs.show-participants ~ .employee-selection,
+.sub-tabs.participant-visible ~ .employee-selection {
+  display: block;
+  opacity: 1;
+}
+
+.rb-modal-content[style] {
+  max-height: 80vh !important;
+  overflow-y: auto !important;
+}
+
+@media (max-width: 768px) {
+  .rb-modal-content {
+    max-height: 88vh !important;
+    min-height: 420px;
+    padding-bottom: 12px;
+  }
+  .rb-modal-content .participant-list-inline {
+    max-height: calc(88vh - 260px);
+  }
+  .rb-modal-content .employee-selection {
+    margin: 10px 12px;
+    padding: 10px;
+  }
+}
+
+.rb-modal-content .participant-row-inline input[type="radio"]:focus,
+.rb-modal-content .participant-list-inline input[type="checkbox"]:focus {
+  outline: 3px solid rgba(121, 196, 43, 0.12);
+  outline-offset: 2px;
+}
+
+.reimbursement-table th,
+.reimbursement-table td,
+.rb-sub-table th,
+.rb-sub-table td {
+  vertical-align: middle;
+  padding: 4px;
+}
+
+.reimbursement-table th:nth-child(3) {
+  width: 60px;
+}
+
+.action-icon,
+.edit-icon,
+.delete-icon,
+.eye-icon,
+.attachments-btn,
+.attachments-btn > svg {
+  vertical-align: middle;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.employee-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 14px;
+  cursor: pointer;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.04);
+  background: transparent;
+}
+
+.empId-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 180px;
+}
+.emp-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  text-align: left;
+}
+
+.rb-sub-container {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.rb-sub-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.rb-modal {
+  align-items: center;
+  padding: 20px;
+  box-sizing: border-box;
+}
+
+.claim-form-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 18px;
+}
+
+.purpose-cell {
+  max-width: 320px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.purpose-cell[title]:hover {
+  white-space: normal;
+  overflow: visible;
+  background: white;
+  z-index: 20;
+  padding: 8px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.12);
+  border-radius: 6px;
+}
+
+.rb-status-dropdown {
+  padding: 6px 8px;
+  border-radius: 6px;
+  min-width: 110px;
+  vertical-align: middle;
+}
+
+.reimbursement-table tbody tr,
+.rb-sub-table tbody tr {
+  transition: background 0.12s ease;
+}
+
+@media (max-width: 768px) {
+  .rb-modal-content {
+    width: 94%;
+    min-width: auto;
+    padding: 14px;
+  }
+  .employee-row {
+    padding: 12px 10px;
+    gap: 8px;
+  }
+  .purpose-cell {
+    max-width: 100%;
+    white-space: normal;
+  }
+  .reimbursement-table-scroll {
+    height: auto;
+  }
+}
+
+.ps-root {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial;
+  color: #222;
+}
+
+.ps-mode-toggle {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  margin-top: 6px;
+}
+
+.ps-mode-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.ps-mode-label input[type="radio"] {
+  width: 16px;
+  height: 16px;
+  accent-color: #79c42b;
+}
+
+.ps-mode-text {
+  font-weight: 600;
+}
+
+.ps-hint {
+  margin-top: 8px;
+  color: #555;
+  font-size: 13px;
+}
+
+.ps-chips {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+}
+
+.ps-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: #fff;
+  border: 1px solid #e6e6e6;
+  padding: 6px 10px;
+  border-radius: 20px;
+  cursor: pointer;
+  transition: all 0.12s ease;
+  box-shadow: 0 0 0 rgba(0, 0, 0, 0);
+}
+
+.ps-chip:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.04);
+}
+
+.ps-chip .ps-chip-name {
+  font-weight: 700;
+  color: #222;
+}
+
+.ps-chip .ps-chip-id {
+  font-size: 12px;
+  color: #777;
+}
+
+.ps-chip .ps-chip-x {
+  font-size: 12px;
+  color: #b00;
+  margin-left: 6px;
+}
+
+.ps-search-row {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.ps-search-input {
+  flex: 1;
+  padding: 8px 10px;
+  border-radius: 6px;
+  border: 1px solid #dcdcdc;
+  background: #fff;
+  outline: none;
+  font-size: 14px;
+}
+
+.ps-search-input:focus {
+  border-color: #79c42b;
+  box-shadow: 0 0 0 3px rgba(121, 196, 43, 0.08);
+}
+
+.ps-search-btn {
+  padding: 8px 12px;
+  border-radius: 6px;
+  border: 0;
+  background: #79c42b;
+  color: #fff;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.ps-list {
+  display: flex;
+  flex-direction: row;
+  gap: 8px;
+  margin-top: 12px;
+  overflow-x: auto;
+  padding-bottom: 6px;
+  align-items: flex-start;
+}
+
+.ps-item {
+  min-width: 200px;
+  max-width: 320px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px;
+  border-radius: 8px;
+  border: 1px solid #f1f1f1;
+  background: #fff;
+  cursor: pointer;
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+}
+
+.ps-item:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.06);
+}
+
+.ps-item.selected {
+  border: 1px solid #79c42b;
+  background: linear-gradient(180deg, #f7fff7, #eefcf0);
+}
+
+.ps-item-top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ps-item-name {
+  font-weight: 800;
+  color: #222;
+  flex: 1;
+}
+
+.ps-item-id {
+  font-size: 12px;
+  color: #666;
+  white-space: nowrap;
+}
+
+.ps-item-meta {
+  font-size: 12px;
+  color: #666;
+}
+
+.ps-item-action {
+  font-size: 13px;
+  color: #444;
+  font-weight: 700;
+}
+
+.ps-item-action.sel {
+  color: #0b6620;
+}
+
+.ps-loading {
+  padding: 12px;
+  color: #666;
+}
+.ps-empty {
+  padding: 12px;
+  color: #666;
+}
+.ps-error {
+  margin-top: 8px;
+  color: red;
+  font-size: 13px;
+}
+
+/* Row action container */
+.row-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end; /* keep buttons aligned to the right of the card */
+  align-items: center;
+  margin-top: 12px;
+  box-sizing: border-box;
+}
+
+/* Base style for both action buttons */
+.row-actions .remove-row-btn,
+.row-actions .insert-row-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-width: 92px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  transition: transform 120ms ease, box-shadow 120ms ease,
+    background-color 120ms ease;
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.03);
+  white-space: nowrap;
+  user-select: none;
+  box-sizing: border-box;
+}
+
+/* Insert (positive) button — filled green */
+.row-actions .insert-row-btn {
+  background: #79c42b; /* your brand green */
+  color: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0); /* no visible border */
+}
+
+/* Remove (negative) button — subtle outline red */
+.row-actions .remove-row-btn {
+  background: transparent;
+  color: #d32f2f;
+  border: 1px solid rgba(211, 47, 47, 0.14);
+}
+
+/* Hover / active states */
+.row-actions .insert-row-btn:hover {
+  transform: translateY(-1px);
+  filter: brightness(0.96);
+  box-shadow: 0 6px 18px rgba(34, 110, 29, 0.12);
+}
+.row-actions .remove-row-btn:hover {
+  transform: translateY(-1px);
+  background: rgba(211, 47, 47, 0.06);
+  box-shadow: 0 6px 18px rgba(211, 47, 47, 0.06);
+}
+
+/* Focus styles (keyboard access) */
+.row-actions .insert-row-btn:focus,
+.row-actions .remove-row-btn:focus {
+  outline: none;
+  box-shadow: 0 0 0 4px rgba(0, 70, 140, 0.08); /* soft focus ring */
+}
+
+/* Disabled state */
+.row-actions .insert-row-btn:disabled,
+.row-actions .remove-row-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+/* Smaller footprint on really narrow containers */
+.row-actions .insert-row-btn.small,
+.row-actions .remove-row-btn.small {
+  min-width: 72px;
+  padding: 6px 8px;
+  font-size: 13px;
+  border-radius: 6px;
+}
+
+/* Mobile: stack actions full width (improves tappability) */
+@media (max-width: 640px) {
+  .row-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .row-actions .remove-row-btn,
+  .row-actions .insert-row-btn {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+/* Optional: slightly different style when inside a 'main-row' or 'child-row' */
+.row-item.main-row .insert-row-btn {
+  background: #4ea11a; /* slightly darker green for main row */
+}
+.row-item.child-row .remove-row-btn {
+  border-color: rgba(211, 47, 47, 0.18);
+}
+
+/* Total display after rows */
+.rows-total {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 12px;
+  border-top: 1px dashed #e0e0e0;
+  margin-top: 12px;
+  background: #fafafa;
+  border-radius: 6px;
+  box-sizing: border-box;
+}
+
+.rows-total-left {
+  flex: 1 1 auto; /* reserved for future labels/notes */
+}
+
+.rows-total-right {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: flex-end;
+  min-width: 220px;
+}
+
+.rows-total-right label {
+  font-weight: 700;
+  color: #333;
+  margin-right: 6px;
+}
+
+.rows-total-value {
+  font-size: 16px;
+  font-weight: 800;
+  color: #00468c;
+}
+
+/* read-only total input style (for Outstation rows) */
+.total-readonly {
+  background-color: #f2f6f9;
+  color: #111;
+  pointer-events: none;
+}
+
+/* keep numeric inputs consistent */
+.row-header .field input[type="number"] {
+  -moz-appearance: textfield;
+}
+
+/* ensure spacing for total in the grid */
+.row-header .field label {
+  display: block;
+  margin-bottom: 6px;
 }

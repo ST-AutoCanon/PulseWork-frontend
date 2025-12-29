@@ -1,6 +1,12 @@
 "use client";
 
-import React, { useEffect, useState, useCallback, useRef } from "react";
+import React, {
+  useEffect,
+  useState,
+  useCallback,
+  useRef,
+  useMemo,
+} from "react";
 import { useRouter } from "next/navigation";
 import HolidayCalendar from "../HolidayCalendar/HolidayCalendar.client";
 import Notifications from "./Notifications.client";
@@ -16,7 +22,25 @@ import {
 import "./Topbar.css";
 import { useAuth } from "../../context/AuthProvider.client";
 
-const PARENT_ORIGIN = "http://localhost:1574";
+function parseAllowedOrigins(raw) {
+  return (raw || "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
+
+function resolveParentOrigin(allowedOrigins) {
+  if (!allowedOrigins || allowedOrigins.length === 0) return null;
+  try {
+    if (typeof document !== "undefined" && document.referrer) {
+      try {
+        const ref = new URL(document.referrer).origin;
+        if (allowedOrigins.includes(ref)) return ref;
+      } catch (e) {}
+    }
+  } catch (e) {}
+  return allowedOrigins[0] || null;
+}
 
 function MobileTopbar(props) {
   const {
@@ -121,8 +145,8 @@ export default function Topbar() {
   const { user, logout, hydrated } = useAuth();
 
   const [isMobile, setIsMobile] = useState(false);
-  const [userName, setUserName] = useState("User");
-  const [userRole, setUserRole] = useState("Role");
+  const [userName, setUserName] = useState(" ");
+  const [userRole, setUserRole] = useState(" ");
   const [notificationCount, setNotificationCount] = useState(0);
   const [showCalendar, setShowCalendar] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
@@ -132,6 +156,22 @@ export default function Topbar() {
 
   const API_KEY = process.env.NEXT_PUBLIC_API_KEY;
   const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
+
+  const allowedIframeOrigins = useMemo(
+    () => parseAllowedOrigins(process.env.NEXT_PUBLIC_ALLOWED_IFRAME_ORIGINS),
+    []
+  );
+
+  const parentOriginCandidate = useMemo(
+    () => resolveParentOrigin(allowedIframeOrigins),
+    [allowedIframeOrigins]
+  );
+
+  useEffect(() => {
+    try {
+      router?.prefetch?.("/");
+    } catch (e) {}
+  }, [router]);
 
   useEffect(() => {}, [hydrated, user]);
 
@@ -143,11 +183,11 @@ export default function Topbar() {
   useEffect(() => {
     if (!hydrated) return;
     if (user) {
-      setUserName(user.name || "User");
-      setUserRole(user.role || "Role");
+      setUserName(user.name || " ");
+      setUserRole(user.role || " ");
     } else {
-      setUserName("User");
-      setUserRole("Role");
+      setUserName(" ");
+      setUserRole(" ");
     }
   }, [hydrated, user]);
 
@@ -266,7 +306,9 @@ export default function Topbar() {
           headers: { "x-api-key": API_KEY || "", "x-employee-id": meId || "0" },
         });
         setOrgName(
-          resp?.data?.Name ? String(resp.data.Name) : "Unknown Organization"
+          resp?.data?.subdomain
+            ? String(resp.data.subdomain)
+            : "Unknown Organization"
         );
       } catch {
         setOrgName("Unknown Organization");
@@ -363,28 +405,13 @@ export default function Topbar() {
 
   const handleLogout = async () => {
     try {
-      await logout({ redirect: false });
+      router.replace("/");
+      await logout({ redirect: true, reason: "user-initiated" });
     } catch (err) {
       console.warn("logout error (child)", err);
-    }
-
-    try {
-      if (
-        typeof window !== "undefined" &&
-        window.parent &&
-        window.parent !== window.self
-      ) {
-        window.parent.postMessage({ type: "child-logged-out" }, PARENT_ORIGIN);
-        return;
-      }
-    } catch (err) {
-      console.warn("Failed to postMessage to parent on logout", err);
-    }
-
-    try {
-      router.push("/");
-    } catch (err) {
-      window.location.href = "/";
+      try {
+        router.replace("/");
+      } catch (e) {}
     }
   };
 
@@ -426,7 +453,9 @@ export default function Topbar() {
 
       <div className="org-name-section">
         <div className="org-name-text">
-          <span>{String(orgName || "").toUpperCase()}</span>
+          {userRole !== "SuperAdmin" && (
+            <span>{String(orgName || "").toUpperCase()}</span>
+          )}
         </div>
       </div>
 
@@ -482,6 +511,16 @@ export default function Topbar() {
           tabIndex={0}
           onClick={handleLogout}
           onKeyDown={(e) => e.key === "Enter" && handleLogout()}
+          onMouseEnter={() => {
+            try {
+              router?.prefetch?.("/");
+            } catch {}
+          }}
+          onTouchStart={() => {
+            try {
+              router?.prefetch?.("/");
+            } catch {}
+          }}
         >
           <FontAwesomeIcon icon={faPowerOff} className="fa-icon" />
         </div>

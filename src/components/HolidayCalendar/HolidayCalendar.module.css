@@ -97,11 +97,11 @@
 }
 
 .optionalDot {
-  background-color: #d32f2f;
+  background-color: #9090fd;
 }
 
 .companyDot {
-  background-color: #9090fd;
+  background-color: #79c42b;
 }
 
 .calendarWrapper :global(.react-calendar__tile--active) {
@@ -140,11 +140,11 @@
 }
 
 .colorBox.optional {
-  background-color: #d32f2f;
+  background-color: #9090fd;
 }
 
 .colorBox.company {
-  background-color: #9090fd;
+  background-color: #79c42b;
 }
 
 .closeBtn {

@@ -67,6 +67,7 @@ const Profile = ({ onClose, notificationId = null }) => {
   const API_KEY = process.env.NEXT_PUBLIC_API_KEY;
   const BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
   const employeeId = user?.employeeId ?? null;
+  const orgId = user?.orgId ?? user?.raw?.org_id ?? null;
 
   const normalizeInputUrl = (maybe) => {
     if (maybe === undefined || maybe === null) return null;
@@ -153,6 +154,7 @@ const Profile = ({ onClose, notificationId = null }) => {
       withCredentials: true,
       headers: {
         "x-api-key": API_KEY ?? "",
+        "x-org-id": orgId ?? "",
         ...(employeeId ? { "x-employee-id": employeeId } : {}),
       },
       responseType: "blob",
@@ -196,6 +198,7 @@ const Profile = ({ onClose, notificationId = null }) => {
         withCredentials: true,
         headers: {
           "x-api-key": API_KEY ?? "",
+          "x-org-id": orgId ?? "",
           ...(employeeId ? { "x-employee-id": employeeId } : {}),
         },
       });
@@ -226,6 +229,7 @@ const Profile = ({ onClose, notificationId = null }) => {
         withCredentials: true,
         headers: {
           "x-api-key": API_KEY ?? "",
+          "x-org-id": orgId ?? "",
           ...(employeeId ? { "x-employee-id": employeeId } : {}),
         },
       });
@@ -278,6 +282,7 @@ const Profile = ({ onClose, notificationId = null }) => {
           withCredentials: true,
           headers: {
             "x-api-key": API_KEY ?? "",
+            "x-org-id": orgId ?? "",
             ...(employeeId ? { "x-employee-id": employeeId } : {}),
           },
         }
@@ -312,6 +317,7 @@ const Profile = ({ onClose, notificationId = null }) => {
           withCredentials: true,
           headers: {
             "x-api-key": API_KEY ?? "",
+            "x-org-id": orgId ?? "",
             "Content-Type": "application/json",
             ...(employeeId ? { "x-employee-id": employeeId } : {}),
           },
@@ -358,6 +364,7 @@ const Profile = ({ onClose, notificationId = null }) => {
             withCredentials: true,
             headers: {
               "x-api-key": API_KEY ?? "",
+              "x-org-id": orgId ?? "",
               ...(employeeId ? { "x-employee-id": employeeId } : {}),
             },
           }

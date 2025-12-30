@@ -248,9 +248,7 @@
   position: relative;
 }
 
-/* --------------------------
-   Single-line row header CSS
-   -------------------------- */
+/* Single-line row header CSS */
 
 /* Row card base (keep existing card styles in your file) */
 .row-item {
@@ -466,7 +464,7 @@
   background-color: #ffe5d2;
 }
 
-*/ .edit-icon,
+.edit-icon,
 .delete-icon,
 .md-edit,
 .md-delete {

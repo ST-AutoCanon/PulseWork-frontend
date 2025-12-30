@@ -21,6 +21,7 @@ export default function Notifications({
   const { setActiveContent } = useContext(ContentContext);
   const { user } = useAuth();
   const meId = user?.employeeId ?? user?.employee_id ?? user?.id ?? null;
+  const orgId = user?.orgId ?? user?.raw?.org_id ?? null;
 
   function getHeaders() {
     const headers = {};
@@ -30,6 +31,7 @@ export default function Notifications({
     if (meId) {
       headers["x-employee-id"] = meId;
     }
+    if (orgId) headers["x-org-id"] = orgId;
     return headers;
   }
 

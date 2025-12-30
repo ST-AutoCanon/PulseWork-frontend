@@ -1,5 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // (temporarily removed optimization overrides)
   async rewrites() {
     return [
       {
@@ -53,6 +54,42 @@ const nextConfig = {
         tls: false,
         encoding: require.resolve("encoding"),
       };
+      const { Compilation } = require("webpack");
+      config.plugins = config.plugins || [];
+      config.plugins.push({
+        apply: (compiler) => {
+          compiler.hooks.thisCompilation.tap("DumpCssPlugin", (compilation) => {
+            const stage = Compilation.PROCESS_ASSETS_STAGE_ADDITIONS || 0;
+            compilation.hooks.processAssets.tap(
+              { name: "DumpCssPlugin", stage },
+              (assets) => {
+                try {
+                  const fs = require("fs");
+                  const path = require("path");
+                  const outDir =
+                    compiler.options &&
+                    compiler.options.output &&
+                    compiler.options.output.path
+                      ? compiler.options.output.path
+                      : path.join(process.cwd(), ".next");
+                  const debugDir = path.join(outDir, "debug-css");
+                  if (!fs.existsSync(debugDir))
+                    fs.mkdirSync(debugDir, { recursive: true });
+                  for (const name of Object.keys(assets)) {
+                    if (name.endsWith(".css")) {
+                      const src = assets[name].source();
+                      fs.writeFileSync(
+                        path.join(debugDir, name + ".premin.css"),
+                        src
+                      );
+                    }
+                  }
+                } catch (e) {}
+              }
+            );
+          });
+        },
+      });
     }
     return config;
   },

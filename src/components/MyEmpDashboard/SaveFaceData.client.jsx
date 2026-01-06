@@ -10,6 +10,7 @@ export default function SaveFaceData({ onClose }) {
   const { user, hydrated } = useAuth();
   const employeeIdFromAuth =
     user?.employeeId ?? user?.employee_id ?? user?.id ?? null;
+  const orgId = user?.orgId ?? user?.raw?.org_id ?? null;
 
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
@@ -100,6 +101,7 @@ export default function SaveFaceData({ onClose }) {
       const headers = {
         "x-api-key": API_KEY,
         "x-employee-id": employeeIdFromAuth || "",
+        "x-org-id": orgId || "",
       };
       const resp = await fetch(
         `${BACKEND_URL.replace(/\/$/, "")}/api/face/check/${encodeURIComponent(
@@ -430,6 +432,7 @@ export default function SaveFaceData({ onClose }) {
         "Content-Type": "application/json",
         "x-api-key": API_KEY,
         "x-employee-id": employeeIdFromAuth || "",
+        "x-org-id": orgId || "",
       };
 
       const resp = await fetch(

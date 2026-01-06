@@ -33,7 +33,7 @@ function normalizeUploadUrl(src, backendBase) {
   }
 }
 
-async function fetchProtectedBlobUrl(src, apiKey, backendBase) {
+async function fetchProtectedBlobUrl(src, apiKey, backendBase, orgId) {
   if (!src) return null;
   if (src.startsWith("blob:") || src.startsWith("data:")) return src;
 
@@ -45,7 +45,7 @@ async function fetchProtectedBlobUrl(src, apiKey, backendBase) {
   try {
     const res = await axios.get(normalized, {
       responseType: "blob",
-      headers: { "x-api-key": apiKey || "" },
+      headers: { "x-api-key": apiKey || "", "x-org-id": orgId || "" },
       withCredentials: true,
     });
     const blob = res.data;
@@ -58,7 +58,12 @@ async function fetchProtectedBlobUrl(src, apiKey, backendBase) {
   }
 }
 
-async function replaceUploadUrlsInHtml(html = "", apiKey, backendBase) {
+async function replaceUploadUrlsInHtml(
+  html = "",
+  apiKey,
+  backendBase,
+  orgId = null
+) {
   if (!html || typeof html !== "string") return html;
 
   const uploadRegex =
@@ -73,7 +78,12 @@ async function replaceUploadUrlsInHtml(html = "", apiKey, backendBase) {
     unique.map(async (m) => {
       let candidate = m;
       candidate = normalizeUploadUrl(m, backendBase);
-      const blob = await fetchProtectedBlobUrl(candidate, apiKey, backendBase);
+      const blob = await fetchProtectedBlobUrl(
+        candidate,
+        apiKey,
+        backendBase,
+        orgId
+      );
       if (blob) replacements[m] = blob;
       else replacements[m] = candidate;
     })
@@ -132,6 +142,7 @@ const LetterHead = () => {
   const headers = {
     "x-api-key": API_KEY,
     "x-employee-id": meId,
+    "x-org-id": orgId,
   };
 
   const [alertModal, setAlertModal] = useState({
@@ -550,7 +561,8 @@ const LetterHead = () => {
             const blob = await fetchProtectedBlobUrl(
               normalized,
               API_KEY,
-              BACKEND_URL
+              BACKEND_URL,
+              orgId
             );
             if (blob) resolved[field] = blob;
             else resolved[field] = normalized;
@@ -559,7 +571,8 @@ const LetterHead = () => {
             const blob = await fetchProtectedBlobUrl(
               normalized,
               API_KEY,
-              BACKEND_URL
+              BACKEND_URL,
+              orgId
             );
             if (blob) resolved[field] = blob;
             else resolved[field] = normalized;
@@ -577,7 +590,8 @@ const LetterHead = () => {
         contentHtml = await replaceUploadUrlsInHtml(
           contentHtml,
           API_KEY,
-          BACKEND_URL
+          BACKEND_URL,
+          orgId
         );
       }
 
@@ -611,7 +625,8 @@ const LetterHead = () => {
             const blob = await fetchProtectedBlobUrl(
               normalized,
               API_KEY,
-              BACKEND_URL
+              BACKEND_URL,
+              orgId
             );
             headerBlobRef.current = blob || normalized;
           } else {
@@ -633,7 +648,8 @@ const LetterHead = () => {
             const blobF = await fetchProtectedBlobUrl(
               normalizedF,
               API_KEY,
-              BACKEND_URL
+              BACKEND_URL,
+              orgId
             );
             footerBlobRef.current = blobF || normalizedF;
           } else {
@@ -656,7 +672,8 @@ const LetterHead = () => {
           const blob = await fetchProtectedBlobUrl(
             normalized,
             API_KEY,
-            BACKEND_URL
+            BACKEND_URL,
+            orgId
           );
           headerBlobRef.current = blob || normalized;
         }
@@ -670,7 +687,8 @@ const LetterHead = () => {
           const blob = await fetchProtectedBlobUrl(
             normalized,
             API_KEY,
-            BACKEND_URL
+            BACKEND_URL,
+            orgId
           );
           footerBlobRef.current = blob || normalized;
         }
@@ -822,7 +840,8 @@ const LetterHead = () => {
           const blob = await fetchProtectedBlobUrl(
             normalized,
             API_KEY,
-            BACKEND_URL
+            BACKEND_URL,
+            orgId
           );
           setWatermarkBlobUrl(blob || normalized);
           setWatermarkPropsState(wp || watermarkPropsState);
@@ -1345,6 +1364,32 @@ const LetterHead = () => {
       ...prev,
       body: contentRef.current?.innerHTML || "",
     }));
+  };
+
+  const escapeRegExp = (s) => (s || "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+  const updateContentWithFormData = (fieldName, value) => {
+    if (!contentRef.current) return;
+    try {
+      const html = contentRef.current.innerHTML || "";
+      const camel = fieldName.replace(/_([a-z])/g, (m, p) => p.toUpperCase());
+      const patterns = [
+        new RegExp(`{{\\s*${escapeRegExp(fieldName)}\\s*}}`, "g"),
+        new RegExp(`{{\\s*${escapeRegExp(camel)}\\s*}}`, "g"),
+        new RegExp(`\\[\\[\\s*${escapeRegExp(fieldName)}\\s*\\]\\]`, "g"),
+      ];
+      let out = html;
+      patterns.forEach((p) => (out = out.replace(p, value || "")));
+      if (out !== html) {
+        contentRef.current.innerHTML = out;
+        setFormData((prev) => ({
+          ...prev,
+          body: contentRef.current.innerHTML,
+        }));
+      }
+    } catch (e) {
+      console.warn("updateContentWithFormData failed", e);
+    }
   };
 
   const waitForImagesToLoad = (container, timeout = 7000) => {

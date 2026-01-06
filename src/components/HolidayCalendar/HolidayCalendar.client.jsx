@@ -100,6 +100,10 @@ const HolidayCalendar = ({ closeCalendar }) => {
       (h) => new Date(h.date).toDateString() === new Date(d).toDateString()
     );
 
+  const hasOptionalHolidays = holidays.some((h) => h.type === "Optional");
+  const hasCompanyHolidays = holidays.some((h) => h.type === "Company");
+  const showLegend = hasOptionalHolidays && hasCompanyHolidays;
+
   const tileClassName = ({ date: tileDate, view }) => {
     if (view !== "month") return null;
     const holiday = getHoliday(tileDate);
@@ -445,16 +449,18 @@ const HolidayCalendar = ({ closeCalendar }) => {
         <Tooltip id="holiday-tooltip" place="top" />
         <Tooltip id="admin-tooltip" place="top" />
 
-        <div className={styles.holidayLegendTop}>
-          <div className={styles.legendItem}>
-            <div className={`${styles.colorBox} ${styles.optional}`} />
-            <span>Optional</span>
+        {showLegend && (
+          <div className={styles.holidayLegendTop}>
+            <div className={styles.legendItem}>
+              <div className={`${styles.colorBox} ${styles.optional}`} />
+              <span>Optional</span>
+            </div>
+            <div className={styles.legendItem}>
+              <div className={`${styles.colorBox} ${styles.company}`} />
+              <span>Company</span>
+            </div>
           </div>
-          <div className={styles.legendItem}>
-            <div className={`${styles.colorBox} ${styles.company}`} />
-            <span>Company</span>
-          </div>
-        </div>
+        )}
       </div>
       {role === "Admin" && (
         <div className={styles.adminButtons}>
@@ -509,6 +515,10 @@ const HolidayCalendar = ({ closeCalendar }) => {
             aria-hidden
           >
             <BsFileEarmarkSpreadsheet size={18} />
+          </div>
+          <div className={styles.templateNote}>
+            Template contains an INSTRUCTIONS sheet — use only "Company" or
+            "Optional" in the Type column.
           </div>
         </div>
       )}

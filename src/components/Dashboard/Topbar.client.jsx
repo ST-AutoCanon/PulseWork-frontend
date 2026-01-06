@@ -176,8 +176,10 @@ export default function Topbar() {
   useEffect(() => {}, [hydrated, user]);
 
   const meId = user?.employeeId ?? user?.id ?? null;
+  const orgId = user?.orgId ?? user?.raw?.org_id ?? null;
+
   const headers = meId
-    ? { "x-api-key": API_KEY || "", "x-employee-id": meId }
+    ? { "x-api-key": API_KEY || "", "x-employee-id": meId, "x-org-id": orgId }
     : { "x-api-key": API_KEY || "" };
 
   useEffect(() => {
@@ -193,10 +195,19 @@ export default function Topbar() {
 
   const fetchNotificationCount = useCallback(() => {
     if (!hydrated || !BACKEND_URL || !meId) return;
+
+    const headersLocal = { "x-api-key": API_KEY || "" };
+    if (meId) headersLocal["x-employee-id"] = meId;
+    if (orgId) headersLocal["x-org-id"] = orgId;
+
+    const url =
+      `${BACKEND_URL.replace(/\/+$/, "")}/api/notifications` +
+      (orgId ? `?orgId=${encodeURIComponent(orgId)}` : "");
+
     axios
-      .get(`${BACKEND_URL}/api/notifications`, {
+      .get(url, {
         withCredentials: true,
-        headers,
+        headers: headersLocal,
       })
       .then((res) => {
         const list = res?.data?.notifications || res?.data?.message || [];
@@ -204,8 +215,10 @@ export default function Topbar() {
           Array.isArray(list) ? list.length : list?.length || 0
         );
       })
-      .catch((err) => console.error("Error fetching notification count", err));
-  }, [BACKEND_URL, meId, headers, hydrated]);
+      .catch((err) => {
+        console.error("Error fetching notification count", err);
+      });
+  }, [BACKEND_URL, API_KEY, meId, orgId, hydrated]);
 
   useEffect(() => {
     if (!hydrated) return;

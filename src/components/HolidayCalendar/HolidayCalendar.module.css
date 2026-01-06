@@ -8,7 +8,7 @@
 }
 
 .admin {
-  height: 400px;
+  height: 500px;
 }
 
 .calendarWrapper {
@@ -97,11 +97,11 @@
 }
 
 .optionalDot {
-  background-color: #d32f2f;
+  background-color: #9090fd;
 }
 
 .companyDot {
-  background-color: #9090fd;
+  background-color: #79c42b;
 }
 
 .calendarWrapper :global(.react-calendar__tile--active) {
@@ -140,17 +140,17 @@
 }
 
 .colorBox.optional {
-  background-color: #d32f2f;
+  background-color: #9090fd;
 }
 
 .colorBox.company {
-  background-color: #9090fd;
+  background-color: #79c42b;
 }
 
 .closeBtn {
   position: absolute;
-  top: 8px;
-  right: 8px;
+  top: 4px;
+  right: 2px;
   border: none;
   background: transparent;
   cursor: pointer;
@@ -158,19 +158,22 @@
   z-index: 10;
 }
 
+.closeBtn:hover {
+  color: #d32f2f;
+}
+
 .adminButtons {
   position: absolute;
   bottom: 8px;
-  top: 85%;
+  top: 65%;
   left: 50%;
   transform: translateX(-50%);
   display: flex;
-  gap: 8px;
+  gap: 4px;
   align-items: center;
   flex-wrap: wrap;
   justify-content: center;
-  width: calc(100% - 20px);
-  padding: 6px;
+  width: 100%;
   box-sizing: border-box;
   background: transparent;
 }
@@ -212,6 +215,13 @@
   font-size: 13px;
   margin-top: 6px;
   color: #333;
+}
+.templateNote {
+  width: 100%;
+  text-align: center;
+  font-size: 12px;
+  margin-top: 4px;
+  color: #555;
 }
 .errorMessageForUploadfile {
   width: 100%;
@@ -293,11 +303,11 @@
   }
 
   .optionalDot {
-    background-color: #d32f2f;
+    background-color: #9090fd;
   }
 
   .companyDot {
-    background-color: #9090fd;
+    background-color: #79c42b;
   }
 
   .calendarWrapper :global(.react-calendar__tile--active),

@@ -31,7 +31,10 @@ export default function Notifications({
     if (meId) {
       headers["x-employee-id"] = meId;
     }
-    if (orgId) headers["x-org-id"] = orgId;
+
+    if (orgId) {
+      headers["x-org-id"] = orgId;
+    }
     return headers;
   }
 
@@ -77,7 +80,7 @@ export default function Notifications({
       mounted = false;
       controller.abort();
     };
-  }, [visible, meId]);
+  }, [visible, meId, orgId]);
 
   useEffect(() => {
     const onExternalMarkRead = (e) => {

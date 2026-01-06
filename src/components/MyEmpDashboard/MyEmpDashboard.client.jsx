@@ -16,6 +16,7 @@ import { useAuth } from "../../context/AuthProvider.client";
 export default function MyEmpDashboard() {
   const { user } = useAuth();
   const meId = user?.employeeId ?? user?.employee_id ?? user?.id ?? null;
+  const orgId = user?.orgId ?? user?.raw?.org_id ?? null;
   const API_KEY = process.env.NEXT_PUBLIC_API_KEY;
   const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
 
@@ -25,6 +26,7 @@ export default function MyEmpDashboard() {
     const headers = {};
     if (API_KEY) headers["x-api-key"] = API_KEY;
     if (meId) headers["x-employee-id"] = meId;
+    if (orgId) headers["x-org-id"] = orgId;
     return headers;
   }
 

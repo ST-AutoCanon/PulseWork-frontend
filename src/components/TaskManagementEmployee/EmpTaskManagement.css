@@ -890,3 +890,44 @@
     scrollbar-width: none;
   }
 }
+
+
+/* Wrapper for input + mic button */
+.emp-task-mic-input-wrapper {
+  position: relative; /* Allows absolute positioning of mic button */
+  display: flex;
+  flex: 1; /* Takes full width in flex container */
+}
+
+/* Input styling (add padding to make space for mic button) */
+
+
+
+/* Microphone button */
+
+
+/* Listening state: Red color + pulsing animation */
+.emp-task-mic-button.listening {
+  color: #ef4444; /* Red when active */
+  animation: pulse 1.5s infinite ease-in-out;
+}
+
+/* Pulse animation keyframes */
+
+
+/* Chat input form (flex layout for input + send button) */
+.emp-task-chat-input {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+
+
+
+
+.emp-task-chat-input button[type="submit"]:disabled {
+  background-color: #d1d5db;
+  cursor: not-allowed;
+}

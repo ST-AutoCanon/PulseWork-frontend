@@ -1,3 +1,5 @@
+
+
 "use client";
 
 import React, { useState, useEffect, useMemo } from "react";
@@ -32,10 +34,24 @@ const SupervisorPlanViewerAdmin = () => {
   const [loadingHolidays, setLoadingHolidays] = useState(false);
   const [loadingLeaves, setLoadingLeaves] = useState(false);
   const [error, setError] = useState(null);
+
+  const defaultToCurrentWeek = true;
+
   const [alertModal, setAlertModal] = useState({
     isVisible: false,
     message: "",
   });
+
+  const reworkedParentIds = useMemo(() => {
+    const set = new Set();
+    tasks.forEach((t) => {
+      if (t.parent_task_id) {
+        set.add(t.parent_task_id);
+      }
+    });
+    return set;
+  }, [tasks]);
+
   const [configModal, setConfigModal] = useState({
     isVisible: false,
     freezeDaysSupervisor: "",
@@ -80,7 +96,6 @@ const SupervisorPlanViewerAdmin = () => {
             }))
           : [];
         setEmployees(empData);
-        setSelectedEmployee(empData[0]?.employee_id || null);
         setError(
           empData.length === 0 ? "No active employees available." : null
         );
@@ -173,29 +188,12 @@ const SupervisorPlanViewerAdmin = () => {
                 emp_status: validStatuses.includes(task.emp_status)
                   ? task.emp_status
                   : "not started",
-                week_id: Number(task.week_id),
+                week_id: task.week_id, // ← Keep as string "YYYY-WW"
                 project_id: task.project_id,
                 project_name: task.project_name,
               }))
             : [];
-        if (taskData.length > 0) {
-          const taskWeekIds = [...new Set(taskData.map((t) => t.week_id))].sort(
-            (a, b) => a - b
-          );
-          const currentWeek = getISOWeek(new Date());
-
-          if (defaultToCurrentWeek && selectedWeekId === null) {
-            setSelectedWeekId(
-              taskWeekIds.includes(currentWeek)
-                ? currentWeek
-                : taskWeekIds[taskWeekIds.length - 1]
-            );
-          } else if (selectedWeekId === null) {
-            setSelectedWeekId(taskWeekIds[taskWeekIds.length - 1]);
-          }
-        } else if (selectedWeekId === null) {
-          setSelectedWeekId(getISOWeek(new Date()));
-        }
+        setTasks(taskData);
         setError(null);
       } catch (err) {
         const errorMessage =
@@ -212,6 +210,33 @@ const SupervisorPlanViewerAdmin = () => {
 
     fetchTasks();
   }, [supervisorId, apiHeaders]);
+
+  // Auto-select week when tasks load
+  useEffect(() => {
+    if (tasks.length === 0 || selectedWeekId !== null) return;
+
+    const uniqueWeekIds = [...new Set(tasks.map((t) => t.week_id))].sort();
+    const currentWeekId = getWeekIdForDate(new Date());
+
+    const defaultWeek = defaultToCurrentWeek && uniqueWeekIds.includes(currentWeekId)
+      ? currentWeekId
+      : uniqueWeekIds[uniqueWeekIds.length - 1] || currentWeekId;
+
+    setSelectedWeekId(defaultWeek);
+  }, [tasks]);
+
+  // Auto-select first employee with tasks
+  useEffect(() => {
+    if (employees.length === 0 || selectedEmployee !== null) return;
+
+    const employeeIdsWithTasks = [...new Set(tasks.map((t) => t.employee_id))];
+    const preferred = employees.find((e) =>
+      employeeIdsWithTasks.includes(e.employee_id)
+    );
+    setSelectedEmployee(
+      preferred ? preferred.employee_id : employees[0]?.employee_id || null
+    );
+  }, [employees, tasks]);
 
   useEffect(() => {
     if (!selectedEmployee) return;
@@ -309,6 +334,7 @@ const SupervisorPlanViewerAdmin = () => {
       setLoadingConfig(false);
     }
   };
+
   const updateTaskField = (taskId, field, value) => {
     setTasks((prev) =>
       prev.map((task) => {
@@ -420,11 +446,12 @@ const SupervisorPlanViewerAdmin = () => {
               ?.trim()
               .toUpperCase(),
             emp_status: response.data.newTask.emp_status || "not started",
-            week_id: Number(response.data.newTask.week_id),
+            week_id: response.data.newTask.week_id, // ← Keep string
             project_id: response.data.newTask.project_id,
             project_name: response.data.newTask.project_name,
           };
           setTasks((prev) => [...prev, newTask]);
+
           const newTaskWeek = newTask.week_id;
           if (newTaskWeek && newTaskWeek !== selectedWeekId) {
             setSelectedWeekId(newTaskWeek);
@@ -448,6 +475,7 @@ const SupervisorPlanViewerAdmin = () => {
         return newPrev;
       });
 
+      // Refresh tasks – keep week_id as string
       const res = await axios.get(
         `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/weekly_task_supervisor`,
         { withCredentials: true, headers: apiHeaders, timeout: 10000 }
@@ -466,7 +494,7 @@ const SupervisorPlanViewerAdmin = () => {
               emp_status: validStatuses.includes(task.emp_status)
                 ? task.emp_status
                 : "not started",
-              week_id: Number(task.week_id),
+              week_id: task.week_id, // ← Keep string
               project_id: task.project_id,
               project_name: task.project_name,
             }))
@@ -482,13 +510,40 @@ const SupervisorPlanViewerAdmin = () => {
     setTimeout(() => setAlertModal({ isVisible: false, message: "" }), 5000);
   };
 
+  // Helper: "YYYY-WW" string
+  const getWeekIdForDate = (date) => {
+    const d = new Date(date);
+    if (isNaN(d.getTime())) return null;
+    const year = d.getFullYear();
+    const week = getISOWeek(d);
+    return `${year}-${String(week).padStart(2, "0")}`;
+  };
+
+  const parseWeekId = (weekId) => {
+    if (!weekId) return null;
+    const [year, week] = weekId.split("-").map(Number);
+    return { year, week };
+  };
+
+  // Correct week start calculation
+  const getWeekStartDate = (weekId) => {
+    if (!weekId || typeof weekId !== "string") return null;
+    if (!/^\d{4}-\d{2}$/.test(weekId)) return null;
+
+    const [year, week] = weekId.split("-").map(Number);
+    if (!year || !week || week < 1 || week > 53) return null;
+
+    const jan4 = new Date(year, 0, 4); // ISO anchor
+    return startOfISOWeek(addDays(jan4, (week - 1) * 7));
+  };
+
   const formatWeekId = (weekId) => {
-    if (weekId === null) return "N/A";
-    const currentYear = new Date().getFullYear();
-    const startDate = startOfISOWeek(new Date(currentYear, 0, 1));
-    const weekStart = new Date(
-      startDate.getTime() + (weekId - 1) * 7 * 24 * 60 * 60 * 1000
-    );
+    if (!weekId) return "N/A";
+
+    const weekStart = getWeekStartDate(weekId);
+    if (!weekStart || isNaN(weekStart.getTime())) {
+      return `Week ${weekId} (Invalid)`;
+    }
     const weekEnd = endOfISOWeek(weekStart);
     return `Week ${weekId} (${format(weekStart, "MMM d, yyyy")} - ${format(
       weekEnd,
@@ -496,10 +551,22 @@ const SupervisorPlanViewerAdmin = () => {
     )})`;
   };
 
-  const getWeekIdForDate = (date) => {
-    const taskDate = new Date(date);
-    return isNaN(taskDate.getTime()) ? null : getISOWeek(taskDate);
+  const generateWeekDays = () => {
+    if (!selectedWeekId) return [];
+
+    const weekStart = getWeekStartDate(selectedWeekId);
+    if (!weekStart || isNaN(weekStart.getTime())) return [];
+
+    return Array.from({ length: 7 }, (_, i) => {
+      const date = addDays(weekStart, i);
+      return {
+        dateStr: format(date, "yyyy-MM-dd"),
+        dateDisplay: format(date, "MMM d"),
+      };
+    });
   };
+
+  const weekDays = generateWeekDays();
 
   const statusColor = (status) => {
     switch (status) {
@@ -609,30 +676,14 @@ const SupervisorPlanViewerAdmin = () => {
   };
 
   const weekIds = useMemo(
-    () => [...new Set(tasks.map((t) => t.week_id))].sort((a, b) => a - b),
+    () => [...new Set(tasks.map((t) => t.week_id))].sort(),
     [tasks]
   );
+
   const currentWeekIndex = useMemo(
     () => weekIds.indexOf(selectedWeekId),
     [weekIds, selectedWeekId]
   );
-
-  const generateWeekDays = () => {
-    if (!selectedWeekId) return [];
-    const currentYear = new Date().getFullYear();
-    const weekStartDate = startOfISOWeek(new Date(currentYear, 0, 1));
-    const adjustedStart = addDays(weekStartDate, (selectedWeekId - 1) * 7);
-    const days = [];
-    for (let i = 0; i < 7; i++) {
-      const date = addDays(adjustedStart, i);
-      const dateStr = format(date, "yyyy-MM-dd");
-      const dateDisplay = format(date, "MMM d");
-      days.push({ dateStr, dateDisplay });
-    }
-    return days;
-  };
-
-  const weekDays = generateWeekDays();
 
   const tasksByDate = useMemo(() => {
     const map = {};
@@ -833,7 +884,6 @@ const SupervisorPlanViewerAdmin = () => {
                 onClick={goToPreviousWeek}
                 disabled={currentWeekIndex <= 0}
               >
-                {" "}
                 &lt;
               </button>
               <span className="supervisor-plan-admin-week-label">
@@ -844,7 +894,6 @@ const SupervisorPlanViewerAdmin = () => {
                 onClick={goToNextWeek}
                 disabled={currentWeekIndex >= weekIds.length - 1}
               >
-                {" "}
                 &gt;
               </button>
             </div>
@@ -886,7 +935,9 @@ const SupervisorPlanViewerAdmin = () => {
                           pendingReviewChanges[task.task_id] ||
                           task.sup_review_status;
                         const isFrozen =
-                          task.sup_review_status === "suspended_review";
+                          task.sup_review_status === "suspended_review" ||
+                          reworkedParentIds.has(task.task_id);
+
                         const showReviewSelect =
                           task.sup_review_status === "pending" &&
                           !pendingReviewChanges[task.task_id];
@@ -918,7 +969,7 @@ const SupervisorPlanViewerAdmin = () => {
                                           marginLeft: "8px",
                                         }}
                                       >
-                                        Arrow right {task.replacement_task}
+                                        → {task.replacement_task}
                                       </span>
                                     )}
                                   </>

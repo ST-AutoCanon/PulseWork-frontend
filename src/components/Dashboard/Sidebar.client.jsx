@@ -1,3 +1,5 @@
+
+
 "use client";
 
 import React, {
@@ -5,11 +7,11 @@ import React, {
   useState,
   useMemo,
   useRef,
-  useCallback,
 } from "react";
 import * as MdIcons from "react-icons/md";
 import { useAuth } from "../../context/AuthProvider.client";
 import "./Sidebar.css";
+
 
 import EmployeeDetails from "../EmployeeDetails/EmployeeDetails.client";
 import AddDepartment from "../AddDepartment/AddDepartment.client";
@@ -21,7 +23,6 @@ import LeaveRequest from "../LeaveQueries/LeaveRequest.client";
 import Profile from "../Profile/Profile.client";
 import MyDashboard from "../MyDashboard/MyDashboard.client";
 import MyEmpDashboard from "../MyEmpDashboard/MyEmpDashboard.client";
-import SalaryStatementWrapper from "../Salary_statement/SalaryStatementWrapper.client";
 import PayrollSummary from "../PayrollSummary/PayrollSummary.client";
 import Reimbursement from "../Reimbursement/Reimbursement.client";
 import RbAdmin from "../Reimbursement/RbAdmin.client";
@@ -29,31 +30,37 @@ import RbTeamLead from "../Reimbursement/RbTeamLead.client";
 import Assets from "../Assets/Assets.client";
 import Vendors from "../vendors/vendors.client";
 import Chat from "../Chat/ChatPage.client";
-import EmployeeLogin from "../EmployeeLogin/EmployeeLogin.client";
 import CreateOrganization from "../CreateOrganization/CreateOrganization.client";
-import TemplateBuilder from "../TemplateBuilder/TemplateBuilder.client";
-import LetterHead from "../letterHead/letterhead.client";
-import TaskManagement from "../TaskManagement/TaskManagement.client";
+import TaskManagement from "../TaskManagement/TaskManagement.client"; // Supervisor / Team view
 import TaskManagementEmployee from "../TaskManagementEmployee/EmpTaskManagement.client";
 import TaskManagementAdmin from "../TaskManagementAdmin/TaskManagementAdmin.client";
 import Report from "../Report/ReportPanel.client";
-import BuildTemplate from "../TemplateBuilder/TemplateBuilder.client";
 
-// NEW COMPENSATION COMPONENTS
-//import CreateCompensation from "../Compensation/createCompensation.client";
-//import AssignCompensation from "../Compensation/assignCompensation.client";
-import CompensationWrapper from "../Compensation/CompensationWrapper.client";
-// import SalaryBreakup from "../Compensation/SalaryBreakup.client"; // Uncomment when ready
-// import SalaryDetails from "../Compensation/SalaryDetails.client"; // Uncomment when ready
+import CreateCompensation from "../Compensation/createCompensation.client";
+import AssignCompensation from "../Compensation/assignCompensation.client";
+import SalaryBreakupMain from "../Compensation/SalaryBreakupMain.client";
+import SalaryDetails from "../Compensation/SalaryDetails/SalaryDetails.client";
+
+import Salary_Statement from "../Salary_statement/Salary_Statement.client";
+import GeneratePayslip from "../generate_payslip/GeneratePayslip.client";
 
 const Sidebar = ({ setActiveContent }) => {
   const { user, hydrated } = useAuth();
   const [menuItems, setMenuItems] = useState([]);
   const [activeItem, setActiveItem] = useState("/dashboard");
+  const [activeSubItem, setActiveSubItem] = useState("");
   const [activeNav, setActiveNav] = useState("/dashboard");
   const [showProfile, setShowProfile] = useState(false);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
-  const [showTaskChoice, setShowTaskChoice] = useState(false);
+
+
+  const [showCompensationDropdown, setShowCompensationDropdown] = useState(false);
+  const [showTaskDropdown, setShowTaskDropdown] = useState(false);
+  const [showSalaryDropdown, setShowSalaryDropdown] = useState(false);
+
+ 
+  const [hasSubordinates, setHasSubordinates] = useState(false);
+  const [loadingSubordinates, setLoadingSubordinates] = useState(true);
 
   const cancelRef = useRef(false);
 
@@ -61,127 +68,50 @@ const Sidebar = ({ setActiveContent }) => {
     () => ({
       Admin: [
         { label: "Dashboard", path: "/dashboard", icon: "MdOutlineDashboard" },
-        {
-          label: "Employee Details",
-          path: "/employeeDetails",
-          icon: "MdPeople",
-        },
+        { label: "Employee Details", path: "/employeeDetails", icon: "MdPeople" },
         { label: "Add Department", path: "/addDepartment", icon: "MdDomain" },
-        {
-          label: "Update Projects",
-          path: "/updateProjects",
-          icon: "MdWorkOutline",
-        },
-        {
-          label: "Compensation",
-          path: "/compensation",
-          icon: "MdOutlineAccountBalanceWallet",
-        },
-        {
-          label: "Leave Queries",
-          path: "/leaveQueries",
-          icon: "MdOutlineCommentBank",
-        },
-        {
-          label: "Reimbursement",
-          path: "/reimbursement",
-          icon: "MdCurrencyRupee",
-        },
-        {
-          label: "Payroll Summary",
-          path: "/payrollSummary",
-          icon: "MdReceiptLong",
-        },
+        { label: "Update Projects", path: "/updateProjects", icon: "MdWorkOutline" },
+        { label: "Compensation", path: "/compensation", icon: "MdOutlineAccountBalanceWallet" },
+        { label: "Leave Queries", path: "/leaveQueries", icon: "MdOutlineCommentBank" },
+        { label: "Reimbursement", path: "/reimbursement", icon: "MdCurrencyRupee" },
+        { label: "Payroll Summary", path: "/payrollSummary", icon: "MdReceiptLong" },
         { label: "Assets", path: "/assets", icon: "MdLaptop" },
         { label: "Vendors", path: "/vendors", icon: "MdLocalShipping" },
-        {
-          label: "Task Management",
-          path: "/TaskManagement",
-          icon: "MdTaskAlt",
-        },
+        { label: "Task Management", path: "/TaskManagement", icon: "MdTaskAlt" },
         { label: "Messenger", path: "/messenger", icon: "MdChat" },
       ],
       Manager: [
         { label: "Dashboard", path: "/dashboard", icon: "MdOutlineDashboard" },
-        {
-          label: "Employee Queries",
-          path: "/employeeQueries",
-          icon: "MdOutlineContactPhone",
-        },
-        {
-          label: "Compensation",
-          path: "/compensation",
-          icon: "MdOutlineAccountBalanceWallet",
-        },
-        {
-          label: "Leave Queries",
-          path: "/leaveQueries",
-          icon: "MdOutlineCommentBank",
-        },
-        {
-          label: "Reimbursement",
-          path: "/reimbursement",
-          icon: "MdCurrencyRupee",
-        },
-        {
-          label: "Task Management",
-          path: "/TaskManagement",
-          icon: "MdTaskAlt",
-        },
+        { label: "Employee Queries", path: "/employeeQueries", icon: "MdOutlineContactPhone" },
+        { label: "Compensation", path: "/compensation", icon: "MdOutlineAccountBalanceWallet" },
+        { label: "Leave Queries", path: "/leaveQueries", icon: "MdOutlineCommentBank" },
+        { label: "Reimbursement", path: "/reimbursement", icon: "MdCurrencyRupee" },
+        { label: "Task Management", path: "/TaskManagement", icon: "MdTaskAlt" },
       ],
       Employee: [
         { label: "Dashboard", path: "/dashboard", icon: "MdOutlineDashboard" },
-        {
-          label: "Leave Request",
-          path: "/leaveQueries",
-          icon: "MdOutlineCommentBank",
-        },
-        {
-          label: "Reimbursement",
-          path: "/reimbursement",
-          icon: "MdCurrencyRupee",
-        },
-        {
-          label: "Salary Statement",
-          path: "/Salary_Statement",
-          icon: "MdReceipt",
-        },
-        {
-          label: "Task Management",
-          path: "/TaskManagement",
-          icon: "MdTaskAlt",
-        },
+        { label: "Leave Request", path: "/leaveQueries", icon: "MdOutlineCommentBank" },
+        { label: "Reimbursement", path: "/reimbursement", icon: "MdCurrencyRupee" },
+        { label: "Salary Statement", path: "/Salary_Statement", icon: "MdReceipt" },
+        { label: "Task Management", path: "/TaskManagement", icon: "MdTaskAlt" },
         { label: "Messenger", path: "/messenger", icon: "MdChat" },
       ],
       SuperAdmin: [
-        {
-          label: "Create Organization",
-          path: "/CreateOrganization",
-          icon: "MdOutlineBusiness",
-        },
+        { label: "Create Organization", path: "/CreateOrganization", icon: "MdOutlineBusiness" },
       ],
     }),
     []
   );
 
-  const customIconMap = {
-    comp_icon: MdIcons.MdOutlineAttachMoney,
-    "letter-head": MdIcons.MdDescription,
-    FaLaptopMedical: MdIcons.MdLaptop,
-    MdOutLineChat: MdIcons.MdChat,
-  };
-
   const pathToComponent = useMemo(
     () => ({
-      "/dashboard": (role) =>
-        role === "Admin" ? <MyDashboard /> : <MyEmpDashboard />,
+      
+      "/dashboard": (role) => (role === "Admin" ? <MyDashboard /> : <MyEmpDashboard />),
       "/employeeDetails": () => <EmployeeDetails />,
       "/addDepartment": () => <AddDepartment />,
       "/updateProjects": () => <UpdateProject />,
       "/CreateOrganization": () => <CreateOrganization />,
-      "/leaveQueries": (role) =>
-        role === "Admin" ? <LeaveQueries /> : <LeaveRequest />,
-      "/Salary_Statement": () => <SalaryStatementWrapper />,
+      "/leaveQueries": (role) => (role === "Admin" ? <LeaveQueries /> : <LeaveRequest />),
       "/payrollSummary": () => <PayrollSummary />,
       "/messenger": () => <Chat />,
       "/reimbursement": (role) => {
@@ -189,44 +119,17 @@ const Sidebar = ({ setActiveContent }) => {
         if (role === "Manager") return <RbTeamLead />;
         return <Reimbursement />;
       },
-      "/employeeQueries": (role) =>
-        role === "Admin" ? <AdminQuery /> : <EmployeeQuery />,
+      "/employeeQueries": () => <AdminQuery />,
       "/assets": () => <Assets />,
       "/vendors": () => <Vendors />,
-      "/EmployeeLogin": () => <EmployeeLogin />,
       "/report": () => <Report />,
-      "/TemplateBuilder": () => <BuildTemplate />,
-      "/letterHead": () => <LetterHead />,
-      "/TaskManagement": (role) => {
-        if (role === "Admin") return <TaskManagementAdmin />;
-        if (role === "Supervisor") {
-          setShowTaskChoice(true);
-          return null;
-        }
-        return <TaskManagementEmployee />;
+      "/TaskManagement": (role, sub) => {
+        if (sub === "admin" && role === "Admin") return <TaskManagementAdmin />;
+        if (sub === "team") return <TaskManagement />; 
+        return <TaskManagementEmployee />; 
       },
-
-      // Compensation sub-routes (loaded via wrapper selection)
-      "/compensation/create": () => <CreateCompensation />,
-      "/compensation/assign": () => <AssignCompensation />,
-      // "/compensation/breakup": () => <SalaryBreakup />,
-      // "/compensation/details": () => <SalaryDetails />,
     }),
     []
-  );
-
-  const handleCompensationSelect = useCallback(
-    (subPath) => {
-      setActiveItem(subPath);
-      setActiveNav(subPath);
-      const resolver = pathToComponent[subPath];
-      if (resolver) {
-        setActiveContent(resolver());
-      } else {
-        setActiveContent(<p>Content not found</p>);
-      }
-    },
-    [pathToComponent, setActiveContent]
   );
 
   const normalizeMenu = (items = []) =>
@@ -236,50 +139,134 @@ const Sidebar = ({ setActiveContent }) => {
       icon: it.icon ?? it.iconName ?? "MdOutlineDashboard",
     }));
 
+
+
+  
   useEffect(() => {
-    const onNavigate = (e) => {
+    if (!hydrated || !user || user.role === "Admin" || user.role === "SuperAdmin") {
+      setHasSubordinates(false);
+      setLoadingSubordinates(false);
+      return;
+    }
+
+    const checkSubordinates = async () => {
       try {
-        const path = e?.detail?.path;
-        if (!path) return;
+        setLoadingSubordinates(true);
+        const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
+        const API_KEY = process.env.NEXT_PUBLIC_API_KEY;
 
-        const role = user?.role ?? "Employee";
-        let comp;
-
-        if (path === "/compensation") {
-          comp = <CompensationWrapper onSelect={handleCompensationSelect} />;
-        } else if (path.startsWith("/compensation/")) {
-          const resolver = pathToComponent[path];
-          comp = resolver ? resolver(role) : <p>Not found: {path}</p>;
-        } else {
-          const resolver = pathToComponent[path];
-          if (resolver) {
-            comp = resolver(role);
-          } else {
-            comp = <p>Not found: {path}</p>;
-          }
+        if (!BACKEND_URL) {
+          setHasSubordinates(false);
+          setLoadingSubordinates(false);
+          return;
         }
 
-        if (comp) {
-          setActiveContent(comp);
-          setActiveItem(path);
-          setActiveNav(path);
-          setShowMobileMenu(false);
+        const employeeId = user.employeeId || user.id;
+        const orgId = user.orgId || user.organizationId || user.org_id; 
+
+        if (!employeeId || !orgId) {
+          console.warn("Missing employeeId or orgId in user context");
+          setHasSubordinates(false);
+          setLoadingSubordinates(false);
+          return;
         }
+
+        const headers = {
+          "x-api-key": API_KEY,
+          "x-employee-id": employeeId,
+          "x-org-id": orgId,
+        };
+
+        const resp = await fetch(`${BACKEND_URL}/api/subordinate/status`, {
+          method: "GET",
+          credentials: "include",
+          headers,
+        });
+
+        const data = await resp.json();
+        setHasSubordinates(data.success && data.hasSubordinates === true);
       } catch (err) {
-        console.error("app:navigate handler error:", err);
+        console.error("Error checking subordinates:", err);
+        setHasSubordinates(false);
+      } finally {
+        setLoadingSubordinates(false);
       }
     };
 
-    window.addEventListener("app:navigate", onNavigate);
-    return () => window.removeEventListener("app:navigate", onNavigate);
-  }, [pathToComponent, setActiveContent, user?.role, handleCompensationSelect]);
+    checkSubordinates();
+  }, [user, hydrated]);
 
-  useEffect(() => {
-    cancelRef.current = false;
-    return () => {
-      cancelRef.current = true;
-    };
-  }, []);
+  const handleMenuClick = (item, subOption = null) => {
+    const role = user?.role ?? "Employee";
+
+    setActiveItem(item.path);
+    setActiveSubItem(subOption || "");
+
+    const hasDropdown =
+      item.path === "/compensation" ||
+      item.path === "/TaskManagement" ||
+      item.path === "/Salary_Statement";
+
+    if (hasDropdown && !subOption) {
+      if (item.path === "/compensation") {
+        setShowCompensationDropdown((prev) => !prev);
+        setShowTaskDropdown(false);
+        setShowSalaryDropdown(false);
+      } else if (item.path === "/TaskManagement") {
+        setShowTaskDropdown((prev) => !prev);
+        setShowCompensationDropdown(false);
+        setShowSalaryDropdown(false);
+      } else if (item.path === "/Salary_Statement") {
+        setShowSalaryDropdown((prev) => !prev);
+        setShowCompensationDropdown(false);
+        setShowTaskDropdown(false);
+      }
+      return;
+    }
+
+    setShowMobileMenu(false);
+
+    let content = null;
+
+    if (item.path === "/compensation" && subOption) {
+      switch (subOption) {
+        case "create":
+          content = <CreateCompensation />;
+          setActiveNav("/compensation/create");
+          break;
+        case "assign":
+          content = <AssignCompensation />;
+          setActiveNav("/compensation/assign");
+          break;
+        case "breakup":
+          content = <SalaryBreakupMain />;
+          setActiveNav("/compensation/breakup");
+          break;
+        case "details":
+          content = <SalaryDetails />;
+          setActiveNav("/compensation/details");
+          break;
+      }
+      setShowCompensationDropdown(true);
+    } else if (item.path === "/TaskManagement") {
+    
+      content = pathToComponent["/TaskManagement"](role, subOption);
+      setActiveNav(`/TaskManagement/${subOption || "employee"}`);
+      setShowTaskDropdown(true);
+    } else if (item.path === "/Salary_Statement" && subOption) {
+      content = subOption === "statement" ? <Salary_Statement /> : <GeneratePayslip />;
+      setActiveNav(`/Salary_Statement/${subOption}`);
+      setShowSalaryDropdown(true);
+    } else {
+      const resolver = pathToComponent[item.path];
+      if (resolver) content = resolver(role);
+      setShowCompensationDropdown(false);
+      setShowTaskDropdown(false);
+      setShowSalaryDropdown(false);
+    }
+
+    if (content) setActiveContent(content);
+  };
 
   useEffect(() => {
     if (!hydrated) return;
@@ -328,236 +315,241 @@ const Sidebar = ({ setActiveContent }) => {
       })();
     }
 
-    const defaultPath =
-      role === "SuperAdmin" ? "/CreateOrganization" : "/dashboard";
+    const defaultPath = role === "SuperAdmin" ? "/CreateOrganization" : "/dashboard";
     const resolver = pathToComponent[defaultPath] || (() => <MyEmpDashboard />);
-    const defaultComp = resolver(role);
-    if (setActiveContent) {
-      setActiveContent(defaultComp);
-      setActiveItem(defaultPath);
-      setActiveNav(defaultPath);
-    }
+    setActiveContent(resolver(role));
+    setActiveItem(defaultPath);
+    setActiveNav(defaultPath);
   }, [user, hydrated, defaultMenuItems, pathToComponent, setActiveContent]);
-
-  const handleMenuClick = (item) => {
-    const role = user?.role ?? "Employee";
-
-    if (item.path === "/compensation") {
-      setActiveItem(item.path);
-      setActiveNav(item.path);
-      setActiveContent(
-        <CompensationWrapper onSelect={handleCompensationSelect} />
-      );
-      setShowMobileMenu(false);
-      return;
-    }
-
-    setActiveItem(item.path);
-    setActiveNav(item.path);
-    setShowMobileMenu(false);
-
-    const resolver = pathToComponent[item.path];
-    if (resolver) {
-      const comp = resolver(role);
-      if (comp !== null) setActiveContent(comp);
-    } else {
-      setActiveContent(<p>Content not found</p>);
-    }
-  };
 
   const resolveIcon = (iconName) => {
     if (!iconName) return MdIcons.MdOutlineDashboard;
-    if (typeof iconName !== "string") return iconName;
-
-    if (MdIcons[iconName]) return MdIcons[iconName];
-    if (MdIcons[iconName.trim()]) return MdIcons[iconName.trim()];
-
-    if (customIconMap[iconName]) return customIconMap[iconName];
-
-    return MdIcons.MdOutlineDashboard;
+    return MdIcons[iconName] || MdIcons.MdOutlineDashboard;
   };
 
-  const SupervisorTaskChoice = () => (
-    <div
-      className="task-choice-overlay"
-      onClick={() => setShowTaskChoice(false)}
-    >
-      <div className="task-choice-box" onClick={(e) => e.stopPropagation()}>
-        <h3>Select View</h3>
+  const renderMenuList = () => (
+    <ul className="menu-list">
+      {menuItems.map((item, index) => {
+        const Icon = resolveIcon(item.icon);
+        const isMainActive = activeItem === item.path;
 
-        <button
-          className="task-choice-btn"
-          onClick={() => {
-            setActiveContent(<TaskManagement />);
-            setShowTaskChoice(false);
-          }}
-        >
-          Manage Tasks (Supervisor)
-        </button>
+        const hasDropdown =
+          item.path === "/compensation" ||
+          item.path === "/TaskManagement" ||
+          item.path === "/Salary_Statement";
 
-        <button
-          className="task-choice-btn"
-          onClick={() => {
-            setActiveContent(<TaskManagementEmployee />);
-            setShowTaskChoice(false);
-          }}
-        >
-          My Tasks (Employee View)
-        </button>
+        return (
+          <li key={index} className="menu-item">
+            <div
+              className={`menu-link ${isMainActive ? "active" : ""}`}
+              onClick={() => handleMenuClick(item)}
+            >
+              <Icon size={22} />
+              <span>{item.label}</span>
+              {hasDropdown && (
+                <span className="arrow">
+                  {(item.path === "/compensation" && showCompensationDropdown) ||
+                  (item.path === "/TaskManagement" && showTaskDropdown) ||
+                  (item.path === "/Salary_Statement" && showSalaryDropdown)
+                    ? <MdIcons.MdKeyboardArrowDown />
+                    : <MdIcons.MdKeyboardArrowRight />}
+                </span>
+              )}
+            </div>
 
-        <button className="close-btn" onClick={() => setShowTaskChoice(false)}>
-          Close
-        </button>
-      </div>
-    </div>
+            {/* Compensation Dropdown */}
+            {item.path === "/compensation" && showCompensationDropdown && (
+              <ul className="desktop-submenu">
+                <li
+                  className={activeSubItem === "create" ? "active" : ""}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleMenuClick(item, "create");
+                  }}
+                >
+                  <MdIcons.MdOutlineAddCircleOutline size={20} /> <span>Create Compensation</span>
+                </li>
+                <li
+                  className={activeSubItem === "assign" ? "active" : ""}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleMenuClick(item, "assign");
+                  }}
+                >
+                  <MdIcons.MdOutlineAssignmentInd size={20} /> <span>Assign Compensation</span>
+                </li>
+                <li
+                  className={activeSubItem === "breakup" ? "active" : ""}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleMenuClick(item, "breakup");
+                  }}
+                >
+                  <MdIcons.MdOutlineAccountBalance size={20} /> <span>Salary Breakup</span>
+                </li>
+                <li
+                  className={activeSubItem === "details" ? "active" : ""}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleMenuClick(item, "details");
+                  }}
+                >
+                  <MdIcons.MdOutlineTableChart size={20} /> <span>Salary Details</span>
+                </li>
+              </ul>
+            )}
+
+            {/* Task Management Dropdown */}
+            {item.path === "/TaskManagement" && showTaskDropdown && (
+              <ul className="desktop-submenu">
+                {/* Admin View */}
+                {user?.role === "Admin" && (
+                  <li
+                    className={activeSubItem === "admin" ? "active" : ""}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleMenuClick(item, "admin");
+                    }}
+                  >
+                    <MdIcons.MdOutlineAdminPanelSettings size={20} /> <span>Admin Task Management</span>
+                  </li>
+                )}
+
+                {/* Team Tasks - only if has subordinates */}
+                {!loadingSubordinates && hasSubordinates && (
+                  <li
+                    className={activeSubItem === "team" ? "active" : ""}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleMenuClick(item, "team");
+                    }}
+                  >
+                    <MdIcons.MdPeopleAlt size={20} /> <span>Team Tasks</span>
+                  </li>
+                )}
+
+                {/* My Tasks - for non-Admin users */}
+                {user?.role !== "Admin" && (
+                  <li
+                    className={activeSubItem === "employee" || !activeSubItem ? "active" : ""}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleMenuClick(item, "employee");
+                    }}
+                  >
+                    <MdIcons.MdPerson size={20} /> <span>My Tasks</span>
+                  </li>
+                )}
+              </ul>
+            )}
+
+            {/* Salary Statement Dropdown */}
+            {item.path === "/Salary_Statement" && showSalaryDropdown && (
+              <ul className="desktop-submenu">
+                <li
+                  className={activeSubItem === "statement" ? "active" : ""}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleMenuClick(item, "statement");
+                  }}
+                >
+                  <MdIcons.MdOutlineReceiptLong size={20} /> <span>View Salary Statement</span>
+                </li>
+                <li
+                  className={activeSubItem === "payslip" ? "active" : ""}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleMenuClick(item, "payslip");
+                  }}
+                >
+                  <MdIcons.MdOutlineDescription size={20} /> <span>Generate Payslip</span>
+                </li>
+              </ul>
+            )}
+          </li>
+        );
+      })}
+    </ul>
   );
 
   return (
     <>
-      {showTaskChoice && <SupervisorTaskChoice />}
-
+      {/* Desktop Sidebar */}
       <div className="sidebar">
         {user?.role !== "Admin" && user?.role !== "SuperAdmin" && (
-          <div className="view-profile">
-            <span
-              onClick={() => setShowProfile((s) => !s)}
-              className="view-profile-text"
+          <div className="profile-section">
+            <a
+              href="#"
+              className="view-profile-link"
+              onClick={(e) => {
+                e.preventDefault();
+                setShowProfile(true);
+              }}
             >
-              View Profile
-            </span>
+              <span>View Profile</span>
+            </a>
           </div>
         )}
 
-        <ul>
-          {menuItems && menuItems.length > 0 ? (
-            menuItems.map((item, index) => {
-              const IconComponent = resolveIcon(item.icon);
-              const isActive =
-                activeItem === item.path ||
-                (item.path === "/compensation" &&
-                  activeItem.startsWith("/compensation/"));
+        {renderMenuList()}
+      </div>
 
-              return (
-                <li
-                  key={index}
-                  className={isActive ? "active" : ""}
-                  onClick={() => handleMenuClick(item)}
-                  role="button"
-                  tabIndex={0}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") handleMenuClick(item);
+      {/* Bottom Nav for Mobile */}
+      <div className="bottom-nav">
+        {menuItems.slice(0, 4).map((item, index) => {
+          const Icon = resolveIcon(item.icon);
+          const isActive = activeNav.startsWith(item.path);
+
+          return (
+            <button
+              key={index}
+              className={isActive ? "active" : ""}
+              onClick={() => handleMenuClick(item)}
+            >
+              <Icon size={26} />
+            </button>
+          );
+        })}
+
+        <button onClick={() => setShowMobileMenu(true)}>
+          <MdIcons.MdMenu size={26} />
+        </button>
+      </div>
+
+      {/* Mobile Full Sidebar Menu */}
+      {showMobileMenu && (
+        <div className="mobile-menu-overlay" onClick={() => setShowMobileMenu(false)}>
+          <div className="mobile-sidebar" onClick={(e) => e.stopPropagation()}>
+            <div className="mobile-header">
+              <button className="mobile-close" onClick={() => setShowMobileMenu(false)}>
+                <MdIcons.MdClose size={28} />
+              </button>
+            </div>
+
+            {user?.role !== "Admin" && user?.role !== "SuperAdmin" && (
+              <div className="profile-section mobile-profile">
+                <a
+                  href="#"
+                  className="view-profile-link"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    setShowProfile(true);
+                    setShowMobileMenu(false);
                   }}
                 >
-                  <span className="menu-text">
-                    <IconComponent className="icon" />
-                    {item.label}
-                  </span>
-                </li>
-              );
-            })
-          ) : (
-            <p className="no-menu">No menu items</p>
-          )}
-        </ul>
+                  <MdIcons.MdPerson size={22} />
+                  <span>View Profile</span>
+                </a>
+              </div>
+            )}
 
-        {showProfile && (
-          <Profile
-            employeeId={user?.employeeId}
-            onClose={() => setShowProfile(false)}
-          />
-        )}
-      </div>
-
-      <div className="bottom-nav">
-        <button
-          className={activeNav === "/dashboard" ? "active" : ""}
-          onClick={() => handleMenuClick({ path: "/dashboard" })}
-        >
-          <MdIcons.MdHome />
-        </button>
-        <button
-          className={activeNav === "/employeeQueries" ? "active" : ""}
-          onClick={() => handleMenuClick({ path: "/employeeQueries" })}
-        >
-          <MdIcons.MdOutlineContactPhone />
-        </button>
-        <button
-          className={activeNav === "/leaveQueries" ? "active" : ""}
-          onClick={() => handleMenuClick({ path: "/leaveQueries" })}
-        >
-          <MdIcons.MdOutlineCommentBank />
-        </button>
-        <button
-          className={activeNav === "/reimbursement" ? "active" : ""}
-          onClick={() => handleMenuClick({ path: "/reimbursement" })}
-        >
-          <MdIcons.MdCurrencyRupee />
-        </button>
-        {user?.role !== "Admin" && user?.role !== "SuperAdmin" && (
-          <button
-            className={showProfile ? "active" : ""}
-            onClick={() => setShowProfile((s) => !s)}
-            aria-label="View Profile"
-            title="View Profile"
-          >
-            <MdIcons.MdPerson />
-          </button>
-        )}
-        <button onClick={() => setShowMobileMenu(true)}>
-          <MdIcons.MdMenu />
-        </button>
-      </div>
-
-      {showProfile && (
-        <Profile
-          employeeId={user?.employeeId}
-          onClose={() => setShowProfile(false)}
-        />
-      )}
-
-      {showMobileMenu && (
-        <div
-          className="mobile-menu-overlay"
-          onClick={() => setShowMobileMenu(false)}
-        >
-          <div className="mobile-menu" onClick={(e) => e.stopPropagation()}>
-            <button
-              className="close-menu"
-              onClick={() => setShowMobileMenu(false)}
-            >
-              ✖
-            </button>
-            <ul>
-              {menuItems && menuItems.length > 0 ? (
-                menuItems.map((item, index) => {
-                  const IconComponent = resolveIcon(item.icon);
-                  const isActive =
-                    activeItem === item.path ||
-                    (item.path === "/compensation" &&
-                      activeItem.startsWith("/compensation/"));
-
-                  return (
-                    <li
-                      key={index}
-                      className={isActive ? "active" : ""}
-                      onClick={() => handleMenuClick(item)}
-                      role="button"
-                      tabIndex={0}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") handleMenuClick(item);
-                      }}
-                    >
-                      <IconComponent className="icon" />
-                      <span className="label">{item.label}</span>
-                    </li>
-                  );
-                })
-              ) : (
-                <p className="no-menu">No menu items</p>
-              )}
-            </ul>
+            {renderMenuList()}
           </div>
         </div>
+      )}
+
+      {showProfile && (
+        <Profile employeeId={user?.employeeId} onClose={() => setShowProfile(false)} />
       )}
     </>
   );

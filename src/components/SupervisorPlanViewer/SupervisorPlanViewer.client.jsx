@@ -1,7 +1,9 @@
-"use client";
 
-import React, { useState, useEffect, useMemo } from "react";
+
+"use client";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import axios from "axios";
+import { MdMic, MdMicOff } from "react-icons/md";
 import {
   getISOWeek,
   startOfISOWeek,
@@ -16,8 +18,8 @@ import "./SupervisorPlanViewer.css";
 
 const SupervisorPlanViewer = () => {
   const { user, hydrated } = useAuth();
-
   const [supervisorId, setSupervisorId] = useState(null);
+  const [orgId, setOrgId] = useState(null);
   const [employees, setEmployees] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [tasks, setTasks] = useState([]);
@@ -32,6 +34,82 @@ const SupervisorPlanViewer = () => {
   const [loadingHolidays, setLoadingHolidays] = useState(false);
   const [loadingLeaves, setLoadingLeaves] = useState(false);
   const [error, setError] = useState(null);
+  const [openNodes, setOpenNodes] = useState({});
+  const recognitionRef = useRef(null);
+  const [listeningTaskId, setListeningTaskId] = useState(null);
+  const [liveComments, setLiveComments] = useState({});
+  const SpeechRecognition =
+    window.SpeechRecognition || window.webkitSpeechRecognition;
+
+  const startListening = (taskId) => {
+    if (!SpeechRecognition) {
+      showAlert("Speech recognition is not supported in this browser.");
+      return;
+    }
+    if (recognitionRef.current) {
+      recognitionRef.current.stop();
+      recognitionRef.current = null;
+    }
+    const recognition = new SpeechRecognition();
+    recognitionRef.current = recognition;
+    recognition.continuous = true;
+    recognition.interimResults = false;
+    recognition.lang = "en-IN";
+    setListeningTaskId(taskId);
+    recognition.onresult = (event) => {
+      let transcriptChunk = "";
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        if (event.results[i].isFinal) {
+          transcriptChunk += event.results[i][0].transcript + " ";
+        }
+      }
+      if (!transcriptChunk) return;
+      setLiveComments((prev) => {
+        const existing =
+          prev[taskId] ||
+          tasks.find((t) => t.task_id === taskId)?.sup_comment ||
+          "";
+        const updated = (existing + " " + transcriptChunk).trim();
+        updateTaskField(taskId, "sup_comment", updated);
+        return {
+          ...prev,
+          [taskId]: updated,
+        };
+      });
+    };
+    recognition.onerror = (e) => {
+      if (e.error === "no-speech" || e.error === "audio-capture") return;
+      console.error("Speech error:", e);
+    };
+    recognition.onend = () => {
+      if (recognitionRef.current && listeningTaskId === taskId) {
+        try {
+          recognition.start();
+        } catch {}
+      }
+    };
+    recognition.start();
+  };
+
+  const stopListening = () => {
+    setListeningTaskId(null);
+    if (recognitionRef.current) {
+      recognitionRef.current.onend = null;
+      recognitionRef.current.stop();
+      recognitionRef.current = null;
+    }
+  };
+
+  const reworkedParentIds = useMemo(() => {
+    const set = new Set();
+    tasks.forEach((t) => {
+      if (t.parent_task_id) {
+        set.add(t.parent_task_id);
+      }
+    });
+    return set;
+  }, [tasks]);
+
   const [alertModal, setAlertModal] = useState({
     isVisible: false,
     message: "",
@@ -41,9 +119,11 @@ const SupervisorPlanViewer = () => {
 
   useEffect(() => {
     if (!hydrated) return;
-    if (user?.employeeId) {
-      const id = String(user.employeeId).trim().toUpperCase();
+    if (user?.employeeId || user?.employee_id) {
+      const id = String(user.employeeId || user.employee_id).trim().toUpperCase();
       setSupervisorId(id);
+      const fetchedOrgId = user?.orgId ?? user?.org_id ?? null;
+      setOrgId(fetchedOrgId);
     } else {
       setError("User not logged in or employeeId missing.");
     }
@@ -51,16 +131,18 @@ const SupervisorPlanViewer = () => {
 
   const apiHeaders = useMemo(() => {
     if (!supervisorId) return null;
-    return {
+    const headers = {
       "x-employee-id": supervisorId,
       "x-role": user?.role || "Supervisor",
-      "x-org-id": 161,
     };
-  }, [supervisorId, user?.role]);
+    if (orgId) {
+      headers["x-org-id"] = orgId;
+    }
+    return headers;
+  }, [supervisorId, user?.role, orgId]);
 
   useEffect(() => {
     if (!supervisorId || !apiHeaders) return;
-
     const fetchEmployees = async () => {
       setLoadingEmployees(true);
       try {
@@ -91,7 +173,6 @@ const SupervisorPlanViewer = () => {
         setLoadingEmployees(false);
       }
     };
-
     const fetchHolidays = async () => {
       setLoadingHolidays(true);
       try {
@@ -110,16 +191,13 @@ const SupervisorPlanViewer = () => {
         setLoadingHolidays(false);
       }
     };
-
     const fetchFreezeDays = async () => {
       try {
         const response = await axios.get(
           `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/config`,
           { withCredentials: true, headers: apiHeaders, timeout: 10000 }
         );
-
         let cfgArray = [];
-
         if (Array.isArray(response.data)) {
           cfgArray = response.data;
         } else if (Array.isArray(response.data?.data)) {
@@ -133,20 +211,14 @@ const SupervisorPlanViewer = () => {
             value: String(v),
           }));
         }
-
         const cfg = cfgArray.find((c) => c.key === "freeze_days_supervisor");
         const days = cfg ? parseInt(cfg.value, 10) : NaN;
-
         setFreezeDays(isNaN(days) ? 3 : days);
       } catch (err) {
-        console.error(
-          "fetchFreezeDays error:",
-          err.response?.data || err.message
-        );
+        console.error("fetchFreezeDays error:", err.response?.data || err.message);
         setFreezeDays(3);
       }
     };
-
     fetchEmployees();
     fetchHolidays();
     fetchFreezeDays();
@@ -154,7 +226,6 @@ const SupervisorPlanViewer = () => {
 
   useEffect(() => {
     if (!supervisorId || employees.length === 0) return;
-
     const fetchLeaves = async () => {
       setLoadingLeaves(true);
       const leavesMap = {};
@@ -179,13 +250,39 @@ const SupervisorPlanViewer = () => {
         setLoadingLeaves(false);
       }
     };
-
     fetchLeaves();
   }, [supervisorId, employees]);
 
+  const getWeekIdForDate = (date) => {
+    const d = new Date(date);
+    if (isNaN(d.getTime())) return null;
+
+    const year = d.getFullYear();
+    const week = getISOWeek(d);
+    return `${year}-${String(week).padStart(2, "0")}`;
+  };
+
+  const parseWeekId = (weekId) => {
+    if (!weekId || typeof weekId !== "string") return null;
+    const [year, week] = weekId.split("-").map(Number);
+    if (!year || !week) return null;
+    return { year, week };
+  };
+
+  const employeeLevelMap = useMemo(() => {
+    const map = {};
+    employees.forEach((emp) => {
+      map[emp.employee_id] = emp.level;
+    });
+    return map;
+  }, [employees]);
+
+  const isDirectEmployee = useMemo(() => {
+    return employeeLevelMap[selectedEmployee] === 1;
+  }, [employeeLevelMap, selectedEmployee]);
+
   useEffect(() => {
     if (!supervisorId || !apiHeaders) return;
-
     const fetchTasks = async () => {
       setLoadingTasks(true);
       try {
@@ -207,27 +304,22 @@ const SupervisorPlanViewer = () => {
                 emp_status: validStatuses.includes(task.emp_status)
                   ? task.emp_status
                   : "not started",
-                week_id: Number(task.week_id),
+                week_id: task.week_id, // ← Kept as string
               }))
             : [];
         setTasks(taskData);
 
-        if (taskData.length > 0) {
-          const taskWeekIds = [...new Set(taskData.map((t) => t.week_id))].sort(
-            (a, b) => a - b
-          );
+        const uniqueWeekIds = [...new Set(taskData.map((t) => t.week_id))].sort(); // ← String sort
+        const currentWeekId = getWeekIdForDate(new Date());
 
-          const today = new Date();
-          const currentWeek = getISOWeek(today);
-
-          if (taskWeekIds.includes(currentWeek)) {
-            setSelectedWeekId(currentWeek);
+        if (uniqueWeekIds.length > 0) {
+          if (uniqueWeekIds.includes(currentWeekId)) {
+            setSelectedWeekId(currentWeekId);
           } else {
-            setSelectedWeekId(taskWeekIds[taskWeekIds.length - 1]);
+            setSelectedWeekId(uniqueWeekIds[uniqueWeekIds.length - 1]); // latest
           }
         } else {
-          const currentWeek = getISOWeek(new Date());
-          setSelectedWeekId(currentWeek);
+          setSelectedWeekId(currentWeekId);
         }
 
         setError(null);
@@ -241,18 +333,16 @@ const SupervisorPlanViewer = () => {
           : `Network error: ${err.message}`;
         setError(errorMessage);
         setTasks([]);
-        setSelectedWeekId(getISOWeek(new Date()));
+        setSelectedWeekId(getWeekIdForDate(new Date()));
       } finally {
         setLoadingTasks(false);
       }
     };
-
     fetchTasks();
   }, [supervisorId, apiHeaders]);
 
   useEffect(() => {
     if (!supervisorId || !selectedEmployee) return;
-
     const fetchProjects = async () => {
       setLoadingProjects(true);
       try {
@@ -277,26 +367,42 @@ const SupervisorPlanViewer = () => {
         setLoadingProjects(false);
       }
     };
-
     fetchProjects();
   }, [supervisorId, selectedEmployee]);
 
   const weekIds = useMemo(() => {
-    return [...new Set(tasks.map((t) => t.week_id))].sort((a, b) => a - b);
+    const unique = [...new Set(tasks.map((t) => t.week_id))];
+    return unique.sort(); // ← Critical fix: string sort for "2026-01", "2026-02", etc.
   }, [tasks]);
 
   const currentWeekIndex = useMemo(() => {
     return weekIds.indexOf(selectedWeekId);
   }, [weekIds, selectedWeekId]);
 
+  const getWeekStartDate = (weekId) => {
+    if (!weekId || typeof weekId !== "string") return null;
+
+    if (!/^\d{4}-\d{2}$/.test(weekId)) return null;
+
+    const [year, week] = weekId.split("-").map(Number);
+
+    if (!year || !week || week < 1 || week > 53) return null;
+
+    const jan4 = new Date(year, 0, 4);
+    const weekStart = startOfISOWeek(addDays(jan4, (week - 1) * 7));
+
+    return isNaN(weekStart.getTime()) ? null : weekStart;
+  };
+
   const weekDays = useMemo(() => {
     if (!selectedWeekId) return [];
-    const currentYear = new Date().getFullYear();
-    const weekStartDate = startOfISOWeek(new Date(currentYear, 0, 1));
-    const adjustedStart = addDays(weekStartDate, (selectedWeekId - 1) * 7);
+
+    const weekStart = getWeekStartDate(selectedWeekId);
+    if (!weekStart || isNaN(weekStart.getTime())) return [];
+
     const days = [];
     for (let i = 0; i < 7; i++) {
-      const date = addDays(adjustedStart, i);
+      const date = addDays(weekStart, i);
       const dateStr = format(date, "yyyy-MM-dd");
       const dateDisplay = format(date, "MMM d");
       days.push({ dateStr, dateDisplay });
@@ -321,12 +427,6 @@ const SupervisorPlanViewer = () => {
     return map;
   }, [tasks, selectedEmployee, selectedWeekId, weekDays]);
 
-  const filteredEmployees = useMemo(() => {
-    return employees.filter((emp) =>
-      emp.employee_name.toLowerCase().includes(searchQuery.toLowerCase())
-    );
-  }, [employees, searchQuery]);
-
   const showAlert = (message) => {
     setAlertModal({ isVisible: true, message });
     setTimeout(() => setAlertModal({ isVisible: false, message: "" }), 5000);
@@ -334,16 +434,14 @@ const SupervisorPlanViewer = () => {
 
   const formatWeekId = (weekId) => {
     if (!weekId) return "N/A";
-    const currentYear = new Date().getFullYear();
-    const startDate = startOfISOWeek(new Date(currentYear, 0, 1));
-    const weekStart = new Date(
-      startDate.getTime() + (weekId - 1) * 7 * 24 * 60 * 60 * 1000
-    );
+
+    const weekStart = getWeekStartDate(weekId);
+    if (!weekStart || isNaN(weekStart.getTime())) {
+      return `Week ${weekId} (Invalid Date)`;
+    }
+
     const weekEnd = endOfISOWeek(weekStart);
-    return `Week ${weekId} (${format(weekStart, "MMM d, yyyy")} - ${format(
-      weekEnd,
-      "MMM d, yyyy"
-    )})`;
+    return `Week ${weekId} (${format(weekStart, "MMM d, yyyy")} - ${format(weekEnd, "MMM d, yyyy")})`;
   };
 
   const isDateEditable = (dateString) => {
@@ -399,22 +497,18 @@ const SupervisorPlanViewer = () => {
       showAlert("Task not found");
       return;
     }
-
     if (!isDateEditable(task.task_date)) {
       showAlert(
         `Cannot edit: Task is outside the ${freezeDays}-day editable window.`
       );
       return;
     }
-
     const effectiveReviewStatus =
       pendingReviewChanges[taskId] || task.sup_review_status;
-
     if (task.sup_review_status === "suspended_review") {
       showAlert("This task is suspended and cannot be updated.");
       return;
     }
-
     try {
       const updateData = {
         sup_status: task.sup_status || "incomplete",
@@ -425,24 +519,20 @@ const SupervisorPlanViewer = () => {
         project_id: task.project_id,
         project_name: task.project_name,
       };
-
       if (task.sup_status === "re-work") {
         let taskDate = new Date(task.task_date || new Date());
         taskDate.setHours(0, 0, 0, 0);
         const nextDay = new Date(taskDate);
         nextDay.setDate(taskDate.getDate() + 1);
         const nextDayString = nextDay.toLocaleDateString("en-CA");
-
         if (!isDateEditable(nextDayString)) {
           showAlert(
             `Cannot create re-work: Next day is outside the ${freezeDays}-day window.`
           );
           return;
         }
-
-        const nextDayWeekId = getISOWeek(nextDay);
+        const nextDayWeekId = getWeekIdForDate(nextDay);
         const newTaskName = task.replacement_task || task.task_name;
-
         const newTaskData = {
           week_id: nextDayWeekId,
           task_date: nextDayString,
@@ -458,20 +548,17 @@ const SupervisorPlanViewer = () => {
           star_rating: 0,
           parent_task_id: task.task_id,
         };
-
         const response = await axios.post(
           `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/weekly_task_supervisor`,
           newTaskData,
           { withCredentials: true, headers: apiHeaders, timeout: 10000 }
         );
-
         updateData.sup_status = "re-work";
         await axios.put(
           `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/weekly_task_supervisor/${taskId}`,
           updateData,
           { withCredentials: true, headers: apiHeaders, timeout: 10000 }
         );
-
         showAlert(response.data.message || "New task created successfully");
         if (response.data.newTask) {
           const newTask = {
@@ -484,7 +571,7 @@ const SupervisorPlanViewer = () => {
               ?.trim()
               .toUpperCase(),
             emp_status: response.data.newTask.emp_status || "not started",
-            week_id: Number(response.data.newTask.week_id),
+            week_id: response.data.newTask.week_id, // ← Kept as string
           };
           setTasks((prev) => [...prev, newTask]);
           const newTaskWeek = newTask.week_id;
@@ -500,13 +587,11 @@ const SupervisorPlanViewer = () => {
         );
         showAlert("Task updated successfully");
       }
-
       setPendingReviewChanges((prev) => {
         const newPrev = { ...prev };
         delete newPrev[taskId];
         return newPrev;
       });
-
       const res = await axios.get(
         `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/weekly_task_supervisor/${supervisorId}`,
         { withCredentials: true, headers: apiHeaders, timeout: 10000 }
@@ -525,7 +610,7 @@ const SupervisorPlanViewer = () => {
               emp_status: validStatuses.includes(task.emp_status)
                 ? task.emp_status
                 : "not started",
-              week_id: Number(task.week_id),
+              week_id: task.week_id, // ← Kept as string
             }))
           : [];
       setTasks(taskData);
@@ -604,7 +689,6 @@ const SupervisorPlanViewer = () => {
       };
     const taskDate = new Date(dateString);
     taskDate.setHours(0, 0, 0, 0);
-
     const isApprovedLeave = employeeLeaves[employeeId]?.some((leave) => {
       const startDate = new Date(leave.start_date);
       const endDate = new Date(leave.end_date);
@@ -612,14 +696,12 @@ const SupervisorPlanViewer = () => {
       endDate.setHours(0, 0, 0, 0);
       return taskDate >= startDate && taskDate <= endDate;
     });
-
     const isSunday = taskDate.getDay() === 0;
     const isHoliday = holidays.some((holiday) => {
       const holidayDate = new Date(holiday);
       holidayDate.setHours(0, 0, 0, 0);
       return taskDate.getTime() === holidayDate.getTime();
     });
-
     if (isApprovedLeave)
       return {
         className: "supervisor-plan-task-date supervisor-plan-task-date-leave",
@@ -641,6 +723,32 @@ const SupervisorPlanViewer = () => {
       tooltip: formatDate(dateString),
     };
   };
+
+  const buildEmployeeTree = (employees) => {
+    const map = {};
+    const roots = [];
+    employees.forEach((emp) => {
+      map[emp.employee_id] = { ...emp, children: [] };
+    });
+    employees.forEach((emp) => {
+      if (map[emp.supervisor_id]) {
+        map[emp.supervisor_id].children.push(map[emp.employee_id]);
+      } else {
+        roots.push(map[emp.employee_id]);
+      }
+    });
+    return roots;
+  };
+
+  const filteredEmployees = useMemo(() => {
+    return employees.filter((emp) =>
+      emp.employee_name.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+  }, [employees, searchQuery]);
+
+  const employeeTree = useMemo(() => {
+    return buildEmployeeTree(filteredEmployees);
+  }, [filteredEmployees]);
 
   const goToPreviousWeek = () => {
     if (currentWeekIndex > 0) {
@@ -677,6 +785,44 @@ const SupervisorPlanViewer = () => {
       </div>
     );
 
+  const EmployeeNode = ({ emp }) => {
+    const hasChildren = emp.children && emp.children.length > 0;
+    const isOpen = openNodes[emp.employee_id] || false;
+
+    return (
+      <>
+        <li className={selectedEmployee === emp.employee_id ? "supervisor-plan-active" : ""}>
+          {hasChildren ? (
+            <span
+              onClick={(e) => {
+                e.stopPropagation();
+                setOpenNodes((prev) => ({
+                  ...prev,
+                  [emp.employee_id]: !prev[emp.employee_id],
+                }));
+              }}
+              style={{ fontSize: "12px", cursor: "pointer" }}
+            >
+              {isOpen ? "▼" : "▶"}
+            </span>
+          ) : (
+            <span style={{ width: "12px", display: "inline-block" }}></span>
+          )}
+          <span
+            onClick={() => setSelectedEmployee(emp.employee_id)}
+            style={{ flex: 1, cursor: "pointer" }}
+          >
+            {emp.employee_name}
+          </span>
+        </li>
+
+        {hasChildren && isOpen && emp.children.map((child) => (
+          <EmployeeNode key={child.employee_id} emp={child} />
+        ))}
+      </>
+    );
+  };
+
   return (
     <div className="supervisor-plan-wrapper">
       <Modal
@@ -691,7 +837,6 @@ const SupervisorPlanViewer = () => {
       >
         <p>{alertModal.message}</p>
       </Modal>
-
       <div className="supervisor-plan-employee-list">
         <h3>Employees</h3>
         <input
@@ -711,27 +856,16 @@ const SupervisorPlanViewer = () => {
         {error && <p style={{ color: "red" }}>{error}</p>}
         {loadingEmployees || loadingHolidays || loadingLeaves ? (
           <p>Loading employees...</p>
-        ) : filteredEmployees.length === 0 ? (
+        ) : employeeTree.length === 0 ? (
           <p>No employees match the search criteria.</p>
         ) : (
           <ul className="supervisor-plan-employee-scroll">
-            {filteredEmployees.map((emp) => (
-              <li
-                key={emp.employee_id}
-                className={
-                  selectedEmployee === emp.employee_id
-                    ? "supervisor-plan-active"
-                    : ""
-                }
-                onClick={() => setSelectedEmployee(emp.employee_id)}
-              >
-                {emp.employee_name}
-              </li>
+            {employeeTree.map((root) => (
+              <EmployeeNode key={root.employee_id} emp={root} />
             ))}
           </ul>
         )}
       </div>
-
       <div className="supervisor-plan-task-details">
         {loadingTasks || loadingProjects ? (
           <p>Loading tasks or projects...</p>
@@ -760,7 +894,6 @@ const SupervisorPlanViewer = () => {
                 &gt;
               </button>
             </div>
-
             <div className="supervisor-plan-tasks-container">
               {weekDays.map(({ dateStr, dateDisplay }) => {
                 const dayTasks = tasksByDate[dateStr] || [];
@@ -797,7 +930,9 @@ const SupervisorPlanViewer = () => {
                           pendingReviewChanges[task.task_id] ||
                           task.sup_review_status;
                         const isFrozen =
-                          task.sup_review_status === "suspended_review";
+                          task.sup_review_status === "suspended_review" ||
+                          reworkedParentIds.has(task.task_id) ||
+                          !isDirectEmployee;
                         const showReviewSelect =
                           task.sup_review_status === "pending" &&
                           !pendingReviewChanges[task.task_id];
@@ -829,7 +964,7 @@ const SupervisorPlanViewer = () => {
                                           marginLeft: "8px",
                                         }}
                                       >
-                                        Right arrow {task.replacement_task}
+                                        → {task.replacement_task}
                                       </span>
                                     )}
                                   </>
@@ -841,10 +976,10 @@ const SupervisorPlanViewer = () => {
                                 {effectiveReviewStatus !== "pending" && (
                                   <span className="supervisor-plan-status-icon">
                                     {effectiveReviewStatus === "approved" &&
-                                      "✅"}
-                                    {effectiveReviewStatus === "struck" && "📝"}
+                                      "Approved"}
+                                    {effectiveReviewStatus === "struck" && "Updated"}
                                     {effectiveReviewStatus ===
-                                      "suspended_review" && "⛔"}
+                                      "suspended_review" && "Suspended"}
                                   </span>
                                 )}
                                 <span
@@ -931,21 +1066,44 @@ const SupervisorPlanViewer = () => {
                                   <option value="incomplete">Incomplete</option>
                                 </select>
                               </label>
-                              <label>
+                              <label className="supervisor-admin-feedback-label">
                                 Feedback:
-                                <input
-                                  type="text"
-                                  value={task.sup_comment || ""}
-                                  onChange={(e) =>
-                                    updateTaskField(
-                                      task.task_id,
-                                      "sup_comment",
-                                      e.target.value
-                                    )
-                                  }
-                                  placeholder="Add comment"
-                                  disabled={!editable || isFrozen}
-                                />
+                                <div className="supervisor-admin-feedback-container">
+                                  <input
+                                    type="text"
+                                    value={
+                                      liveComments[task.task_id] ??
+                                      task.sup_comment ??
+                                      ""
+                                    }
+                                    onChange={(e) => {
+                                      const text = e.target.value;
+                                      setLiveComments((prev) => ({
+                                        ...prev,
+                                        [task.task_id]: text,
+                                      }));
+                                      updateTaskField(task.task_id, "sup_comment", text);
+                                    }}
+                                    placeholder="Add comment"
+                                    disabled={isFrozen}
+                                    className="supervisor-admin-feedback-input"
+                                  />
+                                  <button
+                                    type="button"
+                                    className={`supervisor-admin-mic-button ${
+                                      listeningTaskId === task.task_id ? "listening" : ""
+                                    }`}
+                                    onClick={() =>
+                                      listeningTaskId === task.task_id
+                                        ? stopListening()
+                                        : startListening(task.task_id)
+                                    }
+                                    disabled={isFrozen}
+                                    aria-label={listeningTaskId === task.task_id ? "Stop listening" : "Start voice input"}
+                                  >
+                                    {listeningTaskId === task.task_id ? <MdMicOff /> : <MdMic />}
+                                  </button>
+                                </div>
                               </label>
                               {showReviewSelect && (
                                 <label>

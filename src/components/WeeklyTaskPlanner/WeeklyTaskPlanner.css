@@ -1511,3 +1511,61 @@
     cursor: pointer;
   }
 }
+/* Microphone Icon Wrapper */
+.week-task-comment-mic-wrapper {
+  display: flex;
+  align-items: center;
+  position: relative;
+}
+
+/* Input padding to make space for the mic icon */
+.week-task-edit-comment-input {
+  padding-right: 52px !important; /* Adjust based on icon size + spacing */
+  width: 100%;
+}
+
+/* Base Microphone Icon Styles */
+.week-task-mic-icon {
+  color: #007bff;
+  cursor: pointer;
+  margin-left: 8px;
+  font-size: 22px;
+  transition: all 0.2s ease;
+}
+
+/* Hover effect */
+.week-task-mic-icon:hover {
+  transform: scale(1.2);
+  color: #0056b3;
+}
+
+/* Listening state (red + pulsing animation) */
+.mic-listening {
+  color: red !important;
+  animation: pulseMic 1s infinite;
+}
+
+/* Idle state */
+.mic-idle {
+  color: #007bff;
+}
+
+/* Pulse animation when listening */
+@keyframes pulseMic {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.25);
+    opacity: 0.7;
+  }
+}
+
+/* Optional: "Listening…" text style (used next to icon) */
+.week-task-mic-listening-text {
+  margin-left: 6px;
+  color: red;
+  font-size: 14px;
+  font-weight: bold;
+}

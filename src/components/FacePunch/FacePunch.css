@@ -1,0 +1,143 @@
+.face-punch-container {
+  position: relative;
+  width: 520px;
+  height: 360px;
+  margin: 10px auto;
+  background-color: #f0edec0f;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+  transition: transform 0.3s ease;
+  margin-top: 60%;
+}
+
+.face-punch-container:hover {
+  transform: translateY(-4px);
+}
+
+#videoInput {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+
+  border-radius: 12px;
+}
+
+.overlay-canvas {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+}
+.status-message {
+  position: relative;
+  margin: 12px auto 0;
+  width: fit-content;
+  background-color: rgba(40, 167, 69, 0.9);
+  color: #ffffff;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-family: "Inter", sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  animation: fadeIn 0.3s ease-in-out;
+  text-align: center;
+}
+
+.cooldown-message {
+  position: relative;
+  margin: 8px auto 16px;
+  width: fit-content;
+  background-color: rgba(220, 53, 69, 0.9);
+  color: #ffffff;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-family: "Inter", sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  animation: fadeIn 0.3s ease-in-out;
+  text-align: center;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+#scanButton {
+  position: absolute;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: #28a745;
+  color: #ffffff;
+  padding: 10px 24px;
+  border: none;
+  border-radius: 8px;
+  font-family: "Inter", sans-serif;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.3s ease, transform 0.2s ease;
+}
+
+#scanButton:hover {
+  background-color: #0056b3;
+  transform: translateX(-50%) scale(1.05);
+}
+
+#scanButton:active {
+  transform: translateX(-50%) scale(0.95);
+}
+
+.employee-info-message {
+  margin-top: 10px;
+  font-weight: bold;
+  color: #28a745;
+  font-size: 18px;
+  text-align: center;
+}
+
+@media (max-width: 480px) {
+  .face-punch-container {
+    width: 92%;
+    height: auto;
+    aspect-ratio: 4/3;
+    margin-top: 240px;
+    border-radius: 14px;
+  }
+
+  .status-message,
+  .cooldown-message {
+    width: 90%;
+    font-size: 13px;
+    margin-top: 16px;
+    padding: 10px 14px;
+    border-radius: 10px;
+  }
+
+  .employee-info-message {
+    font-size: 16px;
+    margin-top: 8px;
+  }
+
+  #scanButton {
+    position: relative;
+    margin: 20px auto 0;
+    display: block;
+    padding: 12px 28px;
+    font-size: 15px;
+    border-radius: 10px;
+    transform: none;
+  }
+}

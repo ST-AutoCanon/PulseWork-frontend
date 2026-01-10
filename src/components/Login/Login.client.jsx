@@ -245,14 +245,16 @@ export default function Login({ onClose }) {
         );
       } catch {}
 
-      if (
-        (usernameVal || "").toLowerCase() === "manish.p@yopmail.com" &&
-        (minimalUser.role || "").toLowerCase() === "general"
-      ) {
-        router.push("/FacePunch");
-      } else {
-        router.push("/dashboard");
-      }
+     const roleValue = String(payload.role || "").trim().toLowerCase();
+
+console.log("NORMALIZED ROLE:", roleValue);
+
+if (roleValue === "general" || roleValue === "employee") {
+  router.replace("/FacePunch");
+} else {
+  router.replace("/dashboard");
+}
+
     } catch (err) {
       console.error("login error", err);
       showAlert("An unexpected error occurred. Please try again.");

@@ -723,6 +723,12 @@
   transform: translateY(-1px);
 }
 
+.task-input-wrapper {
+  display: flex;
+  align-items: center;
+  flex: 1; /* Takes all available space */
+ 
+}
 @media (max-width: 640px) {
   .task-board {
     grid-template-columns: 1fr;

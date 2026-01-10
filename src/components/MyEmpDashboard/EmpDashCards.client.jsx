@@ -236,24 +236,10 @@ export default function EmpDashCards() {
         { withCredentials: true, headers }
       );
 
-      const descriptors =
-        resp?.data?.descriptors ?? resp?.data?.data?.descriptors ?? [];
+      const descriptors = resp?.data?.descriptors ?? resp?.data?.data?.descriptors ?? [];
 
       for (const desc of descriptors) {
-        let parsed;
-        if (typeof desc === "string") {
-          try {
-            parsed = JSON.parse(desc);
-          } catch {
-            parsed = desc.split(",").map(Number);
-          }
-        } else if (Array.isArray(desc)) {
-          parsed = desc;
-        } else if (desc && typeof desc === "object") {
-          parsed = Object.values(desc).map(Number);
-        } else {
-          parsed = [];
-        }
+        const parsed = desc;
 
         if (!parsed || parsed.length === 0) continue;
 

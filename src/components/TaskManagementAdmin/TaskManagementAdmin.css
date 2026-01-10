@@ -711,6 +711,32 @@
   transform: translateY(-1px);
 }
 
+
+.task-admin-input-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+}
+
+.task-admin-input-wrapper input {
+  flex: 1;
+}
+
+.task-admin-mic-btn {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: #2563eb;
+  display: flex;
+  align-items: center;
+}
+
+.task-admin-mic-btn:hover {
+  color: #1d4ed8;
+}
+
+
 @media (max-width: 1024px) {
   .task-admin-board {
     grid-template-columns: repeat(2, 1fr);

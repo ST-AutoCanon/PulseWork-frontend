@@ -1,10 +1,12 @@
-"use client";
 
+
+"use client";
 import React, { useState, useEffect, useRef } from "react";
 import axios from "axios";
 import "./WeeklyTaskPlanner.css";
 import Modal from "../Modal/Modal.client";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import { MdMic, MdMicNone } from "react-icons/md";
 
 const WeeklyTaskPlanner = ({
   userRole = "employee",
@@ -38,9 +40,8 @@ const WeeklyTaskPlanner = ({
 
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-
-  const dayOfWeek = today.getDay();
-  const offsetToMonday = (dayOfWeek + 6) % 7;
+  const dayOfWeek = today.getDay(); // 0 = Sunday, 1 = Monday, ...
+  const offsetToMonday = (dayOfWeek + 6) % 7; // Adjust to get Monday as start
   const startOfCurrentWeek = new Date(today);
   startOfCurrentWeek.setDate(today.getDate() - offsetToMonday);
 
@@ -58,19 +59,21 @@ const WeeklyTaskPlanner = ({
     const year = start.getFullYear();
     return `${startDay} ${startMonth} - ${endDay} ${endMonth} ${year}`;
   };
+
   const dateRange = formatDateRange(startDate, endDate);
 
+  // Updated: Returns "YYYY-WW" format (e.g., "2026-02")
   const getISOWeekNumber = (date) => {
-    const d = new Date(
-      Date.UTC(date.getFullYear(), date.getMonth(), date.getDate())
-    );
-    const dayNum = d.getUTCDay() || 7;
-    d.setUTCDate(d.getUTCDate() + 4 - dayNum);
-    const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+    const d = new Date(date);
+    d.setHours(0, 0, 0, 0);
+    // Adjust to Thursday of the current week (ISO week belongs to the year with Thursday)
+    d.setDate(d.getDate() + 4 - (d.getDay() || 7));
+    const yearStart = new Date(d.getFullYear(), 0, 1);
     const weekNo = Math.ceil(((d - yearStart) / 86400000 + 1) / 7);
-    return weekNo;
+    return `${d.getFullYear()}-${String(weekNo).padStart(2, "0")}`;
   };
-  const weekId = getISOWeekNumber(startDate);
+
+  const weekId = getISOWeekNumber(startDate); // e.g., "2026-02"
 
   const weekDates = [];
   for (let i = 0; i < 7; i++) {
@@ -81,7 +84,6 @@ const WeeklyTaskPlanner = ({
     })}`;
     weekDates.push(dateStr);
   }
-
   const [tasksData, setTasksData] = useState(
     weekDates.map((date) => ({ date, tasks: [] }))
   );
@@ -131,6 +133,11 @@ const WeeklyTaskPlanner = ({
   });
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
   const tooltipRef = useRef(null);
+
+  // Speech Recognition States & Ref
+  const [isListening, setIsListening] = useState(false);
+  const [assignListeningIndex, setAssignListeningIndex] = useState(null);
+  const recognitionRef = useRef(null);
 
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth <= 768);
@@ -270,6 +277,73 @@ const WeeklyTaskPlanner = ({
     };
   };
 
+  // ==================== Speech Recognition Functions ====================
+
+  const startListening = () => {
+    if (!("webkitSpeechRecognition" in window)) {
+      showAlert("Speech Recognition is not supported in this browser.");
+      return;
+    }
+    const SpeechRecognition =
+      window.SpeechRecognition || window.webkitSpeechRecognition;
+    recognitionRef.current = new SpeechRecognition();
+    recognitionRef.current.lang = "en-IN";
+    recognitionRef.current.continuous = false;
+    recognitionRef.current.interimResults = false;
+
+    recognitionRef.current.onstart = () => setIsListening(true);
+    recognitionRef.current.onresult = (event) => {
+      const transcript = event.results[0][0].transcript;
+      setFormData((prev) => ({
+        ...prev,
+        comment: prev.comment ? prev.comment + " " + transcript : transcript,
+      }));
+    };
+    recognitionRef.current.onerror = () => setIsListening(false);
+    recognitionRef.current.onend = () => setIsListening(false);
+
+    recognitionRef.current.start();
+  };
+
+  const stopListening = () => {
+    if (recognitionRef.current) recognitionRef.current.stop();
+    setIsListening(false);
+  };
+
+  const startAssignListening = (index) => {
+    if (!("webkitSpeechRecognition" in window)) {
+      showAlert("Speech Recognition is not supported in this browser.");
+      return;
+    }
+    const SpeechRecognition =
+      window.SpeechRecognition || window.webkitSpeechRecognition;
+    recognitionRef.current = new SpeechRecognition();
+    recognitionRef.current.lang = "en-IN";
+    recognitionRef.current.continuous = false;
+    recognitionRef.current.interimResults = false;
+
+    recognitionRef.current.onstart = () => setAssignListeningIndex(index);
+    recognitionRef.current.onresult = (event) => {
+      const transcript = event.results[0][0].transcript;
+      setAssignTasks((prev) =>
+        prev.map((task, i) =>
+          i === index
+            ? { ...task, taskName: task.taskName + " " + transcript }
+            : task
+        )
+      );
+    };
+    recognitionRef.current.onerror = () => setAssignListeningIndex(null);
+    recognitionRef.current.onend = () => setAssignListeningIndex(null);
+
+    recognitionRef.current.start();
+  };
+
+  const stopAssignListening = () => {
+    if (recognitionRef.current) recognitionRef.current.stop();
+    setAssignListeningIndex(null);
+  };
+
   const fetchData = async () => {
     if (!employeeId) {
       showAlert("Employee ID is required to fetch data.");
@@ -383,7 +457,7 @@ const WeeklyTaskPlanner = ({
   };
 
   const handleEditClick = (task) => {
-    if (userRole !== "employee") return;
+    // if (userRole !== "employee") return;
     if (!isTaskEditable(task.task_date)) {
       showAlert(
         `Cannot edit: Task is before the ${effectiveFreezeDays}-day editable period.`
@@ -432,7 +506,7 @@ const WeeklyTaskPlanner = ({
   };
 
   const handleSave = async (taskId) => {
-    if (userRole !== "employee") return;
+    // if (userRole !== "employee") return;
     const task = tasksData
       .flatMap((d) => d.tasks)
       .find((t) => t.task_id === taskId);
@@ -894,75 +968,83 @@ const WeeklyTaskPlanner = ({
       )
     );
   };
+const handleAssignSubmit = async () => {
+  const valid = assignTasks.filter(
+    (t) => t.projectId && t.taskName && t.dates.length > 0
+  );
+  if (valid.length === 0) {
+    showAlert("Fill at least one task with dates, project & name.");
+    return;
+  }
 
-  const handleAssignSubmit = async () => {
-    const valid = assignTasks.filter(
-      (t) => t.projectId && t.taskName && t.dates.length > 0
-    );
-    if (valid.length === 0) {
-      showAlert("Fill at least one task with dates, project & name.");
-      return;
-    }
-    try {
-      for (const task of valid) {
-        for (const date of task.dates) {
-          const [day, month] = date.split(" ");
-          const monthIdx = new Date(
-            `${month} 1, ${startDate.getFullYear()}`
-          ).getMonth();
-          const taskDate = new Date(
-            startDate.getFullYear(),
-            monthIdx,
-            parseInt(day)
-          );
-          const isoDate = formatDateIST(taskDate);
-          const newTask = {
-            week_id: weekId,
-            task_date: isoDate,
-            project_id: task.projectId,
-            project_name: task.projectName,
-            task_name: task.taskName,
-            emp_status: "not started",
-            emp_comment: "",
-            sup_status: "incomplete",
-            sup_comment: "",
-            sup_review_status: "pending",
-            employee_id: employeeId,
-            star_rating: null,
-            replacement_task: null,
-          };
-          const resp = await authRequest({
-            method: "POST",
-            url: "/api/week_tasks",
-            data: newTask,
-          });
-          setTasksData((prev) => {
-            const copy = [...prev];
-            const dayIdx = copy.findIndex((d) => d.date === date);
-            if (dayIdx > -1) {
-              copy[dayIdx].tasks.push({
-                ...newTask,
-                task_id: resp.data.taskId,
-              });
-            }
-            return copy;
-          });
-          setProjects((prev) => ({
-            ...prev,
-            [newTask.project_id]: newTask.project_name,
-          }));
-        }
+  const newTasksAdded = []; // To collect: { task: fullTaskObject, date: string }
+
+  try {
+    for (const task of valid) {
+      // Update projects map once per unique project (optional optimization)
+      setProjects((prev) => ({
+        ...prev,
+        [task.projectId]: task.projectName,
+      }));
+
+      for (const date of task.dates) {
+        const [day, month] = date.split(" ");
+        const monthIdx = new Date(`${month} 1, ${startDate.getFullYear()}`).getMonth();
+        const taskDate = new Date(startDate.getFullYear(), monthIdx, parseInt(day));
+        const isoDate = formatDateIST(taskDate);
+
+        const newTaskBase = {
+          week_id: weekId,
+          task_date: isoDate,
+          project_id: task.projectId,
+          project_name: task.projectName,
+          task_name: task.taskName,
+          emp_status: "not started",
+          emp_comment: "",
+          sup_status: "incomplete",
+          sup_comment: "",
+          sup_review_status: "pending",
+          employee_id: employeeId,
+          star_rating: null,
+          replacement_task: null,
+        };
+
+        const resp = await authRequest({
+          method: "POST",
+          url: "/api/week_tasks",
+          data: newTaskBase,
+        });
+
+        const fullNewTask = {
+          ...newTaskBase,
+          task_id: resp.data.taskId, // assuming backend returns { taskId: ... }
+        };
+
+        newTasksAdded.push({ task: fullNewTask, date });
       }
-      setNoTasks(false);
-      showAlert("Tasks assigned successfully!");
-      setShowAssignForm(false);
-      setAssignTasks([]);
-      setDropdownOpen({});
-    } catch (err) {
-      showAlert(`Failed to assign tasks: ${err.message}`);
     }
-  };
 
+    // ONE single state update – safe even with double mount
+    setTasksData((prev) => {
+      const copy = prev.map((day) => ({ ...day, tasks: [...day.tasks] })); // deep copy tasks arrays
+      newTasksAdded.forEach(({ task, date }) => {
+        const dayIdx = copy.findIndex((d) => d.date === date);
+        if (dayIdx !== -1) {
+          copy[dayIdx].tasks.push(task);
+        }
+      });
+      return copy;
+    });
+
+    setNoTasks(false);
+    showAlert("Tasks assigned successfully!");
+    setShowAssignForm(false);
+    setAssignTasks([]);
+    setDropdownOpen({});
+  } catch (err) {
+    showAlert(`Failed to assign tasks: ${err.message}`);
+  }
+};
   const handleAssignCancel = () => {
     setShowAssignForm(false);
     setAssignTasks([]);
@@ -998,7 +1080,7 @@ const WeeklyTaskPlanner = ({
 
   return (
     <div className="week-task-weekly-task-planner">
-      <div className="week-task-planner-header">
+     <div className="week-task-planner-header">
         <h2>
           Weekly Task Planner{" "}
           <span className="week-task-week-id">
@@ -1172,14 +1254,47 @@ const WeeklyTaskPlanner = ({
 
                     <div className="week-task-form-group-task">
                       <label>Task</label>
-                      <input
-                        type="text"
-                        value={task.taskName}
-                        onChange={(e) =>
-                          handleAssignChange(idx, "taskName", e.target.value)
-                        }
-                        placeholder="Enter task"
-                      />
+                      <div className="week-task-comment-mic-wrapper">
+                        <input
+                          type="text"
+                          value={task.taskName}
+                          onChange={(e) =>
+                            handleAssignChange(idx, "taskName", e.target.value)
+                          }
+                          placeholder="Enter task"
+                          className="week-task-edit-comment-input"
+                        />
+                        <span
+                          className="week-task-mic-icon"
+                          onClick={() =>
+                            assignListeningIndex === idx
+                              ? stopAssignListening()
+                              : startAssignListening(idx)
+                          }
+                          style={{
+                            cursor: "pointer",
+                            
+                          }}
+                        >
+                          {assignListeningIndex === idx ? (
+                            <MdMicNone className="mic-listening" />
+                          ) : (
+                            <MdMic className="mic-idle" />
+                          )}
+                        </span>
+                        {assignListeningIndex === idx && (
+                          <span
+                            style={{
+                              marginLeft: "6px",
+                              color: "red",
+                              fontSize: "14px",
+                              fontWeight: "bold",
+                            }}
+                          >
+                            Listening…
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -1421,6 +1536,8 @@ const WeeklyTaskPlanner = ({
                             task.sup_review_status === "pending" && (
                               <div className="week-task-review-action-icons">
                                 <svg
+
+                                
                                   className="week-task-action-icon approve"
                                   onClick={() => handleApprove(task.task_id)}
                                   width="16"
@@ -1507,19 +1624,52 @@ const WeeklyTaskPlanner = ({
                                     )
                                   )}
                                 </div>
-                                <input
-                                  type="text"
-                                  placeholder="Add comment"
-                                  value={formData.comment}
-                                  onChange={(e) =>
-                                    setFormData({
-                                      ...formData,
-                                      comment: e.target.value,
-                                    })
-                                  }
-                                  className="week-task-edit-comment-input"
-                                  disabled={!canEdit}
-                                />
+                                <div className="week-task-comment-mic-wrapper">
+                                  <input
+                                    type="text"
+                                    placeholder="Add comment"
+                                    value={formData.comment}
+                                    onChange={(e) =>
+                                      setFormData({
+                                        ...formData,
+                                        comment: e.target.value,
+                                      })
+                                    }
+                                    className="week-task-edit-comment-input"
+                                    disabled={!canEdit}
+                                  />
+                                  <span
+                                    className="week-task-mic-icon"
+                                    onClick={
+                                      isListening
+                                        ? stopListening
+                                        : startListening
+                                    }
+                                    style={{
+                                      cursor: "pointer",
+                                      marginLeft: "8px",
+                                      fontSize: "22px",
+                                    }}
+                                  >
+                                    {isListening ? (
+                                      <MdMicNone className="mic-listening" />
+                                    ) : (
+                                      <MdMic className="mic-idle" />
+                                    )}
+                                  </span>
+                                  {isListening && (
+                                    <span
+                                      style={{
+                                        marginLeft: "6px",
+                                        color: "red",
+                                        fontSize: "14px",
+                                        fontWeight: "bold",
+                                      }}
+                                    >
+                                      Listening…
+                                    </span>
+                                  )}
+                                </div>
                                 <div className="week-task-edit-actions">
                                   <button
                                     onClick={handleCancelEdit}
@@ -1571,24 +1721,24 @@ const WeeklyTaskPlanner = ({
                                   )
                                 }
                               />
-                              {userRole === "employee" && (
-                                <svg
-                                  className="week-task-edit-icon"
-                                  onClick={() => handleEditClick(task)}
-                                  width="16"
-                                  height="16"
-                                  viewBox="0 0 24 24"
-                                  fill="none"
-                                  stroke="#007bff"
-                                  strokeWidth="2"
-                                  style={{
-                                    cursor: canEdit ? "pointer" : "not-allowed",
-                                  }}
-                                >
-                                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-                                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-                                </svg>
-                              )}
+                              <svg
+  className="week-task-edit-icon"
+  onClick={() => handleEditClick(task)}
+  width="16"
+  height="16"
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="#007bff"
+  strokeWidth="2"
+  style={{
+    cursor: canEdit ? "pointer" : "not-allowed",
+    opacity: canEdit ? 1 : 0.5,
+  }}
+  title="Edit employee update"
+>
+  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+</svg>
                             </div>
                           </div>
                         </div>

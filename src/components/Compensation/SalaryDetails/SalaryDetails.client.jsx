@@ -99,12 +99,12 @@ const hasValidCredentials = () => Boolean(meId && orgId);
 
     let monthlyDeductionsSum = 0;
 
-    // Always deducted (employee-side or mandatory)
+   
     monthlyDeductionsSum += parseFloat(salaryDetails.advanceRecovery || 0);
     monthlyDeductionsSum += parseFloat(salaryDetails.tds || 0);
     monthlyDeductionsSum += lopDeduction;
 
-    // Conditionally deducted based on respective IncludeInCtc flags (matching DetailsTab logic)
+    
     if (planData.pfEmployeeIncludeInCtc !== false) {
       monthlyDeductionsSum += parseFloat(salaryDetails.employeePF || 0);
     }
@@ -301,37 +301,33 @@ useEffect(() => {
 
       const allSelected = getSelectedEmployees();
       const validEmployees = allSelected.filter((emp) => {
-        try {
-         const salaryDetails = useMemo(() => {
-  if (!employeeLopData || !employeeLopData[selectedEmployee?.employee_id]) {
-    return null; // wait for LOP
+  try {
+   
+    if (!employeeLopData || !employeeLopData[emp.employee_id]) {
+      return false;
+    }
+
+    const salaryDetails = calculateSalaryDetails(
+      emp.ctc,
+      emp.plan_data,
+      emp.employee_id,
+      overtimeRecords || [],
+      bonusRecords || [],
+      advances || [],
+      employeeIncentiveData || {},
+      employeeLopData
+    );
+
+    return !!salaryDetails;
+  } catch (e) {
+    console.error(
+      `Error calculating salary details for ${emp.employee_id}:`,
+      e
+    );
+    return false;
   }
+});
 
-  return calculateSalaryDetails(
-    selectedEmployee.ctc,
-    selectedEmployee.plan_data,
-    selectedEmployee.employee_id,
-    overtimeRecords,
-    bonusRecords,
-    advances,
-    employeeIncentiveData,
-    employeeLopData // ✅ NOW AVAILABLE
-  );
-}, [
-  selectedEmployee,
-  overtimeRecords,
-  bonusRecords,
-  advances,
-  employeeIncentiveData,
-  employeeLopData // 🔥 THIS IS THE KEY
-]);
-
-          return !!salaryDetails;
-        } catch (e) {
-          console.error(`Error calculating salary details for ${emp.employee_id}:`, e);
-          return false;
-        }
-      });
 
       if (validEmployees.length === 0) {
         showAlert("No valid employees selected for processing. Please check the selected employees.");

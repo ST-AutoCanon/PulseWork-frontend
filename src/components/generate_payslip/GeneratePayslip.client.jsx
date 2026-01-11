@@ -8,8 +8,33 @@ import { useAuth } from "../../context/AuthProvider.client";
 
 export default function GeneratePayslip() {
   const { user } = useAuth();
-  const orgId = user?.orgId ?? user?.org_id ?? null;
+
+  
+  const orgId =
+    user?.orgId ??
+    user?.org_id ??
+    user?.raw?.org_id ??
+    user?.Org_id ??
+    user?.raw?.Org_id ??
+    null;
+
   const meId = user?.employeeId ?? user?.id ?? null;
+
+  const API_KEY = process.env.NEXT_PUBLIC_API_KEY;
+  const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
+
+  const getHeaders = (extra = {}) => {
+    const base = {
+      "x-api-key": API_KEY,
+      "Content-Type": "application/json",
+      ...extra,
+    };
+
+    if (orgId) base["x-org-id"] = String(orgId);
+    if (meId) base["x-employee-id"] = String(meId);
+
+    return base;
+  };
 
   const [showModal, setShowModal] = useState(false);
   const [preview, setPreview] = useState(false);
@@ -17,26 +42,21 @@ export default function GeneratePayslip() {
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
+
   const [employeeData, setEmployeeData] = useState([]);
   const [filteredEmployeeData, setFilteredEmployeeData] = useState([]);
   const [formEmployeeList, setFormEmployeeList] = useState([]);
+
   const [editingEmployeeId, setEditingEmployeeId] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [viewDetailsModal, setViewDetailsModal] = useState({
     isVisible: false,
     employee: null,
   });
+
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
-
-  const API_KEY = process.env.NEXT_PUBLIC_API_KEY;
-  const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
-
-  const headers = {
-    "x-api-key": API_KEY,
-    "x-org-id": orgId,
-    ...(meId ? { "x-employee-id": meId } : {}),
-  };
+const [manualEmployeeId, setManualEmployeeId] = useState(false);
 
   const initialFormData = {
     employeeId: "PW-000001",
@@ -82,26 +102,30 @@ export default function GeneratePayslip() {
 
   useEffect(() => {
     let mounted = true;
+
     const fetchEmployeeData = async () => {
+      if (!orgId || !BACKEND_URL) return;
+
       try {
         const resp = await fetch(`${BACKEND_URL}/old-employee/list`, {
           credentials: "include",
-          headers,
+          headers: getHeaders(),
         });
+
         if (!resp.ok) {
-          const text = await resp.text().catch(() => null);
+          const text = await resp.text().catch(() => "");
           throw new Error(text || `HTTP ${resp.status}`);
         }
+
         const data = await resp.json();
         if (!mounted) return;
-        setEmployeeData(Array.isArray(data) ? data : data || []);
-        setFilteredEmployeeData(Array.isArray(data) ? data : data || []);
+
+        const list = Array.isArray(data) ? data : [];
+        setEmployeeData(list);
+        setFilteredEmployeeData(list);
       } catch (err) {
-        console.error("Fetch error:", err);
-        showAlert(
-          "Error fetching employee data: " + (err.message || err),
-          "Error"
-        );
+        console.error("Fetch payslip list error:", err);
+        showAlert("Failed to load payslip data: " + (err.message || err), "Error");
       }
     };
 
@@ -110,20 +134,28 @@ export default function GeneratePayslip() {
     return () => {
       mounted = false;
     };
-  }, [BACKEND_URL, API_KEY, meId]);
+  }, [BACKEND_URL, orgId]);
 
   useEffect(() => {
     let mounted = true;
+if (!user?.orgId) {
+    console.warn("OrgId not available yet, skipping API call");
+    return;
+  }
     const fetchFormEmployees = async () => {
+      if (!orgId || !BACKEND_URL) return;
+
       try {
         const resp = await fetch(`${BACKEND_URL}/payslip/employees`, {
           credentials: "include",
-          headers,
+          headers: getHeaders(),
         });
+
         if (!resp.ok) {
-          const text = await resp.text().catch(() => null);
+          const text = await resp.text().catch(() => "");
           throw new Error(text || `HTTP ${resp.status}`);
         }
+
         const data = await resp.json();
         if (!mounted) return;
 
@@ -131,26 +163,17 @@ export default function GeneratePayslip() {
         if (Array.isArray(data)) list = data;
         else if (Array.isArray(data.data)) list = data.data;
         else if (Array.isArray(data.message?.data)) list = data.message.data;
-        else list = [];
 
         const normalized = list.map((item) => ({
           employee_id: item.employee_id || item.employeeId || "",
-          employee_name:
-            item.employee_name || item.employeeName || item.name || "",
+          employee_name: item.employee_name || item.employeeName || item.name || "",
           gender: item.gender || "",
           designation: item.position || item.designation || "",
           department_name:
-            item.department_name ||
-            item.departmentName ||
-            item.department ||
-            "",
+            item.department_name || item.departmentName || item.department || "",
           date_of_joining:
-            item.joining_date ||
-            item.date_of_joining ||
-            item.joiningDate ||
-            null,
-          account_no:
-            item.account_number || item.account_no || item.accountNo || "",
+            item.joining_date || item.date_of_joining || item.joiningDate || null,
+          account_no: item.account_number || item.account_no || item.accountNo || "",
           uin_no: item.uan_number || item.uan || item.uanNumber || "",
           pan_number: item.pan_number || item.panNumber || "",
           esi_number: item.esi_number || item.esiNumber || "",
@@ -160,10 +183,9 @@ export default function GeneratePayslip() {
 
         setFormEmployeeList(normalized);
       } catch (err) {
-        console.error("Form employee fetch error:", err);
+        console.error("Employee dropdown fetch error:", err);
         showAlert(
-          "Error fetching payslip employee list (form dropdown): " +
-            (err.message || err),
+          "Failed to load employee list for form: " + (err.message || err),
           "Warning"
         );
       }
@@ -174,10 +196,10 @@ export default function GeneratePayslip() {
     return () => {
       mounted = false;
     };
-  }, [BACKEND_URL, API_KEY, meId]);
+  }, [BACKEND_URL, orgId]);
 
   useEffect(() => {
-    const t = setTimeout(() => {
+    const timer = setTimeout(() => {
       const q = (searchQuery || "").trim().toLowerCase();
       if (!q) {
         setFilteredEmployeeData(employeeData);
@@ -191,37 +213,40 @@ export default function GeneratePayslip() {
         )
       );
     }, 300);
-    return () => clearTimeout(t);
+    return () => clearTimeout(timer);
   }, [searchQuery, employeeData]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
 
     if (name === "employeeId") {
-      const selected = formEmployeeList.find(
-        (emp) => (emp.employee_id || emp.employeeId || "") === value
-      );
-      if (selected) {
-        setFormData((p) => ({
-          ...p,
-          employeeId: value,
-          employeeName:
-            selected.employee_name || selected.name || p.employeeName,
-          gender: selected.gender || p.gender,
-          designation:
-            (selected.position || selected.designation || "") +
-              (selected.department_name
-                ? ` (${selected.department_name})`
-                : "") || p.designation,
-          dateOfJoining: selected.date_of_joining
-            ? selected.date_of_joining.split("T")[0]
-            : selected.dateOfJoining || p.dateOfJoining,
-          accountNo: selected.account_no || selected.accountNo || p.accountNo,
-          uinNo: selected.uin_no || selected.uinNo || p.uinNo,
-          panNumber: selected.pan_number || selected.panNumber || p.panNumber,
-          esiNumber: selected.esi_number || selected.esiNumber || p.esiNumber,
-          pfNumber: selected.pf_number || selected.pfNumber || p.pfNumber,
-        }));
+  if (manualEmployeeId) {
+    setFormData((p) => ({ ...p, employeeId: value }));
+    return;
+  }
+
+  const selected = formEmployeeList.find(
+    (emp) => (emp.employee_id || emp.employeeId || "") === value
+  );
+
+  if (selected) {
+    setFormData((p) => ({
+      ...p,
+      employeeId: value,
+      employeeName: selected.employee_name || "",
+      gender: selected.gender || "",
+      designation:
+        (selected.position || selected.designation || "") +
+        (selected.department_name ? ` (${selected.department_name})` : ""),
+      dateOfJoining: selected.date_of_joining
+        ? selected.date_of_joining.split("T")[0]
+        : "",
+      accountNo: selected.account_no || "",
+      uinNo: selected.uin_no || "",
+      panNumber: selected.pan_number || "",
+      esiNumber: selected.esi_number || "",
+      pfNumber: selected.pf_number || "",
+    }));
       } else {
         setFormData((p) => ({ ...p, employeeId: value }));
       }
@@ -347,7 +372,7 @@ export default function GeneratePayslip() {
     if (
       !selectedYear ||
       selectedYear < 1900 ||
-      selectedYear > new Date().getFullYear()
+      selectedYear > new Date().getFullYear() + 1
     )
       return "Please select a valid year";
 
@@ -443,12 +468,8 @@ export default function GeneratePayslip() {
         ? employee.date_of_joining.split("T")[0]
         : "",
       accountNo: employee.account_no || "",
-      workingDays: employee.working_days
-        ? employee.working_days.toString()
-        : "",
-      leavesTaken: employee.leaves_taken
-        ? employee.leaves_taken.toString()
-        : "",
+      workingDays: employee.working_days ? employee.working_days.toString() : "",
+      leavesTaken: employee.leaves_taken ? employee.leaves_taken.toString() : "",
       uinNo: employee.uin_no || "",
       panNumber: employee.pan_number || "",
       esiNumber: employee.esi_number || "",
@@ -483,11 +504,6 @@ export default function GeneratePayslip() {
       return;
     }
 
-    if (!BACKEND_URL) {
-      showAlert("backend URL not configured.", "Configuration Error");
-      return;
-    }
-
     setIsLoading(true);
     setError(null);
     setSuccess(null);
@@ -503,40 +519,30 @@ export default function GeneratePayslip() {
       const resp = await fetch(url, {
         method,
         credentials: "include",
-        headers: {
-          ...headers,
-          "x-org-id": orgId,
-          "Content-Type": "application/json",
-        },
+        headers: getHeaders(),
         body: JSON.stringify(backendData),
       });
 
-      if (!resp.ok && resp.status !== 201) {
-        const txt = await resp.text().catch(() => null);
+      if (!resp.ok) {
+        const txt = await resp.text().catch(() => "");
         throw new Error(txt || `HTTP ${resp.status}`);
       }
 
       showAlert(
-        isEditing
-          ? "Employee data updated successfully!"
-          : "Payslip data saved successfully!",
+        isEditing ? "Payslip updated successfully!" : "Payslip saved successfully!",
         "Success"
       );
 
-      const updatedResponse = await fetch(`${BACKEND_URL}/old-employee/list`, {
+      
+      const refreshed = await fetch(`${BACKEND_URL}/old-employee/list`, {
         credentials: "include",
-        headers,
+        headers: getHeaders(),
       });
-      if (updatedResponse.ok) {
-        const updatedData = await updatedResponse.json();
-        setEmployeeData(
-          Array.isArray(updatedData) ? updatedData : updatedData || []
-        );
-        setFilteredEmployeeData(
-          Array.isArray(updatedData) ? updatedData : updatedData || []
-        );
-      } else {
-        console.error("Failed to fetch updated employee list");
+      if (refreshed.ok) {
+        const data = await refreshed.json();
+        const list = Array.isArray(data) ? data : [];
+        setEmployeeData(list);
+        setFilteredEmployeeData(list);
       }
 
       setShowModal(false);
@@ -546,12 +552,7 @@ export default function GeneratePayslip() {
       setEditingEmployeeId(null);
     } catch (err) {
       console.error("Save error:", err);
-      showAlert(
-        `Error ${isEditing ? "updating" : "saving"} employee data: ${
-          err.message || err
-        }`,
-        "Error"
-      );
+      showAlert(`Error saving payslip: ${err.message || err}`, "Error");
     } finally {
       setIsLoading(false);
     }
@@ -566,7 +567,6 @@ export default function GeneratePayslip() {
     }
 
     setError(null);
-    setSuccess(null);
     const payslipData = preparePayslipData();
 
     try {
@@ -579,155 +579,141 @@ export default function GeneratePayslip() {
         false
       );
 
-      if (
-        !pdfBlob ||
-        (!(pdfBlob instanceof Blob) && !(pdfBlob instanceof ArrayBuffer))
-      ) {
-        throw new Error(
-          "Failed to generate PDF preview: pdfBlob is invalid or null"
-        );
-      }
-
       const url = URL.createObjectURL(
-        pdfBlob instanceof Blob
-          ? pdfBlob
-          : new Blob([pdfBlob], { type: "application/pdf" })
+        pdfBlob instanceof Blob ? pdfBlob : new Blob([pdfBlob], { type: "application/pdf" })
       );
       setPdfUrl(url);
       setPreview(true);
       setShowModal(true);
     } catch (err) {
       console.error("Preview error:", err);
-      setError("Failed to generate PDF preview: " + (err.message || err));
-      showAlert(
-        "Failed to generate PDF preview: " + (err.message || err),
-        "Error"
-      );
+      showAlert("Failed to generate preview: " + (err.message || err), "Error");
     }
   };
 
   const handleDownloadPDF = async () => {
-    const validationError = validateForm();
-    if (validationError) {
-      setError(validationError);
-      showAlert(validationError, "Validation Error");
-      return;
-    }
+  const validationError = validateForm();
+  if (validationError) {
+    showAlert(validationError, "Validation Error");
+    return;
+  }
 
-    setIsLoading(true);
-    setError(null);
-    setSuccess(null);
+  setIsLoading(true);
 
+  try {
     const payslipData = preparePayslipData();
 
-    try {
-      await generatePayslipPDF(
-        payslipData.payrollData,
-        payslipData.selectedDate,
-        payslipData.bankDetails,
-        payslipData.attendance,
-        payslipData.employeeDetails,
-        true
-      );
-      setSuccess("Payslip downloaded successfully!");
-      showAlert("Payslip downloaded successfully!", "Success");
-    } catch (err) {
-      console.error("Download error:", err);
-      setError("Failed to download PDF: " + (err.message || err));
-      showAlert("Failed to download PDF: " + (err.message || err), "Error");
-    } finally {
-      setIsLoading(false);
-    }
-  };
+    const pdfBlob = await generatePayslipPDF(
+      payslipData.payrollData,
+      payslipData.selectedDate,
+      payslipData.bankDetails,
+      payslipData.attendance,
+      payslipData.employeeDetails,
+      false 
+    );
+
+    const blob =
+      pdfBlob instanceof Blob
+        ? pdfBlob
+        : new Blob([pdfBlob], { type: "application/pdf" });
+
+    const url = window.URL.createObjectURL(blob);
+
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${formData.employeeId}_${selectedMonth}_${selectedYear}_Payslip.pdf`;
+    document.body.appendChild(a);
+    a.click();
+
+    a.remove();
+    window.URL.revokeObjectURL(url);
+
+    showAlert("Payslip downloaded successfully!", "Success");
+  } catch (err) {
+    console.error(err);
+    showAlert("Failed to download PDF: " + (err.message || err), "Error");
+  } finally {
+    setIsLoading(false);
+  }
+};
+
 
   const handleDownloadForEmployee = async (employee) => {
-    setIsLoading(true);
-    setError(null);
-    setSuccess(null);
+  setIsLoading(true);
 
-    try {
-      const payslipData = {
-        payrollData: {
-          employee_id: employee.employee_id,
-          employee_name: employee.employee_name,
-          designation: employee.designation,
-          basic: employee.basic,
-          hra: employee.hra,
-          other_allowance: employee.other_allowance,
-          pf: employee.pf,
-          esi_insurance: employee.esi_insurance,
-          professional_tax: employee.professional_tax,
-          tds: employee.tds,
-        },
-        selectedDate: {
-          month: employee.month || new Date().getMonth() + 1,
-          year: employee.year || new Date().getFullYear(),
-        },
-        bankDetails: {
-          account_no: employee.account_no,
-          uin_no: employee.uin_no,
-          pan_number: employee.pan_number,
-          esi_number: employee.esi_number,
-          pf_number: employee.pf_number,
-        },
-        attendance: {
-          working_days: employee.working_days,
-          leaves_taken: employee.leaves_taken,
-        },
-        employeeDetails: {
-          gender: employee.gender,
-          date_of_joining: employee.date_of_joining,
-        },
-      };
+  try {
+    const payslipData = {
+      payrollData: {
+        employee_id: employee.employee_id,
+        employee_name: employee.employee_name,
+        designation: employee.designation,
+        basic_salary: employee.basic,
+        hra: employee.hra,
+        allowance: employee.other_allowance,
+        pf: employee.pf,
+        insurance: employee.esi_insurance,
+        pt: employee.professional_tax,
+        tds: employee.tds,
+        total_earnings: employee.gross_earnings,
+        total_deductions: employee.total_deductions,
+        net_salary: employee.net_salary,
+      },
+      selectedDate: {
+        month: employee.month || new Date().getMonth() + 1,
+        year: employee.year || new Date().getFullYear(),
+      },
+      bankDetails: {
+        account_number: employee.account_no,
+        esi_number: employee.esi_number,
+        pf_number: employee.pf_number,
+      },
+      attendance: {
+        total_working_days: employee.working_days,
+        leave_count: employee.leaves_taken,
+      },
+      employeeDetails: {
+        gender: employee.gender,
+        joining_date: employee.date_of_joining,
+        pan_number: employee.pan_number,
+        uin_number: employee.uin_no,
+      },
+    };
 
-      const pdfBlob = await generatePayslipPDF(
-        payslipData.payrollData,
-        payslipData.selectedDate,
-        payslipData.bankDetails,
-        payslipData.attendance,
-        payslipData.employeeDetails,
-        true
-      );
+    const pdfBlob = await generatePayslipPDF(
+      payslipData.payrollData,
+      payslipData.selectedDate,
+      payslipData.bankDetails,
+      payslipData.attendance,
+      payslipData.employeeDetails,
+      false 
+    );
 
-      if (
-        !pdfBlob ||
-        (!(pdfBlob instanceof Blob) && !(pdfBlob instanceof ArrayBuffer))
-      ) {
-        throw new Error("Failed to generate a valid PDF");
-      }
+    const blob =
+      pdfBlob instanceof Blob
+        ? pdfBlob
+        : new Blob([pdfBlob], { type: "application/pdf" });
 
-      const blob =
-        pdfBlob instanceof Blob
-          ? pdfBlob
-          : new Blob([pdfBlob], { type: "application/pdf" });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = `payslip_${employee.employee_id}_${payslipData.selectedDate.month}_${payslipData.selectedDate.year}.pdf`;
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      URL.revokeObjectURL(url);
+    const url = window.URL.createObjectURL(blob);
 
-      setSuccess(
-        `Payslip for ${employee.employee_name} downloaded successfully!`
-      );
-      showAlert(
-        `Payslip for ${employee.employee_name} downloaded successfully!`,
-        "Success"
-      );
-    } catch (err) {
-      console.error("Download error:", err);
-      showAlert(
-        `Error downloading payslip for ${employee.employee_name}: ${
-          err.message || err
-        }`,
-        "Error"
-      );
-    } finally {
-      setIsLoading(false);
-    }
-  };
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${employee.employee_id}_${payslipData.selectedDate.month}_${payslipData.selectedDate.year}_Payslip.pdf`;
+
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+
+    window.URL.revokeObjectURL(url);
+
+    showAlert(`Payslip for ${employee.employee_name} downloaded!`, "Success");
+  } catch (err) {
+    console.error(err);
+    showAlert(`Download failed: ${err.message || err}`, "Error");
+  } finally {
+    setIsLoading(false);
+  }
+};
+
 
   useEffect(() => {
     return () => {
@@ -835,60 +821,69 @@ export default function GeneratePayslip() {
             </tr>
           </thead>
           <tbody>
-            {filteredEmployeeData.map((employee) => (
-              <tr key={employee.id || employee.employee_id}>
-                <td className="generatePayslip-table-cell">
-                  {employee.employee_name}
-                </td>
-                <td className="generatePayslip-table-cell">
-                  {employee.employee_id}
-                </td>
-                <td className="generatePayslip-table-cell">
-                  {employee.gender}
-                </td>
-                <td className="generatePayslip-table-cell">
-                  {(employee.designation || employee.position || "") +
-                    (employee.department_name
-                      ? ` (${employee.department_name})`
-                      : "")}
-                </td>
-                <td className="generatePayslip-table-cell">
-                  {(employee.date_of_joining || "").split("T")[0]}
-                </td>
-                <td className="generatePayslip-table-cell">
-                  <button
-                    className="generatePayslip-view-btn"
-                    onClick={() => handleViewDetails(employee)}
-                    title="View Bank Details"
-                  >
-                    <i className="fas fa-eye" />
-                  </button>
-                </td>
-                <td className="generatePayslip-table-cell">
-                  <button
-                    className="generatePayslip-edit-btn"
-                    onClick={() => handleEdit(employee)}
-                    title="Edit Payslip"
-                  >
-                    <i className="fas fa-pencil-alt" />
-                  </button>
-                </td>
-                <td className="generatePayslip-table-cell">
-                  <button
-                    className="generatePayslip-download-btn"
-                    onClick={() => handleDownloadForEmployee(employee)}
-                    title="Download Payslip PDF"
-                    disabled={isLoading}
-                  >
-                    <i className="fas fa-download" />
-                  </button>
+            {filteredEmployeeData.length === 0 ? (
+              <tr>
+                <td colSpan={tableHeaders.length} style={{ textAlign: "center" }}>
+                  No payslip data found
                 </td>
               </tr>
-            ))}
+            ) : (
+              filteredEmployeeData.map((employee) => (
+                <tr key={employee.id || employee.employee_id}>
+                  <td className="generatePayslip-table-cell">
+                    {employee.employee_name}
+                  </td>
+                  <td className="generatePayslip-table-cell">
+                    {employee.employee_id}
+                  </td>
+                  <td className="generatePayslip-table-cell">
+                    {employee.gender}
+                  </td>
+                  <td className="generatePayslip-table-cell">
+                    {(employee.designation || employee.position || "") +
+                      (employee.department_name
+                        ? ` (${employee.department_name})`
+                        : "")}
+                  </td>
+                  <td className="generatePayslip-table-cell">
+                    {(employee.date_of_joining || "").split("T")[0]}
+                  </td>
+                  <td className="generatePayslip-table-cell">
+                    <button
+                      className="generatePayslip-view-btn"
+                      onClick={() => handleViewDetails(employee)}
+                      title="View Bank Details"
+                    >
+                      <i className="fas fa-eye" />
+                    </button>
+                  </td>
+                  <td className="generatePayslip-table-cell">
+                    <button
+                      className="generatePayslip-edit-btn"
+                      onClick={() => handleEdit(employee)}
+                      title="Edit Payslip"
+                    >
+                      <i className="fas fa-pencil-alt" />
+                    </button>
+                  </td>
+                  <td className="generatePayslip-table-cell">
+                    <button
+                      className="generatePayslip-download-btn"
+                      onClick={() => handleDownloadForEmployee(employee)}
+                      title="Download Payslip PDF"
+                      disabled={isLoading}
+                    >
+                      <i className="fas fa-download" />
+                    </button>
+                  </td>
+                </tr>
+              ))
+            )}
           </tbody>
         </table>
       </div>
 
+      {/* Modal Popup */}
       {showModal && (
         <div className="generatePayslip-popup-overlay">
           <div className="generatePayslip-popup-box">
@@ -904,8 +899,6 @@ export default function GeneratePayslip() {
                   setPdfUrl(null);
                 }
                 setEditingEmployeeId(null);
-                setSelectedMonth(new Date().getMonth() + 1);
-                setSelectedYear(new Date().getFullYear());
               }}
             >
               ×
@@ -967,39 +960,62 @@ export default function GeneratePayslip() {
                           )}
                         </label>
 
-                        {field === "employeeId" ? (
-                          <select
-                            id="employeeId"
-                            name="employeeId"
-                            value={formData.employeeId}
-                            onChange={handleChange}
-                            className="generatePayslip-popup-input"
-                          >
-                            <option value="">Select Employee ID</option>
-                            {Array.isArray(formEmployeeList) &&
-                            formEmployeeList.length > 0 ? (
-                              formEmployeeList.map((emp) => (
-                                <option
-                                  key={
-                                    emp.employee_id || emp.id || emp.employeeId
-                                  }
-                                  value={emp.employee_id || emp.employeeId}
-                                >
-                                  {`${emp.employee_id || emp.employeeId} - ${
-                                    emp.employee_name || emp.name || ""
-                                  }`}
-                                </option>
-                              ))
-                            ) : formData.employeeId ? (
-                              <option
-                                key={formData.employeeId}
-                                value={formData.employeeId}
-                              >
-                                {formData.employeeId}
-                              </option>
-                            ) : null}
-                          </select>
-                        ) : field === "selectedMonth" ? (
+                      {field === "employeeId" ? (
+  <>
+    {!manualEmployeeId ? (
+      <select
+        id="employeeId"
+        name="employeeId"
+        value={formData.employeeId}
+        onChange={handleChange}
+        className="generatePayslip-popup-input"
+      >
+        <option value="">Select Employee ID</option>
+        {formEmployeeList.map((emp) => (
+          <option
+            key={emp.employee_id || emp.id}
+            value={emp.employee_id || emp.employeeId}
+          >
+            {`${emp.employee_id || emp.employeeId} - ${
+              emp.employee_name || emp.name || ""
+            }`}
+          </option>
+        ))}
+      </select>
+    ) : (
+      <input
+        type="text"
+        name="employeeId"
+        value={formData.employeeId}
+        onChange={handleChange}
+        className="generatePayslip-popup-input"
+        placeholder="Enter Employee ID manually"
+      />
+    )}
+
+    <small
+      style={{
+        cursor: "pointer",
+        color: "#007bff",
+        marginTop: "4px",
+        display: "inline-block",
+      }}
+      onClick={() => {
+        setManualEmployeeId((p) => !p);
+        setFormData((p) => ({
+          ...p,
+          employeeId: "",
+          employeeName: "",
+        }));
+      }}
+    >
+      {manualEmployeeId
+        ? "Select from employee list"
+        : "Enter employee ID manually"}
+    </small>
+  </>
+) 
+ : field === "selectedMonth" ? (
                           <select
                             id="selectedMonth"
                             name="selectedMonth"
@@ -1018,13 +1034,13 @@ export default function GeneratePayslip() {
                           </select>
                         ) : field === "selectedYear" ? (
                           <input
+                            type="number"
                             id="selectedYear"
                             name="selectedYear"
                             value={selectedYear}
                             onChange={handleChange}
                             className="generatePayslip-popup-input"
-                            placeholder="Enter Year (e.g., 2025)"
-                            type="number"
+                            placeholder="Year"
                           />
                         ) : field === "gender" ? (
                           <select
@@ -1045,9 +1061,8 @@ export default function GeneratePayslip() {
                             value={formData.panNumber}
                             onChange={handleChange}
                             className="generatePayslip-popup-input"
-                            placeholder="e.g., ABCDE1234F"
+                            placeholder="ABCDE1234F"
                             maxLength={10}
-                            type="text"
                           />
                         ) : (
                           <input
@@ -1056,29 +1071,15 @@ export default function GeneratePayslip() {
                             value={formData[field]}
                             onChange={handleChange}
                             className="generatePayslip-popup-input"
-                            placeholder={
-                              field === "dateOfJoining"
-                                ? "YYYY-MM-DD"
-                                : field === "employeeId"
-                                ? "PW-000001"
-                                : `Enter ${fieldLabels[field]}`
-                            }
                             type={
-                              field === "dateOfJoining"
-                                ? "text"
-                                : [
-                                    "workingDays",
-                                    "leavesTaken",
-                                    "basic",
-                                    "hra",
-                                    "otherAllowance",
-                                    "pf",
-                                    "esiInsurance",
-                                    "professionalTax",
-                                    "tds",
-                                  ].includes(field)
+                              ["workingDays", "leavesTaken", "basic", "hra", "otherAllowance", "pf", "esiInsurance", "professionalTax", "tds"].includes(field)
                                 ? "number"
+                                : field === "dateOfJoining"
+                                ? "text"
                                 : "text"
+                            }
+                            placeholder={
+                              field === "dateOfJoining" ? "YYYY-MM-DD" : undefined
                             }
                           />
                         )}
@@ -1096,13 +1097,8 @@ export default function GeneratePayslip() {
                   setPreview(false);
                   setError(null);
                   setSuccess(null);
-                  if (pdfUrl) {
-                    URL.revokeObjectURL(pdfUrl);
-                    setPdfUrl(null);
-                  }
+                  if (pdfUrl) URL.revokeObjectURL(pdfUrl);
                   setEditingEmployeeId(null);
-                  setSelectedMonth(new Date().getMonth() + 1);
-                  setSelectedYear(new Date().getFullYear());
                 }}
                 className="generatePayslip-cancel-btn"
                 disabled={isLoading}
@@ -1117,14 +1113,14 @@ export default function GeneratePayslip() {
                     className="generatePayslip-save-btn"
                     disabled={isLoading}
                   >
-                    {isLoading ? "Saving..." : "Save"}
+                    {isLoading ? "Saving..." : "Save to Database"}
                   </button>
                   <button
                     onClick={handleDownloadPDF}
                     className="generatePayslip-download-btn"
                     disabled={isLoading}
                   >
-                    {isLoading ? "Downloading..." : "Download"}
+                    {isLoading ? "Downloading..." : "Download PDF"}
                   </button>
                 </>
               ) : (
@@ -1134,14 +1130,14 @@ export default function GeneratePayslip() {
                     className="generatePayslip-save-btn"
                     disabled={isLoading}
                   >
-                    {isLoading ? "Saving..." : "Save"}
+                    {isLoading ? "Saving..." : editingEmployeeId ? "Update" : "Save"}
                   </button>
                   <button
                     onClick={handlePreview}
                     className="generatePayslip-preview-btn"
                     disabled={isLoading}
                   >
-                    Preview
+                    Preview PDF
                   </button>
                 </>
               )}
@@ -1150,6 +1146,7 @@ export default function GeneratePayslip() {
         </div>
       )}
 
+      {/* View Details Modal */}
       {viewDetailsModal.isVisible && viewDetailsModal.employee && (
         <Modal
           isVisible={viewDetailsModal.isVisible}
@@ -1157,55 +1154,38 @@ export default function GeneratePayslip() {
           buttons={[{ label: "Close", onClick: closeViewDetails }]}
         >
           <h3 className="generatePayslip-details-title">
-            Bank and Salary Details for{" "}
-            {viewDetailsModal.employee.employee_name}
+            Details for {viewDetailsModal.employee.employee_name}
           </h3>
           <div className="generatePayslip-details-container">
             <table className="generatePayslip-details-table">
               <thead>
                 <tr>
-                  <th className="generatePayslip-details-header">Field</th>
-                  <th className="generatePayslip-details-header">Value</th>
+                  <th>Field</th>
+                  <th>Value</th>
                 </tr>
               </thead>
               <tbody>
                 {detailFields.map((field) => (
                   <tr key={field}>
-                    <td className="generatePayslip-details-cell">
-                      {fieldLabels[field]}
-                    </td>
-                    <td className="generatePayslip-details-cell">
-                      {field === "accountNo" &&
-                        (viewDetailsModal.employee.account_no || "-")}
-                      {field === "workingDays" &&
-                        (viewDetailsModal.employee.working_days || 0)}
-                      {field === "leavesTaken" &&
-                        (viewDetailsModal.employee.leaves_taken || 0)}
-                      {field === "uinNo" &&
-                        (viewDetailsModal.employee.uin_no || "-")}
-                      {field === "panNumber" &&
-                        (viewDetailsModal.employee.pan_number || "-")}
-                      {field === "esiNumber" &&
-                        (viewDetailsModal.employee.esi_number || "-")}
-                      {field === "pfNumber" &&
-                        (viewDetailsModal.employee.pf_number || "-")}
-                      {field === "basic" &&
-                        (viewDetailsModal.employee.basic || 0)}
+                    <td>{fieldLabels[field]}</td>
+                    <td>
+                      {field === "accountNo" && (viewDetailsModal.employee.account_no || "-")}
+                      {field === "workingDays" && (viewDetailsModal.employee.working_days || 0)}
+                      {field === "leavesTaken" && (viewDetailsModal.employee.leaves_taken || 0)}
+                      {field === "uinNo" && (viewDetailsModal.employee.uin_no || "-")}
+                      {field === "panNumber" && (viewDetailsModal.employee.pan_number || "-")}
+                      {field === "esiNumber" && (viewDetailsModal.employee.esi_number || "-")}
+                      {field === "pfNumber" && (viewDetailsModal.employee.pf_number || "-")}
+                      {field === "basic" && (viewDetailsModal.employee.basic || 0)}
                       {field === "hra" && (viewDetailsModal.employee.hra || 0)}
-                      {field === "otherAllowance" &&
-                        (viewDetailsModal.employee.other_allowance || 0)}
+                      {field === "otherAllowance" && (viewDetailsModal.employee.other_allowance || 0)}
                       {field === "pf" && (viewDetailsModal.employee.pf || 0)}
-                      {field === "esiInsurance" &&
-                        (viewDetailsModal.employee.esi_insurance || 0)}
-                      {field === "professionalTax" &&
-                        (viewDetailsModal.employee.professional_tax || 0)}
+                      {field === "esiInsurance" && (viewDetailsModal.employee.esi_insurance || 0)}
+                      {field === "professionalTax" && (viewDetailsModal.employee.professional_tax || 0)}
                       {field === "tds" && (viewDetailsModal.employee.tds || 0)}
-                      {field === "grossEarnings" &&
-                        (viewDetailsModal.employee.gross_earnings || 0)}
-                      {field === "totalDeductions" &&
-                        (viewDetailsModal.employee.total_deductions || 0)}
-                      {field === "netSalary" &&
-                        (viewDetailsModal.employee.net_salary || 0)}
+                      {field === "grossEarnings" && (viewDetailsModal.employee.gross_earnings || 0)}
+                      {field === "totalDeductions" && (viewDetailsModal.employee.total_deductions || 0)}
+                      {field === "netSalary" && (viewDetailsModal.employee.net_salary || 0)}
                     </td>
                   </tr>
                 ))}
@@ -1215,12 +1195,13 @@ export default function GeneratePayslip() {
         </Modal>
       )}
 
+      {/* Alert Modal */}
       <Modal
         isVisible={alertModal.isVisible}
         onClose={closeAlert}
         buttons={[{ label: "OK", onClick: closeAlert }]}
       >
-        <h3>{alertModal.title}</h3>
+        <h3>{alertModal.title || "Alert"}</h3>
         <p>{alertModal.message}</p>
       </Modal>
     </div>

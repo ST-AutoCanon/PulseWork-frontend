@@ -33,7 +33,7 @@ function normalizeUploadUrl(src, backendBase) {
   }
 }
 
-async function fetchProtectedBlobUrl(src, apiKey, backendBase, orgId) {
+async function fetchProtectedBlobUrl(src, apiKey, backendBase) {
   if (!src) return null;
   if (src.startsWith("blob:") || src.startsWith("data:")) return src;
 
@@ -45,7 +45,7 @@ async function fetchProtectedBlobUrl(src, apiKey, backendBase, orgId) {
   try {
     const res = await axios.get(normalized, {
       responseType: "blob",
-      headers: { "x-api-key": apiKey || "", "x-org-id": orgId || "" },
+      headers: { "x-api-key": apiKey || "" },
       withCredentials: true,
     });
     const blob = res.data;
@@ -58,12 +58,7 @@ async function fetchProtectedBlobUrl(src, apiKey, backendBase, orgId) {
   }
 }
 
-async function replaceUploadUrlsInHtml(
-  html = "",
-  apiKey,
-  backendBase,
-  orgId = null
-) {
+async function replaceUploadUrlsInHtml(html = "", apiKey, backendBase) {
   if (!html || typeof html !== "string") return html;
 
   const uploadRegex =
@@ -78,12 +73,7 @@ async function replaceUploadUrlsInHtml(
     unique.map(async (m) => {
       let candidate = m;
       candidate = normalizeUploadUrl(m, backendBase);
-      const blob = await fetchProtectedBlobUrl(
-        candidate,
-        apiKey,
-        backendBase,
-        orgId
-      );
+      const blob = await fetchProtectedBlobUrl(candidate, apiKey, backendBase);
       if (blob) replacements[m] = blob;
       else replacements[m] = candidate;
     })
@@ -142,7 +132,6 @@ const LetterHead = () => {
   const headers = {
     "x-api-key": API_KEY,
     "x-employee-id": meId,
-    "x-org-id": orgId,
   };
 
   const [alertModal, setAlertModal] = useState({
@@ -229,56 +218,72 @@ const LetterHead = () => {
     }
   }, [showPopup]);
 
-  useEffect(() => {
-    let mounted = true;
-    async function fetchData() {
-      setLoading(true);
-      try {
-        const templatesResp = await axios
-          .get(`${BACKEND_URL}/api/templates/list`, {
+ useEffect(() => {
+  let mounted = true;
+
+  async function fetchData() {
+    setLoading(true);
+    try {
+      const templatesResp = await axios
+        .get(`${BACKEND_URL}/api/templates/list`, {
+          withCredentials: true,
+          headers: {
+            ...headers,
+            "x-org-id": orgId, 
+          },
+        })
+        .catch(() => ({ data: { data: [] } }));
+
+      const letterheadsResp = await axios
+        .get(`${BACKEND_URL}/api/letterheads/list`, {
+          withCredentials: true,
+          headers: {
+            ...headers,
+            "x-org-id": orgId, 
+          },
+        })
+        .catch(() => ({ data: { data: [] } }));
+
+      let saved = [];
+      if (orgId) {
+        const savedResp = await axios.get(
+          `${BACKEND_URL}/api/orgs/${orgId}/templates`,
+          {
             withCredentials: true,
-            headers,
-          })
-          .catch(() => ({ data: { data: [] } }));
-
-        const letterheadsResp = await axios
-          .get(`${BACKEND_URL}/api/letterheads/list`, {
-            withCredentials: true,
-            headers,
-          })
-          .catch(() => ({ data: { data: [] } }));
-
-        let saved = [];
-        if (orgId) {
-          const savedResp = await axios.get(
-            `${BACKEND_URL}/api/orgs/${orgId}/templates`,
-            { withCredentials: true, headers }
-          );
-          saved = Array.isArray(savedResp.data)
-            ? savedResp.data
-            : savedResp.data?.data || [];
-        }
-
-        if (!mounted) return;
-
-        setTemplates(templatesResp.data.data || []);
-        setLetterheads(letterheadsResp.data.data || []);
-        setSavedTemplates(saved || []);
-      } catch (error) {
-        console.error("Error fetching data:", error);
-        showAlert(
-          "Failed to fetch data: " +
-            (error?.response?.data?.error || error.message || "unknown")
+            headers: {
+              ...headers,
+              "x-org-id": orgId,
+            },
+          }
         );
-      } finally {
-        setLoading(false);
+
+        saved = Array.isArray(savedResp.data)
+          ? savedResp.data
+          : savedResp.data?.data || [];
       }
+
+      if (!mounted) return;
+
+      setTemplates(templatesResp.data.data || []);
+      setLetterheads(letterheadsResp.data.data || []);
+      setSavedTemplates(saved || []);
+    } catch (error) {
+      console.error("Error fetching data:", error);
+      showAlert(
+        "Failed to fetch data: " +
+          (error?.response?.data?.error || error.message || "unknown")
+      );
+    } finally {
+      setLoading(false);
     }
-    fetchData();
-    return () => {
-      mounted = false;
-    };
-  }, [orgId]);
+  }
+
+  if (orgId) fetchData(); 
+  return () => {
+    mounted = false;
+  };
+}, [orgId]);
+
 
   const revokeIfBlob = (url) => {
     try {
@@ -561,8 +566,7 @@ const LetterHead = () => {
             const blob = await fetchProtectedBlobUrl(
               normalized,
               API_KEY,
-              BACKEND_URL,
-              orgId
+              BACKEND_URL
             );
             if (blob) resolved[field] = blob;
             else resolved[field] = normalized;
@@ -571,8 +575,7 @@ const LetterHead = () => {
             const blob = await fetchProtectedBlobUrl(
               normalized,
               API_KEY,
-              BACKEND_URL,
-              orgId
+              BACKEND_URL
             );
             if (blob) resolved[field] = blob;
             else resolved[field] = normalized;
@@ -590,8 +593,7 @@ const LetterHead = () => {
         contentHtml = await replaceUploadUrlsInHtml(
           contentHtml,
           API_KEY,
-          BACKEND_URL,
-          orgId
+          BACKEND_URL
         );
       }
 
@@ -625,8 +627,7 @@ const LetterHead = () => {
             const blob = await fetchProtectedBlobUrl(
               normalized,
               API_KEY,
-              BACKEND_URL,
-              orgId
+              BACKEND_URL
             );
             headerBlobRef.current = blob || normalized;
           } else {
@@ -648,8 +649,7 @@ const LetterHead = () => {
             const blobF = await fetchProtectedBlobUrl(
               normalizedF,
               API_KEY,
-              BACKEND_URL,
-              orgId
+              BACKEND_URL
             );
             footerBlobRef.current = blobF || normalizedF;
           } else {
@@ -672,8 +672,7 @@ const LetterHead = () => {
           const blob = await fetchProtectedBlobUrl(
             normalized,
             API_KEY,
-            BACKEND_URL,
-            orgId
+            BACKEND_URL
           );
           headerBlobRef.current = blob || normalized;
         }
@@ -687,8 +686,7 @@ const LetterHead = () => {
           const blob = await fetchProtectedBlobUrl(
             normalized,
             API_KEY,
-            BACKEND_URL,
-            orgId
+            BACKEND_URL
           );
           footerBlobRef.current = blob || normalized;
         }
@@ -840,8 +838,7 @@ const LetterHead = () => {
           const blob = await fetchProtectedBlobUrl(
             normalized,
             API_KEY,
-            BACKEND_URL,
-            orgId
+            BACKEND_URL
           );
           setWatermarkBlobUrl(blob || normalized);
           setWatermarkPropsState(wp || watermarkPropsState);
@@ -1364,32 +1361,6 @@ const LetterHead = () => {
       ...prev,
       body: contentRef.current?.innerHTML || "",
     }));
-  };
-
-  const escapeRegExp = (s) => (s || "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-
-  const updateContentWithFormData = (fieldName, value) => {
-    if (!contentRef.current) return;
-    try {
-      const html = contentRef.current.innerHTML || "";
-      const camel = fieldName.replace(/_([a-z])/g, (m, p) => p.toUpperCase());
-      const patterns = [
-        new RegExp(`{{\\s*${escapeRegExp(fieldName)}\\s*}}`, "g"),
-        new RegExp(`{{\\s*${escapeRegExp(camel)}\\s*}}`, "g"),
-        new RegExp(`\\[\\[\\s*${escapeRegExp(fieldName)}\\s*\\]\\]`, "g"),
-      ];
-      let out = html;
-      patterns.forEach((p) => (out = out.replace(p, value || "")));
-      if (out !== html) {
-        contentRef.current.innerHTML = out;
-        setFormData((prev) => ({
-          ...prev,
-          body: contentRef.current.innerHTML,
-        }));
-      }
-    } catch (e) {
-      console.warn("updateContentWithFormData failed", e);
-    }
   };
 
   const waitForImagesToLoad = (container, timeout = 7000) => {

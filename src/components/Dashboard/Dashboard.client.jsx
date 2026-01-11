@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useEffect, useState } from "react";
@@ -23,22 +24,42 @@ const Dashboard = () => {
   const API_KEY = process.env.NEXT_PUBLIC_API_KEY;
   const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
 
-  const headers = meId
-    ? { "x-api-key": API_KEY, "x-employee-id": meId }
-    : { "x-api-key": API_KEY };
+  // ✅ Declare orgId BEFORE using it
+  const orgId =
+    user?.org_id ??
+    user?.orgId ??
+    user?.organization_id ??
+    user?.raw?.org_id ??
+    null;
+
+  const headers =
+    meId && orgId
+      ? {
+          "x-api-key": API_KEY,
+          "x-employee-id": meId,
+          "x-org-id": orgId,
+        }
+      : { "x-api-key": API_KEY };
 
   useEffect(() => {
     let cancelled = false;
+
     const fetchBirthday = async () => {
       if (!hydrated) return;
       if (!email) return;
       try {
+        // ✅ Add await here
         const response = await axios.get(
           `${BACKEND_URL}/api/employee/birthday/${email}`,
-          { withCredentials: true, headers }
+          {
+            withCredentials: true,
+            headers,
+          }
         );
+
         const { full_name, first_name, dob } = response.data || {};
         const nameToUse = full_name || first_name || "there";
+
         if (isBirthdayToday(dob) && !cancelled) {
           setEmployeeName(nameToUse);
           setShowBirthday(true);
@@ -50,6 +71,7 @@ const Dashboard = () => {
     };
 
     fetchBirthday();
+
     return () => {
       cancelled = true;
     };

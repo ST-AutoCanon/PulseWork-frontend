@@ -1,16 +1,17 @@
 
 
+
 "use client";
 import React, { useState, useEffect, useMemo } from 'react';
 import axios from 'axios';
-import "./createCompensation.css"; // Assumes CSS is in same folder as .jsx
+import "./createCompensation.css"; 
 import { FaEye, FaPencilAlt } from 'react-icons/fa';
 import Modal from "../Modal/Modal.client";
-import { calculateSalaryDetails } from "../../utils/SalaryCalculations"; // Adjust path as needed
-import SalaryCalculationPeriod from "./salaryCalculationPeriod/salaryCalculationPeriod.client"; // Adjust path if folder structure differs
-import { useAuth } from "../../context/AuthProvider.client"; // Adjust path to match your SalaryCalculationPeriod import
+import { calculateSalaryDetails } from "../../utils/SalaryCalculations"; 
+import SalaryCalculationPeriod from "./salaryCalculationPeriod/salaryCalculationPeriod.client"; 
+import { useAuth } from "../../context/AuthProvider.client"; 
 const API_KEY = process.env.NEXT_PUBLIC_API_KEY;
-const DEFAULT_CTC = 100000; // Default CTC for percentage conversion
+const DEFAULT_CTC = 100000;
 
 const allowancePercentageFields = [
   { field: 'basicSalary', enable: 'isBasicSalary', type: 'basicSalaryType', amountField: 'basicSalaryAmount' },
@@ -273,19 +274,29 @@ const getHeaders = (opts = {}) => {
     "Content-Type": "application/json",
   };
 
-  const actorId = user?.employeeId ?? user?.id ?? null;
-  const orgId = user?.orgId || user?.org_id || null;
-
-  if (actorId) base["x-employee-id"] = String(actorId);
+  if (meId) base["x-employee-id"] = String(meId);
   if (orgId) base["x-org-id"] = String(orgId);
 
   return { ...base, ...opts };
 };
 
-  // TEMP DEBUG: Remove after fixing
-  useEffect(() => {
-    console.log('CreateCompensation Auth Debug:', { user, meId, orgId });
-  }, [user]);
+
+ useEffect(() => {
+  console.log('CreateCompensation Auth Debug:', { user, meId, orgId });
+
+ 
+  if (!meId || !orgId) {
+    console.warn("Skipping fetches – missing meId or orgId", { meId, orgId });
+    showAlert("Loading user data... Please wait or refresh if this persists.");
+    setSalaryPeriods([]);
+    setCompensations([]);
+    return;
+  }
+
+  
+  fetchCompensations();
+  fetchSalaryPeriods();
+}, [meId, orgId]); 
 
   const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
 
@@ -300,7 +311,7 @@ const logHeaders = {
   ...headers, 
   "x-api-key": headers["x-api-key"] ? "[REDACTED]" : "MISSING" 
 }
-  // Duplicate allowancePercentageFields for use in remainingPercentage (to avoid redefinition issues)
+  
   const allowancePercentageFieldsInternal = [
     { field: 'basicSalary', enable: 'isBasicSalary', type: 'basicSalaryType', amountField: 'basicSalaryAmount' },
     { field: 'houseRentAllowance', enable: 'isHouseRentAllowance', type: 'houseRentAllowanceType', amountField: 'houseRentAllowanceAmount' },
@@ -510,46 +521,10 @@ const logHeaders = {
     );
   };
 
-//  const performSave = async () => {
-//   if (!orgId) {
-//     showAlert("Organization ID missing. Please login again.");
-//     return;
-//   }
-
-//   if (!meId) {
-//     showAlert("Please login to continue");
-//     return;
-//   }
-
-//  const payload = {
-//   compensation_plan_name: formData.compensationPlanName, // snake_case
-//   plan_data: { ...formData }, // snake_case
-//   org_id: orgId,
-// };
 
 
 
 
-
-//   try {
-//     const response = await axios.post(
-//       `${BACKEND_URL}/api/compensations/add`,
-//       payload,
-//       { headers: getHeaders() }
-//     );
-
-//     showAlert("Compensation created successfully!");
-//     togglePopup();
-//     fetchCompensations();
-//   } catch (error) {
-//     console.error("UI Save Error:", error);
-//     const msg =
-//       error.response?.data?.error ||
-//       error.response?.data?.message ||
-//       error.message;
-//     showAlert(`Failed to create compensation: ${msg}`);
-//   }
-// };
 
 const performSave = async () => {
   if (!orgId) {
@@ -565,13 +540,13 @@ const performSave = async () => {
   const payload = {
     compensationPlanName: formData.compensationPlanName,
     formData: { ...formData },
-    org_id: orgId, // make sure org_id is included
+    org_id: orgId,
   };
 
   try {
     let response;
     if (isEditing && editingCompensationId) {
-      // ✅ Update existing compensation
+    
       response = await axios.put(
         `${BACKEND_URL}/api/compensations/update/${editingCompensationId}`,
         payload,
@@ -579,7 +554,7 @@ const performSave = async () => {
       );
       showAlert("Compensation updated successfully!");
     } else {
-      // Create new compensation
+      
       response = await axios.post(
         `${BACKEND_URL}/api/compensations/add`,
         payload,
@@ -603,19 +578,19 @@ const performSave = async () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setErrors({});
-    // Validate salary calculation period exists
+    
     if (salaryPeriods.length === 0) {
       showAlert('Please add a salary calculation period first before creating a compensation plan.');
       setIsSalaryPeriodModalOpen(true);
       return;
     }
-    // Validate Compensation Plan Name
+    
     if (!formData.compensationPlanName.trim()) {
       setErrors({ compensationPlanName: 'Compensation Plan Name is required' });
       showAlert('Compensation Plan Name is required and cannot be empty');
       return;
     }
-    // Validate Total Percentage
+   
     const totalPercentage = 100 - remainingPercentage;
     if (remainingPercentage < -0.01) {
       setErrors({ totalPercentage: `Total percentage exceeds 100% by ${Math.abs(remainingPercentage).toFixed(2)}%` });
@@ -627,23 +602,22 @@ const performSave = async () => {
       showAlert(`Total percentage is ${totalPercentage.toFixed(2)}%. Add ${remainingPercentage.toFixed(2)}% to reach 100%`);
       return;
     }
-    // Show confirmation dialog only for create (not edit)
     if (!isEditing) {
       showConfirm(
         'Do you want to save this plan?',
         'Confirm Save',
         async () => {
           try {
-            await performSave(); // Wait for save to complete
-            closeConfirm(); // Now close the confirm modal
+            await performSave(); 
+            closeConfirm(); 
           } catch (error) {
-            // performSave already shows error alert
+            
             closeConfirm();
           }
         }
       );
     } else {
-      await performSave(); // For edit, just save directly
+      await performSave(); 
     }
   };
 
@@ -687,7 +661,6 @@ const performSave = async () => {
       const newData = { ...prev, [field]: value === 'yes' };
       const updatedErrors = { ...errors };
       if (value !== 'yes') {
-        // Reset fields when unchecked
         if (field === 'isBasicSalary') {
           newData.basicSalary = '';
           newData.basicSalaryAmount = '';
@@ -777,7 +750,7 @@ const performSave = async () => {
           updatedErrors.incentives = '';
         }
       } else {
-        // Initialize fields when checked
+       
         if (field === 'isBasicSalary') {
           newData.basicSalaryType = 'percentage';
           newData.basicSalary = newData.basicSalary || '40';
@@ -849,7 +822,7 @@ const performSave = async () => {
     console.log(`handleInputChange: field=${field}, value=${value}`);
     const newFormData = { ...formData, [field]: value };
     const totalCTC = ctcInput ? parseFloat(ctcInput) : DEFAULT_CTC;
-    // Handle type changes (percentage/amount)
+   
     if (field.endsWith('Type')) {
       const baseField = field.replace('Type', '');
       const percentageField = baseField;
@@ -859,10 +832,10 @@ const performSave = async () => {
         newFormData[amountField] = '';
       } else if (value === 'amount') {
         newFormData[amountField] = newFormData[amountField] || '0';
-        newFormData[percentageField] = ''; // Reset to ensure recalculation
+        newFormData[percentageField] = ''; 
       }
     }
-    // Calculate percentage for amount-based fields
+  
     allowancePercentageFields.forEach(({ field: percentageField, amountField, typeField }) => {
       if (field === amountField && newFormData[typeField] === 'amount' && value) {
         const percentage = convertAmountToPercentage(value, totalCTC);
@@ -871,7 +844,7 @@ const performSave = async () => {
       }
     });
     setFormData(newFormData);
-    // Validate field if applicable
+    
     const fieldConfig = categories
       .flatMap((category) => category.fields)
       .find((f) => f.percentageField === field || f.amountField === field);
@@ -965,66 +938,37 @@ const performSave = async () => {
   
 
 const fetchSalaryPeriods = async () => {
-  if (!BACKEND_URL || !user?.employeeId) {
-    showAlert?.("Please login to continue");
-    setSalaryPeriods([]);
-    return;
-  }
-
-  const headers = {
-    "x-api-key": API_KEY || "",
-    "x-employee-id": String(user.employeeId)
-  };
-
-  const logHeaders = {
-    ...headers,
-    "x-api-key": headers["x-api-key"] ? "[REDACTED]" : "MISSING"
-  };
-
-  console.log("[Salary Periods Headers Sent]", logHeaders);
+  console.log("Fetching salary periods – orgId:", orgId);
 
   try {
+    const headers = getHeaders();
+    console.log("Headers sent for salary periods:", headers); 
+
     const response = await axios.get(
       `${BACKEND_URL}/api/salaryCalculationperiods`,
-      {withCredentials: true,
-        headers: headers,
-          // ✅ SAME AS credentials: "include"
+      {
+        headers,
+        withCredentials: true
       }
     );
 
-    console.log(
-      "[Salary Periods Response Status]",
-      response.status,
-      response.data
-    );
-
-    if (response.data?.success !== false) {
-      setSalaryPeriods(response.data?.data || []);
-    } else {
-      setSalaryPeriods([]);
-    }
-
+    console.log("[Salary Periods Success]", response.status, response.data);
+    setSalaryPeriods(response.data?.data || []);
   } catch (error) {
     console.error("[Salary Periods Error]", {
       status: error.response?.status,
-      message: error.message
+      data: error.response?.data,
+      headers_sent: getHeaders()
     });
-
-    if (error.response?.status === 401) {
-      showAlert("Authentication failed. Please login again.");
-    } else {
-      showAlert("Something went wrong while loading salary periods.");
-    }
-
+    showAlert("Failed to load salary periods.");
     setSalaryPeriods([]);
   }
 };
 
-
   useEffect(() => {
     if (meId) {
       fetchCompensations();
-      fetchSalaryPeriods(); // Initial call
+      fetchSalaryPeriods(); 
     }
   }, [meId]);
 
@@ -1360,10 +1304,10 @@ const fetchSalaryPeriods = async () => {
     const enableField = fieldEnableMap[key];
     if (enableField) {
       if (enableField === true) {
-        return true; // Always show fields like isDefaultWorkingDays
+        return true; 
       }
       if (formData[enableField]) {
-        return true; // Show if the enable flag is true (even if value is default/empty)
+        return true; 
       }
     }
     const typeDependentFields = {
@@ -1430,10 +1374,10 @@ const fetchSalaryPeriods = async () => {
       }
       const typeValue = formData.professionalTaxType || 'amount';
       if (typeValue === 'percentage') {
-        const pct = formData.professionalTax || ''; // Empty if not set
+        const pct = formData.professionalTax || ''; 
         return { value: pct ? `${pct}% of CTC` : 'Not Set', basis: 'CTC (Monthly)' };
       } else {
-        const amt = formData.professionalTaxAmount || ''; // Empty if not set
+        const amt = formData.professionalTaxAmount || ''; 
         return {
           value: amt ? `₹${parseFloat(amt).toLocaleString('en-IN')} (Fixed)` : 'Not Set',
           basis: 'Fixed'
@@ -1464,7 +1408,7 @@ const fetchSalaryPeriods = async () => {
         basis: formData.medicalCalculationBase === 'gross' ? 'Gross Salary' : 'Basic Salary'
       };
     }
-    // INSERT HERE: New tds block (before let basis)
+   
     if (calcField === 'tds') {
       if (!formData.isTDSApplicable || !formData.tdsSlabs || formData.tdsSlabs.length === 0) {
         return { value: 'Not Applicable', basis: 'N/A' };
@@ -1472,15 +1416,15 @@ const fetchSalaryPeriods = async () => {
       return { value: 'Calculated based on CTC', basis: 'Annual' };
     }
     let basis = 'N/A';
-    // Updated: LTA Allowance now uses CTC basis (moved out of Basic Salary group)
-    if (['basicSalary', 'otherAllowances', 'statutoryBonus', 'ltaAllowance'].includes(calcField)) { // Added 'ltaAllowance' here
-      basis = calcField === 'statutoryBonus' ? 'CTC (Annual)' : 'CTC (Monthly)'; // Use 'Annual' if LTA is yearly
-    } else if (['hra', 'gratuity'].includes(calcField)) { // Removed 'ltaAllowance' from here
+    
+    if (['basicSalary', 'otherAllowances', 'statutoryBonus', 'ltaAllowance'].includes(calcField)) { 
+      basis = calcField === 'statutoryBonus' ? 'CTC (Annual)' : 'CTC (Monthly)'; 
+    } else if (['hra', 'gratuity'].includes(calcField)) { 
       basis = 'Basic Salary';
     } else if (calcField === 'incentives') {
       basis = 'Incentive Data';
     }
-    // REMOVED: else if (calcField === 'tds') { basis = 'CTC (Annual)'; } // Handled in new block above
+  
     if (enable && formData[enable]) {
       const typeValue = formData[type] || defaultConfig?.type || 'percentage';
       const valueField = typeValue === 'percentage' ? percentage : amount;
@@ -1574,7 +1518,6 @@ const fetchSalaryPeriods = async () => {
       const projectedOvertime = parseFloat(formData.overtimePayAmount) * parseFloat(formData.overtimePayUnits);
       calculatedDetails.overtimePay = Math.round(projectedOvertime);
     }
-    // Override TDS calculation for preview to ensure proper slab-based computation on annual CTC
     const oldTds = calculatedDetails.tds || 0;
     if (formData.isTDSApplicable && formData.tdsSlabs && formData.tdsSlabs.length > 0) {
       const annualIncome = parseFloat(ctcInput);
@@ -1590,7 +1533,6 @@ const fetchSalaryPeriods = async () => {
       const annualTDS = annualIncome * (applicableRate / 100);
       const monthlyTDS = annualTDS / 12;
       calculatedDetails.tds = Math.round(monthlyTDS * 100) / 100;
-      // Adjust netSalary to reflect the new TDS amount
       calculatedDetails.netSalary += (oldTds - calculatedDetails.tds);
     }
     setFormData((prev) => ({
@@ -1599,7 +1541,7 @@ const fetchSalaryPeriods = async () => {
       pfEmployerText: planDataCopy.pfEmployerText || '0%',
       esicEmployeeText: planDataCopy.esicEmployeeText || '0%',
       insuranceEmployeeText: planDataCopy.insuranceEmployeeText || '0%',
-      professionalTaxText: planDataCopy.professionalTaxText || '₹0 (Fixed)' // ADDED: Include Professional Tax text
+      professionalTaxText: planDataCopy.professionalTaxText || '₹0 (Fixed)' 
     }));
     setSalaryDetails(calculatedDetails);
   };
@@ -2036,7 +1978,7 @@ const fetchSalaryPeriods = async () => {
     }
   ];
 
-  // Add this new helper function
+ 
   const formatStatus = (status) => {
     switch (status) {
       case 'fullDay': return 'Full Day';
@@ -2048,7 +1990,7 @@ const fetchSalaryPeriods = async () => {
 
   const renderViewCompensationTable = (compensationData) => {
     const totalCTC = ctcInput ? parseFloat(ctcInput) : DEFAULT_CTC;
-    // Replace the existing fieldOrder array with this:
+  
     const fieldOrder = [
       'compensationPlanName',
       'isDefaultWorkingHours',
@@ -2494,7 +2436,7 @@ const fetchSalaryPeriods = async () => {
                           enableField: "isTDSApplicable",
                         },
                       ].map((field, idx) => {
-                        if (!formData[field.enableField]) return null; // Skip disabled fields
+                        if (!formData[field.enableField]) return null; 
                         const totalCTC = ctcInput ? parseFloat(ctcInput) : DEFAULT_CTC;
                         let displayValue = '';
                         if (field.label === "Default Working Days") {
@@ -2598,9 +2540,9 @@ const fetchSalaryPeriods = async () => {
           <SalaryCalculationPeriod
             onClose={() => {
               setIsSalaryPeriodModalOpen(false);
-              fetchSalaryPeriods(); // Add this to refresh after close
+              fetchSalaryPeriods(); 
             }}
-            showAlert={showAlert} // Assuming it uses this prop as per your component
+            showAlert={showAlert} 
           />
         </div>
       )}

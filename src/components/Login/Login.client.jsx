@@ -249,7 +249,7 @@ export default function Login({ onClose }) {
 
 console.log("NORMALIZED ROLE:", roleValue);
 
-if (roleValue === "general" || roleValue === "employee") {
+if (roleValue === "general" ) {
   router.replace("/FacePunch");
 } else {
   router.replace("/dashboard");

@@ -1,3 +1,4 @@
+
 "use client";
 import React, { useState, useEffect } from "react";
 import * as XLSX from "xlsx";
@@ -32,7 +33,6 @@ const Salary_Statement = () => {
   const [tableHeaders, setTableHeaders] = useState([]);
   const [invalidCells, setInvalidCells] = useState(new Map());
   const [updatedCells, setUpdatedCells] = useState(new Map());
-  const [previousData, setPreviousData] = useState(null);
   const [prevTableData, setPrevTableData] = useState([]);
   const [error, setError] = useState("");
   const [salaryData, setSalaryData] = useState([]);
@@ -48,10 +48,14 @@ const Salary_Statement = () => {
     message: "",
   });
   const [uploadMessage, setUploadMessage] = useState("");
-  const [selectedMonthYearData, setSelectedMonthYearData] = useState([]);
-  const templateUrl = "/templates/Statement_Template.xlsx";
   const [excelData, setExcelData] = useState([]);
   const [showNote, setShowNote] = useState(true);
+
+  const [templates, setTemplates] = useState([]);
+  const [selectedTemplate, setSelectedTemplate] = useState("");
+  const [templateLoading, setTemplateLoading] = useState(true);
+
+  const templateUrl = "/templates/Statement_Template.xlsx";
 
   const parseNumeric = (val) => {
     if (val === "" || val === null || val === undefined) return 0;
@@ -129,9 +133,7 @@ const Salary_Statement = () => {
 
   const convertExcelDate = (serial) => {
     if (serial === null || serial === undefined) return serial;
-    if (typeof serial === "string") {
-      return serial;
-    }
+    if (typeof serial === "string") return serial;
     if (typeof serial !== "number" || !isFinite(serial)) {
       console.warn("⚠️ Skipped date conversion for:", serial);
       return serial;
@@ -219,45 +221,6 @@ const Salary_Statement = () => {
     };
     reader.readAsArrayBuffer(file);
   };
-
-  const detectColumnTypes = (headers) => {
-    if (!Array.isArray(headers)) return [];
-    return headers.map((header) => {
-      const h = (header ?? "").toString().toLowerCase().trim();
-      if (h === "joining date") return "date";
-      if (
-        [
-          "uin number",
-          "basic salary",
-          "hra",
-          "allowance",
-          "special allowance",
-          "rnr/bonus",
-          "total",
-          "salary advance",
-          "pf",
-          "esi",
-          "pt",
-          "advance recovery",
-          "tds",
-          "total deductions",
-          "net payable",
-        ].includes(h)
-      ) {
-        return "number";
-      }
-      return "string";
-    });
-  };
-
-  const normalizeHeaders = (headers) => {
-    if (!headers) return [];
-    return headers.map((h) =>
-      typeof h === "string" ? h.trim().toLowerCase() : h
-    );
-  };
-
-  const actualHeaders = normalizeHeaders(tableHeaders);
 
   const validateData = (jsonData, headers, prevData = []) => {
     const invalidCells = new Map();
@@ -363,15 +326,57 @@ const Salary_Statement = () => {
     setAlertModal({ isVisible: false, title: "", message: "" });
   };
 
+  const handleTogglePayslip = async (employeeId, currentValue) => {
+    const newValue = currentValue === 0 || currentValue === "0" ? 1 : 0;
+    const action = newValue === 1 ? "enable" : "disable";
+
+    try {
+      const response = await axios.post(
+        `${BACKEND_URL}/api/salary-statement/update-payslip/${selectedMonth.toLowerCase()}/${selectedYear}/${employeeId}`,
+        { payslip_generated: newValue },
+        {
+          withCredentials: true,
+          headers,
+        }
+      );
+
+      if (response.data.success) {
+        setSalaryData((prev) =>
+          prev.map((row) =>
+            (row.employee_id || row["Employee ID"]) === employeeId
+              ? { ...row, payslip_generated: newValue }
+              : row
+          )
+        );
+        setFilteredData((prev) =>
+          prev.map((row) =>
+            (row.employee_id || row["Employee ID"]) === employeeId
+              ? { ...row, payslip_generated: newValue }
+              : row
+          )
+        );
+        showAlert(`Payslip ${action}d successfully`, "Success");
+      } else {
+        throw new Error(response.data.error || "Update failed");
+      }
+    } catch (err) {
+      console.error("❌ Error updating payslip status:", err);
+      showAlert(
+        `Failed to ${action} payslip: ${err.response?.data?.error || err.message}`,
+        "Error"
+      );
+    }
+  };
+
+  const getDisplayHeaders = () => {
+    if (salaryData.length === 0) return [];
+    const keys = Object.keys(salaryData[0]);
+    return keys.filter((key) => key.toLowerCase() !== "payslip_generated");
+  };
+
   const handleUpload = async () => {
     if (!file) {
       setError("❌ Please select a valid file to upload!");
-      setTableData([]);
-      setSelectedMonthYearData([]);
-      setSelectedMonth("");
-      setSelectedYear("");
-      setIsMonthYearSelected(false);
-      setTableData([]);
       showAlert("❌ Please select a valid file to upload!", "No File Selected");
       return;
     }
@@ -410,7 +415,6 @@ const Salary_Statement = () => {
         setError("");
         showAlert(successMessage, "Upload Successful");
         setIsFileUploaded(true);
-        setIsMonthYearSelected(false);
         setFile(null);
         setFileName("No file chosen");
         setTableData([]);
@@ -423,10 +427,6 @@ const Salary_Statement = () => {
         setUploadMessage(successMessage);
       } else if (response.data.error) {
         const errorMsg = response.data.error;
-        setError(`❌ Upload failed: ${errorMsg}`);
-        showAlert(`❌ Upload failed: ${errorMsg}`, "Upload Error");
-      } else {
-        const errorMsg = "Unexpected response from server";
         setError(`❌ Upload failed: ${errorMsg}`);
         showAlert(`❌ Upload failed: ${errorMsg}`, "Upload Error");
       }
@@ -454,25 +454,19 @@ const Salary_Statement = () => {
     const netSalaryIndex = tableHeaders.findIndex(
       (header) => header?.trim?.().toLowerCase() === "net salary"
     );
-    if (netSalaryIndex === -1) {
-      return 0;
-    }
+    if (netSalaryIndex === -1) return 0;
     let total = 0;
     tableData.forEach((row) => {
       const salary = parseFloat(
         String(row[netSalaryIndex] ?? "").replace(/,/g, "")
       );
-      if (!isNaN(salary)) {
-        total += salary;
-      }
+      if (!isNaN(salary)) total += salary;
     });
     return total;
   };
 
   const calculateTotalNetSalary = () => {
-    if (!salaryData || salaryData.length === 0) {
-      return "0.00";
-    }
+    if (!salaryData || salaryData.length === 0) return "0.00";
     const totalSalary = salaryData.reduce((total, row) => {
       let salary = row["Net Salary"] || row["net_salary"] || row["netSalary"];
       if (salary) {
@@ -506,53 +500,21 @@ const Salary_Statement = () => {
     setIsMonthYearSelected(true);
     setIsFileUploaded(false);
     setError("");
-    await fetchSalaryStatement(month, year);
+    await fetchSalaryData(month, year);
+    
+    await savePreferences(month, year, selectedTemplate);
   };
 
-  const fetchSalaryStatement = async (month, year) => {
-    if (!month || !year) return;
-    try {
-      const response = await axios.get(
-        `${BACKEND_URL}/api/salary-statement/${month.toLowerCase()}/${year}`,
-        { withCredentials: true, headers }
-      );
 
-      if (response.data && response.data.length > 0) {
-        setTableData(response.data);
-        setTableHeaders(Object.keys(response.data[0]));
-        setError("");
-      } else {
-        setTableData([]);
-        setTableHeaders([]);
-      }
-    } catch (err) {
-      console.error("Error fetching salary statement:", err);
+  const handleTemplateChange = async (e) => {
+    const newTemplateId = e.target.value;
+    setSelectedTemplate(newTemplateId);
+    if (selectedMonth && selectedYear) {
+      await savePreferences(selectedMonth, selectedYear, newTemplateId);
     }
   };
 
-  useEffect(() => {
-    const { month, year } = (() => {
-      const date = new Date();
-      const lastMonthDate = new Date(
-        date.getFullYear(),
-        date.getMonth() - 1,
-        1
-      );
-      const month = lastMonthDate.toLocaleString("default", { month: "short" });
-      const year = lastMonthDate.getFullYear();
-      return { month, year };
-    })();
-
-    setSelectedMonth(month);
-    setSelectedYear(year);
-    setIsMonthYearSelected(true);
-    fetchSalaryStatement(month, year);
-  }, []);
-
-  const fetchSalaryData = async (
-    month = selectedMonth,
-    year = selectedYear
-  ) => {
+  const fetchSalaryData = async (month = selectedMonth, year = selectedYear) => {
     if (!month || !year) return;
 
     try {
@@ -573,32 +535,125 @@ const Salary_Statement = () => {
       } else {
         setSalaryData([]);
         setFilteredData([]);
-        console.warn("⚠ Debug: No salary data found");
       }
     } catch (error) {
-      console.error(
-        "Error fetching salary data:",
-        error.response?.data || error.message
-      );
+      console.error("Error fetching salary data:", error);
       setSalaryData([]);
       setFilteredData([]);
     }
   };
 
-  useEffect(() => {
-    if (selectedMonth && selectedYear) {
-      fetchSalaryData(selectedMonth, selectedYear);
+  const fetchTemplates = async () => {
+    if (!orgId) return;
+    setTemplateLoading(true);
+    try {
+      const apiUrl = `${BACKEND_URL}/api/orgs/${orgId}/templates`;
+      const response = await axios.get(apiUrl, {
+        withCredentials: true,
+        headers,
+      });
+      const fetchedTemplates = response.data || [];
+      setTemplates(fetchedTemplates);
+    } catch (error) {
+      console.error("Error fetching templates:", error);
+      setTemplates([]);
+    } finally {
+      setTemplateLoading(false);
     }
-  }, [selectedMonth, selectedYear]);
+  };
+
+  
+  const loadPreferences = async () => {
+    if (!orgId) return;
+    try {
+      const response = await axios.get(`${BACKEND_URL}/api/salary-preferences`, {
+        withCredentials: true,
+        headers,
+      });
+      const prefs = response.data;
+      if (prefs && prefs.selected_month && prefs.selected_year) {
+        setSelectedMonth(prefs.selected_month);
+        setSelectedYear(prefs.selected_year);
+        setIsMonthYearSelected(true);
+        await fetchSalaryData(prefs.selected_month, prefs.selected_year);
+
+        
+        if (prefs.selected_template_id) {
+          setSelectedTemplate(String(prefs.selected_template_id));
+        }
+      } else {
+     
+        const lastMonthDate = new Date(new Date().getFullYear(), new Date().getMonth() - 1, 1);
+        const month = lastMonthDate.toLocaleString("default", { month: "short" });
+        const year = lastMonthDate.getFullYear();
+        setSelectedMonth(month);
+        setSelectedYear(year);
+        setIsMonthYearSelected(true);
+        await fetchSalaryData(month, year);
+      }
+    } catch (err) {
+      console.error("Failed to load preferences, using fallback:", err);
+   
+      const lastMonthDate = new Date(new Date().getFullYear(), new Date().getMonth() - 1, 1);
+      const month = lastMonthDate.toLocaleString("default", { month: "short" });
+      const year = lastMonthDate.getFullYear();
+      setSelectedMonth(month);
+      setSelectedYear(year);
+      setIsMonthYearSelected(true);
+      await fetchSalaryData(month, year);
+    }
+  };
+
+ 
+  const savePreferences = async (month = selectedMonth, year = selectedYear, templateId = selectedTemplate) => {
+    if (!orgId || !month || !year) return;
+    try {
+      await axios.post(
+        `${BACKEND_URL}/api/salary-preferences`,
+        {
+          selected_month: month,
+          selected_year: year,
+          selected_template_id: templateId ? Number(templateId) : null,
+        },
+        {
+          withCredentials: true,
+          headers,
+        }
+      );
+    } catch (err) {
+      console.error("Failed to save preferences:", err);
+    }
+  };
+
+  useEffect(() => {
+    if (templates.length > 0 && selectedTemplate) {
+      const valid = templates.some((t) => String(t.id) === selectedTemplate);
+      if (!valid && templates[0]) {
+        setSelectedTemplate(String(templates[0].id));
+        savePreferences(selectedMonth, selectedYear, templates[0].id);
+      }
+    } else if (templates.length > 0 && !selectedTemplate) {
+      setSelectedTemplate(String(templates[0].id));
+      savePreferences(selectedMonth, selectedYear, templates[0].id);
+    }
+  }, [templates]);
+
+ 
+  useEffect(() => {
+    if (hydrated && orgId) {
+      loadPreferences();
+      fetchTemplates();
+    }
+  }, [hydrated, orgId]);
+
+  
 
   const filterSalaryData = (e) => {
     const searchValue = e.target.value.toLowerCase();
     setSearchTerm(searchValue);
     const filtered = salaryData.filter((row) =>
       Object.values(row).some((cell) =>
-        String(cell ?? "")
-          .toLowerCase()
-          .includes(searchValue)
+        String(cell ?? "").toLowerCase().includes(searchValue)
       )
     );
     setFilteredData(filtered);
@@ -639,29 +694,30 @@ const Salary_Statement = () => {
             <strong>EmpDetails_MAR_2025.xlsx</strong>).
           </p>
         )}
-        <div className="upload-box-payslip">
-          <label className="file-label">
-            <div className="upload-text">
-              <p className="upload-title">Upload a Salary Sheet</p>
-              <p className="file-name">{fileName || "No file chosen"}</p>
-            </div>
-            <img
-              src="/images/upload.png"
-              alt="Upload Icon"
-              className="upload-icon"
-            />
-            <input
-              type="file"
-              accept=".xls,.xlsx"
-              onChange={handleFileChange}
-              hidden
-            />
-          </label>
-        </div>
 
-        <div className="salary-month-year-selector-box">
-          <div className="salary-month-year-selector">
-            <label>Select Month & Year:</label>
+        <div className="salary-actions-row">
+          <div className="upload-box-payslip">
+            <label className="file-label">
+              <div className="upload-text">
+                <p className="upload-title">Upload Sheet</p>
+                <p className="file-name">{fileName || "No file chosen"}</p>
+              </div>
+              <img
+                src="/images/upload.png"
+                alt="Upload Icon"
+                className="upload-icon"
+              />
+              <input
+                type="file"
+                accept=".xls,.xlsx"
+                onChange={handleFileChange}
+                hidden
+              />
+            </label>
+          </div>
+
+          <div className="salary-card">
+            <label>Month & Year</label>
             {selectedMonth && selectedYear && (
               <select
                 value={`${selectedMonth}_${selectedYear}`}
@@ -676,39 +732,52 @@ const Salary_Statement = () => {
               </select>
             )}
           </div>
-        </div>
 
-        <div
-          style={{ minHeight: "30px", display: "flex", alignItems: "center" }}
-        >
-          {error && (
-            <p
-              className="error-message-for-uploadfile"
-              style={{ whiteSpace: "pre-wrap" }}
+          <div className="salary-card">
+            <label>Payslip Template</label>
+            {templateLoading ? (
+              <p>Loading...</p>
+            ) : templates.length > 0 ? (
+              <select
+                value={selectedTemplate}
+                onChange={handleTemplateChange}
+                className="salary-month-year-dropdown"
+              >
+                <option value="">-- Select --</option>
+                {templates.map((tmpl) => (
+                  <option key={tmpl.id} value={String(tmpl.id)}>
+                    {tmpl.name} {tmpl.template_type && `(${tmpl.template_type})`}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <p>No templates</p>
+            )}
+          </div>
+
+          <div className="salary-card">
+            <p className="reference-text">Reference Template</p>
+            <button
+              className="download-template-btn"
+              onClick={() => {
+                const link = document.createElement("a");
+                link.href = templateUrl;
+                link.download = "Salary_Statement_Template.xlsx";
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+              }}
             >
-              {error}
-            </p>
-          )}
+              ⬇️ Download
+            </button>
+          </div>
         </div>
-      </div>
 
-      <div className="reference-container">
-        <div className="reference-box">
-          <p className="reference-text">Template For Your Reference</p>
-          <button
-            className="download-template-btn"
-            onClick={() => {
-              const link = document.createElement("a");
-              link.href = templateUrl;
-              link.download = "Salary_Statement_Template.xlsx";
-              document.body.appendChild(link);
-              link.click();
-              document.body.removeChild(link);
-            }}
-          >
-            📥 Download
-          </button>
-        </div>
+        {error && (
+          <p className="error-message-for-uploadfile">
+            {error}
+          </p>
+        )}
       </div>
 
       {tableData.length > 0 ? (
@@ -738,34 +807,32 @@ const Salary_Statement = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {(searchTerm ? filteredData : tableData).map(
-                    (row, rowIndex) => (
-                      <tr key={rowIndex}>
-                        {row.map((cell, colIndex) => {
-                          const isInvalid =
-                            invalidCells.has(rowIndex) &&
-                            invalidCells.get(rowIndex).has(colIndex);
-                          const isUpdated =
-                            updatedCells.has(rowIndex) &&
-                            updatedCells.get(rowIndex).has(colIndex);
-                          return (
-                            <td
-                              key={colIndex}
-                              style={{
-                                backgroundColor: isInvalid
-                                  ? "red"
-                                  : isUpdated
-                                  ? "lightgreen"
-                                  : "white",
-                              }}
-                            >
-                              {cell}
-                            </td>
-                          );
-                        })}
-                      </tr>
-                    )
-                  )}
+                  {(searchTerm ? filteredData : tableData).map((row, rowIndex) => (
+                    <tr key={rowIndex}>
+                      {row.map((cell, colIndex) => {
+                        const isInvalid =
+                          invalidCells.has(rowIndex) &&
+                          invalidCells.get(rowIndex).has(colIndex);
+                        const isUpdated =
+                          updatedCells.has(rowIndex) &&
+                          updatedCells.get(rowIndex).has(colIndex);
+                        return (
+                          <td
+                            key={colIndex}
+                            className={
+                              isInvalid
+                                ? "invalid-cell"
+                                : isUpdated
+                                ? "updated-cell"
+                                : ""
+                            }
+                          >
+                            {cell}
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  ))}
                 </tbody>
                 <tfoot>
                   <tr>
@@ -779,54 +846,64 @@ const Salary_Statement = () => {
           </div>
         </div>
       ) : salaryData.length > 0 ? (
-        <div>
-          <div className="admin-table-container">
-            <div className="table-scroll-wrapper">
-              <div className="table-header">
-                <h2 className="table-title">
-                  Salary Statement - {selectedMonth?.toUpperCase()}{" "}
-                  {selectedYear}
-                </h2>
-                <input
-                  type="text"
-                  className="salary-search-box"
-                  placeholder="Search..."
-                  onChange={filterSalaryData}
-                />
-              </div>
+        <div className="admin-table-container">
+          <div className="table-scroll-wrapper">
+            <div className="table-header">
+              <h2 className="table-title">
+                Salary Statement - {selectedMonth?.toUpperCase()} {selectedYear}
+              </h2>
+              <input
+                type="text"
+                className="salary-search-box"
+                placeholder="Search..."
+                value={searchTerm}
+                onChange={filterSalaryData}
+              />
+            </div>
 
-              <div className="adminsalary-table-container">
-                <table className="adminsalary-table">
-                  <thead>
-                    <tr>
-                      {Object.keys(salaryData[0] || {}).map((key) => (
-                        <th key={key}>{formatHeader(key)}</th>
+            <div className="adminsalary-table-container">
+              <table className="adminsalary-table">
+                <thead>
+                  <tr>
+                    {getDisplayHeaders().map((key) => (
+                      <th key={key}>{formatHeader(key)}</th>
+                    ))}
+                    <th>Payslip Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(searchTerm ? filteredData : salaryData).map((row, index) => (
+                    <tr key={index}>
+                      {getDisplayHeaders().map((key, idx) => (
+                        <td key={idx}>{row[key] ?? "N/A"}</td>
                       ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {(searchTerm ? filteredData : salaryData).map(
-                      (row, index) => (
-                        <tr key={index}>
-                          {Object.values(row).map((value, idx) => (
-                            <td key={idx}>{value ?? "N/A"}</td>
-                          ))}
-                        </tr>
-                      )
-                    )}
-                  </tbody>
-                  <tfoot>
-                    <tr>
-                      <td
-                        colSpan={Object.keys(salaryData[0] || {}).length}
-                        className="net-salary-row"
-                      >
-                        Total Amount: ₹ {Math.floor(calculateTotalNetSalary())}
+                      <td>
+                        <button
+                          className="toggle-btn"
+                          onClick={() =>
+                            handleTogglePayslip(
+                              row.employee_id || row["Employee ID"],
+                              row.payslip_generated ?? 0
+                            )
+                          }
+                        >
+                          {row.payslip_generated == 1 ? "Disable" : "Enable"}
+                        </button>
                       </td>
                     </tr>
-                  </tfoot>
-                </table>
-              </div>
+                  ))}
+                </tbody>
+                <tfoot>
+                  <tr>
+                    <td
+                      colSpan={getDisplayHeaders().length + 1}
+                      className="net-salary-row"
+                    >
+                      Total Amount: ₹ {Math.floor(calculateTotalNetSalary())}
+                    </td>
+                  </tr>
+                </tfoot>
+              </table>
             </div>
           </div>
 

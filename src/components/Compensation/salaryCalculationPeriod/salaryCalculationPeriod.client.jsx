@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import axios from "axios";
-import { useAuth } from "../../../context/AuthProvider.client"; // Adjust path if needed
+import { useAuth } from "../../../context/AuthProvider.client"; 
 import "./salaryCalculationPeriod.css";
 
 
@@ -21,7 +21,7 @@ const SalaryCalculationPeriod = ({ onClose, showAlert }) => {
   const [formData, setFormData] = useState({ cutoff_date: "" });
   const [loading, setLoading] = useState(false);
 
-  // Your current working backend endpoints
+  
   const ENDPOINTS = {
     list: `${BACKEND_URL}/api/salaryCalculationperiods`,
     add: `${BACKEND_URL}/api/addSalaryCalculationperiod`,
@@ -35,7 +35,20 @@ const SalaryCalculationPeriod = ({ onClose, showAlert }) => {
     
   };
 
-  // Fetch periods
+  useEffect(() => {
+  console.log("🧠 Auth user:", user);
+  console.log("🏢 orgId:", orgId);
+  console.log("👤 employeeId:", meId);
+
+  if (!orgId) {
+    showAlert?.("Organization not resolved. Please login again.");
+    return;
+  }
+
+  if (meId) fetchPeriods();
+}, [meId, orgId]);
+
+ 
   const fetchPeriods = async () => {
     if (!BACKEND_URL || !meId) {
       showAlert?.("Please login to continue");
@@ -65,7 +78,7 @@ const SalaryCalculationPeriod = ({ onClose, showAlert }) => {
     if (meId) fetchPeriods();
   }, [meId]);
 
-  // Submit form (Add or Update)
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     const num = parseInt(formData.cutoff_date);
@@ -98,14 +111,14 @@ const SalaryCalculationPeriod = ({ onClose, showAlert }) => {
     }
   };
 
-  // Edit button
+  
   const handleEdit = (period) => {
     setIsEditing(true);
     setEditingId(period.id);
     setFormData({ cutoff_date: period.cutoff_date.toString() });
   };
 
-  // Close modal
+
   const toggleModal = () => {
     setIsEditing(false);
     setEditingId(null);

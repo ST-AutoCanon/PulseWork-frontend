@@ -24,6 +24,8 @@ import Profile from "../Profile/Profile.client";
 import MyDashboard from "../MyDashboard/MyDashboard.client";
 import MyEmpDashboard from "../MyEmpDashboard/MyEmpDashboard.client";
 import PayrollSummary from "../PayrollSummary/PayrollSummary.client";
+import TemplateBuilder from "../TemplateBuilder/TemplateBuilder.client";
+
 import Reimbursement from "../Reimbursement/Reimbursement.client";
 import RbAdmin from "../Reimbursement/RbAdmin.client";
 import RbTeamLead from "../Reimbursement/RbTeamLead.client";
@@ -31,11 +33,11 @@ import Assets from "../Assets/Assets.client";
 import Vendors from "../vendors/vendors.client";
 import Chat from "../Chat/ChatPage.client";
 import CreateOrganization from "../CreateOrganization/CreateOrganization.client";
-import TaskManagement from "../TaskManagement/TaskManagement.client"; // Supervisor / Team view
+import TaskManagement from "../TaskManagement/TaskManagement.client"; 
 import TaskManagementEmployee from "../TaskManagementEmployee/EmpTaskManagement.client";
 import TaskManagementAdmin from "../TaskManagementAdmin/TaskManagementAdmin.client";
 import Report from "../Report/ReportPanel.client";
-
+import LetterHead from "../letterHead/letterhead.client";
 import CreateCompensation from "../Compensation/createCompensation.client";
 import AssignCompensation from "../Compensation/assignCompensation.client";
 import SalaryBreakupMain from "../Compensation/SalaryBreakupMain.client";
@@ -120,6 +122,8 @@ const Sidebar = ({ setActiveContent }) => {
         return <Reimbursement />;
       },
       "/employeeQueries": () => <AdminQuery />,
+       "/TemplateBuilder": () => <TemplateBuilder />,
+        "/letterHead": () => <LetterHead />,
       "/assets": () => <Assets />,
       "/vendors": () => <Vendors />,
       "/report": () => <Report />,

@@ -74,8 +74,12 @@ const Invoice = ({ onBack, project }) => {
   const [templatesLoading, setTemplatesLoading] = useState(false);
   const [appliedHeaderUrl, setAppliedHeaderUrl] = useState(null);
   const [appliedFooterUrl, setAppliedFooterUrl] = useState(null);
-
   const [downloadAfterApply, setDownloadAfterApply] = useState(false);
+  const [appliedTemplateCss, setAppliedTemplateCss] = useState(null);
+  const [appliedTemplateObj, setAppliedTemplateObj] = useState(null);
+  const [appliedTemplateHtml, setAppliedTemplateHtml] = useState(null);
+  const [appliedWatermarkUrl, setAppliedWatermarkUrl] = useState(null);
+  const [appliedWatermarkProps, setAppliedWatermarkProps] = useState(null);
 
   const [terms, setTerms] = useState(
     `1) Payment Terms:
@@ -238,94 +242,217 @@ const Invoice = ({ onBack, project }) => {
     return out;
   }
 
+  // enhanced resolver: returns { headerUrl, footerUrl, watermarkUrl, watermarkProps, css, bodyType, fieldsMap }
   async function resolveHeaderFooterUrlsFromTemplate(tpl) {
-    if (!tpl) return { headerUrl: null, footerUrl: null };
+    if (!tpl) return {};
 
-    const headerCandidates = [
-      tpl.header_url,
-      tpl.headerUrl,
-      tpl.header,
-      tpl._headerBlob,
-      tpl.imageUrl,
-      tpl.cleanedUrl,
-      tpl.thumbnail,
-    ];
-    const footerCandidates = [
-      tpl.footer_url,
-      tpl.footerUrl,
-      tpl.footer,
-      tpl._footerBlob,
-    ];
-
-    const pickFirst = (arr) =>
-      arr.find((x) => typeof x === "string" && x && x.length) || null;
-
-    let rawHeader = pickFirst(headerCandidates);
-    let rawFooter = pickFirst(footerCandidates);
-
-    const contentHtml = tpl.html || tpl.content || tpl.template || "";
-    if (
-      (!rawHeader || !rawFooter) &&
-      typeof contentHtml === "string" &&
-      contentHtml
-    ) {
+    // helper: parse grapesJson if string
+    let grapesObj = tpl.grapesJson || tpl.grapes_json || null;
+    if (grapesObj && typeof grapesObj === "string") {
       try {
-        const parser = new DOMParser();
-        const doc = parser.parseFromString(contentHtml, "text/html");
-        const imgs = Array.from(doc.querySelectorAll("img"));
-
-        if (!rawHeader && imgs.length > 0) {
-          const headerImg =
-            imgs.find((i) => (i.alt || "").toLowerCase().includes("header")) ||
-            imgs[0];
-          if (headerImg) rawHeader = headerImg.getAttribute("src");
-        }
-
-        if (!rawFooter && imgs.length > 0) {
-          const footerImg =
-            imgs
-              .slice()
-              .reverse()
-              .find((i) => (i.alt || "").toLowerCase().includes("footer")) ||
-            imgs[imgs.length - 1];
-          if (footerImg) rawFooter = footerImg.getAttribute("src");
-        }
-      } catch (e) {}
+        grapesObj = JSON.parse(grapesObj);
+      } catch (e) {
+        // leave as-is if parse fails
+      }
     }
 
-    const normalize = (src) => {
+    // prefer explicit meta.uploads.* fields (added on backend)
+    const meta =
+      tpl.meta ||
+      (tpl.meta && typeof tpl.meta === "string"
+        ? JSON.parse(tpl.meta)
+        : tpl.meta) ||
+      {};
+    const uploads = meta.uploads || {};
+
+    // helper to normalize and fetch protected image -> blob URL
+    const fetchIfNeeded = async (src) => {
       if (!src) return null;
-      if (
-        src.startsWith("http") ||
-        src.startsWith("blob:") ||
-        src.startsWith("data:")
-      )
-        return src;
-      return normalizeUploadUrl(src);
+      const normalized = normalizeUploadUrl(src);
+      try {
+        const blob = await fetchProtectedImageAsBlobUrl(normalized, API_KEY);
+        return blob || normalized;
+      } catch (e) {
+        return normalized;
+      }
     };
 
-    rawHeader = normalize(rawHeader);
-    rawFooter = normalize(rawFooter);
+    // candidate check order:
+    // header: meta.uploads.header, tpl.header_url/headerUrl/thumbnail/imageUrl/cleanedUrl, grapes/headless values, images in tpl.html
+    const candidateHeader =
+      uploads.header ||
+      tpl.header_url ||
+      tpl.headerUrl ||
+      tpl.header ||
+      tpl.thumbnail ||
+      tpl.imageUrl ||
+      tpl.cleanedUrl ||
+      tpl.cleaned_url ||
+      null;
+    const candidateFooter =
+      uploads.footer ||
+      tpl.footer_url ||
+      tpl.footerUrl ||
+      tpl.footer ||
+      tpl.cleanedUrl ||
+      tpl.cleaned_url ||
+      null;
+    const candidateWatermark =
+      uploads.watermark ||
+      (grapesObj && grapesObj.watermark && grapesObj.watermark.url) ||
+      (meta && typeof meta.watermark === "string" ? meta.watermark : null) ||
+      null;
 
-    const headerUrl = rawHeader
-      ? await fetchProtectedImageAsBlobUrl(rawHeader, API_KEY)
-      : null;
-    const footerUrl = rawFooter
-      ? await fetchProtectedImageAsBlobUrl(rawFooter, API_KEY)
-      : null;
+    // parse HTML images as fallback
+    const contentHtml = tpl.html || tpl.content || tpl.template || "";
+    function extractFirstImageSrcsFromHtml(html) {
+      const out = [];
+      if (!html || typeof html !== "string") return out;
+      try {
+        const re = /<img[^>]+src=(["'])([^"']+)\1/gi;
+        let m;
+        while ((m = re.exec(html))) {
+          out.push(m[2]);
+        }
+      } catch (e) {}
+      return out;
+    }
+    const imgSrcs = extractFirstImageSrcsFromHtml(contentHtml);
 
-    return { headerUrl, footerUrl };
+    // attempt to fetch (meta.uploads preferred)
+    let headerUrl = await fetchIfNeeded(candidateHeader);
+    let footerUrl = await fetchIfNeeded(candidateFooter);
+    let watermarkUrl = await fetchIfNeeded(candidateWatermark);
+
+    // fallback scanning: prefer images in HTML/grapes
+    if (!headerUrl && imgSrcs.length) {
+      headerUrl = await fetchIfNeeded(imgSrcs[0]);
+    }
+    if (!footerUrl && imgSrcs.length > 1) {
+      footerUrl = await fetchIfNeeded(imgSrcs[imgSrcs.length - 1]);
+    }
+
+    // if still missing, scan grapesObj components for attributes.src
+    if ((!headerUrl || !footerUrl) && grapesObj) {
+      const found = [];
+      const collect = (o) => {
+        if (!o) return;
+        if (typeof o === "string") {
+          if (
+            /\/api\/orgs\/\d+\/uploads\//.test(o) ||
+            /^[0-9]{6,}_[A-Za-z0-9._-]+/.test(o)
+          )
+            found.push(o);
+          return;
+        }
+        if (Array.isArray(o)) return o.forEach(collect);
+        if (typeof o === "object") {
+          if (o.attributes && typeof o.attributes.src === "string")
+            collect(o.attributes.src);
+          Object.keys(o).forEach((k) => collect(o[k]));
+        }
+      };
+      collect(grapesObj);
+      if (!headerUrl && found.length) headerUrl = await fetchIfNeeded(found[0]);
+      if (!footerUrl && found.length > 1)
+        footerUrl = await fetchIfNeeded(found[found.length - 1]);
+      if (
+        !watermarkUrl &&
+        grapesObj &&
+        grapesObj.watermark &&
+        grapesObj.watermark.url
+      ) {
+        watermarkUrl = await fetchIfNeeded(grapesObj.watermark.url);
+      }
+    }
+
+    // watermark placement props fallback (from grapes or meta.watermarkPlacement)
+    let watermarkProps = null;
+    if (grapesObj && grapesObj.watermark) {
+      const gm = grapesObj.watermark;
+      watermarkProps = {
+        xPct: gm.xPct || gm.x || "50%",
+        yPct: gm.yPct || gm.y || "50%",
+        wPct: gm.wPct || gm.w || "60%",
+        hPct: gm.hPct || gm.h || "60%",
+        opacity:
+          typeof gm.opacity === "number"
+            ? gm.opacity
+            : meta && meta.watermarkPlacement && meta.watermarkPlacement.opacity
+            ? meta.watermarkPlacement.opacity
+            : 0.12,
+      };
+    } else if (meta && meta.watermarkPlacement) {
+      const wp = meta.watermarkPlacement;
+      watermarkProps = {
+        xPct: wp.xPct || "50%",
+        yPct: wp.yPct || "50%",
+        wPct: wp.wPct || "60%",
+        hPct: wp.hPct || "60%",
+        opacity: typeof wp.opacity === "number" ? wp.opacity : 0.12,
+      };
+    }
+
+    // parse layout/grapes into a fields map for template-driven defaults
+    const fieldsMap = {};
+    try {
+      const layoutArr =
+        tpl.layout ||
+        tpl.layout_json ||
+        (grapesObj && grapesObj.layout) ||
+        null;
+      let layout = null;
+      if (typeof layoutArr === "string") {
+        try {
+          layout = JSON.parse(layoutArr);
+        } catch (e) {
+          layout = null;
+        }
+      } else layout = layoutArr;
+
+      if (Array.isArray(layout)) {
+        for (const b of layout) {
+          try {
+            const key = (b.fieldName || b.id || b.name || "").toString();
+            if (!key) continue;
+            // if field has content / imageUrl / tableRows -> store
+            if (b.content) fieldsMap[key] = b.content;
+            if (b.imageUrl) fieldsMap[key] = b.imageUrl;
+            if (b.tableRows) fieldsMap[key] = b.tableRows;
+          } catch (e) {}
+        }
+      }
+    } catch (e) {
+      // ignore layout parse errors
+    }
+
+    // assemble css/bodyType
+    const css = tpl.css || tpl.styles || null;
+    const bodyType = (meta && meta.bodyType) || tpl.bodyType || null;
+
+    return {
+      headerUrl,
+      footerUrl,
+      watermarkUrl,
+      watermarkProps,
+      css,
+      bodyType,
+      fieldsMap,
+    };
   }
 
   const applyTemplateToInvoice = async (tpl) => {
     if (!tpl) {
       setAppliedHeaderUrl(null);
       setAppliedFooterUrl(null);
+      setAppliedTemplateCss(null);
+      setAppliedWatermarkUrl(null);
       showAlert("No template selected.");
       return;
     }
 
     try {
+      // If template html contains protected uploads, replace them first
       let contentHtml = tpl.html || tpl.content || tpl.template || "";
       if (
         typeof contentHtml === "string" &&
@@ -334,18 +461,130 @@ const Invoice = ({ onBack, project }) => {
         contentHtml = await replaceUploadUrlsInHtml(contentHtml);
       }
 
-      const { headerUrl, footerUrl } =
-        await resolveHeaderFooterUrlsFromTemplate({
-          ...tpl,
-          html: contentHtml,
-        });
+      // Resolve assets and fields
+      const resolved = await resolveHeaderFooterUrlsFromTemplate({
+        ...tpl,
+        html: contentHtml,
+      });
 
-      setAppliedHeaderUrl(headerUrl);
-      setAppliedFooterUrl(footerUrl);
+      // apply header/footer/watermark/css
+      setAppliedHeaderUrl(resolved.headerUrl || null);
+      setAppliedFooterUrl(resolved.footerUrl || null);
+      setAppliedTemplateCss(resolved.css || null);
+      setAppliedTemplateObj(tpl);
+      setAppliedTemplateHtml(contentHtml);
+      setAppliedWatermarkUrl(resolved.watermarkUrl || null);
+      setAppliedWatermarkProps(resolved.watermarkProps || null);
+
+      // If template declares itself a document type "invoice", populate the invoice form fields
+      if (String(resolved.bodyType || "").toLowerCase() === "invoice") {
+        const f = resolved.fieldsMap || {};
+
+        // Common field name variations to check
+        const tryGet = (keys) => {
+          for (const k of keys) {
+            if (f[k]) return f[k];
+            // also check lowercase keys
+            if (f[k.toLowerCase()]) return f[k.toLowerCase()];
+          }
+          return null;
+        };
+
+        const tplInvoiceNo = tryGet([
+          "invoiceNo",
+          "invoice_no",
+          "invoiceNoField",
+          "invoiceNoFieldName",
+          "invoiceNumber",
+        ]);
+        const tplInvoiceDate = tryGet(["invoiceDate", "invoice_date", "date"]);
+        const tplPoNumber = tryGet([
+          "poNumber",
+          "po_number",
+          "poNo",
+          "refId",
+          "referenceId",
+        ]);
+        const tplPoDate = tryGet(["poDate", "po_date", "referenceDate"]);
+        const tplTerms = tryGet([
+          "termsAndConditions",
+          "terms",
+          "terms_and_conditions",
+        ]);
+        const tplGst = tryGet(["gst", "gstRate", "taxRate"]);
+        const tplItems = tryGet([
+          "items",
+          "tableRows",
+          "table_rows",
+          "lineItems",
+        ]);
+
+        if (tplInvoiceNo) setInvoiceNo(String(tplInvoiceNo));
+        if (tplInvoiceDate) {
+          // try to normalize if looks like ISO or DD/MM/YYYY
+          const dateVal = String(tplInvoiceDate).trim();
+          const asDate = new Date(dateVal);
+          if (!isNaN(asDate.getTime())) {
+            setInvoiceDate(asDate.toISOString().split("T")[0]);
+          } else {
+            // leave raw text if not parseable
+            setInvoiceDate(dateVal);
+          }
+        }
+        if (tplPoNumber) setReferenceId(String(tplPoNumber));
+        if (tplPoDate) {
+          const dateVal = String(tplPoDate).trim();
+          const asDate = new Date(dateVal);
+          if (!isNaN(asDate.getTime())) {
+            setReferenceDate(asDate.toISOString().split("T")[0]);
+          } else {
+            setReferenceDate(dateVal);
+          }
+        }
+        if (tplTerms) setTerms(String(tplTerms));
+        if (tplGst) setGST(String(tplGst));
+        // if template provided table rows (array), map them to lineItems
+        if (Array.isArray(tplItems)) {
+          try {
+            const rows = tplItems.map((r) => {
+              // r may be an array (tableRows) or object
+              if (Array.isArray(r)) {
+                // assume [sno, desc, qty, rate, subTotal, gst, total]
+                return {
+                  description: r[1] || "",
+                  quantity: Number(r[2] || 1),
+                  rate: Number(r[3] || 0),
+                  total: Number(r[4] || Number(r[2] || 1) * Number(r[3] || 0)),
+                };
+              } else if (typeof r === "object") {
+                return {
+                  description: r.description || r.name || "",
+                  quantity: Number(r.quantity || r.qty || 1),
+                  rate: Number(r.rate || r.unitPrice || 0),
+                  total: Number(
+                    r.total || Number(r.quantity || 1) * Number(r.rate || 0)
+                  ),
+                };
+              } else {
+                return {
+                  description: String(r || ""),
+                  quantity: 1,
+                  rate: 0,
+                  total: 0,
+                };
+              }
+            });
+            if (rows.length) setLineItems(rows);
+          } catch (e) {
+            // ignore mapping errors
+          }
+        }
+      }
 
       setShowTemplatesModal(false);
-      showAlert("Applied template header/footer to invoice.");
+      showAlert("Applied template to invoice (header/footer/css).");
 
+      // if downloadAfterApply was requested, trigger the download
       if (downloadAfterApply) {
         setDownloadAfterApply(false);
         setTimeout(() => {
@@ -989,6 +1228,11 @@ const Invoice = ({ onBack, project }) => {
                 headerUrl: appliedHeaderUrl,
                 footerUrl: appliedFooterUrl,
               }}
+              templateCss={appliedTemplateCss}
+              templateHtml={appliedTemplateHtml}
+              templateObject={appliedTemplateObj}
+              watermarkUrl={appliedWatermarkUrl}
+              watermarkProps={appliedWatermarkProps}
             />
           )}
         </div>

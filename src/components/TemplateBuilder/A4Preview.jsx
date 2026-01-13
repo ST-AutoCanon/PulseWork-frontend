@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useRef, useEffect } from "react";
+import React, { useRef, useEffect, useState } from "react";
 import styles from "./UploadScan.module.css";
 
 export default function A4Preview({
@@ -10,16 +10,25 @@ export default function A4Preview({
   watermarkProps = null,
   onWatermarkChange = null,
   editable = false,
+  boxesEditable = false,
   bodyBoxes = [],
+  onBoxesChange = null,
+  onSelectBox = null,
   width = 420,
+  selectedBoxId = null,
+  pageStyle = { background: "transparent" },
 }) {
+  const BACKEND_URL = (process.env.NEXT_PUBLIC_BACKEND_URL || "").replace(
+    /\/$/,
+    ""
+  );
+
   const a4Ratio = 297 / 210;
   const w = Number(width) || 420;
   const h = Math.round(w * a4Ratio);
 
   const previewRef = useRef(null);
-  const dragState = useRef(null);
-  const resizeState = useRef(null);
+  const [hoveredBoxId, setHoveredBoxId] = useState(null);
 
   const pctToPx = (pct, size) =>
     (Number(String(pct).replace("%", "")) / 100) * size;
@@ -36,7 +45,43 @@ export default function A4Preview({
         : 0.12,
   };
 
-  function startDrag(e) {
+  // Helper to resolve image src to absolute backend URL when necessary
+  function resolveImgSrc(src) {
+    if (!src || typeof src !== "string") return src || null;
+    const s = src.trim();
+
+    // Already absolute / blob / data
+    if (
+      s.startsWith("blob:") ||
+      s.startsWith("data:") ||
+      /^https?:\/\//i.test(s)
+    ) {
+      return s;
+    }
+
+    // Relative upload filename like "abc.png" -> we cannot reliably guess orgId here.
+    // Prefer backend logic to have resolved this earlier. For now, if BACKEND_URL exists
+    // don't change these filenames (they likely need server-side prefixing).
+    // If the path begins with /api/ -> prefix with BACKEND_URL to avoid browser requesting frontend origin.
+    if (s.startsWith("/api/")) {
+      if (BACKEND_URL) return `${BACKEND_URL}${s}`;
+      // fallback: return s (will request frontend origin)
+      console.warn(
+        "A4Preview: /api/ url present but NEXT_PUBLIC_BACKEND_URL is not set:",
+        s
+      );
+      return s;
+    }
+
+    // If it's a simple filename (abc.png) and BACKEND_URL is set, we *could* try to form a backend uploads path,
+    // BUT component doesn't know orgId. We therefore return as-is so upper-layer code can normalize.
+    return s;
+  }
+
+  // The watermark drag/resize + box drag/resize code unchanged from your original, preserved for brevity...
+  const watermarkDragState = useRef(null);
+  const watermarkResizeState = useRef(null);
+  function startWatermarkDrag(e) {
     if (!editable || !previewRef.current) return;
     if (e.target?.dataset?.resize) return;
     e.preventDefault();
@@ -49,7 +94,7 @@ export default function A4Preview({
     const startTop =
       pctToPx(wm.yPct, rect.height) - pctToPx(wm.hPct, rect.height) / 2;
 
-    dragState.current = {
+    watermarkDragState.current = {
       startLeft,
       startTop,
       startX: clientX,
@@ -57,18 +102,18 @@ export default function A4Preview({
       rect,
     };
 
-    window.addEventListener("mousemove", onDrag);
-    window.addEventListener("mouseup", stopDrag);
-    window.addEventListener("touchmove", onDrag, { passive: false });
-    window.addEventListener("touchend", stopDrag);
+    window.addEventListener("mousemove", watermarkOnDrag);
+    window.addEventListener("mouseup", watermarkStopDrag);
+    window.addEventListener("touchmove", watermarkOnDrag, { passive: false });
+    window.addEventListener("touchend", watermarkStopDrag);
   }
-
-  function onDrag(ev) {
-    if (!dragState.current) return;
+  function watermarkOnDrag(ev) {
+    if (!watermarkDragState.current) return;
     if (ev.type === "touchmove") ev.preventDefault();
     const clientX = ev.clientX ?? (ev.touches && ev.touches[0].clientX);
     const clientY = ev.clientY ?? (ev.touches && ev.touches[0].clientY);
-    const { startLeft, startTop, startX, startY, rect } = dragState.current;
+    const { startLeft, startTop, startX, startY, rect } =
+      watermarkDragState.current;
 
     const dx = clientX - startX;
     const dy = clientY - startY;
@@ -96,16 +141,15 @@ export default function A4Preview({
     };
     if (typeof onWatermarkChange === "function") onWatermarkChange(next);
   }
-
-  function stopDrag() {
-    dragState.current = null;
-    window.removeEventListener("mousemove", onDrag);
-    window.removeEventListener("mouseup", stopDrag);
-    window.removeEventListener("touchmove", onDrag);
-    window.removeEventListener("touchend", stopDrag);
+  function watermarkStopDrag() {
+    watermarkDragState.current = null;
+    window.removeEventListener("mousemove", watermarkOnDrag);
+    window.removeEventListener("mouseup", watermarkStopDrag);
+    window.removeEventListener("touchmove", watermarkOnDrag);
+    window.removeEventListener("touchend", watermarkStopDrag);
   }
 
-  function startResize(e, corner) {
+  function startWatermarkResize(e, corner) {
     if (!editable || !previewRef.current) return;
     e.preventDefault();
     e.stopPropagation();
@@ -120,7 +164,7 @@ export default function A4Preview({
     const currentW = pctToPx(wm.wPct, rect.width);
     const currentH = pctToPx(wm.hPct, rect.height);
 
-    resizeState.current = {
+    watermarkResizeState.current = {
       corner,
       startX: clientX,
       startY: clientY,
@@ -131,14 +175,13 @@ export default function A4Preview({
       rect,
     };
 
-    window.addEventListener("mousemove", onResize);
-    window.addEventListener("mouseup", stopResize);
-    window.addEventListener("touchmove", onResize, { passive: false });
-    window.addEventListener("touchend", stopResize);
+    window.addEventListener("mousemove", watermarkOnResize);
+    window.addEventListener("mouseup", watermarkStopResize);
+    window.addEventListener("touchmove", watermarkOnResize, { passive: false });
+    window.addEventListener("touchend", watermarkStopResize);
   }
-
-  function onResize(ev) {
-    if (!resizeState.current) return;
+  function watermarkOnResize(ev) {
+    if (!watermarkResizeState.current) return;
     if (ev.type === "touchmove") ev.preventDefault();
     const clientX = ev.clientX ?? (ev.touches && ev.touches[0].clientX);
     const clientY = ev.clientY ?? (ev.touches && ev.touches[0].clientY);
@@ -152,7 +195,7 @@ export default function A4Preview({
       startW,
       startH,
       rect,
-    } = resizeState.current;
+    } = watermarkResizeState.current;
 
     const dx = clientX - startX;
     const dy = clientY - startY;
@@ -208,19 +251,203 @@ export default function A4Preview({
 
     if (typeof onWatermarkChange === "function") onWatermarkChange(next);
   }
+  function watermarkStopResize() {
+    watermarkResizeState.current = null;
+    window.removeEventListener("mousemove", watermarkOnResize);
+    window.removeEventListener("mouseup", watermarkStopResize);
+    window.removeEventListener("touchmove", watermarkOnResize);
+    window.removeEventListener("touchend", watermarkStopResize);
+  }
 
-  function stopResize() {
-    resizeState.current = null;
-    window.removeEventListener("mousemove", onResize);
-    window.removeEventListener("mouseup", stopResize);
-    window.removeEventListener("touchmove", onResize);
-    window.removeEventListener("touchend", stopResize);
+  const boxDragState = useRef(null);
+  const boxResizeState = useRef(null);
+
+  function startBoxDrag(e, box) {
+    if (!boxesEditable || !previewRef.current) return;
+    if (e.target?.dataset?.resize) return;
+    e.preventDefault();
+    e.stopPropagation();
+
+    if (typeof onSelectBox === "function") onSelectBox(box.id);
+
+    const rect = previewRef.current.getBoundingClientRect();
+    const clientX = e.clientX ?? (e.touches && e.touches[0].clientX);
+    const clientY = e.clientY ?? (e.touches && e.touches[0].clientY);
+
+    const startLeft = pctToPx(box.xPct, rect.width);
+    const startTop = pctToPx(box.yPct, rect.height);
+
+    boxDragState.current = {
+      id: box.id,
+      startLeft,
+      startTop,
+      startX: clientX,
+      startY: clientY,
+      rect,
+      box,
+    };
+
+    window.addEventListener("mousemove", onBoxDrag);
+    window.addEventListener("mouseup", stopBoxDrag);
+    window.addEventListener("touchmove", onBoxDrag, { passive: false });
+    window.addEventListener("touchend", stopBoxDrag);
+  }
+  function onBoxDrag(ev) {
+    if (!boxDragState.current) return;
+    if (ev.type === "touchmove") ev.preventDefault();
+    const clientX = ev.clientX ?? (ev.touches && ev.touches[0].clientX);
+    const clientY = ev.clientY ?? (ev.touches && ev.touches[0].clientY);
+    const { startLeft, startTop, startX, startY, rect, id, box } =
+      boxDragState.current;
+
+    const dx = clientX - startX;
+    const dy = clientY - startY;
+    let newLeft = startLeft + dx;
+    let newTop = startTop + dy;
+
+    const wPx = pctToPx(box.wPct || "10%", rect.width);
+    const hPx = pctToPx(box.hPct || "6%", rect.height);
+
+    newLeft = Math.max(0, Math.min(newLeft, rect.width - wPx));
+    newTop = Math.max(0, Math.min(newTop, rect.height - hPx));
+
+    const nextBox = {
+      ...box,
+      xPct: pxToPct(newLeft, rect.width),
+      yPct: pxToPct(newTop, rect.height),
+    };
+
+    if (typeof onBoxesChange === "function") {
+      const next = bodyBoxes.map((b) => (b.id === id ? nextBox : b));
+      onBoxesChange(next);
+    }
+  }
+  function stopBoxDrag() {
+    boxDragState.current = null;
+    window.removeEventListener("mousemove", onBoxDrag);
+    window.removeEventListener("mouseup", stopBoxDrag);
+    window.removeEventListener("touchmove", onBoxDrag);
+    window.removeEventListener("touchend", stopBoxDrag);
+  }
+
+  function startBoxResize(e, box, corner) {
+    if (!boxesEditable || !previewRef.current) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const rect = previewRef.current.getBoundingClientRect();
+    const clientX = e.clientX ?? (e.touches && e.touches[0].clientX);
+    const clientY = e.clientY ?? (e.touches && e.touches[0].clientY);
+
+    const currentLeft = pctToPx(box.xPct, rect.width);
+    const currentTop = pctToPx(box.yPct, rect.height);
+    const currentW = pctToPx(box.wPct, rect.width);
+    const currentH = pctToPx(box.hPct, rect.height);
+
+    boxResizeState.current = {
+      id: box.id,
+      corner,
+      startX: clientX,
+      startY: clientY,
+      startLeft: currentLeft,
+      startTop: currentTop,
+      startW: currentW,
+      startH: currentH,
+      rect,
+      box,
+    };
+
+    window.addEventListener("mousemove", onBoxResize);
+    window.addEventListener("mouseup", stopBoxResize);
+    window.addEventListener("touchmove", onBoxResize, { passive: false });
+    window.addEventListener("touchend", stopBoxResize);
+  }
+  function onBoxResize(ev) {
+    if (!boxResizeState.current) return;
+    if (ev.type === "touchmove") ev.preventDefault();
+    const clientX = ev.clientX ?? (ev.touches && ev.touches[0].clientX);
+    const clientY = ev.clientY ?? (ev.touches && ev.touches[0].clientY);
+
+    const {
+      corner,
+      startX,
+      startY,
+      startLeft,
+      startTop,
+      startW,
+      startH,
+      rect,
+      id,
+      box,
+    } = boxResizeState.current;
+
+    const dx = clientX - startX;
+    const dy = clientY - startY;
+
+    let newLeft = startLeft;
+    let newTop = startTop;
+    let newW = startW;
+    let newH = startH;
+
+    if (corner === "se") {
+      newW = startW + dx;
+      newH = startH + dy;
+    } else if (corner === "ne") {
+      newW = startW + dx;
+      newH = startH - dy;
+      newTop = startTop + dy;
+    } else if (corner === "sw") {
+      newW = startW - dx;
+      newH = startH + dy;
+      newLeft = startLeft + dx;
+    } else if (corner === "nw") {
+      newW = startW - dx;
+      newH = startH - dy;
+      newLeft = startLeft + dx;
+      newTop = startTop + dy;
+    }
+
+    const minPx = 20;
+    newW = Math.max(minPx, newW);
+    newH = Math.max(minPx, newH);
+
+    if (newLeft < 0) {
+      newW += newLeft;
+      newLeft = 0;
+    }
+    if (newTop < 0) {
+      newH += newTop;
+      newTop = 0;
+    }
+    newW = Math.min(newW, rect.width - newLeft);
+    newH = Math.min(newH, rect.height - newTop);
+
+    const nextBox = {
+      ...box,
+      xPct: pxToPct(newLeft, rect.width),
+      yPct: pxToPct(newTop, rect.height),
+      wPct: pxToPct(newW, rect.width),
+      hPct: pxToPct(newH, rect.height),
+    };
+
+    if (typeof onBoxesChange === "function") {
+      const next = bodyBoxes.map((b) => (b.id === id ? nextBox : b));
+      onBoxesChange(next);
+    }
+  }
+  function stopBoxResize() {
+    boxResizeState.current = null;
+    window.removeEventListener("mousemove", onBoxResize);
+    window.removeEventListener("mouseup", stopBoxResize);
+    window.removeEventListener("touchmove", onBoxResize);
+    window.removeEventListener("touchend", stopBoxResize);
   }
 
   useEffect(() => {
     return () => {
-      stopDrag();
-      stopResize();
+      watermarkStopDrag();
+      watermarkStopResize();
+      stopBoxDrag();
+      stopBoxResize();
     };
   }, []);
 
@@ -246,7 +473,7 @@ export default function A4Preview({
     return base;
   };
 
-  const wrapperStyle = {
+  const wrapperStyleForWatermark = {
     position: "absolute",
     left: wm.xPct,
     top: wm.yPct,
@@ -265,15 +492,21 @@ export default function A4Preview({
 
     const align = box.style?.textAlign || "left";
 
-    const cellStyle = {
-      padding: "4px 6px",
-      border: "1px solid rgba(0,0,0,0.08)",
-      fontSize: 11,
+    const borderColor = box.style?.borderColor || "rgba(0,0,0,0.08)";
+    const headerBackground = box.style?.headerBackground || "#f8fafc";
+    const headerColor = box.style?.headerColor || "#0f1724";
+    const rowBackground = box.style?.rowBackground || "transparent";
+    const rowColor = box.style?.rowColor || "#0f1724";
+
+    const cellBase = {
+      padding: "6px 8px",
+      fontSize: box.style?.fontSize || 11,
       whiteSpace: "normal",
       overflow: "hidden",
       textOverflow: "ellipsis",
       textAlign: align,
       verticalAlign: "top",
+      border: `1px solid ${borderColor}`,
     };
 
     return (
@@ -286,7 +519,12 @@ export default function A4Preview({
         }}
       >
         <table
-          style={{ width: "100%", borderCollapse: "collapse", fontSize: 11 }}
+          style={{
+            width: "100%",
+            borderCollapse: "collapse",
+            fontSize: box.style?.fontSize || 11,
+            border: `1px solid ${borderColor}`,
+          }}
         >
           <thead>
             <tr>
@@ -294,9 +532,9 @@ export default function A4Preview({
                 <th
                   key={idx}
                   style={{
-                    ...cellStyle,
-                    background: box.style?.headerBackground || "#f8fafc",
-                    color: box.style?.headerColor || "#0f1724",
+                    ...cellBase,
+                    background: headerBackground,
+                    color: headerColor,
                     textAlign: "left",
                     fontWeight: 600,
                   }}
@@ -313,9 +551,12 @@ export default function A4Preview({
                   <td
                     key={ci}
                     style={{
-                      ...cellStyle,
-                      background: box.style?.rowBackground || "#fff",
-                      color: box.style?.rowColor || "#0f1724",
+                      ...cellBase,
+                      background:
+                        rowBackground === "transparent"
+                          ? "transparent"
+                          : rowBackground,
+                      color: rowColor,
                     }}
                   >
                     {String(r[ci] ?? "").trim()}
@@ -329,6 +570,11 @@ export default function A4Preview({
     );
   };
 
+  // Resolve header/footer/watermark src once per render
+  const resolvedHeader = resolveImgSrc(headerUrl);
+  const resolvedFooter = resolveImgSrc(footerUrl);
+  const resolvedWatermark = resolveImgSrc(watermarkUrl);
+
   return (
     <div className={styles.previewArea}>
       <div
@@ -337,13 +583,29 @@ export default function A4Preview({
         style={{ width: w + "px", height: h + "px" }}
         ref={previewRef}
       >
-        <div className={styles.paperInner}>
+        <div
+          className={styles.paperInner}
+          style={{
+            background:
+              pageStyle &&
+              pageStyle.background &&
+              pageStyle.background !== "transparent"
+                ? pageStyle.background
+                : "transparent",
+          }}
+        >
           <div className={styles.headerSlot}>
-            {headerUrl ? (
+            {resolvedHeader ? (
               <img
-                src={headerUrl}
+                src={resolvedHeader}
                 alt="Header preview"
                 className={styles.slotImg}
+                style={{
+                  width: "100%",
+                  height: "100%",
+                  display: "block",
+                  objectFit: "contain",
+                }}
               />
             ) : (
               <div className={styles.slotPlaceholder}>
@@ -357,11 +619,11 @@ export default function A4Preview({
             aria-hidden="true"
             style={{ position: "relative", overflow: "hidden" }}
           >
-            {watermarkUrl && (editable || watermarkProps) ? (
+            {resolvedWatermark && (editable || watermarkProps) ? (
               <div
-                style={wrapperStyle}
-                onMouseDown={startDrag}
-                onTouchStart={startDrag}
+                style={wrapperStyleForWatermark}
+                onMouseDown={startWatermarkDrag}
+                onTouchStart={startWatermarkDrag}
                 role={editable ? "button" : undefined}
                 aria-label="Watermark"
               >
@@ -373,7 +635,7 @@ export default function A4Preview({
                   }}
                 >
                   <img
-                    src={watermarkUrl}
+                    src={resolvedWatermark}
                     alt="Watermark"
                     draggable={false}
                     style={{
@@ -386,34 +648,33 @@ export default function A4Preview({
                       userSelect: "none",
                     }}
                   />
-
                   {editable && (
                     <>
                       <div
                         data-resize="nw"
-                        onMouseDown={(e) => startResize(e, "nw")}
-                        onTouchStart={(e) => startResize(e, "nw")}
+                        onMouseDown={(e) => startWatermarkResize(e, "nw")}
+                        onTouchStart={(e) => startWatermarkResize(e, "nw")}
                         style={handleStyle("nw")}
                         title="Resize (NW)"
                       />
                       <div
                         data-resize="ne"
-                        onMouseDown={(e) => startResize(e, "ne")}
-                        onTouchStart={(e) => startResize(e, "ne")}
+                        onMouseDown={(e) => startWatermarkResize(e, "ne")}
+                        onTouchStart={(e) => startWatermarkResize(e, "ne")}
                         style={handleStyle("ne")}
                         title="Resize (NE)"
                       />
                       <div
                         data-resize="se"
-                        onMouseDown={(e) => startResize(e, "se")}
-                        onTouchStart={(e) => startResize(e, "se")}
+                        onMouseDown={(e) => startWatermarkResize(e, "se")}
+                        onTouchStart={(e) => startWatermarkResize(e, "se")}
                         style={handleStyle("se")}
                         title="Resize (SE)"
                       />
                       <div
                         data-resize="sw"
-                        onMouseDown={(e) => startResize(e, "sw")}
-                        onTouchStart={(e) => startResize(e, "sw")}
+                        onMouseDown={(e) => startWatermarkResize(e, "sw")}
+                        onTouchStart={(e) => startWatermarkResize(e, "sw")}
                         style={handleStyle("sw")}
                         title="Resize (SW)"
                       />
@@ -421,9 +682,9 @@ export default function A4Preview({
                   )}
                 </div>
               </div>
-            ) : watermarkUrl ? (
+            ) : resolvedWatermark ? (
               <img
-                src={watermarkUrl}
+                src={resolvedWatermark}
                 alt="Watermark preview"
                 style={{
                   position: "absolute",
@@ -443,7 +704,11 @@ export default function A4Preview({
               bodyBoxes.map((box) => {
                 const s = box.style || {};
                 const isTable = box.type === "table" && box.tableHeaders;
-                const isImage = box.type === "image" && box.imageUrl;
+                // Resolve box image src here using resolveImgSrc
+                const candidateImage = box.imageUrl || box.content || null;
+                const resolvedBoxImg = resolveImgSrc(candidateImage);
+
+                const isImage = box.type === "image" && resolvedBoxImg;
                 const isLabel =
                   !!box.isLabel ||
                   (s.background && s.background !== "transparent");
@@ -462,36 +727,107 @@ export default function A4Preview({
                     ? "flex-end"
                     : "flex-start";
 
+                const isSelected = selectedBoxId && box.id === selectedBoxId;
+                const showHandles =
+                  boxesEditable && (isSelected || hoveredBoxId === box.id);
+
+                const boxWrapperStyle = {
+                  position: "absolute",
+                  left: box.xPct || "5%",
+                  top: box.yPct || "5%",
+                  width: box.wPct || "90%",
+                  height: box.hPct || "10%",
+                  boxSizing: "border-box",
+                  display: "flex",
+                  alignItems: isLabel ? "center" : "flex-start",
+                  justifyContent,
+                  padding: padding,
+                  overflow: "hidden",
+                  background: bg !== "transparent" ? bg : "transparent",
+                  pointerEvents: "auto",
+                  userSelect: boxesEditable ? "auto" : "none",
+                  textAlign,
+                  zIndex: 50,
+                  outline: isSelected ? "2px solid #0f6679" : undefined,
+                  outlineOffset: isSelected ? 0 : undefined,
+                };
+
                 return (
                   <div
                     key={box.id || Math.random()}
-                    style={{
-                      position: "absolute",
-                      left: box.xPct || "5%",
-                      top: box.yPct || "5%",
-                      width: box.wPct || "90%",
-                      height: box.hPct || "10%",
-                      boxSizing: "border-box",
-                      display: "flex",
-                      alignItems: isLabel ? "center" : "flex-start",
-                      justifyContent,
-                      padding: padding,
-                      overflow: "hidden",
-                      background: bg !== "transparent" ? bg : "transparent",
-                      pointerEvents: "none",
-                      userSelect: "none",
-                      textAlign,
+                    style={boxWrapperStyle}
+                    onMouseDown={(e) => {
+                      if (typeof onSelectBox === "function")
+                        onSelectBox(box.id);
+                      if (!boxesEditable) return;
+                      startBoxDrag(e, box);
                     }}
+                    onTouchStart={(e) => {
+                      if (typeof onSelectBox === "function")
+                        onSelectBox(box.id);
+                      if (!boxesEditable) return;
+                      startBoxDrag(e, box);
+                    }}
+                    onMouseEnter={() => setHoveredBoxId(box.id)}
+                    onMouseLeave={() =>
+                      setHoveredBoxId((cur) => (cur === box.id ? null : cur))
+                    }
+                    title={box.label || box.content || ""}
+                    role={boxesEditable ? "button" : undefined}
+                    aria-label={box.label || "field"}
                   >
+                    {showHandles && (
+                      <>
+                        <div
+                          data-resize="nw"
+                          onMouseDown={(e) => startBoxResize(e, box, "nw")}
+                          onTouchStart={(e) => startBoxResize(e, box, "nw")}
+                          style={handleStyle("nw")}
+                          title="Resize (NW)"
+                        />
+                        <div
+                          data-resize="ne"
+                          onMouseDown={(e) => startBoxResize(e, box, "ne")}
+                          onTouchStart={(e) => startBoxResize(e, box, "ne")}
+                          style={handleStyle("ne")}
+                          title="Resize (NE)"
+                        />
+                        <div
+                          data-resize="se"
+                          onMouseDown={(e) => startBoxResize(e, box, "se")}
+                          onTouchStart={(e) => startBoxResize(e, box, "se")}
+                          style={handleStyle("se")}
+                          title="Resize (SE)"
+                        />
+                        <div
+                          data-resize="sw"
+                          onMouseDown={(e) => startBoxResize(e, box, "sw")}
+                          onTouchStart={(e) => startBoxResize(e, box, "sw")}
+                          style={handleStyle("sw")}
+                          title="Resize (SW)"
+                        />
+                      </>
+                    )}
+
                     {isImage ? (
                       <img
-                        src={box.imageUrl}
+                        src={resolvedBoxImg}
                         alt={box.label || "image"}
                         style={{
-                          maxWidth: "100%",
-                          maxHeight: "100%",
+                          width: "100%",
+                          height: "100%",
                           objectFit: "contain",
                           pointerEvents: "none",
+                          display: "block",
+                          userSelect: "none",
+                        }}
+                        onError={(e) => {
+                          console.warn(
+                            "A4Preview: image failed to load for box",
+                            box.id,
+                            resolvedBoxImg
+                          );
+                          // still show fallback content if any
                         }}
                       />
                     ) : isTable ? (
@@ -526,11 +862,17 @@ export default function A4Preview({
           </div>
 
           <div className={styles.footerSlot}>
-            {footerUrl ? (
+            {resolvedFooter ? (
               <img
-                src={footerUrl}
+                src={resolvedFooter}
                 alt="Footer preview"
                 className={styles.slotImg}
+                style={{
+                  width: "100%",
+                  height: "100%",
+                  display: "block",
+                  objectFit: "contain",
+                }}
               />
             ) : (
               <div className={styles.slotPlaceholder}>

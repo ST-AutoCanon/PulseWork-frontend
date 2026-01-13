@@ -9,6 +9,7 @@ import { useAuth } from "../../context/AuthProvider.client";
 
 const logoUrl = "/images/sukalpa_logo.png";
 const MASTER_ORG_VALUE = "__MASTER__";
+const ORGS_STORAGE_KEY = "login_orgs_v1";
 
 export default function Login({ onClose }) {
   const { login } = useAuth();
@@ -41,8 +42,27 @@ export default function Login({ onClose }) {
     if (onClose) onClose();
   };
 
+  /* =========================
+     ORGS LOADING (CACHE + FETCH)
+     ========================= */
   useEffect(() => {
+    let aborted = false;
+
     async function loadOrgs() {
+      // 1. Load cached orgs immediately
+      try {
+        const cached = localStorage.getItem(ORGS_STORAGE_KEY);
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            setOrgs(parsed);
+          }
+        }
+      } catch {
+        // ignore cache errors
+      }
+
+      // 2. Always fetch latest orgs
       try {
         const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/orgs`, {
           method: "GET",
@@ -52,23 +72,28 @@ export default function Login({ onClose }) {
           },
           credentials: "include",
         });
+
         const body = await res.json().catch(() => ({}));
-        if (res.ok && body && body.message) {
-          const fetched = Array.isArray(body.message) ? body.message : [];
-          const withMaster = [
-            { id: MASTER_ORG_VALUE, name: "Login as Super Admin" },
-            ...fetched,
-          ];
+        if (!res.ok || !Array.isArray(body?.message)) return;
+
+        const withMaster = [
+          { id: MASTER_ORG_VALUE, name: "Login as Super Admin" },
+          ...body.message,
+        ];
+
+        if (!aborted) {
           setOrgs(withMaster);
-        } else {
-          setOrgs([{ id: MASTER_ORG_VALUE, name: "Login as Super Admin" }]);
+          localStorage.setItem(ORGS_STORAGE_KEY, JSON.stringify(withMaster));
         }
       } catch (err) {
-        console.warn("Failed to load orgs for login dropdown:", err);
-        setOrgs([{ id: MASTER_ORG_VALUE, name: "Login as Super Admin" }]);
+        console.warn("Failed to refresh orgs:", err);
       }
     }
+
     loadOrgs();
+    return () => {
+      aborted = true;
+    };
   }, []);
 
   // allowed parent origins (comma-separated)
@@ -87,27 +112,23 @@ export default function Login({ onClose }) {
     }
   }, []);
 
-  // ---------- MESSAGE HANDLER: respond to parent-handshake and parent-login ----------
+  // ---------- MESSAGE HANDLER ----------
   useEffect(() => {
     function onMessage(ev) {
       try {
         if (!ev?.origin) return;
-        if (allowedOrigins.length && !allowedOrigins.includes(ev.origin)) {
+        if (allowedOrigins.length && !allowedOrigins.includes(ev.origin))
           return;
-        }
 
         parentOriginRef.current = ev.origin;
         const msg = ev.data || {};
 
         if (msg.type === "parent-handshake") {
-          try {
-            window.parent?.postMessage({ type: "child-ready" }, ev.origin);
-          } catch {}
+          window.parent?.postMessage({ type: "child-ready" }, ev.origin);
           return;
         }
 
         if (msg.type === "parent-login") {
-          // parent may provide orgId or loginAsSuperAdmin
           const parentOrgId =
             msg.orgId !== undefined ? String(msg.orgId) : undefined;
           const parentLoginAsSuperAdmin = !!msg.loginAsSuperAdmin;
@@ -126,25 +147,15 @@ export default function Login({ onClose }) {
             parentLoginAsSuperAdmin
           );
         }
-
-        if (msg.type === "request-navigate" && msg.path) {
-          try {
-            window.location.assign(msg.path);
-          } catch {}
-        }
-      } catch (err) {
+      } catch {
         // swallow
       }
     }
 
-    window.addEventListener("message", onMessage, false);
-    return () => window.removeEventListener("message", onMessage, false);
+    window.addEventListener("message", onMessage);
+    return () => window.removeEventListener("message", onMessage);
   }, [allowedOrigins]);
 
-  /**
-   * handleParentLogin:
-   * - overrideOrgId, overrideLoginAsSuperAdmin: optional values passed by parent to avoid relying on state updates
-   */
   async function handleParentLogin(
     usernameVal,
     passwordVal,
@@ -157,12 +168,10 @@ export default function Login({ onClose }) {
     if (!usernameVal || !passwordVal) {
       const msg = "Username and password are required.";
       showAlert(msg);
-      try {
-        window.parent?.postMessage(
-          { type: "login-failed", error: msg },
-          parentOrigin || parentOriginRef.current || "*"
-        );
-      } catch {}
+      window.parent?.postMessage(
+        { type: "login-failed", error: msg },
+        parentOrigin || parentOriginRef.current || "*"
+      );
       return;
     }
 
@@ -173,163 +182,75 @@ export default function Login({ onClose }) {
         ? overrideLoginAsSuperAdmin
         : orgToUse === MASTER_ORG_VALUE;
 
-    if (!isSuperAdmin && (!orgToUse || orgToUse === "")) {
+    if (!isSuperAdmin && !orgToUse) {
       const msg = "Organization selection is required.";
       setFieldError(msg);
       showAlert(msg);
-      try {
-        window.parent?.postMessage(
-          { type: "login-failed", error: msg },
-          parentOrigin || parentOriginRef.current || "*"
-        );
-      } catch {}
+      window.parent?.postMessage(
+        { type: "login-failed", error: msg },
+        parentOrigin || parentOriginRef.current || "*"
+      );
       return;
     }
 
     setIsSubmitting(true);
     try {
-      const bodyPayload = {
+      const payload = {
         email: usernameVal,
         password: passwordVal,
+        ...(isSuperAdmin ? { loginAsSuperAdmin: true } : { orgId: orgToUse }),
       };
 
-      if (isSuperAdmin) {
-        bodyPayload.loginAsSuperAdmin = true;
-      } else {
-        bodyPayload.orgId = orgToUse;
-      }
+      const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/login`, {
+        method: "POST",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": process.env.NEXT_PUBLIC_API_KEY,
+        },
+        body: JSON.stringify(payload),
+      });
 
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_BACKEND_URL}/login`,
-        {
-          method: "POST",
-          credentials: "include",
-          headers: {
-            "Content-Type": "application/json",
-            "x-api-key": process.env.NEXT_PUBLIC_API_KEY,
-          },
-          body: JSON.stringify(bodyPayload),
-        }
-      );
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.message || "Invalid credentials");
 
-      const data = await response.json().catch(() => ({}));
-      if (!response.ok) {
-        const errMsg = data.message || "Invalid credentials.";
-        showAlert(errMsg);
-        try {
-          window.parent?.postMessage(
-            { type: "login-failed", error: errMsg },
-            parentOrigin || parentOriginRef.current || "*"
-          );
-        } catch {}
-        return;
-      }
-
-      const payload = data.message || {};
+      const u = data.message || {};
       const minimalUser = {
-        id: payload.id ?? payload.employeeId ?? payload.employee_id ?? null,
-        employeeId:
-          payload.employeeId ?? payload.employee_id ?? payload.id ?? null,
-        role: payload.role ?? "",
-        name: payload.name ?? payload.dashboard?.name ?? "",
-        orgId: payload.org_id ?? payload.orgId ?? payload.Org_id ?? null,
+        id: u.id ?? u.employeeId ?? u.employee_id ?? null,
+        employeeId: u.employeeId ?? u.employee_id ?? u.id ?? null,
+        role: u.role ?? "",
+        name: u.name ?? u.dashboard?.name ?? "",
+        orgId: u.org_id ?? u.orgId ?? null,
       };
 
       await login(minimalUser);
       closeModal();
+      window.parent?.postMessage(
+        { type: "login-success", payload: minimalUser },
+        parentOrigin || parentOriginRef.current || "*"
+      );
 
-      try {
-        window.parent?.postMessage(
-          { type: "login-success", payload: minimalUser },
-          parentOrigin || parentOriginRef.current || "*"
-        );
-      } catch {}
-
-     const roleValue = String(payload.role || "").trim().toLowerCase();
-
-console.log("NORMALIZED ROLE:", roleValue);
-
-if (roleValue === "general" ) {
-  router.replace("/FacePunch");
-} else {
-  router.replace("/dashboard");
-}
-
+      router.push(
+        usernameVal.toLowerCase() === "manish.p@yopmail.com" &&
+          minimalUser.role.toLowerCase() === "general"
+          ? "/FacePunch"
+          : "/dashboard"
+      );
     } catch (err) {
-      console.error("login error", err);
-      showAlert("An unexpected error occurred. Please try again.");
-      try {
-        window.parent?.postMessage(
-          { type: "login-failed", error: "An unexpected error occurred." },
-          parentOrigin || parentOriginRef.current || "*"
-        );
-      } catch {}
+      showAlert(err.message || "Login failed");
     } finally {
       setIsSubmitting(false);
     }
   }
 
-  // local manual UI submit
-  const handleSubmit = async (e) => {
+  const handleSubmit = (e) => {
     e.preventDefault();
-    if (isSubmitting) return;
-    setFieldError(null);
-
-    if (!username || !password) {
-      showAlert("Username and password are required.");
-      return;
-    }
-
-    const isSuperAdmin = selectedOrgId === MASTER_ORG_VALUE;
-    if (!isSuperAdmin && (!selectedOrgId || selectedOrgId === "")) {
-      const msg =
-        "Please select an organization or choose 'Login as Super Admin'.";
-      setFieldError(msg);
-      showAlert(msg);
-      return;
-    }
-
-    await handleParentLogin(
-      username,
-      password,
-      undefined,
-      undefined,
-      undefined
-    );
-  };
-
-  const handleForgotPassword = async (e) => {
-    e?.preventDefault();
-    if (!username) {
-      showAlert("Email ID is required to reset the password.");
-      return;
-    }
-    try {
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_BACKEND_URL}/forgot-password`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "x-api-key": process.env.NEXT_PUBLIC_API_KEY,
-          },
-          body: JSON.stringify({ email: username }),
-          credentials: "include",
-        }
-      );
-      const data = await response.json().catch(() => ({}));
-      if (response.ok) {
-        showAlert("Password reset email sent!", "Success");
-      } else {
-        showAlert(data.message || "Request failed");
-      }
-    } catch (err) {
-      showAlert("An unexpected error occurred.");
+    if (!isSubmitting) {
+      handleParentLogin(username, password);
     }
   };
 
-  if (isFramed === null) return null;
-  if (isFramed) return null;
+  if (isFramed === null || isFramed) return null;
 
   return (
     isModalOpen && (

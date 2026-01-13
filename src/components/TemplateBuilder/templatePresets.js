@@ -1150,7 +1150,7 @@ export function fieldsToBoxes(fields = [], startYPct = 5) {
       yPct,
       wPct,
       hPct,
-      locked: true,
+      locked: false,
       style: f.style || {
         fontSize: 11,
         color: "#0f1724",

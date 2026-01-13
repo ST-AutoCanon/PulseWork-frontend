@@ -33,7 +33,7 @@ function normalizeUploadUrl(src, backendBase) {
   }
 }
 
-async function fetchProtectedBlobUrl(src, apiKey, backendBase) {
+async function fetchProtectedBlobUrl(src, apiKey, backendBase, orgId) {
   if (!src) return null;
   if (src.startsWith("blob:") || src.startsWith("data:")) return src;
 
@@ -45,7 +45,7 @@ async function fetchProtectedBlobUrl(src, apiKey, backendBase) {
   try {
     const res = await axios.get(normalized, {
       responseType: "blob",
-      headers: { "x-api-key": apiKey || "" },
+      headers: { "x-api-key": apiKey || "", "x-org-id": orgId || "" },
       withCredentials: true,
     });
     const blob = res.data;
@@ -58,7 +58,12 @@ async function fetchProtectedBlobUrl(src, apiKey, backendBase) {
   }
 }
 
-async function replaceUploadUrlsInHtml(html = "", apiKey, backendBase) {
+async function replaceUploadUrlsInHtml(
+  html = "",
+  apiKey,
+  backendBase,
+  orgId = null
+) {
   if (!html || typeof html !== "string") return html;
 
   const uploadRegex =
@@ -73,7 +78,12 @@ async function replaceUploadUrlsInHtml(html = "", apiKey, backendBase) {
     unique.map(async (m) => {
       let candidate = m;
       candidate = normalizeUploadUrl(m, backendBase);
-      const blob = await fetchProtectedBlobUrl(candidate, apiKey, backendBase);
+      const blob = await fetchProtectedBlobUrl(
+        candidate,
+        apiKey,
+        backendBase,
+        orgId
+      );
       if (blob) replacements[m] = blob;
       else replacements[m] = candidate;
     })
@@ -132,6 +142,7 @@ const LetterHead = () => {
   const headers = {
     "x-api-key": API_KEY,
     "x-employee-id": meId,
+    "x-org-id": orgId,
   };
 
   const [alertModal, setAlertModal] = useState({
@@ -218,72 +229,56 @@ const LetterHead = () => {
     }
   }, [showPopup]);
 
- useEffect(() => {
-  let mounted = true;
-
-  async function fetchData() {
-    setLoading(true);
-    try {
-      const templatesResp = await axios
-        .get(`${BACKEND_URL}/api/templates/list`, {
-          withCredentials: true,
-          headers: {
-            ...headers,
-            "x-org-id": orgId, 
-          },
-        })
-        .catch(() => ({ data: { data: [] } }));
-
-      const letterheadsResp = await axios
-        .get(`${BACKEND_URL}/api/letterheads/list`, {
-          withCredentials: true,
-          headers: {
-            ...headers,
-            "x-org-id": orgId, 
-          },
-        })
-        .catch(() => ({ data: { data: [] } }));
-
-      let saved = [];
-      if (orgId) {
-        const savedResp = await axios.get(
-          `${BACKEND_URL}/api/orgs/${orgId}/templates`,
-          {
+  useEffect(() => {
+    let mounted = true;
+    async function fetchData() {
+      setLoading(true);
+      try {
+        const templatesResp = await axios
+          .get(`${BACKEND_URL}/api/templates/list`, {
             withCredentials: true,
-            headers: {
-              ...headers,
-              "x-org-id": orgId,
-            },
-          }
+            headers,
+          })
+          .catch(() => ({ data: { data: [] } }));
+
+        const letterheadsResp = await axios
+          .get(`${BACKEND_URL}/api/letterheads/list`, {
+            withCredentials: true,
+            headers,
+          })
+          .catch(() => ({ data: { data: [] } }));
+
+        let saved = [];
+        if (orgId) {
+          const savedResp = await axios.get(
+            `${BACKEND_URL}/api/orgs/${orgId}/templates`,
+            { withCredentials: true, headers }
+          );
+          saved = Array.isArray(savedResp.data)
+            ? savedResp.data
+            : savedResp.data?.data || [];
+        }
+
+        if (!mounted) return;
+
+        setTemplates(templatesResp.data.data || []);
+        setLetterheads(letterheadsResp.data.data || []);
+        setSavedTemplates(saved || []);
+      } catch (error) {
+        console.error("Error fetching data:", error);
+        showAlert(
+          "Failed to fetch data: " +
+            (error?.response?.data?.error || error.message || "unknown")
         );
-
-        saved = Array.isArray(savedResp.data)
-          ? savedResp.data
-          : savedResp.data?.data || [];
+      } finally {
+        setLoading(false);
       }
-
-      if (!mounted) return;
-
-      setTemplates(templatesResp.data.data || []);
-      setLetterheads(letterheadsResp.data.data || []);
-      setSavedTemplates(saved || []);
-    } catch (error) {
-      console.error("Error fetching data:", error);
-      showAlert(
-        "Failed to fetch data: " +
-          (error?.response?.data?.error || error.message || "unknown")
-      );
-    } finally {
-      setLoading(false);
     }
-  }
-
-  if (orgId) fetchData(); 
-  return () => {
-    mounted = false;
-  };
-}, [orgId]);
-
+    fetchData();
+    return () => {
+      mounted = false;
+    };
+  }, [orgId]);
 
   const revokeIfBlob = (url) => {
     try {
@@ -530,6 +525,7 @@ const LetterHead = () => {
       (t) => String(t.id) === String(templateId)
     );
     if (!template) {
+      // clear
       revokeIfBlob(headerBlobRef.current);
       revokeIfBlob(footerBlobRef.current);
       headerBlobRef.current = null;
@@ -538,53 +534,286 @@ const LetterHead = () => {
       setSelectedTemplateId("");
       setHeaderBlobUrl(null);
       setFooterBlobUrl(null);
+      setWatermarkBlobUrl(null);
       return;
     }
 
     setSelectedTemplateId(String(templateId));
     setSelectedTemplate(template);
 
-    try {
-      const candidateFields = [
-        "header_url",
-        "footer_url",
-        "thumbnail",
-        "imageUrl",
-        "cleaned_url",
-        "cleanedUrl",
-      ];
-      const resolved = { ...template };
+    // revoke previous
+    revokeIfBlob(headerBlobRef.current);
+    revokeIfBlob(footerBlobRef.current);
+    headerBlobRef.current = null;
+    footerBlobRef.current = null;
+    setHeaderBlobUrl(null);
+    setFooterBlobUrl(null);
+    setWatermarkBlobUrl(null);
 
-      await Promise.all(
-        candidateFields.map(async (field) => {
-          const val = template[field] || template[field.toLowerCase()] || null;
+    try {
+      // Helper to parse grapes json if string
+      const grapesRaw = template.grapesJson || template.grapes_json || null;
+      let grapesObj = grapesRaw;
+      if (grapesObj && typeof grapesObj === "string") {
+        try {
+          grapesObj = JSON.parse(grapesObj);
+        } catch (e) {
+          grapesObj = grapesObj;
+        }
+      }
+
+      // Utility: collect upload-like strings out of object (attributes.src, values)
+      function collectUploadStrings(obj, out = new Set()) {
+        if (!obj) return out;
+        if (typeof obj === "string") {
           if (
-            typeof val === "string" &&
-            /\/api\/orgs\/\d+\/uploads\//.test(val)
+            /\/api\/orgs\/\d+\/uploads\/[A-Za-z0-9._-]+/i.test(obj) ||
+            /^[^\/\\]+\.(png|jpe?g|svg|gif|webp)$/i.test(obj) ||
+            /^[0-9]{6,}_[A-Za-z0-9._-]+/.test(obj)
           ) {
-            const normalized = normalizeUploadUrl(val, BACKEND_URL);
-            const blob = await fetchProtectedBlobUrl(
-              normalized,
-              API_KEY,
-              BACKEND_URL
-            );
-            if (blob) resolved[field] = blob;
-            else resolved[field] = normalized;
-          } else if (typeof val === "string" && val.startsWith("/api/")) {
-            const normalized = normalizeUploadUrl(val, BACKEND_URL);
-            const blob = await fetchProtectedBlobUrl(
-              normalized,
-              API_KEY,
-              BACKEND_URL
-            );
-            if (blob) resolved[field] = blob;
-            else resolved[field] = normalized;
-          } else {
-            resolved[field] = val;
+            out.add(obj);
           }
-        })
+          return out;
+        }
+        if (Array.isArray(obj)) {
+          for (const v of obj) collectUploadStrings(v, out);
+          return out;
+        }
+        if (typeof obj === "object") {
+          // check attributes.src pattern (grapes components)
+          if (obj.attributes && typeof obj.attributes.src === "string") {
+            collectUploadStrings(obj.attributes.src, out);
+          }
+          for (const k of Object.keys(obj)) {
+            try {
+              collectUploadStrings(obj[k], out);
+            } catch (e) {}
+          }
+        }
+        return out;
+      }
+
+      // picks first candidate and returns fetched blob URL (or normalized URL)
+      async function pickAndFetch(candidates = []) {
+        for (const raw of candidates) {
+          if (!raw) continue;
+          if (typeof raw !== "string") continue;
+          // normalize relative/static names to full path
+          const normalized = normalizeUploadUrl(raw, BACKEND_URL);
+          try {
+            const blob = await fetchProtectedBlobUrl(
+              normalized,
+              API_KEY,
+              BACKEND_URL,
+              orgId
+            );
+            if (blob) return blob;
+            // if fetching failed but normalized is still a usable URL, return normalized
+            return normalized;
+          } catch (e) {
+            // try next candidate
+            continue;
+          }
+        }
+        return null;
+      }
+
+      // Build explicit candidate arrays (ordered preference)
+      const metaUploads = (template.meta && template.meta.uploads) || {};
+      const explicitHeaderCandidates = [
+        grapesObj && (grapesObj.headerUrl || grapesObj.header_url),
+        metaUploads.header,
+        template.header_url,
+        template.headerUrl,
+        template.thumbnail,
+        template.thumbnail_url,
+        template.imageUrl,
+        template.cleanedUrl,
+        template.cleaned_url,
+      ].filter(Boolean);
+
+      const explicitFooterCandidates = [
+        grapesObj && (grapesObj.footerUrl || grapesObj.footer_url),
+        metaUploads.footer,
+        template.footer_url,
+        template.footerUrl,
+        template.cleanedUrl,
+        template.cleaned_url,
+      ].filter(Boolean);
+
+      const explicitWatermarkCandidates = [
+        grapesObj && grapesObj.watermark && grapesObj.watermark.url,
+        metaUploads.watermark,
+        template.meta && typeof template.meta.watermark === "string"
+          ? template.meta.watermark
+          : null,
+      ].filter(Boolean);
+
+      // Remove candidates that are known qr/seal uploads
+      const excludeSet = new Set(
+        [
+          template?.meta?.qr,
+          template?.meta?.seal,
+          template?.meta?.qrUrl,
+          template?.meta?.sealUrl,
+          template?.meta?.uploads && template?.meta?.uploads.qr,
+          template?.meta?.uploads && template?.meta?.uploads.seal,
+        ].filter(Boolean)
       );
 
+      const sanitizeCandidates = (arr) =>
+        arr.filter((c) => c && !excludeSet.has(c));
+
+      // First try explicit picks
+      let headerBlob = await pickAndFetch(
+        sanitizeCandidates(explicitHeaderCandidates)
+      );
+      let footerBlob = await pickAndFetch(
+        sanitizeCandidates(explicitFooterCandidates)
+      );
+      let watermarkBlob = await pickAndFetch(
+        sanitizeCandidates(explicitWatermarkCandidates)
+      );
+
+      // If any missing, try to extract from template.html or content
+      const htmlToScan = template.html || template.content || "";
+      function extractImgSrcsFromHtml(html) {
+        const out = [];
+        if (!html || typeof html !== "string") return out;
+        try {
+          const re = /<img[^>]+src=(["'])([^"']+)\1/gi;
+          let m;
+          while ((m = re.exec(html))) {
+            out.push(m[2]);
+          }
+        } catch (e) {}
+        return out;
+      }
+
+      if (!headerBlob || !footerBlob || !watermarkBlob) {
+        // collect from grapes components and html
+        const foundSet = collectUploadStrings(grapesObj);
+        extractImgSrcsFromHtml(htmlToScan).forEach((s) => foundSet.add(s));
+        // also include strings matched by pattern inside html
+        try {
+          const uploadRegex =
+            /\/api\/orgs\/\d+\/uploads\/[A-Za-z0-9._-]+|[0-9]{6,}_[A-Za-z0-9._-]+/g;
+          const matches = (htmlToScan && htmlToScan.match(uploadRegex)) || [];
+          matches.forEach((m) => foundSet.add(m));
+        } catch (e) {}
+
+        const found = Array.from(foundSet).filter(
+          (f) => f && !excludeSet.has(f)
+        );
+        // prefer ones not already chosen
+        if (!headerBlob && found.length) {
+          headerBlob = await pickAndFetch([
+            found[0],
+            ...(explicitHeaderCandidates || []),
+          ]);
+        }
+        if (!footerBlob && found.length > 1) {
+          footerBlob = await pickAndFetch([
+            found[1],
+            ...(explicitFooterCandidates || []),
+          ]);
+        }
+        if (!watermarkBlob && found.length) {
+          // choose candidate different from header/footer
+          const candid = found.find(
+            (u) => u !== headerBlob && u !== footerBlob
+          );
+          if (candid)
+            watermarkBlob = await pickAndFetch([
+              candid,
+              ...(explicitWatermarkCandidates || []),
+            ]);
+        }
+      }
+
+      // Final fallback: use any explicit header/footer/thumb even if fetch failed previously (normalize only)
+      const lastResortNormalize = async (val) => {
+        if (!val || typeof val !== "string") return null;
+        try {
+          const normalized = normalizeUploadUrl(val, BACKEND_URL);
+          // don't try protected fetch again
+          return normalized;
+        } catch (e) {
+          return val;
+        }
+      };
+
+      if (!headerBlob) {
+        const fallback = explicitHeaderCandidates.find(Boolean) || null;
+        headerBlob = fallback ? await lastResortNormalize(fallback) : null;
+      }
+      if (!footerBlob) {
+        const fallback = explicitFooterCandidates.find(Boolean) || null;
+        footerBlob = fallback ? await lastResortNormalize(fallback) : null;
+      }
+      if (!watermarkBlob) {
+        const fallback = explicitWatermarkCandidates.find(Boolean) || null;
+        watermarkBlob = fallback ? await lastResortNormalize(fallback) : null;
+      }
+
+      // If watermark equals header/footer, clear header/footer to avoid duplication
+      if (watermarkBlob) {
+        if (headerBlob && headerBlob === watermarkBlob) {
+          console.warn(
+            "applySavedTemplate: clearing header because it matched watermark"
+          );
+          headerBlob = null;
+        }
+        if (footerBlob && footerBlob === watermarkBlob) {
+          console.warn(
+            "applySavedTemplate: clearing footer because it matched watermark"
+          );
+          footerBlob = null;
+        }
+      }
+
+      // If header and footer resolve to the same, drop footer
+      if (headerBlob && footerBlob && headerBlob === footerBlob) {
+        footerBlob = null;
+      }
+
+      // Set refs/state
+      headerBlobRef.current = headerBlob || null;
+      footerBlobRef.current = footerBlob || null;
+      setHeaderBlobUrl(headerBlobRef.current || null);
+      setFooterBlobUrl(footerBlobRef.current || null);
+
+      if (watermarkBlob) {
+        setWatermarkBlobUrl(watermarkBlob);
+        // watermark placement: prefer grapesObj.watermark, then meta.watermarkPlacement
+        let wp = null;
+        if (grapesObj && grapesObj.watermark) {
+          const gm = grapesObj.watermark;
+          wp = {
+            xPct: gm.xPct || gm.x || gm.left || "50%",
+            yPct: gm.yPct || gm.y || gm.top || "50%",
+            wPct: gm.wPct || gm.w || gm.width || "60%",
+            hPct: gm.hPct || gm.h || gm.height || "60%",
+            opacity: typeof gm.opacity === "number" ? gm.opacity : 0.12,
+          };
+        }
+        if (!wp && template.meta && template.meta.watermarkPlacement) {
+          const pm = template.meta.watermarkPlacement;
+          wp = {
+            xPct: pm.xPct || "50%",
+            yPct: pm.yPct || "50%",
+            wPct: pm.wPct || "60%",
+            hPct: pm.hPct || "60%",
+            opacity: typeof pm.opacity === "number" ? pm.opacity : 0.12,
+          };
+        }
+        if (!wp) wp = watermarkPropsState;
+        setWatermarkPropsState(wp);
+      } else {
+        setWatermarkBlobUrl(null);
+      }
+
+      // Build final bodyHtml factoring any header/footer inside template.html
       let contentHtml = template.html || template.content || "";
       if (
         typeof contentHtml === "string" &&
@@ -593,261 +822,50 @@ const LetterHead = () => {
         contentHtml = await replaceUploadUrlsInHtml(
           contentHtml,
           API_KEY,
-          BACKEND_URL
+          BACKEND_URL,
+          orgId
         );
-      }
-
-      const headerVal =
-        resolved.header_url ||
-        resolved.headerUrl ||
-        template.header_url ||
-        template.headerUrl ||
-        null;
-      const footerVal =
-        resolved.footer_url ||
-        resolved.footerUrl ||
-        template.footer_url ||
-        template.footerUrl ||
-        null;
-
-      revokeIfBlob(headerBlobRef.current);
-      revokeIfBlob(footerBlobRef.current);
-      headerBlobRef.current = null;
-      footerBlobRef.current = null;
-      setHeaderBlobUrl(null);
-      setFooterBlobUrl(null);
-
-      if (headerVal) {
-        if (typeof headerVal === "string") {
-          if (
-            /\/api\/orgs\/\d+\/uploads\//.test(headerVal) ||
-            headerVal.startsWith("/api/")
-          ) {
-            const normalized = normalizeUploadUrl(headerVal, BACKEND_URL);
-            const blob = await fetchProtectedBlobUrl(
-              normalized,
-              API_KEY,
-              BACKEND_URL
-            );
-            headerBlobRef.current = blob || normalized;
-          } else {
-            headerBlobRef.current = headerVal;
-          }
-        } else {
-          headerBlobRef.current = headerVal;
-        }
-        setHeaderBlobUrl(headerBlobRef.current || null);
-      }
-
-      if (footerVal) {
-        if (typeof footerVal === "string") {
-          if (
-            /\/api\/orgs\/\d+\/uploads\//.test(footerVal) ||
-            footerVal.startsWith("/api/")
-          ) {
-            const normalizedF = normalizeUploadUrl(footerVal, BACKEND_URL);
-            const blobF = await fetchProtectedBlobUrl(
-              normalizedF,
-              API_KEY,
-              BACKEND_URL
-            );
-            footerBlobRef.current = blobF || normalizedF;
-          } else {
-            footerBlobRef.current = footerVal;
-          }
-        } else {
-          footerBlobRef.current = footerVal;
-        }
-        setFooterBlobUrl(footerBlobRef.current || null);
       }
 
       const { headerHtml, bodyHtml, footerHtml } =
         extractHeaderFooterFromHtml(contentHtml);
 
-      if (!headerVal && headerHtml) {
-        const m = headerHtml.match(/<img[^>]+src=["']([^"']+)["']/i);
-        if (m && m[1]) {
-          const src = m[1];
-          const normalized = normalizeUploadUrl(src, BACKEND_URL);
-          const blob = await fetchProtectedBlobUrl(
-            normalized,
-            API_KEY,
-            BACKEND_URL
-          );
-          headerBlobRef.current = blob || normalized;
-        }
-      }
-
-      if (!footerVal && footerHtml) {
-        const m = footerHtml.match(/<img[^>]+src=["']([^"']+)["']/i);
-        if (m && m[1]) {
-          const src = m[1];
-          const normalized = normalizeUploadUrl(src, BACKEND_URL);
-          const blob = await fetchProtectedBlobUrl(
-            normalized,
-            API_KEY,
-            BACKEND_URL
-          );
-          footerBlobRef.current = blob || normalized;
-        }
-      }
-
+      let finalBodyHtml = contentHtml;
       const wrappedHeaderHtml = headerHtml
         ? `<div class="template-header">${headerHtml}</div>`
+        : headerBlobRef.current
+        ? `<div class="template-header"><img src="${headerBlobRef.current}" alt="Header" style="max-width:100%;height:auto;" /></div>`
         : "";
       const wrappedFooterHtml = footerHtml
         ? `<div class="template-footer">${footerHtml}</div>`
+        : footerBlobRef.current
+        ? `<div class="template-footer"><img src="${footerBlobRef.current}" alt="Footer" style="max-width:100%;height:auto;" /></div>`
         : "";
 
-      let finalBodyHtml = contentHtml;
-      if (
-        (headerBlobRef.current || footerBlobRef.current) &&
-        bodyHtml !== undefined
-      ) {
+      if (bodyHtml !== undefined) {
         finalBodyHtml = `${wrappedHeaderHtml}${
           bodyHtml || ""
         }${wrappedFooterHtml}`;
       } else {
-        if (headerHtml || footerHtml) {
+        // if no internal header/footer found, ensure we still place external header/footer if present
+        if (wrappedHeaderHtml || wrappedFooterHtml) {
           finalBodyHtml = `${wrappedHeaderHtml}${
-            bodyHtml || ""
+            contentHtml || ""
           }${wrappedFooterHtml}`;
         } else {
-          finalBodyHtml = contentHtml;
+          finalBodyHtml = contentHtml || "";
         }
       }
 
+      // apply to editor or state
       if (contentRef.current) {
         contentRef.current.innerHTML = finalBodyHtml || "";
         setFormData((prev) => ({
           ...prev,
           body: contentRef.current.innerHTML,
         }));
-        setHeaderBlobUrl(headerBlobRef.current || null);
-        setFooterBlobUrl(footerBlobRef.current || null);
       } else {
-        setFormData((prev) => ({
-          ...prev,
-          body: (finalBodyHtml || "").toString(),
-        }));
-        setHeaderBlobUrl(headerBlobRef.current || null);
-        setFooterBlobUrl(footerBlobRef.current || null);
-      }
-
-      try {
-        let wmUrl = null;
-        let wp = null;
-
-        const grapes = template.grapesJson || template.grapes_json || null;
-        let grapesObj = grapes;
-        if (grapesObj && typeof grapesObj === "string") {
-          try {
-            grapesObj = JSON.parse(grapesObj);
-          } catch (e) {
-            grapesObj = grapesObj;
-          }
-        }
-        if (grapesObj && grapesObj.watermark && grapesObj.watermark.url) {
-          wmUrl = grapesObj.watermark.url;
-          wp = {
-            xPct: grapesObj.watermark.xPct || "50%",
-            yPct: grapesObj.watermark.yPct || "50%",
-            wPct: grapesObj.watermark.wPct || "60%",
-            hPct: grapesObj.watermark.hPct || "60%",
-            opacity:
-              typeof grapesObj.watermark.opacity === "number"
-                ? grapesObj.watermark.opacity
-                : 0.12,
-          };
-        }
-
-        if (!wmUrl && template.meta && template.meta.watermark) {
-          const explicitHeader =
-            template.header_url || template.headerUrl || null;
-          const explicitFooter =
-            template.footer_url || template.footerUrl || null;
-
-          const candidatesSet = new Set();
-          [
-            template.header_url,
-            template.footer_url,
-            template.thumbnail,
-            template.imageUrl,
-            template.cleaned_url,
-            template.cleanedUrl,
-          ].forEach((v) => v && typeof v === "string" && candidatesSet.add(v));
-
-          function collectFromNode(node) {
-            if (!node) return;
-            if (typeof node === "string") {
-              if (
-                node.match(/\/api\/orgs\/\d+\/uploads\//) ||
-                node.match(/^[0-9]{6,}_[A-Za-z0-9._-]+/)
-              ) {
-                candidatesSet.add(node);
-              }
-              return;
-            }
-            if (Array.isArray(node)) {
-              node.forEach(collectFromNode);
-              return;
-            }
-            if (typeof node === "object") {
-              if (node.attributes && typeof node.attributes.src === "string") {
-                candidatesSet.add(node.attributes.src);
-              }
-              for (const k of Object.keys(node)) collectFromNode(node[k]);
-            }
-          }
-          if (grapesObj) collectFromNode(grapesObj);
-
-          const htmlToScan =
-            contentHtml || template.html || template.content || "";
-          try {
-            const uploadRegex =
-              /\/api\/orgs\/\d+\/uploads\/[A-Za-z0-9._-]+|[0-9]{6,}_[A-Za-z0-9._-]+/g;
-            const matches = (htmlToScan && htmlToScan.match(uploadRegex)) || [];
-            matches.forEach((m) => candidatesSet.add(m));
-          } catch (e) {}
-
-          const candidates = Array.from(candidatesSet).filter((v) => {
-            if (!v || typeof v !== "string") return false;
-            if (explicitHeader && v === explicitHeader) return false;
-            if (explicitFooter && v === explicitFooter) return false;
-            return true;
-          });
-
-          if (candidates.length > 0) {
-            wmUrl = candidates[0];
-            const wpMeta = template.meta.watermarkPlacement;
-            if (wpMeta) {
-              wp = {
-                xPct: wpMeta.xPct || "50%",
-                yPct: wpMeta.yPct || "50%",
-                wPct: wpMeta.wPct || "60%",
-                hPct: wpMeta.hPct || "60%",
-                opacity:
-                  typeof wpMeta.opacity === "number" ? wpMeta.opacity : 0.12,
-              };
-            }
-          }
-        }
-
-        if (wmUrl) {
-          const normalized = normalizeUploadUrl(wmUrl, BACKEND_URL);
-          const blob = await fetchProtectedBlobUrl(
-            normalized,
-            API_KEY,
-            BACKEND_URL
-          );
-          setWatermarkBlobUrl(blob || normalized);
-          setWatermarkPropsState(wp || watermarkPropsState);
-        } else {
-          setWatermarkBlobUrl(null);
-        }
-      } catch (e) {
-        console.warn("watermark detect failed", e);
-        setWatermarkBlobUrl(null);
+        setFormData((prev) => ({ ...prev, body: finalBodyHtml || "" }));
       }
     } catch (err) {
       console.error("applySavedTemplate error:", err);
@@ -1361,6 +1379,32 @@ const LetterHead = () => {
       ...prev,
       body: contentRef.current?.innerHTML || "",
     }));
+  };
+
+  const escapeRegExp = (s) => (s || "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+  const updateContentWithFormData = (fieldName, value) => {
+    if (!contentRef.current) return;
+    try {
+      const html = contentRef.current.innerHTML || "";
+      const camel = fieldName.replace(/_([a-z])/g, (m, p) => p.toUpperCase());
+      const patterns = [
+        new RegExp(`{{\\s*${escapeRegExp(fieldName)}\\s*}}`, "g"),
+        new RegExp(`{{\\s*${escapeRegExp(camel)}\\s*}}`, "g"),
+        new RegExp(`\\[\\[\\s*${escapeRegExp(fieldName)}\\s*\\]\\]`, "g"),
+      ];
+      let out = html;
+      patterns.forEach((p) => (out = out.replace(p, value || "")));
+      if (out !== html) {
+        contentRef.current.innerHTML = out;
+        setFormData((prev) => ({
+          ...prev,
+          body: contentRef.current.innerHTML,
+        }));
+      }
+    } catch (e) {
+      console.warn("updateContentWithFormData failed", e);
+    }
   };
 
   const waitForImagesToLoad = (container, timeout = 7000) => {

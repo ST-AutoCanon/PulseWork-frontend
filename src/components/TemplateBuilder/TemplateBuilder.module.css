@@ -354,3 +354,13 @@
   border-radius: 6px;
   border: none;
 }
+
+.fieldProps {
+  padding: 8px 0;
+  border-top: 1px dashed #e6eef2;
+  margin-top: 12px;
+}
+.fieldProps h4 {
+  margin: 0 0 8px 0;
+  font-size: 14px;
+}

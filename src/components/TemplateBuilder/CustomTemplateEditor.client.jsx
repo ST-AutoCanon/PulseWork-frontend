@@ -37,18 +37,21 @@ function pctToPx(leftPct, topPct, wPct, hPct, el) {
   return { left, top, width: w, height: h };
 }
 
-const TableCell = ({
-  boxId,
-  rIdx,
-  cIdx,
-  cellValue,
-  isEditingCell,
-  table,
-  mode,
-  editingTableMode,
-  updateTableCell,
-  setEditingCell,
-}) => {
+/* TableCell component (unchanged) */
+const TableCell = ({ ...props }) => {
+  // same implementation as before...
+  const {
+    boxId,
+    rIdx,
+    cIdx,
+    cellValue,
+    isEditingCell,
+    table,
+    mode,
+    editingTableMode,
+    updateTableCell,
+    setEditingCell,
+  } = props;
   const editingCellRef = useRef(null);
 
   useEffect(() => {
@@ -147,6 +150,13 @@ const CustomTemplateEditor = forwardRef(function CustomTemplateEditor(
     canvasWidthPx = 1000,
     onSave,
     background = null,
+    // header/footer + watermark behavior
+    headerHeightPct = 10,
+    footerHeightPct = 10,
+    watermarkUrl = null,
+    watermarkProps = null,
+    watermarkEditable = false,
+    onWatermarkChange = null,
   },
   ref
 ) {
@@ -155,7 +165,7 @@ const CustomTemplateEditor = forwardRef(function CustomTemplateEditor(
   const innerCanvasRef = useRef(null);
   const createdUrlsRef = useRef([]);
 
-  const [boxes, setBoxes] = useState(initialBoxes || []);
+  const [boxes, setBoxes] = useState([]);
   const [mode, setMode] = useState("select");
   const [selectedId, setSelectedId] = useState(null);
   const [editingId, setEditingId] = useState(null);
@@ -173,11 +183,78 @@ const CustomTemplateEditor = forwardRef(function CustomTemplateEditor(
   const dragEndedRef = useRef(null);
   const dragAllowMs = 300;
 
+  // active area for new box placement: "header" | "body" | "footer"
+  // NOTE: selection of active area should come from the side panel (parent).
+  const [activeArea, setActiveArea] = useState("body");
+
+  // local watermark state for immediate UI feedback while dragging
+  const [localWatermark, setLocalWatermark] = useState(
+    watermarkProps || {
+      xPct: "50%",
+      yPct: "50%",
+      wPct: "60%",
+      hPct: "60%",
+      opacity: 0.12,
+    }
+  );
+
+  // local watermarkUrl state: prefer prop, but keep a local fallback
+  const [localWatermarkUrl, setLocalWatermarkUrl] = useState(
+    watermarkUrl || null
+  );
+
   useEffect(() => {
     if (background) {
       setPageBackground(background);
     }
   }, [background]);
+
+  useEffect(() => {
+    // initialize watermark from props
+    if (watermarkProps) setLocalWatermark(watermarkProps);
+  }, [watermarkProps]);
+
+  useEffect(() => {
+    setLocalWatermarkUrl(watermarkUrl || null);
+  }, [watermarkUrl]);
+
+  // compute available body area in percent
+  const bodyTopPct = Number(String(headerHeightPct).replace("%", "")) || 10;
+  const bodyBottomPct =
+    100 - (Number(String(footerHeightPct).replace("%", "")) || 10);
+  const bodyHeightPct = bodyBottomPct - bodyTopPct;
+
+  // Shift incoming initialBoxes into body area by adding headerHeightPct
+  useEffect(() => {
+    function shiftBoxesToBody(src = []) {
+      if (!Array.isArray(src)) return [];
+      return src.map((b) => {
+        const nb = { ...b };
+        try {
+          const yNum = Number(String(nb.yPct || "0").replace("%", "")) || 0;
+          const hNum = Number(String(nb.hPct || "0").replace("%", "")) || 0;
+          let newY = yNum + bodyTopPct;
+          if (newY + hNum > bodyBottomPct - 0.5) {
+            newY = Math.max(bodyTopPct + 0.5, bodyBottomPct - hNum - 0.5);
+          }
+          nb.yPct = `${newY}%`;
+        } catch (e) {}
+        return nb;
+      });
+    }
+
+    const shifted = shiftBoxesToBody(initialBoxes || []);
+    setBoxes(shifted);
+    return () => {
+      createdUrlsRef.current.forEach((u) => {
+        try {
+          URL.revokeObjectURL(u);
+        } catch (e) {}
+      });
+      createdUrlsRef.current = [];
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [JSON.stringify(initialBoxes), headerHeightPct, footerHeightPct]);
 
   useEffect(() => {
     const el = containerRef.current;
@@ -203,24 +280,69 @@ const CustomTemplateEditor = forwardRef(function CustomTemplateEditor(
     };
   }, [canvasWidthPx]);
 
-  useEffect(() => {
-    if (initialBoxes && initialBoxes.length) setBoxes(initialBoxes);
+  function clampToArea(yPctNum, hPctNum, area) {
+    const header = Number(String(headerHeightPct).replace("%", "")) || 10;
+    const footer = Number(String(footerHeightPct).replace("%", "")) || 10;
+    const bodyTop = header;
+    const bodyBottom = 100 - footer;
 
-    return () => {
-      createdUrlsRef.current.forEach((u) => {
-        try {
-          URL.revokeObjectURL(u);
-        } catch (e) {}
-      });
-      createdUrlsRef.current = [];
-    };
-  }, [initialBoxes]);
+    if (area === "header") {
+      const maxTop = Math.max(0, header - hPctNum - 0.5);
+      return Math.min(Math.max(0.5, yPctNum), maxTop);
+    }
+    if (area === "footer") {
+      const minTop = Math.max(bodyBottom, 100 - footer);
+      const minAllowed = bodyBottom;
+      const maxAllowed = 100 - hPctNum - 0.5;
+      return Math.min(Math.max(minAllowed + 0.5, yPctNum), maxAllowed);
+    }
+    // body
+    const minAllowed = bodyTop;
+    const maxAllowed = bodyBottom - hPctNum - 0.5;
+    return Math.min(
+      Math.max(minAllowed + 0.5, yPctNum),
+      Math.max(minAllowed + 0.5, maxAllowed)
+    );
+  }
 
+  /* IMPORTANT: addBox now refuses to add boxes into the document body.
+     New boxes can only be added into the header or footer areas. */
   function addBox(type = "text") {
-    const wPct = 20;
-    const hPct = 8;
-    const leftPct = 50 - wPct / 2;
-    const topPct = 4;
+    // prevent adding to body area: parent / sidepanel should set activeArea
+    if (activeArea === "body") {
+      // provide a console warning and no-op; parent UI should guide user
+      console.warn(
+        "Adding new boxes into the document body is disabled. Select Header or Footer in the side panel to add elements."
+      );
+      return null;
+    }
+
+    const wPctNum = 20;
+    const hPctNum = 8;
+    const leftPct = 50 - wPctNum / 2;
+    let topPct = 4; // relative before shifting
+
+    // decide initial top based on activeArea
+    if (activeArea === "header") {
+      topPct = Math.max(
+        0.5,
+        Number(String(headerHeightPct).replace("%", "")) / 2 - hPctNum / 2
+      );
+    } else if (activeArea === "footer") {
+      const footer = Number(String(footerHeightPct).replace("%", "")) || 10;
+      topPct = 100 - footer + Math.max(0.5, footer / 2 - hPctNum / 2);
+      // ensure top within footer area
+    } else {
+      // fallback: should not happen, but push inside header to be safe
+      topPct = Math.max(
+        0.5,
+        Number(String(headerHeightPct).replace("%", "")) / 2 - hPctNum / 2
+      );
+    }
+
+    // clamp top within area
+    topPct = clampToArea(topPct, hPctNum, activeArea);
+
     const id = uuidv4();
 
     if (type === "table") {
@@ -244,8 +366,8 @@ const CustomTemplateEditor = forwardRef(function CustomTemplateEditor(
         },
         xPct: `${leftPct}%`,
         yPct: `${topPct}%`,
-        wPct: `${wPct}%`,
-        hPct: `${hPct}%`,
+        wPct: `${wPctNum}%`,
+        hPct: `${hPctNum}%`,
         style: {
           fontFamily: "Arial, sans-serif",
           fontSize: 12,
@@ -272,8 +394,8 @@ const CustomTemplateEditor = forwardRef(function CustomTemplateEditor(
           : "",
       xPct: `${leftPct}%`,
       yPct: `${topPct}%`,
-      wPct: `${wPct}%`,
-      hPct: `${hPct}%`,
+      wPct: `${wPctNum}%`,
+      hPct: `${hPctNum}%`,
       style: {
         fontFamily: "Arial, sans-serif",
         fontSize: 14,
@@ -311,6 +433,8 @@ const CustomTemplateEditor = forwardRef(function CustomTemplateEditor(
         width: 210,
         height: 297,
         background: pageBackground,
+        headerHeightPct,
+        footerHeightPct,
       },
       boxes: boxes.map((b) => ({
         id: b.id,
@@ -339,7 +463,24 @@ const CustomTemplateEditor = forwardRef(function CustomTemplateEditor(
   function handleDragStop(id, e, d) {
     draggingRef.current = false;
     const { left, top } = pxToPct(d.x, d.y, 0, 0, innerCanvasRef.current);
-    updateBox(id, { xPct: left, yPct: top });
+    // clamp to area
+    try {
+      const b = boxes.find((bx) => bx.id === id);
+      const hPctNum = Number(String(b.hPct || "6%").replace("%", "")) || 6;
+      const topNum = Number(String(top).replace("%", "")) || 0;
+      // decide area of box by center
+      const boxCenter = topNum + hPctNum / 2;
+      let area = "body";
+      const headerEnd = Number(String(headerHeightPct).replace("%", "")) || 10;
+      const footerStart =
+        100 - (Number(String(footerHeightPct).replace("%", "")) || 10);
+      if (boxCenter <= headerEnd) area = "header";
+      else if (boxCenter >= footerStart) area = "footer";
+      const clampedTop = clampToArea(topNum, hPctNum, area);
+      updateBox(id, { xPct: left, yPct: `${clampedTop}%` });
+    } catch (err) {
+      updateBox(id, { xPct: left, yPct: top });
+    }
     dragEndedRef.current = { id, ts: Date.now() };
   }
 
@@ -355,7 +496,27 @@ const CustomTemplateEditor = forwardRef(function CustomTemplateEditor(
       hPx,
       innerCanvasRef.current
     );
-    updateBox(id, { xPct: left, yPct: top, wPct: width, hPct: height });
+    // clamp yPct within area
+    try {
+      const hPctNum = Number(String(height).replace("%", "")) || 6;
+      const topNum = Number(String(top).replace("%", "")) || 0;
+      const boxCenter = topNum + hPctNum / 2;
+      const headerEnd = Number(String(headerHeightPct).replace("%", "")) || 10;
+      const footerStart =
+        100 - (Number(String(footerHeightPct).replace("%", "")) || 10);
+      let area = "body";
+      if (boxCenter <= headerEnd) area = "header";
+      else if (boxCenter >= footerStart) area = "footer";
+      const clampedTop = clampToArea(topNum, hPctNum, area);
+      updateBox(id, {
+        xPct: left,
+        yPct: `${clampedTop}%`,
+        wPct: width,
+        hPct: height,
+      });
+    } catch (err) {
+      updateBox(id, { xPct: left, yPct: top, wPct: width, hPct: height });
+    }
     dragEndedRef.current = { id, ts: Date.now() };
   }
 
@@ -384,6 +545,11 @@ const CustomTemplateEditor = forwardRef(function CustomTemplateEditor(
 
     if (!targetId) {
       const id = addBox("logo");
+      // if addBox returned null (because activeArea === 'body'), we should stop
+      if (!id) {
+        pendingLogoTargetRef.current = null;
+        return;
+      }
       targetId = id;
       pendingLogoTargetRef.current = id;
     }
@@ -544,7 +710,7 @@ const CustomTemplateEditor = forwardRef(function CustomTemplateEditor(
       );
     }
 
-    if (box.type === "logo") {
+    if (box.type === "logo" || box.type === "image") {
       const src = box.content || "";
       return (
         <div
@@ -661,13 +827,66 @@ const CustomTemplateEditor = forwardRef(function CustomTemplateEditor(
     }
   }
 
+  // watermark drag handlers
+  const wmDragRef = useRef(null);
+
+  function onWatermarkMouseDown(e) {
+    if (!watermarkEditable) return;
+    e.stopPropagation();
+    wmDragRef.current = {
+      startX: e.clientX,
+      startY: e.clientY,
+      rect: innerCanvasRef.current.getBoundingClientRect(),
+      initial: { ...(localWatermark || {}) },
+    };
+    window.addEventListener("mousemove", onWatermarkMouseMove);
+    window.addEventListener("mouseup", onWatermarkMouseUp);
+  }
+
+  function onWatermarkMouseMove(e) {
+    if (!wmDragRef.current) return;
+    const info = wmDragRef.current;
+    const dx = e.clientX - info.startX;
+    const dy = e.clientY - info.startY;
+    const rect = info.rect;
+    if (!rect) return;
+    const dxPct = (dx / rect.width) * 100;
+    const dyPct = (dy / rect.height) * 100;
+    try {
+      const cur = { ...(info.initial || {}) };
+      // treat xPct/yPct as center; update center by dxPct/dyPct
+      const xNum = Number(String(cur.xPct || "50%").replace("%", "")) || 50;
+      const yNum = Number(String(cur.yPct || "50%").replace("%", "")) || 50;
+      const newX = Math.min(Math.max(0, xNum + dxPct), 100);
+      const newY = Math.min(Math.max(0, yNum + dyPct), 100);
+      const next = { ...cur, xPct: `${newX}%`, yPct: `${newY}%` };
+      setLocalWatermark(next);
+      if (typeof onWatermarkChange === "function") {
+        try {
+          onWatermarkChange(next);
+        } catch (err) {
+          console.warn("onWatermarkChange threw", err);
+        }
+      }
+    } catch (err) {}
+  }
+
+  function onWatermarkMouseUp() {
+    wmDragRef.current = null;
+    window.removeEventListener("mousemove", onWatermarkMouseMove);
+    window.removeEventListener("mouseup", onWatermarkMouseUp);
+  }
+
+  // Expose methods to parent via ref.
   useImperativeHandle(ref, () => ({
     addText: () => addBox("text"),
     addField: () => addBox("placeholder"),
     addLogo: () => {
       const id = addBox("logo");
-      setSelectedId(id);
-      setTimeout(() => openFilePickerForLogo(id), 50);
+      if (id) {
+        setSelectedId(id);
+        setTimeout(() => openFilePickerForLogo(id), 50);
+      }
     },
     addTable: () => addBox("table"),
     togglePreview: () =>
@@ -677,517 +896,98 @@ const CustomTemplateEditor = forwardRef(function CustomTemplateEditor(
     getHtml: () => {
       return saveTemplate();
     },
+    // parent can call setActiveArea to control where new boxes are inserted
+    setActiveArea: (area) => {
+      if (["header", "body", "footer"].includes(area)) setActiveArea(area);
+    },
+    // optional imperative watermark setter (useful if parent wants to force)
+    setWatermark: (url, props) => {
+      setLocalWatermarkUrl(url || null);
+      if (props) {
+        setLocalWatermark(props);
+        if (typeof onWatermarkChange === "function") onWatermarkChange(props);
+      }
+    },
+    clearWatermark: () => {
+      setLocalWatermarkUrl(null);
+      if (typeof onWatermarkChange === "function")
+        onWatermarkChange({
+          xPct: "50%",
+          yPct: "50%",
+          wPct: "60%",
+          hPct: "60%",
+          opacity: 0.12,
+        });
+    },
   }));
+
+  // helper to compute watermark style in px from current localWatermark
+  function watermarkStyle() {
+    if (!localWatermark) return { display: "none" };
+    const xNum =
+      Number(String(localWatermark.xPct || "50%").replace("%", "")) || 50;
+    const yNum =
+      Number(String(localWatermark.yPct || "50%").replace("%", "")) || 50;
+    const wNum =
+      Number(String(localWatermark.wPct || "60%").replace("%", "")) || 60;
+    const hNum =
+      Number(String(localWatermark.hPct || "60%").replace("%", "")) || 60;
+    // interpret x/y as center percentages
+    const leftPct = xNum - wNum / 2;
+    const topPct = yNum - hNum / 2;
+    const leftPx = (leftPct / 100) * canvasWidthActual;
+    const topPx = (topPct / 100) * canvasHeightActual;
+    const wPx = (wNum / 100) * canvasWidthActual;
+    const hPx = (hNum / 100) * canvasHeightActual;
+    return {
+      position: "absolute",
+      left: leftPx,
+      top: topPx,
+      width: wPx,
+      height: hPx,
+      opacity:
+        typeof localWatermark.opacity === "number"
+          ? localWatermark.opacity
+          : 0.12,
+      pointerEvents: watermarkEditable ? "auto" : "none",
+      cursor: watermarkEditable ? "move" : "default",
+      userSelect: "none",
+      touchAction: "none",
+      objectFit: "contain",
+    };
+  }
 
   return (
     <div className={styles["cte-root"]}>
+      {/* NOTE: removed the in-editor Insert-into (header/body/footer) toolbar.
+          Area selection must come from the side panel using the editor's
+          exposed setActiveArea method. */}
+
       <div className={styles["props-bar"]}>
-        {!selectedBox ? (
-          <>
-            <div className={styles["props-empty"]}>
-              Select a box to edit its properties.
-            </div>
+        <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+          <div className={styles["props-subtitle"]}>Editor</div>
+        </div>
 
-            <div
-              className={styles["props-section"]}
-              style={{ marginLeft: "auto" }}
-            >
-              <div className={styles["props-subtitle"]}>Page</div>
-              <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                <div style={{ display: "flex", flexDirection: "column" }}>
-                  <label
-                    className={styles["props-label"]}
-                    style={{ margin: 0 }}
-                  >
-                    Page background
-                  </label>
-                  <div
-                    style={{ display: "flex", gap: 8, alignItems: "center" }}
-                  >
-                    <div
-                      className={styles["color-swatch"]}
-                      style={{ background: pageBackground }}
-                    />
-                    <input
-                      className={styles["props-color"]}
-                      type="color"
-                      value={pageBackground || "#ffffff"}
-                      onChange={(e) => setPageBackground(e.target.value)}
-                      title="Page background color"
-                    />
-                    <button
-                      className={styles["control-btn"]}
-                      onClick={() => setPageBackground("#ffffff")}
-                      title="Reset page background"
-                    >
-                      Reset
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </>
-        ) : (
-          <>
-            <div
-              className={styles["props-left"] + " " + styles["props-section"]}
-            >
-              <div>
-                <div className={styles["props-subtitle"]}>Typography</div>
-                <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-                  <div style={{ display: "flex", flexDirection: "column" }}>
-                    <label className={styles["props-label"]}>font family</label>
-                    <select
-                      className={styles["props-select"]}
-                      value={
-                        selectedBox.style?.fontFamily || "Arial, sans-serif"
-                      }
-                      onChange={(e) =>
-                        applyStyleProp("fontFamily", e.target.value)
-                      }
-                    >
-                      <option value="Arial, sans-serif">Arial</option>
-                      <option value="Helvetica, sans-serif">Helvetica</option>
-                      <option value="'Times New Roman', serif">Times</option>
-                      <option value="'Roboto', sans-serif">Roboto</option>
-                      <option value="'Montserrat', sans-serif">
-                        Montserrat
-                      </option>
-                    </select>
-                  </div>
-
-                  <div
-                    style={{ display: "flex", gap: 8, alignItems: "center" }}
-                  >
-                    <div style={{ display: "flex", flexDirection: "column" }}>
-                      <label className={styles["props-label"]}>Size</label>
-                      <input
-                        className={styles["props-input"]}
-                        type="number"
-                        value={selectedBox.style?.fontSize || 14}
-                        onChange={(e) =>
-                          applyStyleProp(
-                            "fontSize",
-                            parseInt(e.target.value || 14, 10)
-                          )
-                        }
-                      />
-                    </div>
-
-                    <div style={{ display: "flex", flexDirection: "column" }}>
-                      <label className={styles["props-label"]}>Color</label>
-                      <div
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: 8,
-                        }}
-                      >
-                        <input
-                          className={styles["props-color"]}
-                          type="color"
-                          value={selectedBox.style?.color || "#0f1724"}
-                          onChange={(e) =>
-                            applyStyleProp("color", e.target.value)
-                          }
-                          title="Text color"
-                        />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div
-                  style={{
-                    marginTop: 8,
-                    display: "flex",
-                    gap: 8,
-                    alignItems: "center",
-                  }}
-                >
-                  <button
-                    className={styles["control-btn"]}
-                    onClick={toggleBold}
-                  >
-                    {selectedBox.style?.fontWeight === "700"
-                      ? "Unbold"
-                      : "Bold"}
-                  </button>
-                  <button
-                    className={styles["control-btn"]}
-                    onClick={toggleItalic}
-                  >
-                    {selectedBox.style?.fontStyle === "italic"
-                      ? "Unitalic"
-                      : "Italic"}
-                  </button>
-
-                  <div
-                    style={{
-                      marginLeft: 8,
-                      display: "flex",
-                      gap: 8,
-                      alignItems: "center",
-                    }}
-                  >
-                    <label
-                      className={styles["props-label"]}
-                      style={{ margin: 0 }}
-                    >
-                      Align
-                    </label>
-                    <select
-                      className={styles["props-select"]}
-                      value={selectedBox.style?.textAlign || "left"}
-                      onChange={(e) =>
-                        applyStyleProp("textAlign", e.target.value)
-                      }
-                    >
-                      <option value="left">Left</option>
-                      <option value="center">Center</option>
-                      <option value="right">Right</option>
-                      <option value="justify">Justify</option>
-                    </select>
-                  </div>
-                </div>
-              </div>
-
-              <label className={styles["props-label"]}>Background</label>
-              <div style={{ display: "flex", marginTop: -16 }}>
-                <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                  <input
-                    className={styles["props-color"]}
-                    type="color"
-                    value={
-                      selectedBox.style?.background
-                        ? selectedBox.style.background
-                        : "#00000000"
-                    }
-                    onChange={(e) =>
-                      applyStyleProp("background", e.target.value)
-                    }
-                    title="Box background"
-                  />
-                  <div className={styles["helper"]}>Box background</div>
-                </div>
-
-                <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                  <div />
-                  <input
-                    className={styles["props-color"]}
-                    type="color"
-                    value={pageBackground || "#ffffff"}
-                    onChange={(e) => setPageBackground(e.target.value)}
-                    title="Page background color"
-                  />
-                  <div className={styles["helper"]}>Page background</div>
-                  <button
-                    className={styles["control-btn"]}
-                    onClick={() => setPageBackground("#ffffff")}
-                    title="Reset page background"
-                  >
-                    Reset
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            <div className={styles["props-right"]}>
-              {selectedBox.type === "logo" && (
-                <div
-                  className={styles["props-section"]}
-                  style={{ minWidth: 220 }}
-                >
-                  <div className={styles["props-subtitle"]}>Logo</div>
-                  <div style={{ display: "flex", gap: 8 }}>
-                    <button
-                      className={styles["control-btn"]}
-                      onClick={() => openFilePickerForLogo(selectedBox.id)}
-                    >
-                      Upload Logo
-                    </button>
-                    <button
-                      className={styles["control-btn"]}
-                      onClick={() =>
-                        updateBox(selectedBox.id, { content: "", type: "logo" })
-                      }
-                    >
-                      Clear
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {selectedBox.type === "table" && (
-                <div
-                  className={styles["props-section"]}
-                  style={{ minWidth: 260 }}
-                >
-                  <div
-                    style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "center",
-                    }}
-                  >
-                    <div className={styles["props-subtitle"]}>Table</div>
-                    <div className={styles["badge"]}>
-                      <div>Rows: {selectedBox.table?.rows || 0}</div>
-                      <div
-                        style={{
-                          width: 1,
-                          height: 18,
-                          background: "#e6edf3",
-                          margin: "0 8px",
-                        }}
-                      />
-                      <div>Cols: {selectedBox.table?.cols || 0}</div>
-                    </div>
-                  </div>
-
-                  <div
-                    className={styles["toolbar-grid"]}
-                    style={{ marginTop: 8 }}
-                  >
-                    <div className={styles["helper"]}>Rows</div>
-                    <button
-                      title="Add row"
-                      onClick={() => addTableRow(selectedBox.id)}
-                      className={styles["icon-btn"]}
-                    >
-                      <svg
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        xmlns="http://www.w3.org/2000/svg"
-                      >
-                        <path
-                          d="M12 5v14M5 12h14"
-                          stroke="#0f1724"
-                          strokeWidth="1.6"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        />
-                      </svg>
-                    </button>
-
-                    <button
-                      title="Remove row"
-                      onClick={() => removeTableRow(selectedBox.id)}
-                      className={styles["icon-btn"]}
-                    >
-                      <svg
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        xmlns="http://www.w3.org/2000/svg"
-                      >
-                        <path
-                          d="M6 12h12"
-                          stroke="#ef4444"
-                          strokeWidth="1.6"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        />
-                      </svg>
-                    </button>
-                    <div className={styles["helper"]}>Columns</div>
-                    <button
-                      title="Add column"
-                      onClick={() => addTableCol(selectedBox.id)}
-                      className={styles["icon-btn"]}
-                    >
-                      <svg
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        xmlns="http://www.w3.org/2000/svg"
-                      >
-                        <path
-                          d="M12 5v14M5 12h14"
-                          stroke="#0f1724"
-                          strokeWidth="1.6"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        />
-                      </svg>
-                    </button>
-                    <button
-                      title="Remove column"
-                      onClick={() => removeTableCol(selectedBox.id)}
-                      className={styles["icon-btn"]}
-                    >
-                      <svg
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        xmlns="http://www.w3.org/2000/svg"
-                      >
-                        <path
-                          d="M6 12h12"
-                          stroke="#ef4444"
-                          strokeWidth="1.6"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        />
-                      </svg>
-                    </button>
-                  </div>
-
-                  <div
-                    style={{
-                      marginTop: 10,
-                      display: "flex",
-                      gap: 12,
-                      alignItems: "center",
-                      justifyContent: "space-between",
-                    }}
-                  >
-                    <div
-                      style={{ display: "flex", gap: 8, alignItems: "center" }}
-                    >
-                      <label
-                        className={styles["props-subtitle"]}
-                        style={{ margin: 0 }}
-                      >
-                        Header
-                      </label>
-                      <div className={styles["toggle"]}>
-                        <input
-                          type="checkbox"
-                          checked={!!selectedBox.table?.header}
-                          onChange={(e) =>
-                            updateBox(selectedBox.id, {
-                              table: {
-                                ...selectedBox.table,
-                                header: e.target.checked,
-                              },
-                            })
-                          }
-                        />
-                      </div>
-                    </div>
-
-                    <div
-                      style={{ display: "flex", gap: 8, alignItems: "center" }}
-                    >
-                      <label
-                        className={styles["props-subtitle"]}
-                        style={{ margin: 0 }}
-                      >
-                        Border
-                      </label>
-                      <div className={styles["toggle"]}>
-                        <input
-                          type="checkbox"
-                          checked={!!selectedBox.table?.border}
-                          onChange={(e) =>
-                            updateBox(selectedBox.id, {
-                              table: {
-                                ...selectedBox.table,
-                                border: e.target.checked,
-                              },
-                            })
-                          }
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  <div
-                    style={{
-                      marginTop: 10,
-                      display: "flex",
-                      gap: 10,
-                      alignItems: "center",
-                      justifyContent: "space-between",
-                    }}
-                  >
-                    <div className={styles["color-preview"]}>
-                      <label
-                        className={styles["props-subtitle"]}
-                        style={{ margin: 0 }}
-                      >
-                        Cell BG
-                      </label>
-                      <div
-                        style={{
-                          display: "flex",
-                          gap: 8,
-                          alignItems: "center",
-                        }}
-                      >
-                        <div
-                          className={styles["color-swatch"]}
-                          style={{
-                            background:
-                              selectedBox.table?.cellBackground ||
-                              "transparent",
-                          }}
-                        />
-                        <input
-                          className={styles["props-color"]}
-                          type="color"
-                          value={
-                            selectedBox.table?.cellBackground || "#ffffff00"
-                          }
-                          onChange={(e) =>
-                            updateBox(selectedBox.id, {
-                              table: {
-                                ...selectedBox.table,
-                                cellBackground: e.target.value,
-                              },
-                            })
-                          }
-                        />
-                      </div>
-                    </div>
-
-                    <div
-                      style={{ display: "flex", alignItems: "center", gap: 8 }}
-                    >
-                      <label
-                        className={styles["props-subtitle"]}
-                        style={{ margin: 0 }}
-                      >
-                        Edit Cells
-                      </label>
-                      <input
-                        type="checkbox"
-                        checked={editingTableMode === selectedBox.id}
-                        onChange={(e) =>
-                          setEditingTableMode(
-                            e.target.checked ? selectedBox.id : null
-                          )
-                        }
-                      />
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {(selectedBox.type === "text" ||
-                selectedBox.type === "placeholder") && (
-                <div
-                  className={styles["props-section"]}
-                  style={{ minWidth: 220 }}
-                >
-                  <div className={styles["props-subtitle"]}>Actions</div>
-                  <div style={{ display: "flex", gap: 8 }}>
-                    <button
-                      className={styles["control-btn"]}
-                      onClick={() => startEditingSelected()}
-                    >
-                      Edit
-                    </button>
-                    <button
-                      className={styles["control-btn"]}
-                      onClick={() => removeSelected()}
-                    >
-                      Delete
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-          </>
-        )}
+        <div style={{ marginLeft: "auto", display: "flex", gap: 8 }}>
+          <button
+            className={styles["control-btn"]}
+            onClick={() => {
+              setMode((m) => (m === "preview" ? "select" : "preview"));
+            }}
+            type="button"
+          >
+            {mode === "preview" ? "Exit Preview" : "Preview"}
+          </button>
+          <button
+            className={styles["control-btn"]}
+            onClick={() => {
+              saveTemplate();
+            }}
+            type="button"
+          >
+            Save
+          </button>
+        </div>
       </div>
 
       <div className={styles["canvas-wrap"]}>
@@ -1211,8 +1011,50 @@ const CustomTemplateEditor = forwardRef(function CustomTemplateEditor(
               width: `${canvasWidthActual}px`,
               height: `${canvasHeightActual}px`,
               background: pageBackground || background || "white",
+              position: "relative",
+              overflow: "hidden",
             }}
           >
+            {/* Header band */}
+            <div
+              aria-hidden
+              style={{
+                position: "absolute",
+                left: 0,
+                right: 0,
+                top: 0,
+                height: `${headerHeightPct}%`,
+                borderBottom: "1px dashed rgba(0,0,0,0.06)",
+                pointerEvents: "none",
+                background: "transparent",
+              }}
+            />
+            {/* Footer band */}
+            <div
+              aria-hidden
+              style={{
+                position: "absolute",
+                left: 0,
+                right: 0,
+                bottom: 0,
+                height: `${footerHeightPct}%`,
+                borderTop: "1px dashed rgba(0,0,0,0.06)",
+                pointerEvents: "none",
+                background: "transparent",
+              }}
+            />
+
+            {/* watermark (if any) */}
+            {localWatermarkUrl && (
+              <img
+                src={localWatermarkUrl}
+                alt="watermark"
+                draggable={false}
+                onMouseDown={onWatermarkMouseDown}
+                style={watermarkStyle()}
+              />
+            )}
+
             {boxes.map((b) => {
               const px = pctToPx(
                 b.xPct,
@@ -1263,7 +1105,8 @@ const CustomTemplateEditor = forwardRef(function CustomTemplateEditor(
                   onDoubleClick={(ev) => {
                     ev.stopPropagation();
                     setSelectedId(b.id);
-                    if (b.type === "logo") openFilePickerForLogo(b.id);
+                    if (b.type === "logo" || b.type === "image")
+                      openFilePickerForLogo(b.id);
                     if (b.type === "text" || b.type === "placeholder")
                       setEditingId(b.id);
                   }}

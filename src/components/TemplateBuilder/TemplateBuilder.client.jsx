@@ -1,5 +1,3 @@
-"use client";
-
 import React, {
   useState,
   useEffect,
@@ -7,16 +5,18 @@ import React, {
   useRef,
   useCallback,
 } from "react";
-import BasicTemplateEditor from "./BasicTemplateEditor.client";
-import CustomTemplateEditor from "./CustomTemplateEditor.client";
-import UploadScan from "./UploadScan.client";
+import SidebarPanel from "./SidebarPanel";
+import EditorPanel from "./EditorPanel";
 import A4Preview from "./A4Preview";
-import TemplateEditor from "./TemplateEditor";
-import { useAuth } from "../../context/AuthProvider.client";
+import FieldPropertiesPanel from "./FieldPropertiesPanel";
 import Modal from "../Modal/Modal.client";
+import { useAuth } from "../../context/AuthProvider.client";
 import styles from "./TemplateBuilder.module.css";
-import ProtectedImg from "./ProtectedImg.client";
-import { PRESET_FIELDS, BODY_TYPES, fieldsToBoxes } from "./templatePresets";
+import {
+  PRESET_FIELDS,
+  fieldsToBoxes,
+  fillPlaceholdersInFields,
+} from "./templatePresets";
 
 const DOC_CATEGORIES = [
   { key: "all", label: "All" },
@@ -117,6 +117,83 @@ function templateToBoxes(template) {
 
 const protectedImageCache = new Map();
 
+async function ensureBoxesBlobUrls(boxes = []) {
+  if (!Array.isArray(boxes) || boxes.length === 0) return boxes;
+  return await Promise.all(
+    boxes.map(async (b) => {
+      if (!b || typeof b !== "object") return b;
+      const nb = { ...b };
+
+      const candidates = [
+        { key: "imageUrl", val: nb.imageUrl },
+        { key: "content", val: nb.content },
+      ];
+
+      for (const cand of candidates) {
+        let src = cand.val;
+        if (!src || typeof src !== "string") continue;
+
+        if (
+          src.startsWith("blob:") ||
+          src.startsWith("data:") ||
+          /^https?:\/\//i.test(src)
+        ) {
+          continue;
+        }
+
+        if (
+          /^[^\/\\]+\.(png|jpe?g|svg|gif|webp)$/i.test(src) &&
+          typeof BACKEND_URL === "string" &&
+          BACKEND_URL &&
+          typeof orgId !== "undefined" &&
+          orgId
+        ) {
+          src = `${String(BACKEND_URL).replace(
+            /\/$/,
+            ""
+          )}/api/orgs/${orgId}/uploads/${src}`;
+        }
+
+        if (
+          src.startsWith("/api/") &&
+          typeof BACKEND_URL === "string" &&
+          BACKEND_URL
+        ) {
+          src = `${String(BACKEND_URL).replace(/\/$/, "")}${src}`;
+        }
+
+        try {
+          const blobUrl = await fetchProtectedImage(src, API_KEY, employeeId);
+          if (blobUrl) {
+            if (cand.key === "imageUrl") nb.imageUrl = blobUrl;
+            if (cand.key === "content") nb.content = blobUrl;
+            if (!nb.imageUrl && blobUrl) nb.imageUrl = blobUrl;
+            continue;
+          }
+        } catch (e) {
+          console.warn(
+            "ensureBoxesBlobUrls: fetchProtectedImage failed for",
+            src,
+            e
+          );
+        }
+
+        if (!/^https?:\/\//i.test(src) && src.startsWith("/")) {
+          if (typeof BACKEND_URL === "string" && BACKEND_URL) {
+            const abs = `${String(BACKEND_URL).replace(/\/$/, "")}${src}`;
+            if (cand.key === "imageUrl") nb.imageUrl = abs;
+            if (cand.key === "content") nb.content = abs;
+            if (!nb.imageUrl) nb.imageUrl = abs;
+          }
+        } else {
+        }
+      }
+
+      return nb;
+    })
+  );
+}
+
 async function fetchProtectedImage(src, apiKey) {
   if (!src) return null;
   if (src.startsWith("blob:") || src.startsWith("data:")) return src;
@@ -128,8 +205,7 @@ async function fetchProtectedImage(src, apiKey) {
     const res = await fetch(src, {
       method: "GET",
       credentials: "include",
-      headers: { "x-api-key": apiKey || "" },
-      credentials: "include",
+      headers: { "x-api-key": apiKey || "", "x-employee-id": employeeId || "" },
     });
     if (!res.ok) {
       throw new Error(`Image fetch failed (${res.status})`);
@@ -164,7 +240,7 @@ async function replaceUploadUrlsInHtml(html = "", apiKey, backendBase) {
 
       if (src.startsWith("/api/")) src = backendBase.replace(/\/$/, "") + src;
 
-      const blobUrl = await fetchProtectedImage(src, apiKey);
+      const blobUrl = await fetchProtectedImage(src, apiKey, employeeId);
       if (!blobUrl) return;
 
       img.setAttribute("src", blobUrl);
@@ -216,7 +292,7 @@ async function resolveTemplateProtectedAssets(
           const base = backendBase.replace(/\/$/, "");
           src = base + src;
         }
-        const blob = await fetchProtectedImage(src, apiKey);
+        const blob = await fetchProtectedImage(src, apiKey, employeeId);
         if (blob) t[field] = blob;
       }
     })
@@ -255,7 +331,7 @@ async function resolveTemplateProtectedAssets(
               src = base + src;
             }
           }
-          const blob = await fetchProtectedImage(src, apiKey);
+          const blob = await fetchProtectedImage(src, apiKey, employeeId);
           if (blob) {
             node.attributes.src = blob;
             node.attributes["draggable"] = "false";
@@ -282,7 +358,7 @@ async function resolveTemplateProtectedAssets(
               const base = backendBase.replace(/\/$/, "");
               src = base + src;
             }
-            const blob = await fetchProtectedImage(src, apiKey);
+            const blob = await fetchProtectedImage(src, apiKey, employeeId);
             if (blob) node[k] = blob;
           } else if (typeof node[k] === "object") {
             await walk(node[k]);
@@ -307,7 +383,6 @@ export default function TemplateBuilder() {
   const [mode, setMode] = useState("upload");
   const [viewingTemplate, setViewingTemplate] = useState(null);
   const [generated, setGenerated] = useState(null);
-
   const [publicTemplates, setPublicTemplates] = useState([]);
   const [savedTemplates, setSavedTemplates] = useState([]);
   const [selectedDocCategory, setSelectedDocCategory] = useState("all");
@@ -318,9 +393,7 @@ export default function TemplateBuilder() {
   const [previewHeaderUrl, setPreviewHeaderUrl] = useState(null);
   const [previewFooterUrl, setPreviewFooterUrl] = useState(null);
   const [previewWatermarkUrl, setPreviewWatermarkUrl] = useState(null);
-  const [activeSection, setActiveSection] = useState("upload");
   const [templateSource, setTemplateSource] = useState(null);
-
   const [watermarkProps, setWatermarkProps] = useState({
     xPct: "50%",
     yPct: "50%",
@@ -329,7 +402,8 @@ export default function TemplateBuilder() {
     opacity: 0.12,
   });
   const [watermarkEnabled, setWatermarkEnabled] = useState(false);
-
+  const [watermarkFile, setWatermarkFile] = useState(null);
+  const fileInputWatermarkRef = useRef(null);
   const [bodyType, setBodyType] = useState("letter");
   const [savedModalVisible, setSavedModalVisible] = useState(false);
   const [saveModalOpen, setSaveModalOpen] = useState(false);
@@ -339,11 +413,30 @@ export default function TemplateBuilder() {
   const headerImgRef = useRef(null);
   const footerImgRef = useRef(null);
   const editorWrapperRef = useRef(null);
+  const fileInputFieldRef = useRef(null);
+  const basicEditorRef = useRef(null);
+  const scratchEditorRef = useRef(null);
+  const [activeArea, setActiveArea] = useState("body");
 
   const [bodyBoxes, setBodyBoxes] = useState(() =>
-    fieldsToBoxes(PRESET_FIELDS[bodyType] || [])
+    (fieldsToBoxes(PRESET_FIELDS["letter"] || []) || []).map((b) => ({
+      ...b,
+      locked: false,
+    }))
   );
+
   const [showEditor, setShowEditor] = useState(false);
+  const [selectedFieldId, setSelectedFieldId] = useState(null);
+  const [placeholders, setPlaceholders] = useState({
+    companyName: "",
+    bankName: "",
+    accountNo: "",
+    IFSC: "",
+    accountHolder: "",
+  });
+  const [qrUrl, setQrUrl] = useState(null);
+  const [sealUrl, setSealUrl] = useState(null);
+  const [pageStyle, setPageStyle] = useState({ background: "transparent" });
 
   const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "";
   const API_KEY = process.env.NEXT_PUBLIC_API_KEY || "";
@@ -354,9 +447,8 @@ export default function TemplateBuilder() {
     user?.Org_id ??
     user?.raw?.Org_id ??
     null;
-
-  const basicEditorRef = useRef(null);
-  const scratchEditorRef = useRef(null);
+  const employeeId =
+    user?.employeeId || user?.employee_id || user?.raw?.employee_id || null;
 
   useEffect(() => {
     if (mode === "view") {
@@ -367,49 +459,175 @@ export default function TemplateBuilder() {
   useEffect(() => {
     const parsedOrg = orgId ? Number(orgId) : null;
     if (orgId && Number.isNaN(parsedOrg)) return;
-    fetchPublicBasicTemplates(parsedOrg);
+    fetchPublicBasicTemplates();
     if (parsedOrg) fetchSavedTemplates(parsedOrg);
   }, [orgId]);
 
-  useEffect(() => {
-    const fields = PRESET_FIELDS[bodyType] || [];
-    const boxes = fieldsToBoxes(fields || []);
+  function applyPlaceholdersToString(content = "", ph = {}) {
+    if (typeof content !== "string") return content;
+    let out = content;
+    if (ph.bankName) out = out.replace(/\[Bank Name\]/g, ph.bankName);
+    if (ph.accountNo) out = out.replace(/\[Bank Account\]/g, ph.accountNo);
+    if (ph.IFSC) out = out.replace(/\[Bank IFSC\]/g, ph.IFSC);
+    if (ph.accountHolder)
+      out = out.replace(/\[Account Name\]/g, ph.accountHolder);
+    if (ph.companyName) out = out.replace(/\[Company Name\]/g, ph.companyName);
+    return out;
+  }
 
-    const clampToPrintable = (box) => {
-      const numericH = Number(String(box.hPct || "6%").replace("%", "")) || 6;
-      let numericY = Number(String(box.yPct || "5%").replace("%", "")) || 5;
-      if (numericY + numericH > 94) {
-        numericY = Math.max(5, 94 - numericH);
-        box.yPct = `${numericY}%`;
+  function applyPlaceholdersToBoxes(ph = {}) {
+    setBodyBoxes((prev) =>
+      (prev || []).map((b) => {
+        if (!b) return b;
+        const newBox = { ...b };
+        if (typeof newBox.content === "string") {
+          newBox.content = applyPlaceholdersToString(newBox.content, ph);
+        }
+        if (Array.isArray(newBox.tableRows)) {
+          newBox.tableRows = newBox.tableRows.map((row) =>
+            row.map((cell) =>
+              typeof cell === "string"
+                ? applyPlaceholdersToString(cell, ph)
+                : cell
+            )
+          );
+        }
+        return { ...newBox, locked: false };
+      })
+    );
+  }
+
+  function applyImageOverrides({ qr, seal }) {
+    setBodyBoxes((prev) =>
+      (prev || []).map((b) => {
+        const newBox = { ...b };
+        const name =
+          ((newBox.fieldName || "") + "").toLowerCase() ||
+          (newBox.name || "").toLowerCase();
+        if (qr && /(qrcode|qr|qr_code)/.test(name)) {
+          newBox.imageUrl = qr;
+          newBox.content = qr;
+        }
+        if (seal && /(seal|companyseal|stamp)/.test(name)) {
+          newBox.imageUrl = seal;
+          newBox.content = seal;
+        }
+        return { ...newBox, locked: false };
+      })
+    );
+  }
+
+  function updateFieldById(id, patch = {}) {
+    setBodyBoxes((prev) =>
+      (prev || []).map((b) => {
+        if (!b || b.id !== id) return b;
+        const mergedStyle = { ...(b.style || {}), ...(patch.style || {}) };
+        const merged = {
+          ...b,
+          ...patch,
+          style: mergedStyle,
+          locked: false,
+        };
+        if (patch.hasOwnProperty("imageUrl")) merged.imageUrl = patch.imageUrl;
+        if (patch.hasOwnProperty("content")) merged.content = patch.content;
+        return merged;
+      })
+    );
+  }
+
+  function updateSelectedFieldStyle(stylePatch = {}) {
+    if (!selectedFieldId) return;
+    updateFieldById(selectedFieldId, { style: stylePatch });
+  }
+
+  function updateSelectedFieldContent(content) {
+    if (!selectedFieldId) return;
+    updateFieldById(selectedFieldId, { content });
+  }
+
+  function handleQrUpload(file, targetBoxId = null) {
+    if (!file) return;
+    const u = URL.createObjectURL(file);
+    setQrUrl(u);
+    if (targetBoxId) {
+      updateFieldById(targetBoxId, { imageUrl: u, content: u, locked: false });
+      return;
+    }
+    applyImageOverrides({ qr: u, seal: null });
+  }
+
+  function handleSealUpload(file, targetBoxId = null) {
+    if (!file) return;
+    const u = URL.createObjectURL(file);
+    setSealUrl(u);
+    if (targetBoxId) {
+      updateFieldById(targetBoxId, { imageUrl: u, content: u, locked: false });
+      return;
+    }
+    applyImageOverrides({ qr: null, seal: u });
+  }
+
+  function idsEqual(a = [], b = []) {
+    if (!Array.isArray(a) || !Array.isArray(b)) return false;
+    if (a.length !== b.length) return false;
+    for (let i = 0; i < a.length; i++) {
+      if (String(a[i]?.id) !== String(b[i]?.id)) return false;
+    }
+    return true;
+  }
+
+  useEffect(() => {
+    try {
+      const preset = PRESET_FIELDS[bodyType] || [];
+      const presetBoxes = fieldsToBoxes(preset || []).map((b) => ({
+        ...b,
+        locked: false,
+        style: { ...(b.style || {}) },
+      }));
+
+      setBodyBoxes((prev) => {
+        if (showEditor) return prev || presetBoxes;
+
+        if (!prev || !prev.length) return presetBoxes;
+
+        if (idsEqual(prev, presetBoxes)) return prev;
+
+        return prev;
+      });
+    } catch (e) {
+      console.warn("rebuilding boxes from bodyType failed", e);
+    }
+  }, [bodyType, showEditor]);
+
+  useEffect(() => {
+    if (!bodyBoxes || bodyBoxes.length === 0) {
+      console.warn(
+        "TemplateBuilder: bodyBoxes is empty (possible overwrite).",
+        { mode, showEditor }
+      );
+    }
+  }, [bodyBoxes]);
+
+  useEffect(() => {
+    applyPlaceholdersToBoxes(placeholders);
+  }, [placeholders]);
+
+  useEffect(() => {
+    if (qrUrl || sealUrl) applyImageOverrides({ qr: qrUrl, seal: sealUrl });
+  }, [qrUrl, sealUrl]);
+
+  const lastTapRef = useRef({ id: null, time: 0 });
+  const singleTapTimerRef = useRef(null);
+  const DOUBLE_TAP_MS = 350;
+
+  useEffect(() => {
+    return () => {
+      if (singleTapTimerRef.current) {
+        clearTimeout(singleTapTimerRef.current);
+        singleTapTimerRef.current = null;
       }
     };
-
-    for (const b of boxes) {
-      b.style = { ...(b.style || {}) };
-      if (!("textAlign" in b.style)) b.style.textAlign = "left";
-
-      if (
-        (b.fieldName &&
-          String(b.fieldName).toLowerCase() === "documenttitle") ||
-        (b.label && String(b.label).toLowerCase().includes("document title")) ||
-        (b.label && String(b.label).toLowerCase().includes("documenttitle")) ||
-        (b.content && String(b.content).trim().toLowerCase() === "tax invoice")
-      ) {
-        b.style.textAlign = "center";
-        b.xPct = b.xPct || "5%";
-        b.wPct = b.wPct || "90%";
-        if (!b.style.fontSize) b.style.fontSize = 18;
-        if (!b.style.fontWeight) b.style.fontWeight = 700;
-      }
-
-      clampToPrintable(b);
-    }
-
-    setBodyBoxes(boxes);
-    setShowEditor(false);
-  }, [bodyType]);
-
-  const saveUrl = orgId ? `${BACKEND_URL}/api/orgs/${orgId}/templates` : null;
+  }, []);
 
   function setAppMode(newMode) {
     setMode(newMode);
@@ -514,8 +732,10 @@ export default function TemplateBuilder() {
       const res = await fetch(`${BACKEND_URL}/api/orgs/${org}/templates`, {
         method: "GET",
         credentials: "include",
-        headers: { "x-api-key": API_KEY || "" },
-        credentials: "include",
+        headers: {
+          "x-api-key": API_KEY || "",
+          "x-employee-id": employeeId || "",
+        },
       });
       if (!res.ok) {
         console.warn("Failed to fetch saved templates", res.status);
@@ -637,244 +857,612 @@ export default function TemplateBuilder() {
     setAppMode("basic");
   }
 
-  const handleWatermarkChange = useCallback((next) => {
-    setWatermarkProps((prev) => ({ ...prev, ...(next || {}) }));
-  }, []);
+  async function handleUploadSaved(savedData) {
+    console.log("handleUploadSaved called", savedData?.id || savedData?.name);
 
-  const handleUploadSaved = useCallback(
-    async (savedData) => {
-      if (savedData && orgId) {
+    if (!savedData) {
+      console.warn("handleUploadSaved: no savedData provided");
+      return;
+    }
+
+    if (!orgId) {
+      setSavedModalVisible(true);
+      setShowSavedPane(true);
+      return;
+    }
+
+    try {
+      const entry = savedData;
+      let grapesJson = entry.grapes_json || entry.grapesJson || null;
+      try {
+        if (typeof grapesJson === "string" && grapesJson.trim())
+          grapesJson = JSON.parse(grapesJson);
+      } catch (e) {
+        console.warn("handleUploadSaved: grapesJson parse failed", e);
+      }
+
+      let thumbnail = entry.thumbnail_url || entry.thumbnail || null;
+      if (thumbnail && !thumbnail.startsWith("http") && BACKEND_URL && orgId) {
         try {
-          const entry = savedData;
-          let grapesJson = entry.grapes_json || entry.grapesJson || null;
-          try {
-            if (typeof grapesJson === "string" && grapesJson.trim())
-              grapesJson = JSON.parse(grapesJson);
-          } catch (e) {}
-
-          let thumbnail = entry.thumbnail_url || entry.thumbnail || null;
-          if (thumbnail && !thumbnail.startsWith("http")) {
-            try {
-              const base = BACKEND_URL.replace(/\/$/, "");
-              thumbnail = `${base}/api/orgs/${orgId}/uploads/${thumbnail}`;
-            } catch (e) {}
-          }
-
-          const normalized = {
-            ...entry,
-            grapesJson,
-            html: entry.html || null,
-            thumbnail,
-
-            template_type: entry.template_type || entry.templateType || "scan",
-            category: entry.category || inferCategory(entry) || "saved_uploads",
-            origin: "saved",
-          };
-
-          setSavedModalVisible(true);
-          setShowSavedPane(true);
-
-          setSavedTemplates((prev) => {
-            try {
-              const exists = prev.some(
-                (t) => String(t.id) === String(normalized.id)
-              );
-              if (exists)
-                return prev.map((t) =>
-                  String(t.id) === String(normalized.id) ? normalized : t
-                );
-              return [normalized, ...prev];
-            } catch (e) {
-              return prev;
-            }
-          });
-
-          try {
-            const resolved = await resolveTemplateProtectedAssets(
-              normalized,
-              API_KEY,
-              BACKEND_URL
-            );
-
-            const headerCandidates = [
-              resolved.header_url,
-              resolved.headerUrl,
-              resolved.header,
-              resolved._headerBlob,
-              resolved.imageUrl,
-              resolved.cleanedUrl,
-              resolved.thumbnail,
-            ];
-            const footerCandidates = [
-              resolved.footer_url,
-              resolved.footerUrl,
-              resolved.footer,
-              resolved._footerBlob,
-            ];
-
-            const headerRaw =
-              headerCandidates.find((x) => typeof x === "string" && x) || null;
-            const footerRaw =
-              footerCandidates.find((x) => typeof x === "string" && x) || null;
-
-            let watermarkUrl = null;
-            let watermarkPlacementProps = null;
-            if (resolved.grapesJson && resolved.grapesJson.watermark) {
-              const wmData = resolved.grapesJson.watermark;
-              if (wmData && wmData.url) {
-                watermarkUrl = wmData.url;
-                watermarkPlacementProps = {
-                  xPct: wmData.xPct || "50%",
-                  yPct: wmData.yPct || "50%",
-                  wPct: wmData.wPct || "60%",
-                  hPct: wmData.hPct || "60%",
-                  opacity:
-                    typeof wmData.opacity === "number" ? wmData.opacity : 0.12,
-                };
-              }
-            }
-            if (!watermarkUrl && resolved.meta && resolved.meta.watermark) {
-              const wp = resolved.meta.watermarkPlacement;
-              if (wp) {
-                watermarkPlacementProps = {
-                  xPct: wp.xPct || "50%",
-                  yPct: wp.yPct || "50%",
-                  wPct: wp.wPct || "60%",
-                  hPct: wp.hPct || "60%",
-                  opacity: typeof wp.opacity === "number" ? wp.opacity : 0.12,
-                };
-              }
-              if (typeof resolved.meta.watermark === "string")
-                watermarkUrl = resolved.meta.watermark;
-            }
-
-            async function ensureBlobUrl(src) {
-              if (!src) return null;
-              if (
-                src.startsWith("blob:") ||
-                src.startsWith("data:") ||
-                /^https?:\/\//i.test(src)
-              ) {
-                return src;
-              }
-
-              if (
-                !src.startsWith("/api/") &&
-                !/^https?:\/\//i.test(src) &&
-                /^[^\/\\]+\.(png|jpe?g|svg|gif|webp)$/i.test(src)
-              ) {
-                if (BACKEND_URL && orgId) {
-                  src = `${BACKEND_URL.replace(
-                    /\/$/,
-                    ""
-                  )}/api/orgs/${orgId}/uploads/${src}`;
-                }
-              }
-
-              if (src.startsWith("/api/")) {
-                if (BACKEND_URL) {
-                  src = `${BACKEND_URL.replace(/\/$/, "")}${src}`;
-                }
-              }
-
-              try {
-                const blobUrl = await fetchProtectedImage(src, API_KEY);
-                if (blobUrl) return blobUrl;
-              } catch (e) {
-                console.warn(
-                  "handleUploadSaved: fetchProtectedImage failed for",
-                  src,
-                  e
-                );
-              }
-              return src;
-            }
-
-            const headerUrlResolved = await ensureBlobUrl(headerRaw);
-            const footerUrlResolved = await ensureBlobUrl(footerRaw);
-            const watermarkUrlResolved = watermarkUrl
-              ? await ensureBlobUrl(watermarkUrl)
-              : null;
-
-            let finalHeaderUrl = headerUrlResolved;
-            let finalFooterUrl = footerUrlResolved;
-
-            if (watermarkUrlResolved && finalHeaderUrl && finalFooterUrl) {
-              if (finalHeaderUrl === watermarkUrlResolved)
-                finalHeaderUrl = null;
-              if (finalFooterUrl === watermarkUrlResolved)
-                finalFooterUrl = null;
-            }
-
-            if (
-              finalHeaderUrl &&
-              finalFooterUrl &&
-              finalHeaderUrl === finalFooterUrl
-            ) {
-              finalFooterUrl = null;
-            }
-
-            setViewingTemplate({
-              name: normalized.name || normalized.meta?.name || "",
-              headerUrl: finalHeaderUrl,
-              footerUrl: finalFooterUrl,
-              watermarkUrl: watermarkUrlResolved,
-              watermarkProps: watermarkPlacementProps ||
-                watermarkProps || {
-                  xPct: "50%",
-                  yPct: "50%",
-                  wPct: "60%",
-                  hPct: "60%",
-                  opacity: 0.12,
-                },
-              bodyBoxes: bodyBoxes,
-            });
-
-            setAppMode("view");
-            setShowSavedPane(true);
-            setSavedModalVisible(true);
-            return;
-          } catch (e) {
-            console.warn(
-              "handleUploadSaved: resolve failed, falling back to refresh",
-              e
-            );
-          }
+          const base = BACKEND_URL.replace(/\/$/, "");
+          thumbnail = `${base}/api/orgs/${orgId}/uploads/${thumbnail}`;
         } catch (e) {
-          console.warn("handleUploadSaved/openSavedTemplate failed", e);
+          console.warn("handleUploadSaved: thumbnail normalize failed", e);
         }
       }
 
-      if (!orgId) {
-        setSavedModalVisible(true);
-        return;
+      const normalized = {
+        ...entry,
+        grapesJson,
+        html: entry.html || null,
+        thumbnail,
+        template_type: entry.template_type || entry.templateType || "scan",
+        category: entry.category || inferCategory(entry) || "saved_uploads",
+        origin: "saved",
+      };
+
+      setSavedTemplates((prev) => {
+        try {
+          const exists = prev.some(
+            (t) => String(t.id) === String(normalized.id)
+          );
+          if (exists)
+            return prev.map((t) =>
+              String(t.id) === String(normalized.id) ? normalized : t
+            );
+          return [normalized, ...prev];
+        } catch (e) {
+          console.warn("handleUploadSaved: setSavedTemplates failed", e);
+          return prev;
+        }
+      });
+
+      setSavedModalVisible(true);
+      setShowSavedPane(true);
+
+      const resolved = await resolveTemplateProtectedAssets(
+        normalized,
+        API_KEY,
+        BACKEND_URL
+      );
+
+      let parsedBodyBoxes = null;
+      try {
+        const rawLayout =
+          resolved.layout ||
+          resolved.layout_json ||
+          (resolved.meta &&
+            (resolved.meta.layout || resolved.meta.layout_json));
+        if (rawLayout) {
+          parsedBodyBoxes =
+            typeof rawLayout === "string" ? JSON.parse(rawLayout) : rawLayout;
+          if (!Array.isArray(parsedBodyBoxes)) parsedBodyBoxes = null;
+        }
+      } catch (e) {
+        console.warn("handleUploadSaved: layout parse failed", e);
+        parsedBodyBoxes = null;
       }
-      fetchSavedTemplates(orgId);
+      if (!parsedBodyBoxes) {
+        parsedBodyBoxes = fieldsToBoxes(PRESET_FIELDS[bodyType] || []);
+      }
+
+      async function ensureBlobUrl(src) {
+        if (!src) return null;
+        if (
+          src.startsWith("blob:") ||
+          src.startsWith("data:") ||
+          /^https?:\/\//i.test(src)
+        ) {
+          return src;
+        }
+
+        if (
+          !src.startsWith("/api/") &&
+          !/^https?:\/\//i.test(src) &&
+          /^[^\/\\]+\.(png|jpe?g|svg|gif|webp)$/i.test(src)
+        ) {
+          if (BACKEND_URL && orgId) {
+            src = `${BACKEND_URL.replace(
+              /\/$/,
+              ""
+            )}/api/orgs/${orgId}/uploads/${src}`;
+          }
+        }
+
+        if (src.startsWith("/api/")) {
+          if (BACKEND_URL) src = `${BACKEND_URL.replace(/\/$/, "")}${src}`;
+        }
+
+        try {
+          const blobUrl = await fetchProtectedImage(src, API_KEY, employeeId);
+          if (blobUrl) return blobUrl;
+        } catch (e) {
+          console.warn("handleUploadSaved: ensureBlobUrl fetch failed", src, e);
+        }
+        return src;
+      }
+
+      const headerCandidates = [
+        resolved.header_url,
+        resolved.headerUrl,
+        resolved.header,
+        resolved._headerBlob,
+        resolved.imageUrl,
+        resolved.cleanedUrl,
+        resolved.thumbnail,
+      ];
+      const footerCandidates = [
+        resolved.footer_url,
+        resolved.footerUrl,
+        resolved.footer,
+        resolved._footerBlob,
+      ];
+
+      let headerRaw =
+        headerCandidates.find((x) => typeof x === "string" && x) || null;
+      let footerRaw =
+        footerCandidates.find((x) => typeof x === "string" && x) || null;
+
+      let watermarkUrl = null;
+      let watermarkPlacementProps = null;
+      if (resolved.grapesJson && resolved.grapesJson.watermark) {
+        const wm = resolved.grapesJson.watermark;
+        watermarkUrl = wm?.url || null;
+        watermarkPlacementProps = {
+          xPct: wm?.xPct || "50%",
+          yPct: wm?.yPct || "50%",
+          wPct: wm?.wPct || "60%",
+          hPct: wm?.hPct || "60%",
+          opacity: typeof wm?.opacity === "number" ? wm.opacity : 0.12,
+        };
+      } else if (resolved.meta && resolved.meta.watermark) {
+        watermarkUrl =
+          typeof resolved.meta.watermark === "string"
+            ? resolved.meta.watermark
+            : null;
+        const wp = resolved.meta.watermarkPlacement;
+        if (wp)
+          watermarkPlacementProps = {
+            xPct: wp.xPct || "50%",
+            yPct: wp.yPct || "50%",
+            wPct: wp.wPct || "60%",
+            hPct: wp.hPct || "60%",
+            opacity: typeof wp.opacity === "number" ? wp.opacity : 0.12,
+          };
+      }
+
+      function collectUploadStrings(obj, out = new Set()) {
+        if (!obj) return out;
+        if (typeof obj === "string") {
+          if (
+            /\/api\/orgs\/\d+\/uploads\/[^"'\s]+/i.test(obj) ||
+            /^[^\/\\]+\.(png|jpe?g|svg|gif|webp)$/i.test(obj)
+          ) {
+            out.add(obj);
+          }
+          return out;
+        }
+        if (Array.isArray(obj)) {
+          for (const v of obj) collectUploadStrings(v, out);
+          return out;
+        }
+        if (typeof obj === "object") {
+          for (const k of Object.keys(obj)) {
+            try {
+              collectUploadStrings(obj[k], out);
+            } catch (e) {}
+          }
+        }
+        return out;
+      }
+
+      const foundAll = Array.from(collectUploadStrings(resolved));
+      const excludeMeta = new Set(
+        [
+          resolved?.meta?.qr,
+          resolved?.meta?.seal,
+          resolved?.meta?.qrUrl,
+          resolved?.meta?.sealUrl,
+          resolved?.meta?.qr_url,
+          resolved?.meta?.seal_url,
+          resolved?.meta?.uploads?.qr,
+          resolved?.meta?.uploads?.seal,
+        ].filter(Boolean)
+      );
+
+      const filtered = foundAll.filter((u) => {
+        if (!u) return false;
+        if (excludeMeta.has(u)) return false;
+        if (headerRaw && u === headerRaw) return false;
+        if (footerRaw && u === footerRaw) return false;
+        if (watermarkUrl && u === watermarkUrl) return false;
+        return true;
+      });
+
+      if (!headerRaw && filtered.length >= 1) headerRaw = filtered[0];
+      if (!footerRaw && filtered.length >= 2) footerRaw = filtered[1];
+      if (!watermarkUrl && filtered.length) {
+        const candid = filtered.find((u) => u !== headerRaw && u !== footerRaw);
+        if (candid) watermarkUrl = candid;
+      }
+
+      const headerUrlResolved = await ensureBlobUrl(headerRaw);
+      const footerUrlResolved = await ensureBlobUrl(footerRaw);
+      const watermarkUrlResolved = watermarkUrl
+        ? await ensureBlobUrl(watermarkUrl)
+        : null;
+
+      let finalHeaderUrl = headerUrlResolved;
+      let finalFooterUrl = footerUrlResolved;
+      if (
+        watermarkUrlResolved &&
+        finalHeaderUrl &&
+        finalHeaderUrl === watermarkUrlResolved
+      ) {
+        finalHeaderUrl = null;
+      }
+      if (
+        watermarkUrlResolved &&
+        finalFooterUrl &&
+        finalFooterUrl === watermarkUrlResolved
+      ) {
+        finalFooterUrl = null;
+      }
+      if (
+        finalHeaderUrl &&
+        finalFooterUrl &&
+        finalHeaderUrl === finalFooterUrl
+      ) {
+        finalFooterUrl = null;
+      }
+
+      setBodyBoxes(parsedBodyBoxes);
+      setViewingTemplate({
+        name: normalized.name || normalized.meta?.name || "",
+        headerUrl: finalHeaderUrl,
+        footerUrl: finalFooterUrl,
+        watermarkUrl: watermarkUrlResolved,
+        watermarkProps: watermarkPlacementProps ||
+          watermarkProps || {
+            xPct: "50%",
+            yPct: "50%",
+            wPct: "60%",
+            hPct: "60%",
+            opacity: 0.12,
+          },
+        bodyBoxes: parsedBodyBoxes,
+      });
+
+      setAppMode("view");
       setShowSavedPane(true);
       setSavedModalVisible(true);
-    },
-    [orgId]
-  );
+      console.log(
+        "handleUploadSaved: opened saved template",
+        normalized.id || normalized.name
+      );
+      return;
+    } catch (err) {
+      console.error("handleUploadSaved/openSavedTemplate failed", err);
+      if (orgId) fetchSavedTemplates(orgId);
+      setSavedModalVisible(true);
+      setShowSavedPane(true);
+    }
+  }
 
-  const handlePreviewChange = useCallback(
-    ({ headerUrl, footerUrl, watermarkUrl }) => {
-      setPreviewHeaderUrl((prev) => {
-        if (prev === headerUrl) return prev;
-        return headerUrl || null;
-      });
-      setPreviewFooterUrl((prev) => {
-        if (prev === footerUrl) return prev;
-        return footerUrl || null;
-      });
+  async function openSavedTemplate(templateOrId) {
+    console.log("openSavedTemplate called with:", templateOrId);
 
-      setPreviewWatermarkUrl((prev) => {
-        const newVal = watermarkUrl || null;
-        if (prev === newVal) return prev;
-        return newVal;
+    let template = templateOrId;
+    if (!template) {
+      console.warn("openSavedTemplate: called with empty value");
+      return;
+    }
+
+    if (typeof template === "string" || typeof template === "number") {
+      const idStr = String(template);
+      const found = (savedTemplates || []).find(
+        (t) => String(t.id) === idStr || String(t._id) === idStr
+      );
+      if (!found) {
+        console.warn(
+          "openSavedTemplate: template id not found in savedTemplates:",
+          idStr
+        );
+        return;
+      }
+      template = found;
+    }
+
+    setTemplateSource("saved");
+    setShowSavedPane(true);
+
+    const cat = template.category || inferCategory(template);
+    const isUpload =
+      cat === "saved_uploads" ||
+      String(template.template_type || "").toLowerCase() === "scan";
+
+    async function ensureBlobUrl(src) {
+      if (!src) return null;
+      if (
+        src.startsWith("blob:") ||
+        src.startsWith("data:") ||
+        /^https?:\/\//i.test(src)
+      ) {
+        return src;
+      }
+      if (
+        !src.startsWith("/api/") &&
+        !/^https?:\/\//i.test(src) &&
+        /^[^\/\\]+\.(png|jpe?g|svg|gif|webp)$/i.test(src)
+      ) {
+        if (BACKEND_URL && orgId) {
+          src = `${BACKEND_URL.replace(
+            /\/$/,
+            ""
+          )}/api/orgs/${orgId}/uploads/${src}`;
+        }
+      }
+      if (src.startsWith("/api/")) {
+        if (BACKEND_URL) {
+          src = `${BACKEND_URL.replace(/\/$/, "")}${src}`;
+        } else {
+          console.warn("ensureBlobUrl: BACKEND_URL missing for", src);
+        }
+      }
+      try {
+        const blobUrl = await fetchProtectedImage(src, API_KEY, employeeId);
+        if (blobUrl) return blobUrl;
+      } catch (e) {
+        console.warn("ensureBlobUrl: fetchProtectedImage failed for", src, e);
+      }
+      return src;
+    }
+
+    try {
+      let resolved = template;
+      try {
+        resolved = await resolveTemplateProtectedAssets(
+          template,
+          API_KEY,
+          BACKEND_URL
+        );
+      } catch (e) {
+        console.warn(
+          "openSavedTemplate: resolveTemplateProtectedAssets failed",
+          e
+        );
+      }
+
+      let parsedBodyBoxes = null;
+      try {
+        const rawLayout =
+          resolved.layout ||
+          resolved.layout_json ||
+          (resolved.meta &&
+            (resolved.meta.layout || resolved.meta.layout_json));
+        if (rawLayout) {
+          parsedBodyBoxes =
+            typeof rawLayout === "string" ? JSON.parse(rawLayout) : rawLayout;
+          if (!Array.isArray(parsedBodyBoxes)) parsedBodyBoxes = null;
+        }
+      } catch (e) {
+        console.warn("openSavedTemplate: layout parse failed", e);
+        parsedBodyBoxes = null;
+      }
+      if (!parsedBodyBoxes)
+        parsedBodyBoxes = fieldsToBoxes(PRESET_FIELDS[bodyType] || []);
+      setBodyBoxes(parsedBodyBoxes);
+
+      const explicitHeaderCandidates = [
+        resolved.header_url,
+        resolved.headerUrl,
+        resolved.header,
+        resolved.grapesJson && resolved.grapesJson.headerUrl,
+        resolved.meta && resolved.meta.uploads && resolved.meta.uploads.header,
+        resolved.thumbnail,
+        resolved.thumbnail_url,
+      ].filter(Boolean);
+
+      const explicitFooterCandidates = [
+        resolved.footer_url,
+        resolved.footerUrl,
+        resolved.footer,
+        resolved.grapesJson && resolved.grapesJson.footerUrl,
+        resolved.meta && resolved.meta.uploads && resolved.meta.uploads.footer,
+      ].filter(Boolean);
+
+      let watermarkUrl = null;
+      let watermarkPlacementProps = null;
+      if (resolved.grapesJson && resolved.grapesJson.watermark) {
+        const wmData = resolved.grapesJson.watermark;
+        if (wmData && wmData.url) {
+          watermarkUrl = wmData.url;
+          watermarkPlacementProps = {
+            xPct: wmData.xPct || "50%",
+            yPct: wmData.yPct || "50%",
+            wPct: wmData.wPct || "60%",
+            hPct: wmData.hPct || "60%",
+            opacity: typeof wmData.opacity === "number" ? wmData.opacity : 0.12,
+          };
+        }
+      }
+      if (
+        !watermarkUrl &&
+        resolved.meta &&
+        resolved.meta.uploads &&
+        resolved.meta.uploads.watermark
+      ) {
+        watermarkUrl = resolved.meta.uploads.watermark;
+      }
+      if (
+        !watermarkUrl &&
+        resolved.meta &&
+        resolved.meta.watermark &&
+        typeof resolved.meta.watermark === "string"
+      ) {
+        watermarkUrl = resolved.meta.watermark;
+      }
+      if (
+        !watermarkPlacementProps &&
+        resolved.meta &&
+        resolved.meta.watermarkPlacement
+      ) {
+        const wp = resolved.meta.watermarkPlacement;
+        watermarkPlacementProps = {
+          xPct: wp.xPct || "50%",
+          yPct: wp.yPct || "50%",
+          wPct: wp.wPct || "60%",
+          hPct: wp.hPct || "60%",
+          opacity: typeof wp.opacity === "number" ? wp.opacity : 0.12,
+        };
+      }
+
+      let rawHeader =
+        explicitHeaderCandidates.length > 0
+          ? explicitHeaderCandidates[0]
+          : null;
+      let rawFooter =
+        explicitFooterCandidates.length > 0
+          ? explicitFooterCandidates[0]
+          : null;
+
+      function collectUploadStrings(obj, out = new Set()) {
+        if (!obj) return out;
+        if (typeof obj === "string") {
+          if (
+            /\/api\/orgs\/\d+\/uploads\/[^"'\s]+/i.test(obj) ||
+            /^[^\/\\]+\.(png|jpe?g|svg|gif|webp)$/i.test(obj)
+          ) {
+            out.add(obj);
+          }
+          return out;
+        }
+        if (Array.isArray(obj)) {
+          for (const v of obj) collectUploadStrings(v, out);
+          return out;
+        }
+        if (typeof obj === "object") {
+          for (const k of Object.keys(obj)) {
+            try {
+              collectUploadStrings(obj[k], out);
+            } catch (e) {}
+          }
+        }
+        return out;
+      }
+
+      if (!rawHeader || !rawFooter || !watermarkUrl) {
+        const found = Array.from(collectUploadStrings(resolved));
+
+        const excludeMeta = new Set(
+          [
+            resolved?.meta?.qr,
+            resolved?.meta?.seal,
+            resolved?.meta?.qrUrl,
+            resolved?.meta?.sealUrl,
+            resolved?.meta?.qr_url,
+            resolved?.meta?.seal_url,
+            resolved?.meta?.uploads && resolved?.meta?.uploads.qr,
+            resolved?.meta?.uploads && resolved?.meta?.uploads.seal,
+            rawHeader,
+            rawFooter,
+            watermarkUrl,
+          ].filter(Boolean)
+        );
+
+        const filtered = found.filter((u) => {
+          if (!u) return false;
+          if (excludeMeta.has(u)) return false;
+          return true;
+        });
+
+        if (!rawHeader && filtered.length >= 1) rawHeader = filtered[0];
+        if (!rawFooter && filtered.length >= 2) rawFooter = filtered[1];
+
+        if (!watermarkUrl && filtered.length) {
+          const candid = filtered.find(
+            (u) => u !== rawHeader && u !== rawFooter
+          );
+          if (candid) watermarkUrl = candid;
+        }
+      }
+
+      let headerBlobUrl = rawHeader ? await ensureBlobUrl(rawHeader) : null;
+      let footerBlobUrl = rawFooter ? await ensureBlobUrl(rawFooter) : null;
+      const watermarkBlobUrl = watermarkUrl
+        ? await ensureBlobUrl(watermarkUrl)
+        : null;
+
+      if (watermarkBlobUrl) {
+        if (headerBlobUrl && headerBlobUrl === watermarkBlobUrl) {
+          console.warn(
+            "openSavedTemplate: clearing header because it matched watermark"
+          );
+          headerBlobUrl = null;
+        }
+        if (footerBlobUrl && footerBlobUrl === watermarkBlobUrl) {
+          console.warn(
+            "openSavedTemplate: clearing footer because it matched watermark"
+          );
+          footerBlobUrl = null;
+        }
+      }
+
+      if (headerBlobUrl && footerBlobUrl && headerBlobUrl === footerBlobUrl) {
+        try {
+          const allFound = Array.from(collectUploadStrings(resolved));
+          const prefer = allFound.filter((u) => {
+            if (!u) return false;
+            if (watermarkUrl && u === watermarkUrl) return false;
+            if (rawHeader && u === rawHeader) return false;
+            if (rawFooter && u === rawFooter) return false;
+            return true;
+          });
+          for (const cand of prefer) {
+            try {
+              const candBlob = await ensureBlobUrl(cand);
+              if (!candBlob) continue;
+              if (candBlob !== headerBlobUrl && candBlob !== watermarkBlobUrl) {
+                footerBlobUrl = candBlob;
+                break;
+              }
+            } catch (e) {}
+          }
+        } catch (e) {}
+        if (headerBlobUrl && footerBlobUrl && headerBlobUrl === footerBlobUrl) {
+          footerBlobUrl = null;
+        }
+      }
+
+      setViewingTemplate({
+        name: template.name,
+        headerUrl: headerBlobUrl,
+        footerUrl: footerBlobUrl,
+        watermarkUrl: watermarkBlobUrl,
+        watermarkProps: watermarkPlacementProps || {
+          xPct: "50%",
+          yPct: "50%",
+          wPct: "60%",
+          hPct: "60%",
+          opacity: 0.12,
+        },
+        bodyBoxes: parsedBodyBoxes,
       });
-    },
-    []
-  );
+      setGenerated(null);
+      setAppMode("view");
+      setShowEditor(false);
+      if (orgId) fetchSavedTemplates(orgId);
+
+      console.log(
+        "openSavedTemplate: succeeded for",
+        template?.id || template?.name
+      );
+      return;
+    } catch (err) {
+      console.warn("openSavedTemplate: unexpected error", err);
+      return chooseBasic(template);
+    }
+  }
 
   useEffect(() => {
     if (previewWatermarkUrl && !watermarkEnabled) setWatermarkEnabled(true);
@@ -887,6 +1475,8 @@ export default function TemplateBuilder() {
   }, [viewingTemplate]);
 
   async function handleCustomSave(payload) {
+    const saveUrl = orgId ? `${BACKEND_URL}/api/orgs/${orgId}/templates` : null;
+
     if (!saveUrl) {
       alert("No save URL (org missing).");
       return;
@@ -954,8 +1544,8 @@ export default function TemplateBuilder() {
         headers: {
           "Content-Type": "application/json",
           "x-api-key": API_KEY || "",
+          "x-employee-id": employeeId || "",
         },
-        credentials: "include",
         body: JSON.stringify(bodyPayload),
       });
 
@@ -1043,45 +1633,6 @@ export default function TemplateBuilder() {
       alert("Save failed: " + (err.message || "error"));
     }
   }
-
-  const filteredPublic = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    let list = publicTemplates;
-    if (selectedDocCategory !== "all") {
-      list = list.filter((t) => {
-        const cat = inferCategory(t);
-        return cat === selectedDocCategory;
-      });
-    }
-    if (q) {
-      list = list.filter(
-        (t) =>
-          (t.name || "").toLowerCase().includes(q) ||
-          (t.description || "").toLowerCase().includes(q) ||
-          (t.id || "").toLowerCase().includes(q)
-      );
-    }
-    return list;
-  }, [publicTemplates, selectedDocCategory, query]);
-
-  const filteredSaved = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    let list = savedTemplates;
-    if (selectedSavedCategory !== "all") {
-      list = list.filter((t) => t.category === selectedSavedCategory);
-    }
-    if (q) {
-      list = list.filter(
-        (t) =>
-          (t.name || "").toLowerCase().includes(q) ||
-          (t.description || "").toLowerCase().includes(q) ||
-          String(t.id || "")
-            .toLowerCase()
-            .includes(q)
-      );
-    }
-    return list;
-  }, [savedTemplates, selectedSavedCategory, query]);
 
   function getActiveEditorRef() {
     if (mode === "basic") return basicEditorRef;
@@ -1237,8 +1788,10 @@ export default function TemplateBuilder() {
       const res = await fetch(url, {
         method: "DELETE",
         credentials: "include",
-        headers: { "x-api-key": API_KEY || "" },
-        credentials: "include",
+        headers: {
+          "x-api-key": API_KEY || "",
+          "x-employee-id": employeeId || "",
+        },
       });
       if (!res.ok) throw new Error(`Delete failed (${res.status})`);
       setSavedTemplates((prev) =>
@@ -1314,827 +1867,425 @@ export default function TemplateBuilder() {
     setFooterHeight(h);
   }
 
-  async function openSavedTemplate(template) {
-    if (!template) return;
-    setTemplateSource("saved");
-    setShowSavedPane(true);
-
-    const cat = template.category || inferCategory(template);
-    const isUpload =
-      cat === "saved_uploads" ||
-      String(template.template_type || "").toLowerCase() === "scan";
-
-    if (!isUpload) {
-      return chooseBasic(template);
-    }
-
-    async function ensureBlobUrl(src) {
-      if (!src) return null;
-      if (
-        src.startsWith("blob:") ||
-        src.startsWith("data:") ||
-        /^https?:\/\//i.test(src)
-      ) {
-        return src;
-      }
-
-      if (
-        !src.startsWith("/api/") &&
-        !/^https?:\/\//i.test(src) &&
-        /^[^\/\\]+\.(png|jpe?g|svg|gif|webp)$/i.test(src)
-      ) {
-        if (BACKEND_URL && orgId) {
-          src = `${BACKEND_URL.replace(
-            /\/$/,
-            ""
-          )}/api/orgs/${orgId}/uploads/${src}`;
-        } else {
-        }
-      }
-
-      if (src.startsWith("/api/")) {
-        if (BACKEND_URL) {
-          src = `${BACKEND_URL.replace(/\/$/, "")}${src}`;
-        } else {
-          console.warn(
-            "ensureBlobUrl: BACKEND_URL missing, cannot build full url for",
-            src
-          );
-        }
-      }
-
-      try {
-        const blobUrl = await fetchProtectedImage(src, API_KEY);
-        if (blobUrl) return blobUrl;
-      } catch (e) {
-        console.warn("ensureBlobUrl: fetchProtectedImage failed for", src, e);
-      }
-      return src;
-    }
-
-    function collectUploadStrings(obj, out = new Set()) {
-      if (!obj) return out;
-      if (typeof obj === "string") {
-        if (
-          /\/api\/orgs\/\d+\/uploads\/[^"'\s]+/i.test(obj) ||
-          /^[^\/\\]+\.(png|jpe?g|svg|gif|webp)$/i.test(obj)
-        ) {
-          out.add(obj);
-        }
-        return out;
-      }
-      if (Array.isArray(obj)) {
-        for (const v of obj) collectUploadStrings(v, out);
-        return out;
-      }
-      if (typeof obj === "object") {
-        for (const k of Object.keys(obj)) {
-          try {
-            collectUploadStrings(obj[k], out);
-          } catch (e) {}
-        }
-      }
-      return out;
-    }
-
-    try {
-      let resolved = template;
-      try {
-        resolved = await resolveTemplateProtectedAssets(
-          template,
-          API_KEY,
-          BACKEND_URL
-        );
-      } catch (e) {
-        console.warn(
-          "openSavedTemplate: resolveTemplateProtectedAssets failed",
-          e
-        );
-      }
-
-      try {
-        const rawLayout =
-          resolved.layout ||
-          resolved.layout_json ||
-          (resolved.meta &&
-            (resolved.meta.layout || resolved.meta.layout_json));
-        if (rawLayout) {
-          let parsed = null;
-          if (typeof rawLayout === "string") parsed = JSON.parse(rawLayout);
-          else parsed = rawLayout;
-          if (Array.isArray(parsed)) setBodyBoxes(parsed);
-        } else {
-          setBodyBoxes(fieldsToBoxes(PRESET_FIELDS[bodyType] || []));
-        }
-      } catch (e) {}
-
-      const explicitHeader = resolved.header_url || resolved.headerUrl || null;
-      const explicitFooter = resolved.footer_url || resolved.footerUrl || null;
-
-      const headerCandidates = [
-        explicitHeader,
-        resolved.header,
-        resolved._headerBlob,
-        resolved.imageUrl,
-        resolved.cleanedUrl,
-        resolved.thumbnail,
-      ];
-      const footerCandidates = [
-        explicitFooter,
-        resolved.footer,
-        resolved._footerBlob,
-      ];
-
-      let watermarkUrl = null;
-      let watermarkPlacementProps = null;
-      if (resolved.grapesJson && resolved.grapesJson.watermark) {
-        const wmData = resolved.grapesJson.watermark;
-        if (wmData && wmData.url) {
-          watermarkUrl = wmData.url;
-          watermarkPlacementProps = {
-            xPct: wmData.xPct || "50%",
-            yPct: wmData.yPct || "50%",
-            wPct: wmData.wPct || "60%",
-            hPct: wmData.hPct || "60%",
-            opacity: typeof wmData.opacity === "number" ? wmData.opacity : 0.12,
-          };
-        }
-      }
-
-      let rawHeader =
-        headerCandidates.find((x) => typeof x === "string" && x) || null;
-      let rawFooter =
-        footerCandidates.find((x) => typeof x === "string" && x) || null;
-
-      if (!rawHeader || !rawFooter) {
-        const found = Array.from(collectUploadStrings(resolved));
-
-        if (!watermarkUrl && resolved.meta && resolved.meta.watermark) {
-          const wmCandidates = found.filter((u) => {
-            if (!u) return false;
-            if (explicitHeader && u === explicitHeader) return false;
-            if (explicitFooter && u === explicitFooter) return false;
-            if (rawHeader && u === rawHeader) return false;
-            if (rawFooter && u === rawFooter) return false;
-            return true;
-          });
-          if (wmCandidates.length) {
-            watermarkUrl = wmCandidates[0];
-            const wp = resolved.meta.watermarkPlacement;
-            if (wp) {
-              watermarkPlacementProps = {
-                xPct: wp.xPct || "50%",
-                yPct: wp.yPct || "50%",
-                wPct: wp.wPct || "60%",
-                hPct: wp.hPct || "60%",
-                opacity: typeof wp.opacity === "number" ? wp.opacity : 0.12,
-              };
-            }
-          }
-        }
-
-        const filteredFound = found.filter((url) => {
-          if (!url) return false;
-          if (explicitHeader && url === explicitHeader) return false;
-          if (explicitFooter && url === explicitFooter) return false;
-          if (watermarkUrl && url === watermarkUrl) return false;
-          return true;
-        });
-
-        if (!rawHeader && filteredFound.length >= 1)
-          rawHeader = filteredFound[0];
-        if (!rawFooter && filteredFound.length >= 2)
-          rawFooter = filteredFound[1];
-      }
-
-      let headerBlobUrl = await ensureBlobUrl(rawHeader);
-      let footerBlobUrl = await ensureBlobUrl(rawFooter);
-      const watermarkBlobUrl = watermarkUrl
-        ? await ensureBlobUrl(watermarkUrl)
-        : null;
-
-      if (watermarkBlobUrl) {
-        if (headerBlobUrl && headerBlobUrl === watermarkBlobUrl) {
-          console.warn(
-            "openSavedTemplate: clearing header because it matched watermark"
-          );
-          headerBlobUrl = null;
-        }
-        if (footerBlobUrl && footerBlobUrl === watermarkBlobUrl) {
-          console.warn(
-            "openSavedTemplate: clearing footer because it matched watermark"
-          );
-          footerBlobUrl = null;
-        }
-      }
-
-      if (headerBlobUrl && footerBlobUrl && headerBlobUrl === footerBlobUrl) {
-        try {
-          const allFound = Array.from(collectUploadStrings(resolved));
-          const prefer = allFound.filter((u) => {
-            if (!u) return false;
-            if (watermarkUrl && u === watermarkUrl) return false;
-            if (rawHeader && u === rawHeader) return false;
-            if (rawFooter && u === rawFooter) return false;
-            return true;
-          });
-
-          for (const cand of prefer) {
-            try {
-              const candBlob = await ensureBlobUrl(cand);
-              if (!candBlob) continue;
-              if (candBlob !== headerBlobUrl && candBlob !== watermarkBlobUrl) {
-                footerBlobUrl = candBlob;
-                break;
-              }
-            } catch (e) {}
-          }
-        } catch (e) {}
-
-        if (headerBlobUrl && footerBlobUrl && headerBlobUrl === footerBlobUrl) {
-          footerBlobUrl = null;
-        }
-      }
-
-      setViewingTemplate({
-        name: template.name,
-        headerUrl: headerBlobUrl,
-        footerUrl: footerBlobUrl,
-        watermarkUrl: watermarkBlobUrl,
-        watermarkProps: watermarkPlacementProps || {
-          xPct: "50%",
-          yPct: "50%",
-          wPct: "60%",
-          hPct: "60%",
-          opacity: 0.12,
-        },
-        bodyBoxes: bodyBoxes,
-      });
-
-      setAppMode("view");
-      setShowEditor(false);
-
-      if (orgId) fetchSavedTemplates(orgId);
-
-      return;
-    } catch (err) {
-      console.warn("openSavedTemplate: unexpected error", err);
-      return chooseBasic(template);
-    }
-  }
-
   function toggleEditor() {
     setShowEditor((s) => !s);
   }
   function resetToPreset() {
-    setBodyBoxes(fieldsToBoxes(PRESET_FIELDS[bodyType] || []));
+    setBodyBoxes(
+      fieldsToBoxes(PRESET_FIELDS[bodyType] || []).map((b) => ({
+        ...b,
+        locked: false,
+      }))
+    );
     setShowEditor(false);
+  }
+
+  const handleWatermarkChange = useCallback((next) => {
+    setWatermarkProps((prev) => ({ ...prev, ...(next || {}) }));
+  }, []);
+
+  const handlePreviewChange = useCallback(
+    ({ headerUrl, footerUrl, watermarkUrl }) => {
+      setPreviewHeaderUrl((prev) =>
+        prev === headerUrl ? prev : headerUrl || null
+      );
+      setPreviewFooterUrl((prev) =>
+        prev === footerUrl ? prev : footerUrl || null
+      );
+      setPreviewWatermarkUrl((prev) => {
+        const newVal = watermarkUrl || null;
+        return prev === newVal ? prev : newVal;
+      });
+    },
+    []
+  );
+
+  const sharedUploadProps = {
+    orgId,
+    previewHeaderUrl,
+    previewFooterUrl,
+    previewWatermarkUrl,
+    watermarkProps,
+    watermarkEnabled,
+    setWatermarkEnabled,
+    watermarkFile,
+    setWatermarkFile,
+    fileInputWatermarkRef,
+    bodyType,
+    bodyBoxes,
+    showEditor,
+    setShowEditor,
+    handleWatermarkChange,
+    setBodyBoxes,
+    setBodyType,
+    handlePreviewChange,
+    handleUploadSaved,
+    selectedFieldId,
+    pageStyle,
+    updatePageStyle: (next) =>
+      setPageStyle((p) => ({ ...(p || {}), ...(next || {}) })),
+    setSelectedFieldId,
+    updateFieldById,
+    updateSelectedFieldStyle,
+    updateSelectedFieldContent,
+    setPlaceholders,
+    placeholders,
+    handleQrUpload,
+    handleSealUpload,
+    qrUrl,
+    sealUrl,
+    setActiveArea: (area) => {
+      const r = getActiveEditorRef();
+      if (r?.current?.setActiveArea) r.current.setActiveArea(area);
+    },
+    activeArea,
+  };
+
+  const filteredPublic = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    let list = publicTemplates;
+    if (selectedDocCategory !== "all") {
+      list = list.filter((t) => {
+        const cat = inferCategory(t);
+        return cat === selectedDocCategory;
+      });
+    }
+    if (q) {
+      list = list.filter(
+        (t) =>
+          (t.name || "").toLowerCase().includes(q) ||
+          (t.description || "").toLowerCase().includes(q) ||
+          (t.id || "").toLowerCase().includes(q)
+      );
+    }
+    return list;
+  }, [publicTemplates, selectedDocCategory, query]);
+
+  const filteredSaved = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    let list = savedTemplates;
+    if (selectedSavedCategory !== "all") {
+      list = list.filter((t) => t.category === selectedSavedCategory);
+    }
+    if (q) {
+      list = list.filter(
+        (t) =>
+          (t.name || "").toLowerCase().includes(q) ||
+          (t.description || "").toLowerCase().includes(q) ||
+          String(t.id || "")
+            .toLowerCase()
+            .includes(q)
+      );
+    }
+    return list;
+  }, [savedTemplates, selectedSavedCategory, query]);
+
+  function handleUploadImage(file, box) {
+    if (!file || !box) return;
+
+    const blobUrl = URL.createObjectURL(file);
+
+    const name = String(box.fieldName || box.name || "").toLowerCase();
+
+    if (/qr|qrcode|qr_code/.test(name)) {
+      updateFieldById(box.id, {
+        imageUrl: blobUrl,
+        content: blobUrl,
+        locked: false,
+      });
+      setQrUrl(blobUrl);
+      return;
+    }
+
+    if (/seal|stamp|companyseal/.test(name)) {
+      updateFieldById(box.id, {
+        imageUrl: blobUrl,
+        content: blobUrl,
+        locked: false,
+      });
+      setSealUrl(blobUrl);
+      return;
+    }
+
+    updateFieldById(box.id, {
+      imageUrl: blobUrl,
+      content: blobUrl,
+      locked: false,
+    });
+  }
+
+  function openFieldImagePicker(box) {
+    if (!fileInputFieldRef?.current) return;
+    fileInputFieldRef.current._targetBoxId = box?.id;
+    fileInputFieldRef.current.click();
+  }
+
+  function handleFieldImageChange(e) {
+    const f = e.target.files?.[0] || null;
+    try {
+      e.target.value = "";
+    } catch (err) {}
+
+    if (!f) return;
+    const boxId = e.target._targetBoxId || null;
+    const box = (bodyBoxes || []).find((b) => String(b.id) === String(boxId));
+
+    if (box) {
+      handleUploadImage(f, box);
+      return;
+    }
+
+    if (typeof handleUploadImage === "function") {
+      try {
+        handleUploadImage(f, null);
+        return;
+      } catch (err) {
+        console.warn("handleUploadImage threw", err);
+      }
+    }
+
+    const name = (box?.fieldName || box?.name || "").toLowerCase();
+    if (
+      name &&
+      /qr|qrcode|qr_code/.test(name) &&
+      typeof handleQrUpload === "function"
+    ) {
+      handleQrUpload(f);
+      return;
+    }
+    if (
+      name &&
+      /seal|stamp|companyseal/.test(name) &&
+      typeof handleSealUpload === "function"
+    ) {
+      handleSealUpload(f);
+      return;
+    }
+
+    try {
+      const url = URL.createObjectURL(f);
+      if (selectedFieldId && typeof updateFieldById === "function") {
+        updateFieldById(selectedFieldId, {
+          imageUrl: url,
+          content: url,
+          locked: false,
+        });
+      }
+    } catch (err) {
+      console.warn("failed to set image blob url", err);
+    }
+  }
+
+  function handlePreviewSelectBox(id) {
+    const now = Date.now();
+    const last = lastTapRef.current || { id: null, time: 0 };
+
+    const box = (bodyBoxes || []).find((b) => String(b.id) === String(id));
+
+    if (last.id && last.id === id && now - last.time <= DOUBLE_TAP_MS) {
+      if (singleTapTimerRef.current) {
+        clearTimeout(singleTapTimerRef.current);
+        singleTapTimerRef.current = null;
+      }
+      lastTapRef.current = { id: null, time: 0 };
+
+      if (box && box.type === "image") {
+        openFieldImagePicker(box);
+        setSelectedFieldId(id);
+        return;
+      }
+
+      setSelectedFieldId(id);
+      setShowEditor(true);
+      return;
+    }
+
+    lastTapRef.current = { id, time: now };
+    if (singleTapTimerRef.current) {
+      clearTimeout(singleTapTimerRef.current);
+      singleTapTimerRef.current = null;
+    }
+
+    singleTapTimerRef.current = setTimeout(() => {
+      singleTapTimerRef.current = null;
+      setSelectedFieldId(id);
+      if (box && box.type !== "image") {
+        setShowEditor(true);
+      }
+    }, DOUBLE_TAP_MS);
   }
 
   return (
     <div className={styles.container}>
-      <aside className={styles.leftPanel}>
-        <h3 className={styles.heading}>Templates</h3>
+      <SidebarPanel
+        styles={styles}
+        mode={mode}
+        setAppMode={setAppMode}
+        templateSource={templateSource}
+        setTemplateSource={setTemplateSource}
+        SAVED_CATEGORIES={SAVED_CATEGORIES}
+        selectedSavedCategory={selectedSavedCategory}
+        setSelectedSavedCategory={setSelectedSavedCategory}
+        filteredSaved={filteredSaved}
+        filteredPublic={filteredPublic}
+        loading={loading}
+        DOC_CATEGORIES={DOC_CATEGORIES}
+        selectedDocCategory={selectedDocCategory}
+        setSelectedDocCategory={setSelectedDocCategory}
+        query={query}
+        setQuery={setQuery}
+        actions={{
+          actionAddText,
+          actionAddField,
+          actionAddLogo,
+          actionAddTable,
+          actionTogglePreview,
+          actionDeleteSelected,
+          openSavePrompt,
+        }}
+        uploadProps={sharedUploadProps}
+        extra={{
+          editSavedTemplate,
+          deleteSavedTemplate,
+          chooseBasic,
+          setAppMode,
+          setGenerated,
+          setViewingTemplate,
+          openSavedTemplate,
+          handleUploadSaved,
+        }}
+      />
 
-        <div className={styles.modeButtons}>
-          <button
-            className={`${styles.modeBtn} ${
-              mode === "upload" ? styles.active : ""
-            }`}
-            onClick={() => setAppMode("upload")}
-            aria-pressed={mode === "upload"}
-          >
-            Upload Scan
-          </button>
-          <button
-            className={`${styles.modeBtn} ${
-              mode === "scratch" ? styles.active : ""
-            }`}
-            onClick={() => setAppMode("scratch")}
-            aria-pressed={mode === "scratch"}
-          >
-            Build from Scratch
-          </button>
-          <button
-            className={`${styles.modeBtn} ${
-              mode === "basic" ? styles.active : ""
-            }`}
-            onClick={() => setAppMode("basic")}
-            aria-pressed={mode === "basic"}
-          >
-            Basic Templates
-          </button>
-
-          <button
-            className={`${styles.modeBtn} ${
-              mode === "saved" ||
-              mode === "view" ||
-              (mode === "basic" && templateSource === "saved")
-                ? styles.active
-                : ""
-            }`}
-            onClick={() => {
-              setAppMode("saved");
-              setTemplateSource("saved");
-            }}
-          >
-            Saved Templates
-          </button>
-        </div>
-
-        {(mode === "saved" ||
-          mode === "view" ||
-          (mode === "basic" && templateSource === "saved")) && (
-          <div className={styles.templatesWrap}>
-            <div className={styles.savedHeader}>
-              <h4 className={styles.sectionTitle}>Saved templates</h4>
-              <div className={styles.savedControls}>
-                <div
-                  className={styles.smallChips}
-                  role="tablist"
-                  aria-label="Saved template categories"
-                >
-                  {SAVED_CATEGORIES.map((c) => (
-                    <button
-                      key={c.key}
-                      onClick={() => setSelectedSavedCategory(c.key)}
-                      className={`${styles.chipSmall} ${
-                        selectedSavedCategory === c.key ? styles.chipActive : ""
-                      }`}
-                      role="tab"
-                      aria-selected={selectedSavedCategory === c.key}
-                    >
-                      {c.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-            <div className={styles.templatesList}>
-              {loading && <div className={styles.loading}>Loading…</div>}
-              {!loading && filteredSaved.length === 0 && (
-                <div className={styles.empty}>No saved templates</div>
-              )}
-              <div className={styles.grid}>
-                {filteredSaved.map((t) => (
-                  <button
-                    key={t.id || t.name || Math.random()}
-                    className={styles.card}
-                    onClick={() => openSavedTemplate(t)}
-                    title={t.name}
-                    aria-label={`Choose ${t.name}`}
-                  >
-                    <div className={styles.thumb}>
-                      {t.thumbnail ? (
-                        t.origin === "saved" ? (
-                          <ProtectedImg
-                            src={t.thumbnail}
-                            apiKey={API_KEY}
-                            alt={t.name}
-                            loading="lazy"
-                            className={styles.thumbImg}
-                          />
-                        ) : (
-                          <img
-                            src={t.thumbnail}
-                            alt={t.name}
-                            loading="lazy"
-                            className={styles.thumbImg}
-                          />
-                        )
-                      ) : (
-                        <div className={styles.placeholderIcon}>T</div>
-                      )}
-                    </div>
-                    <div className={styles.meta}>
-                      <div className={styles.title}>{t.name || t.id}</div>
-                      <div className={styles.subtitle}>
-                        {t.template_type || t.category || ""}
-                      </div>
-                    </div>
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
-
-        <div className={styles.toolsSection}>
-          {mode === "upload" && (
-            <div className={styles.toolsIntro}>
-              <div className={styles.toolsIntroTitle}>Upload tools</div>
-              <div className={styles.toolsIntroDesc}>
-                Use the controls to pick header/footer images and preview A4.
-              </div>
-            </div>
-          )}
-
-          {(mode === "basic" || mode === "scratch") && (
-            <div className={styles.editorTools}>
-              <div className={styles.toolsTitle}>Editor tools</div>
-
-              <div className={styles.toolButtons}>
-                <button className={styles.modeBtn} onClick={actionAddText}>
-                  + Text
-                </button>
-                <button className={styles.modeBtn} onClick={actionAddField}>
-                  + Field
-                </button>
-                <button className={styles.modeBtn} onClick={actionAddLogo}>
-                  + Logo
-                </button>
-                <button className={styles.modeBtn} onClick={actionAddTable}>
-                  + Table
-                </button>
-                <button
-                  className={styles.modeBtn}
-                  onClick={actionTogglePreview}
-                >
-                  Preview
-                </button>
-                <button
-                  className={styles.modeBtn}
-                  onClick={actionDeleteSelected}
-                >
-                  Delete
-                </button>
-                <button
-                  className={styles.modeBtn}
-                  onClick={() => openSavePrompt()}
-                  title="Save template (asks for a name)"
-                >
-                  Save
-                </button>
-              </div>
-
-              {mode === "basic" && (
-                <div className={styles.toolsSearchWrap}>
-                  <div className={styles.searchWrap}>
-                    <input
-                      value={query}
-                      onChange={(e) => setQuery(e.target.value)}
-                      placeholder="Search templates..."
-                      className={styles.search}
-                      aria-label="Search templates"
-                    />
-                  </div>
-
-                  <div
-                    className={styles.chips}
-                    role="tablist"
-                    aria-label="Template categories"
-                  >
-                    {DOC_CATEGORIES.map((c) => (
-                      <button
-                        key={c.key}
-                        onClick={() => setSelectedDocCategory(c.key)}
-                        className={`${styles.chip} ${
-                          selectedDocCategory === c.key ? styles.chipActive : ""
-                        }`}
-                        role="tab"
-                        aria-selected={selectedDocCategory === c.key}
-                      >
-                        {c.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-
-        {mode === "upload" && (
-          <UploadScan
-            orgId={orgId}
-            backendUrl={process.env.NEXT_PUBLIC_BACKEND_URL}
-            apiKey={process.env.NEXT_PUBLIC_API_KEY}
-            controlsOnly={true}
-            onPreviewChange={handlePreviewChange}
-            onSaved={handleUploadSaved}
-            a4PreviewWidth={420}
-            initialHeaderUrl={previewHeaderUrl}
-            initialFooterUrl={previewFooterUrl}
-            bodyType={bodyType}
-            onBodyTypeChange={(bt) => setBodyType(bt)}
-            bodyBoxes={bodyBoxes}
-            setBodyBoxes={setBodyBoxes}
-            showEditor={showEditor}
-            setShowEditor={setShowEditor}
-            watermarkUrl={previewWatermarkUrl}
-            watermarkProps={watermarkProps}
-            onWatermarkChange={handleWatermarkChange}
-            watermarkEditable={watermarkEnabled || showEditor}
-            useWatermarkInitial={watermarkEnabled}
-          />
-        )}
-
-        {mode === "basic" && (
-          <div className={styles.templatesWrap}>
-            <h4 className={styles.sectionTitle}>Basic templates</h4>
-            <div className={styles.templatesList}>
-              {loading && <div className={styles.loading}>Loading…</div>}
-              {!loading && filteredPublic.length === 0 && (
-                <div className={styles.empty}>No basic templates</div>
-              )}
-              <div className={styles.grid}>
-                {filteredPublic.map((t) => (
-                  <button
-                    key={t.id || t.name || Math.random()}
-                    className={styles.card}
-                    onClick={() => chooseBasic(t)}
-                    title={t.name}
-                    aria-label={`Choose ${t.name}`}
-                  >
-                    <div className={styles.thumb}>
-                      {t.thumbnail ? (
-                        <img
-                          src={t.thumbnail}
-                          alt={t.name}
-                          loading="lazy"
-                          className={styles.thumbImg}
-                        />
-                      ) : (
-                        <div className={styles.placeholderIcon}>T</div>
-                      )}
-                    </div>
-                    <div className={styles.meta}>
-                      <div className={styles.title}>{t.name || t.id}</div>
-                      <div className={styles.subtitle}>
-                        {t.description || ""}
-                      </div>
-                    </div>
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
-      </aside>
-
-      <main className={styles.editorPanel}>
+      {(mode === "upload" || mode === "view") && (
         <div
-          className={styles.editorContainer}
-          data-testid="template-editor-container"
-          ref={editorWrapperRef}
+          style={{
+            marginLeft: 50,
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            gap: 8,
+          }}
         >
           {mode === "upload" && (
-            <div style={{ marginBottom: 12 }}>
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                  marginBottom: 8,
-                }}
-              >
-                <div style={{ display: "flex", gap: 8 }}>
-                  <button className={styles.modeBtn} onClick={toggleEditor}>
-                    {showEditor ? "Close Editor" : "Customize fields"}
-                  </button>
-                  <button className={styles.modeBtn} onClick={resetToPreset}>
-                    Reset to Preset
-                  </button>
-                </div>
-                <div style={{ fontSize: 13, color: "#6b7280" }}>
-                  You can move fields and change their colors only
-                </div>
-              </div>
-
-              {showEditor ? (
-                <TemplateEditor
-                  boxes={bodyBoxes}
-                  onChange={(next) => setBodyBoxes(next)}
-                  width={560}
-                />
-              ) : (
-                <A4Preview
-                  headerUrl={previewHeaderUrl}
-                  footerUrl={previewFooterUrl}
-                  watermarkUrl={previewWatermarkUrl}
-                  watermarkProps={watermarkEnabled ? watermarkProps : null}
-                  onWatermarkChange={handleWatermarkChange}
-                  editable={showEditor || watermarkEnabled}
-                  bodyBoxes={bodyBoxes}
-                  width={560}
-                />
-              )}
-            </div>
+            <FieldPropertiesPanel
+              selectedFieldId={selectedFieldId}
+              bodyBoxes={bodyBoxes}
+              setSelectedFieldId={setSelectedFieldId}
+              updateSelectedFieldStyle={updateSelectedFieldStyle}
+              updateSelectedFieldContent={updateSelectedFieldContent}
+              onUploadImage={(file, box) => handleUploadImage(file, box)}
+              pageStyle={pageStyle}
+              updatePageStyle={(next) =>
+                setPageStyle((p) => ({ ...(p || {}), ...(next || {}) }))
+              }
+            />
           )}
 
           {mode === "view" && viewingTemplate && (
-            <div
-              style={{
-                marginBottom: 12,
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
+            <div style={{ fontSize: 13, color: "#6b7280", marginBottom: 6 }}>
+              Viewing: {viewingTemplate.name}
+            </div>
+          )}
+
+          <div style={{ display: "flex", justifyContent: "center" }}>
+            <A4Preview
+              headerUrl={
+                mode === "view" ? viewingTemplate?.headerUrl : previewHeaderUrl
+              }
+              footerUrl={
+                mode === "view" ? viewingTemplate?.footerUrl : previewFooterUrl
+              }
+              watermarkUrl={
+                mode === "view"
+                  ? viewingTemplate?.watermarkUrl
+                  : previewWatermarkUrl
+              }
+              watermarkProps={
+                mode === "view"
+                  ? viewingTemplate?.watermarkProps ?? watermarkProps
+                  : watermarkProps
+              }
+              onWatermarkChange={handleWatermarkChange}
+              editable={
+                mode === "upload" ? watermarkEnabled || showEditor : false
+              }
+              boxesEditable={mode === "upload" ? showEditor : false}
+              onBoxesChange={(next) => {
+                if (mode === "upload") {
+                  setBodyBoxes(next.map((b) => ({ ...b, locked: false })));
+                }
               }}
-            >
-              <div style={{ fontSize: 13, color: "#6b7280", marginBottom: 12 }}>
-                Viewing: {viewingTemplate.name}
-              </div>
-              <div
-                style={{
-                  width: "100%",
-                  display: "flex",
-                  justifyContent: "center",
-                }}
-              >
-                <A4Preview
-                  headerUrl={viewingTemplate.headerUrl}
-                  footerUrl={viewingTemplate.footerUrl}
-                  watermarkUrl={viewingTemplate.watermarkUrl}
-                  watermarkProps={viewingTemplate.watermarkProps}
-                  editable={false}
-                  bodyBoxes={viewingTemplate.bodyBoxes}
-                  width={560}
-                />
-              </div>
-            </div>
-          )}
-
-          {mode === "basic" &&
-            generated &&
-            (generated.html && generated.html.trim() ? (
-              <div style={{ position: "relative" }}>
-                {generated._headerBlob && (
-                  <img
-                    ref={headerImgRef}
-                    src={generated._headerBlob}
-                    alt="Header"
-                    draggable={false}
-                    onDragStart={(e) => e.preventDefault()}
-                    onLoad={onHeaderLoad}
-                    style={{
-                      position: "absolute",
-                      top: 0,
-                      left: 0,
-                      right: 0,
-                      width: "100%",
-                      display: "block",
-                      pointerEvents: "none",
-                      userSelect: "none",
-                    }}
-                  />
-                )}
-
-                <div
-                  style={{
-                    paddingTop: headerHeight,
-                    paddingBottom: footerHeight,
-                  }}
-                >
-                  <BasicTemplateEditor
-                    ref={basicEditorRef}
-                    key={generated.id || generated.file || Math.random()}
-                    initialHtml={generated.html}
-                    initialJson={generated.grapesJson}
-                    initialFields={PRESET_FIELDS[bodyType] || null}
-                    baseUrl={"/commonTemplates/basic/"}
-                    onSave={(payload) =>
-                      handleCustomSave({
-                        ...payload,
-                        templateId: generated.id || generated.name,
-                      })
-                    }
-                  />
-                </div>
-
-                {generated._footerBlob && (
-                  <img
-                    ref={footerImgRef}
-                    src={generated._footerBlob}
-                    alt="Footer"
-                    draggable={false}
-                    onDragStart={(e) => e.preventDefault()}
-                    onLoad={onFooterLoad}
-                    style={{
-                      position: "absolute",
-                      bottom: 0,
-                      left: 0,
-                      right: 0,
-                      width: "100%",
-                      display: "block",
-                      pointerEvents: "none",
-                      userSelect: "none",
-                    }}
-                  />
-                )}
-              </div>
-            ) : (
-              <div style={{ position: "relative" }}>
-                {generated._headerBlob && (
-                  <img
-                    ref={headerImgRef}
-                    src={generated._headerBlob}
-                    alt="Header"
-                    draggable={false}
-                    onDragStart={(e) => e.preventDefault()}
-                    onLoad={onHeaderLoad}
-                    style={{
-                      position: "absolute",
-                      top: 0,
-                      left: 0,
-                      right: 0,
-                      width: "100%",
-                      display: "block",
-                      pointerEvents: "none",
-                      userSelect: "none",
-                    }}
-                  />
-                )}
-
-                <div
-                  style={{
-                    paddingTop: headerHeight,
-                    paddingBottom: footerHeight,
-                  }}
-                >
-                  <CustomTemplateEditor
-                    ref={basicEditorRef}
-                    key={
-                      generated.id ||
-                      generated.name ||
-                      generated.file ||
-                      Math.random()
-                    }
-                    background={
-                      generated.thumbnail || generated.imageUrl || null
-                    }
-                    initialBoxes={(function () {
-                      try {
-                        if (generated.layout) {
-                          if (typeof generated.layout === "string")
-                            return JSON.parse(generated.layout);
-                          return generated.layout;
-                        } else if (generated.layout_json) {
-                          if (typeof generated.layout_json === "string")
-                            return JSON.parse(generated.layout_json);
-                          return generated.layout_json;
-                        } else if (generated.initialBoxes) {
-                          return generated.initialBoxes;
-                        } else {
-                          return (
-                            templateToBoxes(generated) ||
-                            fieldsToBoxes(PRESET_FIELDS[bodyType] || [])
-                          );
-                        }
-                      } catch (e) {
-                        return (
-                          templateToBoxes(generated) ||
-                          fieldsToBoxes(PRESET_FIELDS[bodyType] || [])
-                        );
-                      }
-                    })()}
-                    onSave={handleCustomSave}
-                    canvasWidthPx={794}
-                  />
-                </div>
-
-                {generated._footerBlob && (
-                  <img
-                    ref={footerImgRef}
-                    src={generated._footerBlob}
-                    alt="Footer"
-                    draggable={false}
-                    onDragStart={(e) => e.preventDefault()}
-                    onLoad={onFooterLoad}
-                    style={{
-                      position: "absolute",
-                      bottom: 0,
-                      left: 0,
-                      right: 0,
-                      width: "100%",
-                      display: "block",
-                      pointerEvents: "none",
-                      userSelect: "none",
-                    }}
-                  />
-                )}
-              </div>
-            ))}
-
-          {!generated && mode === "basic" && (
-            <div className={styles.placeholder}>
-              Choose a template from the left to open it here.
-            </div>
-          )}
-
-          {mode === "scratch" && (
-            <CustomTemplateEditor
-              ref={scratchEditorRef}
-              key={"scratch-" + Date.now()}
-              background={null}
-              initialBoxes={fieldsToBoxes(PRESET_FIELDS[bodyType] || [])}
-              initialBodyType={bodyType}
-              onSave={handleCustomSave}
-              canvasWidthPx={794}
+              pageStyle={pageStyle}
+              onSelectBox={handlePreviewSelectBox}
+              bodyBoxes={
+                mode === "view"
+                  ? Array.isArray(viewingTemplate?.bodyBoxes) &&
+                    viewingTemplate.bodyBoxes.length
+                    ? viewingTemplate.bodyBoxes
+                    : bodyBoxes
+                  : bodyBoxes
+              }
+              width={700}
             />
-          )}
+          </div>
         </div>
-      </main>
+      )}
 
+      <EditorPanel
+        styles={styles}
+        mode={mode}
+        generated={generated}
+        bodyType={bodyType}
+        setBodyType={setBodyType}
+        bodyBoxes={bodyBoxes}
+        setBodyBoxes={setBodyBoxes}
+        watermarkEnabled={watermarkEnabled}
+        setWatermarkEnabled={setWatermarkEnabled}
+        watermarkProps={watermarkProps}
+        handleWatermarkChange={handleWatermarkChange}
+        viewingTemplate={viewingTemplate}
+        editorRefs={{
+          editorWrapperRef,
+          basicEditorRef,
+          scratchEditorRef,
+          headerImgRef,
+          footerImgRef,
+        }}
+        handlers={{
+          toggleEditor,
+          resetToPreset,
+          handleCustomSave,
+          onHeaderLoad,
+          onFooterLoad,
+        }}
+        previewUrls={{
+          previewHeaderUrl,
+          previewFooterUrl,
+          previewWatermarkUrl,
+        }}
+        extras={{
+          templateToBoxes,
+          setGenerated,
+          setViewingTemplate,
+          setShowEditor,
+        }}
+        watermarkFile={watermarkFile}
+        setWatermarkFile={setWatermarkFile}
+        fileInputWatermarkRef={fileInputWatermarkRef}
+        selection={{
+          selectedFieldId,
+          setSelectedFieldId,
+          updateFieldById,
+          updateSelectedFieldStyle,
+          updateSelectedFieldContent,
+          placeholders,
+          setPlaceholders,
+          handleQrUpload,
+          handleSealUpload,
+          qrUrl,
+          sealUrl,
+        }}
+      />
       {saveModalOpen && (
         <div className={styles.modalOverlay} role="dialog" aria-modal="true">
           <div className={styles.modal}>
@@ -2163,7 +2314,6 @@ export default function TemplateBuilder() {
           </div>
         </div>
       )}
-
       {savedModalVisible && (
         <Modal
           isVisible={savedModalVisible}
@@ -2181,6 +2331,13 @@ export default function TemplateBuilder() {
           </p>
         </Modal>
       )}
+      <input
+        ref={fileInputFieldRef}
+        type="file"
+        accept="image/*,image/svg+xml"
+        style={{ display: "none" }}
+        onChange={handleFieldImageChange}
+      />
     </div>
   );
 }

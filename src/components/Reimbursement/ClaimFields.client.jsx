@@ -5,6 +5,32 @@ import { MdEmojiTransportation, MdOutlinePhoneAndroid } from "react-icons/md";
 import { GiKnifeFork, GiPencilBrush } from "react-icons/gi";
 import { TbTriangleSquareCircle } from "react-icons/tb";
 import ParticipantSelection from "./ParticipantSelection.client";
+import "./Reimbursement.css"; // keep this if your CSS is global or adjust to module import if you're using CSS modules
+
+/**
+ * ClaimFields (Next.js client component)
+ *
+ * Props:
+ *  - claimTypes (array) : [{ label: 'Transportation' }, ...]
+ *  - projects (array) : list of project names
+ *  - formData (object) : form state
+ *  - setFormData (func) : setter for form state
+ *  - selectedFiles (array) : selected file names
+ *  - setSelectedFiles (func)
+ *  - handleFileUpload (func) : function(e, { rowIndex, files })
+ *  - setSelectedSubType (func)
+ *  - selectedSubType (string)
+ *  - modalContentRef (ref) : ref to modal wrapper for class toggling
+ *  - shouldShowParticipantControls (func)
+ *  - renderSingleTile (func)
+ *  - onParticipantSelectionChange (func)
+ *  - participants (array)
+ *  - employeeOptions (array)
+ *  - initialSelectionForChild (array)
+ *
+ * This file preserves the UI & behaviour from the original component while
+ * adding "use client" for Next.js app-router usage.
+ */
 
 const iconMap = {
   Transportation: <MdEmojiTransportation className="claim-icons" />,
@@ -15,12 +41,12 @@ const iconMap = {
 };
 
 const ClaimFields = ({
-  claimTypes,
-  projects,
-  formData,
-  setFormData,
-  selectedFiles,
-  setSelectedFiles,
+  claimTypes = [],
+  projects = [],
+  formData = {},
+  setFormData = () => {},
+  selectedFiles = [],
+  setSelectedFiles = () => {},
   handleFileUpload,
   setSelectedSubType,
   selectedSubType,
@@ -28,9 +54,9 @@ const ClaimFields = ({
   shouldShowParticipantControls,
   renderSingleTile,
   onParticipantSelectionChange,
-  participants,
-  employeeOptions,
-  initialSelectionForChild,
+  participants = [],
+  employeeOptions = [],
+  initialSelectionForChild = [],
 }) => {
   const [localParticipantMode, setLocalParticipantMode] = useState(
     formData.participant_mode || "single"
@@ -38,12 +64,42 @@ const ClaimFields = ({
 
   const maxDate = useMemo(() => {
     const d = new Date();
-    return d.toISOString().split("T")[0];
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, "0");
+    const dd = String(d.getDate()).padStart(2, "0");
+    return `${yyyy}-${mm}-${dd}`;
   }, []);
 
   useEffect(() => {
     setLocalParticipantMode(formData.participant_mode || "single");
   }, [formData.participant_mode]);
+
+  useEffect(() => {
+    const ct = formData.claim_type;
+    if (!ct) return;
+
+    if (!formData.claim_rows || typeof formData.claim_rows !== "object") {
+      setFormData((p) => ({ ...p, claim_rows: {} }));
+      return;
+    }
+
+    const rows = Array.isArray(formData.claim_rows[ct])
+      ? formData.claim_rows[ct]
+      : [];
+
+    if (!Array.isArray(rows) || rows.length === 0) {
+      const seed = defaultRowForType(ct);
+      if (formData.purpose) seed.purpose = formData.purpose;
+      if (Array.isArray(selectedFiles) && selectedFiles.length > 0)
+        seed.attachments = selectedFiles.slice();
+
+      setFormData((p) => ({
+        ...p,
+        claim_rows: { ...(p.claim_rows || {}), [ct]: [seed] },
+      }));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [formData.claim_type]);
 
   const updateField = (k, v) => setFormData((prev) => ({ ...prev, [k]: v }));
 
@@ -51,15 +107,17 @@ const ClaimFields = ({
     const ct = formData.claim_type;
     if (!ct) return [];
     const rowsObj =
-      typeof formData.claim_rows === "object" ? formData.claim_rows : {};
+      formData.claim_rows && typeof formData.claim_rows === "object"
+        ? formData.claim_rows
+        : {};
     return Array.isArray(rowsObj[ct]) ? rowsObj[ct] : [];
   };
 
-  const setRowsForCurrentType = (rows) => {
+  const setRowsForCurrentType = (newRows) => {
     const ct = formData.claim_type;
     setFormData((prev) => ({
       ...prev,
-      claim_rows: { ...(prev.claim_rows || {}), [ct]: rows },
+      claim_rows: { ...(prev.claim_rows || {}), [ct]: newRows },
     }));
   };
 
@@ -70,7 +128,6 @@ const ClaimFields = ({
       invoices: [],
       total_amount: "",
     };
-
     switch (type) {
       case "Transportation":
         return {
@@ -82,13 +139,28 @@ const ClaimFields = ({
           da: "",
         };
       case "Meals":
-        return { ...base, meal_type: "", meals_objective: "" };
+        return {
+          ...base,
+          meal_type: "",
+          meals_objective: "",
+        };
       case "Telecommunication":
-        return { ...base, service_provider: "" };
+        return {
+          ...base,
+          service_provider: "",
+        };
       case "Stationary":
-        return { ...base, stationary: "", purchasing_item: "" };
+        return {
+          ...base,
+          stationary: "",
+          purchasing_item: "",
+        };
+      case "Miscellaneous":
+        return {
+          ...base,
+        };
       default:
-        return base;
+        return { ...base };
     }
   };
 

@@ -2,7 +2,7 @@
 
 import React from "react";
 import { MdOutlineCancel } from "react-icons/md";
-
+import "./Reimbursement.css";
 const AttachmentsModal = ({
   isOpen,
   title = "Attachments",
@@ -16,7 +16,7 @@ const AttachmentsModal = ({
       className="att-modal-overlay"
       role="dialog"
       aria-modal="true"
-      aria-label="Attachments"
+      aria-label={title || "Attachments"}
     >
       <div className="att-modal-content">
         <div className="att-header">
@@ -25,16 +25,22 @@ const AttachmentsModal = ({
             className="att-close"
             onClick={onClose}
             role="button"
-            aria-label="Close attachments modal"
+            aria-label="Close attachments"
+            tabIndex={0}
           />
         </div>
 
         <div style={{ padding: "12px 18px" }}>
-          {files.length > 0 ? (
-            files.map((file, idx) => (
+          {Array.isArray(files) && files.length > 0 ? (
+            files.map((f, idx) => (
               <div key={idx} className="att-files" style={{ padding: "8px 0" }}>
-                <a href={file.url} target="_blank" rel="noopener noreferrer">
-                  {file.name}
+                <a
+                  href={f.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="att-file-link"
+                >
+                  {f.name}
                 </a>
               </div>
             ))
@@ -43,8 +49,13 @@ const AttachmentsModal = ({
           )}
         </div>
 
-        <div style={{ padding: "0 18px 18px" }}>
-          <button className="att-close-btn" onClick={onClose}>
+        <div style={{ padding: "0 18px 18px 18px" }}>
+          <button
+            type="button"
+            className="att-close-btn"
+            onClick={onClose}
+            aria-label="Close"
+          >
             Close
           </button>
         </div>

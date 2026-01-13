@@ -6,6 +6,15 @@ import PropTypes from "prop-types";
 import "./ParticipantSelection.css";
 import { useAuth } from "../../context/AuthProvider.client";
 
+/**
+ * ParticipantSelection (Next.js client component)
+ *
+ * Notes:
+ * - Prefers values from useAuth().user (token, employee id, org id, apiKey, backend hints)
+ * - Falls back to env vars and only then to localStorage if necessary (safer for server/client mismatch)
+ * - Keeps original behavior/UI and the same public API
+ */
+
 const ParticipantSelection = ({
   departmentId = null,
   selectionMode = "single",
@@ -16,39 +25,132 @@ const ParticipantSelection = ({
   limit = 200,
   hideModeToggle = false,
 }) => {
-  const { user, hydrated } = useAuth();
+  const { user } = useAuth();
 
   const [mode, setMode] = useState(selectionMode || "single");
   const [query, setQuery] = useState("");
   const [employees, setEmployees] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [selected, setSelected] = useState(() => {
+    if (!Array.isArray(initialSelection)) return [];
+    return initialSelection.filter(Boolean).map((it) =>
+      typeof it === "object"
+        ? {
+            employee_id: it.employee_id || it.id || it.employeeId,
+            name: it.name || it.employee_name || "",
+          }
+        : { employee_id: it, name: String(it) }
+    );
+  });
   const [error, setError] = useState(null);
-
-  const [selected, setSelected] = useState(() =>
-    Array.isArray(initialSelection)
-      ? initialSelection.filter(Boolean).map((it) =>
-          typeof it === "object"
-            ? {
-                employee_id: it.employee_id || it.id || it.employeeId,
-                name: it.name || it.employee_name || "",
-              }
-            : { employee_id: it, name: String(it) }
-        )
-      : []
-  );
 
   const cancelRef = useRef(null);
   const searchTimer = useRef(null);
 
-  const BACKEND = process.env.NEXT_PUBLIC_BACKEND_URL || "";
-  const API_KEY = process.env.NEXT_PUBLIC_API_KEY || "";
+  // Backend & keys: prefer explicit env vars, then user.raw hints, then (last-resort) localStorage
+  const RAW_BACKEND =
+    process.env.NEXT_PUBLIC_BACKEND_URL ||
+    process.env.REACT_APP_BACKEND_URL ||
+    user?.raw?.backend ||
+    user?.raw?.backendUrl ||
+    localStorage.getItem("backend") ||
+    "";
+  const BACKEND = (() => {
+    if (!RAW_BACKEND) return "";
+    if (!/^https?:\/\//i.test(RAW_BACKEND))
+      return `http://${RAW_BACKEND}`.replace(/\/$/, "");
+    return RAW_BACKEND.replace(/\/$/, "");
+  })();
 
-  const loggedEmployeeId = user?.employeeId || null;
+  const apiKey =
+    process.env.NEXT_PUBLIC_API_KEY ||
+    process.env.REACT_APP_API_KEY ||
+    user?.apiKey ||
+    user?.raw?.apiKey ||
+    localStorage.getItem("apiKey") ||
+    localStorage.getItem("x-api-key") ||
+    "";
 
-  const buildHeaders = () => ({
-    ...(API_KEY ? { "x-api-key": API_KEY } : {}),
-    ...(loggedEmployeeId ? { "x-employee-id": String(loggedEmployeeId) } : {}),
-  });
+  // Prefer token from auth provider (user object). Keep localStorage fallback only if user isn't available.
+  const authToken =
+    user?.token ||
+    user?.authToken ||
+    user?.accessToken ||
+    localStorage.getItem("authToken") ||
+    localStorage.getItem("token") ||
+    null;
+
+  // Read logged employee id preferring user context (robust to various field names)
+  const readLoggedEmployeeId = useCallback(() => {
+    if (user) {
+      if (user.employeeId || user.id || user.empId || user.emp_id)
+        return user.employeeId || user.id || user.empId || user.emp_id || null;
+    }
+    try {
+      const rawDashboard = localStorage.getItem("dashboardData");
+      if (rawDashboard) {
+        const parsed = JSON.parse(rawDashboard);
+        if (parsed) {
+          return (
+            parsed.employeeId ||
+            parsed.employee_id ||
+            parsed.id ||
+            parsed.empId ||
+            parsed.emp_id ||
+            null
+          );
+        }
+      }
+    } catch (e) {}
+    return (
+      localStorage.getItem("x-employee-id") ||
+      localStorage.getItem("employeeId") ||
+      localStorage.getItem("employee_id") ||
+      null
+    );
+  }, [user]);
+
+  const loggedEmployeeId = readLoggedEmployeeId();
+
+  // Read org id preferring context
+  const readOrgId = useCallback(() => {
+    if (user) {
+      return (
+        user.orgId ||
+        user.raw?.org_id ||
+        user.org_id ||
+        user.organization_id ||
+        null
+      );
+    }
+    try {
+      const rawDashboard = localStorage.getItem("dashboardData");
+      if (rawDashboard) {
+        const parsed = JSON.parse(rawDashboard);
+        if (parsed)
+          return (
+            parsed.orgId || parsed.org_id || parsed.organization_id || null
+          );
+      }
+    } catch (e) {}
+    return (
+      localStorage.getItem("x-org-id") ||
+      localStorage.getItem("orgId") ||
+      localStorage.getItem("org_id") ||
+      null
+    );
+  }, [user]);
+
+  const buildHeaders = useCallback(() => {
+    const headers = {};
+    if (apiKey) headers["x-api-key"] = apiKey;
+    if (authToken) headers["Authorization"] = `Bearer ${authToken}`;
+    const lid = readLoggedEmployeeId();
+    if (lid) headers["x-employee-id"] = String(lid);
+    const oid = readOrgId();
+    if (oid) headers["x-org-id"] = String(oid);
+    return headers;
+  }, [apiKey, authToken, readLoggedEmployeeId, readOrgId]);
 
   const parentControlsMode = typeof onModeChange === "function";
   const shouldShowInternalModeToggle = !hideModeToggle && !parentControlsMode;
@@ -60,7 +162,8 @@ const ParticipantSelection = ({
     "/employees/list",
     "/employee/list",
     "/employees/all",
-  ].map((p) => `${BACKEND}${p}`);
+    "/api/employees",
+  ].map((p) => (BACKEND ? `${BACKEND}${p}` : p));
 
   const tryFetchFromCandidate = async (url, params, cancelToken) => {
     try {
@@ -70,14 +173,29 @@ const ParticipantSelection = ({
         headers: buildHeaders(),
         cancelToken,
       });
-
-      return (
-        res.data?.data ||
-        res.data?.employees ||
-        res.data?.result ||
-        (Array.isArray(res.data) ? res.data : null)
-      );
+      if (Array.isArray(res.data)) return res.data;
+      if (Array.isArray(res.data?.data)) return res.data.data;
+      if (Array.isArray(res.data?.employees)) return res.data.employees;
+      if (Array.isArray(res.data?.result)) return res.data.result;
+      return null;
     } catch (err) {
+      // Propagate specific missing header error so caller can handle it
+      if (err?.response?.data) {
+        const body = err.response.data;
+        const bodyMsg =
+          (typeof body === "string" && body) ||
+          body?.error ||
+          body?.message ||
+          null;
+        if (
+          bodyMsg &&
+          String(bodyMsg).toLowerCase().includes("missing x-employee-id")
+        ) {
+          const e = new Error("Missing x-employee-id header");
+          e.code = "MISSING_X_EMPLOYEE_ID";
+          throw e;
+        }
+      }
       if (axios.isCancel(err)) throw err;
       return null;
     }
@@ -85,86 +203,224 @@ const ParticipantSelection = ({
 
   const fetchEmployees = useCallback(
     async (q = "") => {
-      if (!hydrated || !loggedEmployeeId) return;
-
       if (cancelRef.current) {
-        cancelRef.current.cancel("cancel previous");
+        try {
+          cancelRef.current.cancel("cancel previous");
+        } catch {}
       }
-
       cancelRef.current = axios.CancelToken.source();
       setLoading(true);
       setError(null);
 
-      const params = {
-        ...(q ? { q, search: q } : {}),
-        ...(departmentId ? { departmentId } : {}),
-        ...(limit ? { limit } : {}),
-      };
+      const params = {};
+      if (q && String(q).trim()) {
+        params.q = String(q).trim();
+        params.search = String(q).trim();
+      }
+      if (departmentId) params.departmentId = departmentId;
+      if (limit) params.limit = limit;
 
       try {
         let results = null;
-
         for (const url of employeeEndpoints) {
-          results = await tryFetchFromCandidate(
-            url,
-            params,
-            cancelRef.current.token
-          );
-          if (Array.isArray(results) && results.length) break;
+          try {
+            results = await tryFetchFromCandidate(
+              url,
+              params,
+              cancelRef.current.token
+            );
+            if (results && results.length) break;
+          } catch (err) {
+            if (err?.code === "MISSING_X_EMPLOYEE_ID") {
+              setEmployees([]);
+              setError(
+                "Server requires x-employee-id header for this request. Please ensure you're logged in."
+              );
+              setLoading(false);
+              return;
+            }
+            if (axios.isCancel(err)) throw err;
+
+            console.warn("endpoint failed:", url, err?.message || err);
+          }
         }
 
         if (!results) {
           setEmployees([]);
-          setError("No employees found.");
+          setError("No employees found (tried multiple endpoints).");
+          setLoading(false);
           return;
         }
 
-        setEmployees(
-          results.map((r) => ({
-            employee_id: r.employee_id || r.id || r.employeeId || r.empId,
-            name:
-              r.name ||
-              r.employee_name ||
-              `${r.first_name || ""} ${r.last_name || ""}`.trim(),
+        const mapped = results.map((r) => {
+          const id = r.employee_id || r.id || r.employeeId || r.empId;
+          const name =
+            r.name ||
+            r.employee_name ||
+            `${r.first_name || ""} ${r.last_name || ""}`.trim() ||
+            String(id || "");
+          return {
+            employee_id: id,
+            name,
             position: r.position || r.designation || "",
             department_name: r.department_name || r.department || "",
             raw: r,
-          }))
-        );
+          };
+        });
+        setEmployees(mapped);
+        setError(null);
       } catch (err) {
         if (!axios.isCancel(err)) {
-          console.error("fetchEmployees error:", err);
+          console.error("Error fetching employees:", err);
+          setEmployees([]);
           setError("Failed to load employees.");
         }
       } finally {
         setLoading(false);
       }
     },
-    [hydrated, loggedEmployeeId, departmentId, limit]
+    [departmentId, limit, BACKEND, employeeEndpoints, buildHeaders]
   );
 
   useEffect(() => {
-    if (!visible) return;
     if (searchTimer.current) clearTimeout(searchTimer.current);
-
     searchTimer.current = setTimeout(() => {
       fetchEmployees(query);
-    }, 250);
-
-    return () => clearTimeout(searchTimer.current);
-  }, [query, fetchEmployees, visible]);
+    }, 260);
+    return () => {
+      if (searchTimer.current) clearTimeout(searchTimer.current);
+    };
+  }, [query, fetchEmployees]);
 
   useEffect(() => {
+    // initial load when department changes
     fetchEmployees("");
-  }, [departmentId, hydrated]);
+  }, [departmentId, fetchEmployees]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (selectionMode) setMode(selectionMode);
   }, [selectionMode]);
 
+  const selectionIdsFromArray = (arr) =>
+    (arr || [])
+      .filter(Boolean)
+      .map((it) =>
+        typeof it === "object" ? it.employee_id || it.id || it.employeeId : it
+      )
+      .filter(Boolean)
+      .map(String);
+
+  const areIdSetsEqual = (aArr, bArr) => {
+    const a = selectionIdsFromArray(aArr);
+    const b = selectionIdsFromArray(bArr);
+    if (a.length !== b.length) return false;
+    const aSet = new Set(a);
+    for (const x of b) if (!aSet.has(String(x))) return false;
+    return true;
+  };
+
   useEffect(() => {
-    onSelectionChange?.(selected.slice());
-  }, [selected]);
+    if (!Array.isArray(initialSelection)) return;
+
+    const normalized = initialSelection
+      .filter(Boolean)
+      .map((it) =>
+        typeof it === "object"
+          ? {
+              employee_id: it.employee_id || it.id || it.employeeId,
+              name: it.name || it.employee_name || "",
+            }
+          : { employee_id: it, name: String(it) }
+      )
+      .filter((n) => n.employee_id);
+
+    setSelected(normalized);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // run once
+
+  useEffect(() => {
+    if (!employees || employees.length === 0) return;
+    let changed = false;
+    const empMap = new Map();
+    for (const e of employees) {
+      if (e && e.employee_id) empMap.set(String(e.employee_id), e.name || "");
+    }
+    const patched = selected.map((s) => {
+      const id = String(s.employee_id);
+      const realName = empMap.get(id);
+      if (realName && realName !== s.name) {
+        changed = true;
+        return { ...s, name: realName };
+      }
+      return s;
+    });
+    if (changed) setSelected(patched);
+  }, [employees]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (typeof onModeChange === "function") onModeChange(mode);
+  }, [mode]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (typeof onSelectionChange === "function") {
+      onSelectionChange(selected.slice());
+    }
+  }, [selected]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handleModeChange = (newMode) => {
+    setMode(newMode);
+    if (!parentControlsMode && typeof onModeChange === "function")
+      onModeChange(newMode);
+    if (newMode === "single" && selected.length > 1) setSelected([selected[0]]);
+  };
+
+  const handleSelectSingle = (emp) => {
+    if (!emp) return;
+    const obj = {
+      employee_id: emp.employee_id || emp.id || emp.employeeId,
+      name:
+        emp.name ||
+        emp.employee_name ||
+        String(emp.employee_id || emp.id || emp.employeeId),
+    };
+    setSelected([obj]);
+  };
+
+  const handleToggleGroup = (emp) => {
+    if (!emp) return;
+    const empId = emp.employee_id || emp.id || emp.employeeId;
+    const existsIndex = selected.findIndex(
+      (s) => String(s.employee_id) === String(empId)
+    );
+    if (existsIndex !== -1) {
+      setSelected((prev) =>
+        prev.filter((p) => String(p.employee_id) !== String(empId))
+      );
+    } else {
+      const obj = {
+        employee_id: empId,
+        name: emp.name || emp.employee_name || String(empId),
+      };
+      setSelected((prev) => {
+        if (prev.some((p) => String(p.employee_id) === String(empId)))
+          return prev;
+        return [...prev, obj];
+      });
+    }
+  };
+
+  const handleRemoveChip = (emp) => {
+    setSelected((prev) =>
+      prev.filter((p) => String(p.employee_id) !== String(emp.employee_id))
+    );
+  };
+
+  const searchInputRef = useRef(null);
+  const handleKeyDownSearch = (e) => {
+    if (e.key === "Enter") {
+      if (employees && employees.length) handleSelectSingle(employees[0]);
+    }
+  };
 
   if (!visible) return null;
 

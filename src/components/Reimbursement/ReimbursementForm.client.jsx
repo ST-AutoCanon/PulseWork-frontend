@@ -1,10 +1,11 @@
 "use client";
 
-import React, { useMemo, useRef } from "react";
+import React, { useMemo, useRef, useCallback } from "react";
 import { MdOutlineCancel } from "react-icons/md";
 import ClaimFields from "./ClaimFields.client";
 import "./Reimbursement.css";
 import "./ParticipantSelection.css";
+import { useAuth } from "../../context/AuthProvider.client";
 
 const ReimbursementForm = (props) => {
   const {
@@ -26,13 +27,54 @@ const ReimbursementForm = (props) => {
     participants = [],
   } = props;
 
+  const { user } = useAuth();
+
+  // buildHeaders helper included so the component has the same header construction
+  // behaviour as other reimbursement components. Not used directly here but helpful
+  // for consistency and future AJAX additions.
+  const buildHeaders = useCallback(() => {
+    const headers = {};
+    const apiKey =
+      process.env.NEXT_PUBLIC_API_KEY || process.env.REACT_APP_API_KEY || "";
+    const token =
+      localStorage.getItem("token") || localStorage.getItem("authToken");
+    if (apiKey) headers["x-api-key"] = apiKey;
+    if (token) headers["Authorization"] = `Bearer ${token}`;
+
+    const actorId =
+      user?.employeeId ||
+      user?.id ||
+      (() => {
+        try {
+          const raw = localStorage.getItem("dashboardData");
+          if (!raw) return null;
+          const parsed = JSON.parse(raw);
+          return (
+            parsed?.employeeId || parsed?.employee_id || parsed?.id || null
+          );
+        } catch (e) {
+          return null;
+        }
+      })();
+    if (actorId) headers["x-employee-id"] = String(actorId);
+
+    const orgId =
+      user?.orgId ||
+      user?.raw?.org_id ||
+      user?.org_id ||
+      user?.organization_id ||
+      localStorage.getItem("x-org-id") ||
+      localStorage.getItem("orgId") ||
+      null;
+    if (orgId) headers["x-org-id"] = String(orgId);
+
+    return headers;
+  }, [user]);
+
   const uid = useMemo(() => Math.random().toString(36).slice(2, 8), []);
   const formRef = useRef(null);
   const modalContentRef = useRef(null);
 
-  /**
-   * Invoice validation (main + line level)
-   */
   const { cleanedInvoices, hasEmptyInvoice, duplicateInvoice } = useMemo(() => {
     const ct = formData.claim_type;
     const raw = [];
@@ -76,24 +118,24 @@ const ReimbursementForm = (props) => {
       seen.add(k);
     }
 
+    const nonEmpty = cleaned.filter(Boolean);
+
     return {
-      cleanedInvoices: cleaned.filter(Boolean),
+      cleanedInvoices: nonEmpty,
       hasEmptyInvoice: hasEmpty,
       duplicateInvoice: dup,
     };
   }, [formData.invoices, formData.claim_rows, formData.claim_type]);
 
-  const invoicesValid =
-    cleanedInvoices.length === 0
-      ? !hasEmptyInvoice
-      : !hasEmptyInvoice && !duplicateInvoice;
+  let invoicesValid;
+  if (cleanedInvoices.length === 0) {
+    invoicesValid = !hasEmptyInvoice;
+  } else {
+    invoicesValid = !hasEmptyInvoice && !duplicateInvoice;
+  }
 
-  /**
-   * Initial participant selection for ParticipantSelection child
-   */
   const initialSelectionForChild = useMemo(() => {
     if (!Array.isArray(participants)) return [];
-
     return participants
       .filter(Boolean)
       .map((p) => {
@@ -103,14 +145,12 @@ const ReimbursementForm = (props) => {
             name: p.name || p.employee_name || "",
           };
         }
-
         const found = (employeeOptions || []).find(
           (e) =>
             String(e.employee_id) === String(p) ||
             String(e.id) === String(p) ||
             String(e.empId) === String(p)
         );
-
         return {
           employee_id: p,
           name: found ? found.name : String(p),
@@ -119,9 +159,6 @@ const ReimbursementForm = (props) => {
       .filter((x) => x.employee_id);
   }, [participants, employeeOptions]);
 
-  /**
-   * Submit handler with native validity reporting
-   */
   const onFormSubmit = (e) => {
     if (invoicesValid) {
       handleSubmit(e);
@@ -135,7 +172,6 @@ const ReimbursementForm = (props) => {
 
     if (duplicateInvoice || hasEmptyInvoice) {
       const ct = formData.claim_type;
-
       const mainInvs = Array.isArray(formData.invoices)
         ? formData.invoices
         : formData.invoices
@@ -144,70 +180,61 @@ const ReimbursementForm = (props) => {
 
       for (let i = 0; i < mainInvs.length; i++) {
         const v = (mainInvs[i] || "").toString().trim();
+        const input =
+          formEl.querySelector(`[name="invoice_main_${i}"]`) ||
+          formEl.querySelector(".invoice-input");
 
-        if (hasEmptyInvoice && v === "") {
-          const input =
-            formEl.querySelector(`[name="invoice_main_${i}"]`) ||
-            formEl.querySelector(".invoice-input");
-          input?.reportValidity?.();
-          input?.focus?.();
+        if (hasEmptyInvoice && v === "" && input) {
+          input.reportValidity?.();
+          input.focus?.();
           return;
         }
 
         if (
           duplicateInvoice &&
-          v.toLowerCase() === duplicateInvoice.toLowerCase()
+          v.toLowerCase() === duplicateInvoice.toLowerCase() &&
+          input
         ) {
-          const input =
-            formEl.querySelector(`[name="invoice_main_${i}"]`) ||
-            formEl.querySelector(".invoice-input");
-
-          if (input) {
-            input.setCustomValidity(
-              `Duplicate invoice in form: "${duplicateInvoice}"`
-            );
-            input.reportValidity?.();
-            input.focus?.();
-            setTimeout(() => input.setCustomValidity(""), 1500);
-            return;
-          }
+          input.setCustomValidity(
+            `Duplicate invoice in form: "${duplicateInvoice}"`
+          );
+          input.reportValidity?.();
+          input.focus?.();
+          setTimeout(() => input.setCustomValidity(""), 1500);
+          return;
         }
       }
 
-      if (ct && formData.claim_rows?.[ct]) {
-        const rows = formData.claim_rows[ct];
-        for (let r = 0; r < rows.length; r++) {
-          const invs = Array.isArray(rows[r].invoices) ? rows[r].invoices : [];
+      if (ct && Array.isArray(formData.claim_rows?.[ct])) {
+        for (let r = 0; r < formData.claim_rows[ct].length; r++) {
+          const invs = Array.isArray(formData.claim_rows[ct][r].invoices)
+            ? formData.claim_rows[ct][r].invoices
+            : [];
 
           for (let j = 0; j < invs.length; j++) {
             const v = (invs[j] || "").toString().trim();
+            const input =
+              formEl.querySelector(`[name="invoice_${r}_${j}"]`) ||
+              formEl.querySelector(".invoice-input");
 
-            if (hasEmptyInvoice && v === "") {
-              const input =
-                formEl.querySelector(`[name="invoice_${r}_${j}"]`) ||
-                formEl.querySelector(".invoice-input");
-              input?.reportValidity?.();
-              input?.focus?.();
+            if (hasEmptyInvoice && v === "" && input) {
+              input.reportValidity?.();
+              input.focus?.();
               return;
             }
 
             if (
               duplicateInvoice &&
-              v.toLowerCase() === duplicateInvoice.toLowerCase()
+              v.toLowerCase() === duplicateInvoice.toLowerCase() &&
+              input
             ) {
-              const input =
-                formEl.querySelector(`[name="invoice_${r}_${j}"]`) ||
-                formEl.querySelector(".invoice-input");
-
-              if (input) {
-                input.setCustomValidity(
-                  `Duplicate invoice in form: "${duplicateInvoice}"`
-                );
-                input.reportValidity?.();
-                input.focus?.();
-                setTimeout(() => input.setCustomValidity(""), 1500);
-                return;
-              }
+              input.setCustomValidity(
+                `Duplicate invoice in form: "${duplicateInvoice}"`
+              );
+              input.reportValidity?.();
+              input.focus?.();
+              setTimeout(() => input.setCustomValidity(""), 1500);
+              return;
             }
           }
         }
@@ -234,7 +261,6 @@ const ReimbursementForm = (props) => {
           ref={formRef}
           className="reimbursement-form"
           onSubmit={onFormSubmit}
-          noValidate
         >
           <ClaimFields
             claimTypes={claimTypes}

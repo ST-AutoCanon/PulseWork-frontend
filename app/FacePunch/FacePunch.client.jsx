@@ -26,9 +26,6 @@ export default function FacePunch() {
   const API_KEY = process.env.NEXT_PUBLIC_API_KEY;
   const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL?.replace(/\/$/, "");
 
-  /** ---------------------------------------------
-   * Load employeeId safely (Next.js compatible)
-   --------------------------------------------- */
   useEffect(() => {
     const stored = JSON.parse(localStorage.getItem("dashboardData") || "{}");
     if (stored?.employeeId) {
@@ -36,9 +33,6 @@ export default function FacePunch() {
     }
   }, []);
 
-  /** ---------------------------------------------
-   * Load face-api models + start camera
-   --------------------------------------------- */
   useEffect(() => {
     let mounted = true;
 
@@ -54,7 +48,9 @@ export default function FacePunch() {
 
         if (!mounted) return;
 
-        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: true,
+        });
         streamRef.current = stream;
 
         if (videoRef.current) {
@@ -84,9 +80,6 @@ export default function FacePunch() {
     };
   }, []);
 
-  /** ---------------------------------------------
-   * Face detection loop
-   --------------------------------------------- */
   useEffect(() => {
     if (!isVideoReady || !employeeId) return;
 
@@ -113,7 +106,6 @@ export default function FacePunch() {
           .withFaceLandmarks()
           .withFaceDescriptors();
 
-        /** Draw box */
         if (canvasRef.current && videoRef.current) {
           const canvas = canvasRef.current;
           const size = {
@@ -129,11 +121,9 @@ export default function FacePunch() {
         if (detections.length === 1) {
           const d = detections[0];
           const score = d.detection.score;
-          const area =
-            d.detection.box.width * d.detection.box.height;
+          const area = d.detection.box.width * d.detection.box.height;
           const frameArea =
-            videoRef.current.videoWidth *
-            videoRef.current.videoHeight;
+            videoRef.current.videoWidth * videoRef.current.videoHeight;
 
           if (score < 0.85) {
             toast.warn("Face not clear", { autoClose: 2000 });
@@ -161,9 +151,6 @@ export default function FacePunch() {
     return () => clearInterval(intervalId);
   }, [isVideoReady, employeeId, isProcessing, lastPunchTime]);
 
-  /** ---------------------------------------------
-   * API helpers
-   --------------------------------------------- */
   const getLastPunchStatus = async (descriptor) => {
     try {
       const res = await axios.post(
@@ -186,9 +173,6 @@ export default function FacePunch() {
     window.speechSynthesis.speak(u);
   };
 
-  /** ---------------------------------------------
-   * Capture + punch
-   --------------------------------------------- */
   const captureAndPunch = async (detection) => {
     const descriptor = Array.from(detection.descriptor);
 
@@ -210,7 +194,7 @@ export default function FacePunch() {
           headers: {
             "x-api-key": API_KEY,
             "x-employee-id": employeeId,
-              "x-org-id": orgId,
+            "x-org-id": orgId,
           },
         }
       );
@@ -238,9 +222,6 @@ export default function FacePunch() {
     }
   };
 
-  /** ---------------------------------------------
-   * UI
-   --------------------------------------------- */
   return (
     <>
       <div className="face-punch-container">

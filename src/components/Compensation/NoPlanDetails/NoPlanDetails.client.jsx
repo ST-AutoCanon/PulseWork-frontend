@@ -6,14 +6,13 @@ import "./NoPlanDetails.css";
 
 const NoPlanDetails = ({
   allEmployees = [],
-  employees = [], // employees who already have a plan
+  employees = [],
   searchTerm = "",
   debouncedSetSearchTerm,
   handleBackToMain,
   openAssignModal,
   isLoading = false,
 }) => {
-  // Employees who do NOT have any compensation plan assigned
   const employeesWithoutPlans = allEmployees.filter((emp) => {
     const empId = String(emp.employee_id);
     return !employees.some(
@@ -21,7 +20,6 @@ const NoPlanDetails = ({
     );
   });
 
-  // Filter by search term
   const filteredEmployees = employeesWithoutPlans.filter((emp) => {
     const search = searchTerm.toLowerCase();
     return (
@@ -32,7 +30,6 @@ const NoPlanDetails = ({
 
   return (
     <div className="npd-container">
-      {/* Header */}
       <div className="npd-header">
         <button
           className="npd-back-button"
@@ -57,7 +54,6 @@ const NoPlanDetails = ({
         </h1>
       </div>
 
-      {/* Search Bar */}
       <div className="npd-search-container">
         <input
           type="text"
@@ -70,7 +66,6 @@ const NoPlanDetails = ({
         <FaSearch className="npd-search-icon" />
       </div>
 
-      {/* Content */}
       {isLoading ? (
         <div className="npd-loading" role="status">
           Loading employees...
@@ -97,7 +92,9 @@ const NoPlanDetails = ({
                   <td className="npd-table-cell npd-align-center">
                     <button
                       className="npd-assign-button"
-                      onClick={() => openAssignModal(emp.employee_id, emp.full_name)}
+                      onClick={() =>
+                        openAssignModal(emp.employee_id, emp.full_name)
+                      }
                     >
                       Assign Plan
                     </button>

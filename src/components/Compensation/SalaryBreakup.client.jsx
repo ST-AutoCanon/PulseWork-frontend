@@ -80,11 +80,9 @@ const SalaryBreakup = () => {
   const tableRef = useRef(null);
   const rowsPerPage = 7;
 
-  // Use NEXT_PUBLIC environment variables for Next.js
   const API_KEY = process.env.NEXT_PUBLIC_API_KEY;
   const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
 
-  // safer localStorage access (client-only, but this file is "use client")
   const meId = (() => {
     try {
       const dash = JSON.parse(localStorage.getItem("dashboardData") || "{}");
@@ -94,7 +92,6 @@ const SalaryBreakup = () => {
     }
   })();
 
-  // Debounced search term setter
   const debouncedSetSearchTerm = useCallback(
     debounce((value) => {
       setSearchTerm(value);
@@ -182,7 +179,11 @@ const SalaryBreakup = () => {
     try {
       const url = `${BACKEND_URL}/api/compensations/list`;
       const response = await axios.get(url, {
-        headers: { withCredentials: true,"x-api-key": API_KEY, "x-employee-id": meId },
+        headers: {
+          withCredentials: true,
+          "x-api-key": API_KEY,
+          "x-employee-id": meId,
+        },
       });
       if (response.data.success) {
         const validCompensations = Array.isArray(response.data.data)
@@ -203,7 +204,9 @@ const SalaryBreakup = () => {
           error: "",
         });
       } else {
-        throw new Error(response.data.message || "Failed to fetch compensations");
+        throw new Error(
+          response.data.message || "Failed to fetch compensations"
+        );
       }
     } catch (error) {
       openMessageModal(
@@ -270,19 +273,29 @@ const SalaryBreakup = () => {
       selectedOption,
     } = bonusModal;
     if (!selectedOption) {
-      setBonusModal({ ...bonusModal, error: "Please select one bonus option." });
+      setBonusModal({
+        ...bonusModal,
+        error: "Please select one bonus option.",
+      });
       return;
     }
     if (
       selectedOption === "percentageCtc" &&
-      (!percentageCtc || parseFloat(percentageCtc) <= 0 || parseFloat(percentageCtc) > 100)
+      (!percentageCtc ||
+        parseFloat(percentageCtc) <= 0 ||
+        parseFloat(percentageCtc) > 100)
     ) {
-      setBonusModal({ ...bonusModal, error: "Please enter a valid CTC percentage (0-100)." });
+      setBonusModal({
+        ...bonusModal,
+        error: "Please enter a valid CTC percentage (0-100).",
+      });
       return;
     }
     if (
       selectedOption === "monthlySalaryCount" &&
-      (!monthlySalaryCount || parseInt(monthlySalaryCount) < 1 || parseInt(monthlySalaryCount) > 10)
+      (!monthlySalaryCount ||
+        parseInt(monthlySalaryCount) < 1 ||
+        parseInt(monthlySalaryCount) > 10)
     ) {
       setBonusModal({
         ...bonusModal,
@@ -310,15 +323,21 @@ const SalaryBreakup = () => {
     }
     const applicableMonth = `${selectedYear}-${selectedMonth.padStart(2, "0")}`;
     const payload = {
-      percentageCtc: selectedOption === "percentageCtc" ? parseFloat(percentageCtc) : null,
-      percentageMonthlySalary: selectedOption === "monthlySalaryCount" ? parseFloat(monthlySalaryCount) * 100 : null,
-      fixedAmount: selectedOption === "fixedAmount" ? parseFloat(fixedAmount) : null,
+      percentageCtc:
+        selectedOption === "percentageCtc" ? parseFloat(percentageCtc) : null,
+      percentageMonthlySalary:
+        selectedOption === "monthlySalaryCount"
+          ? parseFloat(monthlySalaryCount) * 100
+          : null,
+      fixedAmount:
+        selectedOption === "fixedAmount" ? parseFloat(fixedAmount) : null,
       applicableMonth,
     };
     try {
       setIsLoading(true);
       const url = `${BACKEND_URL}/api/compensation/add-bonus-bulk`;
-      const response = await axios.post(url, payload, {withCredentials: true,
+      const response = await axios.post(url, payload, {
+        withCredentials: true,
         headers: {
           "x-api-key": API_KEY,
           "x-employee-id": meId,
@@ -329,9 +348,12 @@ const SalaryBreakup = () => {
           "Success",
           `Bonus successfully added for ${selectedMonth} ${selectedYear}.`
         );
-        const bonusResponse = await axios.get(`${BACKEND_URL}/api/compensation/bonus-list`, {
-          headers: { "x-api-key": API_KEY, "x-employee-id": meId },
-        });
+        const bonusResponse = await axios.get(
+          `${BACKEND_URL}/api/compensation/bonus-list`,
+          {
+            headers: { "x-api-key": API_KEY, "x-employee-id": meId },
+          }
+        );
         if (bonusResponse.data.success) {
           setBonusRecords(bonusResponse.data.data || []);
         }
@@ -353,7 +375,8 @@ const SalaryBreakup = () => {
   };
 
   const handleAdvanceSubmit = async () => {
-    const { advanceAmount, recoveryMonths, employeeId, applicableMonth } = advanceModal;
+    const { advanceAmount, recoveryMonths, employeeId, applicableMonth } =
+      advanceModal;
     if (!advanceAmount || parseFloat(advanceAmount) <= 0) {
       setAdvanceModal({
         ...advanceModal,
@@ -369,7 +392,10 @@ const SalaryBreakup = () => {
       return;
     }
     if (!applicableMonth) {
-      setAdvanceModal({ ...advanceModal, error: "Please select an applicable month." });
+      setAdvanceModal({
+        ...advanceModal,
+        error: "Please select an applicable month.",
+      });
       return;
     }
     const monthlySalary = getMonthlySalary(employeeId, employees);
@@ -377,7 +403,9 @@ const SalaryBreakup = () => {
     if (parseFloat(advanceAmount) > threeMonthsSalary) {
       setAdvanceModal({
         ...advanceModal,
-        error: `Advance amount (₹${parseFloat(advanceAmount).toLocaleString()}) cannot exceed three months' salary (₹${threeMonthsSalary.toLocaleString()}).`,
+        error: `Advance amount (₹${parseFloat(
+          advanceAmount
+        ).toLocaleString()}) cannot exceed three months' salary (₹${threeMonthsSalary.toLocaleString()}).`,
       });
       return;
     }
@@ -421,7 +449,17 @@ const SalaryBreakup = () => {
       const monthsLeft = (endYear - year) * 12 + (endMonth - month) + 1;
       setAdvanceModal({
         ...advanceModal,
-        error: `An active advance of ₹${parseFloat(activeAdvance.advance_amount).toLocaleString()} is already in progress for this employee starting ${activeAdvance.applicable_months}, with ${monthsLeft} iteration(s) left until ${new Date(endYear, endMonth - 1).toLocaleString("en-US", { month: "long", year: "numeric" })}. No new advance can be added until the current one is fully recovered.`,
+        error: `An active advance of ₹${parseFloat(
+          activeAdvance.advance_amount
+        ).toLocaleString()} is already in progress for this employee starting ${
+          activeAdvance.applicable_months
+        }, with ${monthsLeft} iteration(s) left until ${new Date(
+          endYear,
+          endMonth - 1
+        ).toLocaleString("en-US", {
+          month: "long",
+          year: "numeric",
+        })}. No new advance can be added until the current one is fully recovered.`,
       });
       return;
     }
@@ -436,18 +474,28 @@ const SalaryBreakup = () => {
           recoveryMonths: parseInt(recoveryMonths),
           applicableMonth,
         },
-        {withCredentials: true,
+        {
+          withCredentials: true,
           headers: { "x-api-key": API_KEY, "x-employee-id": meId },
         }
       );
       if (response.data.success) {
         openMessageModal(
           "Success",
-          `Advance of ₹${parseFloat(advanceAmount).toLocaleString()} added successfully for ${advanceModal.fullName}.`
+          `Advance of ₹${parseFloat(
+            advanceAmount
+          ).toLocaleString()} added successfully for ${advanceModal.fullName}.`
         );
-        const advancesResponse = await axios.get(`${BACKEND_URL}/api/compensation/advance-details`, {
-          headers: {withCredentials: true, "x-api-key": API_KEY, "x-employee-id": meId },
-        });
+        const advancesResponse = await axios.get(
+          `${BACKEND_URL}/api/compensation/advance-details`,
+          {
+            headers: {
+              withCredentials: true,
+              "x-api-key": API_KEY,
+              "x-employee-id": meId,
+            },
+          }
+        );
         if (advancesResponse.data.success) {
           setAdvances(advancesResponse.data.data || []);
         }
@@ -461,7 +509,8 @@ const SalaryBreakup = () => {
     } catch (error) {
       setAdvanceModal({
         ...advanceModal,
-        error: error.response?.data?.message || error.message || "Network error",
+        error:
+          error.response?.data?.message || error.message || "Network error",
       });
     } finally {
       setIsLoading(false);
@@ -471,7 +520,10 @@ const SalaryBreakup = () => {
   const handleAssignSubmit = async () => {
     const { selectedCompensation, employeeId, fullName } = assignModal;
     if (!selectedCompensation) {
-      setAssignModal({ ...assignModal, error: "Please select a compensation plan." });
+      setAssignModal({
+        ...assignModal,
+        error: "Please select a compensation plan.",
+      });
       return;
     }
     const compensation = assignModal.compensationList.find(
@@ -480,7 +532,8 @@ const SalaryBreakup = () => {
     if (!compensation || isNaN(parseInt(selectedCompensation))) {
       setAssignModal({
         ...assignModal,
-        error: "Invalid compensation plan selected. Please select a valid plan.",
+        error:
+          "Invalid compensation plan selected. Please select a valid plan.",
       });
       return;
     }
@@ -488,12 +541,18 @@ const SalaryBreakup = () => {
       setIsLoading(true);
       const url = `${BACKEND_URL}/api/compensation/assigned`;
       const headers = { "x-api-key": API_KEY, "x-employee-id": meId };
-      const response = await axios.get(url, {withCredentials: true, headers });
+      const response = await axios.get(url, { withCredentials: true, headers });
       if (!response.data.success) {
-        throw new Error(response.data.message || "Failed to fetch assigned employees");
+        throw new Error(
+          response.data.message || "Failed to fetch assigned employees"
+        );
       }
-      const assignedEmployees = Array.isArray(response.data.data) ? response.data.data : [];
-      const assignedEmployee = assignedEmployees.find((emp) => emp.employee_id === employeeId);
+      const assignedEmployees = Array.isArray(response.data.data)
+        ? response.data.data
+        : [];
+      const assignedEmployee = assignedEmployees.find(
+        (emp) => emp.employee_id === employeeId
+      );
       if (assignedEmployee) {
         setAssignModal({
           ...assignModal,
@@ -510,39 +569,56 @@ const SalaryBreakup = () => {
         assignedDate: new Date().toISOString().split("T")[0],
         departmentIds: [],
       };
-      const assignResponse = await axios.post(assignUrl, payload, {withCredentials: true, headers });
+      const assignResponse = await axios.post(assignUrl, payload, {
+        withCredentials: true,
+        headers,
+      });
       if (assignResponse.data.success) {
-        openMessageModal("Success", `Compensation assigned successfully to ${fullName}!`);
-        // Re-fetch compensation plans
-        const compensationsResponse = await axios.get(`${BACKEND_URL}/api/compensations/list`, { withCredentials: true,headers });
+        openMessageModal(
+          "Success",
+          `Compensation assigned successfully to ${fullName}!`
+        );
+        const compensationsResponse = await axios.get(
+          `${BACKEND_URL}/api/compensations/list`,
+          { withCredentials: true, headers }
+        );
         const compensationMap = new Map();
         if (compensationsResponse.data.success) {
           compensationsResponse.data.data.forEach((comp) => {
             compensationMap.set(comp.compensation_plan_name, comp.plan_data);
           });
         }
-        // Re-fetch employees with assigned plans
-        const employeesResponse = await axios.get(`${BACKEND_URL}/api/compensation/assigned`, { withCredentials: true,headers });
+        const employeesResponse = await axios.get(
+          `${BACKEND_URL}/api/compensation/assigned`,
+          { withCredentials: true, headers }
+        );
         if (employeesResponse.data.success) {
           const enrichedEmployees = employeesResponse.data.data.map((emp) => ({
             ...emp,
-            plan_data: compensationMap.get(emp.compensation_plan_name) || emp.plan_data,
+            plan_data:
+              compensationMap.get(emp.compensation_plan_name) || emp.plan_data,
           }));
           setEmployees(enrichedEmployees || []);
         }
-        // Re-fetch all employees
-        const allEmployeesResponse = await axios.get(`${BACKEND_URL}/api/employees/names`, { withCredentials: true,headers });
+        const allEmployeesResponse = await axios.get(
+          `${BACKEND_URL}/api/employees/names`,
+          { withCredentials: true, headers }
+        );
         if (allEmployeesResponse.data.success) {
           setAllEmployees(allEmployeesResponse.data.data || []);
         }
         closeAssignModal();
       } else {
-        throw new Error(assignResponse.data.message || "Assignment unsuccessful");
+        throw new Error(
+          assignResponse.data.message || "Assignment unsuccessful"
+        );
       }
     } catch (error) {
       setAssignModal({
         ...assignModal,
-        error: `Failed to assign compensation: ${error.response?.data?.message || error.message || "Network error"}`,
+        error: `Failed to assign compensation: ${
+          error.response?.data?.message || error.message || "Network error"
+        }`,
       });
     } finally {
       setIsLoading(false);
@@ -557,82 +633,74 @@ const SalaryBreakup = () => {
         const baseUrl = BACKEND_URL;
         const headers = { "x-api-key": API_KEY, "x-employee-id": meId };
 
-        // Fetch all employees
-        const allEmployeesResponse = await axios.get(`${baseUrl}/api/employees/names`, {withCredentials: true, headers });
+        const allEmployeesResponse = await axios.get(
+          `${baseUrl}/api/employees/names`,
+          { withCredentials: true, headers }
+        );
         if (allEmployeesResponse.data.success) {
           const employeesList = allEmployeesResponse.data.data || [];
           setAllEmployees(employeesList);
-          console.log(
-            "All employees fetched:",
-            employeesList.map((emp) => ({
-              employee_id: emp.employee_id,
-              full_name: emp.full_name,
-            }))
-          );
         } else {
-          throw new Error(allEmployeesResponse.data.message || "Failed to fetch all employees");
+          throw new Error(
+            allEmployeesResponse.data.message || "Failed to fetch all employees"
+          );
         }
 
-        // Fetch compensations
-        const compensationsResponse = await axios.get(`${baseUrl}/api/compensations/list`, { withCredentials: true,headers });
+        const compensationsResponse = await axios.get(
+          `${baseUrl}/api/compensations/list`,
+          { withCredentials: true, headers }
+        );
         const compensationMap = new Map();
         if (compensationsResponse.data.success) {
           compensationsResponse.data.data.forEach((comp) => {
             compensationMap.set(comp.compensation_plan_name, comp.plan_data);
           });
         } else {
-          throw new Error(compensationsResponse.data.message || "Failed to fetch compensations");
+          throw new Error(
+            compensationsResponse.data.message ||
+              "Failed to fetch compensations"
+          );
         }
 
-        // Fetch assigned employees
-        const employeesResponse = await axios.get(`${baseUrl}/api/compensation/assigned`, { withCredentials: true,headers });
+        const employeesResponse = await axios.get(
+          `${baseUrl}/api/compensation/assigned`,
+          { withCredentials: true, headers }
+        );
         if (employeesResponse.data.success) {
           const enrichedEmployees = employeesResponse.data.data.map((emp) => ({
             ...emp,
-            plan_data: compensationMap.get(emp.compensation_plan_name) || emp.plan_data,
+            plan_data:
+              compensationMap.get(emp.compensation_plan_name) || emp.plan_data,
           }));
-          console.log(
-            "Employees with plans fetched:",
-            enrichedEmployees.map((emp) => ({
-              employee_id: emp.employee_id,
-              full_name: emp.full_name,
-            }))
-          );
+
           setEmployees(enrichedEmployees || []);
 
-          // Log employees without plans
           const employeesWithoutPlans = allEmployeesResponse.data.data.filter(
             (emp) =>
               !enrichedEmployees.some(
-                (assignedEmp) => String(assignedEmp.employee_id) === String(emp.employee_id)
+                (assignedEmp) =>
+                  String(assignedEmp.employee_id) === String(emp.employee_id)
               )
           );
-          console.log(
-            "Employees without plans:",
-            employeesWithoutPlans.map((emp) => ({
-              employee_id: emp.employee_id,
-              full_name: emp.full_name,
-            }))
-          );
 
-          // Fetch LOP data for each employee
           const lopDataPromises = enrichedEmployees.map((emp) =>
             calculateLOPEffect(emp.employee_id)
               .then((result) => {
-                console.log(`LOP data for ${emp.employee_id}:`, JSON.stringify(result, null, 2));
                 return {
                   employeeId: emp.employee_id,
-                  lopData:
-                    result || {
-                      currentMonth: { days: 0, value: "0.00", currency: "INR" },
-                      deferred: { days: 0, value: "0.00", currency: "INR" },
-                      nextMonth: { days: 0, value: "0.00", currency: "INR" },
-                      yearly: { days: 0, value: "0.00", currency: "INR" },
-                    },
+                  lopData: result || {
+                    currentMonth: { days: 0, value: "0.00", currency: "INR" },
+                    deferred: { days: 0, value: "0.00", currency: "INR" },
+                    nextMonth: { days: 0, value: "0.00", currency: "INR" },
+                    yearly: { days: 0, value: "0.00", currency: "INR" },
+                  },
                 };
               })
               .catch((error) => {
-                console.error(`Error fetching LOP for ${emp.employee_id}:`, error);
+                console.error(
+                  `Error fetching LOP for ${emp.employee_id}:`,
+                  error
+                );
                 return {
                   employeeId: emp.employee_id,
                   lopData: {
@@ -645,30 +713,41 @@ const SalaryBreakup = () => {
               })
           );
           const lopDataResults = await Promise.all(lopDataPromises);
-          const lopDataMap = lopDataResults.reduce((acc, { employeeId, lopData }) => {
-            acc[employeeId] = lopData;
-            return acc;
-          }, {});
-          console.log("employeeLopData:", JSON.stringify(lopDataMap, null, 2));
+          const lopDataMap = lopDataResults.reduce(
+            (acc, { employeeId, lopData }) => {
+              acc[employeeId] = lopData;
+              return acc;
+            },
+            {}
+          );
           setEmployeeLopData(lopDataMap);
         } else {
-          throw new Error(employeesResponse.data.message || "Failed to fetch salary breakup data");
+          throw new Error(
+            employeesResponse.data.message ||
+              "Failed to fetch salary breakup data"
+          );
         }
 
-        // Fetch advances
-        const advancesResponse = await axios.get(`${baseUrl}/api/compensation/advance-details`, {withCredentials: true, headers });
+        const advancesResponse = await axios.get(
+          `${baseUrl}/api/compensation/advance-details`,
+          { withCredentials: true, headers }
+        );
         if (advancesResponse.data.success) {
           setAdvances(advancesResponse.data.data || []);
         }
 
-        // Fetch overtime records
-        const overtimeResponse = await axios.get(`${baseUrl}/api/compensation/overtime-details`, { withCredentials: true,headers });
+        const overtimeResponse = await axios.get(
+          `${baseUrl}/api/compensation/overtime-details`,
+          { withCredentials: true, headers }
+        );
         if (overtimeResponse.data.success) {
           setOvertimeRecords(overtimeResponse.data.data || []);
         }
 
-        // Fetch bonus records
-        const bonusResponse = await axios.get(`${baseUrl}/api/compensation/bonus-list`, {withCredentials: true, headers });
+        const bonusResponse = await axios.get(
+          `${baseUrl}/api/compensation/bonus-list`,
+          { withCredentials: true, headers }
+        );
         if (bonusResponse.data.success) {
           setBonusRecords(bonusResponse.data.data || []);
         }
@@ -676,7 +755,9 @@ const SalaryBreakup = () => {
         console.error("Error fetching data:", error);
         openMessageModal(
           "Error",
-          `Failed to fetch data: ${error.response?.data?.message || error.message || "Network error"}`,
+          `Failed to fetch data: ${
+            error.response?.data?.message || error.message || "Network error"
+          }`,
           true
         );
       } finally {
@@ -687,7 +768,11 @@ const SalaryBreakup = () => {
     if (API_KEY && meId) {
       fetchSalaryBreakupData();
     } else {
-      openMessageModal("Error", "Authentication credentials are missing.", true);
+      openMessageModal(
+        "Error",
+        "Authentication credentials are missing.",
+        true
+      );
       setIsLoading(false);
     }
   }, [API_KEY, meId, BACKEND_URL]);
@@ -716,32 +801,51 @@ const SalaryBreakup = () => {
     ];
   };
 
-  const months = ["01","02","03","04","05","06","07","08","09","10","11","12"];
-  const monthlySalaryOptions = Array.from({ length: 10 }, (_, i) => (i + 1).toString());
+  const months = [
+    "01",
+    "02",
+    "03",
+    "04",
+    "05",
+    "06",
+    "07",
+    "08",
+    "09",
+    "10",
+    "11",
+    "12",
+  ];
+  const monthlySalaryOptions = Array.from({ length: 10 }, (_, i) =>
+    (i + 1).toString()
+  );
 
   const employeesWithoutPlans = allEmployees.filter(
     (emp) =>
-      !employees.some((assignedEmp) => String(assignedEmp.employee_id) === String(emp.employee_id))
+      !employees.some(
+        (assignedEmp) =>
+          String(assignedEmp.employee_id) === String(emp.employee_id)
+      )
   );
 
-  const totals = employees.length > 0
-    ? calculateTotals(employees, overtimeRecords, bonusRecords, advances)
-    : {
-        totalPayable: 0,
-        totalGross: 0,
-        totalTDS: 0,
-        totalAdvance: 0,
-        totalOvertime: 0,
-        totalBonus: 0,
-        totalEmployeePF: 0,
-        totalEmployerPF: 0,
-        totalInsurance: 0,
-        totalLopDeduction: 0,
-      };
+  const totals =
+    employees.length > 0
+      ? calculateTotals(employees, overtimeRecords, bonusRecords, advances)
+      : {
+          totalPayable: 0,
+          totalGross: 0,
+          totalTDS: 0,
+          totalAdvance: 0,
+          totalOvertime: 0,
+          totalBonus: 0,
+          totalEmployeePF: 0,
+          totalEmployerPF: 0,
+          totalInsurance: 0,
+          totalLopDeduction: 0,
+        };
 
   const totalLopDeduction = employees.reduce((sum, emp) => {
     const lopData = employeeLopData[emp.employee_id];
-    console.log(`Total LOP for ${emp.employee_id}:`, lopData?.currentMonth?.value || 0);
+
     return sum + (lopData ? parseFloat(lopData.currentMonth.value || 0) : 0);
   }, 0);
   totals.totalLopDeduction = totalLopDeduction;
@@ -860,7 +964,11 @@ const SalaryBreakup = () => {
     };
     const config = componentMap[component];
     if (!config || !config.isApplicable || planData[config.isApplicable]) {
-      if (config.type && planData[config.type] === "percentage" && planData[config.percentage]) {
+      if (
+        config.type &&
+        planData[config.type] === "percentage" &&
+        planData[config.percentage]
+      ) {
         return `${parseFloat(planData[config.percentage]).toLocaleString()}%`;
       } else if (config.amount && planData[config.amount]) {
         return `₹${parseFloat(planData[config.amount]).toLocaleString()}`;
@@ -869,19 +977,27 @@ const SalaryBreakup = () => {
     return "N/A";
   };
 
-  const filteredEmployees = employees.filter((emp) =>
-    emp.employee_id.toString().toLowerCase().includes(searchQuery.toLowerCase()) ||
-    emp.full_name.toLowerCase().includes(searchQuery.toLowerCase())
+  const filteredEmployees = employees.filter(
+    (emp) =>
+      emp.employee_id
+        .toString()
+        .toLowerCase()
+        .includes(searchQuery.toLowerCase()) ||
+      emp.full_name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const filteredEmployees2 = employeesWithoutPlans.filter((emp) =>
-    emp.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    emp.employee_id.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredEmployees2 = employeesWithoutPlans.filter(
+    (emp) =>
+      emp.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      emp.employee_id.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const indexOfLastRow = currentPage * rowsPerPage;
   const indexOfFirstRow = indexOfLastRow - rowsPerPage;
-  const currentEmployees = filteredEmployees.slice(indexOfFirstRow, indexOfLastRow);
+  const currentEmployees = filteredEmployees.slice(
+    indexOfFirstRow,
+    indexOfLastRow
+  );
   const totalPages = Math.ceil(filteredEmployees.length / rowsPerPage);
 
   const handleNextPage = () => {
@@ -944,7 +1060,8 @@ const SalaryBreakup = () => {
               {totals && (
                 <div className="sb-sb-totals-container">
                   <h2 className="sb-sb-total-payroll">
-                    Total Payroll: ₹{(totals.totalPayable - totalLopDeduction).toLocaleString()}
+                    Total Payroll: ₹
+                    {(totals.totalPayable - totalLopDeduction).toLocaleString()}
                   </h2>
                   <div className="sb-sb-totals-grid">
                     <div className="sb-sb-total-card sb-payable">
@@ -952,7 +1069,10 @@ const SalaryBreakup = () => {
                       <div>
                         <span className="sb-sb-card-title">Total Payable</span>
                         <span className="sb-sb-card-value">
-                          ₹{(totals.totalPayable - totalLopDeduction).toLocaleString()}
+                          ₹
+                          {(
+                            totals.totalPayable - totalLopDeduction
+                          ).toLocaleString()}
                         </span>
                       </div>
                     </div>
@@ -960,63 +1080,89 @@ const SalaryBreakup = () => {
                       <FaChartLine className="sb-sb-card-icon" />
                       <div>
                         <span className="sb-sb-card-title">Total Gross</span>
-                        <span className="sb-sb-card-value">₹{totals.totalGross.toLocaleString()}</span>
+                        <span className="sb-sb-card-value">
+                          ₹{totals.totalGross.toLocaleString()}
+                        </span>
                       </div>
                     </div>
                     <div className="sb-sb-total-card sb-tds">
                       <FaMoneyCheckAlt className="sb-sb-card-icon" />
                       <div>
                         <span className="sb-sb-card-title">Total TDS</span>
-                        <span className="sb-sb-card-value">₹{totals.totalTDS.toLocaleString()}</span>
+                        <span className="sb-sb-card-value">
+                          ₹{totals.totalTDS.toLocaleString()}
+                        </span>
                       </div>
                     </div>
                     <div className="sb-sb-total-card sb-advance">
                       <FaHandHoldingUsd className="sb-sb-card-icon" />
                       <div>
                         <span className="sb-sb-card-title">Total Advance</span>
-                        <span className="sb-sb-card-value">₹{totals.totalAdvance.toLocaleString()}</span>
+                        <span className="sb-sb-card-value">
+                          ₹{totals.totalAdvance.toLocaleString()}
+                        </span>
                       </div>
                     </div>
                     <div className="sb-sb-total-card sb-overtime">
                       <FaClock className="sb-sb-card-icon" />
                       <div>
                         <span className="sb-sb-card-title">Total Overtime</span>
-                        <span className="sb-sb-card-value">₹{totals.totalOvertime.toLocaleString()}</span>
+                        <span className="sb-sb-card-value">
+                          ₹{totals.totalOvertime.toLocaleString()}
+                        </span>
                       </div>
                     </div>
                     <div className="sb-sb-total-card sb-bonus">
                       <FaGift className="sb-sb-card-icon" />
                       <div>
                         <span className="sb-sb-card-title">Total Bonus</span>
-                        <span className="sb-sb-card-value">₹{totals.totalBonus.toLocaleString()}</span>
+                        <span className="sb-sb-card-value">
+                          ₹{totals.totalBonus.toLocaleString()}
+                        </span>
                       </div>
                     </div>
                     <div className="sb-sb-total-card sb-pf-employee">
                       <FaShieldAlt className="sb-sb-card-icon" />
                       <div>
-                        <span className="sb-sb-card-title">Total PF Employee</span>
-                        <span className="sb-sb-card-value">₹{totals.totalEmployeePF.toLocaleString()}</span>
+                        <span className="sb-sb-card-title">
+                          Total PF Employee
+                        </span>
+                        <span className="sb-sb-card-value">
+                          ₹{totals.totalEmployeePF.toLocaleString()}
+                        </span>
                       </div>
                     </div>
                     <div className="sb-sb-total-card sb-pf-employer">
                       <FaBriefcase className="sb-sb-card-icon" />
                       <div>
-                        <span className="sb-sb-card-title">Total PF Employer</span>
-                        <span className="sb-sb-card-value">₹{totals.totalEmployerPF.toLocaleString()}</span>
+                        <span className="sb-sb-card-title">
+                          Total PF Employer
+                        </span>
+                        <span className="sb-sb-card-value">
+                          ₹{totals.totalEmployerPF.toLocaleString()}
+                        </span>
                       </div>
                     </div>
                     <div className="sb-sb-total-card sb-insurance">
                       <FaStethoscope className="sb-sb-card-icon" />
                       <div>
-                        <span className="sb-sb-card-title">Total Insurance</span>
-                        <span className="sb-sb-card-value">₹{totals.totalInsurance.toLocaleString()}</span>
+                        <span className="sb-sb-card-title">
+                          Total Insurance
+                        </span>
+                        <span className="sb-sb-card-value">
+                          ₹{totals.totalInsurance.toLocaleString()}
+                        </span>
                       </div>
                     </div>
                     <div className="sb-sb-total-card sb-lop">
                       <FaExclamationTriangle className="sb-sb-card-icon" />
                       <div>
-                        <span className="sb-sb-card-title">Total LOP Deduction</span>
-                        <span className="sb-sb-card-value">₹{totalLopDeduction.toLocaleString()}</span>
+                        <span className="sb-sb-card-title">
+                          Total LOP Deduction
+                        </span>
+                        <span className="sb-sb-card-value">
+                          ₹{totalLopDeduction.toLocaleString()}
+                        </span>
                       </div>
                     </div>
                   </div>
@@ -1037,23 +1183,37 @@ const SalaryBreakup = () => {
               </div>
               <div className="sb-sb-main-content">
                 <div
-                  className={`sb-sb-table-wrapper ${showDetailsTab ? "sb-sb-table-compressed" : ""}`}
+                  className={`sb-sb-table-wrapper ${
+                    showDetailsTab ? "sb-sb-table-compressed" : ""
+                  }`}
                   ref={tableRef}
                 >
                   <table className="sb-sb-table">
                     <thead>
                       <tr>
-                        <th className="sb-sb-table-header sb-sb-align-left">Employee ID</th>
-                        <th className="sb-sb-table-header sb-sb-align-left">Full Name</th>
-                        <th className="sb-sb-table-header sb-sb-align-left">Compensation Plan</th>
-                        <th className="sb-sb-table-header sb-sb-align-left">Action</th>
+                        <th className="sb-sb-table-header sb-sb-align-left">
+                          Employee ID
+                        </th>
+                        <th className="sb-sb-table-header sb-sb-align-left">
+                          Full Name
+                        </th>
+                        <th className="sb-sb-table-header sb-sb-align-left">
+                          Compensation Plan
+                        </th>
+                        <th className="sb-sb-table-header sb-sb-align-left">
+                          Action
+                        </th>
                       </tr>
                     </thead>
                     <tbody className="sb-sb-table-body-wrapper">
                       {currentEmployees.map((emp) => (
                         <tr key={emp.employee_id}>
-                          <td className="sb-sb-table-cell sb-sb-align-left">{emp.employee_id}</td>
-                          <td className="sb-sb-table-cell sb-sb-align-left">{emp.full_name}</td>
+                          <td className="sb-sb-table-cell sb-sb-align-left">
+                            {emp.employee_id}
+                          </td>
+                          <td className="sb-sb-table-cell sb-sb-align-left">
+                            {emp.full_name}
+                          </td>
                           <td className="sb-sb-table-cell sb-sb-align-left">
                             {emp.compensation_plan_name || "No Plan Assigned"}
                           </td>
@@ -1067,7 +1227,12 @@ const SalaryBreakup = () => {
                               </button>
                               <button
                                 className="sb-sb-advance-button"
-                                onClick={() => openAdvanceModal(emp.employee_id, emp.full_name)}
+                                onClick={() =>
+                                  openAdvanceModal(
+                                    emp.employee_id,
+                                    emp.full_name
+                                  )
+                                }
                               >
                                 Add Advance
                               </button>
@@ -1098,37 +1263,56 @@ const SalaryBreakup = () => {
                   </div>
                 </div>
                 {showDetailsTab && selectedEmployee && (
-                  <div className="sb-sb-details-tab" style={{ height: `${tableHeight}px` }}>
+                  <div
+                    className="sb-sb-details-tab"
+                    style={{ height: `${tableHeight}px` }}
+                  >
                     <div className="sb-sb-details-tab-header">
                       <h2>Salary Details</h2>
-                      <button className="sb-sb-details-tab-close" onClick={handleCloseDetailsTab}>
+                      <button
+                        className="sb-sb-details-tab-close"
+                        onClick={handleCloseDetailsTab}
+                      >
                         ×
                       </button>
                     </div>
                     <div className="sb-sb-details-tab-content">
-                      <div className="sb-sb-employee-name">{selectedEmployee.full_name || "N/A"}</div>
+                      <div className="sb-sb-employee-name">
+                        {selectedEmployee.full_name || "N/A"}
+                      </div>
                       <div className="sb-sb-ctc-info">
                         <div>
-                          <strong>Comp. Plan:</strong> {selectedEmployee.compensation_plan_name || "N/A"}
+                          <strong>Comp. Plan:</strong>{" "}
+                          {selectedEmployee.compensation_plan_name || "N/A"}
                         </div>
                         <div>
-                          <strong>CTC (Yearly):</strong>{" "}
-                          ₹{selectedEmployee.ctc ? parseFloat(selectedEmployee.ctc).toLocaleString() : "N/A"}
+                          <strong>CTC (Yearly):</strong> ₹
+                          {selectedEmployee.ctc
+                            ? parseFloat(selectedEmployee.ctc).toLocaleString()
+                            : "N/A"}
                         </div>
                         <div>
-                          <strong>CTC (Monthly):</strong>{" "}
-                          ₹{selectedEmployee.ctc ? (parseFloat(selectedEmployee.ctc) / 12).toLocaleString() : "N/A"}
+                          <strong>CTC (Monthly):</strong> ₹
+                          {selectedEmployee.ctc
+                            ? (
+                                parseFloat(selectedEmployee.ctc) / 12
+                              ).toLocaleString()
+                            : "N/A"}
                         </div>
                       </div>
                       <div className="sb-sb-tab-buttons">
                         <button
-                          className={`sb-sb-tab-button yearly ${activeTab === "yearly" ? "active" : ""}`}
+                          className={`sb-sb-tab-button yearly ${
+                            activeTab === "yearly" ? "active" : ""
+                          }`}
                           onClick={() => setActiveTab("yearly")}
                         >
                           Yearly
                         </button>
                         <button
-                          className={`sb-sb-tab-button monthly ${activeTab === "monthly" ? "active" : ""}`}
+                          className={`sb-sb-tab-button monthly ${
+                            activeTab === "monthly" ? "active" : ""
+                          }`}
                           onClick={() => setActiveTab("monthly")}
                         >
                           Monthly
@@ -1144,81 +1328,114 @@ const SalaryBreakup = () => {
                             bonusRecords,
                             advances
                           );
-                          const lopData =
-                            employeeLopData[selectedEmployee.employee_id] || {
-                              currentMonth: { days: 0, value: "0.00", currency: "INR" },
-                              deferred: { days: 0, value: "0.00", currency: "INR" },
-                              nextMonth: { days: 0, value: "0.00", currency: "INR" },
-                              yearly: { days: 0, value: "0.00", currency: "INR" },
-                            };
-                          console.log(
-                            `Annexure LOP data for ${selectedEmployee.employee_id}:`,
-                            JSON.stringify(lopData, null, 2)
-                          );
-                          console.log(
-                            `Annexure salaryDetails for ${selectedEmployee.employee_id}:`,
-                            JSON.stringify(salaryDetails, null, 2)
-                          );
+                          const lopData = employeeLopData[
+                            selectedEmployee.employee_id
+                          ] || {
+                            currentMonth: {
+                              days: 0,
+                              value: "0.00",
+                              currency: "INR",
+                            },
+                            deferred: {
+                              days: 0,
+                              value: "0.00",
+                              currency: "INR",
+                            },
+                            nextMonth: {
+                              days: 0,
+                              value: "0.00",
+                              currency: "INR",
+                            },
+                            yearly: { days: 0, value: "0.00", currency: "INR" },
+                          };
+
                           if (!salaryDetails || !selectedEmployee.employee_id) {
                             return <p>No valid employee data provided</p>;
                           }
-                          if (!selectedEmployee.ctc || selectedEmployee.ctc <= 0) {
-                            return <p>No valid CTC provided for this employee</p>;
+                          if (
+                            !selectedEmployee.ctc ||
+                            selectedEmployee.ctc <= 0
+                          ) {
+                            return (
+                              <p>No valid CTC provided for this employee</p>
+                            );
                           }
                           const planData = selectedEmployee.plan_data || {};
                           const components = [
                             {
                               label: "Basic Salary",
                               planDetail:
-                                planData.isBasicSalary && planData.basicSalaryType === "percentage" && planData.basicSalary
+                                planData.isBasicSalary &&
+                                planData.basicSalaryType === "percentage" &&
+                                planData.basicSalary
                                   ? `${planData.basicSalary}% of CTC`
                                   : planData.basicSalaryAmount
-                                  ? `₹${parseFloat(planData.basicSalaryAmount).toLocaleString()}`
+                                  ? `₹${parseFloat(
+                                      planData.basicSalaryAmount
+                                    ).toLocaleString()}`
                                   : "N/A",
                               yearly: salaryDetails.basicSalary * 12,
                               monthly: salaryDetails.basicSalary,
                               isDeduction: false,
                             },
-                            // ... (other components same as original)
                           ];
-
-                          // Note: for brevity, the components array above is shown truncated in this code block.
-                          // In your actual file the full components array from your original file is preserved.
 
                           const totalEarningsMonthly = components
                             .filter((comp) => !comp.isDeduction)
-                            .reduce((sum, comp) => sum + (comp.monthly || 0), 0);
+                            .reduce(
+                              (sum, comp) => sum + (comp.monthly || 0),
+                              0
+                            );
                           const totalDeductionsMonthly = components
                             .filter((comp) => comp.isDeduction)
-                            .reduce((sum, comp) => sum + (comp.monthly || 0), 0);
-                          const netSalaryMonthly = totalEarningsMonthly - totalDeductionsMonthly;
+                            .reduce(
+                              (sum, comp) => sum + (comp.monthly || 0),
+                              0
+                            );
+                          const netSalaryMonthly =
+                            totalEarningsMonthly - totalDeductionsMonthly;
                           const totalEarningsYearly = components
                             .filter((comp) => !comp.isDeduction)
                             .reduce((sum, comp) => sum + (comp.yearly || 0), 0);
                           const totalDeductionsYearly = components
                             .filter((comp) => comp.isDeduction)
                             .reduce((sum, comp) => sum + (comp.yearly || 0), 0);
-                          const netSalaryYearly = totalEarningsYearly - totalDeductionsYearly;
+                          const netSalaryYearly =
+                            totalEarningsYearly - totalDeductionsYearly;
                           return (
                             <table className="sb-sb-table sb-sb-single-details-table">
                               <thead>
                                 <tr>
-                                  <th className="sb-sb-table-header sb-sb-align-left">Component</th>
-                                  <th className="sb-sb-table-header sb-sb-align-left">Comp.Plan</th>
+                                  <th className="sb-sb-table-header sb-sb-align-left">
+                                    Component
+                                  </th>
+                                  <th className="sb-sb-table-header sb-sb-align-left">
+                                    Comp.Plan
+                                  </th>
                                   <th className="sb-sb-table-header sb-sb-align-right">
-                                    {activeTab === "yearly" ? "Yearly Amount" : "Monthly Amount"}
+                                    {activeTab === "yearly"
+                                      ? "Yearly Amount"
+                                      : "Monthly Amount"}
                                   </th>
                                 </tr>
                               </thead>
                               <tbody className="sb-sb-table-body-wrapper">
                                 {components.map((item, index) => (
                                   <tr key={index}>
-                                    <td className="sb-sb-table-cell sb-sb-align-left">{item.label}</td>
-                                    <td className="sb-sb-table-cell sb-sb-align-left">{item.planDetail}</td>
+                                    <td className="sb-sb-table-cell sb-sb-align-left">
+                                      {item.label}
+                                    </td>
+                                    <td className="sb-sb-table-cell sb-sb-align-left">
+                                      {item.planDetail}
+                                    </td>
                                     <td className="sb-sb-table-cell sb-sb-align-right">
-                                      {(activeTab === "yearly" ? item.yearly : item.monthly) > 0
+                                      {(activeTab === "yearly"
+                                        ? item.yearly
+                                        : item.monthly) > 0
                                         ? `₹${parseFloat(
-                                            activeTab === "yearly" ? item.yearly : item.monthly
+                                            activeTab === "yearly"
+                                              ? item.yearly
+                                              : item.monthly
                                           ).toLocaleString()}`
                                         : "N/A"}
                                     </td>
@@ -1228,11 +1445,16 @@ const SalaryBreakup = () => {
                                   <td className="sb-sb-table-cell sb-sb-align-left">
                                     <strong>Earnings</strong>
                                   </td>
-                                  <td className="sb-sb-table-cell sb-sb-align-left">N/A</td>
+                                  <td className="sb-sb-table-cell sb-sb-align-left">
+                                    N/A
+                                  </td>
                                   <td className="sb-sb-table-cell sb-sb-align-right">
                                     <strong>
-                                      ₹{parseFloat(
-                                        activeTab === "yearly" ? totalEarningsYearly : totalEarningsMonthly
+                                      ₹
+                                      {parseFloat(
+                                        activeTab === "yearly"
+                                          ? totalEarningsYearly
+                                          : totalEarningsMonthly
                                       ).toLocaleString()}
                                     </strong>
                                   </td>
@@ -1241,11 +1463,16 @@ const SalaryBreakup = () => {
                                   <td className="sb-sb-table-cell sb-sb-align-left">
                                     <strong>Deductions</strong>
                                   </td>
-                                  <td className="sb-sb-table-cell sb-sb-align-left">N/A</td>
+                                  <td className="sb-sb-table-cell sb-sb-align-left">
+                                    N/A
+                                  </td>
                                   <td className="sb-sb-table-cell sb-sb-align-right">
                                     <strong>
-                                      ₹{parseFloat(
-                                        activeTab === "yearly" ? totalDeductionsYearly : totalDeductionsMonthly
+                                      ₹
+                                      {parseFloat(
+                                        activeTab === "yearly"
+                                          ? totalDeductionsYearly
+                                          : totalDeductionsMonthly
                                       ).toLocaleString()}
                                     </strong>
                                   </td>
@@ -1254,11 +1481,16 @@ const SalaryBreakup = () => {
                                   <td className="sb-sb-table-cell sb-sb-align-left">
                                     <strong>Gross Salary</strong>
                                   </td>
-                                  <td className="sb-sb-table-cell sb-sb-align-left">N/A</td>
+                                  <td className="sb-sb-table-cell sb-sb-align-left">
+                                    N/A
+                                  </td>
                                   <td className="sb-sb-table-cell sb-sb-align-right">
                                     <strong>
-                                      ₹{parseFloat(
-                                        activeTab === "yearly" ? salaryDetails.grossSalary * 12 : salaryDetails.grossSalary
+                                      ₹
+                                      {parseFloat(
+                                        activeTab === "yearly"
+                                          ? salaryDetails.grossSalary * 12
+                                          : salaryDetails.grossSalary
                                       ).toLocaleString()}
                                     </strong>
                                   </td>
@@ -1267,11 +1499,16 @@ const SalaryBreakup = () => {
                                   <td className="sb-sb-table-cell sb-sb-align-left">
                                     <strong>Net Salary</strong>
                                   </td>
-                                  <td className="sb-sb-table-cell sb-sb-align-left">N/A</td>
+                                  <td className="sb-sb-table-cell sb-sb-align-left">
+                                    N/A
+                                  </td>
                                   <td className="sb-sb-table-cell sb-sb-align-right">
                                     <strong>
-                                      ₹{parseFloat(
-                                        activeTab === "yearly" ? netSalaryYearly : netSalaryMonthly
+                                      ₹
+                                      {parseFloat(
+                                        activeTab === "yearly"
+                                          ? netSalaryYearly
+                                          : netSalaryMonthly
                                       ).toLocaleString()}
                                     </strong>
                                   </td>
@@ -1325,27 +1562,63 @@ const SalaryBreakup = () => {
                 <table className="esd-table">
                   <thead>
                     <tr>
-                      <th className="esd-table-header esd-align-left esd-id-column">ID</th>
-                      <th className="esd-table-header esd-align-left esd-name-column">Name</th>
-                      <th className="esd-table-header esd-align-right">Annual CTC</th>
-                      <th className="esd-table-header esd-align-right">Basic Salary</th>
+                      <th className="esd-table-header esd-align-left esd-id-column">
+                        ID
+                      </th>
+                      <th className="esd-table-header esd-align-left esd-name-column">
+                        Name
+                      </th>
+                      <th className="esd-table-header esd-align-right">
+                        Annual CTC
+                      </th>
+                      <th className="esd-table-header esd-align-right">
+                        Basic Salary
+                      </th>
                       <th className="esd-table-header esd-align-right">HRA</th>
                       <th className="esd-table-header esd-align-right">LTA</th>
-                      <th className="esd-table-header esd-align-right">Other Allow.</th>
-                      <th className="esd-table-header esd-align-right">Overtime</th>
-                      <th className="esd-table-header esd-align-right">Bonus</th>
-                      <th className="esd-table-header esd-align-right">Advance Rec.</th>
-                      <th className="esd-table-header esd-align-right">Emp. PF</th>
-                      <th className="esd-table-header esd-align-right">Employer PF</th>
+                      <th className="esd-table-header esd-align-right">
+                        Other Allow.
+                      </th>
+                      <th className="esd-table-header esd-align-right">
+                        Overtime
+                      </th>
+                      <th className="esd-table-header esd-align-right">
+                        Bonus
+                      </th>
+                      <th className="esd-table-header esd-align-right">
+                        Advance Rec.
+                      </th>
+                      <th className="esd-table-header esd-align-right">
+                        Emp. PF
+                      </th>
+                      <th className="esd-table-header esd-align-right">
+                        Employer PF
+                      </th>
                       <th className="esd-table-header esd-align-right">ESIC</th>
-                      <th className="esd-table-header esd-align-right">Gratuity</th>
-                      <th className="esd-table-header esd-align-right">Prof. Tax</th>
-                      <th className="esd-table-header esd-align-right">Income Tax</th>
-                      <th className="esd-table-header esd-align-right">Insurance</th>
-                      <th className="esd-table-header esd-align-right">LOP Days</th>
-                      <th className="esd-table-header esd-align-right">LOP Ded.</th>
-                      <th className="esd-table-header esd-align-right">Gross Salary</th>
-                      <th className="esd-table-header esd-align-right">Net Salary</th>
+                      <th className="esd-table-header esd-align-right">
+                        Gratuity
+                      </th>
+                      <th className="esd-table-header esd-align-right">
+                        Prof. Tax
+                      </th>
+                      <th className="esd-table-header esd-align-right">
+                        Income Tax
+                      </th>
+                      <th className="esd-table-header esd-align-right">
+                        Insurance
+                      </th>
+                      <th className="esd-table-header esd-align-right">
+                        LOP Days
+                      </th>
+                      <th className="esd-table-header esd-align-right">
+                        LOP Ded.
+                      </th>
+                      <th className="esd-table-header esd-align-right">
+                        Gross Salary
+                      </th>
+                      <th className="esd-table-header esd-align-right">
+                        Net Salary
+                      </th>
                     </tr>
                   </thead>
                   <tbody className="esd-table-body">
@@ -1358,78 +1631,156 @@ const SalaryBreakup = () => {
                         bonusRecords,
                         advances
                       );
-                      const lopData =
-                        employeeLopData[emp.employee_id] || {
-                          currentMonth: { days: 0, value: "0.00", currency: "INR" },
-                          deferred: { days: 0, value: "0.00", currency: "INR" },
-                          nextMonth: { days: 0, value: "0.00", currency: "INR" },
-                          yearly: { days: 0, value: "0.00", currency: "INR" },
-                        };
+                      const lopData = employeeLopData[emp.employee_id] || {
+                        currentMonth: {
+                          days: 0,
+                          value: "0.00",
+                          currency: "INR",
+                        },
+                        deferred: { days: 0, value: "0.00", currency: "INR" },
+                        nextMonth: { days: 0, value: "0.00", currency: "INR" },
+                        yearly: { days: 0, value: "0.00", currency: "INR" },
+                      };
                       const netSalary = salaryDetails
-                        ? salaryDetails.netSalary - (lopData ? parseFloat(lopData.currentMonth.value || 0) : 0)
+                        ? salaryDetails.netSalary -
+                          (lopData
+                            ? parseFloat(lopData.currentMonth.value || 0)
+                            : 0)
                         : 0;
                       return (
                         <tr key={emp.employee_id}>
-                          <td className="esd-table-cell esd-align-left esd-id-column">{emp.employee_id}</td>
-                          <td className="esd-table-cell esd-align-left esd-name-column">{emp.full_name}</td>
-                          <td className="esd-table-cell esd-align-right">
-                            {emp.ctc ? `₹${parseFloat(emp.ctc).toLocaleString()}` : "N/A"}
+                          <td className="esd-table-cell esd-align-left esd-id-column">
+                            {emp.employee_id}
+                          </td>
+                          <td className="esd-table-cell esd-align-left esd-name-column">
+                            {emp.full_name}
                           </td>
                           <td className="esd-table-cell esd-align-right">
-                            {salaryDetails ? `₹${parseFloat(salaryDetails.basicSalary).toLocaleString()}` : "N/A"}
-                          </td>
-                          <td className="esd-table-cell esd-align-right">
-                            {salaryDetails ? `₹${parseFloat(salaryDetails.hra).toLocaleString()}` : "N/A"}
-                          </td>
-                          <td className="esd-table-cell esd-align-right">
-                            {salaryDetails ? `₹${parseFloat(salaryDetails.ltaAllowance).toLocaleString()}` : "N/A"}
-                          </td>
-                          <td className="esd-table-cell esd-align-right">
-                            {salaryDetails ? `₹${parseFloat(salaryDetails.otherAllowances).toLocaleString()}` : "N/A"}
-                          </td>
-                          <td className="esd-table-cell esd-align-right">
-                            {salaryDetails ? `₹${parseFloat(salaryDetails.overtimePay).toLocaleString()}` : "N/A"}
-                          </td>
-                          <td className="esd-table-cell esd-align-right">
-                            {salaryDetails ? `₹${parseFloat(salaryDetails.bonusPay).toLocaleString()}` : "N/A"}
-                          </td>
-                          <td className="esd-table-cell esd-align-right">
-                            {salaryDetails ? `₹${parseFloat(salaryDetails.advanceRecovery).toLocaleString()}` : "N/A"}
-                          </td>
-                          <td className="esd-table-cell esd-align-right">
-                            {salaryDetails ? `₹${parseFloat(salaryDetails.employeePF).toLocaleString()}` : "N/A"}
-                          </td>
-                          <td className="esd-table-cell esd-align-right">
-                            {salaryDetails ? `₹${parseFloat(salaryDetails.employerPF).toLocaleString()}` : "N/A"}
-                          </td>
-                          <td className="esd-table-cell esd-align-right">
-                            {salaryDetails ? `₹${parseFloat(salaryDetails.esic).toLocaleString()}` : "N/A"}
-                          </td>
-                          <td className="esd-table-cell esd-align-right">
-                            {salaryDetails ? `₹${parseFloat(salaryDetails.gratuity).toLocaleString()}` : "N/A"}
-                          </td>
-                          <td className="esd-table-cell esd-align-right">
-                            {salaryDetails ? `₹${parseFloat(salaryDetails.professionalTax).toLocaleString()}` : "N/A"}
-                          </td>
-                          <td className="esd-table-cell esd-align-right">
-                            {salaryDetails ? `₹${parseFloat(salaryDetails.tds).toLocaleString()}` : "N/A"}
-                          </td>
-                          <td className="esd-table-cell esd-align-right">
-                            {salaryDetails ? `₹${parseFloat(salaryDetails.insurance).toLocaleString()}` : "N/A"}
-                          </td>
-                          <td className="esd-table-cell esd-align-right">
-                            {lopData && lopData.currentMonth.days > 0 ? lopData.currentMonth.days : "N/A"}
-                          </td>
-                          <td className="esd-table-cell esd-align-right">
-                            {lopData && lopData.currentMonth.value !== "0.00"
-                              ? `₹${parseFloat(lopData.currentMonth.value).toLocaleString()}`
+                            {emp.ctc
+                              ? `₹${parseFloat(emp.ctc).toLocaleString()}`
                               : "N/A"}
                           </td>
                           <td className="esd-table-cell esd-align-right">
-                            {salaryDetails ? `₹${parseFloat(salaryDetails.grossSalary).toLocaleString()}` : "N/A"}
+                            {salaryDetails
+                              ? `₹${parseFloat(
+                                  salaryDetails.basicSalary
+                                ).toLocaleString()}`
+                              : "N/A"}
                           </td>
                           <td className="esd-table-cell esd-align-right">
-                            {salaryDetails ? `₹${parseFloat(netSalary).toLocaleString()}` : "N/A"}
+                            {salaryDetails
+                              ? `₹${parseFloat(
+                                  salaryDetails.hra
+                                ).toLocaleString()}`
+                              : "N/A"}
+                          </td>
+                          <td className="esd-table-cell esd-align-right">
+                            {salaryDetails
+                              ? `₹${parseFloat(
+                                  salaryDetails.ltaAllowance
+                                ).toLocaleString()}`
+                              : "N/A"}
+                          </td>
+                          <td className="esd-table-cell esd-align-right">
+                            {salaryDetails
+                              ? `₹${parseFloat(
+                                  salaryDetails.otherAllowances
+                                ).toLocaleString()}`
+                              : "N/A"}
+                          </td>
+                          <td className="esd-table-cell esd-align-right">
+                            {salaryDetails
+                              ? `₹${parseFloat(
+                                  salaryDetails.overtimePay
+                                ).toLocaleString()}`
+                              : "N/A"}
+                          </td>
+                          <td className="esd-table-cell esd-align-right">
+                            {salaryDetails
+                              ? `₹${parseFloat(
+                                  salaryDetails.bonusPay
+                                ).toLocaleString()}`
+                              : "N/A"}
+                          </td>
+                          <td className="esd-table-cell esd-align-right">
+                            {salaryDetails
+                              ? `₹${parseFloat(
+                                  salaryDetails.advanceRecovery
+                                ).toLocaleString()}`
+                              : "N/A"}
+                          </td>
+                          <td className="esd-table-cell esd-align-right">
+                            {salaryDetails
+                              ? `₹${parseFloat(
+                                  salaryDetails.employeePF
+                                ).toLocaleString()}`
+                              : "N/A"}
+                          </td>
+                          <td className="esd-table-cell esd-align-right">
+                            {salaryDetails
+                              ? `₹${parseFloat(
+                                  salaryDetails.employerPF
+                                ).toLocaleString()}`
+                              : "N/A"}
+                          </td>
+                          <td className="esd-table-cell esd-align-right">
+                            {salaryDetails
+                              ? `₹${parseFloat(
+                                  salaryDetails.esic
+                                ).toLocaleString()}`
+                              : "N/A"}
+                          </td>
+                          <td className="esd-table-cell esd-align-right">
+                            {salaryDetails
+                              ? `₹${parseFloat(
+                                  salaryDetails.gratuity
+                                ).toLocaleString()}`
+                              : "N/A"}
+                          </td>
+                          <td className="esd-table-cell esd-align-right">
+                            {salaryDetails
+                              ? `₹${parseFloat(
+                                  salaryDetails.professionalTax
+                                ).toLocaleString()}`
+                              : "N/A"}
+                          </td>
+                          <td className="esd-table-cell esd-align-right">
+                            {salaryDetails
+                              ? `₹${parseFloat(
+                                  salaryDetails.tds
+                                ).toLocaleString()}`
+                              : "N/A"}
+                          </td>
+                          <td className="esd-table-cell esd-align-right">
+                            {salaryDetails
+                              ? `₹${parseFloat(
+                                  salaryDetails.insurance
+                                ).toLocaleString()}`
+                              : "N/A"}
+                          </td>
+                          <td className="esd-table-cell esd-align-right">
+                            {lopData && lopData.currentMonth.days > 0
+                              ? lopData.currentMonth.days
+                              : "N/A"}
+                          </td>
+                          <td className="esd-table-cell esd-align-right">
+                            {lopData && lopData.currentMonth.value !== "0.00"
+                              ? `₹${parseFloat(
+                                  lopData.currentMonth.value
+                                ).toLocaleString()}`
+                              : "N/A"}
+                          </td>
+                          <td className="esd-table-cell esd-align-right">
+                            {salaryDetails
+                              ? `₹${parseFloat(
+                                  salaryDetails.grossSalary
+                                ).toLocaleString()}`
+                              : "N/A"}
+                          </td>
+                          <td className="esd-table-cell esd-align-right">
+                            {salaryDetails
+                              ? `₹${parseFloat(netSalary).toLocaleString()}`
+                              : "N/A"}
                           </td>
                         </tr>
                       );
@@ -1449,12 +1800,16 @@ const SalaryBreakup = () => {
             <p className="sb-no-plan-message">Loading...</p>
           ) : allEmployees.length === 0 ? (
             <p className="sb-no-plan-message">
-              No employee data available. Please check the system or contact support.
+              No employee data available. Please check the system or contact
+              support.
             </p>
           ) : (
             <>
               <div className="sb-no-plan-details-header">
-                <button className="sb-no-plan-back-button" onClick={handleBackToMain}>
+                <button
+                  className="sb-no-plan-back-button"
+                  onClick={handleBackToMain}
+                >
                   <svg
                     className="sb-no-plan-back-icon"
                     xmlns="http://www.w3.org/2000/svg"
@@ -1469,7 +1824,9 @@ const SalaryBreakup = () => {
                     />
                   </svg>
                 </button>
-                <div className="sb-no-plan-title">Employees Without Compensation Plans</div>
+                <div className="sb-no-plan-title">
+                  Employees Without Compensation Plans
+                </div>
               </div>
               <div className="sb-no-plan-search-container">
                 <input
@@ -1485,8 +1842,12 @@ const SalaryBreakup = () => {
                   <table className="sb-no-plan-table">
                     <thead>
                       <tr>
-                        <th className="sb-no-plan-align-left sb-no-plan-sticky-column">Employee ID</th>
-                        <th className="sb-no-plan-align-left sb-no-plan-sticky-column">Full Name</th>
+                        <th className="sb-no-plan-align-left sb-no-plan-sticky-column">
+                          Employee ID
+                        </th>
+                        <th className="sb-no-plan-align-left sb-no-plan-sticky-column">
+                          Full Name
+                        </th>
                         <th className="sb-no-plan-align-center">Action</th>
                       </tr>
                     </thead>
@@ -1502,7 +1863,9 @@ const SalaryBreakup = () => {
                           <td className="sb-no-plan-align-center">
                             <button
                               className="sb-no-plan-assign-button"
-                              onClick={() => openAssignModal(emp.employee_id, emp.full_name)}
+                              onClick={() =>
+                                openAssignModal(emp.employee_id, emp.full_name)
+                              }
                             >
                               Assign
                             </button>
@@ -1513,14 +1876,15 @@ const SalaryBreakup = () => {
                   </table>
                 </div>
               ) : (
-                <p className="sb-no-plan-message">No employees without compensation plans found.</p>
+                <p className="sb-no-plan-message">
+                  No employees without compensation plans found.
+                </p>
               )}
             </>
           )}
         </div>
       )}
 
-      {/* Bonus modal */}
       {bonusModal.isVisible && (
         <div className="sb-sb-modal-overlay">
           <div className="sb-sb-modal">
@@ -1532,10 +1896,12 @@ const SalaryBreakup = () => {
             </div>
             <div className="sb-sb-bonus-form">
               <p className="sb-sb-bonus-info">
-                The specified bonus details will be recorded for the selected month and year. Select one
-                option below:
+                The specified bonus details will be recorded for the selected
+                month and year. Select one option below:
               </p>
-              {bonusModal.error && <p className="sb-sb-error-message">{bonusModal.error}</p>}
+              {bonusModal.error && (
+                <p className="sb-sb-error-message">{bonusModal.error}</p>
+              )}
               <div className="sb-sb-bonus-field">
                 <input
                   type="radio"
@@ -1587,7 +1953,9 @@ const SalaryBreakup = () => {
                     })
                   }
                 />
-                <label htmlFor="monthlySalaryCount">No of Monthly Salary:</label>
+                <label htmlFor="monthlySalaryCount">
+                  No of Monthly Salary:
+                </label>
                 <div className="sb-sb-monthly-salary-container">
                   <select
                     id="monthlySalaryCount"
@@ -1600,7 +1968,9 @@ const SalaryBreakup = () => {
                       })
                     }
                     className="sb-sb-bonus-input"
-                    disabled={bonusModal.selectedOption !== "monthlySalaryCount"}
+                    disabled={
+                      bonusModal.selectedOption !== "monthlySalaryCount"
+                    }
                   >
                     <option value="">Select Number</option>
                     {monthlySalaryOptions.map((option) => (
@@ -1666,7 +2036,10 @@ const SalaryBreakup = () => {
                     <option value="">Select Month</option>
                     {months.map((m) => (
                       <option key={m} value={m}>
-                        {new Date(2000, parseInt(m) - 1).toLocaleString("en-US", { month: "long" })}
+                        {new Date(2000, parseInt(m) - 1).toLocaleString(
+                          "en-US",
+                          { month: "long" }
+                        )}
                       </option>
                     ))}
                   </select>
@@ -1691,10 +2064,18 @@ const SalaryBreakup = () => {
               </div>
 
               <div className="sb-sb-modal-footer">
-                <button className="sb-sb-modal-button sb-sb-cancel" onClick={closeBonusModal} disabled={isLoading}>
+                <button
+                  className="sb-sb-modal-button sb-sb-cancel"
+                  onClick={closeBonusModal}
+                  disabled={isLoading}
+                >
                   Cancel
                 </button>
-                <button className="sb-sb-modal-button sb-sb-submit" onClick={handleBonusSubmit} disabled={isLoading}>
+                <button
+                  className="sb-sb-modal-button sb-sb-submit"
+                  onClick={handleBonusSubmit}
+                  disabled={isLoading}
+                >
                   {isLoading ? "Submitting..." : "Submit"}
                 </button>
               </div>
@@ -1703,7 +2084,6 @@ const SalaryBreakup = () => {
         </div>
       )}
 
-      {/* Assign modal */}
       {assignModal.isVisible && (
         <div className="sb-sb-modal-overlay">
           <div className="sb-sb-modal">
@@ -1714,7 +2094,9 @@ const SalaryBreakup = () => {
               </button>
             </div>
             <div className="sb-sb-assign-form">
-              {assignModal.error && <p className="sb-sb-error-message">{assignModal.error}</p>}
+              {assignModal.error && (
+                <p className="sb-sb-error-message">{assignModal.error}</p>
+              )}
               <div className="sb-sb-assign-field">
                 <label htmlFor="compensationPlan">Compensation Plan:</label>
                 <select

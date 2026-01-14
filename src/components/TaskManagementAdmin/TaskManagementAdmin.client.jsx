@@ -1,6 +1,12 @@
 "use client";
 
-import React, { useMemo, useState, useEffect, useCallback, useRef } from "react";
+import React, {
+  useMemo,
+  useState,
+  useEffect,
+  useCallback,
+  useRef,
+} from "react";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import axios from "axios";
@@ -37,7 +43,6 @@ const formatDate = (date) => {
   )}-${String(d.getDate()).padStart(2, "0")}`;
 };
 
-
 const displayDate = (date) => parseDate(date);
 
 const TaskManagementAdmin = () => {
@@ -55,12 +60,11 @@ const TaskManagementAdmin = () => {
       orgId: user.orgId || null,
     });
   }, [user, hydrated]);
-const recognitionRef = useRef(null);
-const finalTranscriptRef = useRef("");  // <-- This persists across restarts
-const [listening, setListening] = useState(false);
-const [messageText, setMessageText] = useState(""); // For display (final + interim)
+  const recognitionRef = useRef(null);
+  const finalTranscriptRef = useRef("");
+  const [listening, setListening] = useState(false);
+  const [messageText, setMessageText] = useState("");
   const [selectedTaskId, setSelectedTaskId] = useState(null);
-  // const [messageText, setMessageText] = useState("");
   const [showAssignForm, setShowAssignForm] = useState(false);
   const [activeTab, setActiveTab] = useState("Progress");
   const [mainTab, setMainTab] = useState("Task Board");
@@ -133,71 +137,68 @@ const [messageText, setMessageText] = useState(""); // For display (final + inte
     fetch();
   }, [userContext, getHeaders]);
 
-useEffect(() => {
-  if (!("webkitSpeechRecognition" in window || "SpeechRecognition" in window)) {
-    console.warn("Speech Recognition not supported");
-    return;
-  }
-
-  const SpeechRecognition =
-    window.SpeechRecognition || window.webkitSpeechRecognition;
-
-  const recognition = new SpeechRecognition();
-  recognition.continuous = true;
-  recognition.interimResults = true;
-  recognition.lang = "en-IN";
-
-  recognition.onresult = (event) => {
-    let interimTranscript = "";
-
-    for (let i = event.resultIndex; i < event.results.length; i++) {
-      const result = event.results[i];
-      const transcript = result[0].transcript.trim();
-
-      if (result.isFinal) {
-        // Append finalized text permanently
-        finalTranscriptRef.current += transcript + " ";
-      } else {
-        // Show current interim text
-        interimTranscript = transcript;
-      }
+  useEffect(() => {
+    if (
+      !("webkitSpeechRecognition" in window || "SpeechRecognition" in window)
+    ) {
+      console.warn("Speech Recognition not supported");
+      return;
     }
 
-    // Update input with final + current interim
-    setMessageText(finalTranscriptRef.current + interimTranscript);
+    const SpeechRecognition =
+      window.SpeechRecognition || window.webkitSpeechRecognition;
+
+    const recognition = new SpeechRecognition();
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    recognition.lang = "en-IN";
+
+    recognition.onresult = (event) => {
+      let interimTranscript = "";
+
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        const result = event.results[i];
+        const transcript = result[0].transcript.trim();
+
+        if (result.isFinal) {
+          finalTranscriptRef.current += transcript + " ";
+        } else {
+          interimTranscript = transcript;
+        }
+      }
+
+      setMessageText(finalTranscriptRef.current + interimTranscript);
+    };
+
+    recognition.onend = () => {
+      setListening(false);
+      setMessageText(finalTranscriptRef.current.trim());
+    };
+
+    recognition.onerror = (event) => {
+      console.error("Speech recognition error:", event.error);
+      setListening(false);
+      setMessageText(finalTranscriptRef.current.trim());
+    };
+
+    recognitionRef.current = recognition;
+
+    return () => {
+      recognition.abort();
+    };
+  }, []);
+
+  const toggleListening = () => {
+    if (!recognitionRef.current) return;
+
+    if (listening) {
+      recognitionRef.current.stop();
+      setListening(false);
+    } else {
+      recognitionRef.current.start();
+      setListening(true);
+    }
   };
-
-  recognition.onend = () => {
-    setListening(false);
-    // Keep the final text visible even after stopping
-    setMessageText(finalTranscriptRef.current.trim());
-  };
-
-  recognition.onerror = (event) => {
-    console.error("Speech recognition error:", event.error);
-    setListening(false);
-    setMessageText(finalTranscriptRef.current.trim());
-  };
-
-  recognitionRef.current = recognition;
-
-  // Cleanup on unmount
-  return () => {
-    recognition.abort();
-  };
-}, []);
-
-const toggleListening = () => {
-  if (!recognitionRef.current) return;
-
-  if (listening) {
-    recognitionRef.current.stop();
-    setListening(false);
-  } else {
-    recognitionRef.current.start();
-    setListening(true);
-  }
-};
 
   const fetchTasks = async () => {
     if (!userContext || employees.length === 0) return;
@@ -416,12 +417,10 @@ const toggleListening = () => {
         { taskId, sender: userContext.employeeId, type: activeTab, text },
         { withCredentials: true, headers: getHeaders() }
       );
-      // ✅ Clear input AND speech buffer
-setMessageText("");
-finalTranscriptRef.current = "";
+      setMessageText("");
+      finalTranscriptRef.current = "";
 
-await fetchMessagesForTask(taskId);
-
+      await fetchMessagesForTask(taskId);
     } catch (e) {
       setError(
         e.response?.data?.error || e.message || "Failed to send message"
@@ -973,31 +972,45 @@ await fetchMessagesForTask(taskId);
                               No progress updates yet.
                             </p>
                           )}
-                        <form className="task-admin-chat-input" onSubmit={handleAddMessage}>
-  <div className="task-admin-input-wrapper">
-    <input
-      type="text"
-      placeholder="Type or speak a progress note..."
-      value={messageText}
-      onChange={(e) => setMessageText(e.target.value)}
-      disabled={loadingMessages}
-    />
+                          <form
+                            className="task-admin-chat-input"
+                            onSubmit={handleAddMessage}
+                          >
+                            <div className="task-admin-input-wrapper">
+                              <input
+                                type="text"
+                                placeholder="Type or speak a progress note..."
+                                value={messageText}
+                                onChange={(e) => setMessageText(e.target.value)}
+                                disabled={loadingMessages}
+                              />
 
-    <button
-      type="button"
-      className="task-admin-mic-btn"
-      onClick={toggleListening}
-      title={listening ? "Stop Listening" : "Start Speaking"}
-    >
-      {listening ? <MdMicOff size={20} /> : <MdMic size={20} />}
-    </button>
-  </div>
+                              <button
+                                type="button"
+                                className="task-admin-mic-btn"
+                                onClick={toggleListening}
+                                title={
+                                  listening
+                                    ? "Stop Listening"
+                                    : "Start Speaking"
+                                }
+                              >
+                                {listening ? (
+                                  <MdMicOff size={20} />
+                                ) : (
+                                  <MdMic size={20} />
+                                )}
+                              </button>
+                            </div>
 
-  <button type="submit" disabled={loadingMessages || !messageText.trim()}>
-    Send
-  </button>
-</form>
-</div>
+                            <button
+                              type="submit"
+                              disabled={loadingMessages || !messageText.trim()}
+                            >
+                              Send
+                            </button>
+                          </form>
+                        </div>
                       )}
 
                       {activeTab === "Clarification" && (
@@ -1038,31 +1051,44 @@ await fetchMessagesForTask(taskId);
                               No clarifications yet.
                             </p>
                           )}
-                         <form className="task-admin-chat-input" onSubmit={handleAddMessage}>
-  <div className="task-admin-input-wrapper">
-    <input
-      type="text"
-      placeholder="Type or speak a progress note..."
-      value={messageText}
-      onChange={(e) => setMessageText(e.target.value)}
-      disabled={loadingMessages}
-    />
+                          <form
+                            className="task-admin-chat-input"
+                            onSubmit={handleAddMessage}
+                          >
+                            <div className="task-admin-input-wrapper">
+                              <input
+                                type="text"
+                                placeholder="Type or speak a progress note..."
+                                value={messageText}
+                                onChange={(e) => setMessageText(e.target.value)}
+                                disabled={loadingMessages}
+                              />
 
-    <button
-      type="button"
-      className="task-admin-mic-btn"
-      onClick={toggleListening}
-      title={listening ? "Stop Listening" : "Start Speaking"}
-    >
-      {listening ? <MdMicOff size={20} /> : <MdMic size={20} />}
-    </button>
-  </div>
+                              <button
+                                type="button"
+                                className="task-admin-mic-btn"
+                                onClick={toggleListening}
+                                title={
+                                  listening
+                                    ? "Stop Listening"
+                                    : "Start Speaking"
+                                }
+                              >
+                                {listening ? (
+                                  <MdMicOff size={20} />
+                                ) : (
+                                  <MdMic size={20} />
+                                )}
+                              </button>
+                            </div>
 
-  <button type="submit" disabled={loadingMessages || !messageText.trim()}>
-    Send
-  </button>
-</form>
-
+                            <button
+                              type="submit"
+                              disabled={loadingMessages || !messageText.trim()}
+                            >
+                              Send
+                            </button>
+                          </form>
                         </div>
                       )}
                     </div>

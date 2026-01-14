@@ -45,12 +45,9 @@ export default function EditorPanel(props) {
     onFooterLoad,
   } = handlers || {};
 
-  // Decide whether we will mount a dedicated editor component (BasicTemplateEditor or CustomTemplateEditor)
-  // If so, don't render the inline A4Preview editor — otherwise user sees two editors.
   const shouldMountDedicatedEditor =
     (mode === "basic" && generated && !viewingTemplate) || mode === "scratch";
 
-  // Show A4Preview only when not mounting a dedicated editor
   const showA4Preview =
     (mode === "basic" || mode === "scratch") && !shouldMountDedicatedEditor;
 
@@ -61,7 +58,6 @@ export default function EditorPanel(props) {
         data-testid="template-editor-container"
         ref={editorWrapperRef}
       >
-        {/* Only render A4Preview when no dedicated editor will be mounted */}
         {showA4Preview && (
           <A4Preview
             headerUrl={previewUrls?.headerUrl}
@@ -69,7 +65,6 @@ export default function EditorPanel(props) {
             watermarkUrl={previewUrls?.watermarkUrl}
             watermarkProps={watermarkProps}
             bodyBoxes={bodyBoxes}
-            // Only editable when A4Preview is the active editing surface
             editable={true}
             boxesEditable={true}
             onBoxesChange={setBodyBoxes}
@@ -78,7 +73,6 @@ export default function EditorPanel(props) {
           />
         )}
 
-        {/* When a generated template is opened for editing in "basic" mode, mount the corresponding editor */}
         {mode === "basic" && generated && !viewingTemplate && (
           <div style={{ position: "relative" }}>
             {generated._headerBlob && (
@@ -181,14 +175,12 @@ export default function EditorPanel(props) {
           </div>
         )}
 
-        {/* When nothing generated yet in basic mode */}
         {!generated && mode === "basic" && (
           <div className={styles.placeholder}>
             Choose a template from the left to open it here.
           </div>
         )}
 
-        {/* Scratch mode mounts the custom template editor (dedicated editor) */}
         {mode === "scratch" && (
           <CustomTemplateEditor
             ref={scratchEditorRef}

@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState, useMemo } from "react";
 import axios from "axios";
 import "./OvertimeDetails.css";
@@ -17,7 +16,7 @@ const OvertimeDetails = () => {
 
   const API_KEY = process.env.REACT_APP_API_KEY;
   const BASE_URL = process.env.REACT_APP_BACKEND_URL;
-const { user } = useAuth();
+  const { user } = useAuth();
   const meId = user?.employeeId ?? user?.id ?? user?.employee_id ?? null;
   const headers = {
     "x-api-key": API_KEY,
@@ -25,19 +24,20 @@ const { user } = useAuth();
     "Content-Type": "application/json",
   };
 
-  // ---------- DATE HELPERS ----------
   const monthLabel = (offset) => {
     const d = new Date();
     d.setMonth(d.getMonth() - offset);
     return d.toLocaleString("default", { month: "long", year: "numeric" });
   };
 
-  // Convert UTC ISO string to local YYYY-MM-DD (IST)
   const toLocalDate = (dateStr) => {
     const d = new Date(dateStr);
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(
+      2,
+      "0"
+    )}-${String(d.getDate()).padStart(2, "0")}`;
   };
- const [alertModal, setAlertModal] = useState({
+  const [alertModal, setAlertModal] = useState({
     isVisible: false,
     title: "",
     message: "",
@@ -50,16 +50,16 @@ const { user } = useAuth();
   const closeAlert = () => {
     setAlertModal({ isVisible: false, title: "", message: "" });
   };
-  // ---------- FETCH ----------
   const fetchData = async () => {
     if (!API_KEY || !meId) return;
     setLoading(true);
     try {
-      // 1. Get cutoff date
-      const cutoffRes = await axios.get(`${BASE_URL}/api/salaryCalculationperiods`, { headers });
+      const cutoffRes = await axios.get(
+        `${BASE_URL}/api/salaryCalculationperiods`,
+        { headers }
+      );
       const cutoff_date = cutoffRes.data?.data?.[0]?.cutoff_date || 5;
 
-      // 2. Calculate start & end date
       const now = new Date();
       let currentMonth = now.getMonth();
       let currentYear = now.getFullYear();
@@ -71,25 +71,26 @@ const { user } = useAuth();
       }
       const periodEnd = new Date(currentYear, currentMonth, cutoff_date);
       const periodStart = new Date(currentYear, currentMonth - 1, cutoff_date);
-      const startDate = `${periodStart.getFullYear()}-${String(periodStart.getMonth() + 1).padStart(2, "0")}-${String(
-        periodStart.getDate()
-      ).padStart(2, "0")}`;
-      const endDate = `${periodEnd.getFullYear()}-${String(periodEnd.getMonth() + 1).padStart(2, "0")}-${String(
-        periodEnd.getDate()
-      ).padStart(2, "0")}`;
+      const startDate = `${periodStart.getFullYear()}-${String(
+        periodStart.getMonth() + 1
+      ).padStart(2, "0")}-${String(periodStart.getDate()).padStart(2, "0")}`;
+      const endDate = `${periodEnd.getFullYear()}-${String(
+        periodEnd.getMonth() + 1
+      ).padStart(2, "0")}-${String(periodEnd.getDate()).padStart(2, "0")}`;
 
-      // 3. Fetch all required data
-      const [extraRes, summaryRes, assignedRes, planListRes] = await Promise.all([
-        axios.get(
-          `${BASE_URL}/api/compensation/employee-extra-hours?startDate=${startDate}&endDate=${endDate}`,
-          { headers }
-        ),
-        axios.get(`${BASE_URL}/api/compensation/overtime-status-summary`, { headers }),
-        axios.get(`${BASE_URL}/api/compensation/assigned`, { headers }),
-        axios.get(`${BASE_URL}/api/compensations/list`, { headers }),
-      ]);
+      const [extraRes, summaryRes, assignedRes, planListRes] =
+        await Promise.all([
+          axios.get(
+            `${BASE_URL}/api/compensation/employee-extra-hours?startDate=${startDate}&endDate=${endDate}`,
+            { headers }
+          ),
+          axios.get(`${BASE_URL}/api/compensation/overtime-status-summary`, {
+            headers,
+          }),
+          axios.get(`${BASE_URL}/api/compensation/assigned`, { headers }),
+          axios.get(`${BASE_URL}/api/compensations/list`, { headers }),
+        ]);
 
-      // --- Build Summary Map (Project & Supervisor) ---
       const summaryData = summaryRes.data?.data || [];
       const summaryMap = {};
       summaryData.forEach((item) => {
@@ -99,7 +100,6 @@ const { user } = useAuth();
         };
       });
 
-      // --- Build Rate Map ---
       const rateObj = {};
       const assignedData = assignedRes.data?.data || assignedRes.data || [];
       assignedData.forEach((plan) => {
@@ -110,7 +110,6 @@ const { user } = useAuth();
       });
       setRateMap(rateObj);
 
-      // --- Build Default Working Hours Map ---
       const hoursObj = {};
       const planList = planListRes.data?.data || [];
       const planHoursMap = {};
@@ -127,21 +126,24 @@ const { user } = useAuth();
       });
       setDefaultHoursMap(hoursObj);
 
-      // --- Process Main Data with LOCAL DATE ---
       const mainData = (extraRes.data?.data || []).map((item) => {
-        const localDate = toLocalDate(item.work_date); // ← Critical: normalize
+        const localDate = toLocalDate(item.work_date);
         const totalHrs = parseFloat(item.total_hours_worked) || 0;
         const defaultHrs = hoursObj[item.employee_id] || 8;
-        const recalculatedExtra = totalHrs > defaultHrs ? totalHrs - defaultHrs : 0;
+        const recalculatedExtra =
+          totalHrs > defaultHrs ? totalHrs - defaultHrs : 0;
 
         const sessionsWithCorrectedExtra = (item.sessions || []).map((s) => ({
           ...s,
-          extra_hours: item.sessions.length > 0 ? (recalculatedExtra / item.sessions.length).toFixed(2) : "0.00",
+          extra_hours:
+            item.sessions.length > 0
+              ? (recalculatedExtra / item.sessions.length).toFixed(2)
+              : "0.00",
         }));
 
         return {
           ...item,
-          work_date: localDate, // ← override with local date
+          work_date: localDate,
           projects:
             item.projects ||
             item.project ||
@@ -158,7 +160,6 @@ const { user } = useAuth();
       });
       setData(mainData);
 
-      // --- Build Approved Set using LOCAL DATE ---
       const approved = new Set();
       summaryData.forEach((r) => {
         if (r.employee_id && r.work_date) {
@@ -178,7 +179,6 @@ const { user } = useAuth();
     fetchData();
   }, [tab]);
 
-  // ---------- FILTER ----------
   const filtered = useMemo(() => {
     if (!search) return data;
     const q = search.toLowerCase();
@@ -190,7 +190,6 @@ const { user } = useAuth();
     );
   }, [data, search]);
 
-  // ---------- SELECTION (per day) ----------
   const rowKey = (item) => `${item.employee_id}-${item.work_date}`;
 
   const isApproved = (item) => approvedSet.has(rowKey(item));
@@ -230,15 +229,16 @@ const { user } = useAuth();
     return allKeys.length > 0 && allKeys.every((k) => selected.has(k));
   })();
 
-  // ---------- BULK UPDATE ----------
   const buildPayload = (sessions, status, parent) => {
     const groupKey = rowKey(parent);
-    const effectiveRate = edited[groupKey]?.rate ?? (rateMap[parent.employee_id] ?? parent.rate ?? 0);
-    const effectiveComments = edited[groupKey]?.comments ?? (parent.comments || "");
+    const effectiveRate =
+      edited[groupKey]?.rate ?? rateMap[parent.employee_id] ?? parent.rate ?? 0;
+    const effectiveComments =
+      edited[groupKey]?.comments ?? (parent.comments || "");
 
     return sessions.map((s) => ({
       punch_id: s.punch_id,
-      work_date: parent.work_date, // ← already local date
+      work_date: parent.work_date,
       employee_id: parent.employee_id,
       extra_hours: parseFloat(s.extra_hours) || 0,
       rate: effectiveRate,
@@ -252,8 +252,14 @@ const { user } = useAuth();
   const bulkUpdate = async (payload, status) => {
     if (!payload.length) return;
     try {
-      await axios.post(`${BASE_URL}/api/compensation/overtime-bulk`, { data: payload }, { headers });
-      showAlert(`Successfully ${status.toLowerCase()} ${payload.length} record(s)`);
+      await axios.post(
+        `${BASE_URL}/api/compensation/overtime-bulk`,
+        { data: payload },
+        { headers }
+      );
+      showAlert(
+        `Successfully ${status.toLowerCase()} ${payload.length} record(s)`
+      );
       await fetchData();
       setSelected(new Set());
     } catch (err) {
@@ -302,7 +308,6 @@ const { user } = useAuth();
     bulkUpdate(payload, "Rejected");
   };
 
-  // ---------- RENDER ----------
   if (loading) return <div className="ot-loading">Loading…</div>;
 
   return (
@@ -328,10 +333,18 @@ const { user } = useAuth();
           onChange={(e) => setSearch(e.target.value)}
         />
         <div className="ot-bulk-actions">
-          <button className="ot-btn ot-btn-approve" onClick={approveAll} disabled={selected.size === 0}>
+          <button
+            className="ot-btn ot-btn-approve"
+            onClick={approveAll}
+            disabled={selected.size === 0}
+          >
             Approve All
           </button>
-          <button className="ot-btn ot-btn-reject" onClick={rejectAll} disabled={selected.size === 0}>
+          <button
+            className="ot-btn ot-btn-reject"
+            onClick={rejectAll}
+            disabled={selected.size === 0}
+          >
             Reject All
           </button>
         </div>
@@ -345,7 +358,11 @@ const { user } = useAuth();
             <thead>
               <tr>
                 <th className="ot-th ot-th-select">
-                  <input type="checkbox" checked={isAllSelected} onChange={toggleAll} />
+                  <input
+                    type="checkbox"
+                    checked={isAllSelected}
+                    onChange={toggleAll}
+                  />
                 </th>
                 <th className="ot-th">Date</th>
                 <th className="ot-th">Employee ID</th>
@@ -392,12 +409,17 @@ const { user } = useAuth();
                         type="number"
                         step="0.01"
                         min="0"
-                        value={(edited[groupKey]?.rate ?? defaultRate).toFixed(2)}
+                        value={(edited[groupKey]?.rate ?? defaultRate).toFixed(
+                          2
+                        )}
                         onChange={(e) => {
                           const val = parseFloat(e.target.value) || 0;
                           setEdited((prev) => ({
                             ...prev,
-                            [groupKey]: { ...(prev[groupKey] || {}), rate: val },
+                            [groupKey]: {
+                              ...(prev[groupKey] || {}),
+                              rate: val,
+                            },
                           }));
                         }}
                         disabled={approved}
@@ -425,29 +447,35 @@ const { user } = useAuth();
                         {Array.isArray(row.projects)
                           ? row.projects[0]?.slice(0, 8)
                           : (row.projects || "—").slice(0, 8)}
-                        {Array.isArray(row.projects) && row.projects.length > 1 && (
-                          <span
-                            className="ot-tooltip-icon"
-                            style={{
-                              marginLeft: "6px",
-                              color: "#555",
-                              fontSize: "12px",
-                            }}
-                          >
-                            i
-                          </span>
-                        )}
+                        {Array.isArray(row.projects) &&
+                          row.projects.length > 1 && (
+                            <span
+                              className="ot-tooltip-icon"
+                              style={{
+                                marginLeft: "6px",
+                                color: "#555",
+                                fontSize: "12px",
+                              }}
+                            >
+                              i
+                            </span>
+                          )}
                       </div>
                     </td>
                     <td className="ot-td">{row.supervisors || "—"}</td>
                     <td className="ot-td">
                       <input
                         type="text"
-                        value={edited[groupKey]?.comments ?? (row.comments || "")}
+                        value={
+                          edited[groupKey]?.comments ?? (row.comments || "")
+                        }
                         onChange={(e) => {
                           setEdited((prev) => ({
                             ...prev,
-                            [groupKey]: { ...(prev[groupKey] || {}), comments: e.target.value },
+                            [groupKey]: {
+                              ...(prev[groupKey] || {}),
+                              comments: e.target.value,
+                            },
                           }));
                         }}
                         disabled={approved}
@@ -456,7 +484,9 @@ const { user } = useAuth();
                     </td>
                     <td className="ot-td">
                       <span
-                        className={`ot-status ot-status-${approved ? "approved" : "pending"}`}
+                        className={`ot-status ot-status-${
+                          approved ? "approved" : "pending"
+                        }`}
                       >
                         {approved ? "Approved" : "Pending"}
                       </span>
@@ -489,12 +519,12 @@ const { user } = useAuth();
         </div>
       )}
       <Modal
-                  isVisible={alertModal.isVisible}
-                  onClose={closeAlert}
-                  buttons={[{ label: "OK", onClick: closeAlert }]}
-                >
-                  <p>{alertModal.message}</p>
-                </Modal>
+        isVisible={alertModal.isVisible}
+        onClose={closeAlert}
+        buttons={[{ label: "OK", onClick: closeAlert }]}
+      >
+        <p>{alertModal.message}</p>
+      </Modal>
     </div>
   );
 };

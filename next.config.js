@@ -1,6 +1,5 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // (temporarily removed optimization overrides)
   async rewrites() {
     return [
       {

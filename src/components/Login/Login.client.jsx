@@ -42,14 +42,10 @@ export default function Login({ onClose }) {
     if (onClose) onClose();
   };
 
-  /* =========================
-     ORGS LOADING (CACHE + FETCH)
-     ========================= */
   useEffect(() => {
     let aborted = false;
 
     async function loadOrgs() {
-      // 1. Load cached orgs immediately
       try {
         const cached = localStorage.getItem(ORGS_STORAGE_KEY);
         if (cached) {
@@ -58,11 +54,8 @@ export default function Login({ onClose }) {
             setOrgs(parsed);
           }
         }
-      } catch {
-        // ignore cache errors
-      }
+      } catch {}
 
-      // 2. Always fetch latest orgs
       try {
         const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/orgs`, {
           method: "GET",
@@ -96,7 +89,6 @@ export default function Login({ onClose }) {
     };
   }, []);
 
-  // allowed parent origins (comma-separated)
   const allowedOrigins = useMemo(() => {
     return (process.env.NEXT_PUBLIC_ALLOWED_IFRAME_ORIGINS || "")
       .split(",")
@@ -112,7 +104,6 @@ export default function Login({ onClose }) {
     }
   }, []);
 
-  // ---------- MESSAGE HANDLER ----------
   useEffect(() => {
     function onMessage(ev) {
       try {
@@ -147,9 +138,7 @@ export default function Login({ onClose }) {
             parentLoginAsSuperAdmin
           );
         }
-      } catch {
-        // swallow
-      }
+      } catch {}
     }
 
     window.addEventListener("message", onMessage);

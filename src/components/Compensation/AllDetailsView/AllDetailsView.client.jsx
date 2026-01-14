@@ -15,7 +15,6 @@ const AllDetailsView = ({
   bonusRecords = [],
   advances = [],
 }) => {
-  // Filter employees based on search
   const filteredEmployees = employees.filter((emp) => {
     const searchLower = searchQuery.toLowerCase();
     return (
@@ -26,7 +25,6 @@ const AllDetailsView = ({
 
   return (
     <div className="esd-container">
-      {/* Header */}
       <div className="esd-header">
         <button className="esd-back-button" onClick={handleBackToMain}>
           <svg
@@ -45,7 +43,6 @@ const AllDetailsView = ({
         <h1 className="esd-header-title">Employee Salary Overview</h1>
       </div>
 
-      {/* Search Bar */}
       <div className="esd-search-container">
         <input
           type="text"
@@ -56,35 +53,68 @@ const AllDetailsView = ({
         />
       </div>
 
-      {/* Table */}
       {filteredEmployees.length > 0 ? (
         <div className="esd-table-container">
           <div className="esd-table-wrapper">
             <table className="esd-table">
               <thead>
                 <tr>
-                  <th className="esd-table-header esd-align-left esd-id-column">ID</th>
-                  <th className="esd-table-header esd-align-left esd-name-column">Name</th>
-                  <th className="esd-table-header esd-align-right">Annual CTC</th>
+                  <th className="esd-table-header esd-align-left esd-id-column">
+                    ID
+                  </th>
+                  <th className="esd-table-header esd-align-left esd-name-column">
+                    Name
+                  </th>
+                  <th className="esd-table-header esd-align-right">
+                    Annual CTC
+                  </th>
                   <th className="esd-table-header esd-align-right">Basic</th>
                   <th className="esd-table-header esd-align-right">HRA</th>
                   <th className="esd-table-header esd-align-right">LTA</th>
-                  <th className="esd-table-header esd-align-right">Other Allow.</th>
-                  <th className="esd-table-header esd-align-right">Incentives</th>
+                  <th className="esd-table-header esd-align-right">
+                    Other Allow.
+                  </th>
+                  <th className="esd-table-header esd-align-right">
+                    Incentives
+                  </th>
                   <th className="esd-table-header esd-align-right">Overtime</th>
                   <th className="esd-table-header esd-align-right">Bonus</th>
-                  <th className="esd-table-header esd-align-right esd-deduction">Adv. Rec.</th>
-                  <th className="esd-table-header esd-align-right esd-deduction">Emp. PF</th>
-                  <th className="esd-table-header esd-align-right esd-deduction">Emp'r PF</th>
-                  <th className="esd-table-header esd-align-right esd-deduction">ESIC</th>
-                  <th className="esd-table-header esd-align-right esd-deduction">Gratuity</th>
-                  <th className="esd-table-header esd-align-right esd-deduction">Prof. Tax</th>
-                  <th className="esd-table-header esd-align-right esd-deduction">TDS</th>
-                  <th className="esd-table-header esd-align-right esd-deduction">Insurance</th>
-                  <th className="esd-table-header esd-align-right esd-ded">LOP Days</th>
-                  <th className="esd-table-header esd-align-right esd-ded">LOP Ded.</th>
-                  <th className="esd-table-header esd-align-right">Gross Salary</th>
-                  <th className="esd-table-header esd-align-right">Net Salary</th>
+                  <th className="esd-table-header esd-align-right esd-deduction">
+                    Adv. Rec.
+                  </th>
+                  <th className="esd-table-header esd-align-right esd-deduction">
+                    Emp. PF
+                  </th>
+                  <th className="esd-table-header esd-align-right esd-deduction">
+                    Emp'r PF
+                  </th>
+                  <th className="esd-table-header esd-align-right esd-deduction">
+                    ESIC
+                  </th>
+                  <th className="esd-table-header esd-align-right esd-deduction">
+                    Gratuity
+                  </th>
+                  <th className="esd-table-header esd-align-right esd-deduction">
+                    Prof. Tax
+                  </th>
+                  <th className="esd-table-header esd-align-right esd-deduction">
+                    TDS
+                  </th>
+                  <th className="esd-table-header esd-align-right esd-deduction">
+                    Insurance
+                  </th>
+                  <th className="esd-table-header esd-align-right esd-ded">
+                    LOP Days
+                  </th>
+                  <th className="esd-table-header esd-align-right esd-ded">
+                    LOP Ded.
+                  </th>
+                  <th className="esd-table-header esd-align-right">
+                    Gross Salary
+                  </th>
+                  <th className="esd-table-header esd-align-right">
+                    Net Salary
+                  </th>
                 </tr>
               </thead>
 
@@ -106,19 +136,20 @@ const AllDetailsView = ({
                     yearly: { days: 0, value: "0.00" },
                   };
 
-                  // Incentive
                   const empIdUpper = String(emp.employee_id).toUpperCase();
-                  const incentiveEntry = Object.entries(employeeIncentiveData).find(
-                    ([key]) => String(key).toUpperCase() === empIdUpper
-                  );
+                  const incentiveEntry = Object.entries(
+                    employeeIncentiveData
+                  ).find(([key]) => String(key).toUpperCase() === empIdUpper);
                   const incentiveValue = incentiveEntry
                     ? parseFloat(incentiveEntry[1]?.totalIncentive?.value || 0)
                     : 0;
 
-                  // Net Salary = Gross + Incentive - LOP - (other deductions already in salaryDetails.netSalary)
                   const grossSalary = salaryDetails?.grossSalary || 0;
                   const netFromCalc = salaryDetails?.netSalary || 0;
-                  const finalNetSalary = netFromCalc + incentiveValue - parseFloat(lopData.currentMonth?.value || 0);
+                  const finalNetSalary =
+                    netFromCalc +
+                    incentiveValue -
+                    parseFloat(lopData.currentMonth?.value || 0);
 
                   const format = (val) =>
                     val > 0
@@ -204,7 +235,9 @@ const AllDetailsView = ({
           </div>
         </div>
       ) : (
-        <div className="esd-no-data">No employees found matching your search.</div>
+        <div className="esd-no-data">
+          No employees found matching your search.
+        </div>
       )}
     </div>
   );

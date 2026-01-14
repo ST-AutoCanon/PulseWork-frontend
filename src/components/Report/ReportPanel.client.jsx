@@ -26,10 +26,6 @@ import {
 
 import { useAuth } from "../../context/AuthProvider.client";
 
-/* ------------------------------------------------------------- */
-/* helpers                                                       */
-/* ------------------------------------------------------------- */
-
 function formatDateLocal(d) {
   if (!d || !(d instanceof Date)) return "";
   const yyyy = d.getFullYear();
@@ -61,8 +57,6 @@ function deriveLifecycleFromAssignedTo(raw) {
   return "returned";
 }
 
-/* ------------------------------------------------------------- */
-
 export default function ReportPanel() {
   const { user, hydrated } = useAuth();
 
@@ -79,8 +73,6 @@ export default function ReportPanel() {
 
   const BACKEND = getApiBase();
   const API_KEY = process.env.NEXT_PUBLIC_API_KEY || "";
-
-  /* ---------------------------- state ---------------------------- */
 
   const [component, setComponent] = useState("select");
   const [status, setStatus] = useState("All");
@@ -113,8 +105,6 @@ export default function ReportPanel() {
     message: "",
   });
 
-  /* ---------------------------- derived ---------------------------- */
-
   const componentIsSelected = component && component !== "select";
 
   const allSelected =
@@ -140,8 +130,6 @@ export default function ReportPanel() {
     { value: "tasks_employee", label: "Tasks (Employee Driven)" },
     { value: "tasks_supervisor", label: "Tasks (Supervisor Driven)" },
   ];
-
-  /* ---------------------------- helpers ---------------------------- */
 
   const showAlert = (message, title = "") =>
     setAlertModal({ isVisible: true, title, message });
@@ -205,8 +193,6 @@ export default function ReportPanel() {
     );
   };
 
-  /* ---------------------------- effects ---------------------------- */
-
   useEffect(() => {
     if (!componentIsSelected) {
       setAvailableFields([]);
@@ -220,8 +206,6 @@ export default function ReportPanel() {
     setAvailableFields(fields);
     setSelectedFields(fields.map((f) => f.key));
   }, [component, componentIsSelected]);
-
-  /* ---------------------------- preview ---------------------------- */
 
   const fetchPreview = async () => {
     if (!validateDates()) return;
@@ -277,8 +261,6 @@ export default function ReportPanel() {
     }
   };
 
-  /* ---------------------------- pagination ---------------------------- */
-
   const totalPages = Math.max(
     1,
     Math.ceil(previewRows.length / PREVIEW_PAGE_SIZE)
@@ -289,11 +271,8 @@ export default function ReportPanel() {
     previewPage * PREVIEW_PAGE_SIZE
   );
 
-  /* ---------------------------- render ---------------------------- */
-
   return (
     <div className="rp-container">
-      {/* HEADER */}
       <header className="rp-header">
         <div className="rp-title">
           <MdOutlineAssessment size={28} />
@@ -307,9 +286,7 @@ export default function ReportPanel() {
         </div>
       </header>
 
-      {/* MAIN CARD */}
       <section className="rp-card">
-        {/* COMPONENT */}
         <div className="rp-row">
           <label className="rp-label">Component</label>
           <select
@@ -328,7 +305,6 @@ export default function ReportPanel() {
           </select>
         </div>
 
-        {/* FIELDS */}
         <div className="rp-row rp-fields-row">
           <label className="rp-label">Fields</label>
 
@@ -374,7 +350,6 @@ export default function ReportPanel() {
           </div>
         </div>
 
-        {/* ACTIONS */}
         <div className="rp-actions">
           <button
             className="rp-btn preview"
@@ -385,7 +360,6 @@ export default function ReportPanel() {
           </button>
         </div>
 
-        {/* PREVIEW */}
         {previewOpen && (
           <div className="rp-preview-panel">
             {!previewLoading && !previewError && previewRows.length === 0 && (
@@ -430,7 +404,6 @@ export default function ReportPanel() {
         )}
       </section>
 
-      {/* ALERT */}
       <Modal
         isVisible={alertModal.isVisible}
         onClose={closeAlert}

@@ -69,10 +69,6 @@
   font-size: 13px;
 }
 
-/* .supervisor-plan-employee-list li:hover {
-  background-color: #28a745;
-} */
-
 .supervisor-plan-employee-list li.supervisor-plan-active {
   background-color: #28a745;
   color: #ffffff;
@@ -511,7 +507,7 @@
 
 .supervisor-admin-feedback-input {
   width: 100%;
-  padding: 10px 40px 10px 12px; /* Extra right padding for mic icon */
+  padding: 10px 40px 10px 12px;
   font-size: 14px;
   border-radius: 8px;
   border: 1px solid #ccc;
@@ -531,8 +527,6 @@
   cursor: not-allowed;
 }
 
-
-
 .supervisor-plan-employee-item {
   padding: 6px 8px;
   cursor: pointer;
@@ -540,19 +534,16 @@
   border-radius: 4px;
 }
 
-/* ACTIVE (selected employee) */
 .supervisor-plan-employee-item.supervisor-plan-active {
   background-color: #28a745;
   color: #fff;
   font-weight: 600;
 }
 .supervisor-admin-feedback-input {
-  flex: 1;              /* ⬅️ input grows */
-  min-width: 0;         /* ⬅️ prevents overflow */
+  flex: 1;
+  min-width: 0;
 }
 
-
-/* Fix hover — only apply to the direct item, not children */
 .supervisor-plan-employee-list .supervisor-plan-employee-item {
   padding: 8px 12px;
   margin-bottom: 4px;
@@ -572,25 +563,22 @@
   color: #28a745 !important;
 }
 
-/* Active state — highest priority */
-.supervisor-plan-employee-list .supervisor-plan-employee-item.supervisor-plan-active {
+.supervisor-plan-employee-list
+  .supervisor-plan-employee-item.supervisor-plan-active {
   background-color: #28a745 !important;
   color: #ffffff !important;
   font-weight: 600;
 }
 
-/* Ensure children don't inherit hover from parent */
 .supervisor-plan-employee-list ul ul .supervisor-plan-employee-item:hover {
   background-color: #e8f5e9 !important;
 }
 
-/* Optional: indent children more clearly */
 .supervisor-plan-employee-list ul ul {
   padding-left: 20px;
   margin-left: 8px;
 }
 
-/* Mobile styles update */
 @media (max-width: 768px) {
   .supervisor-plan-employee-list .supervisor-plan-employee-item {
     padding: 10px 16px;
@@ -601,32 +589,29 @@
     text-align: center;
   }
 
-  .supervisor-plan-employee-list .supervisor-plan-employee-item.supervisor-plan-active {
+  .supervisor-plan-employee-list
+    .supervisor-plan-employee-item.supervisor-plan-active {
     background-color: #28a745 !important;
     color: #fff !important;
     border-color: #28a745;
   }
 
-  .supervisor-plan-employee-list .supervisor-plan-employee-item:hover:not(.supervisor-plan-active) {
+  .supervisor-plan-employee-list
+    .supervisor-plan-employee-item:hover:not(.supervisor-plan-active) {
     background-color: #e8e8e8 !important;
   }
 }
 .supervisor-admin-mic-button {
-  /* position: absolute; */
   right: 8px;
-  /* background: transparent; */
   border: none;
   font-size: 18px;
   color: #28a745;
   cursor: pointer;
-  /* padding: 6px; */
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
   transition: all 0.2s;
-  /* min-height: 44px;
-  min-width: 44px; */
 }
 
 .supervisor-admin-mic-button:hover:not(:disabled) {
@@ -645,12 +630,17 @@
 }
 
 @keyframes pulse {
-  0% { opacity: 1; }
-  50% { opacity: 0.6; }
-  100% { opacity: 1; }
+  0% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.6;
+  }
+  100% {
+    opacity: 1;
+  }
 }
 
-/* Mobile touch target improvement */
 @media (max-width: 768px) {
   .supervisor-admin-mic-button {
     min-height: 48px;

@@ -1,5 +1,3 @@
-
-
 "use client";
 
 import React, { useState, useEffect, useMemo } from "react";
@@ -188,7 +186,7 @@ const SupervisorPlanViewerAdmin = () => {
                 emp_status: validStatuses.includes(task.emp_status)
                   ? task.emp_status
                   : "not started",
-                week_id: task.week_id, // ← Keep as string "YYYY-WW"
+                week_id: task.week_id,
                 project_id: task.project_id,
                 project_name: task.project_name,
               }))
@@ -211,21 +209,20 @@ const SupervisorPlanViewerAdmin = () => {
     fetchTasks();
   }, [supervisorId, apiHeaders]);
 
-  // Auto-select week when tasks load
   useEffect(() => {
     if (tasks.length === 0 || selectedWeekId !== null) return;
 
     const uniqueWeekIds = [...new Set(tasks.map((t) => t.week_id))].sort();
     const currentWeekId = getWeekIdForDate(new Date());
 
-    const defaultWeek = defaultToCurrentWeek && uniqueWeekIds.includes(currentWeekId)
-      ? currentWeekId
-      : uniqueWeekIds[uniqueWeekIds.length - 1] || currentWeekId;
+    const defaultWeek =
+      defaultToCurrentWeek && uniqueWeekIds.includes(currentWeekId)
+        ? currentWeekId
+        : uniqueWeekIds[uniqueWeekIds.length - 1] || currentWeekId;
 
     setSelectedWeekId(defaultWeek);
   }, [tasks]);
 
-  // Auto-select first employee with tasks
   useEffect(() => {
     if (employees.length === 0 || selectedEmployee !== null) return;
 
@@ -446,7 +443,7 @@ const SupervisorPlanViewerAdmin = () => {
               ?.trim()
               .toUpperCase(),
             emp_status: response.data.newTask.emp_status || "not started",
-            week_id: response.data.newTask.week_id, // ← Keep string
+            week_id: response.data.newTask.week_id,
             project_id: response.data.newTask.project_id,
             project_name: response.data.newTask.project_name,
           };
@@ -475,7 +472,6 @@ const SupervisorPlanViewerAdmin = () => {
         return newPrev;
       });
 
-      // Refresh tasks – keep week_id as string
       const res = await axios.get(
         `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/weekly_task_supervisor`,
         { withCredentials: true, headers: apiHeaders, timeout: 10000 }
@@ -494,7 +490,7 @@ const SupervisorPlanViewerAdmin = () => {
               emp_status: validStatuses.includes(task.emp_status)
                 ? task.emp_status
                 : "not started",
-              week_id: task.week_id, // ← Keep string
+              week_id: task.week_id,
               project_id: task.project_id,
               project_name: task.project_name,
             }))
@@ -510,7 +506,6 @@ const SupervisorPlanViewerAdmin = () => {
     setTimeout(() => setAlertModal({ isVisible: false, message: "" }), 5000);
   };
 
-  // Helper: "YYYY-WW" string
   const getWeekIdForDate = (date) => {
     const d = new Date(date);
     if (isNaN(d.getTime())) return null;
@@ -525,7 +520,6 @@ const SupervisorPlanViewerAdmin = () => {
     return { year, week };
   };
 
-  // Correct week start calculation
   const getWeekStartDate = (weekId) => {
     if (!weekId || typeof weekId !== "string") return null;
     if (!/^\d{4}-\d{2}$/.test(weekId)) return null;
@@ -533,7 +527,7 @@ const SupervisorPlanViewerAdmin = () => {
     const [year, week] = weekId.split("-").map(Number);
     if (!year || !week || week < 1 || week > 53) return null;
 
-    const jan4 = new Date(year, 0, 4); // ISO anchor
+    const jan4 = new Date(year, 0, 4);
     return startOfISOWeek(addDays(jan4, (week - 1) * 7));
   };
 

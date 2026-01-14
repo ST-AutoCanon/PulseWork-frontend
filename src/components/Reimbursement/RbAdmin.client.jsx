@@ -12,15 +12,6 @@ import Modal from "../Modal/Modal.client";
 import ParticipantSelection from "./ParticipantSelection.client";
 import { useAuth } from "../../context/AuthProvider.client";
 
-/**
- * RbAdmin (Next.js client component)
- *
- * Notes:
- *  - No localStorage usage — uses useAuth() only.
- *  - Attempts to resolve orgId from profile endpoints if missing.
- *  - Will NOT call /reimbursements if orgId cannot be resolved (avoids backend 500).
- */
-
 const RbAdmin = () => {
   const { user } = useAuth();
 
@@ -38,7 +29,6 @@ const RbAdmin = () => {
   const [comments, setComments] = useState({});
   const [statusFilter, setStatusFilter] = useState("pending");
 
-  // derive employee data from auth user instead of localStorage
   const employeeData = (user && (user.raw || user.dashboard)) || {};
   const employeeId = user?.employeeId || employeeData?.employeeId || null;
   const rawUserRole = user?.role || user?.raw?.role || "";
@@ -71,10 +61,8 @@ const RbAdmin = () => {
   const apiKey =
     process.env.NEXT_PUBLIC_API_KEY || process.env.REACT_APP_API_KEY || "";
 
-  // take token only from auth provider
   const authToken = user?.raw?.token || user?.token || user?.authToken || "";
 
-  // orgId state & resolve flags
   const [orgId, setOrgId] = useState(
     user?.orgId ||
       user?.raw?.org_id ||
@@ -187,7 +175,6 @@ const RbAdmin = () => {
     }
   };
 
-  // buildHeaders uses auth & resolved orgId only (no localStorage)
   const buildHeaders = useCallback(() => {
     const h = {};
     if (apiKey) h["x-api-key"] = apiKey;
@@ -208,7 +195,6 @@ const RbAdmin = () => {
     return h;
   }, [user, apiKey, authToken, orgId, employeeData]);
 
-  // resolve org id from backend profile endpoints (only when needed)
   const resolveOrgIdOnce = useCallback(async () => {
     if (orgId) return orgId;
     if (orgResolveTried) return orgId;
@@ -265,7 +251,6 @@ const RbAdmin = () => {
             }
           }
         } catch (err) {
-          // try next endpoint silently
           console.debug(
             "resolveOrgIdOnce: candidate failed",
             p,
@@ -292,19 +277,16 @@ const RbAdmin = () => {
     return null;
   }, [backendBase, authToken, apiKey, orgId, orgResolveTried, resolvingOrg]);
 
-  // Ensure org resolution attempt runs on mount and when orgId changes
   useEffect(() => {
     if (!orgId && !orgResolveTried) {
       resolveOrgIdOnce();
     }
-    // on mount we will attempt to fetch projects and employee options once org resolution was attempted
     const init = async () => {
       if (!orgId && !orgResolveTried) await resolveOrgIdOnce();
       await fetchProjects();
       await fetchEmployeeOptions();
     };
     init();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [orgId, orgResolveTried]);
 
   const fetchProjects = async () => {
@@ -402,14 +384,12 @@ const RbAdmin = () => {
   };
 
   useEffect(() => {
-    // initial employees load (safe: will attempt org resolution first)
     const initLoad = async () => {
       if (!orgId && !orgResolveTried) await resolveOrgIdOnce();
       await fetchEmployees();
     };
     initLoad();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // initial employees load
+  }, []);
 
   const getClaimAmount = (claim = {}) => {
     const raw =
@@ -429,10 +409,8 @@ const RbAdmin = () => {
 
   const fetchEmployees = async () => {
     try {
-      // try resolving orgId if we don't have it yet
       if (!orgId && !orgResolveTried) await resolveOrgIdOnce();
 
-      // if orgId is required by backend and still missing, do NOT call the endpoint
       if (!orgId) {
         console.error(
           "fetchEmployees aborted: orgId missing; headers:",
@@ -758,7 +736,6 @@ const RbAdmin = () => {
     }
   };
 
-  // ensure filteredEmployees exists for rendering
   const filteredEmployees = (employees || [])
     .map((emp) => ({
       ...emp,
@@ -917,7 +894,6 @@ const RbAdmin = () => {
   const closeAlert = () =>
     setAlertModal({ isVisible: false, title: "", message: "" });
 
-  // --- MISSING previously: openPaymentModal (added) ---
   const openPaymentModal = (claim) => {
     if (!claim) return;
     setSelectedPaymentClaim(claim);
@@ -1051,7 +1027,6 @@ const RbAdmin = () => {
                     <div className="reimbursement-table-scroll">
                       <div className="rb-sub-container">
                         <table className="rb-sub-table">
-                          {/* table head/body omitted for brevity inside this snippet but unchanged */}
                           <thead>
                             <tr>
                               <th>Sl No</th>

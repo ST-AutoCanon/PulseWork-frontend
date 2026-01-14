@@ -1,34 +1,29 @@
-
-/* Header container: Flex layout for title and menu button */
 .sb-header-container {
   display: flex;
   justify-content: space-between;
   align-items: center;
   padding: 15px 20px;
-  background: #ffffff; /* White background for consistency with AdvanceModal */
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); /* Subtle shadow for depth */
-  border-bottom: 1px solid #e0e0e0; /* Light border for separation */
+  background: #ffffff;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  border-bottom: 1px solid #e0e0e0;
   width: 100%;
   box-sizing: border-box;
 }
 
-/* Heading: Bold and prominent */
 .sb-header-heading {
   font-size: 1.8rem;
   font-weight: 600;
-  color: #333333; /* Dark gray for readability */
+  color: #333333;
   margin: 0;
 }
 
-/* Button container: Holds menu icon and dropdown */
 .sb-header-button-container {
-  position: relative; /* For dropdown positioning */
+  position: relative;
 }
 
-/* Menu icon: Hamburger styled for clarity */
 .sb-header-menu-icon {
   font-size: 1.5rem;
-  color: #007bff; /* Blue accent to match AdvanceModal buttons */
+  color: #007bff;
   cursor: pointer;
   padding: 8px;
   border-radius: 4px;
@@ -36,30 +31,28 @@
 }
 
 .sb-header-menu-icon:hover {
-  background-color: #f0f0f0; /* Light gray hover effect */
+  background-color: #f0f0f0;
 }
 
-/* Dropdown menu: Appears below the icon */
 .sb-header-dropdown-menu {
   position: absolute;
-  top: 100%; /* Below the menu icon */
-  right: 0; /* Aligned to the right of the button container */
-  background: #ffffff; /* White background */
-  border: 1px solid #e0e0e0; /* Light border */
+  top: 100%;
+  right: 0;
+  background: #ffffff;
+  border: 1px solid #e0e0e0;
   border-radius: 6px;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15); /* Shadow for depth */
-  min-width: 200px; /* Prevent menu from being too narrow */
-  z-index: 1000; /* Ensure it appears above other elements */
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+  min-width: 200px;
+  z-index: 1000;
   display: flex;
   flex-direction: column;
-  overflow: hidden; /* Ensure rounded corners clip content */
+  overflow: hidden;
 }
 
-/* Dropdown item: Styled as buttons */
 .sb-header-dropdown-item {
   padding: 10px 15px;
   font-size: 1rem;
-  color: #333333; /* Dark gray text */
+  color: #333333;
   background: none;
   border: none;
   text-align: left;
@@ -68,37 +61,36 @@
 }
 
 .sb-header-dropdown-item:hover {
-  background-color: #007bff; /* Blue hover effect */
-  color: #ffffff; /* White text on hover */
+  background-color: #007bff;
+  color: #ffffff;
 }
 
-/* Responsive design: Adjust for smaller screens */
 @media (max-width: 768px) {
   .sb-header-container {
-    padding: 10px 15px; /* Reduced padding for mobile */
+    padding: 10px 15px;
   }
 
   .sb-header-heading {
-    font-size: 1.5rem; /* Smaller heading */
+    font-size: 1.5rem;
   }
 
   .sb-header-menu-icon {
-    font-size: 1.3rem; /* Smaller icon */
+    font-size: 1.3rem;
     padding: 6px;
   }
 
   .sb-header-dropdown-menu {
-    min-width: 180px; /* Slightly narrower for mobile */
-    right: 0; /* Ensure it stays aligned to the right */
+    min-width: 180px;
+    right: 0;
   }
 }
 
 @media (max-width: 480px) {
   .sb-header-heading {
-    font-size: 1.3rem; /* Even smaller for very small screens */
+    font-size: 1.3rem;
   }
 
   .sb-header-dropdown-menu {
-    min-width: 160px; /* Further adjust for small screens */
+    min-width: 160px;
   }
 }

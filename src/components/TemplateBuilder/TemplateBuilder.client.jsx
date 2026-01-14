@@ -858,8 +858,6 @@ export default function TemplateBuilder() {
   }
 
   async function handleUploadSaved(savedData) {
-    console.log("handleUploadSaved called", savedData?.id || savedData?.name);
-
     if (!savedData) {
       console.warn("handleUploadSaved: no savedData provided");
       return;
@@ -1136,10 +1134,7 @@ export default function TemplateBuilder() {
       setAppMode("view");
       setShowSavedPane(true);
       setSavedModalVisible(true);
-      console.log(
-        "handleUploadSaved: opened saved template",
-        normalized.id || normalized.name
-      );
+
       return;
     } catch (err) {
       console.error("handleUploadSaved/openSavedTemplate failed", err);
@@ -1150,8 +1145,6 @@ export default function TemplateBuilder() {
   }
 
   async function openSavedTemplate(templateOrId) {
-    console.log("openSavedTemplate called with:", templateOrId);
-
     let template = templateOrId;
     if (!template) {
       console.warn("openSavedTemplate: called with empty value");
@@ -1453,10 +1446,6 @@ export default function TemplateBuilder() {
       setShowEditor(false);
       if (orgId) fetchSavedTemplates(orgId);
 
-      console.log(
-        "openSavedTemplate: succeeded for",
-        template?.id || template?.name
-      );
       return;
     } catch (err) {
       console.warn("openSavedTemplate: unexpected error", err);

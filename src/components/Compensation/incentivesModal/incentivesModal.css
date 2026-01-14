@@ -1,4 +1,3 @@
-/* Modal overlay styling */
 .im-modal-overlay {
   position: fixed;
   top: 0;
@@ -12,7 +11,6 @@
   z-index: 1000;
 }
 
-/* Modal container styling */
 .im-modal {
   background-color: #ffffff;
   border-radius: 8px;
@@ -22,9 +20,8 @@
   overflow: hidden;
 }
 
-/* Modal header styling */
 .im-modal-header {
-  background-color: #1e88e5; /* Professional blue header */
+  background-color: #1e88e5;
   color: #ffffff;
   padding: 16px 20px;
   display: flex;
@@ -38,7 +35,6 @@
   font-weight: 600;
 }
 
-/* Close button styling */
 .im-modal-close {
   background: none;
   border: none;
@@ -53,7 +49,6 @@
   color: #e0e0e0;
 }
 
-/* Modal content styling */
 .im-modal-content {
   padding: 20px;
   display: flex;
@@ -61,7 +56,6 @@
   gap: 20px;
 }
 
-/* Error message styling */
 .im-modal-error {
   background-color: #ffebee;
   color: #c62828;
@@ -70,7 +64,6 @@
   font-size: 14px;
 }
 
-/* Modal field styling */
 .im-modal-field {
   display: flex;
   flex-direction: column;
@@ -83,7 +76,6 @@
   color: #333333;
 }
 
-/* Radio group styling */
 .im-radio-group {
   display: flex;
   gap: 20px;
@@ -103,7 +95,6 @@
   cursor: pointer;
 }
 
-/* Input and select styling */
 .im-modal-field input[type="number"],
 .im-modal-field select {
   width: 100%;
@@ -116,17 +107,15 @@
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
-/* Dropdown specific styling */
 .im-modal-field select {
-  max-height: 40px; /* Limit height for better appearance */
-  appearance: none; /* Remove default browser styling */
-  background-image: url('data:image/svg+xml;utf8,<svg fill="%23333333" height="24" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg"><path d="M7 10l5 5 5-5z"/><path d="M0 0h24v24H0z" fill="none"/></svg>'); /* Custom arrow */
+  max-height: 40px;
+  appearance: none;
+  background-image: url('data:image/svg+xml;utf8,<svg fill="%23333333" height="24" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg"><path d="M7 10l5 5 5-5z"/><path d="M0 0h24v24H0z" fill="none"/></svg>');
   background-repeat: no-repeat;
   background-position: right 10px center;
   background-size: 12px;
 }
 
-/* Scrollable dropdown for long lists */
 .im-modal-field select::-webkit-scrollbar {
   width: 8px;
 }
@@ -147,20 +136,17 @@
   box-shadow: 0 0 4px rgba(30, 136, 229, 0.3);
 }
 
-/* Hover effect for dropdown options (where supported) */
 .im-modal-field select option {
   background-color: #ffffff;
   color: #333333;
 }
 
-/* Modal actions styling */
 .im-modal-actions {
   display: flex;
   justify-content: flex-end;
   gap: 12px;
 }
 
-/* Button styling */
 .im-modal-cancel,
 .im-modal-submit {
   padding: 10px 20px;
@@ -194,7 +180,6 @@
   cursor: not-allowed;
 }
 
-/* Responsive adjustments */
 @media (max-width: 600px) {
   .im-modal {
     width: 90%;

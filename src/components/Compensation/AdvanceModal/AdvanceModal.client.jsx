@@ -11,7 +11,6 @@ const AdvanceModal = ({
   isLoading = false,
   threeMonthsSalary = 0,
 }) => {
-  // Generate only current month + next month (2 options)
   const generateAvailableMonths = () => {
     const today = new Date();
     const currentMonth = startOfMonth(today);
@@ -29,7 +28,6 @@ const AdvanceModal = ({
 
   const availableMonths = generateAvailableMonths();
 
-  // Smart recovery amount division (even split with remainder distributed)
   const computeMonthlyRecoveries = () => {
     const amount = parseFloat(advanceModal.advanceAmount);
     const months = parseInt(advanceModal.recoveryMonths);
@@ -43,14 +41,13 @@ const AdvanceModal = ({
       .fill(base)
       .map((val, idx) => (idx < remainder ? val + 1 : val));
 
-    return recoveries
-      .map((r) => `₹${r.toLocaleString("en-IN")}`)
-      .join(" + ");
+    return recoveries.map((r) => `₹${r.toLocaleString("en-IN")}`).join(" + ");
   };
 
   const monthlyRecoveries = computeMonthlyRecoveries();
   const selectedMonthLabel =
-    availableMonths.find((m) => m.value === advanceModal.applicableMonth)?.label || "";
+    availableMonths.find((m) => m.value === advanceModal.applicableMonth)
+      ?.label || "";
 
   const closeModal = () => {
     setAdvanceModal({ ...advanceModal, isVisible: false });
@@ -64,7 +61,6 @@ const AdvanceModal = ({
     }));
   };
 
-  // Don't render if not visible
   if (!advanceModal?.isVisible) return null;
 
   return (
@@ -82,7 +78,6 @@ const AdvanceModal = ({
         </div>
 
         <div className="am-modal-content">
-          {/* Employee Name */}
           <div className="am-employee-name">
             For: <strong>{advanceModal.fullName || "Employee"}</strong>
           </div>
@@ -93,7 +88,6 @@ const AdvanceModal = ({
             </div>
           )}
 
-          {/* Advance Amount */}
           <div className="am-modal-field">
             <label htmlFor="advance-amount">Advance Amount (₹)</label>
             <input
@@ -110,7 +104,6 @@ const AdvanceModal = ({
             </p>
           </div>
 
-          {/* Recovery Months */}
           <div className="am-modal-field">
             <label htmlFor="recovery-months">Recovery Over (Months)</label>
             <input
@@ -129,7 +122,6 @@ const AdvanceModal = ({
             )}
           </div>
 
-          {/* Applicable Month (Start of Recovery) */}
           <div className="am-modal-field">
             <label htmlFor="applicable-month">Recovery Starts From</label>
             <select
@@ -151,7 +143,6 @@ const AdvanceModal = ({
             )}
           </div>
 
-          {/* Action Buttons */}
           <div className="am-modal-actions">
             <button
               type="button"
@@ -165,7 +156,12 @@ const AdvanceModal = ({
               type="button"
               className="am-modal-submit"
               onClick={handleAdvanceSubmit}
-              disabled={isLoading || !advanceModal.advanceAmount || !advanceModal.recoveryMonths || !advanceModal.applicableMonth}
+              disabled={
+                isLoading ||
+                !advanceModal.advanceAmount ||
+                !advanceModal.recoveryMonths ||
+                !advanceModal.applicableMonth
+              }
             >
               {isLoading ? "Submitting..." : "Add Advance"}
             </button>

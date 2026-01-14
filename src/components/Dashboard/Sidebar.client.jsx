@@ -1,17 +1,9 @@
-
-
 "use client";
 
-import React, {
-  useEffect,
-  useState,
-  useMemo,
-  useRef,
-} from "react";
+import React, { useEffect, useState, useMemo, useRef } from "react";
 import * as MdIcons from "react-icons/md";
 import { useAuth } from "../../context/AuthProvider.client";
 import "./Sidebar.css";
-
 
 import EmployeeDetails from "../EmployeeDetails/EmployeeDetails.client";
 import AddDepartment from "../AddDepartment/AddDepartment.client";
@@ -33,7 +25,7 @@ import Assets from "../Assets/Assets.client";
 import Vendors from "../vendors/vendors.client";
 import Chat from "../Chat/ChatPage.client";
 import CreateOrganization from "../CreateOrganization/CreateOrganization.client";
-import TaskManagement from "../TaskManagement/TaskManagement.client"; 
+import TaskManagement from "../TaskManagement/TaskManagement.client";
 import TaskManagementEmployee from "../TaskManagementEmployee/EmpTaskManagement.client";
 import TaskManagementAdmin from "../TaskManagementAdmin/TaskManagementAdmin.client";
 import Report from "../Report/ReportPanel.client";
@@ -55,12 +47,11 @@ const Sidebar = ({ setActiveContent }) => {
   const [showProfile, setShowProfile] = useState(false);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
 
-
-  const [showCompensationDropdown, setShowCompensationDropdown] = useState(false);
+  const [showCompensationDropdown, setShowCompensationDropdown] =
+    useState(false);
   const [showTaskDropdown, setShowTaskDropdown] = useState(false);
   const [showSalaryDropdown, setShowSalaryDropdown] = useState(false);
 
- 
   const [hasSubordinates, setHasSubordinates] = useState(false);
   const [loadingSubordinates, setLoadingSubordinates] = useState(true);
 
@@ -70,36 +61,104 @@ const Sidebar = ({ setActiveContent }) => {
     () => ({
       Admin: [
         { label: "Dashboard", path: "/dashboard", icon: "MdOutlineDashboard" },
-        { label: "Employee Details", path: "/employeeDetails", icon: "MdPeople" },
+        {
+          label: "Employee Details",
+          path: "/employeeDetails",
+          icon: "MdPeople",
+        },
         { label: "Add Department", path: "/addDepartment", icon: "MdDomain" },
-        { label: "Update Projects", path: "/updateProjects", icon: "MdWorkOutline" },
-        { label: "Compensation", path: "/compensation", icon: "MdOutlineAccountBalanceWallet" },
-        { label: "Leave Queries", path: "/leaveQueries", icon: "MdOutlineCommentBank" },
-        { label: "Reimbursement", path: "/reimbursement", icon: "MdCurrencyRupee" },
-        { label: "Payroll Summary", path: "/payrollSummary", icon: "MdReceiptLong" },
+        {
+          label: "Update Projects",
+          path: "/updateProjects",
+          icon: "MdWorkOutline",
+        },
+        {
+          label: "Compensation",
+          path: "/compensation",
+          icon: "MdOutlineAccountBalanceWallet",
+        },
+        {
+          label: "Leave Queries",
+          path: "/leaveQueries",
+          icon: "MdOutlineCommentBank",
+        },
+        {
+          label: "Reimbursement",
+          path: "/reimbursement",
+          icon: "MdCurrencyRupee",
+        },
+        {
+          label: "Payroll Summary",
+          path: "/payrollSummary",
+          icon: "MdReceiptLong",
+        },
         { label: "Assets", path: "/assets", icon: "MdLaptop" },
         { label: "Vendors", path: "/vendors", icon: "MdLocalShipping" },
-        { label: "Task Management", path: "/TaskManagement", icon: "MdTaskAlt" },
+        {
+          label: "Task Management",
+          path: "/TaskManagement",
+          icon: "MdTaskAlt",
+        },
         { label: "Messenger", path: "/messenger", icon: "MdChat" },
       ],
       Manager: [
         { label: "Dashboard", path: "/dashboard", icon: "MdOutlineDashboard" },
-        { label: "Employee Queries", path: "/employeeQueries", icon: "MdOutlineContactPhone" },
-        { label: "Compensation", path: "/compensation", icon: "MdOutlineAccountBalanceWallet" },
-        { label: "Leave Queries", path: "/leaveQueries", icon: "MdOutlineCommentBank" },
-        { label: "Reimbursement", path: "/reimbursement", icon: "MdCurrencyRupee" },
-        { label: "Task Management", path: "/TaskManagement", icon: "MdTaskAlt" },
+        {
+          label: "Employee Queries",
+          path: "/employeeQueries",
+          icon: "MdOutlineContactPhone",
+        },
+        {
+          label: "Compensation",
+          path: "/compensation",
+          icon: "MdOutlineAccountBalanceWallet",
+        },
+        {
+          label: "Leave Queries",
+          path: "/leaveQueries",
+          icon: "MdOutlineCommentBank",
+        },
+        {
+          label: "Reimbursement",
+          path: "/reimbursement",
+          icon: "MdCurrencyRupee",
+        },
+        {
+          label: "Task Management",
+          path: "/TaskManagement",
+          icon: "MdTaskAlt",
+        },
       ],
       Employee: [
         { label: "Dashboard", path: "/dashboard", icon: "MdOutlineDashboard" },
-        { label: "Leave Request", path: "/leaveQueries", icon: "MdOutlineCommentBank" },
-        { label: "Reimbursement", path: "/reimbursement", icon: "MdCurrencyRupee" },
-        { label: "Salary Statement", path: "/Salary_Statement", icon: "MdReceipt" },
-        { label: "Task Management", path: "/TaskManagement", icon: "MdTaskAlt" },
+        {
+          label: "Leave Request",
+          path: "/leaveQueries",
+          icon: "MdOutlineCommentBank",
+        },
+        {
+          label: "Reimbursement",
+          path: "/reimbursement",
+          icon: "MdCurrencyRupee",
+        },
+        {
+          label: "Salary Statement",
+          path: "/Salary_Statement",
+          icon: "MdReceipt",
+        },
+        {
+          label: "Task Management",
+          path: "/TaskManagement",
+          icon: "MdTaskAlt",
+        },
         { label: "Messenger", path: "/messenger", icon: "MdChat" },
       ],
       SuperAdmin: [
-        { label: "Create Organization", path: "/CreateOrganization", icon: "MdOutlineBusiness" },
+        {
+          label: "Create Organization",
+          path: "/CreateOrganization",
+          icon: "MdOutlineBusiness",
+        },
       ],
     }),
     []
@@ -107,13 +166,14 @@ const Sidebar = ({ setActiveContent }) => {
 
   const pathToComponent = useMemo(
     () => ({
-      
-      "/dashboard": (role) => (role === "Admin" ? <MyDashboard /> : <MyEmpDashboard />),
+      "/dashboard": (role) =>
+        role === "Admin" ? <MyDashboard /> : <MyEmpDashboard />,
       "/employeeDetails": () => <EmployeeDetails />,
       "/addDepartment": () => <AddDepartment />,
       "/updateProjects": () => <UpdateProject />,
       "/CreateOrganization": () => <CreateOrganization />,
-      "/leaveQueries": (role) => (role === "Admin" ? <LeaveQueries /> : <LeaveRequest />),
+      "/leaveQueries": (role) =>
+        role === "Admin" ? <LeaveQueries /> : <LeaveRequest />,
       "/payrollSummary": () => <PayrollSummary />,
       "/messenger": () => <Chat />,
       "/reimbursement": (role) => {
@@ -122,15 +182,15 @@ const Sidebar = ({ setActiveContent }) => {
         return <Reimbursement />;
       },
       "/employeeQueries": () => <AdminQuery />,
-       "/TemplateBuilder": () => <TemplateBuilder />,
-        "/letterHead": () => <LetterHead />,
+      "/TemplateBuilder": () => <TemplateBuilder />,
+      "/letterHead": () => <LetterHead />,
       "/assets": () => <Assets />,
       "/vendors": () => <Vendors />,
       "/report": () => <Report />,
       "/TaskManagement": (role, sub) => {
         if (sub === "admin" && role === "Admin") return <TaskManagementAdmin />;
-        if (sub === "team") return <TaskManagement />; 
-        return <TaskManagementEmployee />; 
+        if (sub === "team") return <TaskManagement />;
+        return <TaskManagementEmployee />;
       },
     }),
     []
@@ -143,11 +203,13 @@ const Sidebar = ({ setActiveContent }) => {
       icon: it.icon ?? it.iconName ?? "MdOutlineDashboard",
     }));
 
-
-
-  
   useEffect(() => {
-    if (!hydrated || !user || user.role === "Admin" || user.role === "SuperAdmin") {
+    if (
+      !hydrated ||
+      !user ||
+      user.role === "Admin" ||
+      user.role === "SuperAdmin"
+    ) {
       setHasSubordinates(false);
       setLoadingSubordinates(false);
       return;
@@ -166,7 +228,7 @@ const Sidebar = ({ setActiveContent }) => {
         }
 
         const employeeId = user.employeeId || user.id;
-        const orgId = user.orgId || user.organizationId || user.org_id; 
+        const orgId = user.orgId || user.organizationId || user.org_id;
 
         if (!employeeId || !orgId) {
           console.warn("Missing employeeId or orgId in user context");
@@ -253,12 +315,12 @@ const Sidebar = ({ setActiveContent }) => {
       }
       setShowCompensationDropdown(true);
     } else if (item.path === "/TaskManagement") {
-    
       content = pathToComponent["/TaskManagement"](role, subOption);
       setActiveNav(`/TaskManagement/${subOption || "employee"}`);
       setShowTaskDropdown(true);
     } else if (item.path === "/Salary_Statement" && subOption) {
-      content = subOption === "statement" ? <Salary_Statement /> : <GeneratePayslip />;
+      content =
+        subOption === "statement" ? <Salary_Statement /> : <GeneratePayslip />;
       setActiveNav(`/Salary_Statement/${subOption}`);
       setShowSalaryDropdown(true);
     } else {
@@ -319,7 +381,8 @@ const Sidebar = ({ setActiveContent }) => {
       })();
     }
 
-    const defaultPath = role === "SuperAdmin" ? "/CreateOrganization" : "/dashboard";
+    const defaultPath =
+      role === "SuperAdmin" ? "/CreateOrganization" : "/dashboard";
     const resolver = pathToComponent[defaultPath] || (() => <MyEmpDashboard />);
     setActiveContent(resolver(role));
     setActiveItem(defaultPath);
@@ -352,16 +415,18 @@ const Sidebar = ({ setActiveContent }) => {
               <span>{item.label}</span>
               {hasDropdown && (
                 <span className="arrow">
-                  {(item.path === "/compensation" && showCompensationDropdown) ||
+                  {(item.path === "/compensation" &&
+                    showCompensationDropdown) ||
                   (item.path === "/TaskManagement" && showTaskDropdown) ||
-                  (item.path === "/Salary_Statement" && showSalaryDropdown)
-                    ? <MdIcons.MdKeyboardArrowDown />
-                    : <MdIcons.MdKeyboardArrowRight />}
+                  (item.path === "/Salary_Statement" && showSalaryDropdown) ? (
+                    <MdIcons.MdKeyboardArrowDown />
+                  ) : (
+                    <MdIcons.MdKeyboardArrowRight />
+                  )}
                 </span>
               )}
             </div>
 
-            {/* Compensation Dropdown */}
             {item.path === "/compensation" && showCompensationDropdown && (
               <ul className="desktop-submenu">
                 <li
@@ -371,7 +436,8 @@ const Sidebar = ({ setActiveContent }) => {
                     handleMenuClick(item, "create");
                   }}
                 >
-                  <MdIcons.MdOutlineAddCircleOutline size={20} /> <span>Create Compensation</span>
+                  <MdIcons.MdOutlineAddCircleOutline size={20} />{" "}
+                  <span>Create Compensation</span>
                 </li>
                 <li
                   className={activeSubItem === "assign" ? "active" : ""}
@@ -380,7 +446,8 @@ const Sidebar = ({ setActiveContent }) => {
                     handleMenuClick(item, "assign");
                   }}
                 >
-                  <MdIcons.MdOutlineAssignmentInd size={20} /> <span>Assign Compensation</span>
+                  <MdIcons.MdOutlineAssignmentInd size={20} />{" "}
+                  <span>Assign Compensation</span>
                 </li>
                 <li
                   className={activeSubItem === "breakup" ? "active" : ""}
@@ -389,7 +456,8 @@ const Sidebar = ({ setActiveContent }) => {
                     handleMenuClick(item, "breakup");
                   }}
                 >
-                  <MdIcons.MdOutlineAccountBalance size={20} /> <span>Salary Breakup</span>
+                  <MdIcons.MdOutlineAccountBalance size={20} />{" "}
+                  <span>Salary Breakup</span>
                 </li>
                 <li
                   className={activeSubItem === "details" ? "active" : ""}
@@ -398,15 +466,14 @@ const Sidebar = ({ setActiveContent }) => {
                     handleMenuClick(item, "details");
                   }}
                 >
-                  <MdIcons.MdOutlineTableChart size={20} /> <span>Salary Details</span>
+                  <MdIcons.MdOutlineTableChart size={20} />{" "}
+                  <span>Salary Details</span>
                 </li>
               </ul>
             )}
 
-            {/* Task Management Dropdown */}
             {item.path === "/TaskManagement" && showTaskDropdown && (
               <ul className="desktop-submenu">
-                {/* Admin View */}
                 {user?.role === "Admin" && (
                   <li
                     className={activeSubItem === "admin" ? "active" : ""}
@@ -415,11 +482,11 @@ const Sidebar = ({ setActiveContent }) => {
                       handleMenuClick(item, "admin");
                     }}
                   >
-                    <MdIcons.MdOutlineAdminPanelSettings size={20} /> <span>Admin Task Management</span>
+                    <MdIcons.MdOutlineAdminPanelSettings size={20} />{" "}
+                    <span>Admin Task Management</span>
                   </li>
                 )}
 
-                {/* Team Tasks - only if has subordinates */}
                 {!loadingSubordinates && hasSubordinates && (
                   <li
                     className={activeSubItem === "team" ? "active" : ""}
@@ -432,10 +499,13 @@ const Sidebar = ({ setActiveContent }) => {
                   </li>
                 )}
 
-                {/* My Tasks - for non-Admin users */}
                 {user?.role !== "Admin" && (
                   <li
-                    className={activeSubItem === "employee" || !activeSubItem ? "active" : ""}
+                    className={
+                      activeSubItem === "employee" || !activeSubItem
+                        ? "active"
+                        : ""
+                    }
                     onClick={(e) => {
                       e.stopPropagation();
                       handleMenuClick(item, "employee");
@@ -447,7 +517,6 @@ const Sidebar = ({ setActiveContent }) => {
               </ul>
             )}
 
-            {/* Salary Statement Dropdown */}
             {item.path === "/Salary_Statement" && showSalaryDropdown && (
               <ul className="desktop-submenu">
                 <li
@@ -457,7 +526,8 @@ const Sidebar = ({ setActiveContent }) => {
                     handleMenuClick(item, "statement");
                   }}
                 >
-                  <MdIcons.MdOutlineReceiptLong size={20} /> <span>View Salary Statement</span>
+                  <MdIcons.MdOutlineReceiptLong size={20} />{" "}
+                  <span>View Salary Statement</span>
                 </li>
                 <li
                   className={activeSubItem === "payslip" ? "active" : ""}
@@ -466,7 +536,8 @@ const Sidebar = ({ setActiveContent }) => {
                     handleMenuClick(item, "payslip");
                   }}
                 >
-                  <MdIcons.MdOutlineDescription size={20} /> <span>Generate Payslip</span>
+                  <MdIcons.MdOutlineDescription size={20} />{" "}
+                  <span>Generate Payslip</span>
                 </li>
               </ul>
             )}
@@ -478,7 +549,6 @@ const Sidebar = ({ setActiveContent }) => {
 
   return (
     <>
-      {/* Desktop Sidebar */}
       <div className="sidebar">
         {user?.role !== "Admin" && user?.role !== "SuperAdmin" && (
           <div className="profile-section">
@@ -498,7 +568,6 @@ const Sidebar = ({ setActiveContent }) => {
         {renderMenuList()}
       </div>
 
-      {/* Bottom Nav for Mobile */}
       <div className="bottom-nav">
         {menuItems.slice(0, 4).map((item, index) => {
           const Icon = resolveIcon(item.icon);
@@ -520,12 +589,17 @@ const Sidebar = ({ setActiveContent }) => {
         </button>
       </div>
 
-      {/* Mobile Full Sidebar Menu */}
       {showMobileMenu && (
-        <div className="mobile-menu-overlay" onClick={() => setShowMobileMenu(false)}>
+        <div
+          className="mobile-menu-overlay"
+          onClick={() => setShowMobileMenu(false)}
+        >
           <div className="mobile-sidebar" onClick={(e) => e.stopPropagation()}>
             <div className="mobile-header">
-              <button className="mobile-close" onClick={() => setShowMobileMenu(false)}>
+              <button
+                className="mobile-close"
+                onClick={() => setShowMobileMenu(false)}
+              >
                 <MdIcons.MdClose size={28} />
               </button>
             </div>
@@ -553,7 +627,10 @@ const Sidebar = ({ setActiveContent }) => {
       )}
 
       {showProfile && (
-        <Profile employeeId={user?.employeeId} onClose={() => setShowProfile(false)} />
+        <Profile
+          employeeId={user?.employeeId}
+          onClose={() => setShowProfile(false)}
+        />
       )}
     </>
   );

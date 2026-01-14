@@ -179,9 +179,6 @@ const CreateOrganization = ({ employeeId: propEmployeeId = null }) => {
 
   const [employeePrefix, setEmployeePrefix] = useState("");
 
-  // ---------------------------
-  // ROLES: dynamic fetch (replaces hardcoded roles)
-  // ---------------------------
   const [roles, setRoles] = useState([]);
   const [rolesLoading, setRolesLoading] = useState(false);
 
@@ -331,7 +328,6 @@ const CreateOrganization = ({ employeeId: propEmployeeId = null }) => {
     setAlertModal({ isVisible: false, title: "", message: "" });
   };
 
-  // reset form when opened (same as original)
   useEffect(() => {
     if (showForm && !isEditing) {
       setStep(1);
@@ -361,11 +357,7 @@ const CreateOrganization = ({ employeeId: propEmployeeId = null }) => {
     }
   }, [showForm, isEditing]);
 
-  // ---------------------------
-  // Fetch roles dynamically when form opens & step 2 / editing
-  // ---------------------------
   useEffect(() => {
-    // inside useEffect
     const fetchRoles = async () => {
       setRolesLoading(true);
       try {
@@ -379,7 +371,6 @@ const CreateOrganization = ({ employeeId: propEmployeeId = null }) => {
         }
         const payload = await res.json();
 
-        // API returns { status: 'success', data: [ {id, name}, ... ] }
         const list = Array.isArray(payload?.data)
           ? payload.data
           : Array.isArray(payload)
@@ -408,15 +399,11 @@ const CreateOrganization = ({ employeeId: propEmployeeId = null }) => {
       }
     };
 
-    // fetch roles when the form is opened and step 2 is shown (or editing an org)
     if (showForm && (step === 2 || isEditing)) {
       fetchRoles();
     }
   }, [showForm, step, isEditing, BASE_URL, headers]);
 
-  // ---------------------------
-  // Fetch sidebar items (original behavior) - unchanged
-  // ---------------------------
   useEffect(() => {
     const fetchSidebarItems = async () => {
       try {
@@ -451,9 +438,6 @@ const CreateOrganization = ({ employeeId: propEmployeeId = null }) => {
     }
   }, [showForm, step, isEditing, employeeId, headers, BASE_URL]);
 
-  // ---------------------------
-  // Fetch sidebar access when editing (original behavior) - unchanged
-  // ---------------------------
   useEffect(() => {
     const fetchSidebarAccess = async () => {
       if (isEditing && currentOrgId && sidebarItems.length > 0) {
@@ -493,9 +477,6 @@ const CreateOrganization = ({ employeeId: propEmployeeId = null }) => {
     fetchSidebarAccess();
   }, [isEditing, currentOrgId, sidebarItems, employeeId, headers, BASE_URL]);
 
-  // ---------------------------
-  // Organizations fetch (unchanged)
-  // ---------------------------
   useEffect(() => {
     const fetchOrganizations = async () => {
       try {
@@ -1390,7 +1371,6 @@ const CreateOrganization = ({ employeeId: propEmployeeId = null }) => {
         </div>
       )}
 
-      {/* ... rest of table rendering (unchanged from your original) ... */}
       {filteredOrgData.length > 0 ? (
         <>
           <div className="orgprefix-mobile-cards">

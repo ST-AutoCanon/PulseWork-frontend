@@ -3,13 +3,13 @@
 import React from "react";
 import "./Header.css";
 
-const Header = ({ 
-  menuOpen, 
-  toggleMenu, 
-  openNoPlanModal, 
-  openBonusModal, 
+const Header = ({
+  menuOpen,
+  toggleMenu,
+  openNoPlanModal,
+  openBonusModal,
   handleViewAllDetails,
-  handleViewSalaryDetails 
+  handleViewSalaryDetails,
 }) => {
   return (
     <div className="sb-header-container">
@@ -20,13 +20,11 @@ const Header = ({
         </div>
         {menuOpen && (
           <div className="sb-header-dropdown-menu">
-            
-           
             <button
               className="sb-header-dropdown-item"
               onClick={() => {
                 openNoPlanModal();
-                toggleMenu(); // Close menu after click
+                toggleMenu();
               }}
             >
               View Employees Without Plans
@@ -35,7 +33,7 @@ const Header = ({
               className="sb-header-dropdown-item"
               onClick={() => {
                 openBonusModal();
-                toggleMenu(); // Close menu after click
+                toggleMenu();
               }}
             >
               Add Bonus

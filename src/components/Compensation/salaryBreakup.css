@@ -90,21 +90,19 @@
   text-align: right;
 }
 
-/* ... (previous styles remain unchanged until .sb-sb-view-button) ... */
-
 .sb-sb-view-button,
 .sb-sb-advance-button,
 .sb-sb-view-details-button {
   background-color: #7fbd2c;
   color: white;
-  padding: 4px 8px; /* Reduced padding */
+  padding: 4px 8px;
   border: none;
   border-radius: 4px;
   cursor: pointer;
-  font-size: 10px; /* Smaller font size */
+  font-size: 10px;
   margin: 2px;
   transition: background-color 0.2s;
-  width: 80px; /* Explicitly reduced width */
+  width: 80px;
 }
 
 .sb-sb-view-button:hover,
@@ -115,10 +113,10 @@
 
 .sb-sb-action-buttons {
   display: flex;
-  flex-direction: row; /* Side by side */
-  gap: 4px; /* Small gap between buttons */
-  justify-content: center; /* Center align buttons */
-  white-space: nowrap; /* Prevents wrapping */
+  flex-direction: row;
+  gap: 4px;
+  justify-content: center;
+  white-space: nowrap;
 }
 
 .sb-sb-no-plan-button,
@@ -142,15 +140,6 @@
 .sb-sb-back-button:hover {
   background-color: #6aa524;
 }
-
-/* ... (rest of the styles remain unchanged) ... */
-
-/* .sb-sb-button-container {
-  display: flex;
-  justify-content: flex-end;
-  margin-bottom: 20px;
-  gap: 12px;
-} */
 
 .sb-sb-totals-container {
   margin-bottom: 24px;
@@ -184,16 +173,36 @@
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
-.sb-sb-total-card.sb-payable { background-color: #e6ffed; }
-.sb-sb-total-card.sb-gross { background-color: #e6f4ff; }
-.sb-sb-total-card.sb-tds { background-color: #ffe6e6; }
-.sb-sb-total-card.sb-advance { background-color: #fff9e6; }
-.sb-sb-total-card.sb-overtime { background-color: #f5e6ff; }
-.sb-sb-total-card.sb-bonus { background-color: #ffefe6; }
-.sb-sb-total-card.sb-pf-employee { background-color: #e6e6ff; }
-.sb-sb-total-card.sb-pf-employer { background-color: #e6fffb; }
-.sb-sb-total-card.sb-insurance { background-color: #e6ffee; }
-.sb-sb-total-card.sb-lop { background-color: #fff3e6; }
+.sb-sb-total-card.sb-payable {
+  background-color: #e6ffed;
+}
+.sb-sb-total-card.sb-gross {
+  background-color: #e6f4ff;
+}
+.sb-sb-total-card.sb-tds {
+  background-color: #ffe6e6;
+}
+.sb-sb-total-card.sb-advance {
+  background-color: #fff9e6;
+}
+.sb-sb-total-card.sb-overtime {
+  background-color: #f5e6ff;
+}
+.sb-sb-total-card.sb-bonus {
+  background-color: #ffefe6;
+}
+.sb-sb-total-card.sb-pf-employee {
+  background-color: #e6e6ff;
+}
+.sb-sb-total-card.sb-pf-employer {
+  background-color: #e6fffb;
+}
+.sb-sb-total-card.sb-insurance {
+  background-color: #e6ffee;
+}
+.sb-sb-total-card.sb-lop {
+  background-color: #fff3e6;
+}
 
 .sb-sb-card-icon {
   font-size: 24px;
@@ -303,8 +312,8 @@
   justify-content: space-between;
   align-items: center;
   padding: 12px;
-  color:white;
-  background-color: #00468C;
+  color: white;
+  background-color: #00468c;
   border-bottom: 2px solid #e2e8f0;
 }
 .sb-sb-ctc-info div {
@@ -354,13 +363,13 @@
 .sb-sb-single-details-table th.sb-sb-align-left,
 .sb-sb-single-details-table td.sb-sb-align-left {
   text-align: left;
-  width: 25%; /* Component and Compensation Plan columns */
+  width: 25%;
 }
 
 .sb-sb-single-details-table th.sb-sb-align-right,
 .sb-sb-single-details-table td.sb-sb-align-right {
   text-align: right;
-  width: 25%; /* Monthly and Yearly Amount columns */
+  width: 25%;
 }
 
 .sb-sb-tab-button.active:hover {
@@ -371,8 +380,8 @@
   font-weight: 700;
   text-align: center;
   padding: 10px;
-  color:white;
-  background-color: #7FBD2C;
+  color: white;
+  background-color: #7fbd2c;
   border-radius: 8px;
   margin-bottom: 15px;
 }
@@ -395,7 +404,6 @@
 .sb-sb-table-header {
   white-space: nowrap;
 }
-
 
 .sb-sb-tab-button {
   background-color: #edf2f7;
@@ -502,7 +510,6 @@
   margin-bottom: 12px;
 }
 
-
 .sb-sb-advance-field,
 .sb-sb-assign-field {
   display: flex;
@@ -510,7 +517,6 @@
   gap: 12px;
   margin-bottom: 16px;
 }
-
 
 .sb-sb-advance-field label,
 .sb-sb-assign-field label {
@@ -541,7 +547,8 @@
   font-size: 16px;
   color: #2d3748;
   font-weight: 500;
-}.sb-sb-bonus-field-row {
+}
+.sb-sb-bonus-field-row {
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -560,9 +567,6 @@
   font-weight: 500;
   color: #333;
 }
-
-
-
 
 .sb-sb-monthly-salary-container {
   display: flex;
@@ -586,16 +590,6 @@
   font-size: 14px;
   margin-top: 8px;
 }
-
-/* .sb-sb-modal-header {
-  background-color: #7fbd2c;
-  color: white;
-  padding: 12px 40px 12px 12px;
-  border-radius: 6px 6px 0 0;
-  font-size: 18px;
-  font-weight: 600;
-  position: relative;
-} */
 
 .sb-sb-cancel-button {
   background-color: #e53e3e;
@@ -636,7 +630,8 @@
   display: flex;
   flex-direction: column;
   gap: 4px;
-}.sb-sb-modal-overlay {
+}
+.sb-sb-modal-overlay {
   position: fixed;
   top: 0;
   left: 0;
@@ -649,16 +644,6 @@
   z-index: 999;
 }
 
-/* .sb-sb-modal {
-  background: #fff;
-  width: 500px;
-  max-width: 90%;
-  border-radius: 10px;
-  overflow: hidden;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
-  animation: fadeInUp 0.3s ease-out;
-} */
-
 @keyframes fadeInUp {
   from {
     opacity: 0;
@@ -670,15 +655,7 @@
   }
 }
 
-/* .sb-sb-modal-header {
-  background: #f5f5f5;
-  padding: 16px;
-  font-size: 18px;
-  font-weight: bold;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-} */.sb-sb-table-header-container {
+.sb-sb-table-header-container {
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -693,7 +670,7 @@
 }
 
 .sb-sb-search-input {
-  padding: 8px 35px 8px 12px; /* right padding for icon */
+  padding: 8px 35px 8px 12px;
   border: 1px solid #ccc;
   border-radius: 6px;
   font-size: 14px;
@@ -706,7 +683,6 @@
   color: #888;
   pointer-events: none;
 }
-
 
 .sb-sb-close-button {
   background: none;
@@ -738,8 +714,6 @@
 .sb-sb-advance-field {
   margin-bottom: 16px;
 }
-
-
 
 .sb-sb-advance-input {
   width: 100%;
@@ -805,10 +779,9 @@
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
   animation: fadeInUp 0.5s ease-in-out;
 
-  overflow-y: auto;   /* 👈 Enables vertical scrolling */
-  overflow-x: hidden; /* 👈 Hides horizontal scroll if not needed */
+  overflow-y: auto;
+  overflow-x: hidden;
 }
-
 
 @keyframes fadeInUp {
   from {
@@ -823,15 +796,14 @@
 
 .sb-sb-modal-header {
   background-color: #f5f5f5;
-  padding: 8px 14px; /* ↓ Reduced from 14px to 8px top/bottom */
+  padding: 8px 14px;
   font-weight: bold;
   font-size: 12px;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  min-height: 22px; /* Optional: set a minimal height if needed */
+  min-height: 22px;
 }
-
 
 .sb-sb-close-button {
   background: none;
@@ -865,20 +837,16 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  flex-wrap: wrap; /* Optional if responsive wrapping is needed */
+  flex-wrap: wrap;
 }
-
 
 .sb-sb-bonus-field label,
-.sb-sb-advance-field label  {
-  display: inline-block; /* Was block */
+.sb-sb-advance-field label {
+  display: inline-block;
   font-weight: 600;
   margin: 0;
-  white-space: nowrap;  /* Prevents label text from wrapping */
+  white-space: nowrap;
 }
-
-
-
 
 .sb-sb-monthly-salary-container {
   display: flex;
@@ -895,7 +863,6 @@
 .sb-sb-month-select {
   margin-bottom: 16px;
 }
-
 
 .sb-sb-cancel-button,
 .sb-sb-submit-button {
@@ -940,7 +907,7 @@
 }
 
 .sb-sb-heading {
-  font-size: 32px; /* Reduced from 48px for cleaner layout */
+  font-size: 32px;
   font-weight: 600;
   color: #333;
 }
@@ -950,9 +917,8 @@
   padding: 6px;
   cursor: pointer;
   user-select: none;
-  margin-top:-48px;
+  margin-top: -48px;
 }
-
 
 .sb-dropdown-menu {
   position: absolute;
@@ -987,7 +953,6 @@
 .sb-dropdown-item:hover {
   background-color: #f2f2f2;
 }
-/* Container wrapping the whole section */
 .sb-no-plan-details-container {
   padding: 24px;
   background-color: #fafafa;
@@ -996,7 +961,6 @@
   margin: 20px auto;
 }
 
-/* Header row with back button and title */
 .sb-no-plan-details-header {
   display: flex;
   justify-content: space-between;
@@ -1004,7 +968,6 @@
   margin-bottom: 20px;
 }
 
-/* Back button styling */
 .sb-no-plan-back-button {
   background-color: #e0e0e0;
   border: none;
@@ -1019,7 +982,6 @@
   background-color: #d5d5d5;
 }
 
-/* Title */
 .sb-no-plan-title {
   position: absolute;
   left: 45%;
@@ -1029,14 +991,12 @@
   color: #333;
   white-space: nowrap;
 }
-/* Table container for scroll */
 .sb-no-plan-table-wrapper {
   overflow-x: auto;
   border: 1px solid #e0e0e0;
   border-radius: 6px;
 }
 
-/* Table styling */
 .sb-no-plan-table {
   width: 100%;
   border-collapse: collapse;
@@ -1079,9 +1039,8 @@
   z-index: 1;
 }
 
-/* Assign button */
 .sb-no-plan-assign-button {
-  background-color: #4CAF50;
+  background-color: #4caf50;
   color: #fff;
   padding: 6px 12px;
   font-size: 13px;
@@ -1095,7 +1054,6 @@
   background-color: #45a045;
 }
 
-/* Message if no employees */
 .sb-no-plan-message {
   margin-top: 20px;
   font-size: 15px;
@@ -1114,7 +1072,7 @@
   cursor: pointer;
   transition: background 0.2s ease-in-out, border-color 0.2s ease-in-out;
   font-weight: 500;
-  box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
 }
 
 .sb-no-plan-back-button:hover {
@@ -1130,7 +1088,7 @@
   margin: 0 0 16px 0;
   display: flex;
   justify-content: flex-end;
-  margin-top:-48px;
+  margin-top: -48px;
 }
 
 .sb-no-plan-search-input {
@@ -1146,7 +1104,6 @@
 .sb-no-plan-search-input:focus {
   border-color: #999;
 }
-
 
 .salary-details-container {
   background-color: #fff;
@@ -1241,15 +1198,14 @@
 }
 .emp-details-container {
   max-width: 880px;
-  height: 400px; /* or any desired height */
+  height: 400px;
   margin: 0 auto;
   padding: 24px;
   background-color: #ffffff;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
   border-radius: 8px;
-  overflow-y: auto; /* Enables vertical scrolling */
+  overflow-y: auto;
 }
-
 
 .emp-details-header {
   display: flex;
@@ -1362,7 +1318,7 @@
   background-color: #f5f7fa;
   min-height: 50vh;
   width: 1000px;
-  font-family: 'Inter', sans-serif;
+  font-family: "Inter", sans-serif;
 }
 
 .esd-header {
@@ -1405,11 +1361,9 @@
 .esd-search-container {
   display: flex;
   justify-content: flex-end;
-  margin-top: -48px;   /* Moves it slightly upward */
+  margin-top: -48px;
   margin-bottom: 16px;
 }
-
-
 
 .esd-search-input {
   width: 300px;
@@ -1502,7 +1456,6 @@
   font-size: 16px;
 }
 
-/* Scrollbar styling */
 .esd-table-wrapper::-webkit-scrollbar {
   width: 8px;
   height: 8px;
@@ -1520,7 +1473,6 @@
 .esd-table-wrapper::-webkit-scrollbar-thumb:hover {
   background: #6b7280;
 }
-/* Modal Overlay */
 .ac-modal-overlay {
   position: fixed;
   top: 0;
@@ -1534,7 +1486,6 @@
   justify-content: center;
 }
 
-/* Modal Box */
 .ac-modal-box {
   background: #fff;
   width: 500px;
@@ -1544,7 +1495,6 @@
   animation: fadeIn 0.3s ease-in-out;
 }
 
-/* Header */
 .ac-modal-header {
   background: #f5f5f5;
   padding: 1rem 1.2rem;
@@ -1569,7 +1519,6 @@
   color: #333;
 }
 
-/* Body */
 .ac-modal-body {
   padding: 1.2rem;
 }
@@ -1599,7 +1548,6 @@
   font-size: 1rem;
 }
 
-/* Footer */
 .ac-modal-footer {
   padding: 1rem 1.2rem;
   display: flex;
@@ -1637,7 +1585,6 @@
   background-color: #b0b0b0;
 }
 
-/* Animation */
 @keyframes fadeIn {
   from {
     opacity: 0;

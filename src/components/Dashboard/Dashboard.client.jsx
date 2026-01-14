@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useEffect, useState } from "react";
@@ -24,7 +23,6 @@ const Dashboard = () => {
   const API_KEY = process.env.NEXT_PUBLIC_API_KEY;
   const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
 
-  // ✅ Declare orgId BEFORE using it
   const orgId =
     user?.org_id ??
     user?.orgId ??
@@ -48,7 +46,6 @@ const Dashboard = () => {
       if (!hydrated) return;
       if (!email) return;
       try {
-        // ✅ Add await here
         const response = await axios.get(
           `${BACKEND_URL}/api/employee/birthday/${email}`,
           {

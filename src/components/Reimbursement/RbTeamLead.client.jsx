@@ -360,9 +360,7 @@ const RbTeamLead = () => {
     if (!hydrated) return;
     fetchEmployees();
   }, [view, hydrated]);
-  // put this alongside your other helpers (formatDisplayDate / formatRange)
   const resolveDateDisplay = (payload = {}, claim = {}) => {
-    // helper to pick first present value from a list of keys
     const pick = (obj, keys = []) => {
       for (const k of keys) {
         if (
@@ -376,7 +374,6 @@ const RbTeamLead = () => {
       return null;
     };
 
-    // candidate single-date fields (line payload preferred)
     const singleDateKeys = [
       "date",
       "expense_date",
@@ -391,7 +388,6 @@ const RbTeamLead = () => {
       "submittedAt",
     ];
 
-    // candidate range fields (start / end)
     const startKeys = [
       "date_from",
       "from",
@@ -413,16 +409,13 @@ const RbTeamLead = () => {
       "toDate",
     ];
 
-    // 1) If payload has explicit range, prefer that
     const start = pick(payload, startKeys);
     const end = pick(payload, endKeys);
     if (start || end) return formatRange(start, end);
 
-    // 2) If payload has a single date-ish field, use it
     const single = pick(payload, singleDateKeys);
     if (single) return formatDisplayDate(single);
 
-    // 3) Fallback to claim-level dates (sometimes the line payload is empty)
     const claimStart = pick(claim, startKeys);
     const claimEnd = pick(claim, endKeys);
     if (claimStart || claimEnd) return formatRange(claimStart, claimEnd);
@@ -430,7 +423,6 @@ const RbTeamLead = () => {
     const claimSingle = pick(claim, singleDateKeys);
     if (claimSingle) return formatDisplayDate(claimSingle);
 
-    // 4) last resort: created_at / submitted_at / createdAt on rb
     const lastResort =
       claim.created_at ||
       claim.createdAt ||
@@ -764,7 +756,6 @@ const RbTeamLead = () => {
             claimEmployee: claim?.employee_id,
           });
 
-          // 1) Try naive legacy path (which matches your Express route) if we can parse year/month
           const match = String(filename).match(/^(\d{4})-(\d{2})-/);
           const year = match ? match[1] : null;
           const month = match ? match[2] : null;
@@ -782,7 +773,6 @@ const RbTeamLead = () => {
               return { name: filename, url: URL.createObjectURL(result.blob) };
           }
 
-          // 2) If naive path failed, ask server for canonical metadata
           try {
             const metaResp = await axios.get(
               `${absBase}/reimbursement/attachment/meta?claimId=${encodeURIComponent(
@@ -795,19 +785,14 @@ const RbTeamLead = () => {
               ? meta.attachments
               : [];
             if (attachmentsMeta.length) {
-              // pick first match
               const att = attachmentsMeta[0];
-              // prefer a server-provided direct URL if present
               if (att.url && /^https?:\/\//i.test(att.url)) {
                 const r = await tryFetchBlob(att.url);
                 if (r.ok)
                   return { name: filename, url: URL.createObjectURL(r.blob) };
               }
 
-              // if att.file_path exists, try to form a canonical absolute URL for the backend handler
-              // att.file_path may be a relative stored path like: reimbursement/1/2026/01/STS-000003/2026-01-12_03.pdf
               if (att.file_path) {
-                // if file_path already starts with '/', join directly, else prefix '/'
                 const candidatePath = att.file_path.startsWith("/")
                   ? `${absBase}${att.file_path}`
                   : `${absBase}/${att.file_path}`;
@@ -816,7 +801,6 @@ const RbTeamLead = () => {
                   return { name: filename, url: URL.createObjectURL(r2.blob) };
               }
 
-              // else, if meta includes employee_id + filename + date info, reconstruct exact path
               const attEmp = att.employee_id || att.emp_id || att.employeeId;
               if (attEmp && att.file_name) {
                 const m2 = String(att.file_name).match(/^(\d{4})-(\d{2})-/);
@@ -842,7 +826,6 @@ const RbTeamLead = () => {
             );
           }
 
-          // nothing worked
           console.warn("All attempts failed for", filename);
           return null;
         })
@@ -1029,10 +1012,8 @@ const RbTeamLead = () => {
         backendBase ? backendBase : ""
       }/reimbursement/${claimId}/status`;
 
-      // pick a reliable actor id for headers and approver_id
       const actor = getEmployeeIdFromContextOrCookie(user) || teamLeadId || "";
 
-      // Build request body using fields server expects
       const body = {
         status: newStatus,
         approver_comments: comments[claimId] || "",
@@ -1040,14 +1021,12 @@ const RbTeamLead = () => {
         project: projectSelections[claimId] || "",
       };
 
-      // Build headers and ensure x-employee-id / x-org-id present
       const headers = { ...buildHeaders(), "Content-Type": "application/json" };
       if (!headers["x-employee-id"] && actor)
         headers["x-employee-id"] = String(actor).trim();
       if (!headers["x-org-id"] && orgId)
         headers["x-org-id"] = String(orgId).trim();
 
-      // send primary request
       await axios.put(url, body, {
         withCredentials: true,
         headers,
@@ -1058,7 +1037,6 @@ const RbTeamLead = () => {
     } catch (err) {
       console.error("updateStatus failed:", err);
 
-      // Secondary fallback: minimal headers but ensure x-employee-id present
       try {
         const url = `${
           backendBase ? backendBase : ""
@@ -1094,7 +1072,6 @@ const RbTeamLead = () => {
 
   const updatePaymentStatus = async (claimIdParam, paymentOptionParam) => {
     try {
-      // Accept explicit args, otherwise fallback to modal state
       const claimId =
         claimIdParam ||
         (selectedPaymentClaim &&
@@ -1118,7 +1095,6 @@ const RbTeamLead = () => {
         (backendBase ? `${backendBase}` : "") +
         `/reimbursement/${encodeURIComponent(claimId)}/payment`;
 
-      // build headers and ensure required headers present
       const headers = { ...buildHeaders(), "Content-Type": "application/json" };
       const actor = getEmployeeIdFromContextOrCookie(user) || teamLeadId;
       if (!headers["x-employee-id"] && actor)
@@ -1139,7 +1115,6 @@ const RbTeamLead = () => {
       );
 
       showAlert("Payment status updated.");
-      // reset modal state
       setIsPaymentModalOpen(false);
       setSelectedPaymentClaim(null);
       setSelectedPaymentOption("");
@@ -1147,7 +1122,6 @@ const RbTeamLead = () => {
     } catch (err) {
       console.error("updatePaymentStatus failed:", err);
       try {
-        // fallback minimal headers
         const url =
           (backendBase ? `${backendBase}` : "") +
           `/reimbursement/${encodeURIComponent(

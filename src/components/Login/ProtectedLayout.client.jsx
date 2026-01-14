@@ -60,11 +60,9 @@ export default function ProtectedLayout({ children }) {
 
       if (Date.now() - lastActivityRef.current > IDLE_TIMEOUT) {
         try {
-          // mark for other tabs / parent
           try {
             sessionStorage.setItem("loggedOutDueToInactivity", "true");
           } catch {}
-          // call logout with redirect true so parent receives the message and can navigate
           await logout({ redirect: true, reason: "idle" });
         } catch (err) {
           console.warn("idle logout failed", err);

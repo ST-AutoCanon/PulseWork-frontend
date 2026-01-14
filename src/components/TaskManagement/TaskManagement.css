@@ -726,8 +726,7 @@
 .task-input-wrapper {
   display: flex;
   align-items: center;
-  flex: 1; /* Takes all available space */
- 
+  flex: 1;
 }
 @media (max-width: 640px) {
   .task-board {

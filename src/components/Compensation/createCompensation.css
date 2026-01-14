@@ -1,6 +1,5 @@
-/* Checkbox styling for compensation-checkbox */
 .compensation-checkbox {
-  appearance: none; /* Remove default styling */
+  appearance: none;
   width: 15px;
   height: 15px;
   margin: 0;
@@ -32,10 +31,9 @@
 }
 
 .compensation-checkbox:checked::after {
-  display: block; /* Show tick when checked */
+  display: block;
 }
 
-/* General container styling */
 .compensation-container {
   padding: 20px;
   max-width: 1600px;
@@ -45,8 +43,8 @@
 .compensation-percentage-input + span {
   color: red;
   font-size: 12px;
-  margin-left: 10px; /* Changed to margin-left for inline display */
-  display: inline-block; /* Changed to inline-block for row layout */
+  margin-left: 10px;
+  display: inline-block;
 }
 
 .header-container {
@@ -56,7 +54,7 @@
 }
 
 .compensation-create-button {
-  background-color: #7FBD2C;
+  background-color: #7fbd2c;
   color: white;
   padding: 10px 20px;
   border: none;
@@ -159,7 +157,7 @@
 }
 
 .compensation-popup-header {
-  background-color: #00468C;
+  background-color: #00468c;
   color: white;
   padding: 15px 20px;
   display: flex;
@@ -216,7 +214,7 @@
 }
 
 .progress-step.active .step-number {
-  background-color: #7FBD2C;
+  background-color: #7fbd2c;
   color: white;
 }
 
@@ -251,13 +249,13 @@
 .progress-line {
   width: 20px;
   height: 1.5px;
-  background-color: #7FBD2C;
+  background-color: #7fbd2c;
 }
 
 .progress-dot {
   width: 6px;
   height: 6px;
-  background-color: #7FBD2C;
+  background-color: #7fbd2c;
   border-radius: 50%;
   margin: 0 5px;
   z-index: 1;
@@ -282,18 +280,18 @@
 .compensation-category h3 {
   margin: 0 0 15px;
   font-size: 16px;
-  color: #00468C;
-  border-bottom: 2px solid #7FBD2C;
+  color: #00468c;
+  border-bottom: 2px solid #7fbd2c;
   padding-bottom: 5px;
 }
 
 .compensation-form-group {
   display: flex;
-  align-items: center; /* Center items vertically */
-  gap: 10px; /* Space between label and input group */
+  align-items: center;
+  gap: 10px;
   padding: 10px 0;
-  flex-wrap: nowrap; /* Prevent wrapping */
-  min-height: 60px; /* Stabilize layout */
+  flex-wrap: nowrap;
+  min-height: 60px;
 }
 
 .compensation-label-text {
@@ -301,7 +299,7 @@
   font-size: 14px;
   font-weight: 500;
   min-width: 100px;
-  line-height: 34px; /* Match input height for vertical alignment */
+  line-height: 34px;
 }
 
 .compensation-checkbox-group {
@@ -309,8 +307,8 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  flex-wrap: nowrap; /* Ensure radio buttons and inputs stay in one row */
-  min-height: 34px; /* Stabilize height */
+  flex-wrap: nowrap;
+  min-height: 34px;
 }
 
 .compensation-checkbox-label {
@@ -327,8 +325,8 @@
   width: 120px;
   font-size: 14px;
   box-sizing: border-box;
-  height: 34px; /* Fixed height for consistency */
-  margin-top:40px;
+  height: 34px;
+  margin-top: 40px;
 }
 .compensation-number-input-hour {
   border: 1px solid #ced4da;
@@ -337,41 +335,41 @@
   width: 120px;
   font-size: 14px;
   box-sizing: border-box;
-  height: 34px; /* Fixed height for consistency */
-  margin-top:0px;
+  height: 34px;
+  margin-top: 0px;
 }
-.compensation-number-inputtds{
-    border: 1px solid #ced4da;
-  border-radius: 4px;
-  padding: 6px 10px;
-  width: 120px;
-  font-size: 14px;
-  box-sizing: border-box;
-  height: 34px; /* Fixed height for consistency */
-  margin-top:0px;
-}
-.compensation-number-input-ot{
-border: 1px solid #ced4da;
-  border-radius: 4px;
-  padding: 6px 10px;
-  width: 120px;
-  font-size: 14px;
-  box-sizing: border-box;
-  height: 34px; /* Fixed height for consistency */
-  margin-top:0px;
-}
-.compensation-percentage-input{
+.compensation-number-inputtds {
   border: 1px solid #ced4da;
   border-radius: 4px;
   padding: 6px 10px;
   width: 120px;
   font-size: 14px;
   box-sizing: border-box;
-  height: 34px; /* Fixed height for consistency */
+  height: 34px;
+  margin-top: 0px;
+}
+.compensation-number-input-ot {
+  border: 1px solid #ced4da;
+  border-radius: 4px;
+  padding: 6px 10px;
+  width: 120px;
+  font-size: 14px;
+  box-sizing: border-box;
+  height: 34px;
+  margin-top: 0px;
+}
+.compensation-percentage-input {
+  border: 1px solid #ced4da;
+  border-radius: 4px;
+  padding: 6px 10px;
+  width: 120px;
+  font-size: 14px;
+  box-sizing: border-box;
+  height: 34px;
 }
 
 .compensation-highlighted-input {
-  border: 2px solid #7FBD2C;
+  border: 2px solid #7fbd2c;
   border-radius: 4px;
   padding: 6px 10px;
   width: 200px;
@@ -379,23 +377,23 @@ border: 1px solid #ced4da;
   background-color: #fff9e6;
   outline: none;
   box-sizing: border-box;
-  height: 34px; /* Fixed height for consistency */
+  height: 34px;
 }
 
 .compensation-highlighted-input:focus {
-  border-color: #7FBD2C;
-  box-shadow: 0 0 5px #7FBD2C;
+  border-color: #7fbd2c;
+  box-shadow: 0 0 5px #7fbd2c;
 }
 
 .compensation-input-group {
   display: flex;
-  flex-direction: row; /* Keep input and remaining note in a single row */
-  gap: 10px; /* Space between elements */
-  align-items: center; /* Align items vertically */
+  flex-direction: row;
+  gap: 10px;
+  align-items: center;
   justify-content: flex-end;
   width: auto;
-  min-height: 34px; /* Match input height to prevent shifts */
-  flex-wrap: nowrap; /* Prevent wrapping */
+  min-height: 34px;
+  flex-wrap: nowrap;
 }
 
 .compensation-select {
@@ -407,10 +405,10 @@ border: 1px solid #ced4da;
   background-color: #fff;
   cursor: pointer;
   box-sizing: border-box;
-  height: 34px; /* Fixed height for consistency */
+  height: 34px;
 }
-compensation-select-incentives{
-   border: 1px solid #ced4da;
+compensation-select-incentives {
+  border: 1px solid #ced4da;
   border-radius: 4px;
   padding: 6px 10px;
   width: 200px;
@@ -418,31 +416,29 @@ compensation-select-incentives{
   background-color: #fff;
   cursor: pointer;
   box-sizing: border-box;
-  height: 34px; /* Fixed height for consistency */
-  margin-top:30px;
-
+  height: 34px;
+  margin-top: 30px;
 }
 
 .compensation-select:focus {
-  border-color: #7FBD2C;
-  box-shadow: 0 0 5px #7FBD2C;
+  border-color: #7fbd2c;
+  box-shadow: 0 0 5px #7fbd2c;
   outline: none;
 }
 
 .remaining-note {
   font-size: 12px;
-  color: #333; /* Match table text color for consistency */
-  margin-left: 10px; /* Space to the right of the input */
-  line-height: 34px; /* Match input height for vertical alignment */
-  white-space: nowrap; /* Prevent text wrapping */
+  color: #333;
+  margin-left: 10px;
+  line-height: 34px;
+  white-space: nowrap;
 }
 
 .compensation-input-group span {
   font-size: 12px;
   color: gray;
-  margin-left: 10px; /* Space to the right of the input */
-  line-height: 34px; /* Match input height for vertical alignment */
-   /* Prevent text wrapping */
+  margin-left: 10px;
+  line-height: 34px;
 }
 
 .compensation-button-container {
@@ -455,7 +451,7 @@ compensation-select-incentives{
 .compensation-back-button,
 .compensation-preview-button,
 .compensation-add-button {
-  background-color: #7FBD2C;
+  background-color: #7fbd2c;
   color: white;
   padding: 10px 20px;
   border: none;
@@ -539,7 +535,7 @@ compensation-select-incentives{
 }
 
 .compensation-add-slab-button {
-  background-color: #7FBD2C;
+  background-color: #7fbd2c;
   color: white;
   padding: 8px 16px;
   border: none;
@@ -592,16 +588,16 @@ compensation-select-incentives{
   .compensation-form-group {
     flex-direction: column;
     align-items: flex-start;
-    min-height: auto; /* Remove min-height for mobile */
+    min-height: auto;
   }
 
   .compensation-input-group {
-    flex-direction: row; /* Keep row layout for mobile */
+    flex-direction: row;
     align-items: center;
     justify-content: flex-start;
     width: 100%;
-    min-height: 34px; /* Match input height */
-    flex-wrap: nowrap; /* Prevent wrapping */
+    min-height: 34px;
+    flex-wrap: nowrap;
   }
 
   .compensation-add-slab-button,
@@ -615,25 +611,25 @@ compensation-select-incentives{
   .compensation-input-group input,
   .compensation-select {
     width: 100%;
-    max-width: 200px; /* Limit width on mobile */
-    height: 34px; /* Fixed height for consistency */
+    max-width: 200px;
+    height: 34px;
   }
 
   .compensation-label-text {
     min-width: 100%;
-    line-height: 1.5; /* Adjust for readability */
+    line-height: 1.5;
     margin-bottom: 5px;
   }
 
   .remaining-note {
     margin-left: 10px;
-    line-height: 34px; /* Match input height */
+    line-height: 34px;
     font-size: 12px;
   }
 
   .compensation-input-group span {
     margin-left: 10px;
-    line-height: 34px; /* Match input height */
+    line-height: 34px;
     font-size: 12px;
   }
 }
@@ -662,7 +658,7 @@ compensation-select-incentives{
 }
 
 .create-compensation-popup-header {
-  background: #00468C;
+  background: #00468c;
   color: white;
   padding: 15px 20px;
   display: flex;
@@ -720,12 +716,12 @@ compensation-select-incentives{
 }
 
 .create-compensation-number-input:focus {
-  border-color: #00468C;
+  border-color: #00468c;
   box-shadow: 0 0 5px rgba(0, 128, 96, 0.3);
 }
 
 .create-compensation-add-button {
-  background: #00468C;
+  background: #00468c;
   color: #fff;
   padding: 10px 18px;
   border-radius: 8px;
@@ -736,7 +732,7 @@ compensation-select-incentives{
 }
 
 .create-compensation-add-button:hover {
-  background: #00468C;
+  background: #00468c;
 }
 
 .create-preview-columns {
@@ -773,7 +769,7 @@ compensation-select-incentives{
 .create-preview-right h3 {
   margin-bottom: 12px;
   font-size: 16px;
-  color: #00468C;
+  color: #00468c;
 }
 
 .create-compensation-preview-table {
@@ -804,34 +800,30 @@ compensation-select-incentives{
 .create-header-row {
   background: #f9fafb;
 }
-/* Update CSS to prevent layout shift specifically for Basic Salary */
 .compensation-input-group.basic-salary-group {
   display: flex;
   flex-direction: row;
-  align-items: flex-start; /* Align to top to avoid stretch from error */
+  align-items: flex-start;
   gap: 10px;
-  position: relative; /* Anchor for absolute error */
-  padding-bottom: 0px; /* Reserve space for error message to prevent push/shift */
+  position: relative;
+  padding-bottom: 0px;
 }
 
-/* Input consistency */
-.compensation-input-group.basic-salary-group input.compensation-percentage-input {
+.compensation-input-group.basic-salary-group
+  input.compensation-percentage-input {
   margin: 0;
   height: 34px;
   box-sizing: border-box;
 }
 
-/* Remaining note */
 .compensation-input-group.basic-salary-group .remaining-note {
   margin: 0;
   line-height: 34px;
   align-self: center;
 }
 
-/* Error message - absolute to not affect flow */
 .basic-salary-percentage-wrapper .error-span {
-  
-  bottom: 0; /* Place in reserved space */
+  bottom: 0;
   left: 0;
   width: 100%;
   margin: 0;

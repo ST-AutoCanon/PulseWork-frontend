@@ -15,9 +15,8 @@ export default function SharedTemplateControls({
   bodyType,
   onBodyTypeChange,
   showEditor = false,
-  // NEW: parent can provide this to control where new boxes are inserted
-  onSetActiveArea, // fn(area: 'header'|'body'|'footer')
-  activeArea = "body", // optional current area (for UI)
+  onSetActiveArea,
+  activeArea = "body",
 }) {
   const fileInputRef = externalFileInputRef || useRef(null);
 
@@ -25,7 +24,6 @@ export default function SharedTemplateControls({
     const f = e.target.files?.[0] || null;
     if (f) {
       setWatermarkFile && setWatermarkFile(f);
-      // auto-enable watermark when a file is selected
       setUseWatermark && setUseWatermark(true);
     } else {
       setWatermarkFile && setWatermarkFile(null);
@@ -67,11 +65,9 @@ export default function SharedTemplateControls({
       try {
         onSetActiveArea(area);
       } catch (e) {
-        // swallow, parent may not implement
         console.warn("onSetActiveArea threw", e);
       }
     }
-    // If user clicked 'body', keep document body selection visible by calling onBodyTypeChange
     if (area === "body" && typeof onBodyTypeChange === "function") {
       try {
         onBodyTypeChange(bodyType);
@@ -83,7 +79,6 @@ export default function SharedTemplateControls({
 
   return (
     <div className={styles?.sharedControls || stylesLocal.controls}>
-      {/* Insert-into control (HEADER / BODY / FOOTER) */}
       <div style={{ marginBottom: 12 }}>
         <div style={{ fontSize: 13, marginBottom: 6 }}>Insert into</div>
         <div style={{ display: "flex", gap: 8 }}>

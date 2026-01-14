@@ -1,4 +1,3 @@
-/* Overlay */
 .am-modal-overlay {
   position: fixed;
   top: 0;
@@ -12,9 +11,8 @@
   z-index: 1000;
 }
 
-/* Modal container */
 .am-modal {
-  background: #ccc; /* container background */
+  background: #ccc;
   border-radius: 10px;
   width: 420px;
   max-width: 90%;
@@ -24,12 +22,11 @@
   overflow: hidden;
 }
 
-/* Header */
 .am-modal-header {
   display: flex;
-  justify-content: center; /* center the title */
+  justify-content: center;
   align-items: center;
-  background: #001D4A; /* green header */
+  background: #001d4a;
   color: #fff;
   padding: 15px;
   position: relative;
@@ -55,7 +52,6 @@
   transform: translateY(-50%);
 }
 
-/* Content */
 .am-modal-content {
   display: flex;
   flex-direction: column;
@@ -69,7 +65,6 @@
   font-weight: 500;
 }
 
-/* Fields */
 .am-modal-field {
   display: flex;
   flex-direction: column;
@@ -93,11 +88,10 @@
 
 .am-modal-field input:focus,
 .am-modal-field select:focus {
-  border-color: #79C42B;
+  border-color: #79c42b;
   box-shadow: 0 0 4px rgba(121, 196, 43, 0.5);
 }
 
-/* Actions */
 .am-modal-actions {
   display: flex;
   justify-content: flex-end;
@@ -115,7 +109,6 @@
   transition: background 0.3s;
 }
 
-/* Cancel button */
 .am-modal-cancel {
   background: #9a9898;
   color: #fff;
@@ -125,9 +118,8 @@
   background: #a7a3a3;
 }
 
-/* Submit button */
 .am-modal-submit {
-  background: #79C42B;
+  background: #79c42b;
   color: #fff;
 }
 
@@ -140,7 +132,6 @@
   cursor: not-allowed;
 }
 
-/* Note style */
 .am-modal-note {
   font-size: 0.85rem;
   color: #444;

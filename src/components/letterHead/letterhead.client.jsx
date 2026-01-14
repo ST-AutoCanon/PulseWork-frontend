@@ -525,7 +525,6 @@ const LetterHead = () => {
       (t) => String(t.id) === String(templateId)
     );
     if (!template) {
-      // clear
       revokeIfBlob(headerBlobRef.current);
       revokeIfBlob(footerBlobRef.current);
       headerBlobRef.current = null;
@@ -541,7 +540,6 @@ const LetterHead = () => {
     setSelectedTemplateId(String(templateId));
     setSelectedTemplate(template);
 
-    // revoke previous
     revokeIfBlob(headerBlobRef.current);
     revokeIfBlob(footerBlobRef.current);
     headerBlobRef.current = null;
@@ -551,7 +549,6 @@ const LetterHead = () => {
     setWatermarkBlobUrl(null);
 
     try {
-      // Helper to parse grapes json if string
       const grapesRaw = template.grapesJson || template.grapes_json || null;
       let grapesObj = grapesRaw;
       if (grapesObj && typeof grapesObj === "string") {
@@ -562,7 +559,6 @@ const LetterHead = () => {
         }
       }
 
-      // Utility: collect upload-like strings out of object (attributes.src, values)
       function collectUploadStrings(obj, out = new Set()) {
         if (!obj) return out;
         if (typeof obj === "string") {
@@ -580,7 +576,6 @@ const LetterHead = () => {
           return out;
         }
         if (typeof obj === "object") {
-          // check attributes.src pattern (grapes components)
           if (obj.attributes && typeof obj.attributes.src === "string") {
             collectUploadStrings(obj.attributes.src, out);
           }
@@ -593,12 +588,10 @@ const LetterHead = () => {
         return out;
       }
 
-      // picks first candidate and returns fetched blob URL (or normalized URL)
       async function pickAndFetch(candidates = []) {
         for (const raw of candidates) {
           if (!raw) continue;
           if (typeof raw !== "string") continue;
-          // normalize relative/static names to full path
           const normalized = normalizeUploadUrl(raw, BACKEND_URL);
           try {
             const blob = await fetchProtectedBlobUrl(
@@ -608,17 +601,14 @@ const LetterHead = () => {
               orgId
             );
             if (blob) return blob;
-            // if fetching failed but normalized is still a usable URL, return normalized
             return normalized;
           } catch (e) {
-            // try next candidate
             continue;
           }
         }
         return null;
       }
 
-      // Build explicit candidate arrays (ordered preference)
       const metaUploads = (template.meta && template.meta.uploads) || {};
       const explicitHeaderCandidates = [
         grapesObj && (grapesObj.headerUrl || grapesObj.header_url),
@@ -649,7 +639,6 @@ const LetterHead = () => {
           : null,
       ].filter(Boolean);
 
-      // Remove candidates that are known qr/seal uploads
       const excludeSet = new Set(
         [
           template?.meta?.qr,
@@ -664,7 +653,6 @@ const LetterHead = () => {
       const sanitizeCandidates = (arr) =>
         arr.filter((c) => c && !excludeSet.has(c));
 
-      // First try explicit picks
       let headerBlob = await pickAndFetch(
         sanitizeCandidates(explicitHeaderCandidates)
       );
@@ -675,7 +663,6 @@ const LetterHead = () => {
         sanitizeCandidates(explicitWatermarkCandidates)
       );
 
-      // If any missing, try to extract from template.html or content
       const htmlToScan = template.html || template.content || "";
       function extractImgSrcsFromHtml(html) {
         const out = [];
@@ -691,10 +678,8 @@ const LetterHead = () => {
       }
 
       if (!headerBlob || !footerBlob || !watermarkBlob) {
-        // collect from grapes components and html
         const foundSet = collectUploadStrings(grapesObj);
         extractImgSrcsFromHtml(htmlToScan).forEach((s) => foundSet.add(s));
-        // also include strings matched by pattern inside html
         try {
           const uploadRegex =
             /\/api\/orgs\/\d+\/uploads\/[A-Za-z0-9._-]+|[0-9]{6,}_[A-Za-z0-9._-]+/g;
@@ -705,7 +690,6 @@ const LetterHead = () => {
         const found = Array.from(foundSet).filter(
           (f) => f && !excludeSet.has(f)
         );
-        // prefer ones not already chosen
         if (!headerBlob && found.length) {
           headerBlob = await pickAndFetch([
             found[0],
@@ -719,7 +703,6 @@ const LetterHead = () => {
           ]);
         }
         if (!watermarkBlob && found.length) {
-          // choose candidate different from header/footer
           const candid = found.find(
             (u) => u !== headerBlob && u !== footerBlob
           );
@@ -731,12 +714,10 @@ const LetterHead = () => {
         }
       }
 
-      // Final fallback: use any explicit header/footer/thumb even if fetch failed previously (normalize only)
       const lastResortNormalize = async (val) => {
         if (!val || typeof val !== "string") return null;
         try {
           const normalized = normalizeUploadUrl(val, BACKEND_URL);
-          // don't try protected fetch again
           return normalized;
         } catch (e) {
           return val;
@@ -756,7 +737,6 @@ const LetterHead = () => {
         watermarkBlob = fallback ? await lastResortNormalize(fallback) : null;
       }
 
-      // If watermark equals header/footer, clear header/footer to avoid duplication
       if (watermarkBlob) {
         if (headerBlob && headerBlob === watermarkBlob) {
           console.warn(
@@ -772,12 +752,10 @@ const LetterHead = () => {
         }
       }
 
-      // If header and footer resolve to the same, drop footer
       if (headerBlob && footerBlob && headerBlob === footerBlob) {
         footerBlob = null;
       }
 
-      // Set refs/state
       headerBlobRef.current = headerBlob || null;
       footerBlobRef.current = footerBlob || null;
       setHeaderBlobUrl(headerBlobRef.current || null);
@@ -785,7 +763,6 @@ const LetterHead = () => {
 
       if (watermarkBlob) {
         setWatermarkBlobUrl(watermarkBlob);
-        // watermark placement: prefer grapesObj.watermark, then meta.watermarkPlacement
         let wp = null;
         if (grapesObj && grapesObj.watermark) {
           const gm = grapesObj.watermark;
@@ -813,7 +790,6 @@ const LetterHead = () => {
         setWatermarkBlobUrl(null);
       }
 
-      // Build final bodyHtml factoring any header/footer inside template.html
       let contentHtml = template.html || template.content || "";
       if (
         typeof contentHtml === "string" &&
@@ -847,7 +823,6 @@ const LetterHead = () => {
           bodyHtml || ""
         }${wrappedFooterHtml}`;
       } else {
-        // if no internal header/footer found, ensure we still place external header/footer if present
         if (wrappedHeaderHtml || wrappedFooterHtml) {
           finalBodyHtml = `${wrappedHeaderHtml}${
             contentHtml || ""
@@ -857,7 +832,6 @@ const LetterHead = () => {
         }
       }
 
-      // apply to editor or state
       if (contentRef.current) {
         contentRef.current.innerHTML = finalBodyHtml || "";
         setFormData((prev) => ({

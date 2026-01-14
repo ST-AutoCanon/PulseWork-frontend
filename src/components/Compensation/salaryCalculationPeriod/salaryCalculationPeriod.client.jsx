@@ -2,9 +2,8 @@
 
 import React, { useState, useEffect } from "react";
 import axios from "axios";
-import { useAuth } from "../../../context/AuthProvider.client"; 
+import { useAuth } from "../../../context/AuthProvider.client";
 import "./salaryCalculationPeriod.css";
-
 
 const SalaryCalculationPeriod = ({ onClose, showAlert }) => {
   const { user } = useAuth();
@@ -21,7 +20,6 @@ const SalaryCalculationPeriod = ({ onClose, showAlert }) => {
   const [formData, setFormData] = useState({ cutoff_date: "" });
   const [loading, setLoading] = useState(false);
 
-  
   const ENDPOINTS = {
     list: `${BACKEND_URL}/api/salaryCalculationperiods`,
     add: `${BACKEND_URL}/api/addSalaryCalculationperiod`,
@@ -32,23 +30,17 @@ const SalaryCalculationPeriod = ({ onClose, showAlert }) => {
     "x-api-key": API_KEY,
     "x-employee-id": meId,
     ...(orgId ? { "x-org-id": orgId } : {}),
-    
   };
 
   useEffect(() => {
-  console.log("🧠 Auth user:", user);
-  console.log("🏢 orgId:", orgId);
-  console.log("👤 employeeId:", meId);
+    if (!orgId) {
+      showAlert?.("Organization not resolved. Please login again.");
+      return;
+    }
 
-  if (!orgId) {
-    showAlert?.("Organization not resolved. Please login again.");
-    return;
-  }
+    if (meId) fetchPeriods();
+  }, [meId, orgId]);
 
-  if (meId) fetchPeriods();
-}, [meId, orgId]);
-
- 
   const fetchPeriods = async () => {
     if (!BACKEND_URL || !meId) {
       showAlert?.("Please login to continue");
@@ -57,7 +49,10 @@ const SalaryCalculationPeriod = ({ onClose, showAlert }) => {
 
     setLoading(true);
     try {
-      const res = await axios.get(ENDPOINTS.list, {withCredentials: true, headers });
+      const res = await axios.get(ENDPOINTS.list, {
+        withCredentials: true,
+        headers,
+      });
       if (res.data.success) {
         const data = res.data.data || [];
         setPeriods(data);
@@ -78,7 +73,6 @@ const SalaryCalculationPeriod = ({ onClose, showAlert }) => {
     if (meId) fetchPeriods();
   }, [meId]);
 
-
   const handleSubmit = async (e) => {
     e.preventDefault();
     const num = parseInt(formData.cutoff_date);
@@ -93,31 +87,40 @@ const SalaryCalculationPeriod = ({ onClose, showAlert }) => {
 
       let res;
       if (isEditing) {
-        res = await axios.put(ENDPOINTS.update(editingId), payload, { withCredentials: true,headers });
+        res = await axios.put(ENDPOINTS.update(editingId), payload, {
+          withCredentials: true,
+          headers,
+        });
       } else {
-        res = await axios.post(ENDPOINTS.add, payload, { withCredentials: true,headers });
+        res = await axios.post(ENDPOINTS.add, payload, {
+          withCredentials: true,
+          headers,
+        });
       }
 
       if (res.data.success) {
-        showAlert?.(isEditing ? "Updated successfully!" : "Added successfully!");
+        showAlert?.(
+          isEditing ? "Updated successfully!" : "Added successfully!"
+        );
         fetchPeriods();
         toggleModal();
       }
     } catch (err) {
-      const msg = err.response?.data?.error || err.response?.data?.message || "Save failed";
+      const msg =
+        err.response?.data?.error ||
+        err.response?.data?.message ||
+        "Save failed";
       showAlert?.(msg);
     } finally {
       setLoading(false);
     }
   };
 
-  
   const handleEdit = (period) => {
     setIsEditing(true);
     setEditingId(period.id);
     setFormData({ cutoff_date: period.cutoff_date.toString() });
   };
-
 
   const toggleModal = () => {
     setIsEditing(false);
@@ -137,7 +140,6 @@ const SalaryCalculationPeriod = ({ onClose, showAlert }) => {
         </div>
 
         <div className="salary-period-content">
-          {/* Form */}
           <div className="salary-period-form-section">
             <p className="salary-period-note">
               Salary will be calculated every month on this date (1-31)
@@ -169,7 +171,6 @@ const SalaryCalculationPeriod = ({ onClose, showAlert }) => {
             </form>
           </div>
 
-          {/* List */}
           <div className="salary-period-list-section">
             <h3>Current Cutoff Date</h3>
 

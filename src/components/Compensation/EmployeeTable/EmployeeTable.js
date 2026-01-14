@@ -1,4 +1,3 @@
-
 import React from "react";
 import { FaSearch } from "react-icons/fa";
 import DetailsTab from "./../DetailsTab/DetailsTab";
@@ -14,7 +13,7 @@ const EmployeeTable = ({
   tableRef,
   handleViewSingleEmployee,
   openAdvanceModal,
-  openIncentiveModal,  // 🔹 Uncomment: Now passed from parent
+  openIncentiveModal,
   showDetailsTab,
   selectedEmployee,
   activeTab,
@@ -30,12 +29,18 @@ const EmployeeTable = ({
 }) => {
   const filteredEmployees = employees.filter(
     (emp) =>
-      emp.employee_id.toString().toLowerCase().includes(searchQuery.toLowerCase()) ||
+      emp.employee_id
+        .toString()
+        .toLowerCase()
+        .includes(searchQuery.toLowerCase()) ||
       emp.full_name.toLowerCase().includes(searchQuery.toLowerCase())
   );
   const indexOfLastRow = currentPage * rowsPerPage;
   const indexOfFirstRow = indexOfLastRow - rowsPerPage;
-  const currentEmployees = filteredEmployees.slice(indexOfFirstRow, indexOfLastRow);
+  const currentEmployees = filteredEmployees.slice(
+    indexOfFirstRow,
+    indexOfLastRow
+  );
   const totalPages = Math.ceil(filteredEmployees.length / rowsPerPage);
 
   const handleNextPage = () => {
@@ -76,15 +81,21 @@ const EmployeeTable = ({
       </div>
       <div className="sb-table-and-details-container">
         <div
-          className={`sb-table-wrapper ${showDetailsTab ? "sb-table-compressed" : ""}`}
+          className={`sb-table-wrapper ${
+            showDetailsTab ? "sb-table-compressed" : ""
+          }`}
           ref={tableRef}
         >
           <table className="sb-table">
             <thead>
               <tr>
                 <th className="sb-table-header sb-table-align-left">Emp ID</th>
-                <th className="sb-table-header sb-table-align-left">Full Name</th>
-                <th className="sb-table-header sb-table-align-left">Comp Plan</th>
+                <th className="sb-table-header sb-table-align-left">
+                  Full Name
+                </th>
+                <th className="sb-table-header sb-table-align-left">
+                  Comp Plan
+                </th>
                 <th className="sb-table-header sb-table-align-left">Action</th>
               </tr>
             </thead>
@@ -93,8 +104,12 @@ const EmployeeTable = ({
                 const isIncentiveEnabled = emp.plan_data?.isIncentives;
                 return (
                   <tr key={emp.employee_id}>
-                    <td className="sb-table-cell sb-table-align-left">{emp.employee_id}</td>
-                    <td className="sb-table-cell sb-table-align-left">{emp.full_name}</td>
+                    <td className="sb-table-cell sb-table-align-left">
+                      {emp.employee_id}
+                    </td>
+                    <td className="sb-table-cell sb-table-align-left">
+                      {emp.full_name}
+                    </td>
                     <td className="sb-table-cell sb-table-align-left">
                       {emp.compensation_plan_name || "No Plan Assigned"}
                     </td>
@@ -108,15 +123,23 @@ const EmployeeTable = ({
                         </button>
                         <button
                           className="sb-table-advance-button"
-                          onClick={() => openAdvanceModal(emp.employee_id, emp.full_name)}
+                          onClick={() =>
+                            openAdvanceModal(emp.employee_id, emp.full_name)
+                          }
                         >
                           Add Advance
                         </button>
                         <button
-                          className={`sb-table-incentive-button ${!isIncentiveEnabled ? 'disabled' : ''}`}
+                          className={`sb-table-incentive-button ${
+                            !isIncentiveEnabled ? "disabled" : ""
+                          }`}
                           onClick={() => handleIncentiveClick(emp)}
                           disabled={!isIncentiveEnabled}
-                          title={!isIncentiveEnabled ? "Incentives disabled in this plan" : "Add Incentive"}
+                          title={
+                            !isIncentiveEnabled
+                              ? "Incentives disabled in this plan"
+                              : "Add Incentive"
+                          }
                         >
                           Add Incentive
                         </button>

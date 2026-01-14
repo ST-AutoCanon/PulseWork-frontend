@@ -6,9 +6,6 @@ import { MdClose } from "react-icons/md";
 import { getApiBase } from "./ReportUtils";
 import { useAuth } from "../../context/AuthProvider.client";
 
-/**
- * Safely extract employeeId from auth user/raw payload
- */
 function extractEmployeeIdFromUser(user) {
   try {
     if (!user) return "";
@@ -100,9 +97,6 @@ export default function EmployeeTypeahead({
     }
   }, [query, onTyping, onClear]);
 
-  /**
-   * Search employees (debounced)
-   */
   useEffect(() => {
     if (debRef.current) clearTimeout(debRef.current);
 

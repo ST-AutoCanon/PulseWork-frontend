@@ -5,32 +5,7 @@ import { MdEmojiTransportation, MdOutlinePhoneAndroid } from "react-icons/md";
 import { GiKnifeFork, GiPencilBrush } from "react-icons/gi";
 import { TbTriangleSquareCircle } from "react-icons/tb";
 import ParticipantSelection from "./ParticipantSelection.client";
-import "./Reimbursement.css"; // keep this if your CSS is global or adjust to module import if you're using CSS modules
-
-/**
- * ClaimFields (Next.js client component)
- *
- * Props:
- *  - claimTypes (array) : [{ label: 'Transportation' }, ...]
- *  - projects (array) : list of project names
- *  - formData (object) : form state
- *  - setFormData (func) : setter for form state
- *  - selectedFiles (array) : selected file names
- *  - setSelectedFiles (func)
- *  - handleFileUpload (func) : function(e, { rowIndex, files })
- *  - setSelectedSubType (func)
- *  - selectedSubType (string)
- *  - modalContentRef (ref) : ref to modal wrapper for class toggling
- *  - shouldShowParticipantControls (func)
- *  - renderSingleTile (func)
- *  - onParticipantSelectionChange (func)
- *  - participants (array)
- *  - employeeOptions (array)
- *  - initialSelectionForChild (array)
- *
- * This file preserves the UI & behaviour from the original component while
- * adding "use client" for Next.js app-router usage.
- */
+import "./Reimbursement.css";
 
 const iconMap = {
   Transportation: <MdEmojiTransportation className="claim-icons" />,
@@ -98,7 +73,6 @@ const ClaimFields = ({
         claim_rows: { ...(p.claim_rows || {}), [ct]: [seed] },
       }));
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [formData.claim_type]);
 
   const updateField = (k, v) => setFormData((prev) => ({ ...prev, [k]: v }));

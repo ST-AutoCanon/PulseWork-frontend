@@ -339,7 +339,6 @@ html {
   z-index: 10;
 }
 
-/* Organization select and validation */
 .input-group-login label.org-label {
   font-size: 13px;
   color: #1a3c34;
@@ -349,7 +348,6 @@ html {
   display: inline-block;
 }
 
-/* improved select visuals */
 .input-group-login select.org-select {
   padding: 10px 40px 10px 15px;
   width: 350px;
@@ -370,7 +368,6 @@ html {
   box-sizing: border-box;
 }
 
-/* consistent spacing with other inputs */
 .input-group-login select.org-select:focus,
 .input-group-login input:focus {
   border-color: #48c9b0;
@@ -378,7 +375,6 @@ html {
   background: #fff;
 }
 
-/* validation error styling */
 .input-error {
   border-color: #e74c3c !important;
   box-shadow: 0 0 0 3px rgba(231, 76, 60, 0.06) !important;
@@ -392,7 +388,6 @@ html {
   z-index: 1000;
 }
 
-/* smaller screen tweaks to keep layout tidy */
 @media (max-width: 768px) {
   .input-group-login label.org-label,
   .field-error {

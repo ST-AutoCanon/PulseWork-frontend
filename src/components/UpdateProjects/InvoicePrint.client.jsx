@@ -2,21 +2,6 @@ import React from "react";
 import "./InvoicePrint.css";
 import { numberToWords } from "./numberToWords.client";
 
-/**
- * InvoicePrint
- *
- * Props expected:
- *  - invoiceData: object (invoice fields + optional .meta, .html, .grapesJson / .grapes_json / .layout)
- *  - templateHtml: (optional) string - already-resolved HTML for the body (highest priority)
- *  - templateCss: (optional) string - CSS to inject for the template
- *  - watermarkUrl: (optional) string - URL for watermark image
- *  - watermarkProps: (optional) object { xPct, yPct, wPct, hPct, opacity }
- *
- * The component will:
- *  - prefer templateHtml / invoiceData.html
- *  - otherwise attempt to build DOM from grapes json layout (layout array of boxes)
- */
-
 const fmtINR = (value) => {
   const n = Number(value || 0);
   if (!Number.isFinite(n)) return "₹ 0.00";
@@ -82,7 +67,6 @@ const ensurePercent = (v) => {
 };
 
 const mapFieldValue = (fieldName, invoiceData = {}, project = {}) => {
-  // common fields mapping: if invoiceData contains the value, use it; else fallback to project or template placeholders
   const ld = (k) => invoiceData[k] ?? invoiceData[k.toLowerCase()] ?? "";
   switch ((fieldName || "").toString()) {
     case "invoiceNo":
@@ -170,12 +154,10 @@ const mapFieldValue = (fieldName, invoiceData = {}, project = {}) => {
         ""
       );
     default:
-      // also allow exact matches if template used different names
       return ld(fieldName) || "";
   }
 };
 
-/* Box renderer: renders individual field/image/table boxes from grapes layout */
 function renderBox(b, invoiceData, project, keyIndex) {
   if (!b || typeof b !== "object") return null;
   const style = b.style || {};
@@ -196,7 +178,6 @@ function renderBox(b, invoiceData, project, keyIndex) {
     ...mapGrapesToCss(style),
   };
 
-  // use fieldType to decide rendering
   if (b.type === "image" || b.fieldType === "image") {
     const src =
       b.imageUrl ||
@@ -223,7 +204,6 @@ function renderBox(b, invoiceData, project, keyIndex) {
   }
 
   if (b.type === "table" || b.fieldType === "table") {
-    // items: prefer invoiceData.lineItems
     const headers = b.tableHeaders || b.headers || [];
     const templateRows = b.tableRows || [];
     const items = invoiceData.lineItems
@@ -279,9 +259,7 @@ function renderBox(b, invoiceData, project, keyIndex) {
                     <td style={{ border: "1px solid #ddd", padding: 6 }}>
                       {fmtINR(it.total)}
                     </td>
-                    <td style={{ border: "1px solid #ddd", padding: 6 }}>
-                      {/* GST% placeholder */}
-                    </td>
+                    <td style={{ border: "1px solid #ddd", padding: 6 }}></td>
                     <td style={{ border: "1px solid #ddd", padding: 6 }}>
                       {fmtINR(it.total)}
                     </td>
@@ -307,7 +285,6 @@ function renderBox(b, invoiceData, project, keyIndex) {
     );
   }
 
-  // default: text/label/textarea
   const content =
     b.content ||
     b.label ||
@@ -370,7 +347,6 @@ const InvoicePrint = React.forwardRef(
     },
     ref
   ) => {
-    // primary invoice fields
     const {
       withSeal = false,
       invoiceType = "",
@@ -389,18 +365,14 @@ const InvoicePrint = React.forwardRef(
       footerUrl = null,
     } = invoiceData;
 
-    // prefer passed grapesJson prop, else invoiceData.grapesJson / grapes_json
     let grapesObj =
       grapesJson || invoiceData.grapesJson || invoiceData.grapes_json || null;
     if (typeof grapesObj === "string") {
       try {
         grapesObj = JSON.parse(grapesObj);
-      } catch (e) {
-        // keep as-is
-      }
+      } catch (e) {}
     }
 
-    // attempt to read meta uploads for qr/seal/watermark if present
     let metaObj = invoiceData.meta || invoiceData.meta_data || null;
     if (typeof metaObj === "string") {
       try {
@@ -410,7 +382,6 @@ const InvoicePrint = React.forwardRef(
       }
     }
 
-    // resolved qr/seal
     const resolvedQr =
       invoiceData.qrUrl ||
       invoiceData.qr ||
@@ -451,7 +422,6 @@ const InvoicePrint = React.forwardRef(
     const halfGSTRate = (gst / 2).toFixed(2);
     const halfGSTAmount = (effectiveGstAmount / 2).toFixed(2);
 
-    // finalize watermark props
     let finalWatermarkUrl =
       watermarkUrl ||
       (grapesObj && grapesObj.watermark && grapesObj.watermark.url) ||
@@ -467,7 +437,6 @@ const InvoicePrint = React.forwardRef(
         opacity: 0.12,
       };
 
-    // helper to build body DOM from grapes layout
     const buildBodyFromLayout = () => {
       const layout =
         (grapesObj && Array.isArray(grapesObj.layout) && grapesObj.layout) ||
@@ -486,8 +455,6 @@ const InvoicePrint = React.forwardRef(
       return (
         <div className="template-layout-wrapper" style={containerStyle}>
           {layout.map((b, idx) => {
-            // populate field content if it's a known fieldName
-            // if b.content contains template placeholders like {{invoiceNo}} — attempt replacement
             if (b && typeof b.content === "string") {
               b.content = replacePlaceholdersInString(
                 b.content,
@@ -495,7 +462,6 @@ const InvoicePrint = React.forwardRef(
                 project
               );
             }
-            // if table and items we might want to use invoiceData.lineItems - rendering handled in renderBox
             return renderBox(b, invoiceData, project, `box-${idx}`);
           })}
         </div>
@@ -535,12 +501,10 @@ const InvoicePrint = React.forwardRef(
         className="invoice-print-container"
         style={{ position: "relative" }}
       >
-        {/* Inject template CSS if provided */}
         {templateCss ? (
           <style dangerouslySetInnerHTML={{ __html: templateCss }} />
         ) : null}
 
-        {/* Watermark rendered behind content */}
         {finalWatermarkUrl ? (
           <img
             src={finalWatermarkUrl}
@@ -563,7 +527,6 @@ const InvoicePrint = React.forwardRef(
           />
         ) : null}
 
-        {/* Header image */}
         {headerUrl ? (
           <div
             className="invoice-print-header custom-header"
@@ -577,9 +540,7 @@ const InvoicePrint = React.forwardRef(
           </div>
         ) : null}
 
-        {/* Body container, elevated above watermark */}
         <div style={{ position: "relative", zIndex: 4 }}>
-          {/* If templateHtml or invoiceData.html exists, prefer that (assume upload urls were replaced upstream) */}
           {templateHtml || invoiceData.html ? (
             <div
               className="invoice-body-from-html"
@@ -588,11 +549,8 @@ const InvoicePrint = React.forwardRef(
               }}
             />
           ) : (
-            // otherwise try grapes/layout rendering
             buildBodyFromLayout() || (
-              // fallback: default invoice layout (the original static structure)
               <div>
-                {/* Title / basic structure */}
                 <div className="invoice-title-section">
                   <div className="invoice-title-block">
                     {(invoiceType === "tax"
@@ -647,7 +605,6 @@ const InvoicePrint = React.forwardRef(
                   </div>
                 </div>
 
-                {/* Items table */}
                 <table className="in-print-table">
                   <thead>
                     <tr>
@@ -678,7 +635,6 @@ const InvoicePrint = React.forwardRef(
                       );
                     })}
 
-                    {/* filler rows */}
                     {(() => {
                       const fixedRows = 4;
                       const emptyRowCount = Math.max(
@@ -724,7 +680,6 @@ const InvoicePrint = React.forwardRef(
                   </tbody>
                 </table>
 
-                {/* rest of the document */}
                 <div className="tax-section">
                   <div className="partition">
                     <div className="tax-box">
@@ -860,7 +815,6 @@ const InvoicePrint = React.forwardRef(
           )}
         </div>
 
-        {/* Footer image */}
         {footerUrl ? (
           <footer
             className="invoice-footer custom-footer"

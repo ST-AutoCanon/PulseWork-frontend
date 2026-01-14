@@ -1,8 +1,7 @@
-/* Container */
 .sb-details-tab {
   position: relative;
   width: 520px;
-  background: #f3f0f0; /* light gray background */
+  background: #f3f0f0;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
   border-radius: 8px;
   overflow-y: auto;
@@ -13,13 +12,12 @@
   flex-shrink: 0;
 }
 
-/* Header */
 .sb-details-tab-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
   padding: 12px 18px;
-  background: #001D4A; /* navy */
+  background: #001d4a;
   border-top-left-radius: 8px;
   border-top-right-radius: 8px;
 }
@@ -28,7 +26,7 @@
   margin: 0;
   font-size: 1.25rem;
   font-weight: 600;
-  color: #ffffff; /* white */
+  color: #ffffff;
 }
 
 .sb-details-tab-close {
@@ -40,10 +38,9 @@
   transition: color 0.2s ease;
 }
 .sb-details-tab-close:hover {
-  color: #79C42B; /* green hover */
+  color: #79c42b;
 }
 
-/* Content */
 .sb-details-tab-content {
   padding: 18px;
   display: flex;
@@ -54,14 +51,13 @@
 .sb-details-employee-name {
   font-size: 1.2rem;
   font-weight: 600;
-  text-align: center; /* Center align */
-  background: #79C42B; /* Highlight with green */
-  color: #ffffff; /* White text for contrast */
+  text-align: center;
+  background: #79c42b;
+  color: #ffffff;
   padding: 8px;
   border-radius: 6px;
 }
 
-/* CTC Info */
 .sb-details-ctc-info {
   display: flex;
   flex-direction: column;
@@ -70,10 +66,9 @@
   color: #444;
 }
 .sb-details-ctc-info div strong {
-  color: #001D4A;
+  color: #001d4a;
 }
 
-/* Tab buttons */
 .sb-details-tab-buttons {
   display: flex;
   gap: 10px;
@@ -93,19 +88,18 @@
 }
 
 .sb-details-tab-button.active {
-  background: #79C42B;
-  border-color: #79C42B;
+  background: #79c42b;
+  border-color: #79c42b;
   color: #fff;
   font-weight: 600;
 }
 
 .sb-details-tab-button:hover {
-  background: #001D4A;
-  border-color: #001D4A;
+  background: #001d4a;
+  border-color: #001d4a;
   color: #fff;
 }
 
-/* Table */
 .sb-details-table {
   width: 100%;
   border-collapse: collapse;
@@ -114,7 +108,7 @@
 
 .sb-details-table-header {
   background: #f1f3f6;
-  color: #001D4A;
+  color: #001d4a;
   padding: 10px;
   font-weight: 600;
   border-bottom: 2px solid #ddd;
@@ -127,7 +121,7 @@
 }
 
 .sb-details-table tbody tr:nth-child(even) {
-  background: #fafafa; /* zebra striping */
+  background: #fafafa;
 }
 
 .sb-details-align-left {
@@ -137,11 +131,10 @@
   text-align: right;
 }
 
-/* Section Headers */
 .sb-details-section-header {
-  background: #e6e9ef; /* slightly darker for section headers */
+  background: #e6e9ef;
   font-weight: 700;
-  color: #001D4A;
+  color: #001d4a;
 }
 
 .sb-details-section-title {
@@ -149,27 +142,24 @@
   font-size: 1rem;
 }
 
-/* Earnings and Deduction Rows */
 .sb-details-earnings-row {
-  background: #d4f8c1; /* light green for earnings */
+  background: #d4f8c1;
 }
 
 .sb-details-deduction-row {
-  background: #f5d0d0; /* light red for deductions */
+  background: #f5d0d0;
 }
 
-/* Totals */
 .sb-details-total-row {
   font-weight: 600;
-  background: #f6fff1; /* light green background */
-  color: #001D4A;
+  background: #f6fff1;
+  color: #001d4a;
 }
 
 .sb-details-total-row strong {
-  color: #79C42B; /* green text for emphasis */
+  color: #79c42b;
 }
 
-/* Responsive */
 @media (max-width: 768px) {
   .sb-details-tab {
     width: 100%;

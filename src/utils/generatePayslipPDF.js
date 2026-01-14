@@ -1,13 +1,43 @@
-
-
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 
 const convertNumberToWords = (num) => {
   if (!num) return "Zero";
-  const ones = ["", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine"];
-  const teens = ["Eleven", "Twelve", "Thirteen", "Fourteen", "Fifteen", "Sixteen", "Seventeen", "Eighteen", "Nineteen"];
-  const tens = ["", "Ten", "Twenty", "Thirty", "Forty", "Fifty", "Sixty", "Seventy", "Eighty", "Ninety"];
+  const ones = [
+    "",
+    "One",
+    "Two",
+    "Three",
+    "Four",
+    "Five",
+    "Six",
+    "Seven",
+    "Eight",
+    "Nine",
+  ];
+  const teens = [
+    "Eleven",
+    "Twelve",
+    "Thirteen",
+    "Fourteen",
+    "Fifteen",
+    "Sixteen",
+    "Seventeen",
+    "Eighteen",
+    "Nineteen",
+  ];
+  const tens = [
+    "",
+    "Ten",
+    "Twenty",
+    "Thirty",
+    "Forty",
+    "Fifty",
+    "Sixty",
+    "Seventy",
+    "Eighty",
+    "Ninety",
+  ];
   const thousands = ["", "Thousand", "Lakh", "Crore"];
 
   let words = "";
@@ -42,15 +72,15 @@ const generatePayslipPDF = async (
     return null;
   }
 
-  
   const employeeName = payrollData.full_name || "N/A";
   const employeeId = payrollData.employee_id || "N/A";
-  const designation = payrollData.designation || employeeDetails?.designation || "N/A";
+  const designation =
+    payrollData.designation || employeeDetails?.designation || "N/A";
 
   const basicSalary = Number(payrollData.basic_salary || 0);
   const hra = Number(payrollData.hra || 0);
-  const allowance = Number(payrollData.other_allowances || 0); 
-  const bonus = Number(payrollData.bonus || 0); 
+  const allowance = Number(payrollData.other_allowances || 0);
+  const bonus = Number(payrollData.bonus || 0);
   const advanceRecovery = Number(payrollData.advance_recovery || 0);
   const lopDeduction = Number(payrollData.lop_deduction || 0);
 
@@ -61,17 +91,43 @@ const generatePayslipPDF = async (
   const insurance = Number(payrollData.insurance || 0);
 
   const grossSalary = Number(payrollData.gross_salary || 0);
-  const totalDeductions = pf + esic + professionalTax + tds + insurance + advanceRecovery + lopDeduction;
-  const netSalary = Number(payrollData.net_salary || grossSalary - totalDeductions);
+  const totalDeductions =
+    pf +
+    esic +
+    professionalTax +
+    tds +
+    insurance +
+    advanceRecovery +
+    lopDeduction;
+  const netSalary = Number(
+    payrollData.net_salary || grossSalary - totalDeductions
+  );
 
-  const totalWorkingDays = attendance?.total_working_days || payrollData.lop_days ? (30 - payrollData.lop_days) : "N/A"; // approximate if needed
+  const totalWorkingDays =
+    attendance?.total_working_days || payrollData.lop_days
+      ? 30 - payrollData.lop_days
+      : "N/A";
   const leavesTaken = payrollData.lop_days || 0;
 
-  const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
-  const monthYear = `${monthNames[selectedDate.month - 1]} ${selectedDate.year}`;
+  const monthNames = [
+    "January",
+    "February",
+    "March",
+    "April",
+    "May",
+    "June",
+    "July",
+    "August",
+    "September",
+    "October",
+    "November",
+    "December",
+  ];
+  const monthYear = `${monthNames[selectedDate.month - 1]} ${
+    selectedDate.year
+  }`;
 
   const netSalaryWords = convertNumberToWords(Math.round(netSalary));
-
 
   const accountNumber = bankDetails.account_number || "";
   const bankName = bankDetails.bank_name || "";
@@ -148,21 +204,29 @@ const generatePayslipPDF = async (
     return pdf.output("blob");
   }
 
- 
   const doc = new jsPDF();
   const pageWidth = doc.internal.pageSize.getWidth();
   const margin = 10;
 
-
   const body = [
     ["Basic Salary", basicSalary.toFixed(2), "PF", pf.toFixed(2)],
     ["HRA", hra.toFixed(2), "ESIC", esic.toFixed(2)],
-    ["Other Allowances", allowance.toFixed(2), "Professional Tax", professionalTax.toFixed(2)],
+    [
+      "Other Allowances",
+      allowance.toFixed(2),
+      "Professional Tax",
+      professionalTax.toFixed(2),
+    ],
     ["Bonus", bonus.toFixed(2), "TDS", tds.toFixed(2)],
     ["", "", "Insurance", insurance.toFixed(2)],
     ["", "", "Advance Recovery", advanceRecovery.toFixed(2)],
     ["", "", "LOP Deduction", lopDeduction.toFixed(2)],
-    ["Gross Salary", grossSalary.toFixed(2), "Total Deductions", totalDeductions.toFixed(2)],
+    [
+      "Gross Salary",
+      grossSalary.toFixed(2),
+      "Total Deductions",
+      totalDeductions.toFixed(2),
+    ],
   ];
 
   autoTable(doc, {
@@ -170,7 +234,6 @@ const generatePayslipPDF = async (
     head: [["Earnings", "Amount (₹)", "Deductions", "Amount (₹)"]],
     body,
     theme: "grid",
-  
   });
 
   const finalY = doc.lastAutoTable.finalY + 10;

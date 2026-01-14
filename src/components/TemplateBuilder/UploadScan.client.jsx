@@ -959,8 +959,6 @@ export default function UploadScan({
                       sealUrl: sealUrl || null,
                     };
 
-                    console.log("Applying placeholders:", placeholders);
-
                     function escRx(s = "") {
                       return String(s).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
                     }
@@ -1030,9 +1028,6 @@ export default function UploadScan({
 
                       return nb;
                     });
-
-                    console.log("boxes before apply:", currentBoxes);
-                    console.log("boxes after apply:", updatedBoxes);
 
                     try {
                       setTemplateBoxes(updatedBoxes.map((b) => ({ ...b })));

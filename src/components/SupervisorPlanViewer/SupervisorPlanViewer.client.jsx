@@ -1,5 +1,3 @@
-
-
 "use client";
 import React, { useState, useEffect, useMemo, useRef } from "react";
 import axios from "axios";
@@ -120,7 +118,9 @@ const SupervisorPlanViewer = () => {
   useEffect(() => {
     if (!hydrated) return;
     if (user?.employeeId || user?.employee_id) {
-      const id = String(user.employeeId || user.employee_id).trim().toUpperCase();
+      const id = String(user.employeeId || user.employee_id)
+        .trim()
+        .toUpperCase();
       setSupervisorId(id);
       const fetchedOrgId = user?.orgId ?? user?.org_id ?? null;
       setOrgId(fetchedOrgId);
@@ -215,7 +215,10 @@ const SupervisorPlanViewer = () => {
         const days = cfg ? parseInt(cfg.value, 10) : NaN;
         setFreezeDays(isNaN(days) ? 3 : days);
       } catch (err) {
-        console.error("fetchFreezeDays error:", err.response?.data || err.message);
+        console.error(
+          "fetchFreezeDays error:",
+          err.response?.data || err.message
+        );
         setFreezeDays(3);
       }
     };
@@ -304,19 +307,21 @@ const SupervisorPlanViewer = () => {
                 emp_status: validStatuses.includes(task.emp_status)
                   ? task.emp_status
                   : "not started",
-                week_id: task.week_id, // ← Kept as string
+                week_id: task.week_id,
               }))
             : [];
         setTasks(taskData);
 
-        const uniqueWeekIds = [...new Set(taskData.map((t) => t.week_id))].sort(); // ← String sort
+        const uniqueWeekIds = [
+          ...new Set(taskData.map((t) => t.week_id)),
+        ].sort();
         const currentWeekId = getWeekIdForDate(new Date());
 
         if (uniqueWeekIds.length > 0) {
           if (uniqueWeekIds.includes(currentWeekId)) {
             setSelectedWeekId(currentWeekId);
           } else {
-            setSelectedWeekId(uniqueWeekIds[uniqueWeekIds.length - 1]); // latest
+            setSelectedWeekId(uniqueWeekIds[uniqueWeekIds.length - 1]);
           }
         } else {
           setSelectedWeekId(currentWeekId);
@@ -372,7 +377,7 @@ const SupervisorPlanViewer = () => {
 
   const weekIds = useMemo(() => {
     const unique = [...new Set(tasks.map((t) => t.week_id))];
-    return unique.sort(); // ← Critical fix: string sort for "2026-01", "2026-02", etc.
+    return unique.sort();
   }, [tasks]);
 
   const currentWeekIndex = useMemo(() => {
@@ -441,7 +446,10 @@ const SupervisorPlanViewer = () => {
     }
 
     const weekEnd = endOfISOWeek(weekStart);
-    return `Week ${weekId} (${format(weekStart, "MMM d, yyyy")} - ${format(weekEnd, "MMM d, yyyy")})`;
+    return `Week ${weekId} (${format(weekStart, "MMM d, yyyy")} - ${format(
+      weekEnd,
+      "MMM d, yyyy"
+    )})`;
   };
 
   const isDateEditable = (dateString) => {
@@ -571,7 +579,7 @@ const SupervisorPlanViewer = () => {
               ?.trim()
               .toUpperCase(),
             emp_status: response.data.newTask.emp_status || "not started",
-            week_id: response.data.newTask.week_id, // ← Kept as string
+            week_id: response.data.newTask.week_id,
           };
           setTasks((prev) => [...prev, newTask]);
           const newTaskWeek = newTask.week_id;
@@ -610,7 +618,7 @@ const SupervisorPlanViewer = () => {
               emp_status: validStatuses.includes(task.emp_status)
                 ? task.emp_status
                 : "not started",
-              week_id: task.week_id, // ← Kept as string
+              week_id: task.week_id,
             }))
           : [];
       setTasks(taskData);
@@ -791,7 +799,11 @@ const SupervisorPlanViewer = () => {
 
     return (
       <>
-        <li className={selectedEmployee === emp.employee_id ? "supervisor-plan-active" : ""}>
+        <li
+          className={
+            selectedEmployee === emp.employee_id ? "supervisor-plan-active" : ""
+          }
+        >
           {hasChildren ? (
             <span
               onClick={(e) => {
@@ -816,9 +828,11 @@ const SupervisorPlanViewer = () => {
           </span>
         </li>
 
-        {hasChildren && isOpen && emp.children.map((child) => (
-          <EmployeeNode key={child.employee_id} emp={child} />
-        ))}
+        {hasChildren &&
+          isOpen &&
+          emp.children.map((child) => (
+            <EmployeeNode key={child.employee_id} emp={child} />
+          ))}
       </>
     );
   };
@@ -977,7 +991,8 @@ const SupervisorPlanViewer = () => {
                                   <span className="supervisor-plan-status-icon">
                                     {effectiveReviewStatus === "approved" &&
                                       "Approved"}
-                                    {effectiveReviewStatus === "struck" && "Updated"}
+                                    {effectiveReviewStatus === "struck" &&
+                                      "Updated"}
                                     {effectiveReviewStatus ===
                                       "suspended_review" && "Suspended"}
                                   </span>
@@ -1082,7 +1097,11 @@ const SupervisorPlanViewer = () => {
                                         ...prev,
                                         [task.task_id]: text,
                                       }));
-                                      updateTaskField(task.task_id, "sup_comment", text);
+                                      updateTaskField(
+                                        task.task_id,
+                                        "sup_comment",
+                                        text
+                                      );
                                     }}
                                     placeholder="Add comment"
                                     disabled={isFrozen}
@@ -1091,7 +1110,9 @@ const SupervisorPlanViewer = () => {
                                   <button
                                     type="button"
                                     className={`supervisor-admin-mic-button ${
-                                      listeningTaskId === task.task_id ? "listening" : ""
+                                      listeningTaskId === task.task_id
+                                        ? "listening"
+                                        : ""
                                     }`}
                                     onClick={() =>
                                       listeningTaskId === task.task_id
@@ -1099,9 +1120,17 @@ const SupervisorPlanViewer = () => {
                                         : startListening(task.task_id)
                                     }
                                     disabled={isFrozen}
-                                    aria-label={listeningTaskId === task.task_id ? "Stop listening" : "Start voice input"}
+                                    aria-label={
+                                      listeningTaskId === task.task_id
+                                        ? "Stop listening"
+                                        : "Start voice input"
+                                    }
                                   >
-                                    {listeningTaskId === task.task_id ? <MdMicOff /> : <MdMic />}
+                                    {listeningTaskId === task.task_id ? (
+                                      <MdMicOff />
+                                    ) : (
+                                      <MdMic />
+                                    )}
                                   </button>
                                 </div>
                               </label>

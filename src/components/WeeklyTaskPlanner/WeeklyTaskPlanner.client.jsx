@@ -1,5 +1,3 @@
-
-
 "use client";
 import React, { useState, useEffect, useRef } from "react";
 import axios from "axios";
@@ -40,8 +38,8 @@ const WeeklyTaskPlanner = ({
 
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  const dayOfWeek = today.getDay(); // 0 = Sunday, 1 = Monday, ...
-  const offsetToMonday = (dayOfWeek + 6) % 7; // Adjust to get Monday as start
+  const dayOfWeek = today.getDay();
+  const offsetToMonday = (dayOfWeek + 6) % 7;
   const startOfCurrentWeek = new Date(today);
   startOfCurrentWeek.setDate(today.getDate() - offsetToMonday);
 
@@ -62,18 +60,16 @@ const WeeklyTaskPlanner = ({
 
   const dateRange = formatDateRange(startDate, endDate);
 
-  // Updated: Returns "YYYY-WW" format (e.g., "2026-02")
   const getISOWeekNumber = (date) => {
     const d = new Date(date);
     d.setHours(0, 0, 0, 0);
-    // Adjust to Thursday of the current week (ISO week belongs to the year with Thursday)
     d.setDate(d.getDate() + 4 - (d.getDay() || 7));
     const yearStart = new Date(d.getFullYear(), 0, 1);
     const weekNo = Math.ceil(((d - yearStart) / 86400000 + 1) / 7);
     return `${d.getFullYear()}-${String(weekNo).padStart(2, "0")}`;
   };
 
-  const weekId = getISOWeekNumber(startDate); // e.g., "2026-02"
+  const weekId = getISOWeekNumber(startDate);
 
   const weekDates = [];
   for (let i = 0; i < 7; i++) {
@@ -134,7 +130,6 @@ const WeeklyTaskPlanner = ({
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
   const tooltipRef = useRef(null);
 
-  // Speech Recognition States & Ref
   const [isListening, setIsListening] = useState(false);
   const [assignListeningIndex, setAssignListeningIndex] = useState(null);
   const recognitionRef = useRef(null);
@@ -276,8 +271,6 @@ const WeeklyTaskPlanner = ({
       tooltip: dateStr,
     };
   };
-
-  // ==================== Speech Recognition Functions ====================
 
   const startListening = () => {
     if (!("webkitSpeechRecognition" in window)) {
@@ -457,7 +450,6 @@ const WeeklyTaskPlanner = ({
   };
 
   const handleEditClick = (task) => {
-    // if (userRole !== "employee") return;
     if (!isTaskEditable(task.task_date)) {
       showAlert(
         `Cannot edit: Task is before the ${effectiveFreezeDays}-day editable period.`
@@ -506,7 +498,6 @@ const WeeklyTaskPlanner = ({
   };
 
   const handleSave = async (taskId) => {
-    // if (userRole !== "employee") return;
     const task = tasksData
       .flatMap((d) => d.tasks)
       .find((t) => t.task_id === taskId);
@@ -968,83 +959,87 @@ const WeeklyTaskPlanner = ({
       )
     );
   };
-const handleAssignSubmit = async () => {
-  const valid = assignTasks.filter(
-    (t) => t.projectId && t.taskName && t.dates.length > 0
-  );
-  if (valid.length === 0) {
-    showAlert("Fill at least one task with dates, project & name.");
-    return;
-  }
-
-  const newTasksAdded = []; // To collect: { task: fullTaskObject, date: string }
-
-  try {
-    for (const task of valid) {
-      // Update projects map once per unique project (optional optimization)
-      setProjects((prev) => ({
-        ...prev,
-        [task.projectId]: task.projectName,
-      }));
-
-      for (const date of task.dates) {
-        const [day, month] = date.split(" ");
-        const monthIdx = new Date(`${month} 1, ${startDate.getFullYear()}`).getMonth();
-        const taskDate = new Date(startDate.getFullYear(), monthIdx, parseInt(day));
-        const isoDate = formatDateIST(taskDate);
-
-        const newTaskBase = {
-          week_id: weekId,
-          task_date: isoDate,
-          project_id: task.projectId,
-          project_name: task.projectName,
-          task_name: task.taskName,
-          emp_status: "not started",
-          emp_comment: "",
-          sup_status: "incomplete",
-          sup_comment: "",
-          sup_review_status: "pending",
-          employee_id: employeeId,
-          star_rating: null,
-          replacement_task: null,
-        };
-
-        const resp = await authRequest({
-          method: "POST",
-          url: "/api/week_tasks",
-          data: newTaskBase,
-        });
-
-        const fullNewTask = {
-          ...newTaskBase,
-          task_id: resp.data.taskId, // assuming backend returns { taskId: ... }
-        };
-
-        newTasksAdded.push({ task: fullNewTask, date });
-      }
+  const handleAssignSubmit = async () => {
+    const valid = assignTasks.filter(
+      (t) => t.projectId && t.taskName && t.dates.length > 0
+    );
+    if (valid.length === 0) {
+      showAlert("Fill at least one task with dates, project & name.");
+      return;
     }
 
-    // ONE single state update – safe even with double mount
-    setTasksData((prev) => {
-      const copy = prev.map((day) => ({ ...day, tasks: [...day.tasks] })); // deep copy tasks arrays
-      newTasksAdded.forEach(({ task, date }) => {
-        const dayIdx = copy.findIndex((d) => d.date === date);
-        if (dayIdx !== -1) {
-          copy[dayIdx].tasks.push(task);
-        }
-      });
-      return copy;
-    });
+    const newTasksAdded = [];
 
-    setNoTasks(false);
-    showAlert("Tasks assigned successfully!");
-    setShowAssignForm(false);
-    setAssignTasks([]);
-    setDropdownOpen({});
-  } catch (err) {
-    showAlert(`Failed to assign tasks: ${err.message}`);
-  }
-};
+    try {
+      for (const task of valid) {
+        setProjects((prev) => ({
+          ...prev,
+          [task.projectId]: task.projectName,
+        }));
+
+        for (const date of task.dates) {
+          const [day, month] = date.split(" ");
+          const monthIdx = new Date(
+            `${month} 1, ${startDate.getFullYear()}`
+          ).getMonth();
+          const taskDate = new Date(
+            startDate.getFullYear(),
+            monthIdx,
+            parseInt(day)
+          );
+          const isoDate = formatDateIST(taskDate);
+
+          const newTaskBase = {
+            week_id: weekId,
+            task_date: isoDate,
+            project_id: task.projectId,
+            project_name: task.projectName,
+            task_name: task.taskName,
+            emp_status: "not started",
+            emp_comment: "",
+            sup_status: "incomplete",
+            sup_comment: "",
+            sup_review_status: "pending",
+            employee_id: employeeId,
+            star_rating: null,
+            replacement_task: null,
+          };
+
+          const resp = await authRequest({
+            method: "POST",
+            url: "/api/week_tasks",
+            data: newTaskBase,
+          });
+
+          const fullNewTask = {
+            ...newTaskBase,
+            task_id: resp.data.taskId,
+          };
+
+          newTasksAdded.push({ task: fullNewTask, date });
+        }
+      }
+
+      setTasksData((prev) => {
+        const copy = prev.map((day) => ({ ...day, tasks: [...day.tasks] }));
+        newTasksAdded.forEach(({ task, date }) => {
+          const dayIdx = copy.findIndex((d) => d.date === date);
+          if (dayIdx !== -1) {
+            copy[dayIdx].tasks.push(task);
+          }
+        });
+        return copy;
+      });
+
+      setNoTasks(false);
+      showAlert("Tasks assigned successfully!");
+      setShowAssignForm(false);
+      setAssignTasks([]);
+      setDropdownOpen({});
+    } catch (err) {
+      showAlert(`Failed to assign tasks: ${err.message}`);
+    }
+  };
   const handleAssignCancel = () => {
     setShowAssignForm(false);
     setAssignTasks([]);
@@ -1080,7 +1075,7 @@ const handleAssignSubmit = async () => {
 
   return (
     <div className="week-task-weekly-task-planner">
-     <div className="week-task-planner-header">
+      <div className="week-task-planner-header">
         <h2>
           Weekly Task Planner{" "}
           <span className="week-task-week-id">
@@ -1273,7 +1268,6 @@ const handleAssignSubmit = async () => {
                           }
                           style={{
                             cursor: "pointer",
-                            
                           }}
                         >
                           {assignListeningIndex === idx ? (
@@ -1536,8 +1530,6 @@ const handleAssignSubmit = async () => {
                             task.sup_review_status === "pending" && (
                               <div className="week-task-review-action-icons">
                                 <svg
-
-                                
                                   className="week-task-action-icon approve"
                                   onClick={() => handleApprove(task.task_id)}
                                   width="16"
@@ -1722,23 +1714,23 @@ const handleAssignSubmit = async () => {
                                 }
                               />
                               <svg
-  className="week-task-edit-icon"
-  onClick={() => handleEditClick(task)}
-  width="16"
-  height="16"
-  viewBox="0 0 24 24"
-  fill="none"
-  stroke="#007bff"
-  strokeWidth="2"
-  style={{
-    cursor: canEdit ? "pointer" : "not-allowed",
-    opacity: canEdit ? 1 : 0.5,
-  }}
-  title="Edit employee update"
->
-  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-</svg>
+                                className="week-task-edit-icon"
+                                onClick={() => handleEditClick(task)}
+                                width="16"
+                                height="16"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="#007bff"
+                                strokeWidth="2"
+                                style={{
+                                  cursor: canEdit ? "pointer" : "not-allowed",
+                                  opacity: canEdit ? 1 : 0.5,
+                                }}
+                                title="Edit employee update"
+                              >
+                                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                              </svg>
                             </div>
                           </div>
                         </div>

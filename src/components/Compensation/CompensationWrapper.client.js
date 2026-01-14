@@ -1,39 +1,32 @@
-// 
 "use client";
 
 import React, { useState } from "react";
-import SalaryBreakupMain from "./SalaryBreakupMain.client"; // Only import once
+import SalaryBreakupMain from "./SalaryBreakupMain.client";
 import SalaryDetails from "./SalaryDetails/SalaryDetails.client";
 import CreateCompensation from "./CreateCompensation.client";
 import AssignCompensation from "./AssignCompensation.client";
 
-import "./CompensationWrapper.css"; // Your styles
+import "./CompensationWrapper.css";
 
 const CompensationWrapper = () => {
-  // Use simple string identifiers instead of full paths — much safer and clearer
-  const [currentView, setCurrentView] = useState("home"); // "home" = main menu
+  const [currentView, setCurrentView] = useState("home");
 
   const handleNavigation = (view) => {
-    console.log("Navigating to view:", view); // Debug log
     setCurrentView(view);
   };
 
   const renderContent = () => {
     switch (currentView) {
       case "breakup":
-        console.log("Rendering SalaryBreakupMain");
         return <SalaryBreakupMain />;
 
       case "details":
-        console.log("Rendering SalaryDetails");
         return <SalaryDetails />;
 
       case "create":
-        console.log("Rendering CreateCompensation");
         return <CreateCompensation />;
 
       case "assign":
-        console.log("Rendering AssignCompensation");
         return <AssignCompensation />;
 
       case "home":
@@ -76,25 +69,19 @@ const CompensationWrapper = () => {
     }
   };
 
-  // Optional: Add a back button when not on home
   const showBackButton = currentView !== "home";
 
   return (
     <div className="compensation-wrapper">
       {showBackButton && (
         <div className="back-button-container">
-          <button
-            className="back-btn"
-            onClick={() => handleNavigation("home")}
-          >
+          <button className="back-btn" onClick={() => handleNavigation("home")}>
             ← Back to Menu
           </button>
         </div>
       )}
 
-      <div className="content-area">
-        {renderContent()}
-      </div>
+      <div className="content-area">{renderContent()}</div>
     </div>
   );
 };

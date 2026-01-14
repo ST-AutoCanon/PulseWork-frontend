@@ -1,5 +1,3 @@
-
-
 "use client";
 import React, { useState, useEffect } from "react";
 import axios from "axios";
@@ -36,7 +34,8 @@ const PayrollSummary = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5001";
+  const BACKEND_URL =
+    process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5001";
   const API_KEY = process.env.NEXT_PUBLIC_API_KEY;
 
   const employeeId = user?.employeeId;
@@ -74,7 +73,11 @@ const PayrollSummary = () => {
     }
   }
 
-  async function fetchProtectedBlobUrl(src, apiKey = API_KEY, backendBase = BACKEND_URL) {
+  async function fetchProtectedBlobUrl(
+    src,
+    apiKey = API_KEY,
+    backendBase = BACKEND_URL
+  ) {
     if (!src) return null;
     if (src.startsWith("blob:") || src.startsWith("data:")) return src;
 
@@ -91,7 +94,10 @@ const PayrollSummary = () => {
       console.log("✅ [BLOB FETCH] SUCCESS with auth headers:", blobUrl);
       return blobUrl;
     } catch (err) {
-      console.warn("⚠️ [BLOB FETCH] Auth headers failed:", err?.response?.status || err.message);
+      console.warn(
+        "⚠️ [BLOB FETCH] Auth headers failed:",
+        err?.response?.status || err.message
+      );
     }
 
     try {
@@ -102,12 +108,19 @@ const PayrollSummary = () => {
       console.log("✅ [BLOB FETCH] SUCCESS with simple fetch:", blobUrl);
       return blobUrl;
     } catch (err) {
-      console.error("❌ [BLOB FETCH] Simple fetch also FAILED:", err.message || err);
+      console.error(
+        "❌ [BLOB FETCH] Simple fetch also FAILED:",
+        err.message || err
+      );
       return null;
     }
   }
 
-  async function replaceUploadUrlsInHtml(html = "", apiKey = API_KEY, backendBase = BACKEND_URL) {
+  async function replaceUploadUrlsInHtml(
+    html = "",
+    apiKey = API_KEY,
+    backendBase = BACKEND_URL
+  ) {
     if (!html || typeof html !== "string") return html;
     const uploadRegex = /\/api\/orgs\/\d+\/uploads\/[A-Za-z0-9._-]+/g;
     const matches = html.match(uploadRegex);
@@ -119,7 +132,11 @@ const PayrollSummary = () => {
     await Promise.all(
       unique.map(async (m) => {
         const normalized = normalizeUploadUrl(m, backendBase);
-        const blobUrl = await fetchProtectedBlobUrl(normalized, apiKey, backendBase);
+        const blobUrl = await fetchProtectedBlobUrl(
+          normalized,
+          apiKey,
+          backendBase
+        );
         replacements[m] = blobUrl || normalized;
       })
     );
@@ -190,9 +207,11 @@ const PayrollSummary = () => {
       console.log("Header blob:", !!headerBlob ? "YES" : "NO");
       console.log("Footer blob:", !!footerBlob ? "YES" : "NO");
 
-      const employeeName = payrollData.full_name || employeeDetails?.name || "N/A";
+      const employeeName =
+        payrollData.full_name || employeeDetails?.name || "N/A";
       const empId = payrollData.employee_id || employeeId || "N/A";
-      const designation = payrollData.designation || employeeDetails?.designation || "N/A";
+      const designation =
+        payrollData.designation || employeeDetails?.designation || "N/A";
 
       const basicSalary = Number(payrollData.basic_salary || 0);
       const hra = Number(payrollData.hra || 0);
@@ -208,13 +227,22 @@ const PayrollSummary = () => {
       const grossSalary = Number(payrollData.gross_salary || 0);
 
       const totalDeductions =
-        pf + esic + professionalTax + tds + insurance + advanceRecovery + lopDeduction;
+        pf +
+        esic +
+        professionalTax +
+        tds +
+        insurance +
+        advanceRecovery +
+        lopDeduction;
 
-      const netSalary = Number(payrollData.net_salary || grossSalary - totalDeductions);
+      const netSalary = Number(
+        payrollData.net_salary || grossSalary - totalDeductions
+      );
 
       const leavesTaken = Number(payrollData.lop_days || 0);
       const totalWorkingDays =
-        attendance?.total_working_days || (leavesTaken > 0 ? 30 - leavesTaken : 30);
+        attendance?.total_working_days ||
+        (leavesTaken > 0 ? 30 - leavesTaken : 30);
 
       const monthNames = [
         "January",
@@ -230,7 +258,9 @@ const PayrollSummary = () => {
         "November",
         "December",
       ];
-      const monthYear = `${monthNames[selectedDate.month - 1]} ${selectedDate.year}`;
+      const monthYear = `${monthNames[selectedDate.month - 1]} ${
+        selectedDate.year
+      }`;
 
       const convertNumberToWords = (num) => {
         if (!num || num === 0) return "Zero Only";
@@ -368,64 +398,104 @@ const PayrollSummary = () => {
             <tbody>
               <tr>
                 <td style="border: 1px solid #000; padding: 8px;">Basic Salary</td>
-                <td style="border: 1px solid #000; padding: 8px; text-align: right;">${basicSalary.toFixed(2)}</td>
+                <td style="border: 1px solid #000; padding: 8px; text-align: right;">${basicSalary.toFixed(
+                  2
+                )}</td>
                 <td style="border: 1px solid #000; padding: 8px;">PF</td>
-                <td style="border: 1px solid #000; padding: 8px; text-align: right;">${pf.toFixed(2)}</td>
+                <td style="border: 1px solid #000; padding: 8px; text-align: right;">${pf.toFixed(
+                  2
+                )}</td>
               </tr>
               <tr>
                 <td style="border: 1px solid #000; padding: 8px;">HRA</td>
-                <td style="border: 1px solid #000; padding: 8px; text-align: right;">${hra.toFixed(2)}</td>
+                <td style="border: 1px solid #000; padding: 8px; text-align: right;">${hra.toFixed(
+                  2
+                )}</td>
                 <td style="border: 1px solid #000; padding: 8px;">ESIC</td>
-                <td style="border: 1px solid #000; padding: 8px; text-align: right;">${esic.toFixed(2)}</td>
+                <td style="border: 1px solid #000; padding: 8px; text-align: right;">${esic.toFixed(
+                  2
+                )}</td>
               </tr>
               <tr>
                 <td style="border: 1px solid #000; padding: 8px;">Other Allowances</td>
-                <td style="border: 1px solid #000; padding: 8px; text-align: right;">${allowance.toFixed(2)}</td>
+                <td style="border: 1px solid #000; padding: 8px; text-align: right;">${allowance.toFixed(
+                  2
+                )}</td>
                 <td style="border: 1px solid #000; padding: 8px;">Professional Tax</td>
-                <td style="border: 1px solid #000; padding: 8px; text-align: right;">${professionalTax.toFixed(2)}</td>
+                <td style="border: 1px solid #000; padding: 8px; text-align: right;">${professionalTax.toFixed(
+                  2
+                )}</td>
               </tr>
-              ${bonus > 0 ? `
+              ${
+                bonus > 0
+                  ? `
               <tr>
                 <td style="border: 1px solid #000; padding: 8px;">Bonus</td>
-                <td style="border: 1px solid #000; padding: 8px; text-align: right;">${bonus.toFixed(2)}</td>
+                <td style="border: 1px solid #000; padding: 8px; text-align: right;">${bonus.toFixed(
+                  2
+                )}</td>
                 <td style="border: 1px solid #000; padding: 8px;"></td>
                 <td style="border: 1px solid #000; padding: 8px;"></td>
-              </tr>` : ""}
+              </tr>`
+                  : ""
+              }
               <tr>
                 <td style="border: 1px solid #000; padding: 8px;"><strong>Gross Salary</strong></td>
-                <td style="border: 1px solid #000; padding: 8px; text-align: right;"><strong>${grossSalary.toFixed(2)}</strong></td>
+                <td style="border: 1px solid #000; padding: 8px; text-align: right;"><strong>${grossSalary.toFixed(
+                  2
+                )}</strong></td>
                 <td style="border: 1px solid #000; padding: 8px;">TDS</td>
-                <td style="border: 1px solid #000; padding: 8px; text-align: right;">${tds.toFixed(2)}</td>
+                <td style="border: 1px solid #000; padding: 8px; text-align: right;">${tds.toFixed(
+                  2
+                )}</td>
               </tr>
               <tr>
                 <td style="border: 1px solid #000; padding: 8px;"></td>
                 <td style="border: 1px solid #000; padding: 8px;"></td>
                 <td style="border: 1px solid #000; padding: 8px;">Insurance</td>
-                <td style="border: 1px solid #000; padding: 8px; text-align: right;">${insurance.toFixed(2)}</td>
+                <td style="border: 1px solid #000; padding: 8px; text-align: right;">${insurance.toFixed(
+                  2
+                )}</td>
               </tr>
-              ${advanceRecovery > 0 ? `
+              ${
+                advanceRecovery > 0
+                  ? `
               <tr>
                 <td style="border: 1px solid #000; padding: 8px;"></td>
                 <td style="border: 1px solid #000; padding: 8px;"></td>
                 <td style="border: 1px solid #000; padding: 8px;">Advance Recovery</td>
-                <td style="border: 1px solid #000; padding: 8px; text-align: right;">${advanceRecovery.toFixed(2)}</td>
-              </tr>` : ""}
-              ${lopDeduction > 0 ? `
+                <td style="border: 1px solid #000; padding: 8px; text-align: right;">${advanceRecovery.toFixed(
+                  2
+                )}</td>
+              </tr>`
+                  : ""
+              }
+              ${
+                lopDeduction > 0
+                  ? `
               <tr>
                 <td style="border: 1px solid #000; padding: 8px;"></td>
                 <td style="border: 1px solid #000; padding: 8px;"></td>
                 <td style="border: 1px solid #000; padding: 8px;">LOP Deduction</td>
-                <td style="border: 1px solid #000; padding: 8px; text-align: right;">${lopDeduction.toFixed(2)}</td>
-              </tr>` : ""}
+                <td style="border: 1px solid #000; padding: 8px; text-align: right;">${lopDeduction.toFixed(
+                  2
+                )}</td>
+              </tr>`
+                  : ""
+              }
               <tr style="background-color: #f0f0f0;">
                 <td style="border: 1px solid #000; padding: 8px;"></td>
                 <td style="border: 1px solid #000; padding: 8px;"></td>
                 <td style="border: 1px solid #000; padding: 8px;"><strong>Total Deductions</strong></td>
-                <td style="border: 1px solid #000; padding: 8px; text-align: right;"><strong>${totalDeductions.toFixed(2)}</strong></td>
+                <td style="border: 1px solid #000; padding: 8px; text-align: right;"><strong>${totalDeductions.toFixed(
+                  2
+                )}</strong></td>
               </tr>
               <tr style="background-color: #e0e0e0; font-size: 14px;">
                 <td style="border: 1px solid #000; padding: 12px; text-align: center;" colSpan="4">
-                  <strong>Net Salary: ₹${netSalary.toFixed(2)} (${netSalaryWords})</strong>
+                  <strong>Net Salary: ₹${netSalary.toFixed(
+                    2
+                  )} (${netSalaryWords})</strong>
                 </td>
               </tr>
             </tbody>
@@ -452,7 +522,6 @@ const PayrollSummary = () => {
         bodyDiv.style.padding = "20px 40px";
         bodyDiv.style.minHeight = "auto";
 
-        // Replace header if we have blob
         if (headerBlob) {
           doc.querySelectorAll(".template-header").forEach((el) => el.remove());
           const headerDiv = doc.createElement("div");
@@ -465,7 +534,6 @@ const PayrollSummary = () => {
           pageContainer.insertBefore(headerDiv, pageContainer.firstChild);
         }
 
-        // Replace footer if we have blob
         if (footerBlob) {
           doc.querySelectorAll(".template-footer").forEach((el) => el.remove());
           const footerDiv = doc.createElement("div");
@@ -478,7 +546,6 @@ const PayrollSummary = () => {
           pageContainer.appendChild(footerDiv);
         }
 
-        // Inject watermark if available
         if (watermarkBlob) {
           console.log("✅ INJECTING WATERMARK");
           doc.querySelectorAll(".pdf-watermark").forEach((el) => el.remove());
@@ -532,7 +599,9 @@ const PayrollSummary = () => {
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `Payslip_${empId}_${selectedDate.month.toString().padStart(2, "0")}_${selectedDate.year}.pdf`;
+      a.download = `Payslip_${empId}_${selectedDate.month
+        .toString()
+        .padStart(2, "0")}_${selectedDate.year}.pdf`;
       document.body.appendChild(a);
       a.click();
       a.remove();
@@ -543,7 +612,6 @@ const PayrollSummary = () => {
     }
   };
 
-  // Fetch selected template using LIST endpoint
   useEffect(() => {
     const fetchSelectedTemplate = async () => {
       if (!orgId) {
@@ -554,11 +622,13 @@ const PayrollSummary = () => {
       console.log("🔄 TEMPLATE FETCH STARTED for orgId:", orgId);
 
       try {
-        // Get selected template ID
-        const prefsRes = await axios.get(`${BACKEND_URL}/api/salary-preferences`, {
-          headers,
-          withCredentials: true,
-        });
+        const prefsRes = await axios.get(
+          `${BACKEND_URL}/api/salary-preferences`,
+          {
+            headers,
+            withCredentials: true,
+          }
+        );
 
         const selectedId = prefsRes.data?.data?.[0]?.selected_template_id;
         if (!selectedId) {
@@ -568,11 +638,13 @@ const PayrollSummary = () => {
 
         console.log("Selected template ID:", selectedId);
 
-        // Get ALL templates
-        const templatesRes = await axios.get(`${BACKEND_URL}/api/orgs/${orgId}/templates`, {
-          headers,
-          withCredentials: true,
-        });
+        const templatesRes = await axios.get(
+          `${BACKEND_URL}/api/orgs/${orgId}/templates`,
+          {
+            headers,
+            withCredentials: true,
+          }
+        );
 
         const templates = templatesRes.data || [];
         const selectedTemplate = templates.find((t) => t.id === selectedId);
@@ -584,18 +656,21 @@ const PayrollSummary = () => {
 
         console.log("✅ Using template:", selectedTemplate.name);
 
-        // Process HTML with protected blobs
-        let processedHtml = await replaceUploadUrlsInHtml(selectedTemplate.html || "");
+        let processedHtml = await replaceUploadUrlsInHtml(
+          selectedTemplate.html || ""
+        );
         setTemplateHtml(processedHtml);
         setTemplateCss(selectedTemplate.css || "");
 
-        // Header/Footer detection from HTML
         let headerSrc = null;
         let footerSrc = null;
 
         if (selectedTemplate.html) {
           const parser = new DOMParser();
-          const doc = parser.parseFromString(selectedTemplate.html, "text/html");
+          const doc = parser.parseFromString(
+            selectedTemplate.html,
+            "text/html"
+          );
           const headerImg = doc.querySelector(".template-header img");
           if (headerImg) headerSrc = headerImg.getAttribute("src");
           const footerImg = doc.querySelector(".template-footer img");
@@ -612,14 +687,17 @@ const PayrollSummary = () => {
           if (blobUrl) setFooterBlob(blobUrl);
         }
 
-        // Watermark - priority to grapes_json
         let wmUrl = null;
         let wp = { ...watermarkProps };
 
-        const grapesField = selectedTemplate.grapes_json || selectedTemplate.grapesJson;
+        const grapesField =
+          selectedTemplate.grapes_json || selectedTemplate.grapesJson;
         if (grapesField) {
           try {
-            const grapes = typeof grapesField === "string" ? JSON.parse(grapesField) : grapesField;
+            const grapes =
+              typeof grapesField === "string"
+                ? JSON.parse(grapesField)
+                : grapesField;
             if (grapes?.watermark?.url) {
               wmUrl = grapes.watermark.url;
               wp = {
@@ -636,10 +714,12 @@ const PayrollSummary = () => {
           }
         }
 
-        // Fallback: meta (rarely used in your case)
         if (!wmUrl && selectedTemplate.meta) {
           try {
-            const meta = typeof selectedTemplate.meta === "string" ? JSON.parse(selectedTemplate.meta) : selectedTemplate.meta;
+            const meta =
+              typeof selectedTemplate.meta === "string"
+                ? JSON.parse(selectedTemplate.meta)
+                : selectedTemplate.meta;
             if (meta?.watermarkPlacement) {
               wp = {
                 ...wp,
@@ -655,7 +735,6 @@ const PayrollSummary = () => {
           }
         }
 
-        // Fetch watermark blob
         if (wmUrl) {
           const blobUrl = await fetchProtectedBlobUrl(wmUrl);
           if (blobUrl) {
@@ -672,7 +751,6 @@ const PayrollSummary = () => {
     fetchSelectedTemplate();
   }, [orgId]);
 
-  // Cleanup blobs
   useEffect(() => {
     return () => {
       [headerBlob, footerBlob, watermarkBlob].forEach((url) => {
@@ -681,7 +759,6 @@ const PayrollSummary = () => {
     };
   }, [headerBlob, footerBlob, watermarkBlob]);
 
-  // Data fetching
   useEffect(() => {
     if (!employeeId || !orgId) {
       setError("Missing employee ID or organization. Please log in again.");
@@ -694,18 +771,24 @@ const PayrollSummary = () => {
       setPayrollData(null);
 
       try {
-        const empRes = await axios.get(`${BACKEND_URL}/api/employee-details/${employeeId}`, {
-          headers,
-          withCredentials: true,
-        });
+        const empRes = await axios.get(
+          `${BACKEND_URL}/api/employee-details/${employeeId}`,
+          {
+            headers,
+            withCredentials: true,
+          }
+        );
         setEmployeeDetails(empRes.data || null);
         setAttendance(empRes.data?.attendanceStats || null);
 
         try {
-          const bankRes = await axios.get(`${BACKEND_URL}/api/bank-details/${employeeId}`, {
-            headers,
-            withCredentials: true,
-          });
+          const bankRes = await axios.get(
+            `${BACKEND_URL}/api/bank-details/${employeeId}`,
+            {
+              headers,
+              withCredentials: true,
+            }
+          );
           setBankDetails(bankRes.data || {});
         } catch {
           setBankDetails({});
@@ -718,7 +801,10 @@ const PayrollSummary = () => {
           );
           setPayrollData(salaryRes.data || null);
         } catch (salaryErr) {
-          if (salaryErr.response?.status === 404 || salaryErr.response?.data?.error === "Not found") {
+          if (
+            salaryErr.response?.status === 404 ||
+            salaryErr.response?.data?.error === "Not found"
+          ) {
             setPayrollData(null);
           } else {
             throw salaryErr;
@@ -735,9 +821,9 @@ const PayrollSummary = () => {
     fetchAllData();
   }, [selectedDate, employeeId, orgId]);
 
-  // Preview values
   const previewName = payrollData?.full_name || employeeDetails?.name || "N/A";
-  const previewDesignation = payrollData?.designation || employeeDetails?.designation || "N/A";
+  const previewDesignation =
+    payrollData?.designation || employeeDetails?.designation || "N/A";
   const previewBasic = Number(payrollData?.basic_salary || 0);
   const previewHra = Number(payrollData?.hra || 0);
   const previewAllowance = Number(payrollData?.other_allowances || 0);
@@ -751,8 +837,16 @@ const PayrollSummary = () => {
   const previewLopDeduction = Number(payrollData?.lop_deduction || 0);
   const previewGross = Number(payrollData?.gross_salary || 0);
   const previewTotalDed =
-    previewPf + previewEsic + previewPt + previewTds + previewInsurance + previewAdvanceRecovery + previewLopDeduction;
-  const previewNet = Number(payrollData?.net_salary || previewGross - previewTotalDed);
+    previewPf +
+    previewEsic +
+    previewPt +
+    previewTds +
+    previewInsurance +
+    previewAdvanceRecovery +
+    previewLopDeduction;
+  const previewNet = Number(
+    payrollData?.net_salary || previewGross - previewTotalDed
+  );
 
   return (
     <div className="payroll-container">
@@ -761,7 +855,9 @@ const PayrollSummary = () => {
       <div className="payroll-controls">
         <label className="payroll-label">Select Month & Year:</label>
         <select
-          value={`${selectedDate.year}-${selectedDate.month.toString().padStart(2, "0")}`}
+          value={`${selectedDate.year}-${selectedDate.month
+            .toString()
+            .padStart(2, "0")}`}
           onChange={handleDateChange}
           className="payroll-select"
         >
@@ -771,7 +867,10 @@ const PayrollSummary = () => {
             const monthNum = date.getMonth() + 1;
             const yearNum = date.getFullYear();
             return (
-              <option key={i} value={`${yearNum}-${monthNum.toString().padStart(2, "0")}`}>
+              <option
+                key={i}
+                value={`${yearNum}-${monthNum.toString().padStart(2, "0")}`}
+              >
                 {date.toLocaleString("default", { month: "long" })} {yearNum}
               </option>
             );
@@ -785,20 +884,38 @@ const PayrollSummary = () => {
       {!loading && !error && payrollData ? (
         <div className="payslip">
           <h2>
-            Payslip for {new Date(selectedDate.year, selectedDate.month - 1).toLocaleString("default", { month: "long", year: "numeric" })}
+            Payslip for{" "}
+            {new Date(selectedDate.year, selectedDate.month - 1).toLocaleString(
+              "default",
+              { month: "long", year: "numeric" }
+            )}
           </h2>
 
-          <table style={{ width: "100%", marginBottom: "20px", borderCollapse: "collapse", fontSize: "14px" }}>
+          <table
+            style={{
+              width: "100%",
+              marginBottom: "20px",
+              borderCollapse: "collapse",
+              fontSize: "14px",
+            }}
+          >
             <tbody>
               <tr>
-                <td style={{ padding: "8px" }}><strong>Employee Name:</strong> {previewName}</td>
-                <td style={{ padding: "8px" }}><strong>Employee ID:</strong> {employeeId}</td>
-                {/* <td style={{ padding: "8px" }}><strong>Designation:</strong> {previewDesignation}</td> */}
+                <td style={{ padding: "8px" }}>
+                  <strong>Employee Name:</strong> {previewName}
+                </td>
+                <td style={{ padding: "8px" }}>
+                  <strong>Employee ID:</strong> {employeeId}
+                </td>
               </tr>
               <tr>
-                <td style={{ padding: "8px" }}><strong>Bank:</strong> {bankDetails?.bank_name || "N/A"}</td>
-                <td style={{ padding: "8px" }}><strong>Account No:</strong> {bankDetails?.account_number || "N/A"}</td>
-                {/* <td style={{ padding: "8px" }}><strong>Net Pay:</strong> ₹{previewNet.toFixed(2)}</td> */}
+                <td style={{ padding: "8px" }}>
+                  <strong>Bank:</strong> {bankDetails?.bank_name || "N/A"}
+                </td>
+                <td style={{ padding: "8px" }}>
+                  <strong>Account No:</strong>{" "}
+                  {bankDetails?.account_number || "N/A"}
+                </td>
               </tr>
             </tbody>
           </table>
@@ -840,8 +957,12 @@ const PayrollSummary = () => {
                 </tr>
               )}
               <tr>
-                <td><strong>Gross Salary</strong></td>
-                <td><strong>₹{previewGross.toFixed(2)}</strong></td>
+                <td>
+                  <strong>Gross Salary</strong>
+                </td>
+                <td>
+                  <strong>₹{previewGross.toFixed(2)}</strong>
+                </td>
                 <td>TDS</td>
                 <td>₹{previewTds.toFixed(2)}</td>
               </tr>
@@ -869,12 +990,20 @@ const PayrollSummary = () => {
               )}
               <tr className="total-row">
                 <td colSpan="2"></td>
-                <td><strong>Total Deductions</strong></td>
-                <td><strong>₹{previewTotalDed.toFixed(2)}</strong></td>
+                <td>
+                  <strong>Total Deductions</strong>
+                </td>
+                <td>
+                  <strong>₹{previewTotalDed.toFixed(2)}</strong>
+                </td>
               </tr>
               <tr className="net-salary-row">
-                <td colSpan="2"><strong>Net Salary</strong></td>
-                <td colSpan="2"><strong>₹{previewNet.toFixed(2)}</strong></td>
+                <td colSpan="2">
+                  <strong>Net Salary</strong>
+                </td>
+                <td colSpan="2">
+                  <strong>₹{previewNet.toFixed(2)}</strong>
+                </td>
               </tr>
             </tbody>
           </table>
@@ -884,8 +1013,7 @@ const PayrollSummary = () => {
           </button>
         </div>
       ) : (
-        !loading &&
-        !error && <p>No payroll data available for this month.</p>
+        !loading && !error && <p>No payroll data available for this month.</p>
       )}
     </div>
   );

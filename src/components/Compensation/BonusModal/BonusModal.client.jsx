@@ -47,10 +47,7 @@ const BonusModal = ({
 
   return (
     <div className="bm-modal-overlay" onClick={closeModal}>
-      <div
-        className="bm-modal"
-        onClick={(e) => e.stopPropagation()} // Prevent closing when clicking inside modal
-      >
+      <div className="bm-modal" onClick={(e) => e.stopPropagation()}>
         <div className="bm-modal-header">
           <h2>Add Bonus</h2>
           <button
@@ -69,7 +66,6 @@ const BonusModal = ({
             </div>
           )}
 
-          {/* Bonus Type Selection */}
           <div className="bm-modal-field">
             <label htmlFor="bonus-option">Bonus Type</label>
             <select
@@ -79,12 +75,13 @@ const BonusModal = ({
             >
               <option value="">Select Bonus Type</option>
               <option value="percentageCtc">Percentage of CTC</option>
-              <option value="monthlySalaryCount">Number of Monthly Salaries</option>
+              <option value="monthlySalaryCount">
+                Number of Monthly Salaries
+              </option>
               <option value="fixedAmount">Fixed Amount</option>
             </select>
           </div>
 
-          {/* Conditional Fields */}
           {bonusModal.selectedOption === "percentageCtc" && (
             <div className="bm-modal-field">
               <label htmlFor="percentage-ctc">Percentage of CTC (%)</label>
@@ -112,7 +109,9 @@ const BonusModal = ({
                 step="0.1"
                 placeholder="e.g. 1.5"
                 value={bonusModal.monthlySalaryCount || ""}
-                onChange={(e) => updateField("monthlySalaryCount", e.target.value)}
+                onChange={(e) =>
+                  updateField("monthlySalaryCount", e.target.value)
+                }
               />
             </div>
           )}
@@ -131,7 +130,6 @@ const BonusModal = ({
             </div>
           )}
 
-          {/* Applicable Month */}
           <div className="bm-modal-field">
             <label htmlFor="bonus-month">Applicable Month</label>
             <select
@@ -148,7 +146,6 @@ const BonusModal = ({
             </select>
           </div>
 
-          {/* Year */}
           <div className="bm-modal-field">
             <label htmlFor="bonus-year">Year</label>
             <select
@@ -165,7 +162,6 @@ const BonusModal = ({
             </select>
           </div>
 
-          {/* Actions */}
           <div className="bm-modal-actions">
             <button
               type="button"

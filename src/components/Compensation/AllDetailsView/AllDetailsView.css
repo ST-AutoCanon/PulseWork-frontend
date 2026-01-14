@@ -1,9 +1,8 @@
-
 .esd-container {
   padding: 20px;
   font-family: Arial, sans-serif;
-  max-width: calc(100vw - 250px); /* Adjust for sidebar width (assumed 200-250px) */
-  margin-left: -10px; /* Offset for sidebar */
+  max-width: calc(100vw - 250px);
+  margin-left: -10px;
   box-sizing: border-box;
 }
 
@@ -11,7 +10,7 @@
   display: flex;
   align-items: center;
   margin-bottom: 20px;
-  background: #001D4A;
+  background: #001d4a;
   padding: 15px;
   border-radius: 8px;
   color: white;
@@ -97,7 +96,9 @@
   min-width: 150px;
 }
 
-.esd-table-header:not(.esd-id-column):not(.esd-name-column):not(.esd-scrollable),
+.esd-table-header:not(.esd-id-column):not(.esd-name-column):not(
+    .esd-scrollable
+  ),
 .esd-table-cell:not(.esd-id-column):not(.esd-name-column):not(.esd-scrollable) {
   width: 100px;
   min-width: 100px;
@@ -120,7 +121,7 @@
 }
 
 .esd-table-cell.esd-deduction {
-  background-color: #fff9e6; /* Light yellow for deductions */
+  background-color: #fff9e6;
 }
 
 .esd-table-body tr:hover {
@@ -134,7 +135,6 @@
   font-size: 14px;
 }
 
-/* Scrollable section */
 .esd-table-container {
   overflow-x: hidden;
 }
@@ -162,7 +162,7 @@
 
 @media (max-width: 1200px) {
   .esd-container {
-    margin-left: 0; /* Remove sidebar offset on smaller screens */
+    margin-left: 0;
     max-width: 100%;
   }
 
@@ -185,8 +185,12 @@
     min-width: 120px;
   }
 
-  .esd-table-header:not(.esd-id-column):not(.esd-name-column):not(.esd-scrollable),
-  .esd-table-cell:not(.esd-id-column):not(.esd-name-column):not(.esd-scrollable) {
+  .esd-table-header:not(.esd-id-column):not(.esd-name-column):not(
+      .esd-scrollable
+    ),
+  .esd-table-cell:not(.esd-id-column):not(.esd-name-column):not(
+      .esd-scrollable
+    ) {
     width: 80px;
     min-width: 80px;
   }
@@ -226,8 +230,12 @@
     min-width: 100px;
   }
 
-  .esd-table-header:not(.esd-id-column):not(.esd-name-column):not(.esd-scrollable),
-  .esd-table-cell:not(.esd-id-column):not(.esd-name-column):not(.esd-scrollable) {
+  .esd-table-header:not(.esd-id-column):not(.esd-name-column):not(
+      .esd-scrollable
+    ),
+  .esd-table-cell:not(.esd-id-column):not(.esd-name-column):not(
+      .esd-scrollable
+    ) {
     width: 70px;
     min-width: 70px;
   }

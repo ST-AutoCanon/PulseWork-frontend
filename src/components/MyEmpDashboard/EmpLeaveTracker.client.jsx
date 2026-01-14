@@ -20,21 +20,20 @@ export default function EmpLeaveTracker() {
     ""
   );
 
- function makeHeaders() {
-  const headers = {};
-  if (API_KEY) headers["x-api-key"] = API_KEY;
-  if (employeeIdFromUser) headers["x-employee-id"] = employeeIdFromUser;
+  function makeHeaders() {
+    const headers = {};
+    if (API_KEY) headers["x-api-key"] = API_KEY;
+    if (employeeIdFromUser) headers["x-employee-id"] = employeeIdFromUser;
 
-  // FIX: Add orgId
-  const orgId = user?.orgId || user?.org_id || user?.organization_id;
-  if (!orgId) {
-    console.warn("orgId not found in user object!");
-  } else {
-    headers["x-org-id"] = orgId;
+    const orgId = user?.orgId || user?.org_id || user?.organization_id;
+    if (!orgId) {
+      console.warn("orgId not found in user object!");
+    } else {
+      headers["x-org-id"] = orgId;
+    }
+
+    return headers;
   }
-
-  return headers;
-}
 
   useEffect(() => {
     let canceled = false;

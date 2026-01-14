@@ -1,12 +1,11 @@
 .sidebar {
   width: 250px;
   background: #f8f7f7;
-  /* color: #fff; */
   position: fixed;
   left: 0;
   top: 0;
   margin-bottom: 10px;
-    bottom: 0;
+  bottom: 0;
   overflow-y: auto;
   padding-top: 0.8rem;
   z-index: 900;
@@ -28,7 +27,7 @@
   list-style: none;
   padding: 0 0.5rem;
   margin-top: 40px;
-  width:auto
+  width: auto;
 }
 
 .menu-item {
@@ -47,12 +46,12 @@
 }
 
 .menu-link:hover {
-  background: #79c42b; /* Slate gray - clearly visible on black */
+  background: #79c42b;
   color: #fff;
 }
 
 .menu-link.active {
-  background: #79c42b; /* Bright blue - clearly shows active tab */
+  background: #79c42b;
   color: #fff;
   font-weight: 600;
 }
@@ -63,7 +62,7 @@
 
 .menu-link svg {
   margin-right: 1rem;
-  color: #94a3b8; 
+  color: #94a3b8;
   transition: color 0.3s;
 }
 
@@ -98,7 +97,6 @@
   color: #93bbfc;
 }
 
-/* Desktop Submenu */
 .desktop-submenu {
   margin-left: 2.5rem;
   margin-top: 0.5rem;
@@ -116,11 +114,11 @@
 }
 
 .desktop-submenu li:hover {
-  background: #79c42b; /* Same hover as main */
+  background: #79c42b;
 }
 
 .desktop-submenu li.active {
-  background: #79c42b; /* Lighter blue for active subitem */
+  background: #79c42b;
   color: #fff;
   font-weight: 600;
 }
@@ -135,7 +133,6 @@
   color: #fff;
 }
 
-/* Bottom Nav */
 .bottom-nav {
   display: none;
   position: fixed;
@@ -143,7 +140,7 @@
   left: 0;
   width: 100%;
   background: #fff;
-  box-shadow: 0 -4px 12px rgba(0,0,0,0.15);
+  box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.15);
   padding: 10px 0;
   justify-content: space-around;
   z-index: 1000;
@@ -169,11 +166,10 @@
   transform: translateY(-4px);
 }
 
-/* Mobile Menu */
 .mobile-menu-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0,0,0,0.6);
+  background: rgba(0, 0, 0, 0.6);
   z-index: 1000;
   display: flex;
   justify-content: flex-start;
@@ -187,7 +183,7 @@
   height: 100%;
   overflow-y: auto;
   padding: 1.5rem;
-  box-shadow: 8px 0 30px rgba(0,0,0,0.3);
+  box-shadow: 8px 0 30px rgba(0, 0, 0, 0.3);
 }
 
 .mobile-header {
@@ -267,7 +263,6 @@
   font-weight: 600;
 }
 
-/* Responsive */
 @media (max-width: 767px) {
   .sidebar {
     display: none;
@@ -282,7 +277,6 @@
     display: none;
   }
 }
-/* Profile Section - Desktop & Mobile */
 .profile-section {
   padding: 1.5rem 1.25rem 1rem;
 }
@@ -299,8 +293,6 @@
   transition: all 0.3s ease;
 }
 
-
-
 .view-profile-link svg {
   color: #94a3b8;
 }
@@ -309,7 +301,6 @@
   color: #fff;
 }
 
-/* Mobile Sidebar (Full Desktop-like Menu) */
 .mobile-menu-overlay {
   position: fixed;
   inset: 0;
@@ -347,22 +338,12 @@
   border-bottom: 1px solid #1e293b;
 }
 
-/* Reuse same menu styles */
 .mobile-sidebar .menu-list {
   padding: 0 0.5rem;
 }
 
-.mobile-sidebar .menu-item,
-.mobile-sidebar .menu-link,
-.mobile-sidebar .desktop-submenu {
-  /* Inherits from main s
-  
-  tyles */
-}
-
 .profile-section {
   padding: 1.5rem 1.25rem 0.5rem;
-  /* border-bottom: 1px solid #1e293b; */
 }
 
 .view-profile-link {
@@ -377,7 +358,6 @@
   border-radius: 0.5rem;
   transition: all 0.3s ease;
 }
-
 
 .view-profile-link svg {
   color: #94a3b8;

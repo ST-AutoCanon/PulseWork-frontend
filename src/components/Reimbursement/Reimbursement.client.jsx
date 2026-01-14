@@ -151,7 +151,6 @@ const makeClientUniqueName = (file, rowIdx = null) => {
 const Reimbursement = () => {
   const { user } = useAuth();
 
-  // —— removed all localStorage fallbacks — derive from user / env only ——
   const role = String(user?.role || "Employee");
   const authToken =
     user?.raw?.token ||
@@ -168,7 +167,6 @@ const Reimbursement = () => {
     "";
   const departmentId = user?.raw?.department_id || user?.department_id || "";
 
-  // --- orgId state & resolution (to avoid "orgId required" errors) ---
   const [orgId, setOrgId] = useState(
     user?.orgId ||
       user?.raw?.org_id ||
@@ -378,7 +376,6 @@ const Reimbursement = () => {
     _forceShowTransport: false,
   });
 
-  // BACKEND resolution (support NEXT_PUBLIC and REACT_APP only)
   const RAW_BACKEND =
     process.env.NEXT_PUBLIC_BACKEND_URL ||
     process.env.REACT_APP_BACKEND_URL ||
@@ -390,7 +387,6 @@ const Reimbursement = () => {
     return RAW_BACKEND.replace(/\/$/, "");
   })();
 
-  // Build headers: prefer resolved orgId state
   const buildHeaders = useCallback(() => {
     const h = {};
     const apiKey =
@@ -582,7 +578,6 @@ const Reimbursement = () => {
 
   const fetchReimbursements = useCallback(async () => {
     try {
-      // ensure orgId resolved before requesting (most backend endpoints require x-org-id)
       if (!orgId && !orgResolveTried) await resolveOrgIdOnce();
 
       const url =

@@ -17,7 +17,6 @@
   max-width: 800px;
 }
 
-/* File note */
 .file-note {
   text-align: center;
   font-size: 15px;
@@ -26,7 +25,6 @@
   max-width: 600px;
 }
 
-/* Upload card */
 .upload-box-payslip {
   width: 400px;
   height: 100px;
@@ -78,7 +76,6 @@
   height: 40px;
 }
 
-/* Selector cards row */
 .salary-selectors-row {
   display: flex;
   flex-wrap: wrap;
@@ -87,7 +84,6 @@
   width: 100%;
 }
 
-/* Shared style for selector & reference cards */
 .salary-card {
   width: 300px;
   background: #ffffff;
@@ -128,7 +124,6 @@
   box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.15);
 }
 
-/* Reference card */
 .reference-box {
   display: flex;
   flex-direction: column;
@@ -159,7 +154,6 @@
   background-color: #0056b3;
 }
 
-/* Error messages */
 .error-message-for-uploadfile {
   color: #d32f2f;
   font-size: 15px;
@@ -170,7 +164,6 @@
   margin: 10px 0;
 }
 
-/* Tables - shared */
 .salary-table-container,
 .admin-table-container {
   width: 100%;
@@ -185,7 +178,6 @@
   overflow-x: auto;
 }
 
-/* Uploaded file preview table */
 .salary-table-wrapper {
   max-height: 500px;
   overflow: auto;
@@ -230,7 +222,6 @@
   z-index: 10;
 }
 
-/* Fetched salary table */
 .adminsalary-table-container {
   max-height: 600px;
   overflow: auto;
@@ -279,7 +270,6 @@
   z-index: 10;
 }
 
-/* Table header (title + search + button) */
 .table-header {
   display: flex;
   justify-content: space-between;
@@ -332,7 +322,6 @@
   background-color: #0056b3;
 }
 
-/* Cell highlights */
 .invalid-cell {
   background-color: #ffebee !important;
   color: #c62828;
@@ -351,18 +340,16 @@
   align-items: stretch;
   gap: 30px;
 
-  margin: -20px 0;   /* ⬅ reduced from 40px */
+  margin: -20px 0;
   padding: 20px 0;
 
   overflow-x: auto;
   scrollbar-width: thin;
 }
 
-
-/* Smaller, compact cards */
 .upload-box-payslip,
 .salary-card {
-  flex: 0 0 240px; /* Base small width */
+  flex: 0 0 240px;
   min-height: 0px;
   padding: 16px;
   gap: 10px;
@@ -370,10 +357,9 @@
 }
 
 .upload-box-payslip {
-  flex: 0 0 260px; /* Slightly wider */
+  flex: 0 0 260px;
 }
 
-/* Center content vertically & horizontally */
 .upload-box-payslip,
 .salary-card {
   display: flex;
@@ -403,32 +389,27 @@
   height: 32px;
 }
 
-/* Labels smaller */
 .salary-card label {
   font-size: 14px;
   margin-bottom: 8px;
 }
 
-/* Dropdown full width but compact */
 .salary-month-year-dropdown {
   width: 100%;
   padding: 8px 10px;
   font-size: 14px;
 }
 
-/* Download button smaller */
 .download-template-btn {
   padding: 8px 16px;
   font-size: 14px;
 }
 
-/* Short loading/no data text */
 .salary-card p {
   margin: 0;
   font-size: 13px;
   color: #666;
 }
-/* Responsive */
 @media (max-width: 768px) {
   .upload-box-payslip {
     width: 100%;

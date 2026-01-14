@@ -1,6 +1,3 @@
-
-
-
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
@@ -9,7 +6,6 @@ import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import "./FacePunch.css";
 
-/* ✅ ADDED */
 import { useAuth } from "../../context/AuthProvider.client";
 
 const COOLDOWN_PERIOD = 10000;
@@ -33,44 +29,29 @@ export default function FacePunch() {
   const API_KEY = process.env.NEXT_PUBLIC_API_KEY;
   const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL?.replace(/\/$/, "");
 
-  /* ✅ ADDED */
   const { user } = useAuth();
 
-  /* ---------------------------------- */
-  /* Load IDs safely */
-  /* ---------------------------------- */
   useEffect(() => {
     const stored = JSON.parse(localStorage.getItem("dashboardData") || "{}");
     if (stored?.employeeId) setEmployeeId(stored.employeeId);
     if (stored?.orgId) setOrgId(stored.orgId);
   }, []);
 
-  /* ✅ ADDED — fallback to useAuth (NO EXISTING CODE TOUCHED) */
   useEffect(() => {
     if (!employeeId) {
       const eid =
-        user?.employeeId ??
-        user?.employee_id ??
-        user?.raw?.employee_id ??
-        null;
+        user?.employeeId ?? user?.employee_id ?? user?.raw?.employee_id ?? null;
 
       if (eid) setEmployeeId(eid);
     }
 
     if (!orgId) {
-      const oid =
-        user?.orgId ??
-        user?.org_id ??
-        user?.raw?.org_id ??
-        null;
+      const oid = user?.orgId ?? user?.org_id ?? user?.raw?.org_id ?? null;
 
       if (oid) setOrgId(oid);
     }
   }, [user, employeeId, orgId]);
 
-  /* ---------------------------------- */
-  /* Load face-api + camera ONCE */
-  /* ---------------------------------- */
   useEffect(() => {
     if (initializedRef.current) return;
     initializedRef.current = true;
@@ -79,46 +60,33 @@ export default function FacePunch() {
 
     const init = async () => {
       try {
-       const faceapi = await import("face-api.js");
-faceApiRef.current = faceapi;
+        const faceapi = await import("face-api.js");
+        faceApiRef.current = faceapi;
 
-const MODEL_URL = "/models";
+        const MODEL_URL = "/models";
 
-await Promise.all([
-  faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL),
-  faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
-  faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL),
-]);
-
-console.log("✅ SSD + Landmarks + Recognition loaded");
-
-
-console.log("✅ SSD + Landmarks + Recognition loaded");
-
-console.log("✅ Face-api models loaded successfully");
-
+        await Promise.all([
+          faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL),
+          faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
+          faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL),
+        ]);
 
         if (!mounted) return;
 
-        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: true,
+        });
         streamRef.current = stream;
         videoRef.current.srcObject = stream;
 
-       videoRef.current.onloadedmetadata = () => {
-  videoRef.current.play();
+        videoRef.current.onloadedmetadata = () => {
+          videoRef.current.play();
 
-  videoRef.current.width = videoRef.current.videoWidth;
-  videoRef.current.height = videoRef.current.videoHeight;
+          videoRef.current.width = videoRef.current.videoWidth;
+          videoRef.current.height = videoRef.current.videoHeight;
 
-  console.log(
-    "🎥 Video ready:",
-    videoRef.current.videoWidth,
-    videoRef.current.videoHeight
-  );
-
-  setIsVideoReady(true);
-};
-
+          setIsVideoReady(true);
+        };
       } catch (err) {
         console.error(err);
         toast.error("Camera or model load failed");
@@ -133,67 +101,49 @@ console.log("✅ Face-api models loaded successfully");
     };
   }, []);
 
-  /* ---------------------------------- */
-  /* Detection loop */
-  /* ---------------------------------- */
   useEffect(() => {
     if (!isVideoReady || !employeeId || !orgId) return;
 
-  const interval = setInterval(async () => {
-  console.log("Detection tick running...");
+    const interval = setInterval(async () => {
+      if (isProcessing) {
+        return;
+      }
 
-  if (isProcessing) {
-    console.log("→ Still processing, skipping");
-    return;
-  }
+      if (
+        !videoRef.current ||
+        videoRef.current.videoWidth === 0 ||
+        videoRef.current.videoHeight === 0
+      ) {
+        return;
+      }
 
-  if (
-  !videoRef.current ||
-  videoRef.current.videoWidth === 0 ||
-  videoRef.current.videoHeight === 0
-) {
-  console.log("→ Video not ready for detection");
-  return;
-}
+      try {
+        setIsProcessing(true);
 
+        const faceapi = faceApiRef.current;
 
-  try {
-    setIsProcessing(true);
-    console.log("Detecting faces...");
+        const detections = await faceapi
+          .detectAllFaces(videoRef.current, new faceapi.SsdMobilenetv1Options())
+          .withFaceLandmarks()
+          .withFaceDescriptors();
 
-    const faceapi = faceApiRef.current;
-
-const detections = await faceapi
-  .detectAllFaces(
-    videoRef.current,
-    new faceapi.SsdMobilenetv1Options()   // ← Change to this (no options needed usually)
-  )
-  .withFaceLandmarks()
-  .withFaceDescriptors();
-
-
-    console.log("Raw detections:", detections.length, detections);
-
-    if (detections.length === 0) {
-      console.log("→ No face detected this frame");
-    } else if (detections.length > 1) {
-      console.log("→ Multiple faces detected:", detections.length);
-    } else {
-      console.log("→ Face found! Score:", detections[0].detection.score);
-      await captureAndPunch(detections[0]);
-    }
-  } catch (err) {
-    console.error("Detection crashed:", err);
-  } finally {
-    setIsProcessing(false);
-  }
-}, 1000);
+        if (detections.length === 0) {
+          console.log("→ No face detected this frame");
+        } else if (detections.length > 1) {
+          console.log("→ Multiple faces detected:", detections.length);
+        } else {
+          console.log("→ Face found! Score:", detections[0].detection.score);
+          await captureAndPunch(detections[0]);
+        }
+      } catch (err) {
+        console.error("Detection crashed:", err);
+      } finally {
+        setIsProcessing(false);
+      }
+    }, 1000);
     return () => clearInterval(interval);
   }, [isVideoReady, employeeId, orgId, isProcessing, lastPunchTime]);
 
-  /* ---------------------------------- */
-  /* Punch logic */
-  /* ---------------------------------- */
   const captureAndPunch = async (detection) => {
     try {
       const descriptor = Array.from(detection.descriptor);
@@ -227,9 +177,6 @@ const detections = await faceapi
     }
   };
 
-  /* ---------------------------------- */
-  /* UI */
-  /* ---------------------------------- */
   return (
     <>
       <div className="face-punch-container">

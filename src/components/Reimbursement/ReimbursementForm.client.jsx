@@ -29,9 +29,6 @@ const ReimbursementForm = (props) => {
 
   const { user } = useAuth();
 
-  // buildHeaders helper included so the component has the same header construction
-  // behaviour as other reimbursement components. Not used directly here but helpful
-  // for consistency and future AJAX additions.
   const buildHeaders = useCallback(() => {
     const headers = {};
     const apiKey =

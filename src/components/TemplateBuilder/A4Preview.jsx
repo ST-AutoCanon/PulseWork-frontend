@@ -45,12 +45,10 @@ export default function A4Preview({
         : 0.12,
   };
 
-  // Helper to resolve image src to absolute backend URL when necessary
   function resolveImgSrc(src) {
     if (!src || typeof src !== "string") return src || null;
     const s = src.trim();
 
-    // Already absolute / blob / data
     if (
       s.startsWith("blob:") ||
       s.startsWith("data:") ||
@@ -59,13 +57,8 @@ export default function A4Preview({
       return s;
     }
 
-    // Relative upload filename like "abc.png" -> we cannot reliably guess orgId here.
-    // Prefer backend logic to have resolved this earlier. For now, if BACKEND_URL exists
-    // don't change these filenames (they likely need server-side prefixing).
-    // If the path begins with /api/ -> prefix with BACKEND_URL to avoid browser requesting frontend origin.
     if (s.startsWith("/api/")) {
       if (BACKEND_URL) return `${BACKEND_URL}${s}`;
-      // fallback: return s (will request frontend origin)
       console.warn(
         "A4Preview: /api/ url present but NEXT_PUBLIC_BACKEND_URL is not set:",
         s
@@ -73,12 +66,9 @@ export default function A4Preview({
       return s;
     }
 
-    // If it's a simple filename (abc.png) and BACKEND_URL is set, we *could* try to form a backend uploads path,
-    // BUT component doesn't know orgId. We therefore return as-is so upper-layer code can normalize.
     return s;
   }
 
-  // The watermark drag/resize + box drag/resize code unchanged from your original, preserved for brevity...
   const watermarkDragState = useRef(null);
   const watermarkResizeState = useRef(null);
   function startWatermarkDrag(e) {
@@ -570,7 +560,6 @@ export default function A4Preview({
     );
   };
 
-  // Resolve header/footer/watermark src once per render
   const resolvedHeader = resolveImgSrc(headerUrl);
   const resolvedFooter = resolveImgSrc(footerUrl);
   const resolvedWatermark = resolveImgSrc(watermarkUrl);
@@ -704,7 +693,6 @@ export default function A4Preview({
               bodyBoxes.map((box) => {
                 const s = box.style || {};
                 const isTable = box.type === "table" && box.tableHeaders;
-                // Resolve box image src here using resolveImgSrc
                 const candidateImage = box.imageUrl || box.content || null;
                 const resolvedBoxImg = resolveImgSrc(candidateImage);
 
@@ -827,7 +815,6 @@ export default function A4Preview({
                             box.id,
                             resolvedBoxImg
                           );
-                          // still show fallback content if any
                         }}
                       />
                     ) : isTable ? (

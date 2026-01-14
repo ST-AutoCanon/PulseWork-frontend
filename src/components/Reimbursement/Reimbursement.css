@@ -248,9 +248,6 @@
   position: relative;
 }
 
-/* Single-line row header CSS */
-
-/* Row card base (keep existing card styles in your file) */
 .row-item {
   background: #ffffff;
   border: 1px solid #d9d9d9;
@@ -268,36 +265,31 @@
 
 .row-item .row-header {
   display: grid;
-  grid-auto-flow: column; /* place each .field in its own column (in DOM order) */
-  grid-auto-columns: minmax(
-    140px,
-    1fr
-  ); /* each column is at least 140px, expands to share space */
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(140px, 1fr);
   gap: 12px;
   align-items: end;
   width: 100%;
   box-sizing: border-box;
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
-  white-space: nowrap; /* helps prevent label/input wrapping inside the header */
+  white-space: nowrap;
   padding-bottom: 6px;
 }
 
-/* Individual field remains column-oriented for label+input but placed as a column in header */
 .row-header .field {
   display: flex;
   flex-direction: column;
-  min-width: 0; /* critical to allow inputs to shrink inside grid cells */
+  min-width: 0;
   box-sizing: border-box;
 }
 
-/* Labels + inputs */
 .row-header .field label {
   font-size: 12px;
   font-weight: 600;
   margin-bottom: 6px;
   color: #333;
-  white-space: normal; /* allow multi-line labels if needed */
+  white-space: normal;
 }
 
 .row-header .field input,
@@ -311,8 +303,6 @@
   min-width: 0;
 }
 
-/* Make large inline fields (purpose, attachments, invoice) wider by setting min-width.
-   They will still be columns, but take more room when enough space exists. */
 .purpose-inline {
   min-width: 260px;
 }
@@ -326,16 +316,14 @@
   min-width: 120px;
 }
 
-/* Inline attachment area: keep compact */
 .attachment-inline-wrapper {
   display: flex;
   gap: 8px;
   align-items: center;
-  flex-wrap: nowrap; /* keep inline controls on one line inside their column */
+  flex-wrap: nowrap;
   min-width: 0;
 }
 
-/* File-links inline should shrink/wrap within its column */
 .file-links-inline {
   flex: 1 1 auto;
   min-width: 0;
@@ -344,7 +332,6 @@
   overflow-x: auto;
 }
 
-/* Invoice inline row: keep input and small button inline */
 .invoice-inline-row {
   display: flex;
   gap: 8px;
@@ -352,24 +339,21 @@
   min-width: 0;
 }
 
-/* keep invoice input flexible but not expanding too wildly */
 .invoice-input {
   flex: 1 1 auto;
   min-width: 0;
 }
 
-/* Make 'Browse' used inline smaller — you had big % paddings causing overflow */
 .custom-file-upload.small,
 .custom-file-upload.inline {
   background: #79c42b;
   color: #fff;
-  padding: 6px 10px; /* smaller padding for inline buttons */
+  padding: 6px 10px;
   border-radius: 6px;
   font-size: 13px;
   cursor: pointer;
 }
 
-/* Add-next button style (small and inline) */
 .add-next-row-btn {
   background: #79c42b;
   color: #fff;
@@ -381,19 +365,17 @@
   min-width: 0;
 }
 
-/* Mobile fallback: stack into rows under a narrow viewport */
 @media (max-width: 640px) {
   .row-item .row-header,
   .row-item.child-row .row-header {
     display: grid;
-    grid-auto-flow: row; /* stack fields vertically on mobile */
+    grid-auto-flow: row;
     grid-auto-columns: 1fr;
     gap: 10px;
     overflow-x: visible;
     white-space: normal;
   }
 
-  /* make "next" button full width on small screens */
   .add-next-row-btn {
     width: 100%;
     align-self: stretch;
@@ -1986,17 +1968,15 @@
   font-size: 13px;
 }
 
-/* Row action container */
 .row-actions {
   display: flex;
   gap: 10px;
-  justify-content: flex-end; /* keep buttons aligned to the right of the card */
+  justify-content: flex-end;
   align-items: center;
   margin-top: 12px;
   box-sizing: border-box;
 }
 
-/* Base style for both action buttons */
 .row-actions .remove-row-btn,
 .row-actions .insert-row-btn {
   display: inline-flex;
@@ -2018,21 +1998,18 @@
   box-sizing: border-box;
 }
 
-/* Insert (positive) button — filled green */
 .row-actions .insert-row-btn {
-  background: #79c42b; /* your brand green */
+  background: #79c42b;
   color: #ffffff;
-  border: 1px solid rgba(0, 0, 0, 0); /* no visible border */
+  border: 1px solid rgba(0, 0, 0, 0);
 }
 
-/* Remove (negative) button — subtle outline red */
 .row-actions .remove-row-btn {
   background: transparent;
   color: #d32f2f;
   border: 1px solid rgba(211, 47, 47, 0.14);
 }
 
-/* Hover / active states */
 .row-actions .insert-row-btn:hover {
   transform: translateY(-1px);
   filter: brightness(0.96);
@@ -2044,14 +2021,12 @@
   box-shadow: 0 6px 18px rgba(211, 47, 47, 0.06);
 }
 
-/* Focus styles (keyboard access) */
 .row-actions .insert-row-btn:focus,
 .row-actions .remove-row-btn:focus {
   outline: none;
-  box-shadow: 0 0 0 4px rgba(0, 70, 140, 0.08); /* soft focus ring */
+  box-shadow: 0 0 0 4px rgba(0, 70, 140, 0.08);
 }
 
-/* Disabled state */
 .row-actions .insert-row-btn:disabled,
 .row-actions .remove-row-btn:disabled {
   opacity: 0.55;
@@ -2060,7 +2035,6 @@
   box-shadow: none;
 }
 
-/* Smaller footprint on really narrow containers */
 .row-actions .insert-row-btn.small,
 .row-actions .remove-row-btn.small {
   min-width: 72px;
@@ -2069,7 +2043,6 @@
   border-radius: 6px;
 }
 
-/* Mobile: stack actions full width (improves tappability) */
 @media (max-width: 640px) {
   .row-actions {
     flex-direction: column;
@@ -2082,15 +2055,13 @@
   }
 }
 
-/* Optional: slightly different style when inside a 'main-row' or 'child-row' */
 .row-item.main-row .insert-row-btn {
-  background: #4ea11a; /* slightly darker green for main row */
+  background: #4ea11a;
 }
 .row-item.child-row .remove-row-btn {
   border-color: rgba(211, 47, 47, 0.18);
 }
 
-/* Total display after rows */
 .rows-total {
   display: flex;
   justify-content: space-between;
@@ -2104,7 +2075,7 @@
 }
 
 .rows-total-left {
-  flex: 1 1 auto; /* reserved for future labels/notes */
+  flex: 1 1 auto;
 }
 
 .rows-total-right {
@@ -2127,19 +2098,16 @@
   color: #00468c;
 }
 
-/* read-only total input style (for Outstation rows) */
 .total-readonly {
   background-color: #f2f6f9;
   color: #111;
   pointer-events: none;
 }
 
-/* keep numeric inputs consistent */
 .row-header .field input[type="number"] {
   -moz-appearance: textfield;
 }
 
-/* ensure spacing for total in the grid */
 .row-header .field label {
   display: block;
   margin-bottom: 6px;

@@ -242,21 +242,16 @@ const Invoice = ({ onBack, project }) => {
     return out;
   }
 
-  // enhanced resolver: returns { headerUrl, footerUrl, watermarkUrl, watermarkProps, css, bodyType, fieldsMap }
   async function resolveHeaderFooterUrlsFromTemplate(tpl) {
     if (!tpl) return {};
 
-    // helper: parse grapesJson if string
     let grapesObj = tpl.grapesJson || tpl.grapes_json || null;
     if (grapesObj && typeof grapesObj === "string") {
       try {
         grapesObj = JSON.parse(grapesObj);
-      } catch (e) {
-        // leave as-is if parse fails
-      }
+      } catch (e) {}
     }
 
-    // prefer explicit meta.uploads.* fields (added on backend)
     const meta =
       tpl.meta ||
       (tpl.meta && typeof tpl.meta === "string"
@@ -265,7 +260,6 @@ const Invoice = ({ onBack, project }) => {
       {};
     const uploads = meta.uploads || {};
 
-    // helper to normalize and fetch protected image -> blob URL
     const fetchIfNeeded = async (src) => {
       if (!src) return null;
       const normalized = normalizeUploadUrl(src);
@@ -277,8 +271,6 @@ const Invoice = ({ onBack, project }) => {
       }
     };
 
-    // candidate check order:
-    // header: meta.uploads.header, tpl.header_url/headerUrl/thumbnail/imageUrl/cleanedUrl, grapes/headless values, images in tpl.html
     const candidateHeader =
       uploads.header ||
       tpl.header_url ||
@@ -303,7 +295,6 @@ const Invoice = ({ onBack, project }) => {
       (meta && typeof meta.watermark === "string" ? meta.watermark : null) ||
       null;
 
-    // parse HTML images as fallback
     const contentHtml = tpl.html || tpl.content || tpl.template || "";
     function extractFirstImageSrcsFromHtml(html) {
       const out = [];
@@ -319,12 +310,10 @@ const Invoice = ({ onBack, project }) => {
     }
     const imgSrcs = extractFirstImageSrcsFromHtml(contentHtml);
 
-    // attempt to fetch (meta.uploads preferred)
     let headerUrl = await fetchIfNeeded(candidateHeader);
     let footerUrl = await fetchIfNeeded(candidateFooter);
     let watermarkUrl = await fetchIfNeeded(candidateWatermark);
 
-    // fallback scanning: prefer images in HTML/grapes
     if (!headerUrl && imgSrcs.length) {
       headerUrl = await fetchIfNeeded(imgSrcs[0]);
     }
@@ -332,7 +321,6 @@ const Invoice = ({ onBack, project }) => {
       footerUrl = await fetchIfNeeded(imgSrcs[imgSrcs.length - 1]);
     }
 
-    // if still missing, scan grapesObj components for attributes.src
     if ((!headerUrl || !footerUrl) && grapesObj) {
       const found = [];
       const collect = (o) => {
@@ -366,7 +354,6 @@ const Invoice = ({ onBack, project }) => {
       }
     }
 
-    // watermark placement props fallback (from grapes or meta.watermarkPlacement)
     let watermarkProps = null;
     if (grapesObj && grapesObj.watermark) {
       const gm = grapesObj.watermark;
@@ -393,7 +380,6 @@ const Invoice = ({ onBack, project }) => {
       };
     }
 
-    // parse layout/grapes into a fields map for template-driven defaults
     const fieldsMap = {};
     try {
       const layoutArr =
@@ -415,18 +401,14 @@ const Invoice = ({ onBack, project }) => {
           try {
             const key = (b.fieldName || b.id || b.name || "").toString();
             if (!key) continue;
-            // if field has content / imageUrl / tableRows -> store
             if (b.content) fieldsMap[key] = b.content;
             if (b.imageUrl) fieldsMap[key] = b.imageUrl;
             if (b.tableRows) fieldsMap[key] = b.tableRows;
           } catch (e) {}
         }
       }
-    } catch (e) {
-      // ignore layout parse errors
-    }
+    } catch (e) {}
 
-    // assemble css/bodyType
     const css = tpl.css || tpl.styles || null;
     const bodyType = (meta && meta.bodyType) || tpl.bodyType || null;
 
@@ -452,7 +434,6 @@ const Invoice = ({ onBack, project }) => {
     }
 
     try {
-      // If template html contains protected uploads, replace them first
       let contentHtml = tpl.html || tpl.content || tpl.template || "";
       if (
         typeof contentHtml === "string" &&
@@ -461,13 +442,11 @@ const Invoice = ({ onBack, project }) => {
         contentHtml = await replaceUploadUrlsInHtml(contentHtml);
       }
 
-      // Resolve assets and fields
       const resolved = await resolveHeaderFooterUrlsFromTemplate({
         ...tpl,
         html: contentHtml,
       });
 
-      // apply header/footer/watermark/css
       setAppliedHeaderUrl(resolved.headerUrl || null);
       setAppliedFooterUrl(resolved.footerUrl || null);
       setAppliedTemplateCss(resolved.css || null);
@@ -476,15 +455,12 @@ const Invoice = ({ onBack, project }) => {
       setAppliedWatermarkUrl(resolved.watermarkUrl || null);
       setAppliedWatermarkProps(resolved.watermarkProps || null);
 
-      // If template declares itself a document type "invoice", populate the invoice form fields
       if (String(resolved.bodyType || "").toLowerCase() === "invoice") {
         const f = resolved.fieldsMap || {};
 
-        // Common field name variations to check
         const tryGet = (keys) => {
           for (const k of keys) {
             if (f[k]) return f[k];
-            // also check lowercase keys
             if (f[k.toLowerCase()]) return f[k.toLowerCase()];
           }
           return null;
@@ -521,13 +497,11 @@ const Invoice = ({ onBack, project }) => {
 
         if (tplInvoiceNo) setInvoiceNo(String(tplInvoiceNo));
         if (tplInvoiceDate) {
-          // try to normalize if looks like ISO or DD/MM/YYYY
           const dateVal = String(tplInvoiceDate).trim();
           const asDate = new Date(dateVal);
           if (!isNaN(asDate.getTime())) {
             setInvoiceDate(asDate.toISOString().split("T")[0]);
           } else {
-            // leave raw text if not parseable
             setInvoiceDate(dateVal);
           }
         }
@@ -543,13 +517,10 @@ const Invoice = ({ onBack, project }) => {
         }
         if (tplTerms) setTerms(String(tplTerms));
         if (tplGst) setGST(String(tplGst));
-        // if template provided table rows (array), map them to lineItems
         if (Array.isArray(tplItems)) {
           try {
             const rows = tplItems.map((r) => {
-              // r may be an array (tableRows) or object
               if (Array.isArray(r)) {
-                // assume [sno, desc, qty, rate, subTotal, gst, total]
                 return {
                   description: r[1] || "",
                   quantity: Number(r[2] || 1),
@@ -575,16 +546,13 @@ const Invoice = ({ onBack, project }) => {
               }
             });
             if (rows.length) setLineItems(rows);
-          } catch (e) {
-            // ignore mapping errors
-          }
+          } catch (e) {}
         }
       }
 
       setShowTemplatesModal(false);
       showAlert("Applied template to invoice (header/footer/css).");
 
-      // if downloadAfterApply was requested, trigger the download
       if (downloadAfterApply) {
         setDownloadAfterApply(false);
         setTimeout(() => {

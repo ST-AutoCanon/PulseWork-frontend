@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import axios from 'axios';
+import React, { useEffect, useState } from "react";
+import axios from "axios";
 import {
   FaMoneyBillWave,
   FaChartLine,
@@ -16,9 +16,9 @@ import "./TotalsContainer.css";
 import {
   calculateSalaryDetails,
   parseApplicableMonth,
-} from "../../../utils/SalaryCalculations.js"; // Adjusted import (removed parseWorkDate as it's no longer used)
-import { calculateLOPEffect } from "../../../utils/lopCalculations.client.jsx"; // Adjust path if needed
-import { calculateIncentives } from "../../../utils/IncentiveUtils.js"; // Adjust path if needed
+} from "../../../utils/SalaryCalculations.js";
+import { calculateLOPEffect } from "../../../utils/lopCalculations.client.jsx";
+import { calculateIncentives } from "../../../utils/IncentiveUtils.js";
 
 const TotalsContainer = () => {
   const [totals, setTotals] = useState({
@@ -36,13 +36,12 @@ const TotalsContainer = () => {
   const [isLoading, setIsLoading] = useState(true);
   const API_KEY = process.env.REACT_APP_API_KEY;
   const BASE_URL = `${process.env.REACT_APP_BACKEND_URL}`;
-const { user } = useAuth();
+  const { user } = useAuth();
   const meId = user?.employeeId ?? user?.id ?? user?.employee_id ?? null;
-  // Helper function to calculate monthly bonus pay (copied from SalaryDetails)
   const calculateMonthlyBonusPay = (empCtc, bonusRecords) => {
     const currentDate = new Date();
     const currentYear = currentDate.getFullYear();
-    const currentMonthStr = String(currentDate.getMonth() + 1).padStart(2, '0');
+    const currentMonthStr = String(currentDate.getMonth() + 1).padStart(2, "0");
     const monthlyCTC = parseFloat(empCtc) / 12;
 
     const monthlyBonuses = bonusRecords.filter((bonus) => {
@@ -50,7 +49,7 @@ const { user } = useAuth();
       return (
         date &&
         date.getFullYear() === currentYear &&
-        (date.getMonth() + 1).toString().padStart(2, '0') === currentMonthStr
+        (date.getMonth() + 1).toString().padStart(2, "0") === currentMonthStr
       );
     });
 
@@ -58,17 +57,28 @@ const { user } = useAuth();
       let bonusAmount = 0;
       if (bonus.fixed_amount && !isNaN(parseFloat(bonus.fixed_amount))) {
         bonusAmount = parseFloat(bonus.fixed_amount);
-      } else if (bonus.percentage_ctc && !isNaN(parseFloat(bonus.percentage_ctc))) {
-        bonusAmount = (parseFloat(bonus.percentage_ctc) / 100) * parseFloat(empCtc || 0);
-      } else if (bonus.percentage_monthly_salary && !isNaN(parseFloat(bonus.percentage_monthly_salary))) {
+      } else if (
+        bonus.percentage_ctc &&
+        !isNaN(parseFloat(bonus.percentage_ctc))
+      ) {
+        bonusAmount =
+          (parseFloat(bonus.percentage_ctc) / 100) * parseFloat(empCtc || 0);
+      } else if (
+        bonus.percentage_monthly_salary &&
+        !isNaN(parseFloat(bonus.percentage_monthly_salary))
+      ) {
         bonusAmount = parseFloat(bonus.percentage_monthly_salary) * monthlyCTC;
       }
       return sum + bonusAmount;
     }, 0);
   };
 
-  // Helper to calculate local gross and net for an employee (copied from SalaryDetails)
-  const calculateLocalGrossNet = (salaryDetails, monthlyBonusPay, lopDeduction, planData) => {
+  const calculateLocalGrossNet = (
+    salaryDetails,
+    monthlyBonusPay,
+    lopDeduction,
+    planData
+  ) => {
     if (!salaryDetails) {
       return { localGross: 0, localNet: 0 };
     }
@@ -80,7 +90,7 @@ const { user } = useAuth();
       salaryDetails.incentivePay || 0,
       salaryDetails.overtimePay || 0,
       salaryDetails.statutoryBonus || 0,
-      monthlyBonusPay
+      monthlyBonusPay,
     ].reduce((sum, val) => sum + parseFloat(val || 0), 0);
 
     let monthlyDeductionsSum = 0;
@@ -103,18 +113,12 @@ const { user } = useAuth();
 
   useEffect(() => {
     const fetchTotalsData = async () => {
-      console.log("Environment Variables:", {
-        API_KEY: process.env.REACT_APP_API_KEY,
-        BASE_URL: process.env.REACT_APP_BACKEND_URL,
-        meId,
-      });
       if (!process.env.REACT_APP_API_KEY || !meId) {
         console.error("Missing credentials: API_KEY or meId");
         setIsLoading(false);
         return;
       }
       const headers = { "x-api-key": API_KEY, "x-employee-id": meId };
-      console.log("Fetching data with headers:", headers);
       try {
         setIsLoading(true);
         const [
@@ -124,34 +128,46 @@ const { user } = useAuth();
           overtimeRes,
           bonusRes,
         ] = await Promise.all([
-          axios.get(`${BASE_URL}/api/compensations/list`, { headers }).catch(err => {
-            console.error("Error fetching compensations/list:", err);
-            throw err;
-          }),
-          axios.get(`${BASE_URL}/api/compensation/assigned`, { headers }).catch(err => {
-            console.error("Error fetching compensation/assigned:", err);
-            throw err;
-          }),
-          axios.get(`${BASE_URL}/api/compensation/advance-details`, { headers }).catch(err => {
-            console.error("Error fetching compensation/advance-details:", err);
-            throw err;
-          }),
-          axios.get(`${BASE_URL}/api/compensation/overtime-status-summary`, { headers }).catch(err => {
-            console.error("Error fetching compensation/overtime-status-summary:", err);
-            throw err;
-          }),
-          axios.get(`${BASE_URL}/api/compensation/bonus-list`, { headers }).catch(err => {
-            console.error("Error fetching compensation/bonus-list:", err);
-            throw err;
-          }),
+          axios
+            .get(`${BASE_URL}/api/compensations/list`, { headers })
+            .catch((err) => {
+              console.error("Error fetching compensations/list:", err);
+              throw err;
+            }),
+          axios
+            .get(`${BASE_URL}/api/compensation/assigned`, { headers })
+            .catch((err) => {
+              console.error("Error fetching compensation/assigned:", err);
+              throw err;
+            }),
+          axios
+            .get(`${BASE_URL}/api/compensation/advance-details`, { headers })
+            .catch((err) => {
+              console.error(
+                "Error fetching compensation/advance-details:",
+                err
+              );
+              throw err;
+            }),
+          axios
+            .get(`${BASE_URL}/api/compensation/overtime-status-summary`, {
+              headers,
+            })
+            .catch((err) => {
+              console.error(
+                "Error fetching compensation/overtime-status-summary:",
+                err
+              );
+              throw err;
+            }),
+          axios
+            .get(`${BASE_URL}/api/compensation/bonus-list`, { headers })
+            .catch((err) => {
+              console.error("Error fetching compensation/bonus-list:", err);
+              throw err;
+            }),
         ]);
-        console.log("API Responses:", {
-          compensations: compensationsRes.data,
-          employees: employeesRes.data,
-          advances: advancesRes.data,
-          overtime: overtimeRes.data,
-          bonus: bonusRes.data,
-        });
+
         const compensationMap = new Map();
         (compensationsRes.data.data || []).forEach((comp) => {
           compensationMap.set(comp.compensation_plan_name, comp.plan_data);
@@ -161,7 +177,9 @@ const { user } = useAuth();
           if (!enrichedEmployeesMap.has(emp.employee_id)) {
             enrichedEmployeesMap.set(emp.employee_id, {
               ...emp,
-              plan_data: compensationMap.get(emp.compensation_plan_name) || emp.plan_data,
+              plan_data:
+                compensationMap.get(emp.compensation_plan_name) ||
+                emp.plan_data,
             });
           } else {
             console.warn(`Duplicate employee_id found: ${emp.employee_id}`);
@@ -191,10 +209,13 @@ const { user } = useAuth();
             })
         );
         const lopDataResults = await Promise.all(lopDataPromises);
-        const lopDataMap = lopDataResults.reduce((acc, { employeeId, lopData }) => {
-          acc[employeeId] = lopData;
-          return acc;
-        }, {});
+        const lopDataMap = lopDataResults.reduce(
+          (acc, { employeeId, lopData }) => {
+            acc[employeeId] = lopData;
+            return acc;
+          },
+          {}
+        );
         const incentiveDataPromises = enrichedEmployees.map((emp) =>
           calculateIncentives(emp.employee_id)
             .then((result) => ({
@@ -202,7 +223,10 @@ const { user } = useAuth();
               incentiveData: result,
             }))
             .catch((err) => {
-              console.warn(`Incentive fetch failed for ${emp.employee_id}:`, err);
+              console.warn(
+                `Incentive fetch failed for ${emp.employee_id}:`,
+                err
+              );
               return {
                 employeeId: emp.employee_id,
                 incentiveData: {
@@ -217,14 +241,16 @@ const { user } = useAuth();
         const incentiveDataMap = incentiveDataResults.reduce(
           (acc, { employeeId, incentiveData }) => {
             const key = String(employeeId).toUpperCase();
-            if (!acc[key] || parseFloat(incentiveData.totalIncentive.value) > 0) {
+            if (
+              !acc[key] ||
+              parseFloat(incentiveData.totalIncentive.value) > 0
+            ) {
               acc[key] = incentiveData;
             }
             return acc;
           },
           {}
         );
-        // Compute totals
         let totalGross = 0;
         let totalPayable = 0;
         let totalTDS = 0;
@@ -247,34 +273,56 @@ const { user } = useAuth();
             lopDataMap
           );
           const lopData =
-            lopDataMap && emp.employee_id ? lopDataMap[emp.employee_id] || {
-              currentMonth: { days: 0, value: '0.00', currency: 'INR' },
-              deferred: { days: 0, value: '0.00', currency: 'INR' },
-              nextMonth: { days: 0, value: '0.00', currency: 'INR' },
-              yearly: { days: 0, value: '0.00', currency: 'INR' },
-            } : {
-              currentMonth: { days: 0, value: '0.00', currency: 'INR' },
-              deferred: { days: 0, value: '0.00', currency: 'INR' },
-              nextMonth: { days: 0, value: '0.00', currency: 'INR' },
-              yearly: { days: 0, value: '0.00', currency: 'INR' },
-            };
-          const lopDeduction = parseFloat(lopData.yearly ? lopData.yearly.value : '0');
-          // Calculate monthly bonus pay
-          const monthlyBonusPay = calculateMonthlyBonusPay(emp.ctc, bonusRecords);
-          // Calculate local gross and net (aligned with SalaryDetails)
-          const { localGross, localNet } = calculateLocalGrossNet(salaryDetails, monthlyBonusPay, lopDeduction, emp.plan_data);
+            lopDataMap && emp.employee_id
+              ? lopDataMap[emp.employee_id] || {
+                  currentMonth: { days: 0, value: "0.00", currency: "INR" },
+                  deferred: { days: 0, value: "0.00", currency: "INR" },
+                  nextMonth: { days: 0, value: "0.00", currency: "INR" },
+                  yearly: { days: 0, value: "0.00", currency: "INR" },
+                }
+              : {
+                  currentMonth: { days: 0, value: "0.00", currency: "INR" },
+                  deferred: { days: 0, value: "0.00", currency: "INR" },
+                  nextMonth: { days: 0, value: "0.00", currency: "INR" },
+                  yearly: { days: 0, value: "0.00", currency: "INR" },
+                };
+          const lopDeduction = parseFloat(
+            lopData.yearly ? lopData.yearly.value : "0"
+          );
+          const monthlyBonusPay = calculateMonthlyBonusPay(
+            emp.ctc,
+            bonusRecords
+          );
+          const { localGross, localNet } = calculateLocalGrossNet(
+            salaryDetails,
+            monthlyBonusPay,
+            lopDeduction,
+            emp.plan_data
+          );
           const netSalary = localNet > 0 ? localNet : 0;
-          // Extract components for other totals
-          const advanceRecovery = salaryDetails ? parseFloat(salaryDetails.advanceRecovery) : 0;
-          const employeePF = salaryDetails ? parseFloat(salaryDetails.employeePF) : 0;
-          const employerPF = salaryDetails ? parseFloat(salaryDetails.employerPF) : 0;
+          const advanceRecovery = salaryDetails
+            ? parseFloat(salaryDetails.advanceRecovery)
+            : 0;
+          const employeePF = salaryDetails
+            ? parseFloat(salaryDetails.employeePF)
+            : 0;
+          const employerPF = salaryDetails
+            ? parseFloat(salaryDetails.employerPF)
+            : 0;
           const esic = salaryDetails ? parseFloat(salaryDetails.esic) : 0;
-          const gratuity = salaryDetails ? parseFloat(salaryDetails.gratuity) : 0;
-          const professionalTax = salaryDetails ? parseFloat(salaryDetails.professionalTax) : 0;
+          const gratuity = salaryDetails
+            ? parseFloat(salaryDetails.gratuity)
+            : 0;
+          const professionalTax = salaryDetails
+            ? parseFloat(salaryDetails.professionalTax)
+            : 0;
           const tds = salaryDetails ? parseFloat(salaryDetails.tds) : 0;
-          const insurance = salaryDetails ? parseFloat(salaryDetails.insurance) : 0;
-          const overtimePay = salaryDetails ? parseFloat(salaryDetails.overtimePay) : 0;
-          // Round to 2 decimal places to avoid precision issues
+          const insurance = salaryDetails
+            ? parseFloat(salaryDetails.insurance)
+            : 0;
+          const overtimePay = salaryDetails
+            ? parseFloat(salaryDetails.overtimePay)
+            : 0;
           const roundedGross = Math.round(localGross * 100) / 100;
           const roundedPayable = Math.round(netSalary * 100) / 100;
           const roundedTDS = Math.round(tds * 100) / 100;
@@ -285,7 +333,6 @@ const { user } = useAuth();
           const roundedEmployerPF = Math.round(employerPF * 100) / 100;
           const roundedInsurance = Math.round(insurance * 100) / 100;
           const roundedLopDeduction = Math.round(lopDeduction * 100) / 100;
-          // Accumulate totals
           totalGross += roundedGross;
           totalPayable += roundedPayable;
           totalTDS += roundedTDS;
@@ -318,10 +365,12 @@ const { user } = useAuth();
     fetchTotalsData();
   }, []);
 
-  // Helper to format currency (round to 2 decimals and locale string)
   const formatCurrency = (value) => {
     const rounded = Math.round(value * 100) / 100;
-    return rounded.toLocaleString('en-IN', { maximumFractionDigits: 2, minimumFractionDigits: 0 });
+    return rounded.toLocaleString("en-IN", {
+      maximumFractionDigits: 2,
+      minimumFractionDigits: 0,
+    });
   };
 
   if (isLoading) {
@@ -346,63 +395,81 @@ const { user } = useAuth();
           <FaChartLine className="sb-totals-card-icon" />
           <div>
             <span className="sb-totals-card-title">Total Gross</span>
-            <span className="sb-totals-card-value">₹{formatCurrency(totals.totalGross)}</span>
+            <span className="sb-totals-card-value">
+              ₹{formatCurrency(totals.totalGross)}
+            </span>
           </div>
         </div>
         <div className="sb-totals-card sb-tds">
           <FaMoneyCheckAlt className="sb-totals-card-icon" />
           <div>
             <span className="sb-totals-card-title">Total TDS</span>
-            <span className="sb-totals-card-value">₹{formatCurrency(totals.totalTDS)}</span>
+            <span className="sb-totals-card-value">
+              ₹{formatCurrency(totals.totalTDS)}
+            </span>
           </div>
         </div>
         <div className="sb-totals-card sb-advance">
           <FaHandHoldingUsd className="sb-totals-card-icon" />
           <div>
             <span className="sb-totals-card-title">Total Advance</span>
-            <span className="sb-totals-card-value">₹{formatCurrency(totals.totalAdvance)}</span>
+            <span className="sb-totals-card-value">
+              ₹{formatCurrency(totals.totalAdvance)}
+            </span>
           </div>
         </div>
         <div className="sb-totals-card sb-overtime">
           <FaClock className="sb-totals-card-icon" />
           <div>
             <span className="sb-totals-card-title">Total Overtime</span>
-            <span className="sb-totals-card-value">₹{formatCurrency(totals.totalOvertime)}</span>
+            <span className="sb-totals-card-value">
+              ₹{formatCurrency(totals.totalOvertime)}
+            </span>
           </div>
         </div>
         <div className="sb-totals-card sb-bonus">
           <FaGift className="sb-totals-card-icon" />
           <div>
             <span className="sb-totals-card-title">Total Bonus</span>
-            <span className="sb-totals-card-value">₹{formatCurrency(totals.totalBonus)}</span>
+            <span className="sb-totals-card-value">
+              ₹{formatCurrency(totals.totalBonus)}
+            </span>
           </div>
         </div>
         <div className="sb-totals-card sb-pf-employee">
           <FaShieldAlt className="sb-totals-card-icon" />
           <div>
             <span className="sb-totals-card-title">Total PF Employee</span>
-            <span className="sb-totals-card-value">₹{formatCurrency(totals.totalEmployeePF)}</span>
+            <span className="sb-totals-card-value">
+              ₹{formatCurrency(totals.totalEmployeePF)}
+            </span>
           </div>
         </div>
         <div className="sb-totals-card sb-pf-employer">
           <FaBriefcase className="sb-totals-card-icon" />
           <div>
             <span className="sb-totals-card-title">Total PF Employer</span>
-            <span className="sb-totals-card-value">₹{formatCurrency(totals.totalEmployerPF)}</span>
+            <span className="sb-totals-card-value">
+              ₹{formatCurrency(totals.totalEmployerPF)}
+            </span>
           </div>
         </div>
         <div className="sb-totals-card sb-insurance">
           <FaStethoscope className="sb-totals-card-icon" />
           <div>
             <span className="sb-totals-card-title">Total Insurance</span>
-            <span className="sb-totals-card-value">₹{formatCurrency(totals.totalInsurance)}</span>
+            <span className="sb-totals-card-value">
+              ₹{formatCurrency(totals.totalInsurance)}
+            </span>
           </div>
         </div>
         <div className="sb-totals-card sb-lop">
           <FaExclamationTriangle className="sb-totals-card-icon" />
           <div>
             <span className="sb-totals-card-title">Total LOP Deduction</span>
-            <span className="sb-totals-card-value">₹{formatCurrency(totals.totalLopDeduction)}</span>
+            <span className="sb-totals-card-value">
+              ₹{formatCurrency(totals.totalLopDeduction)}
+            </span>
           </div>
         </div>
       </div>

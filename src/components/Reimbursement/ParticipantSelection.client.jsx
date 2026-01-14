@@ -6,15 +6,6 @@ import PropTypes from "prop-types";
 import "./ParticipantSelection.css";
 import { useAuth } from "../../context/AuthProvider.client";
 
-/**
- * ParticipantSelection (Next.js client component)
- *
- * Notes:
- * - Prefers values from useAuth().user (token, employee id, org id, apiKey, backend hints)
- * - Falls back to env vars and only then to localStorage if necessary (safer for server/client mismatch)
- * - Keeps original behavior/UI and the same public API
- */
-
 const ParticipantSelection = ({
   departmentId = null,
   selectionMode = "single",
@@ -47,7 +38,6 @@ const ParticipantSelection = ({
   const cancelRef = useRef(null);
   const searchTimer = useRef(null);
 
-  // Backend & keys: prefer explicit env vars, then user.raw hints, then (last-resort) localStorage
   const RAW_BACKEND =
     process.env.NEXT_PUBLIC_BACKEND_URL ||
     process.env.REACT_APP_BACKEND_URL ||
@@ -71,7 +61,6 @@ const ParticipantSelection = ({
     localStorage.getItem("x-api-key") ||
     "";
 
-  // Prefer token from auth provider (user object). Keep localStorage fallback only if user isn't available.
   const authToken =
     user?.token ||
     user?.authToken ||
@@ -80,7 +69,6 @@ const ParticipantSelection = ({
     localStorage.getItem("token") ||
     null;
 
-  // Read logged employee id preferring user context (robust to various field names)
   const readLoggedEmployeeId = useCallback(() => {
     if (user) {
       if (user.employeeId || user.id || user.empId || user.emp_id)
@@ -112,7 +100,6 @@ const ParticipantSelection = ({
 
   const loggedEmployeeId = readLoggedEmployeeId();
 
-  // Read org id preferring context
   const readOrgId = useCallback(() => {
     if (user) {
       return (
@@ -179,7 +166,6 @@ const ParticipantSelection = ({
       if (Array.isArray(res.data?.result)) return res.data.result;
       return null;
     } catch (err) {
-      // Propagate specific missing header error so caller can handle it
       if (err?.response?.data) {
         const body = err.response.data;
         const bodyMsg =
@@ -293,9 +279,8 @@ const ParticipantSelection = ({
   }, [query, fetchEmployees]);
 
   useEffect(() => {
-    // initial load when department changes
     fetchEmployees("");
-  }, [departmentId, fetchEmployees]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [departmentId, fetchEmployees]);
 
   useEffect(() => {
     if (selectionMode) setMode(selectionMode);
@@ -335,8 +320,7 @@ const ParticipantSelection = ({
       .filter((n) => n.employee_id);
 
     setSelected(normalized);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // run once
+  }, []);
 
   useEffect(() => {
     if (!employees || employees.length === 0) return;
@@ -355,17 +339,17 @@ const ParticipantSelection = ({
       return s;
     });
     if (changed) setSelected(patched);
-  }, [employees]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [employees]);
 
   useEffect(() => {
     if (typeof onModeChange === "function") onModeChange(mode);
-  }, [mode]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [mode]);
 
   useEffect(() => {
     if (typeof onSelectionChange === "function") {
       onSelectionChange(selected.slice());
     }
-  }, [selected]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [selected]);
 
   const handleModeChange = (newMode) => {
     setMode(newMode);

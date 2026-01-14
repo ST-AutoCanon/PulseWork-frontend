@@ -116,9 +116,7 @@ export default function TeamTable({
           if (b && b.remaining !== undefined) return Number(b.remaining) || 0;
         }
       }
-    } catch (e) {
-      // ignore and fallback
-    }
+    } catch (e) {}
     if (leave.remaining !== undefined) return Number(leave.remaining) || 0;
     return 0;
   };
@@ -133,21 +131,15 @@ export default function TeamTable({
       statusUpdates?.[leave.leave_id]?.status ??
       leave.status;
 
-    // If not approving, just send the payload (status change or comments)
     if (effectiveStatus !== "Approved") {
       try {
         await onUpdate(leave.leave_id, rawPayload);
-      } catch (e) {
-        // onUpdate should handle errors & UI feedback
-      }
+      } catch (e) {}
       return;
     }
 
-    // Approved flow starts here
-    // Determine whether payload explicitly marks as defaulted (or not)
     let isDefaultedFlag = normalizeIsDefaulted(rawPayload);
 
-    // If not explicitly defaulted, check whether there's an active policy for the request date.
     if (!isDefaultedFlag) {
       const policy = findPolicyForRequest(leave);
       if (!policy) isDefaultedFlag = true;
@@ -155,7 +147,6 @@ export default function TeamTable({
 
     const days = calculateDays(leave.start_date, leave.end_date, leave.H_F_day);
 
-    // If defaulted (no active policy or explicitly defaulted) approve with defaulted payload
     if (isDefaultedFlag) {
       const defaultedPayload = {
         ...rawPayload,
@@ -172,12 +163,10 @@ export default function TeamTable({
       return;
     }
 
-    // Not defaulted and status is Approved -> check remaining balance and deficit
     const remaining = await getRemainingForLeave(leave);
     const deficit = Math.max(0, days - remaining);
     const EPS = 1e-6;
 
-    // Deficit exists — open compensation popup (if available) with handlers
     if (typeof setLopModal === "function") {
       const approveDeficit = async () => {
         const preserved_leave_days = Number(remaining) || 0;
@@ -418,7 +407,6 @@ export default function TeamTable({
       return;
     }
 
-    // Fallback: if setLopModal is not available, send the raw payload as-is
     await onUpdate(leave.leave_id, rawPayload);
   };
 

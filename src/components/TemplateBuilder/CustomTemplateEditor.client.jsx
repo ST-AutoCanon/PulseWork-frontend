@@ -37,9 +37,7 @@ function pctToPx(leftPct, topPct, wPct, hPct, el) {
   return { left, top, width: w, height: h };
 }
 
-/* TableCell component (unchanged) */
 const TableCell = ({ ...props }) => {
-  // same implementation as before...
   const {
     boxId,
     rIdx,
@@ -150,7 +148,6 @@ const CustomTemplateEditor = forwardRef(function CustomTemplateEditor(
     canvasWidthPx = 1000,
     onSave,
     background = null,
-    // header/footer + watermark behavior
     headerHeightPct = 10,
     footerHeightPct = 10,
     watermarkUrl = null,
@@ -183,11 +180,8 @@ const CustomTemplateEditor = forwardRef(function CustomTemplateEditor(
   const dragEndedRef = useRef(null);
   const dragAllowMs = 300;
 
-  // active area for new box placement: "header" | "body" | "footer"
-  // NOTE: selection of active area should come from the side panel (parent).
   const [activeArea, setActiveArea] = useState("body");
 
-  // local watermark state for immediate UI feedback while dragging
   const [localWatermark, setLocalWatermark] = useState(
     watermarkProps || {
       xPct: "50%",
@@ -198,7 +192,6 @@ const CustomTemplateEditor = forwardRef(function CustomTemplateEditor(
     }
   );
 
-  // local watermarkUrl state: prefer prop, but keep a local fallback
   const [localWatermarkUrl, setLocalWatermarkUrl] = useState(
     watermarkUrl || null
   );
@@ -210,7 +203,6 @@ const CustomTemplateEditor = forwardRef(function CustomTemplateEditor(
   }, [background]);
 
   useEffect(() => {
-    // initialize watermark from props
     if (watermarkProps) setLocalWatermark(watermarkProps);
   }, [watermarkProps]);
 
@@ -218,13 +210,11 @@ const CustomTemplateEditor = forwardRef(function CustomTemplateEditor(
     setLocalWatermarkUrl(watermarkUrl || null);
   }, [watermarkUrl]);
 
-  // compute available body area in percent
   const bodyTopPct = Number(String(headerHeightPct).replace("%", "")) || 10;
   const bodyBottomPct =
     100 - (Number(String(footerHeightPct).replace("%", "")) || 10);
   const bodyHeightPct = bodyBottomPct - bodyTopPct;
 
-  // Shift incoming initialBoxes into body area by adding headerHeightPct
   useEffect(() => {
     function shiftBoxesToBody(src = []) {
       if (!Array.isArray(src)) return [];
@@ -253,7 +243,6 @@ const CustomTemplateEditor = forwardRef(function CustomTemplateEditor(
       });
       createdUrlsRef.current = [];
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [JSON.stringify(initialBoxes), headerHeightPct, footerHeightPct]);
 
   useEffect(() => {
@@ -296,7 +285,6 @@ const CustomTemplateEditor = forwardRef(function CustomTemplateEditor(
       const maxAllowed = 100 - hPctNum - 0.5;
       return Math.min(Math.max(minAllowed + 0.5, yPctNum), maxAllowed);
     }
-    // body
     const minAllowed = bodyTop;
     const maxAllowed = bodyBottom - hPctNum - 0.5;
     return Math.min(
@@ -305,12 +293,8 @@ const CustomTemplateEditor = forwardRef(function CustomTemplateEditor(
     );
   }
 
-  /* IMPORTANT: addBox now refuses to add boxes into the document body.
-     New boxes can only be added into the header or footer areas. */
   function addBox(type = "text") {
-    // prevent adding to body area: parent / sidepanel should set activeArea
     if (activeArea === "body") {
-      // provide a console warning and no-op; parent UI should guide user
       console.warn(
         "Adding new boxes into the document body is disabled. Select Header or Footer in the side panel to add elements."
       );
@@ -320,9 +304,8 @@ const CustomTemplateEditor = forwardRef(function CustomTemplateEditor(
     const wPctNum = 20;
     const hPctNum = 8;
     const leftPct = 50 - wPctNum / 2;
-    let topPct = 4; // relative before shifting
+    let topPct = 4;
 
-    // decide initial top based on activeArea
     if (activeArea === "header") {
       topPct = Math.max(
         0.5,
@@ -331,16 +314,13 @@ const CustomTemplateEditor = forwardRef(function CustomTemplateEditor(
     } else if (activeArea === "footer") {
       const footer = Number(String(footerHeightPct).replace("%", "")) || 10;
       topPct = 100 - footer + Math.max(0.5, footer / 2 - hPctNum / 2);
-      // ensure top within footer area
     } else {
-      // fallback: should not happen, but push inside header to be safe
       topPct = Math.max(
         0.5,
         Number(String(headerHeightPct).replace("%", "")) / 2 - hPctNum / 2
       );
     }
 
-    // clamp top within area
     topPct = clampToArea(topPct, hPctNum, activeArea);
 
     const id = uuidv4();
@@ -463,12 +443,10 @@ const CustomTemplateEditor = forwardRef(function CustomTemplateEditor(
   function handleDragStop(id, e, d) {
     draggingRef.current = false;
     const { left, top } = pxToPct(d.x, d.y, 0, 0, innerCanvasRef.current);
-    // clamp to area
     try {
       const b = boxes.find((bx) => bx.id === id);
       const hPctNum = Number(String(b.hPct || "6%").replace("%", "")) || 6;
       const topNum = Number(String(top).replace("%", "")) || 0;
-      // decide area of box by center
       const boxCenter = topNum + hPctNum / 2;
       let area = "body";
       const headerEnd = Number(String(headerHeightPct).replace("%", "")) || 10;
@@ -496,7 +474,6 @@ const CustomTemplateEditor = forwardRef(function CustomTemplateEditor(
       hPx,
       innerCanvasRef.current
     );
-    // clamp yPct within area
     try {
       const hPctNum = Number(String(height).replace("%", "")) || 6;
       const topNum = Number(String(top).replace("%", "")) || 0;
@@ -545,7 +522,6 @@ const CustomTemplateEditor = forwardRef(function CustomTemplateEditor(
 
     if (!targetId) {
       const id = addBox("logo");
-      // if addBox returned null (because activeArea === 'body'), we should stop
       if (!id) {
         pendingLogoTargetRef.current = null;
         return;
@@ -827,7 +803,6 @@ const CustomTemplateEditor = forwardRef(function CustomTemplateEditor(
     }
   }
 
-  // watermark drag handlers
   const wmDragRef = useRef(null);
 
   function onWatermarkMouseDown(e) {
@@ -854,7 +829,6 @@ const CustomTemplateEditor = forwardRef(function CustomTemplateEditor(
     const dyPct = (dy / rect.height) * 100;
     try {
       const cur = { ...(info.initial || {}) };
-      // treat xPct/yPct as center; update center by dxPct/dyPct
       const xNum = Number(String(cur.xPct || "50%").replace("%", "")) || 50;
       const yNum = Number(String(cur.yPct || "50%").replace("%", "")) || 50;
       const newX = Math.min(Math.max(0, xNum + dxPct), 100);
@@ -877,7 +851,6 @@ const CustomTemplateEditor = forwardRef(function CustomTemplateEditor(
     window.removeEventListener("mouseup", onWatermarkMouseUp);
   }
 
-  // Expose methods to parent via ref.
   useImperativeHandle(ref, () => ({
     addText: () => addBox("text"),
     addField: () => addBox("placeholder"),
@@ -896,11 +869,9 @@ const CustomTemplateEditor = forwardRef(function CustomTemplateEditor(
     getHtml: () => {
       return saveTemplate();
     },
-    // parent can call setActiveArea to control where new boxes are inserted
     setActiveArea: (area) => {
       if (["header", "body", "footer"].includes(area)) setActiveArea(area);
     },
-    // optional imperative watermark setter (useful if parent wants to force)
     setWatermark: (url, props) => {
       setLocalWatermarkUrl(url || null);
       if (props) {
@@ -921,7 +892,6 @@ const CustomTemplateEditor = forwardRef(function CustomTemplateEditor(
     },
   }));
 
-  // helper to compute watermark style in px from current localWatermark
   function watermarkStyle() {
     if (!localWatermark) return { display: "none" };
     const xNum =
@@ -932,7 +902,6 @@ const CustomTemplateEditor = forwardRef(function CustomTemplateEditor(
       Number(String(localWatermark.wPct || "60%").replace("%", "")) || 60;
     const hNum =
       Number(String(localWatermark.hPct || "60%").replace("%", "")) || 60;
-    // interpret x/y as center percentages
     const leftPct = xNum - wNum / 2;
     const topPct = yNum - hNum / 2;
     const leftPx = (leftPct / 100) * canvasWidthActual;
@@ -959,10 +928,6 @@ const CustomTemplateEditor = forwardRef(function CustomTemplateEditor(
 
   return (
     <div className={styles["cte-root"]}>
-      {/* NOTE: removed the in-editor Insert-into (header/body/footer) toolbar.
-          Area selection must come from the side panel using the editor's
-          exposed setActiveArea method. */}
-
       <div className={styles["props-bar"]}>
         <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
           <div className={styles["props-subtitle"]}>Editor</div>
@@ -1015,7 +980,6 @@ const CustomTemplateEditor = forwardRef(function CustomTemplateEditor(
               overflow: "hidden",
             }}
           >
-            {/* Header band */}
             <div
               aria-hidden
               style={{
@@ -1029,7 +993,6 @@ const CustomTemplateEditor = forwardRef(function CustomTemplateEditor(
                 background: "transparent",
               }}
             />
-            {/* Footer band */}
             <div
               aria-hidden
               style={{
@@ -1044,7 +1007,6 @@ const CustomTemplateEditor = forwardRef(function CustomTemplateEditor(
               }}
             />
 
-            {/* watermark (if any) */}
             {localWatermarkUrl && (
               <img
                 src={localWatermarkUrl}

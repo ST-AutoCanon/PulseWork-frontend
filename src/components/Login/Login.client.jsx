@@ -226,9 +226,17 @@ export default function Login({ onClose }) {
           : "/dashboard"
       );
     } catch (err) {
-      showAlert(err.message || "Login failed");
-    } finally {
-      setIsSubmitting(false);
+      const message = err?.message || "Login failed";
+
+      showAlert(message);
+
+      window.parent?.postMessage(
+        {
+          type: "login-failed",
+          error: message,
+        },
+        parentOrigin || parentOriginRef.current || "*"
+      );
     }
   }
 

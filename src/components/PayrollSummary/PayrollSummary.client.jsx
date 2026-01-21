@@ -1,3 +1,5203 @@
+// // // // // // "use client";
+// // // // // // import React, { useState, useEffect } from "react";
+// // // // // // import axios from "axios";
+// // // // // // import generatePayslipPDF from "../../utils/generatePayslipPDF";
+// // // // // // import { useAuth } from "../../context/AuthProvider.client";
+// // // // // // import "./PayrollSummary.css";
+
+// // // // // // const PayrollSummary = () => {
+// // // // // //   const { user } = useAuth();
+
+// // // // // //   const getCurrentMonthYear = () => {
+// // // // // //     const now = new Date();
+// // // // // //     return { month: now.getMonth() + 1, year: now.getFullYear() };
+// // // // // //   };
+
+// // // // // //   const [selectedDate, setSelectedDate] = useState(getCurrentMonthYear());
+// // // // // //   const [payrollData, setPayrollData] = useState(null);
+// // // // // //   const [bankDetails, setBankDetails] = useState(null);
+// // // // // //   const [attendance, setAttendance] = useState(null);
+// // // // // //   const [employeeDetails, setEmployeeDetails] = useState(null);
+// // // // // //   const [templateHtml, setTemplateHtml] = useState(null);
+// // // // // //   const [templateCss, setTemplateCss] = useState(null);
+// // // // // //   const [headerImgSrc, setHeaderImgSrc] = useState(null); // data URL
+// // // // // //   const [footerImgSrc, setFooterImgSrc] = useState(null); // data URL
+// // // // // //   const [watermarkImgSrc, setWatermarkImgSrc] = useState(null); // data URL
+// // // // // //   const [watermarkProps, setWatermarkProps] = useState({
+// // // // // //     xPct: "50%",
+// // // // // //     yPct: "50%",
+// // // // // //     wPct: "60%",
+// // // // // //     hPct: "60%",
+// // // // // //     opacity: 0.12,
+// // // // // //   });
+
+// // // // // //   const [loading, setLoading] = useState(false);
+// // // // // //   const [error, setError] = useState(null);
+
+// // // // // //   const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5001";
+// // // // // //   const API_KEY = process.env.NEXT_PUBLIC_API_KEY;
+
+// // // // // //   const employeeId = user?.employeeId;
+// // // // // //   const orgId =
+// // // // // //     user?.orgId ??
+// // // // // //     user?.org_id ??
+// // // // // //     user?.raw?.org_id ??
+// // // // // //     user?.Org_id ??
+// // // // // //     user?.raw?.Org_id ??
+// // // // // //     null;
+
+// // // // // //   const headers = {
+// // // // // //     "x-api-key": API_KEY ?? "",
+// // // // // //     "x-employee-id": employeeId ?? "",
+// // // // // //     "x-org-id": orgId ?? "",
+// // // // // //   };
+
+// // // // // //   // Cache for image data URLs
+// // // // // //   const protectedImgCache = new Map();
+
+// // // // // //   function normalizeUploadUrl(src, backendBase = BACKEND_URL) {
+// // // // // //     if (!src) return src;
+// // // // // //     if (src.startsWith("blob:") || src.startsWith("data:")) return src;
+
+// // // // // //     const backend = backendBase.replace(/\/$/, "");
+// // // // // //     if (src.startsWith("/api/")) {
+// // // // // //       return backend + src;
+// // // // // //     }
+// // // // // //     try {
+// // // // // //       const url = new URL(src, window.location.origin);
+// // // // // //       const frontendOrigin = window.location.origin.replace(/\/$/, "");
+// // // // // //       if (backend && url.origin === frontendOrigin) {
+// // // // // //         return backend + url.pathname + url.search + url.hash;
+// // // // // //       }
+// // // // // //       return src;
+// // // // // //     } catch (e) {
+// // // // // //       return src;
+// // // // // //     }
+// // // // // //   }
+
+// // // // // //   const blobToDataUrl = (blob) => {
+// // // // // //     return new Promise((resolve, reject) => {
+// // // // // //       const reader = new FileReader();
+// // // // // //       reader.onload = () => resolve(reader.result);
+// // // // // //       reader.onerror = reject;
+// // // // // //       reader.readAsDataURL(blob);
+// // // // // //     });
+// // // // // //   };
+
+// // // // // //   async function fetchProtectedImageDataUrl(src, backendBase = BACKEND_URL) {
+// // // // // //     if (!src) return null;
+// // // // // //     if (src.startsWith("data:")) return src;
+
+// // // // // //     const normalized = normalizeUploadUrl(src, backendBase);
+
+// // // // // //     const cached = protectedImgCache.get(normalized);
+// // // // // //     if (cached) {
+// // // // // //       console.log("✅ [IMAGE FETCH] CACHE HIT:", normalized);
+// // // // // //       return cached;
+// // // // // //     }
+
+// // // // // //     console.log("🔍 [IMAGE FETCH] Trying URL:", normalized);
+
+// // // // // //     try {
+// // // // // //       const res = await axios.get(normalized, {
+// // // // // //         responseType: "blob",
+// // // // // //         headers,
+// // // // // //         withCredentials: true,
+// // // // // //       });
+// // // // // //       const dataUrl = await blobToDataUrl(res.data);
+// // // // // //       protectedImgCache.set(normalized, dataUrl);
+// // // // // //       console.log("✅ [IMAGE FETCH] SUCCESS → data URL created");
+// // // // // //       return dataUrl;
+// // // // // //     } catch (err) {
+// // // // // //       console.warn("⚠️ [IMAGE FETCH] Axios failed:", err?.response?.status || err.message);
+// // // // // //     }
+
+// // // // // //     try {
+// // // // // //       const res = await fetch(normalized, { credentials: "include" });
+// // // // // //       if (!res.ok) throw new Error(`Status ${res.status}`);
+// // // // // //       const blob = await res.blob();
+// // // // // //       const dataUrl = await blobToDataUrl(blob);
+// // // // // //       protectedImgCache.set(normalized, dataUrl);
+// // // // // //       console.log("✅ [IMAGE FETCH] Fallback fetch → data URL created");
+// // // // // //       return dataUrl;
+// // // // // //     } catch (err) {
+// // // // // //       console.error("❌ [IMAGE FETCH] FAILED:", err.message || err);
+// // // // // //       return null;
+// // // // // //     }
+// // // // // //   }
+
+// // // // // //   async function replaceUploadUrlsInHtml(html = "", backendBase = BACKEND_URL) {
+// // // // // //     if (!html || typeof html !== "string") return html;
+// // // // // //     const uploadRegex = /\/api\/orgs\/\d+\/uploads\/[A-Za-z0-9._-]+/g;
+// // // // // //     const matches = html.match(uploadRegex);
+// // // // // //     if (!matches || matches.length === 0) return html;
+
+// // // // // //     const unique = Array.from(new Set(matches));
+// // // // // //     const replacements = {};
+
+// // // // // //     await Promise.all(
+// // // // // //       unique.map(async (m) => {
+// // // // // //         const normalized = normalizeUploadUrl(m, backendBase);
+// // // // // //         const dataUrl = await fetchProtectedImageDataUrl(normalized, backendBase);
+// // // // // //         replacements[m] = dataUrl || normalized;
+// // // // // //       })
+// // // // // //     );
+
+// // // // // //     let out = html;
+// // // // // //     Object.keys(replacements).forEach((orig) => {
+// // // // // //       const safe = orig.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+// // // // // //       out = out.replace(new RegExp(safe, "g"), replacements[orig]);
+// // // // // //     });
+// // // // // //     return out;
+// // // // // //   }
+
+// // // // // //   async function inlineAllImages(htmlString) {
+// // // // // //     if (!htmlString) return htmlString;
+// // // // // //     const parser = new DOMParser();
+// // // // // //     const doc = parser.parseFromString(htmlString, "text/html");
+// // // // // //     const imgs = doc.querySelectorAll("img");
+
+// // // // // //     await Promise.all(
+// // // // // //       Array.from(imgs).map(async (img) => {
+// // // // // //         let src = img.getAttribute("src");
+// // // // // //         if (!src || src.startsWith("data:") || src.startsWith("blob:")) return;
+// // // // // //         try {
+// // // // // //           const res = await fetch(src);
+// // // // // //           if (!res.ok) throw new Error();
+// // // // // //           const blob = await res.blob();
+// // // // // //           const dataUrl = await blobToDataUrl(blob);
+// // // // // //           img.setAttribute("src", dataUrl);
+// // // // // //         } catch (err) {
+// // // // // //           console.warn("Failed to inline image", src);
+// // // // // //           img.remove();
+// // // // // //         }
+// // // // // //       })
+// // // // // //     );
+// // // // // //     return doc.documentElement.outerHTML;
+// // // // // //   }
+
+// // // // // //   function ensurePercent(v, defaultVal = "50%") {
+// // // // // //     if (!v) return defaultVal;
+// // // // // //     if (typeof v === "number") return `${v}%`;
+// // // // // //     const str = String(v).trim();
+// // // // // //     return str.endsWith("%") ? str : `${str}%`;
+// // // // // //   }
+
+// // // // // //   const handleDateChange = (event) => {
+// // // // // //     const [year, month] = event.target.value.split("-");
+// // // // // //     setSelectedDate({
+// // // // // //       month: parseInt(month, 10),
+// // // // // //       year: parseInt(year, 10),
+// // // // // //     });
+// // // // // //   };
+
+// // // // // //   const handleDownload = async () => {
+// // // // // //     try {
+// // // // // //       if (!payrollData) {
+// // // // // //         alert("No payroll data available to download.");
+// // // // // //         return;
+// // // // // //       }
+
+// // // // // //       console.log("🚀 DOWNLOAD STARTED");
+// // // // // //       console.log("Header data URL:", !!headerImgSrc);
+// // // // // //       console.log("Footer data URL:", !!footerImgSrc);
+// // // // // //       console.log("Watermark data URL:", !!watermarkImgSrc);
+// // // // // //       console.log("Watermark props:", watermarkProps);
+
+// // // // // //       const employeeName = payrollData.full_name || employeeDetails?.name || "N/A";
+// // // // // //       const empId = payrollData.employee_id || employeeId || "N/A";
+// // // // // //       const designation = payrollData.designation || employeeDetails?.designation || "N/A";
+
+// // // // // //       const basicSalary = Number(payrollData.basic_salary || 0);
+// // // // // //       const hra = Number(payrollData.hra || 0);
+// // // // // //       const allowance = Number(payrollData.other_allowances || 0);
+// // // // // //       const bonus = Number(payrollData.bonus || 0);
+// // // // // //       const advanceRecovery = Number(payrollData.advance_recovery || 0);
+// // // // // //       const lopDeduction = Number(payrollData.lop_deduction || 0);
+// // // // // //       const pf = Number(payrollData.employee_pf || payrollData.pf || 0);
+// // // // // //       const esic = Number(payrollData.esic || 0);
+// // // // // //       const professionalTax = Number(payrollData.professional_tax || 0);
+// // // // // //       const tds = Number(payrollData.tds || 0);
+// // // // // //       const insurance = Number(payrollData.insurance || 0);
+// // // // // //       const grossSalary = Number(payrollData.gross_salary || 0);
+
+// // // // // //       const totalDeductions =
+// // // // // //         pf + esic + professionalTax + tds + insurance + advanceRecovery + lopDeduction;
+
+// // // // // //       const netSalary = Number(payrollData.net_salary || grossSalary - totalDeductions);
+
+// // // // // //       const leavesTaken = Number(payrollData.lop_days || 0);
+// // // // // //       const totalWorkingDays =
+// // // // // //         attendance?.total_working_days || (leavesTaken > 0 ? 30 - leavesTaken : 30);
+
+// // // // // //       const monthNames = [
+// // // // // //         "January", "February", "March", "April", "May", "June", "July", "August",
+// // // // // //         "September", "October", "November", "December",
+// // // // // //       ];
+// // // // // //       const monthYear = `${monthNames[selectedDate.month - 1]} ${selectedDate.year}`;
+
+// // // // // //       const convertNumberToWords = (num) => {
+// // // // // //         if (!num || num === 0) return "Zero Only";
+// // // // // //         const ones = [
+// // // // // //           "", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine",
+// // // // // //           "Ten", "Eleven", "Twelve", "Thirteen", "Fourteen", "Fifteen", "Sixteen",
+// // // // // //           "Seventeen", "Eighteen", "Nineteen",
+// // // // // //         ];
+// // // // // //         const tens = ["", "", "Twenty", "Thirty", "Forty", "Fifty", "Sixty", "Seventy", "Eighty", "Ninety"];
+// // // // // //         const scales = ["", "Thousand", "Lakh", "Crore"];
+// // // // // //         let words = "";
+// // // // // //         let i = 0;
+// // // // // //         let n = Math.round(num);
+// // // // // //         while (n > 0) {
+// // // // // //           let part = n % 100;
+// // // // // //           if (part > 19) {
+// // // // // //             words =
+// // // // // //               tens[Math.floor(part / 10)] +
+// // // // // //               (part % 10 ? " " + ones[part % 10] : "") +
+// // // // // //               (i > 0 ? " " + scales[i] : "") +
+// // // // // //               " " +
+// // // // // //               words;
+// // // // // //           } else if (part > 0) {
+// // // // // //             words = ones[part] + (i > 0 ? " " + scales[i] : "") + " " + words;
+// // // // // //           }
+// // // // // //           n = Math.floor(n / 100);
+// // // // // //           i += 2;
+// // // // // //         }
+// // // // // //         return words.trim() + " Only";
+// // // // // //       };
+
+// // // // // //       const netSalaryWords = convertNumberToWords(netSalary);
+
+// // // // // //       const dataTableHtml = `
+// // // // // //         <div style="font-family: Arial, Helvetica, sans-serif; font-size: 12px; color: #000; margin-bottom: 25px;">
+
+// // // // // //           <div style="padding: 8px 0; text-align: center; font-weight: bold; font-size: 13px; color: #1a3c6d; margin-bottom: 12px;">
+// // // // // //             EMPLOYEE DETAILS - ${monthYear.toUpperCase()}
+// // // // // //           </div>
+
+// // // // // //           <div style="display: flex; flex-wrap: wrap; gap: 20px;">
+// // // // // //             <div style="flex: 1; min-width: 48%; box-sizing: border-box;">
+// // // // // //               <div style="margin-bottom: 10px;">
+// // // // // //                 <strong style="display: inline-block; width: 130px; color: #333;">Employee Name:</strong>
+// // // // // //                 ${employeeName.toUpperCase()}
+// // // // // //               </div>
+// // // // // //               <div style="margin-bottom: 10px;">
+// // // // // //                 <strong style="display: inline-block; width: 130px; color: #333;">Employee ID:</strong>
+// // // // // //                 ${empId}
+// // // // // //               </div>
+// // // // // //               <div style="margin-bottom: 10px;">
+// // // // // //                 <strong style="display: inline-block; width: 130px; color: #333;">Designation:</strong>
+// // // // // //                 ${designation.toUpperCase() || "N/A"}
+// // // // // //               </div>
+// // // // // //               <div style="margin-bottom: 10px;">
+// // // // // //                 <strong style="display: inline-block; width: 130px; color: #333;">PF No:</strong>
+// // // // // //                 ${bankDetails?.pf_number || payrollData?.pf_number || "N/A"}
+// // // // // //               </div>
+// // // // // //               <div style="margin-bottom: 10px;">
+// // // // // //                 <strong style="display: inline-block; width: 130px; color: #333;">ESI No:</strong>
+// // // // // //                 ${bankDetails?.esi_number || payrollData?.esi_number || "N/A"}
+// // // // // //               </div>
+// // // // // //             </div>
+
+// // // // // //             <div style="flex: 1; min-width: 48%; box-sizing: border-box;">
+// // // // // //               <div style="margin-bottom: 10px;">
+// // // // // //                 <strong style="display: inline-block; width: 130px; color: #333;">PAN:</strong>
+// // // // // //                 ${bankDetails?.pan_number || employeeDetails?.pan_number || "N/A"}
+// // // // // //               </div>
+// // // // // //               <div style="margin-bottom: 10px;">
+// // // // // //                 <strong style="display: inline-block; width: 130px; color: #333;">UAN:</strong>
+// // // // // //                 ${bankDetails?.uin_number || employeeDetails?.uan_number || "N/A"}
+// // // // // //               </div>
+// // // // // //               <div style="margin-bottom: 10px;">
+// // // // // //                 <strong style="display: inline-block; width: 130px; color: #333;">Bank Name:</strong>
+// // // // // //                 ${bankDetails?.bank_name || "N/A"}
+// // // // // //               </div>
+// // // // // //               <div style="margin-bottom: 10px;">
+// // // // // //                 <strong style="display: inline-block; width: 130px; color: #333;">Account No:</strong>
+// // // // // //                 ${bankDetails?.account_number || "N/A"}
+// // // // // //               </div>
+// // // // // //               <div style="margin-bottom: 10px;">
+// // // // // //                 <strong style="display: inline-block; width: 130px; color: #333;">Working Days:</strong>
+// // // // // //                 ${totalWorkingDays}
+// // // // // //               </div>
+// // // // // //               <div style="margin-bottom: 10px;">
+// // // // // //                 <strong style="display: inline-block; width: 130px; color: #333;">LOP Days:</strong>
+// // // // // //                 ${leavesTaken}
+// // // // // //               </div>
+// // // // // //             </div>
+// // // // // //           </div>
+// // // // // //         </div>
+
+// // // // // //         <table style="width: 100%; border-collapse: collapse;">
+// // // // // //           <thead>
+// // // // // //             <tr style="background-color: #f0f0f0;">
+// // // // // //               <th style="border: 1px solid #000; padding: 8px; text-align: left;">Earnings</th>
+// // // // // //               <th style="border: 1px solid #000; padding: 8px; text-align: right;">Amount (₹)</th>
+// // // // // //               <th style="border: 1px solid #000; padding: 8px; text-align: left;">Deductions</th>
+// // // // // //               <th style="border: 1px solid #000; padding: 8px; text-align: right;">Amount (₹)</th>
+// // // // // //             </tr>
+// // // // // //           </thead>
+// // // // // //           <tbody>
+// // // // // //             <tr>
+// // // // // //               <td style="border: 1px solid #000; padding: 8px;">Basic Salary</td>
+// // // // // //               <td style="border: 1px solid #000; padding: 8px; text-align: right;">${basicSalary.toFixed(2)}</td>
+// // // // // //               <td style="border: 1px solid #000; padding: 8px;">PF</td>
+// // // // // //               <td style="border: 1px solid #000; padding: 8px; text-align: right;">${pf.toFixed(2)}</td>
+// // // // // //             </tr>
+// // // // // //             <tr>
+// // // // // //               <td style="border: 1px solid #000; padding: 8px;">HRA</td>
+// // // // // //               <td style="border: 1px solid #000; padding: 8px; text-align: right;">${hra.toFixed(2)}</td>
+// // // // // //               <td style="border: 1px solid #000; padding: 8px;">ESIC</td>
+// // // // // //               <td style="border: 1px solid #000; padding: 8px; text-align: right;">${esic.toFixed(2)}</td>
+// // // // // //             </tr>
+// // // // // //             <tr>
+// // // // // //               <td style="border: 1px solid #000; padding: 8px;">Other Allowances</td>
+// // // // // //               <td style="border: 1px solid #000; padding: 8px; text-align: right;">${allowance.toFixed(2)}</td>
+// // // // // //               <td style="border: 1px solid #000; padding: 8px;">Professional Tax</td>
+// // // // // //               <td style="border: 1px solid #000; padding: 8px; text-align: right;">${professionalTax.toFixed(2)}</td>
+// // // // // //             </tr>
+// // // // // //             ${bonus > 0 ? `
+// // // // // //             <tr>
+// // // // // //               <td style="border: 1px solid #000; padding: 8px;">Bonus</td>
+// // // // // //               <td style="border: 1px solid #000; padding: 8px; text-align: right;">${bonus.toFixed(2)}</td>
+// // // // // //               <td style="border: 1px solid #000; padding: 8px;"></td>
+// // // // // //               <td style="border: 1px solid #000; padding: 8px;"></td>
+// // // // // //             </tr>` : ""}
+// // // // // //             <tr>
+// // // // // //               <td style="border: 1px solid #000; padding: 8px;"><strong>Gross Salary</strong></td>
+// // // // // //               <td style="border: 1px solid #000; padding: 8px; text-align: right;"><strong>${grossSalary.toFixed(2)}</strong></td>
+// // // // // //               <td style="border: 1px solid #000; padding: 8px;">TDS</td>
+// // // // // //               <td style="border: 1px solid #000; padding: 8px; text-align: right;">${tds.toFixed(2)}</td>
+// // // // // //             </tr>
+// // // // // //             <tr>
+// // // // // //               <td style="border: 1px solid #000; padding: 8px;"></td>
+// // // // // //               <td style="border: 1px solid #000; padding: 8px;"></td>
+// // // // // //               <td style="border: 1px solid #000; padding: 8px;">Insurance</td>
+// // // // // //               <td style="border: 1px solid #000; padding: 8px; text-align: right;">${insurance.toFixed(2)}</td>
+// // // // // //             </tr>
+// // // // // //             ${advanceRecovery > 0 ? `
+// // // // // //             <tr>
+// // // // // //               <td style="border: 1px solid #000; padding: 8px;"></td>
+// // // // // //               <td style="border: 1px solid #000; padding: 8px;"></td>
+// // // // // //               <td style="border: 1px solid #000; padding: 8px;">Advance Recovery</td>
+// // // // // //               <td style="border: 1px solid #000; padding: 8px; text-align: right;">${advanceRecovery.toFixed(2)}</td>
+// // // // // //             </tr>` : ""}
+// // // // // //             ${lopDeduction > 0 ? `
+// // // // // //             <tr>
+// // // // // //               <td style="border: 1px solid #000; padding: 8px;"></td>
+// // // // // //               <td style="border: 1px solid #000; padding: 8px;"></td>
+// // // // // //               <td style="border: 1px solid #000; padding: 8px;">LOP Deduction</td>
+// // // // // //               <td style="border: 1px solid #000; padding: 8px; text-align: right;">${lopDeduction.toFixed(2)}</td>
+// // // // // //             </tr>` : ""}
+// // // // // //             <tr style="background-color: #f0f0f0;">
+// // // // // //               <td style="border: 1px solid #000; padding: 8px;"></td>
+// // // // // //               <td style="border: 1px solid #000; padding: 8px;"></td>
+// // // // // //               <td style="border: 1px solid #000; padding: 8px;"><strong>Total Deductions</strong></td>
+// // // // // //               <td style="border: 1px solid #000; padding: 8px; text-align: right;"><strong>${totalDeductions.toFixed(2)}</strong></td>
+// // // // // //             </tr>
+// // // // // //             <tr style="background-color: #e0e0e0; font-size: 14px;">
+// // // // // //               <td style="border: 1px solid #000; padding: 12px; text-align: center;" colSpan="4">
+// // // // // //                 <strong>Net Salary: ₹${netSalary.toFixed(2)} (${netSalaryWords})</strong>
+// // // // // //               </td>
+// // // // // //             </tr>
+// // // // // //           </tbody>
+// // // // // //         </table>
+// // // // // //       `;
+
+// // // // // //       let baseHtml = templateHtml || `<div class="template-page"><div class="template-body"></div></div>`;
+// // // // // //       if (templateCss) {
+// // // // // //         baseHtml = `<style>${templateCss}</style>${baseHtml}`;
+// // // // // //       }
+
+// // // // // //       const parser = new DOMParser();
+// // // // // //       let doc = parser.parseFromString(baseHtml, "text/html");
+// // // // // //       let pageContainer = doc.querySelector(".template-page") || doc.body;
+// // // // // //       pageContainer.style.position = "relative";
+// // // // // //       pageContainer.style.minHeight = "100vh";
+// // // // // //       pageContainer.style.boxSizing = "border-box";
+
+// // // // // //       let bodyDiv = doc.querySelector(".template-body") || pageContainer;
+// // // // // //       bodyDiv.innerHTML = dataTableHtml;
+// // // // // //       bodyDiv.style.padding = "20px 40px";
+
+// // // // // //       if (headerImgSrc && !doc.querySelector(".template-header")) {
+// // // // // //         const headerDiv = doc.createElement("div");
+// // // // // //         headerDiv.className = "template-header";
+// // // // // //         headerDiv.style.marginBottom = "20px";
+// // // // // //         headerDiv.style.textAlign = "center";
+// // // // // //         const img = doc.createElement("img");
+// // // // // //         img.src = headerImgSrc;
+// // // // // //         img.style.maxWidth = "100%";
+// // // // // //         img.style.display = "block";
+// // // // // //         headerDiv.appendChild(img);
+// // // // // //         pageContainer.insertBefore(headerDiv, bodyDiv);
+// // // // // //       }
+
+// // // // // //       if (footerImgSrc && !doc.querySelector(".template-footer")) {
+// // // // // //         const footerDiv = doc.createElement("div");
+// // // // // //         footerDiv.className = "template-footer";
+// // // // // //         footerDiv.style.marginTop = "20px";
+// // // // // //         footerDiv.style.textAlign = "center";
+// // // // // //         const img = doc.createElement("img");
+// // // // // //         img.src = footerImgSrc;
+// // // // // //         img.style.maxWidth = "100%";
+// // // // // //         img.style.display = "block";
+// // // // // //         footerDiv.appendChild(img);
+// // // // // //         pageContainer.appendChild(footerDiv);
+// // // // // //       }
+
+// // // // // //       if (watermarkImgSrc) {
+// // // // // //         doc.querySelectorAll(".pdf-watermark").forEach((el) => el.remove());
+// // // // // //         const wmWrapper = doc.createElement("div");
+// // // // // //         wmWrapper.className = "pdf-watermark";
+// // // // // //         wmWrapper.style.position = "absolute";
+// // // // // //         wmWrapper.style.top = watermarkProps.yPct;
+// // // // // //         wmWrapper.style.left = watermarkProps.xPct;
+// // // // // //         wmWrapper.style.width = watermarkProps.wPct;
+// // // // // //         wmWrapper.style.height = watermarkProps.hPct;
+// // // // // //         wmWrapper.style.transform = "translate(-50%, -50%)";
+// // // // // //         wmWrapper.style.opacity = watermarkProps.opacity;
+// // // // // //         wmWrapper.style.pointerEvents = "none";
+// // // // // //         wmWrapper.style.zIndex = "-1";
+
+// // // // // //         const img = doc.createElement("img");
+// // // // // //         img.src = watermarkImgSrc;
+// // // // // //         img.style.width = "100%";
+// // // // // //         img.style.height = "100%";
+// // // // // //         img.style.objectFit = "contain";
+// // // // // //         wmWrapper.appendChild(img);
+
+// // // // // //         pageContainer.insertBefore(wmWrapper, pageContainer.firstChild);
+// // // // // //       }
+
+// // // // // //       let finalHtml = doc.documentElement.outerHTML;
+// // // // // //       finalHtml = await inlineAllImages(finalHtml);
+
+// // // // // //       const processedTemplate = {
+// // // // // //         html: finalHtml,
+// // // // // //         css: "",
+// // // // // //       };
+
+// // // // // //       const blob = await generatePayslipPDF(
+// // // // // //         payrollData,
+// // // // // //         selectedDate,
+// // // // // //         bankDetails || {},
+// // // // // //         attendance || {},
+// // // // // //         employeeDetails || {},
+// // // // // //         processedTemplate
+// // // // // //       );
+
+// // // // // //       if (!blob) {
+// // // // // //         alert("Failed to generate PDF. Please try again.");
+// // // // // //         return;
+// // // // // //       }
+
+// // // // // //       const url = URL.createObjectURL(blob);
+// // // // // //       const a = document.createElement("a");
+// // // // // //       a.href = url;
+// // // // // //       a.download = `Payslip_${empId}_${selectedDate.month.toString().padStart(2, "0")}_${selectedDate.year}.pdf`;
+// // // // // //       document.body.appendChild(a);
+// // // // // //       a.click();
+// // // // // //       a.remove();
+// // // // // //       URL.revokeObjectURL(url);
+// // // // // //     } catch (err) {
+// // // // // //       console.error("Failed to download payslip:", err);
+// // // // // //       alert("Error generating PDF. Check console for details.");
+// // // // // //     }
+// // // // // //   };
+
+// // // // // //   useEffect(() => {
+// // // // // //     const fetchSelectedTemplate = async () => {
+// // // // // //       if (!orgId) {
+// // // // // //         console.log("No orgId - skipping template fetch");
+// // // // // //         return;
+// // // // // //       }
+
+// // // // // //       console.log("🔄 TEMPLATE FETCH STARTED for orgId:", orgId);
+
+// // // // // //       try {
+// // // // // //         const prefsRes = await axios.get(`${BACKEND_URL}/api/salary-preferences`, {
+// // // // // //           headers,
+// // // // // //           withCredentials: true,
+// // // // // //         });
+
+// // // // // //         const selectedId = prefsRes.data?.data?.[0]?.selected_template_id;
+// // // // // //         if (!selectedId) {
+// // // // // //           console.log("⚠️ NO SELECTED TEMPLATE ID");
+// // // // // //           return;
+// // // // // //         }
+
+// // // // // //         console.log("Selected template ID:", selectedId);
+
+// // // // // //         const templatesRes = await axios.get(`${BACKEND_URL}/api/orgs/${orgId}/templates`, {
+// // // // // //           headers,
+// // // // // //           withCredentials: true,
+// // // // // //         });
+
+// // // // // //         const templates = templatesRes.data || [];
+// // // // // //         const selectedTemplate = templates.find((t) => t.id === selectedId);
+
+// // // // // //         if (!selectedTemplate) {
+// // // // // //           console.log(`Template ${selectedId} not found in list`);
+// // // // // //           return;
+// // // // // //         }
+
+// // // // // //         console.log("✅ Using template:", selectedTemplate.name);
+
+// // // // // //         let processedHtml = await replaceUploadUrlsInHtml(selectedTemplate.html || "");
+// // // // // //         setTemplateHtml(processedHtml);
+// // // // // //         setTemplateCss(selectedTemplate.css || "");
+
+// // // // // //         let grapes = null;
+// // // // // //         const grapesField = selectedTemplate.grapes_json || selectedTemplate.grapesJson;
+// // // // // //         if (grapesField) {
+// // // // // //           try {
+// // // // // //             grapes = typeof grapesField === "string" ? JSON.parse(grapesField) : grapesField;
+// // // // // //           } catch (e) {
+// // // // // //             console.error("Failed to parse grapes_json", e);
+// // // // // //           }
+// // // // // //         }
+
+// // // // // //         let headerSrc = null;
+// // // // // //         let footerSrc = null;
+// // // // // //         let wmUrl = null;
+// // // // // //         let wp = { ...watermarkProps };
+
+// // // // // //         if (grapes) {
+// // // // // //           headerSrc = grapes.headerUrl || grapes.header_url || headerSrc;
+// // // // // //           footerSrc = grapes.footerUrl || grapes.footer_url || footerSrc;
+// // // // // //           if (grapes.watermark?.url) {
+// // // // // //             wmUrl = grapes.watermark.url;
+// // // // // //             wp = {
+// // // // // //               xPct: ensurePercent(grapes.watermark.xPct || grapes.watermark.x || "50%"),
+// // // // // //               yPct: ensurePercent(grapes.watermark.yPct || grapes.watermark.y || "50%"),
+// // // // // //               wPct: ensurePercent(grapes.watermark.wPct || grapes.watermark.w || "60%"),
+// // // // // //               hPct: ensurePercent(grapes.watermark.hPct || grapes.watermark.h || "60%"),
+// // // // // //               opacity: grapes.watermark.opacity ?? 0.12,
+// // // // // //             };
+// // // // // //           }
+// // // // // //         }
+
+// // // // // //         let metaObj = null;
+// // // // // //         if (selectedTemplate.meta) {
+// // // // // //           try {
+// // // // // //             metaObj = typeof selectedTemplate.meta === "string" ? JSON.parse(selectedTemplate.meta) : selectedTemplate.meta;
+// // // // // //           } catch {}
+// // // // // //         }
+// // // // // //         if (metaObj?.uploads) {
+// // // // // //           headerSrc = metaObj.uploads.header || headerSrc;
+// // // // // //           footerSrc = metaObj.uploads.footer || footerSrc;
+// // // // // //           wmUrl = metaObj.uploads.watermark || wmUrl;
+// // // // // //         }
+
+// // // // // //         if (!headerSrc && selectedTemplate.thumbnail_url) {
+// // // // // //           headerSrc = `/api/orgs/${orgId}/uploads/${selectedTemplate.thumbnail_url}`;
+// // // // // //         }
+
+// // // // // //         if (headerSrc) {
+// // // // // //           const dataUrl = await fetchProtectedImageDataUrl(headerSrc);
+// // // // // //           if (dataUrl) setHeaderImgSrc(dataUrl);
+// // // // // //         }
+// // // // // //         if (footerSrc) {
+// // // // // //           const dataUrl = await fetchProtectedImageDataUrl(footerSrc);
+// // // // // //           if (dataUrl) setFooterImgSrc(dataUrl);
+// // // // // //         }
+// // // // // //         if (wmUrl) {
+// // // // // //           const dataUrl = await fetchProtectedImageDataUrl(wmUrl);
+// // // // // //           if (dataUrl) {
+// // // // // //             setWatermarkImgSrc(dataUrl);
+// // // // // //             setWatermarkProps(wp);
+// // // // // //           }
+// // // // // //         }
+
+// // // // // //         if (selectedTemplate.html) {
+// // // // // //           const parser = new DOMParser();
+// // // // // //           const doc = parser.parseFromString(selectedTemplate.html, "text/html");
+// // // // // //           const headerImg = doc.querySelector(".template-header img");
+// // // // // //           const footerImg = doc.querySelector(".template-footer img");
+// // // // // //           if (headerImg && !headerImgSrc) {
+// // // // // //             const dataUrl = await fetchProtectedImageDataUrl(headerImg.getAttribute("src"));
+// // // // // //             if (dataUrl) setHeaderImgSrc(dataUrl);
+// // // // // //           }
+// // // // // //           if (footerImg && !footerImgSrc) {
+// // // // // //             const dataUrl = await fetchProtectedImageDataUrl(footerImg.getAttribute("src"));
+// // // // // //             if (dataUrl) setFooterImgSrc(dataUrl);
+// // // // // //           }
+// // // // // //         }
+// // // // // //       } catch (err) {
+// // // // // //         console.error("TEMPLATE FETCH ERROR:", err);
+// // // // // //       }
+// // // // // //     };
+
+// // // // // //     fetchSelectedTemplate();
+// // // // // //   }, [orgId]);
+
+// // // // // //   useEffect(() => {
+// // // // // //     return () => {
+// // // // // //       protectedImgCache.clear();
+// // // // // //     };
+// // // // // //   }, []);
+
+// // // // // //   useEffect(() => {
+// // // // // //     if (!employeeId || !orgId) {
+// // // // // //       setError("Missing employee ID or organization. Please log in again.");
+// // // // // //       return;
+// // // // // //     }
+
+// // // // // //     const fetchAllData = async () => {
+// // // // // //       setLoading(true);
+// // // // // //       setError(null);
+// // // // // //       setPayrollData(null);
+
+// // // // // //       try {
+// // // // // //         const empRes = await axios.get(`${BACKEND_URL}/api/employee-details/${employeeId}`, {
+// // // // // //           headers,
+// // // // // //           withCredentials: true,
+// // // // // //         });
+// // // // // //         setEmployeeDetails(empRes.data || null);
+// // // // // //         setAttendance(empRes.data?.attendanceStats || null);
+
+// // // // // //         try {
+// // // // // //           const bankRes = await axios.get(`${BACKEND_URL}/api/bank-details/${employeeId}`, {
+// // // // // //             headers,
+// // // // // //             withCredentials: true,
+// // // // // //           });
+// // // // // //           setBankDetails(bankRes.data || {});
+// // // // // //         } catch {
+// // // // // //           setBankDetails({});
+// // // // // //         }
+
+// // // // // //         try {
+// // // // // //           const salaryRes = await axios.get(
+// // // // // //             `${BACKEND_URL}/api/salary-slip?employee_id=${employeeId}&month=${selectedDate.month}&year=${selectedDate.year}`,
+// // // // // //             { headers, withCredentials: true }
+// // // // // //           );
+// // // // // //           setPayrollData(salaryRes.data || null);
+// // // // // //         } catch (salaryErr) {
+// // // // // //           if (salaryErr.response?.status === 404 || salaryErr.response?.data?.error === "Not found") {
+// // // // // //             setPayrollData(null);
+// // // // // //           } else {
+// // // // // //             throw salaryErr;
+// // // // // //           }
+// // // // // //         }
+// // // // // //       } catch (err) {
+// // // // // //         console.error("Data load failed:", err);
+// // // // // //         setError("Failed to load data. Please try again.");
+// // // // // //       } finally {
+// // // // // //         setLoading(false);
+// // // // // //       }
+// // // // // //     };
+
+// // // // // //     fetchAllData();
+// // // // // //   }, [selectedDate, employeeId, orgId]);
+
+// // // // // //   const previewName = payrollData?.full_name || employeeDetails?.name || "N/A";
+// // // // // //   const previewDesignation = payrollData?.designation || employeeDetails?.designation || "N/A";
+// // // // // //   const previewBasic = Number(payrollData?.basic_salary || 0);
+// // // // // //   const previewHra = Number(payrollData?.hra || 0);
+// // // // // //   const previewAllowance = Number(payrollData?.other_allowances || 0);
+// // // // // //   const previewBonus = Number(payrollData?.bonus || 0);
+// // // // // //   const previewPf = Number(payrollData?.employee_pf || payrollData?.pf || 0);
+// // // // // //   const previewEsic = Number(payrollData?.esic || 0);
+// // // // // //   const previewPt = Number(payrollData?.professional_tax || 0);
+// // // // // //   const previewTds = Number(payrollData?.tds || 0);
+// // // // // //   const previewInsurance = Number(payrollData?.insurance || 0);
+// // // // // //   const previewAdvanceRecovery = Number(payrollData?.advance_recovery || 0);
+// // // // // //   const previewLopDeduction = Number(payrollData?.lop_deduction || 0);
+// // // // // //   const previewGross = Number(payrollData?.gross_salary || 0);
+// // // // // //   const previewTotalDed =
+// // // // // //     previewPf + previewEsic + previewPt + previewTds + previewInsurance + previewAdvanceRecovery + previewLopDeduction;
+// // // // // //   const previewNet = Number(payrollData?.net_salary || previewGross - previewTotalDed);
+
+// // // // // //   return (
+// // // // // //     <div className="payroll-container">
+// // // // // //       <h1 className="payroll-title">Employee Payslip</h1>
+
+// // // // // //       <div className="payroll-controls">
+// // // // // //         <label className="payroll-label">Select Month & Year:</label>
+// // // // // //         <select
+// // // // // //           value={`${selectedDate.year}-${selectedDate.month.toString().padStart(2, "0")}`}
+// // // // // //           onChange={handleDateChange}
+// // // // // //           className="payroll-select"
+// // // // // //         >
+// // // // // //           {[...Array(12)].map((_, i) => {
+// // // // // //             const date = new Date();
+// // // // // //             date.setMonth(date.getMonth() - i);
+// // // // // //             const monthNum = date.getMonth() + 1;
+// // // // // //             const yearNum = date.getFullYear();
+// // // // // //             return (
+// // // // // //               <option key={i} value={`${yearNum}-${monthNum.toString().padStart(2, "0")}`}>
+// // // // // //                 {date.toLocaleString("default", { month: "long" })} {yearNum}
+// // // // // //               </option>
+// // // // // //             );
+// // // // // //           })}
+// // // // // //         </select>
+// // // // // //       </div>
+
+// // // // // //       {loading && <p>Loading payroll data...</p>}
+// // // // // //       {error && <p className="error">{error}</p>}
+
+// // // // // //       {!loading && !error && payrollData ? (
+// // // // // //         <div className="payslip">
+// // // // // //           <h2>
+// // // // // //             Payslip for {new Date(selectedDate.year, selectedDate.month - 1).toLocaleString("default", { month: "long", year: "numeric" })}
+// // // // // //           </h2>
+
+// // // // // //           <table style={{ width: "100%", marginBottom: "20px", borderCollapse: "collapse", fontSize: "14px" }}>
+// // // // // //             <tbody>
+// // // // // //               <tr>
+// // // // // //                 <td style={{ padding: "8px" }}><strong>Employee Name:</strong> {previewName}</td>
+// // // // // //                 <td style={{ padding: "8px" }}><strong>Employee ID:</strong> {employeeId}</td>
+// // // // // //               </tr>
+// // // // // //               <tr>
+// // // // // //                 <td style={{ padding: "8px" }}><strong>Bank:</strong> {bankDetails?.bank_name || "N/A"}</td>
+// // // // // //                 <td style={{ padding: "8px" }}><strong>Account No:</strong> {bankDetails?.account_number || "N/A"}</td>
+// // // // // //               </tr>
+// // // // // //             </tbody>
+// // // // // //           </table>
+
+// // // // // //           <table className="payslip-table">
+// // // // // //             <thead>
+// // // // // //               <tr>
+// // // // // //                 <th>Earnings</th>
+// // // // // //                 <th>Amount (₹)</th>
+// // // // // //                 <th>Deductions</th>
+// // // // // //                 <th>Amount (₹)</th>
+// // // // // //               </tr>
+// // // // // //             </thead>
+// // // // // //             <tbody>
+// // // // // //               <tr>
+// // // // // //                 <td>Basic Salary</td>
+// // // // // //                 <td>₹{previewBasic.toFixed(2)}</td>
+// // // // // //                 <td>PF</td>
+// // // // // //                 <td>₹{previewPf.toFixed(2)}</td>
+// // // // // //               </tr>
+// // // // // //               <tr>
+// // // // // //                 <td>HRA</td>
+// // // // // //                 <td>₹{previewHra.toFixed(2)}</td>
+// // // // // //                 <td>ESIC</td>
+// // // // // //                 <td>₹{previewEsic.toFixed(2)}</td>
+// // // // // //               </tr>
+// // // // // //               <tr>
+// // // // // //                 <td>Other Allowances</td>
+// // // // // //                 <td>₹{previewAllowance.toFixed(2)}</td>
+// // // // // //                 <td>Professional Tax</td>
+// // // // // //                 <td>₹{previewPt.toFixed(2)}</td>
+// // // // // //               </tr>
+// // // // // //               {previewBonus > 0 && (
+// // // // // //                 <tr>
+// // // // // //                   <td>Bonus</td>
+// // // // // //                   <td>₹{previewBonus.toFixed(2)}</td>
+// // // // // //                   <td></td>
+// // // // // //                   <td></td>
+// // // // // //                 </tr>
+// // // // // //               )}
+// // // // // //               <tr>
+// // // // // //                 <td><strong>Gross Salary</strong></td>
+// // // // // //                 <td><strong>₹{previewGross.toFixed(2)}</strong></td>
+// // // // // //                 <td>TDS</td>
+// // // // // //                 <td>₹{previewTds.toFixed(2)}</td>
+// // // // // //               </tr>
+// // // // // //               <tr>
+// // // // // //                 <td></td>
+// // // // // //                 <td></td>
+// // // // // //                 <td>Insurance</td>
+// // // // // //                 <td>₹{previewInsurance.toFixed(2)}</td>
+// // // // // //               </tr>
+// // // // // //               {previewAdvanceRecovery > 0 && (
+// // // // // //                 <tr>
+// // // // // //                   <td></td>
+// // // // // //                   <td></td>
+// // // // // //                   <td>Advance Recovery</td>
+// // // // // //                   <td>₹{previewAdvanceRecovery.toFixed(2)}</td>
+// // // // // //                 </tr>
+// // // // // //               )}
+// // // // // //               {previewLopDeduction > 0 && (
+// // // // // //                 <tr>
+// // // // // //                   <td></td>
+// // // // // //                   <td></td>
+// // // // // //                   <td>LOP Deduction</td>
+// // // // // //                   <td>₹{previewLopDeduction.toFixed(2)}</td>
+// // // // // //                 </tr>
+// // // // // //               )}
+// // // // // //               <tr className="total-row">
+// // // // // //                 <td colSpan="2"></td>
+// // // // // //                 <td><strong>Total Deductions</strong></td>
+// // // // // //                 <td><strong>₹{previewTotalDed.toFixed(2)}</strong></td>
+// // // // // //               </tr>
+// // // // // //               <tr className="net-salary-row">
+// // // // // //                 <td colSpan="2"><strong>Net Salary</strong></td>
+// // // // // //                 <td colSpan="2"><strong>₹{previewNet.toFixed(2)}</strong></td>
+// // // // // //               </tr>
+// // // // // //             </tbody>
+// // // // // //           </table>
+
+// // // // // //           <button onClick={handleDownload} className="payroll-download-btn">
+// // // // // //             Download PDF
+// // // // // //           </button>
+// // // // // //         </div>
+// // // // // //       ) : (
+// // // // // //         !loading &&
+// // // // // //         !error && <p>No payroll data available for this month.</p>
+// // // // // //       )}
+// // // // // //     </div>
+// // // // // //   );
+// // // // // // };
+
+// // // // // // export default PayrollSummary;
+// // // // // "use client";
+// // // // // import React, { useState, useEffect } from "react";
+// // // // // import axios from "axios";
+// // // // // import generatePayslipPDF from "../../utils/generatePayslipPDF";
+// // // // // import { useAuth } from "../../context/AuthProvider.client";
+// // // // // import "./PayrollSummary.css";
+
+// // // // // const PayrollSummary = () => {
+// // // // //   const { user } = useAuth();
+
+// // // // //   const getCurrentMonthYear = () => {
+// // // // //     const now = new Date();
+// // // // //     return { month: now.getMonth() + 1, year: now.getFullYear() };
+// // // // //   };
+
+// // // // //   const [selectedDate, setSelectedDate] = useState(getCurrentMonthYear());
+// // // // //   const [payrollData, setPayrollData] = useState(null);
+// // // // //   const [bankDetails, setBankDetails] = useState(null);
+// // // // //   const [attendance, setAttendance] = useState(null);
+// // // // //   const [employeeDetails, setEmployeeDetails] = useState(null);
+// // // // //   const [templateHtml, setTemplateHtml] = useState(null);
+// // // // //   const [templateCss, setTemplateCss] = useState(null);
+// // // // //   const [headerImgSrc, setHeaderImgSrc] = useState(null); // data URL
+// // // // //   const [footerImgSrc, setFooterImgSrc] = useState(null); // data URL
+// // // // //   const [watermarkImgSrc, setWatermarkImgSrc] = useState(null); // data URL
+// // // // //   const [watermarkProps, setWatermarkProps] = useState({
+// // // // //     xPct: "50%",
+// // // // //     yPct: "50%",
+// // // // //     wPct: "60%",
+// // // // //     hPct: "60%",
+// // // // //     opacity: 0.12,
+// // // // //   });
+
+// // // // //   const [loading, setLoading] = useState(false);
+// // // // //   const [error, setError] = useState(null);
+
+// // // // //   const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5001";
+// // // // //   const API_KEY = process.env.NEXT_PUBLIC_API_KEY;
+
+// // // // //   const employeeId = user?.employeeId;
+// // // // //   const orgId =
+// // // // //     user?.orgId ??
+// // // // //     user?.org_id ??
+// // // // //     user?.raw?.org_id ??
+// // // // //     user?.Org_id ??
+// // // // //     user?.raw?.Org_id ??
+// // // // //     null;
+
+// // // // //   const headers = {
+// // // // //     "x-api-key": API_KEY ?? "",
+// // // // //     "x-employee-id": employeeId ?? "",
+// // // // //     "x-org-id": orgId ?? "",
+// // // // //   };
+
+// // // // //   // Cache for image data URLs
+// // // // //   const protectedImgCache = new Map();
+
+// // // // //   function normalizeUploadUrl(src, backendBase = BACKEND_URL) {
+// // // // //     if (!src) return src;
+// // // // //     if (src.startsWith("blob:") || src.startsWith("data:")) return src;
+
+// // // // //     const backend = backendBase.replace(/\/$/, "");
+// // // // //     if (src.startsWith("/api/")) {
+// // // // //       return backend + src;
+// // // // //     }
+// // // // //     try {
+// // // // //       const url = new URL(src, window.location.origin);
+// // // // //       const frontendOrigin = window.location.origin.replace(/\/$/, "");
+// // // // //       if (backend && url.origin === frontendOrigin) {
+// // // // //         return backend + url.pathname + url.search + url.hash;
+// // // // //       }
+// // // // //       return src;
+// // // // //     } catch (e) {
+// // // // //       return src;
+// // // // //     }
+// // // // //   }
+
+// // // // //   const blobToDataUrl = (blob) => {
+// // // // //     return new Promise((resolve, reject) => {
+// // // // //       const reader = new FileReader();
+// // // // //       reader.onload = () => resolve(reader.result);
+// // // // //       reader.onerror = reject;
+// // // // //       reader.readAsDataURL(blob);
+// // // // //     });
+// // // // //   };
+
+// // // // //   async function fetchProtectedImageDataUrl(src, backendBase = BACKEND_URL) {
+// // // // //     if (!src) return null;
+// // // // //     if (src.startsWith("data:")) return src;
+
+// // // // //     const normalized = normalizeUploadUrl(src, backendBase);
+
+// // // // //     const cached = protectedImgCache.get(normalized);
+// // // // //     if (cached) {
+// // // // //       console.log("✅ [IMAGE FETCH] CACHE HIT:", normalized);
+// // // // //       return cached;
+// // // // //     }
+
+// // // // //     console.log("🔍 [IMAGE FETCH] Trying URL:", normalized);
+
+// // // // //     try {
+// // // // //       const res = await axios.get(normalized, {
+// // // // //         responseType: "blob",
+// // // // //         headers,
+// // // // //         withCredentials: true,
+// // // // //       });
+// // // // //       const dataUrl = await blobToDataUrl(res.data);
+// // // // //       protectedImgCache.set(normalized, dataUrl);
+// // // // //       console.log("✅ [IMAGE FETCH] SUCCESS → data URL created");
+// // // // //       return dataUrl;
+// // // // //     } catch (err) {
+// // // // //       console.warn("⚠️ [IMAGE FETCH] Axios failed:", err?.response?.status || err.message);
+// // // // //     }
+
+// // // // //     try {
+// // // // //       const res = await fetch(normalized, { credentials: "include" });
+// // // // //       if (!res.ok) throw new Error(`Status ${res.status}`);
+// // // // //       const blob = await res.blob();
+// // // // //       const dataUrl = await blobToDataUrl(blob);
+// // // // //       protectedImgCache.set(normalized, dataUrl);
+// // // // //       console.log("✅ [IMAGE FETCH] Fallback fetch → data URL created");
+// // // // //       return dataUrl;
+// // // // //     } catch (err) {
+// // // // //       console.error("❌ [IMAGE FETCH] FAILED:", err.message || err);
+// // // // //       return null;
+// // // // //     }
+// // // // //   }
+
+// // // // //   async function replaceUploadUrlsInHtml(html = "", backendBase = BACKEND_URL) {
+// // // // //     if (!html || typeof html !== "string") return html;
+// // // // //     const uploadRegex = /\/api\/orgs\/\d+\/uploads\/[A-Za-z0-9._-]+/g;
+// // // // //     const matches = html.match(uploadRegex);
+// // // // //     if (!matches || matches.length === 0) return html;
+
+// // // // //     const unique = Array.from(new Set(matches));
+// // // // //     const replacements = {};
+
+// // // // //     await Promise.all(
+// // // // //       unique.map(async (m) => {
+// // // // //         const normalized = normalizeUploadUrl(m, backendBase);
+// // // // //         const dataUrl = await fetchProtectedImageDataUrl(normalized, backendBase);
+// // // // //         replacements[m] = dataUrl || normalized;
+// // // // //       })
+// // // // //     );
+
+// // // // //     let out = html;
+// // // // //     Object.keys(replacements).forEach((orig) => {
+// // // // //       const safe = orig.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+// // // // //       out = out.replace(new RegExp(safe, "g"), replacements[orig]);
+// // // // //     });
+// // // // //     return out;
+// // // // //   }
+
+// // // // //   async function inlineAllImages(htmlString) {
+// // // // //     if (!htmlString) return htmlString;
+// // // // //     const parser = new DOMParser();
+// // // // //     const doc = parser.parseFromString(htmlString, "text/html");
+// // // // //     const imgs = doc.querySelectorAll("img");
+
+// // // // //     await Promise.all(
+// // // // //       Array.from(imgs).map(async (img) => {
+// // // // //         let src = img.getAttribute("src");
+// // // // //         if (!src || src.startsWith("data:") || src.startsWith("blob:")) return;
+// // // // //         try {
+// // // // //           const res = await fetch(src);
+// // // // //           if (!res.ok) throw new Error();
+// // // // //           const blob = await res.blob();
+// // // // //           const dataUrl = await blobToDataUrl(blob);
+// // // // //           img.setAttribute("src", dataUrl);
+// // // // //         } catch (err) {
+// // // // //           console.warn("Failed to inline image", src);
+// // // // //           img.remove();
+// // // // //         }
+// // // // //       })
+// // // // //     );
+// // // // //     return doc.documentElement.outerHTML;
+// // // // //   }
+
+// // // // //   function ensurePercent(v, defaultVal = "50%") {
+// // // // //     if (!v) return defaultVal;
+// // // // //     if (typeof v === "number") return `${v}%`;
+// // // // //     const str = String(v).trim();
+// // // // //     return str.endsWith("%") ? str : `${str}%`;
+// // // // //   }
+
+// // // // //   const handleDateChange = (event) => {
+// // // // //     const [year, month] = event.target.value.split("-");
+// // // // //     setSelectedDate({
+// // // // //       month: parseInt(month, 10),
+// // // // //       year: parseInt(year, 10),
+// // // // //     });
+// // // // //   };
+
+// // // // //   const handleDownload = async () => {
+// // // // //     try {
+// // // // //       if (!payrollData) {
+// // // // //         alert("No payroll data available to download.");
+// // // // //         return;
+// // // // //       }
+
+// // // // //       console.log("🚀 DOWNLOAD STARTED");
+// // // // //       console.log("Header data URL:", !!headerImgSrc);
+// // // // //       console.log("Footer data URL:", !!footerImgSrc);
+// // // // //       console.log("Watermark data URL:", !!watermarkImgSrc);
+// // // // //       console.log("Watermark props:", watermarkProps);
+
+// // // // //       const employeeName = payrollData.full_name || employeeDetails?.name || "N/A";
+// // // // //       const empId = payrollData.employee_id || employeeId || "N/A";
+// // // // //       const designation = payrollData.designation || employeeDetails?.designation || "N/A";
+
+// // // // //       const gender = payrollData?.gender || employeeDetails?.gender || "N/A";
+// // // // //       const dojRaw = employeeDetails?.date_of_joining || "N/A";
+// // // // //       const doj = dojRaw !== "N/A" 
+// // // // //         ? new Date(dojRaw).toLocaleDateString("en-IN", { day: "2-digit", month: "2-digit", year: "numeric" })
+// // // // //         : "N/A";
+
+// // // // //       const basicSalary = Number(payrollData.basic_salary || 0);
+// // // // //       const hra = Number(payrollData.hra || 0);
+// // // // //       const allowance = Number(payrollData.other_allowances || 0);
+// // // // //       const bonus = Number(payrollData.bonus || 0);
+// // // // //       const advanceRecovery = Number(payrollData.advance_recovery || 0);
+// // // // //       const lopDeduction = Number(payrollData.lop_deduction || 0);
+// // // // //       const pf = Number(payrollData.employee_pf || payrollData.pf || 0);
+// // // // //       const esic = Number(payrollData.esic || 0);
+// // // // //       const professionalTax = Number(payrollData.professional_tax || 0);
+// // // // //       const tds = Number(payrollData.tds || 0);
+// // // // //       const insurance = Number(payrollData.insurance || 0);
+// // // // //       const grossSalary = Number(payrollData.gross_salary || 0);
+
+// // // // //       const totalDeductions =
+// // // // //         pf + esic + professionalTax + tds + insurance + advanceRecovery + lopDeduction;
+
+// // // // //       const netSalary = Number(payrollData.net_salary || grossSalary - totalDeductions);
+
+// // // // //       const leavesTaken = Number(payrollData.lop_days || 0);
+// // // // //       const totalWorkingDays =
+// // // // //         attendance?.total_working_days || (leavesTaken > 0 ? 30 - leavesTaken : 30);
+
+// // // // //       const monthNames = [
+// // // // //         "January", "February", "March", "April", "May", "June", "July", "August",
+// // // // //         "September", "October", "November", "December",
+// // // // //       ];
+// // // // //       const monthYear = `${monthNames[selectedDate.month - 1]} ${selectedDate.year}`;
+
+// // // // //       const convertNumberToWords = (num) => {
+// // // // //         if (!num || num === 0) return "Zero Only";
+// // // // //         const ones = [
+// // // // //           "", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine",
+// // // // //           "Ten", "Eleven", "Twelve", "Thirteen", "Fourteen", "Fifteen", "Sixteen",
+// // // // //           "Seventeen", "Eighteen", "Nineteen",
+// // // // //         ];
+// // // // //         const tens = ["", "", "Twenty", "Thirty", "Forty", "Fifty", "Sixty", "Seventy", "Eighty", "Ninety"];
+// // // // //         const scales = ["", "Thousand", "Lakh", "Crore"];
+// // // // //         let words = "";
+// // // // //         let i = 0;
+// // // // //         let n = Math.round(num);
+// // // // //         while (n > 0) {
+// // // // //           let part = n % 100;
+// // // // //           if (part > 19) {
+// // // // //             words =
+// // // // //               tens[Math.floor(part / 10)] +
+// // // // //               (part % 10 ? " " + ones[part % 10] : "") +
+// // // // //               (i > 0 ? " " + scales[i] : "") +
+// // // // //               " " +
+// // // // //               words;
+// // // // //           } else if (part > 0) {
+// // // // //             words = ones[part] + (i > 0 ? " " + scales[i] : "") + " " + words;
+// // // // //           }
+// // // // //           n = Math.floor(n / 100);
+// // // // //           i += 2;
+// // // // //         }
+// // // // //         return words.trim() + " Only";
+// // // // //       };
+
+// // // // //       const netSalaryWords = convertNumberToWords(netSalary);
+
+// // // // //       const dataTableHtml = `
+// // // // //         <div style="font-family: Arial, Helvetica, sans-serif; font-size: 12px; color: #000; margin-bottom: 25px;">
+
+// // // // //           <div style="padding: 8px 0; text-align: center; font-weight: bold; font-size: 13px; color: #1a3c6d; margin-bottom: 12px;">
+// // // // //             EMPLOYEE DETAILS - ${monthYear.toUpperCase()}
+// // // // //           </div>
+
+// // // // //           <div style="display: flex; flex-wrap: wrap; gap: 20px;">
+// // // // //             <div style="flex: 1; min-width: 48%; box-sizing: border-box;">
+// // // // //               <div style="margin-bottom: 10px;">
+// // // // //                 <strong style="display: inline-block; width: 130px; color: #333;">Employee Name:</strong>
+// // // // //                 ${employeeName.toUpperCase()}
+// // // // //               </div>
+// // // // //               <div style="margin-bottom: 10px;">
+// // // // //                 <strong style="display: inline-block; width: 130px; color: #333;">Employee ID:</strong>
+// // // // //                 ${empId}
+// // // // //               </div>
+// // // // //               <div style="margin-bottom: 10px;">
+// // // // //                 <strong style="display: inline-block; width: 130px; color: #333;">Designation:</strong>
+// // // // //                 ${designation.toUpperCase() || "N/A"}
+// // // // //               </div>
+// // // // //               <div style="margin-bottom: 10px;">
+// // // // //                 <strong style="display: inline-block; width: 130px; color: #333;">PF No:</strong>
+// // // // //                 ${bankDetails?.pf_number || payrollData?.pf_number || "N/A"}
+// // // // //               </div>
+// // // // //               <div style="margin-bottom: 10px;">
+// // // // //                 <strong style="display: inline-block; width: 130px; color: #333;">ESI No:</strong>
+// // // // //                 ${bankDetails?.esi_number || payrollData?.esi_number || "N/A"}
+// // // // //               </div>
+// // // // //               <div style="margin-bottom: 10px;">
+// // // // //                 <strong style="display: inline-block; width: 130px; color: #333;">Gender:</strong>
+// // // // //                 ${gender}
+// // // // //               </div>
+// // // // //             </div>
+
+// // // // //             <div style="flex: 1; min-width: 48%; box-sizing: border-box;">
+// // // // //               <div style="margin-bottom: 10px;">
+// // // // //                 <strong style="display: inline-block; width: 130px; color: #333;">PAN:</strong>
+// // // // //                 ${bankDetails?.pan_number || employeeDetails?.pan_number || "N/A"}
+// // // // //               </div>
+// // // // //               <div style="margin-bottom: 10px;">
+// // // // //                 <strong style="display: inline-block; width: 130px; color: #333;">UAN:</strong>
+// // // // //                 ${bankDetails?.uin_number || employeeDetails?.uan_number || "N/A"}
+// // // // //               </div>
+// // // // //               <div style="margin-bottom: 10px;">
+// // // // //                 <strong style="display: inline-block; width: 130px; color: #333;">Account No:</strong>
+// // // // //                 ${bankDetails?.account_number || "N/A"}
+// // // // //               </div>
+// // // // //               <div style="margin-bottom: 10px;">
+// // // // //                 <strong style="display: inline-block; width: 130px; color: #333;">Working Days:</strong>
+// // // // //                 ${totalWorkingDays}
+// // // // //               </div>
+// // // // //               <div style="margin-bottom: 10px;">
+// // // // //                 <strong style="display: inline-block; width: 130px; color: #333;">LOP Days:</strong>
+// // // // //                 ${leavesTaken}
+// // // // //               </div>
+// // // // //               <div style="margin-bottom: 10px;">
+// // // // //                 <strong style="display: inline-block; width: 130px; color: #333;">Date of Joining:</strong>
+// // // // //                 ${doj}
+// // // // //               </div>
+// // // // //             </div>
+// // // // //           </div>
+// // // // //         </div>
+
+// // // // //         <table style="width: 100%; border-collapse: collapse;">
+// // // // //           <thead>
+// // // // //             <tr style="background-color: #f0f0f0;">
+// // // // //               <th style="border: 1px solid #000; padding: 8px; text-align: left;">Earnings</th>
+// // // // //               <th style="border: 1px solid #000; padding: 8px; text-align: right;">Amount (₹)</th>
+// // // // //               <th style="border: 1px solid #000; padding: 8px; text-align: left;">Deductions</th>
+// // // // //               <th style="border: 1px solid #000; padding: 8px; text-align: right;">Amount (₹)</th>
+// // // // //             </tr>
+// // // // //           </thead>
+// // // // //           <tbody>
+// // // // //             <tr>
+// // // // //               <td style="border: 1px solid #000; padding: 8px;">Basic Salary</td>
+// // // // //               <td style="border: 1px solid #000; padding: 8px; text-align: right;">${basicSalary.toFixed(2)}</td>
+// // // // //               <td style="border: 1px solid #000; padding: 8px;">PF</td>
+// // // // //               <td style="border: 1px solid #000; padding: 8px; text-align: right;">${pf.toFixed(2)}</td>
+// // // // //             </tr>
+// // // // //             <tr>
+// // // // //               <td style="border: 1px solid #000; padding: 8px;">HRA</td>
+// // // // //               <td style="border: 1px solid #000; padding: 8px; text-align: right;">${hra.toFixed(2)}</td>
+// // // // //               <td style="border: 1px solid #000; padding: 8px;">ESIC</td>
+// // // // //               <td style="border: 1px solid #000; padding: 8px; text-align: right;">${esic.toFixed(2)}</td>
+// // // // //             </tr>
+// // // // //             <tr>
+// // // // //               <td style="border: 1px solid #000; padding: 8px;">Other Allowances</td>
+// // // // //               <td style="border: 1px solid #000; padding: 8px; text-align: right;">${allowance.toFixed(2)}</td>
+// // // // //               <td style="border: 1px solid #000; padding: 8px;">Professional Tax</td>
+// // // // //               <td style="border: 1px solid #000; padding: 8px; text-align: right;">${professionalTax.toFixed(2)}</td>
+// // // // //             </tr>
+// // // // //             ${bonus > 0 ? `
+// // // // //             <tr>
+// // // // //               <td style="border: 1px solid #000; padding: 8px;">Bonus</td>
+// // // // //               <td style="border: 1px solid #000; padding: 8px; text-align: right;">${bonus.toFixed(2)}</td>
+// // // // //               <td style="border: 1px solid #000; padding: 8px;"></td>
+// // // // //               <td style="border: 1px solid #000; padding: 8px;"></td>
+// // // // //             </tr>` : ""}
+// // // // //             <tr>
+// // // // //               <td style="border: 1px solid #000; padding: 8px;"><strong>Gross Salary</strong></td>
+// // // // //               <td style="border: 1px solid #000; padding: 8px; text-align: right;"><strong>${grossSalary.toFixed(2)}</strong></td>
+// // // // //               <td style="border: 1px solid #000; padding: 8px;">TDS</td>
+// // // // //               <td style="border: 1px solid #000; padding: 8px; text-align: right;">${tds.toFixed(2)}</td>
+// // // // //             </tr>
+// // // // //             <tr>
+// // // // //               <td style="border: 1px solid #000; padding: 8px;"></td>
+// // // // //               <td style="border: 1px solid #000; padding: 8px;"></td>
+// // // // //               <td style="border: 1px solid #000; padding: 8px;">Insurance</td>
+// // // // //               <td style="border: 1px solid #000; padding: 8px; text-align: right;">${insurance.toFixed(2)}</td>
+// // // // //             </tr>
+// // // // //             ${advanceRecovery > 0 ? `
+// // // // //             <tr>
+// // // // //               <td style="border: 1px solid #000; padding: 8px;"></td>
+// // // // //               <td style="border: 1px solid #000; padding: 8px;"></td>
+// // // // //               <td style="border: 1px solid #000; padding: 8px;">Advance Recovery</td>
+// // // // //               <td style="border: 1px solid #000; padding: 8px; text-align: right;">${advanceRecovery.toFixed(2)}</td>
+// // // // //             </tr>` : ""}
+// // // // //             ${lopDeduction > 0 ? `
+// // // // //             <tr>
+// // // // //               <td style="border: 1px solid #000; padding: 8px;"></td>
+// // // // //               <td style="border: 1px solid #000; padding: 8px;"></td>
+// // // // //               <td style="border: 1px solid #000; padding: 8px;">LOP Deduction</td>
+// // // // //               <td style="border: 1px solid #000; padding: 8px; text-align: right;">${lopDeduction.toFixed(2)}</td>
+// // // // //             </tr>` : ""}
+// // // // //             <tr style="background-color: #f0f0f0;">
+// // // // //               <td style="border: 1px solid #000; padding: 8px;"></td>
+// // // // //               <td style="border: 1px solid #000; padding: 8px;"></td>
+// // // // //               <td style="border: 1px solid #000; padding: 8px;"><strong>Total Deductions</strong></td>
+// // // // //               <td style="border: 1px solid #000; padding: 8px; text-align: right;"><strong>${totalDeductions.toFixed(2)}</strong></td>
+// // // // //             </tr>
+// // // // //             <tr style="background-color: #e0e0e0; font-size: 14px;">
+// // // // //               <td style="border: 1px solid #000; padding: 12px; text-align: center;" colSpan="4">
+// // // // //                 <strong>Net Salary: ₹${netSalary.toFixed(2)} (${netSalaryWords})</strong>
+// // // // //               </td>
+// // // // //             </tr>
+// // // // //           </tbody>
+// // // // //         </table>
+// // // // //       `;
+
+// // // // //       let baseHtml = templateHtml || `<div class="template-page"><div class="template-body"></div></div>`;
+// // // // //       if (templateCss) {
+// // // // //         baseHtml = `<style>${templateCss}</style>${baseHtml}`;
+// // // // //       }
+
+// // // // //       const parser = new DOMParser();
+// // // // //       let doc = parser.parseFromString(baseHtml, "text/html");
+// // // // //       let pageContainer = doc.querySelector(".template-page") || doc.body;
+// // // // //       pageContainer.style.position = "relative";
+// // // // //       pageContainer.style.minHeight = "100vh";
+// // // // //       pageContainer.style.boxSizing = "border-box";
+
+// // // // //       let bodyDiv = doc.querySelector(".template-body") || pageContainer;
+// // // // //       bodyDiv.innerHTML = dataTableHtml;
+// // // // //       bodyDiv.style.padding = "20px 40px";
+
+// // // // //       if (headerImgSrc && !doc.querySelector(".template-header")) {
+// // // // //         const headerDiv = doc.createElement("div");
+// // // // //         headerDiv.className = "template-header";
+// // // // //         headerDiv.style.marginBottom = "20px";
+// // // // //         headerDiv.style.textAlign = "center";
+// // // // //         const img = doc.createElement("img");
+// // // // //         img.src = headerImgSrc;
+// // // // //         img.style.maxWidth = "100%";
+// // // // //         img.style.display = "block";
+// // // // //         headerDiv.appendChild(img);
+// // // // //         pageContainer.insertBefore(headerDiv, bodyDiv);
+// // // // //       }
+
+// // // // //       if (footerImgSrc && !doc.querySelector(".template-footer")) {
+// // // // //         const footerDiv = doc.createElement("div");
+// // // // //         footerDiv.className = "template-footer";
+// // // // //         footerDiv.style.marginTop = "20px";
+// // // // //         footerDiv.style.textAlign = "center";
+// // // // //         const img = doc.createElement("img");
+// // // // //         img.src = footerImgSrc;
+// // // // //         img.style.maxWidth = "100%";
+// // // // //         img.style.display = "block";
+// // // // //         footerDiv.appendChild(img);
+// // // // //         pageContainer.appendChild(footerDiv);
+// // // // //       }
+
+// // // // //       if (watermarkImgSrc) {
+// // // // //         doc.querySelectorAll(".pdf-watermark").forEach((el) => el.remove());
+// // // // //         const wmWrapper = doc.createElement("div");
+// // // // //         wmWrapper.className = "pdf-watermark";
+// // // // //         wmWrapper.style.position = "absolute";
+// // // // //         wmWrapper.style.top = watermarkProps.yPct;
+// // // // //         wmWrapper.style.left = watermarkProps.xPct;
+// // // // //         wmWrapper.style.width = watermarkProps.wPct;
+// // // // //         wmWrapper.style.height = watermarkProps.hPct;
+// // // // //         wmWrapper.style.transform = "translate(-50%, -50%)";
+// // // // //         wmWrapper.style.opacity = watermarkProps.opacity;
+// // // // //         wmWrapper.style.pointerEvents = "none";
+// // // // //         wmWrapper.style.zIndex = "-1";
+
+// // // // //         const img = doc.createElement("img");
+// // // // //         img.src = watermarkImgSrc;
+// // // // //         img.style.width = "100%";
+// // // // //         img.style.height = "100%";
+// // // // //         img.style.objectFit = "contain";
+// // // // //         wmWrapper.appendChild(img);
+
+// // // // //         pageContainer.insertBefore(wmWrapper, pageContainer.firstChild);
+// // // // //       }
+
+// // // // //       let finalHtml = doc.documentElement.outerHTML;
+// // // // //       finalHtml = await inlineAllImages(finalHtml);
+
+// // // // //       const processedTemplate = {
+// // // // //         html: finalHtml,
+// // // // //         css: "",
+// // // // //       };
+
+// // // // //       const blob = await generatePayslipPDF(
+// // // // //         payrollData,
+// // // // //         selectedDate,
+// // // // //         bankDetails || {},
+// // // // //         attendance || {},
+// // // // //         employeeDetails || {},
+// // // // //         processedTemplate
+// // // // //       );
+
+// // // // //       if (!blob) {
+// // // // //         alert("Failed to generate PDF. Please try again.");
+// // // // //         return;
+// // // // //       }
+
+// // // // //       const url = URL.createObjectURL(blob);
+// // // // //       const a = document.createElement("a");
+// // // // //       a.href = url;
+// // // // //       a.download = `Payslip_${empId}_${selectedDate.month.toString().padStart(2, "0")}_${selectedDate.year}.pdf`;
+// // // // //       document.body.appendChild(a);
+// // // // //       a.click();
+// // // // //       a.remove();
+// // // // //       URL.revokeObjectURL(url);
+// // // // //     } catch (err) {
+// // // // //       console.error("Failed to download payslip:", err);
+// // // // //       alert("Error generating PDF. Check console for details.");
+// // // // //     }
+// // // // //   };
+
+// // // // //   useEffect(() => {
+// // // // //     const fetchSelectedTemplate = async () => {
+// // // // //       if (!orgId) {
+// // // // //         console.log("No orgId - skipping template fetch");
+// // // // //         return;
+// // // // //       }
+
+// // // // //       console.log("🔄 TEMPLATE FETCH STARTED for orgId:", orgId);
+
+// // // // //       try {
+// // // // //         const prefsRes = await axios.get(`${BACKEND_URL}/api/salary-preferences`, {
+// // // // //           headers,
+// // // // //           withCredentials: true,
+// // // // //         });
+
+// // // // //         const selectedId = prefsRes.data?.data?.[0]?.selected_template_id;
+// // // // //         if (!selectedId) {
+// // // // //           console.log("⚠️ NO SELECTED TEMPLATE ID");
+// // // // //           return;
+// // // // //         }
+
+// // // // //         console.log("Selected template ID:", selectedId);
+
+// // // // //         const templatesRes = await axios.get(`${BACKEND_URL}/api/orgs/${orgId}/templates`, {
+// // // // //           headers,
+// // // // //           withCredentials: true,
+// // // // //         });
+
+// // // // //         const templates = templatesRes.data || [];
+// // // // //         const selectedTemplate = templates.find((t) => t.id === selectedId);
+
+// // // // //         if (!selectedTemplate) {
+// // // // //           console.log(`Template ${selectedId} not found in list`);
+// // // // //           return;
+// // // // //         }
+
+// // // // //         console.log("✅ Using template:", selectedTemplate.name);
+
+// // // // //         let processedHtml = await replaceUploadUrlsInHtml(selectedTemplate.html || "");
+// // // // //         setTemplateHtml(processedHtml);
+// // // // //         setTemplateCss(selectedTemplate.css || "");
+
+// // // // //         let grapes = null;
+// // // // //         const grapesField = selectedTemplate.grapes_json || selectedTemplate.grapesJson;
+// // // // //         if (grapesField) {
+// // // // //           try {
+// // // // //             grapes = typeof grapesField === "string" ? JSON.parse(grapesField) : grapesField;
+// // // // //           } catch (e) {
+// // // // //             console.error("Failed to parse grapes_json", e);
+// // // // //           }
+// // // // //         }
+
+// // // // //         let headerSrc = null;
+// // // // //         let footerSrc = null;
+// // // // //         let wmUrl = null;
+// // // // //         let wp = { ...watermarkProps };
+
+// // // // //         if (grapes) {
+// // // // //           headerSrc = grapes.headerUrl || grapes.header_url || headerSrc;
+// // // // //           footerSrc = grapes.footerUrl || grapes.footer_url || footerSrc;
+// // // // //           if (grapes.watermark?.url) {
+// // // // //             wmUrl = grapes.watermark.url;
+// // // // //             wp = {
+// // // // //               xPct: ensurePercent(grapes.watermark.xPct || grapes.watermark.x || "50%"),
+// // // // //               yPct: ensurePercent(grapes.watermark.yPct || grapes.watermark.y || "50%"),
+// // // // //               wPct: ensurePercent(grapes.watermark.wPct || grapes.watermark.w || "60%"),
+// // // // //               hPct: ensurePercent(grapes.watermark.hPct || grapes.watermark.h || "60%"),
+// // // // //               opacity: grapes.watermark.opacity ?? 0.12,
+// // // // //             };
+// // // // //           }
+// // // // //         }
+
+// // // // //         let metaObj = null;
+// // // // //         if (selectedTemplate.meta) {
+// // // // //           try {
+// // // // //             metaObj = typeof selectedTemplate.meta === "string" ? JSON.parse(selectedTemplate.meta) : selectedTemplate.meta;
+// // // // //           } catch {}
+// // // // //         }
+// // // // //         if (metaObj?.uploads) {
+// // // // //           headerSrc = metaObj.uploads.header || headerSrc;
+// // // // //           footerSrc = metaObj.uploads.footer || footerSrc;
+// // // // //           wmUrl = metaObj.uploads.watermark || wmUrl;
+// // // // //         }
+
+// // // // //         if (!headerSrc && selectedTemplate.thumbnail_url) {
+// // // // //           headerSrc = `/api/orgs/${orgId}/uploads/${selectedTemplate.thumbnail_url}`;
+// // // // //         }
+
+// // // // //         if (headerSrc) {
+// // // // //           const dataUrl = await fetchProtectedImageDataUrl(headerSrc);
+// // // // //           if (dataUrl) setHeaderImgSrc(dataUrl);
+// // // // //         }
+// // // // //         if (footerSrc) {
+// // // // //           const dataUrl = await fetchProtectedImageDataUrl(footerSrc);
+// // // // //           if (dataUrl) setFooterImgSrc(dataUrl);
+// // // // //         }
+// // // // //         if (wmUrl) {
+// // // // //           const dataUrl = await fetchProtectedImageDataUrl(wmUrl);
+// // // // //           if (dataUrl) {
+// // // // //             setWatermarkImgSrc(dataUrl);
+// // // // //             setWatermarkProps(wp);
+// // // // //           }
+// // // // //         }
+
+// // // // //         if (selectedTemplate.html) {
+// // // // //           const parser = new DOMParser();
+// // // // //           const doc = parser.parseFromString(selectedTemplate.html, "text/html");
+// // // // //           const headerImg = doc.querySelector(".template-header img");
+// // // // //           const footerImg = doc.querySelector(".template-footer img");
+// // // // //           if (headerImg && !headerImgSrc) {
+// // // // //             const dataUrl = await fetchProtectedImageDataUrl(headerImg.getAttribute("src"));
+// // // // //             if (dataUrl) setHeaderImgSrc(dataUrl);
+// // // // //           }
+// // // // //           if (footerImg && !footerImgSrc) {
+// // // // //             const dataUrl = await fetchProtectedImageDataUrl(footerImg.getAttribute("src"));
+// // // // //             if (dataUrl) setFooterImgSrc(dataUrl);
+// // // // //           }
+// // // // //         }
+// // // // //       } catch (err) {
+// // // // //         console.error("TEMPLATE FETCH ERROR:", err);
+// // // // //       }
+// // // // //     };
+
+// // // // //     fetchSelectedTemplate();
+// // // // //   }, [orgId]);
+
+// // // // //   useEffect(() => {
+// // // // //     return () => {
+// // // // //       protectedImgCache.clear();
+// // // // //     };
+// // // // //   }, []);
+
+// // // // //   useEffect(() => {
+// // // // //     if (!employeeId || !orgId) {
+// // // // //       setError("Missing employee ID or organization. Please log in again.");
+// // // // //       return;
+// // // // //     }
+
+// // // // //     const fetchAllData = async () => {
+// // // // //       setLoading(true);
+// // // // //       setError(null);
+// // // // //       setPayrollData(null);
+
+// // // // //       try {
+// // // // //         const empRes = await axios.get(`${BACKEND_URL}/api/employee-details/${employeeId}`, {
+// // // // //           headers,
+// // // // //           withCredentials: true,
+// // // // //         });
+// // // // //         setEmployeeDetails(empRes.data || null);
+// // // // //         setAttendance(empRes.data?.attendanceStats || null);
+
+// // // // //         try {
+// // // // //           const bankRes = await axios.get(`${BACKEND_URL}/api/bank-details/${employeeId}`, {
+// // // // //             headers,
+// // // // //             withCredentials: true,
+// // // // //           });
+// // // // //           setBankDetails(bankRes.data || {});
+// // // // //         } catch {
+// // // // //           setBankDetails({});
+// // // // //         }
+
+// // // // //         try {
+// // // // //           const salaryRes = await axios.get(
+// // // // //             `${BACKEND_URL}/api/salary-slip?employee_id=${employeeId}&month=${selectedDate.month}&year=${selectedDate.year}`,
+// // // // //             { headers, withCredentials: true }
+// // // // //           );
+// // // // //           setPayrollData(salaryRes.data || null);
+// // // // //         } catch (salaryErr) {
+// // // // //           if (salaryErr.response?.status === 404 || salaryErr.response?.data?.error === "Not found") {
+// // // // //             setPayrollData(null);
+// // // // //           } else {
+// // // // //             throw salaryErr;
+// // // // //           }
+// // // // //         }
+// // // // //       } catch (err) {
+// // // // //         console.error("Data load failed:", err);
+// // // // //         setError("Failed to load data. Please try again.");
+// // // // //       } finally {
+// // // // //         setLoading(false);
+// // // // //       }
+// // // // //     };
+
+// // // // //     fetchAllData();
+// // // // //   }, [selectedDate, employeeId, orgId]);
+
+// // // // //   const previewName = payrollData?.full_name || employeeDetails?.name || "N/A";
+// // // // //   const previewDesignation = payrollData?.designation || employeeDetails?.designation || "N/A";
+// // // // //   const previewBasic = Number(payrollData?.basic_salary || 0);
+// // // // //   const previewHra = Number(payrollData?.hra || 0);
+// // // // //   const previewAllowance = Number(payrollData?.other_allowances || 0);
+// // // // //   const previewBonus = Number(payrollData?.bonus || 0);
+// // // // //   const previewPf = Number(payrollData?.employee_pf || payrollData?.pf || 0);
+// // // // //   const previewEsic = Number(payrollData?.esic || 0);
+// // // // //   const previewPt = Number(payrollData?.professional_tax || 0);
+// // // // //   const previewTds = Number(payrollData?.tds || 0);
+// // // // //   const previewInsurance = Number(payrollData?.insurance || 0);
+// // // // //   const previewAdvanceRecovery = Number(payrollData?.advance_recovery || 0);
+// // // // //   const previewLopDeduction = Number(payrollData?.lop_deduction || 0);
+// // // // //   const previewGross = Number(payrollData?.gross_salary || 0);
+// // // // //   const previewTotalDed =
+// // // // //     previewPf + previewEsic + previewPt + previewTds + previewInsurance + previewAdvanceRecovery + previewLopDeduction;
+// // // // //   const previewNet = Number(payrollData?.net_salary || previewGross - previewTotalDed);
+
+// // // // //   return (
+// // // // //     <div className="payroll-container">
+// // // // //       <h1 className="payroll-title">Employee Payslip</h1>
+
+// // // // //       <div className="payroll-controls">
+// // // // //         <label className="payroll-label">Select Month & Year:</label>
+// // // // //         <select
+// // // // //           value={`${selectedDate.year}-${selectedDate.month.toString().padStart(2, "0")}`}
+// // // // //           onChange={handleDateChange}
+// // // // //           className="payroll-select"
+// // // // //         >
+// // // // //           {[...Array(12)].map((_, i) => {
+// // // // //             const date = new Date();
+// // // // //             date.setMonth(date.getMonth() - i);
+// // // // //             const monthNum = date.getMonth() + 1;
+// // // // //             const yearNum = date.getFullYear();
+// // // // //             return (
+// // // // //               <option key={i} value={`${yearNum}-${monthNum.toString().padStart(2, "0")}`}>
+// // // // //                 {date.toLocaleString("default", { month: "long" })} {yearNum}
+// // // // //               </option>
+// // // // //             );
+// // // // //           })}
+// // // // //         </select>
+// // // // //       </div>
+
+// // // // //       {loading && <p>Loading payroll data...</p>}
+// // // // //       {error && <p className="error">{error}</p>}
+
+// // // // //       {!loading && !error && payrollData ? (
+// // // // //         <div className="payslip">
+// // // // //           <h2>
+// // // // //             Payslip for {new Date(selectedDate.year, selectedDate.month - 1).toLocaleString("default", { month: "long", year: "numeric" })}
+// // // // //           </h2>
+
+// // // // //           {/* On-screen preview keeps original layout (with Bank Name and Account No) */}
+// // // // //           <table style={{ width: "100%", marginBottom: "20px", borderCollapse: "collapse", fontSize: "14px" }}>
+// // // // //             <tbody>
+// // // // //               <tr>
+// // // // //                 <td style={{ padding: "8px" }}><strong>Employee Name:</strong> {previewName}</td>
+// // // // //                 <td style={{ padding: "8px" }}><strong>Employee ID:</strong> {employeeId}</td>
+// // // // //               </tr>
+// // // // //               <tr>
+// // // // //                 <td style={{ padding: "8px" }}><strong>Bank:</strong> {bankDetails?.bank_name || "N/A"}</td>
+// // // // //                 <td style={{ padding: "8px" }}><strong>Account No:</strong> {bankDetails?.account_number || "N/A"}</td>
+// // // // //               </tr>
+// // // // //             </tbody>
+// // // // //           </table>
+
+// // // // //           <table className="payslip-table">
+// // // // //             <thead>
+// // // // //               <tr>
+// // // // //                 <th>Earnings</th>
+// // // // //                 <th>Amount (₹)</th>
+// // // // //                 <th>Deductions</th>
+// // // // //                 <th>Amount (₹)</th>
+// // // // //               </tr>
+// // // // //             </thead>
+// // // // //             <tbody>
+// // // // //               <tr>
+// // // // //                 <td>Basic Salary</td>
+// // // // //                 <td>₹{previewBasic.toFixed(2)}</td>
+// // // // //                 <td>PF</td>
+// // // // //                 <td>₹{previewPf.toFixed(2)}</td>
+// // // // //               </tr>
+// // // // //               <tr>
+// // // // //                 <td>HRA</td>
+// // // // //                 <td>₹{previewHra.toFixed(2)}</td>
+// // // // //                 <td>ESIC</td>
+// // // // //                 <td>₹{previewEsic.toFixed(2)}</td>
+// // // // //               </tr>
+// // // // //               <tr>
+// // // // //                 <td>Other Allowances</td>
+// // // // //                 <td>₹{previewAllowance.toFixed(2)}</td>
+// // // // //                 <td>Professional Tax</td>
+// // // // //                 <td>₹{previewPt.toFixed(2)}</td>
+// // // // //               </tr>
+// // // // //               {previewBonus > 0 && (
+// // // // //                 <tr>
+// // // // //                   <td>Bonus</td>
+// // // // //                   <td>₹{previewBonus.toFixed(2)}</td>
+// // // // //                   <td></td>
+// // // // //                   <td></td>
+// // // // //                 </tr>
+// // // // //               )}
+// // // // //               <tr>
+// // // // //                 <td><strong>Gross Salary</strong></td>
+// // // // //                 <td><strong>₹{previewGross.toFixed(2)}</strong></td>
+// // // // //                 <td>TDS</td>
+// // // // //                 <td>₹{previewTds.toFixed(2)}</td>
+// // // // //               </tr>
+// // // // //               <tr>
+// // // // //                 <td></td>
+// // // // //                 <td></td>
+// // // // //                 <td>Insurance</td>
+// // // // //                 <td>₹{previewInsurance.toFixed(2)}</td>
+// // // // //               </tr>
+// // // // //               {previewAdvanceRecovery > 0 && (
+// // // // //                 <tr>
+// // // // //                   <td></td>
+// // // // //                   <td></td>
+// // // // //                   <td>Advance Recovery</td>
+// // // // //                   <td>₹{previewAdvanceRecovery.toFixed(2)}</td>
+// // // // //                 </tr>
+// // // // //               )}
+// // // // //               {previewLopDeduction > 0 && (
+// // // // //                 <tr>
+// // // // //                   <td></td>
+// // // // //                   <td></td>
+// // // // //                   <td>LOP Deduction</td>
+// // // // //                   <td>₹{previewLopDeduction.toFixed(2)}</td>
+// // // // //                 </tr>
+// // // // //               )}
+// // // // //               <tr className="total-row">
+// // // // //                 <td colSpan="2"></td>
+// // // // //                 <td><strong>Total Deductions</strong></td>
+// // // // //                 <td><strong>₹{previewTotalDed.toFixed(2)}</strong></td>
+// // // // //               </tr>
+// // // // //               <tr className="net-salary-row">
+// // // // //                 <td colSpan="2"><strong>Net Salary</strong></td>
+// // // // //                 <td colSpan="2"><strong>₹{previewNet.toFixed(2)}</strong></td>
+// // // // //               </tr>
+// // // // //             </tbody>
+// // // // //           </table>
+
+// // // // //           <button onClick={handleDownload} className="payroll-download-btn">
+// // // // //             Download PDF
+// // // // //           </button>
+// // // // //         </div>
+// // // // //       ) : (
+// // // // //         !loading &&
+// // // // //         !error && <p>No payroll data available for this month.</p>
+// // // // //       )}
+// // // // //     </div>
+// // // // //   );
+// // // // // };
+
+// // // // // export default PayrollSummary;
+// // // // "use client";
+// // // // import React, { useState, useEffect } from "react";
+// // // // import axios from "axios";
+// // // // import generatePayslipPDF from "../../utils/generatePayslipPDF";
+// // // // import { useAuth } from "../../context/AuthProvider.client";
+// // // // import "./PayrollSummary.css";
+
+// // // // const PayrollSummary = () => {
+// // // //   const { user } = useAuth();
+
+// // // //   const getCurrentMonthYear = () => {
+// // // //     const now = new Date();
+// // // //     return { month: now.getMonth() + 1, year: now.getFullYear() };
+// // // //   };
+
+// // // //   const [selectedDate, setSelectedDate] = useState(getCurrentMonthYear());
+// // // //   const [payrollData, setPayrollData] = useState(null);
+// // // //   const [bankDetails, setBankDetails] = useState(null);
+// // // //   const [attendance, setAttendance] = useState(null);
+// // // //   const [employeeDetails, setEmployeeDetails] = useState(null);
+// // // //   const [templateHtml, setTemplateHtml] = useState(null);
+// // // //   const [templateCss, setTemplateCss] = useState(null);
+// // // //   const [headerImgSrc, setHeaderImgSrc] = useState(null); // data URL
+// // // //   const [footerImgSrc, setFooterImgSrc] = useState(null); // data URL
+// // // //   const [watermarkImgSrc, setWatermarkImgSrc] = useState(null); // data URL
+// // // //   const [watermarkProps, setWatermarkProps] = useState({
+// // // //     xPct: "50%",
+// // // //     yPct: "50%",
+// // // //     wPct: "60%",
+// // // //     hPct: "60%",
+// // // //     opacity: 0.12,
+// // // //   });
+
+// // // //   const [loading, setLoading] = useState(false);
+// // // //   const [error, setError] = useState(null);
+
+// // // //   const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5001";
+// // // //   const API_KEY = process.env.NEXT_PUBLIC_API_KEY;
+
+// // // //   const employeeId = user?.employeeId;
+// // // //   const orgId =
+// // // //     user?.orgId ??
+// // // //     user?.org_id ??
+// // // //     user?.raw?.org_id ??
+// // // //     user?.Org_id ??
+// // // //     user?.raw?.Org_id ??
+// // // //     null;
+
+// // // //   const headers = {
+// // // //     "x-api-key": API_KEY ?? "",
+// // // //     "x-employee-id": employeeId ?? "",
+// // // //     "x-org-id": orgId ?? "",
+// // // //   };
+
+// // // //   // Cache for image data URLs
+// // // //   const protectedImgCache = new Map();
+
+// // // //   function normalizeUploadUrl(src, backendBase = BACKEND_URL) {
+// // // //     if (!src) return src;
+// // // //     if (src.startsWith("blob:") || src.startsWith("data:")) return src;
+
+// // // //     const backend = backendBase.replace(/\/$/, "");
+// // // //     if (src.startsWith("/api/")) {
+// // // //       return backend + src;
+// // // //     }
+// // // //     try {
+// // // //       const url = new URL(src, window.location.origin);
+// // // //       const frontendOrigin = window.location.origin.replace(/\/$/, "");
+// // // //       if (backend && url.origin === frontendOrigin) {
+// // // //         return backend + url.pathname + url.search + url.hash;
+// // // //       }
+// // // //       return src;
+// // // //     } catch (e) {
+// // // //       return src;
+// // // //     }
+// // // //   }
+
+// // // //   const blobToDataUrl = (blob) => {
+// // // //     return new Promise((resolve, reject) => {
+// // // //       const reader = new FileReader();
+// // // //       reader.onload = () => resolve(reader.result);
+// // // //       reader.onerror = reject;
+// // // //       reader.readAsDataURL(blob);
+// // // //     });
+// // // //   };
+
+// // // //   async function fetchProtectedImageDataUrl(src, backendBase = BACKEND_URL) {
+// // // //     if (!src) return null;
+// // // //     if (src.startsWith("data:")) return src;
+
+// // // //     const normalized = normalizeUploadUrl(src, backendBase);
+
+// // // //     const cached = protectedImgCache.get(normalized);
+// // // //     if (cached) {
+// // // //       console.log("✅ [IMAGE FETCH] CACHE HIT:", normalized);
+// // // //       return cached;
+// // // //     }
+
+// // // //     console.log("🔍 [IMAGE FETCH] Trying URL:", normalized);
+
+// // // //     try {
+// // // //       const res = await axios.get(normalized, {
+// // // //         responseType: "blob",
+// // // //         headers,
+// // // //         withCredentials: true,
+// // // //       });
+// // // //       const dataUrl = await blobToDataUrl(res.data);
+// // // //       protectedImgCache.set(normalized, dataUrl);
+// // // //       console.log("✅ [IMAGE FETCH] SUCCESS → data URL created");
+// // // //       return dataUrl;
+// // // //     } catch (err) {
+// // // //       console.warn("⚠️ [IMAGE FETCH] Axios failed:", err?.response?.status || err.message);
+// // // //     }
+
+// // // //     try {
+// // // //       const res = await fetch(normalized, { credentials: "include" });
+// // // //       if (!res.ok) throw new Error(`Status ${res.status}`);
+// // // //       const blob = await res.blob();
+// // // //       const dataUrl = await blobToDataUrl(blob);
+// // // //       protectedImgCache.set(normalized, dataUrl);
+// // // //       console.log("✅ [IMAGE FETCH] Fallback fetch → data URL created");
+// // // //       return dataUrl;
+// // // //     } catch (err) {
+// // // //       console.error("❌ [IMAGE FETCH] FAILED:", err.message || err);
+// // // //       return null;
+// // // //     }
+// // // //   }
+
+// // // //   async function replaceUploadUrlsInHtml(html = "", backendBase = BACKEND_URL) {
+// // // //     if (!html || typeof html !== "string") return html;
+// // // //     const uploadRegex = /\/api\/orgs\/\d+\/uploads\/[A-Za-z0-9._-]+/g;
+// // // //     const matches = html.match(uploadRegex);
+// // // //     if (!matches || matches.length === 0) return html;
+
+// // // //     const unique = Array.from(new Set(matches));
+// // // //     const replacements = {};
+
+// // // //     await Promise.all(
+// // // //       unique.map(async (m) => {
+// // // //         const normalized = normalizeUploadUrl(m, backendBase);
+// // // //         const dataUrl = await fetchProtectedImageDataUrl(normalized, backendBase);
+// // // //         replacements[m] = dataUrl || normalized;
+// // // //       })
+// // // //     );
+
+// // // //     let out = html;
+// // // //     Object.keys(replacements).forEach((orig) => {
+// // // //       const safe = orig.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+// // // //       out = out.replace(new RegExp(safe, "g"), replacements[orig]);
+// // // //     });
+// // // //     return out;
+// // // //   }
+
+// // // //   async function inlineAllImages(htmlString) {
+// // // //     if (!htmlString) return htmlString;
+// // // //     const parser = new DOMParser();
+// // // //     const doc = parser.parseFromString(htmlString, "text/html");
+// // // //     const imgs = doc.querySelectorAll("img");
+
+// // // //     await Promise.all(
+// // // //       Array.from(imgs).map(async (img) => {
+// // // //         let src = img.getAttribute("src");
+// // // //         if (!src || src.startsWith("data:") || src.startsWith("blob:")) return;
+// // // //         try {
+// // // //           const res = await fetch(src);
+// // // //           if (!res.ok) throw new Error();
+// // // //           const blob = await res.blob();
+// // // //           const dataUrl = await blobToDataUrl(blob);
+// // // //           img.setAttribute("src", dataUrl);
+// // // //         } catch (err) {
+// // // //           console.warn("Failed to inline image", src);
+// // // //           img.remove();
+// // // //         }
+// // // //       })
+// // // //     );
+// // // //     return doc.documentElement.outerHTML;
+// // // //   }
+
+// // // //   function ensurePercent(v, defaultVal = "50%") {
+// // // //     if (!v) return defaultVal;
+// // // //     if (typeof v === "number") return `${v}%`;
+// // // //     const str = String(v).trim();
+// // // //     return str.endsWith("%") ? str : `${str}%`;
+// // // //   }
+
+// // // //   const handleDateChange = (event) => {
+// // // //     const [year, month] = event.target.value.split("-");
+// // // //     setSelectedDate({
+// // // //       month: parseInt(month, 10),
+// // // //       year: parseInt(year, 10),
+// // // //     });
+// // // //   };
+
+// // // //   const handleDownload = async () => {
+// // // //     try {
+// // // //       if (!payrollData) {
+// // // //         alert("No payroll data available to download.");
+// // // //         return;
+// // // //       }
+
+// // // //       console.log("🚀 DOWNLOAD STARTED");
+// // // //       console.log("Header data URL:", !!headerImgSrc);
+// // // //       console.log("Footer data URL:", !!footerImgSrc);
+// // // //       console.log("Watermark data URL:", !!watermarkImgSrc);
+// // // //       console.log("Watermark props:", watermarkProps);
+
+// // // //       const employeeName = payrollData.full_name || employeeDetails?.name || "N/A";
+// // // //       const empId = payrollData.employee_id || employeeId || "N/A";
+// // // //       const designation = payrollData.designation || employeeDetails?.designation || "N/A";
+
+// // // //       // Fetch gender from employee_personal (assuming available in employeeDetails or add separate fetch if needed)
+// // // //       const gender = employeeDetails?.gender || "N/A";
+
+// // // //       // Fetch date of joining from employee_professional
+// // // //       const dojRaw = employeeDetails?.joining_date || employeeDetails?.date_of_joining || "N/A";
+// // // //       const doj = dojRaw !== "N/A" 
+// // // //         ? new Date(dojRaw).toLocaleDateString("en-IN", { day: "2-digit", month: "2-digit", year: "numeric" })
+// // // //         : "N/A";
+
+// // // //       const basicSalary = Number(payrollData.basic_salary || 0);
+// // // //       const hra = Number(payrollData.hra || 0);
+// // // //       const allowance = Number(payrollData.other_allowances || 0);
+// // // //       const bonus = Number(payrollData.bonus || 0);
+// // // //       const advanceRecovery = Number(payrollData.advance_recovery || 0);
+// // // //       const lopDeduction = Number(payrollData.lop_deduction || 0);
+// // // //       const pf = Number(payrollData.employee_pf || payrollData.pf || 0);
+// // // //       const esic = Number(payrollData.esic || 0);
+// // // //       const professionalTax = Number(payrollData.professional_tax || 0);
+// // // //       const tds = Number(payrollData.tds || 0);
+// // // //       const insurance = Number(payrollData.insurance || 0);
+// // // //       const grossSalary = Number(payrollData.gross_salary || 0);
+
+// // // //       const totalDeductions =
+// // // //         pf + esic + professionalTax + tds + insurance + advanceRecovery + lopDeduction;
+
+// // // //       const netSalary = Number(payrollData.net_salary || grossSalary - totalDeductions);
+
+// // // //       const leavesTaken = Number(payrollData.lop_days || 0);
+// // // //       const totalWorkingDays =
+// // // //         attendance?.total_working_days || (leavesTaken > 0 ? 30 - leavesTaken : 30);
+
+// // // //       const monthNames = [
+// // // //         "January", "February", "March", "April", "May", "June", "July", "August",
+// // // //         "September", "October", "November", "December",
+// // // //       ];
+// // // //       const monthYear = `${monthNames[selectedDate.month - 1]} ${selectedDate.year}`;
+
+// // // //       const convertNumberToWords = (num) => {
+// // // //         if (!num || num === 0) return "Zero Only";
+// // // //         const ones = [
+// // // //           "", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine",
+// // // //           "Ten", "Eleven", "Twelve", "Thirteen", "Fourteen", "Fifteen", "Sixteen",
+// // // //           "Seventeen", "Eighteen", "Nineteen",
+// // // //         ];
+// // // //         const tens = ["", "", "Twenty", "Thirty", "Forty", "Fifty", "Sixty", "Seventy", "Eighty", "Ninety"];
+// // // //         const scales = ["", "Thousand", "Lakh", "Crore"];
+// // // //         let words = "";
+// // // //         let i = 0;
+// // // //         let n = Math.round(num);
+// // // //         while (n > 0) {
+// // // //           let part = n % 100;
+// // // //           if (part > 19) {
+// // // //             words =
+// // // //               tens[Math.floor(part / 10)] +
+// // // //               (part % 10 ? " " + ones[part % 10] : "") +
+// // // //               (i > 0 ? " " + scales[i] : "") +
+// // // //               " " +
+// // // //               words;
+// // // //           } else if (part > 0) {
+// // // //             words = ones[part] + (i > 0 ? " " + scales[i] : "") + " " + words;
+// // // //           }
+// // // //           n = Math.floor(n / 100);
+// // // //           i += 2;
+// // // //         }
+// // // //         return words.trim() + " Only";
+// // // //       };
+
+// // // //       const netSalaryWords = convertNumberToWords(netSalary);
+
+// // // //       const dataTableHtml = `
+// // // //         <div style="font-family: Arial, Helvetica, sans-serif; font-size: 12px; color: #000; margin-bottom: 25px;">
+
+// // // //           <div style="padding: 8px 0; text-align: center; font-weight: bold; font-size: 13px; color: #1a3c6d; margin-bottom: 12px;">
+// // // //             EMPLOYEE DETAILS - ${monthYear.toUpperCase()}
+// // // //           </div>
+
+// // // //           <div style="display: flex; flex-wrap: wrap; gap: 20px;">
+// // // //             <div style="flex: 1; min-width: 48%; box-sizing: border-box;">
+// // // //               <div style="margin-bottom: 10px;">
+// // // //                 <strong style="display: inline-block; width: 130px; color: #333;">Employee Name:</strong>
+// // // //                 ${employeeName.toUpperCase()}
+// // // //               </div>
+// // // //               <div style="margin-bottom: 10px;">
+// // // //                 <strong style="display: inline-block; width: 130px; color: #333;">Employee ID:</strong>
+// // // //                 ${empId}
+// // // //               </div>
+// // // //               <div style="margin-bottom: 10px;">
+// // // //                 <strong style="display: inline-block; width: 130px; color: #333;">Designation:</strong>
+// // // //                 ${designation.toUpperCase() || "N/A"}
+// // // //               </div>
+// // // //               <div style="margin-bottom: 10px;">
+// // // //                 <strong style="display: inline-block; width: 130px; color: #333;">PF No:</strong>
+// // // //                 ${bankDetails?.pf_number || payrollData?.pf_number || "N/A"}
+// // // //               </div>
+// // // //               <div style="margin-bottom: 10px;">
+// // // //                 <strong style="display: inline-block; width: 130px; color: #333;">ESI No:</strong>
+// // // //                 ${bankDetails?.esi_number || payrollData?.esi_number || "N/A"}
+// // // //               </div>
+// // // //               <div style="margin-bottom: 10px;">
+// // // //                 <strong style="display: inline-block; width: 130px; color: #333;">Gender:</strong>
+// // // //                 ${gender}
+// // // //               </div>
+// // // //             </div>
+
+// // // //             <div style="flex: 1; min-width: 48%; box-sizing: border-box;">
+// // // //               <div style="margin-bottom: 10px;">
+// // // //                 <strong style="display: inline-block; width: 130px; color: #333;">PAN:</strong>
+// // // //                 ${bankDetails?.pan_number || employeeDetails?.pan_number || "N/A"}
+// // // //               </div>
+// // // //               <div style="margin-bottom: 10px;">
+// // // //                 <strong style="display: inline-block; width: 130px; color: #333;">UAN:</strong>
+// // // //                 ${bankDetails?.uin_number || employeeDetails?.uan_number || "N/A"}
+// // // //               </div>
+// // // //               <div style="margin-bottom: 10px;">
+// // // //                 <strong style="display: inline-block; width: 130px; color: #333;">Account No:</strong>
+// // // //                 ${bankDetails?.account_number || "N/A"}
+// // // //               </div>
+// // // //               <div style="margin-bottom: 10px;">
+// // // //                 <strong style="display: inline-block; width: 130px; color: #333;">Working Days:</strong>
+// // // //                 ${totalWorkingDays}
+// // // //               </div>
+// // // //               <div style="margin-bottom: 10px;">
+// // // //                 <strong style="display: inline-block; width: 130px; color: #333;">LOP Days:</strong>
+// // // //                 ${leavesTaken}
+// // // //               </div>
+// // // //               <div style="margin-bottom: 10px;">
+// // // //                 <strong style="display: inline-block; width: 130px; color: #333;">Date of Joining:</strong>
+// // // //                 ${doj}
+// // // //               </div>
+// // // //             </div>
+// // // //           </div>
+// // // //         </div>
+
+// // // //         <table style="width: 100%; border-collapse: collapse;">
+// // // //           <thead>
+// // // //             <tr style="background-color: #f0f0f0;">
+// // // //               <th style="border: 1px solid #000; padding: 8px; text-align: left;">Earnings</th>
+// // // //               <th style="border: 1px solid #000; padding: 8px; text-align: right;">Amount (₹)</th>
+// // // //               <th style="border: 1px solid #000; padding: 8px; text-align: left;">Deductions</th>
+// // // //               <th style="border: 1px solid #000; padding: 8px; text-align: right;">Amount (₹)</th>
+// // // //             </tr>
+// // // //           </thead>
+// // // //           <tbody>
+// // // //             <tr>
+// // // //               <td style="border: 1px solid #000; padding: 8px;">Basic Salary</td>
+// // // //               <td style="border: 1px solid #000; padding: 8px; text-align: right;">${basicSalary.toFixed(2)}</td>
+// // // //               <td style="border: 1px solid #000; padding: 8px;">PF</td>
+// // // //               <td style="border: 1px solid #000; padding: 8px; text-align: right;">${pf.toFixed(2)}</td>
+// // // //             </tr>
+// // // //             <tr>
+// // // //               <td style="border: 1px solid #000; padding: 8px;">HRA</td>
+// // // //               <td style="border: 1px solid #000; padding: 8px; text-align: right;">${hra.toFixed(2)}</td>
+// // // //               <td style="border: 1px solid #000; padding: 8px;">ESIC</td>
+// // // //               <td style="border: 1px solid #000; padding: 8px; text-align: right;">${esic.toFixed(2)}</td>
+// // // //             </tr>
+// // // //             <tr>
+// // // //               <td style="border: 1px solid #000; padding: 8px;">Other Allowances</td>
+// // // //               <td style="border: 1px solid #000; padding: 8px; text-align: right;">${allowance.toFixed(2)}</td>
+// // // //               <td style="border: 1px solid #000; padding: 8px;">Professional Tax</td>
+// // // //               <td style="border: 1px solid #000; padding: 8px; text-align: right;">${professionalTax.toFixed(2)}</td>
+// // // //             </tr>
+// // // //             ${bonus > 0 ? `
+// // // //             <tr>
+// // // //               <td style="border: 1px solid #000; padding: 8px;">Bonus</td>
+// // // //               <td style="border: 1px solid #000; padding: 8px; text-align: right;">${bonus.toFixed(2)}</td>
+// // // //               <td style="border: 1px solid #000; padding: 8px;"></td>
+// // // //               <td style="border: 1px solid #000; padding: 8px;"></td>
+// // // //             </tr>` : ""}
+// // // //             <tr>
+// // // //               <td style="border: 1px solid #000; padding: 8px;"><strong>Gross Salary</strong></td>
+// // // //               <td style="border: 1px solid #000; padding: 8px; text-align: right;"><strong>${grossSalary.toFixed(2)}</strong></td>
+// // // //               <td style="border: 1px solid #000; padding: 8px;">TDS</td>
+// // // //               <td style="border: 1px solid #000; padding: 8px; text-align: right;">${tds.toFixed(2)}</td>
+// // // //             </tr>
+// // // //             <tr>
+// // // //               <td style="border: 1px solid #000; padding: 8px;"></td>
+// // // //               <td style="border: 1px solid #000; padding: 8px;"></td>
+// // // //               <td style="border: 1px solid #000; padding: 8px;">Insurance</td>
+// // // //               <td style="border: 1px solid #000; padding: 8px; text-align: right;">${insurance.toFixed(2)}</td>
+// // // //             </tr>
+// // // //             ${advanceRecovery > 0 ? `
+// // // //             <tr>
+// // // //               <td style="border: 1px solid #000; padding: 8px;"></td>
+// // // //               <td style="border: 1px solid #000; padding: 8px;"></td>
+// // // //               <td style="border: 1px solid #000; padding: 8px;">Advance Recovery</td>
+// // // //               <td style="border: 1px solid #000; padding: 8px; text-align: right;">${advanceRecovery.toFixed(2)}</td>
+// // // //             </tr>` : ""}
+// // // //             ${lopDeduction > 0 ? `
+// // // //             <tr>
+// // // //               <td style="border: 1px solid #000; padding: 8px;"></td>
+// // // //               <td style="border: 1px solid #000; padding: 8px;"></td>
+// // // //               <td style="border: 1px solid #000; padding: 8px;">LOP Deduction</td>
+// // // //               <td style="border: 1px solid #000; padding: 8px; text-align: right;">${lopDeduction.toFixed(2)}</td>
+// // // //             </tr>` : ""}
+// // // //             <tr style="background-color: #f0f0f0;">
+// // // //               <td style="border: 1px solid #000; padding: 8px;"></td>
+// // // //               <td style="border: 1px solid #000; padding: 8px;"></td>
+// // // //               <td style="border: 1px solid #000; padding: 8px;"><strong>Total Deductions</strong></td>
+// // // //               <td style="border: 1px solid #000; padding: 8px; text-align: right;"><strong>${totalDeductions.toFixed(2)}</strong></td>
+// // // //             </tr>
+// // // //             <tr style="background-color: #e0e0e0; font-size: 14px;">
+// // // //               <td style="border: 1px solid #000; padding: 12px; text-align: center;" colSpan="4">
+// // // //                 <strong>Net Salary: ₹${netSalary.toFixed(2)} (${netSalaryWords})</strong>
+// // // //               </td>
+// // // //             </tr>
+// // // //           </tbody>
+// // // //         </table>
+// // // //       `;
+
+// // // //       let baseHtml = templateHtml || `<div class="template-page"><div class="template-body"></div></div>`;
+// // // //       if (templateCss) {
+// // // //         baseHtml = `<style>${templateCss}</style>${baseHtml}`;
+// // // //       }
+
+// // // //       const parser = new DOMParser();
+// // // //       let doc = parser.parseFromString(baseHtml, "text/html");
+// // // //       let pageContainer = doc.querySelector(".template-page") || doc.body;
+// // // //       pageContainer.style.position = "relative";
+// // // //       pageContainer.style.minHeight = "100vh";
+// // // //       pageContainer.style.boxSizing = "border-box";
+
+// // // //       let bodyDiv = doc.querySelector(".template-body") || pageContainer;
+// // // //       bodyDiv.innerHTML = dataTableHtml;
+// // // //       bodyDiv.style.padding = "20px 40px";
+
+// // // //       if (headerImgSrc && !doc.querySelector(".template-header")) {
+// // // //         const headerDiv = doc.createElement("div");
+// // // //         headerDiv.className = "template-header";
+// // // //         headerDiv.style.marginBottom = "20px";
+// // // //         headerDiv.style.textAlign = "center";
+// // // //         const img = doc.createElement("img");
+// // // //         img.src = headerImgSrc;
+// // // //         img.style.maxWidth = "100%";
+// // // //         img.style.display = "block";
+// // // //         headerDiv.appendChild(img);
+// // // //         pageContainer.insertBefore(headerDiv, bodyDiv);
+// // // //       }
+
+// // // //       if (footerImgSrc && !doc.querySelector(".template-footer")) {
+// // // //         const footerDiv = doc.createElement("div");
+// // // //         footerDiv.className = "template-footer";
+// // // //         footerDiv.style.marginTop = "20px";
+// // // //         footerDiv.style.textAlign = "center";
+// // // //         const img = doc.createElement("img");
+// // // //         img.src = footerImgSrc;
+// // // //         img.style.maxWidth = "100%";
+// // // //         img.style.display = "block";
+// // // //         footerDiv.appendChild(img);
+// // // //         pageContainer.appendChild(footerDiv);
+// // // //       }
+
+// // // //       if (watermarkImgSrc) {
+// // // //         doc.querySelectorAll(".pdf-watermark").forEach((el) => el.remove());
+// // // //         const wmWrapper = doc.createElement("div");
+// // // //         wmWrapper.className = "pdf-watermark";
+// // // //         wmWrapper.style.position = "absolute";
+// // // //         wmWrapper.style.top = watermarkProps.yPct;
+// // // //         wmWrapper.style.left = watermarkProps.xPct;
+// // // //         wmWrapper.style.width = watermarkProps.wPct;
+// // // //         wmWrapper.style.height = watermarkProps.hPct;
+// // // //         wmWrapper.style.transform = "translate(-50%, -50%)";
+// // // //         wmWrapper.style.opacity = watermarkProps.opacity;
+// // // //         wmWrapper.style.pointerEvents = "none";
+// // // //         wmWrapper.style.zIndex = "-1";
+
+// // // //         const img = doc.createElement("img");
+// // // //         img.src = watermarkImgSrc;
+// // // //         img.style.width = "100%";
+// // // //         img.style.height = "100%";
+// // // //         img.style.objectFit = "contain";
+// // // //         wmWrapper.appendChild(img);
+
+// // // //         pageContainer.insertBefore(wmWrapper, pageContainer.firstChild);
+// // // //       }
+
+// // // //       let finalHtml = doc.documentElement.outerHTML;
+// // // //       finalHtml = await inlineAllImages(finalHtml);
+
+// // // //       const processedTemplate = {
+// // // //         html: finalHtml,
+// // // //         css: "",
+// // // //       };
+
+// // // //       const blob = await generatePayslipPDF(
+// // // //         payrollData,
+// // // //         selectedDate,
+// // // //         bankDetails || {},
+// // // //         attendance || {},
+// // // //         employeeDetails || {},
+// // // //         processedTemplate
+// // // //       );
+
+// // // //       if (!blob) {
+// // // //         alert("Failed to generate PDF. Please try again.");
+// // // //         return;
+// // // //       }
+
+// // // //       const url = URL.createObjectURL(blob);
+// // // //       const a = document.createElement("a");
+// // // //       a.href = url;
+// // // //       a.download = `Payslip_${empId}_${selectedDate.month.toString().padStart(2, "0")}_${selectedDate.year}.pdf`;
+// // // //       document.body.appendChild(a);
+// // // //       a.click();
+// // // //       a.remove();
+// // // //       URL.revokeObjectURL(url);
+// // // //     } catch (err) {
+// // // //       console.error("Failed to download payslip:", err);
+// // // //       alert("Error generating PDF. Check console for details.");
+// // // //     }
+// // // //   };
+
+// // // //   useEffect(() => {
+// // // //     const fetchSelectedTemplate = async () => {
+// // // //       if (!orgId) {
+// // // //         console.log("No orgId - skipping template fetch");
+// // // //         return;
+// // // //       }
+
+// // // //       console.log("🔄 TEMPLATE FETCH STARTED for orgId:", orgId);
+
+// // // //       try {
+// // // //         const prefsRes = await axios.get(`${BACKEND_URL}/api/salary-preferences`, {
+// // // //           headers,
+// // // //           withCredentials: true,
+// // // //         });
+
+// // // //         const selectedId = prefsRes.data?.data?.[0]?.selected_template_id;
+// // // //         if (!selectedId) {
+// // // //           console.log("⚠️ NO SELECTED TEMPLATE ID");
+// // // //           return;
+// // // //         }
+
+// // // //         console.log("Selected template ID:", selectedId);
+
+// // // //         const templatesRes = await axios.get(`${BACKEND_URL}/api/orgs/${orgId}/templates`, {
+// // // //           headers,
+// // // //           withCredentials: true,
+// // // //         });
+
+// // // //         const templates = templatesRes.data || [];
+// // // //         const selectedTemplate = templates.find((t) => t.id === selectedId);
+
+// // // //         if (!selectedTemplate) {
+// // // //           console.log(`Template ${selectedId} not found in list`);
+// // // //           return;
+// // // //         }
+
+// // // //         console.log("✅ Using template:", selectedTemplate.name);
+
+// // // //         let processedHtml = await replaceUploadUrlsInHtml(selectedTemplate.html || "");
+// // // //         setTemplateHtml(processedHtml);
+// // // //         setTemplateCss(selectedTemplate.css || "");
+
+// // // //         let grapes = null;
+// // // //         const grapesField = selectedTemplate.grapes_json || selectedTemplate.grapesJson;
+// // // //         if (grapesField) {
+// // // //           try {
+// // // //             grapes = typeof grapesField === "string" ? JSON.parse(grapesField) : grapesField;
+// // // //           } catch (e) {
+// // // //             console.error("Failed to parse grapes_json", e);
+// // // //           }
+// // // //         }
+
+// // // //         let headerSrc = null;
+// // // //         let footerSrc = null;
+// // // //         let wmUrl = null;
+// // // //         let wp = { ...watermarkProps };
+
+// // // //         if (grapes) {
+// // // //           headerSrc = grapes.headerUrl || grapes.header_url || headerSrc;
+// // // //           footerSrc = grapes.footerUrl || grapes.footer_url || footerSrc;
+// // // //           if (grapes.watermark?.url) {
+// // // //             wmUrl = grapes.watermark.url;
+// // // //             wp = {
+// // // //               xPct: ensurePercent(grapes.watermark.xPct || grapes.watermark.x || "50%"),
+// // // //               yPct: ensurePercent(grapes.watermark.yPct || grapes.watermark.y || "50%"),
+// // // //               wPct: ensurePercent(grapes.watermark.wPct || grapes.watermark.w || "60%"),
+// // // //               hPct: ensurePercent(grapes.watermark.hPct || grapes.watermark.h || "60%"),
+// // // //               opacity: grapes.watermark.opacity ?? 0.12,
+// // // //             };
+// // // //           }
+// // // //         }
+
+// // // //         let metaObj = null;
+// // // //         if (selectedTemplate.meta) {
+// // // //           try {
+// // // //             metaObj = typeof selectedTemplate.meta === "string" ? JSON.parse(selectedTemplate.meta) : selectedTemplate.meta;
+// // // //           } catch {}
+// // // //         }
+// // // //         if (metaObj?.uploads) {
+// // // //           headerSrc = metaObj.uploads.header || headerSrc;
+// // // //           footerSrc = metaObj.uploads.footer || footerSrc;
+// // // //           wmUrl = metaObj.uploads.watermark || wmUrl;
+// // // //         }
+
+// // // //         if (!headerSrc && selectedTemplate.thumbnail_url) {
+// // // //           headerSrc = `/api/orgs/${orgId}/uploads/${selectedTemplate.thumbnail_url}`;
+// // // //         }
+
+// // // //         if (headerSrc) {
+// // // //           const dataUrl = await fetchProtectedImageDataUrl(headerSrc);
+// // // //           if (dataUrl) setHeaderImgSrc(dataUrl);
+// // // //         }
+// // // //         if (footerSrc) {
+// // // //           const dataUrl = await fetchProtectedImageDataUrl(footerSrc);
+// // // //           if (dataUrl) setFooterImgSrc(dataUrl);
+// // // //         }
+// // // //         if (wmUrl) {
+// // // //           const dataUrl = await fetchProtectedImageDataUrl(wmUrl);
+// // // //           if (dataUrl) {
+// // // //             setWatermarkImgSrc(dataUrl);
+// // // //             setWatermarkProps(wp);
+// // // //           }
+// // // //         }
+
+// // // //         if (selectedTemplate.html) {
+// // // //           const parser = new DOMParser();
+// // // //           const doc = parser.parseFromString(selectedTemplate.html, "text/html");
+// // // //           const headerImg = doc.querySelector(".template-header img");
+// // // //           const footerImg = doc.querySelector(".template-footer img");
+// // // //           if (headerImg && !headerImgSrc) {
+// // // //             const dataUrl = await fetchProtectedImageDataUrl(headerImg.getAttribute("src"));
+// // // //             if (dataUrl) setHeaderImgSrc(dataUrl);
+// // // //           }
+// // // //           if (footerImg && !footerImgSrc) {
+// // // //             const dataUrl = await fetchProtectedImageDataUrl(footerImg.getAttribute("src"));
+// // // //             if (dataUrl) setFooterImgSrc(dataUrl);
+// // // //           }
+// // // //         }
+// // // //       } catch (err) {
+// // // //         console.error("TEMPLATE FETCH ERROR:", err);
+// // // //       }
+// // // //     };
+
+// // // //     fetchSelectedTemplate();
+// // // //   }, [orgId]);
+
+// // // //   useEffect(() => {
+// // // //     return () => {
+// // // //       protectedImgCache.clear();
+// // // //     };
+// // // //   }, []);
+
+// // // //   useEffect(() => {
+// // // //     if (!employeeId || !orgId) {
+// // // //       setError("Missing employee ID or organization. Please log in again.");
+// // // //       return;
+// // // //     }
+
+// // // //     const fetchAllData = async () => {
+// // // //       setLoading(true);
+// // // //       setError(null);
+// // // //       setPayrollData(null);
+
+// // // //       try {
+// // // //         const empRes = await axios.get(`${BACKEND_URL}/api/employee-details/${employeeId}`, {
+// // // //           headers,
+// // // //           withCredentials: true,
+// // // //         });
+// // // //         setEmployeeDetails(empRes.data || null);
+// // // //         setAttendance(empRes.data?.attendanceStats || null);
+
+// // // //         try {
+// // // //           const bankRes = await axios.get(`${BACKEND_URL}/api/bank-details/${employeeId}`, {
+// // // //             headers,
+// // // //             withCredentials: true,
+// // // //           });
+// // // //           setBankDetails(bankRes.data || {});
+// // // //         } catch {
+// // // //           setBankDetails({});
+// // // //         }
+
+// // // //         try {
+// // // //           const salaryRes = await axios.get(
+// // // //             `${BACKEND_URL}/api/salary-slip?employee_id=${employeeId}&month=${selectedDate.month}&year=${selectedDate.year}`,
+// // // //             { headers, withCredentials: true }
+// // // //           );
+// // // //           setPayrollData(salaryRes.data || null);
+// // // //         } catch (salaryErr) {
+// // // //           if (salaryErr.response?.status === 404 || salaryErr.response?.data?.error === "Not found") {
+// // // //             setPayrollData(null);
+// // // //           } else {
+// // // //             throw salaryErr;
+// // // //           }
+// // // //         }
+// // // //       } catch (err) {
+// // // //         console.error("Data load failed:", err);
+// // // //         setError("Failed to load data. Please try again.");
+// // // //       } finally {
+// // // //         setLoading(false);
+// // // //       }
+// // // //     };
+
+// // // //     fetchAllData();
+// // // //   }, [selectedDate, employeeId, orgId]);
+
+// // // //   const previewName = payrollData?.full_name || employeeDetails?.name || "N/A";
+// // // //   const previewDesignation = payrollData?.designation || employeeDetails?.designation || "N/A";
+// // // //   const previewBasic = Number(payrollData?.basic_salary || 0);
+// // // //   const previewHra = Number(payrollData?.hra || 0);
+// // // //   const previewAllowance = Number(payrollData?.other_allowances || 0);
+// // // //   const previewBonus = Number(payrollData?.bonus || 0);
+// // // //   const previewPf = Number(payrollData?.employee_pf || payrollData?.pf || 0);
+// // // //   const previewEsic = Number(payrollData?.esic || 0);
+// // // //   const previewPt = Number(payrollData?.professional_tax || 0);
+// // // //   const previewTds = Number(payrollData?.tds || 0);
+// // // //   const previewInsurance = Number(payrollData?.insurance || 0);
+// // // //   const previewAdvanceRecovery = Number(payrollData?.advance_recovery || 0);
+// // // //   const previewLopDeduction = Number(payrollData?.lop_deduction || 0);
+// // // //   const previewGross = Number(payrollData?.gross_salary || 0);
+// // // //   const previewTotalDed =
+// // // //     previewPf + previewEsic + previewPt + previewTds + previewInsurance + previewAdvanceRecovery + previewLopDeduction;
+// // // //   const previewNet = Number(payrollData?.net_salary || previewGross - previewTotalDed);
+
+// // // //   return (
+// // // //     <div className="payroll-container">
+// // // //       <h1 className="payroll-title">Employee Payslip</h1>
+
+// // // //       <div className="payroll-controls">
+// // // //         <label className="payroll-label">Select Month & Year:</label>
+// // // //         <select
+// // // //           value={`${selectedDate.year}-${selectedDate.month.toString().padStart(2, "0")}`}
+// // // //           onChange={handleDateChange}
+// // // //           className="payroll-select"
+// // // //         >
+// // // //           {[...Array(12)].map((_, i) => {
+// // // //             const date = new Date();
+// // // //             date.setMonth(date.getMonth() - i);
+// // // //             const monthNum = date.getMonth() + 1;
+// // // //             const yearNum = date.getFullYear();
+// // // //             return (
+// // // //               <option key={i} value={`${yearNum}-${monthNum.toString().padStart(2, "0")}`}>
+// // // //                 {date.toLocaleString("default", { month: "long" })} {yearNum}
+// // // //               </option>
+// // // //             );
+// // // //           })}
+// // // //         </select>
+// // // //       </div>
+
+// // // //       {loading && <p>Loading payroll data...</p>}
+// // // //       {error && <p className="error">{error}</p>}
+
+// // // //       {!loading && !error && payrollData ? (
+// // // //         <div className="payslip">
+// // // //           <h2>
+// // // //             Payslip for {new Date(selectedDate.year, selectedDate.month - 1).toLocaleString("default", { month: "long", year: "numeric" })}
+// // // //           </h2>
+
+// // // //           {/* On-screen preview (kept as before - with Bank Name and Account No) */}
+// // // //           <table style={{ width: "100%", marginBottom: "20px", borderCollapse: "collapse", fontSize: "14px" }}>
+// // // //             <tbody>
+// // // //               <tr>
+// // // //                 <td style={{ padding: "8px" }}><strong>Employee Name:</strong> {previewName}</td>
+// // // //                 <td style={{ padding: "8px" }}><strong>Employee ID:</strong> {employeeId}</td>
+// // // //               </tr>
+// // // //               <tr>
+// // // //                 <td style={{ padding: "8px" }}><strong>Bank:</strong> {bankDetails?.bank_name || "N/A"}</td>
+// // // //                 <td style={{ padding: "8px" }}><strong>Account No:</strong> {bankDetails?.account_number || "N/A"}</td>
+// // // //               </tr>
+// // // //             </tbody>
+// // // //           </table>
+
+// // // //           <table className="payslip-table">
+// // // //             <thead>
+// // // //               <tr>
+// // // //                 <th>Earnings</th>
+// // // //                 <th>Amount (₹)</th>
+// // // //                 <th>Deductions</th>
+// // // //                 <th>Amount (₹)</th>
+// // // //               </tr>
+// // // //             </thead>
+// // // //             <tbody>
+// // // //               <tr>
+// // // //                 <td>Basic Salary</td>
+// // // //                 <td>₹{previewBasic.toFixed(2)}</td>
+// // // //                 <td>PF</td>
+// // // //                 <td>₹{previewPf.toFixed(2)}</td>
+// // // //               </tr>
+// // // //               <tr>
+// // // //                 <td>HRA</td>
+// // // //                 <td>₹{previewHra.toFixed(2)}</td>
+// // // //                 <td>ESIC</td>
+// // // //                 <td>₹{previewEsic.toFixed(2)}</td>
+// // // //               </tr>
+// // // //               <tr>
+// // // //                 <td>Other Allowances</td>
+// // // //                 <td>₹{previewAllowance.toFixed(2)}</td>
+// // // //                 <td>Professional Tax</td>
+// // // //                 <td>₹{previewPt.toFixed(2)}</td>
+// // // //               </tr>
+// // // //               {previewBonus > 0 && (
+// // // //                 <tr>
+// // // //                   <td>Bonus</td>
+// // // //                   <td>₹{previewBonus.toFixed(2)}</td>
+// // // //                   <td></td>
+// // // //                   <td></td>
+// // // //                 </tr>
+// // // //               )}
+// // // //               <tr>
+// // // //                 <td><strong>Gross Salary</strong></td>
+// // // //                 <td><strong>₹{previewGross.toFixed(2)}</strong></td>
+// // // //                 <td>TDS</td>
+// // // //                 <td>₹{previewTds.toFixed(2)}</td>
+// // // //               </tr>
+// // // //               <tr>
+// // // //                 <td></td>
+// // // //                 <td></td>
+// // // //                 <td>Insurance</td>
+// // // //                 <td>₹{previewInsurance.toFixed(2)}</td>
+// // // //               </tr>
+// // // //               {previewAdvanceRecovery > 0 && (
+// // // //                 <tr>
+// // // //                   <td></td>
+// // // //                   <td></td>
+// // // //                   <td>Advance Recovery</td>
+// // // //                   <td>₹{previewAdvanceRecovery.toFixed(2)}</td>
+// // // //                 </tr>
+// // // //               )}
+// // // //               {previewLopDeduction > 0 && (
+// // // //                 <tr>
+// // // //                   <td></td>
+// // // //                   <td></td>
+// // // //                   <td>LOP Deduction</td>
+// // // //                   <td>₹{previewLopDeduction.toFixed(2)}</td>
+// // // //                 </tr>
+// // // //               )}
+// // // //               <tr className="total-row">
+// // // //                 <td colSpan="2"></td>
+// // // //                 <td><strong>Total Deductions</strong></td>
+// // // //                 <td><strong>₹{previewTotalDed.toFixed(2)}</strong></td>
+// // // //               </tr>
+// // // //               <tr className="net-salary-row">
+// // // //                 <td colSpan="2"><strong>Net Salary</strong></td>
+// // // //                 <td colSpan="2"><strong>₹{previewNet.toFixed(2)}</strong></td>
+// // // //               </tr>
+// // // //             </tbody>
+// // // //           </table>
+
+// // // //           <button onClick={handleDownload} className="payroll-download-btn">
+// // // //             Download PDF
+// // // //           </button>
+// // // //         </div>
+// // // //       ) : (
+// // // //         !loading &&
+// // // //         !error && <p>No payroll data available for this month.</p>
+// // // //       )}
+// // // //     </div>
+// // // //   );
+// // // // };
+
+// // // // export default PayrollSummary;
+// // // "use client";
+// // // import React, { useState, useEffect } from "react";
+// // // import axios from "axios";
+// // // import generatePayslipPDF from "../../utils/generatePayslipPDF";
+// // // import { useAuth } from "../../context/AuthProvider.client";
+// // // import "./PayrollSummary.css";
+
+// // // const PayrollSummary = () => {
+// // //   const { user } = useAuth();
+
+// // //   const getCurrentMonthYear = () => {
+// // //     const now = new Date();
+// // //     return { month: now.getMonth() + 1, year: now.getFullYear() };
+// // //   };
+
+// // //   const [selectedDate, setSelectedDate] = useState(getCurrentMonthYear());
+// // //   const [payrollData, setPayrollData] = useState(null);
+// // //   const [bankDetails, setBankDetails] = useState(null);
+// // //   const [attendance, setAttendance] = useState(null);
+// // //   const [employeeDetails, setEmployeeDetails] = useState(null);
+// // //   const [templateHtml, setTemplateHtml] = useState(null);
+// // //   const [templateCss, setTemplateCss] = useState(null);
+// // //   const [headerImgSrc, setHeaderImgSrc] = useState(null); // data URL
+// // //   const [footerImgSrc, setFooterImgSrc] = useState(null); // data URL
+// // //   const [watermarkImgSrc, setWatermarkImgSrc] = useState(null); // data URL
+// // //   const [watermarkProps, setWatermarkProps] = useState({
+// // //     xPct: "50%",
+// // //     yPct: "50%",
+// // //     wPct: "60%",
+// // //     hPct: "60%",
+// // //     opacity: 0.12,
+// // //   });
+
+// // //   const [loading, setLoading] = useState(false);
+// // //   const [error, setError] = useState(null);
+
+// // //   const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5001";
+// // //   const API_KEY = process.env.NEXT_PUBLIC_API_KEY;
+
+// // //   const employeeId = user?.employeeId;
+// // //   const orgId =
+// // //     user?.orgId ??
+// // //     user?.org_id ??
+// // //     user?.raw?.org_id ??
+// // //     user?.Org_id ??
+// // //     user?.raw?.Org_id ??
+// // //     null;
+
+// // //   const headers = {
+// // //     "x-api-key": API_KEY ?? "",
+// // //     "x-employee-id": employeeId ?? "",
+// // //     "x-org-id": orgId ?? "",
+// // //   };
+
+// // //   // Cache for image data URLs
+// // //   const protectedImgCache = new Map();
+
+// // //   function normalizeUploadUrl(src, backendBase = BACKEND_URL) {
+// // //     if (!src) return src;
+// // //     if (src.startsWith("blob:") || src.startsWith("data:")) return src;
+
+// // //     const backend = backendBase.replace(/\/$/, "");
+// // //     if (src.startsWith("/api/")) {
+// // //       return backend + src;
+// // //     }
+// // //     try {
+// // //       const url = new URL(src, window.location.origin);
+// // //       const frontendOrigin = window.location.origin.replace(/\/$/, "");
+// // //       if (backend && url.origin === frontendOrigin) {
+// // //         return backend + url.pathname + url.search + url.hash;
+// // //       }
+// // //       return src;
+// // //     } catch (e) {
+// // //       return src;
+// // //     }
+// // //   }
+
+// // //   const blobToDataUrl = (blob) => {
+// // //     return new Promise((resolve, reject) => {
+// // //       const reader = new FileReader();
+// // //       reader.onload = () => resolve(reader.result);
+// // //       reader.onerror = reject;
+// // //       reader.readAsDataURL(blob);
+// // //     });
+// // //   };
+
+// // //   async function fetchProtectedImageDataUrl(src, backendBase = BACKEND_URL) {
+// // //     if (!src) return null;
+// // //     if (src.startsWith("data:")) return src;
+
+// // //     const normalized = normalizeUploadUrl(src, backendBase);
+
+// // //     const cached = protectedImgCache.get(normalized);
+// // //     if (cached) {
+// // //       console.log("✅ [IMAGE FETCH] CACHE HIT:", normalized);
+// // //       return cached;
+// // //     }
+
+// // //     console.log("🔍 [IMAGE FETCH] Trying URL:", normalized);
+
+// // //     try {
+// // //       const res = await axios.get(normalized, {
+// // //         responseType: "blob",
+// // //         headers,
+// // //         withCredentials: true,
+// // //       });
+// // //       const dataUrl = await blobToDataUrl(res.data);
+// // //       protectedImgCache.set(normalized, dataUrl);
+// // //       console.log("✅ [IMAGE FETCH] SUCCESS → data URL created");
+// // //       return dataUrl;
+// // //     } catch (err) {
+// // //       console.warn("⚠️ [IMAGE FETCH] Axios failed:", err?.response?.status || err.message);
+// // //     }
+
+// // //     try {
+// // //       const res = await fetch(normalized, { credentials: "include" });
+// // //       if (!res.ok) throw new Error(`Status ${res.status}`);
+// // //       const blob = await res.blob();
+// // //       const dataUrl = await blobToDataUrl(blob);
+// // //       protectedImgCache.set(normalized, dataUrl);
+// // //       console.log("✅ [IMAGE FETCH] Fallback fetch → data URL created");
+// // //       return dataUrl;
+// // //     } catch (err) {
+// // //       console.error("❌ [IMAGE FETCH] FAILED:", err.message || err);
+// // //       return null;
+// // //     }
+// // //   }
+
+// // //   async function replaceUploadUrlsInHtml(html = "", backendBase = BACKEND_URL) {
+// // //     if (!html || typeof html !== "string") return html;
+// // //     const uploadRegex = /\/api\/orgs\/\d+\/uploads\/[A-Za-z0-9._-]+/g;
+// // //     const matches = html.match(uploadRegex);
+// // //     if (!matches || matches.length === 0) return html;
+
+// // //     const unique = Array.from(new Set(matches));
+// // //     const replacements = {};
+
+// // //     await Promise.all(
+// // //       unique.map(async (m) => {
+// // //         const normalized = normalizeUploadUrl(m, backendBase);
+// // //         const dataUrl = await fetchProtectedImageDataUrl(normalized, backendBase);
+// // //         replacements[m] = dataUrl || normalized;
+// // //       })
+// // //     );
+
+// // //     let out = html;
+// // //     Object.keys(replacements).forEach((orig) => {
+// // //       const safe = orig.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+// // //       out = out.replace(new RegExp(safe, "g"), replacements[orig]);
+// // //     });
+// // //     return out;
+// // //   }
+
+// // //   async function inlineAllImages(htmlString) {
+// // //     if (!htmlString) return htmlString;
+// // //     const parser = new DOMParser();
+// // //     const doc = parser.parseFromString(htmlString, "text/html");
+// // //     const imgs = doc.querySelectorAll("img");
+
+// // //     await Promise.all(
+// // //       Array.from(imgs).map(async (img) => {
+// // //         let src = img.getAttribute("src");
+// // //         if (!src || src.startsWith("data:") || src.startsWith("blob:")) return;
+// // //         try {
+// // //           const res = await fetch(src);
+// // //           if (!res.ok) throw new Error();
+// // //           const blob = await res.blob();
+// // //           const dataUrl = await blobToDataUrl(blob);
+// // //           img.setAttribute("src", dataUrl);
+// // //         } catch (err) {
+// // //           console.warn("Failed to inline image", src);
+// // //           img.remove();
+// // //         }
+// // //       })
+// // //     );
+// // //     return doc.documentElement.outerHTML;
+// // //   }
+
+// // //   function ensurePercent(v, defaultVal = "50%") {
+// // //     if (!v) return defaultVal;
+// // //     if (typeof v === "number") return `${v}%`;
+// // //     const str = String(v).trim();
+// // //     return str.endsWith("%") ? str : `${str}%`;
+// // //   }
+
+// // //   const handleDateChange = (event) => {
+// // //     const [year, month] = event.target.value.split("-");
+// // //     setSelectedDate({
+// // //       month: parseInt(month, 10),
+// // //       year: parseInt(year, 10),
+// // //     });
+// // //   };
+
+// // //   const handleDownload = async () => {
+// // //     try {
+// // //       if (!payrollData) {
+// // //         alert("No payroll data available to download.");
+// // //         return;
+// // //       }
+
+// // //       console.log("🚀 DOWNLOAD STARTED");
+// // //       console.log("Header data URL:", !!headerImgSrc);
+// // //       console.log("Footer data URL:", !!footerImgSrc);
+// // //       console.log("Watermark data URL:", !!watermarkImgSrc);
+// // //       console.log("Watermark props:", watermarkProps);
+
+// // //       const employeeName = payrollData.full_name || employeeDetails?.full_name || employeeDetails?.name || "N/A";
+// // //       const empId = payrollData.employee_id || employeeId || "N/A";
+// // //       const designation = payrollData.designation || employeeDetails?.designation || "N/A";
+
+// // //       const gender = employeeDetails?.gender || "N/A";
+
+// // //       const dojRaw = employeeDetails?.joining_date || "N/A";
+// // //       const doj = dojRaw !== "N/A" 
+// // //         ? new Date(dojRaw).toLocaleDateString("en-IN", { day: "2-digit", month: "2-digit", year: "numeric" })
+// // //         : "N/A";
+
+// // //       const basicSalary = Number(payrollData.basic_salary || 0);
+// // //       const hra = Number(payrollData.hra || 0);
+// // //       const allowance = Number(payrollData.other_allowances || 0);
+// // //       const bonus = Number(payrollData.bonus || 0);
+// // //       const advanceRecovery = Number(payrollData.advance_recovery || 0);
+// // //       const lopDeduction = Number(payrollData.lop_deduction || 0);
+// // //       const pf = Number(payrollData.employee_pf || payrollData.pf || 0);
+// // //       const esic = Number(payrollData.esic || 0);
+// // //       const professionalTax = Number(payrollData.professional_tax || 0);
+// // //       const tds = Number(payrollData.tds || 0);
+// // //       const insurance = Number(payrollData.insurance || 0);
+// // //       const grossSalary = Number(payrollData.gross_salary || 0);
+
+// // //       const totalDeductions =
+// // //         pf + esic + professionalTax + tds + insurance + advanceRecovery + lopDeduction;
+
+// // //       const netSalary = Number(payrollData.net_salary || grossSalary - totalDeductions);
+
+// // //       const leavesTaken = Number(payrollData.lop_days || 0);
+// // //       const totalWorkingDays =
+// // //         attendance?.total_working_days || (leavesTaken > 0 ? 30 - leavesTaken : 30);
+
+// // //       const monthNames = [
+// // //         "January", "February", "March", "April", "May", "June", "July", "August",
+// // //         "September", "October", "November", "December",
+// // //       ];
+// // //       const monthYear = `${monthNames[selectedDate.month - 1]} ${selectedDate.year}`;
+
+// // //       const convertNumberToWords = (num) => {
+// // //         if (!num || num === 0) return "Zero Only";
+// // //         const ones = [
+// // //           "", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine",
+// // //           "Ten", "Eleven", "Twelve", "Thirteen", "Fourteen", "Fifteen", "Sixteen",
+// // //           "Seventeen", "Eighteen", "Nineteen",
+// // //         ];
+// // //         const tens = ["", "", "Twenty", "Thirty", "Forty", "Fifty", "Sixty", "Seventy", "Eighty", "Ninety"];
+// // //         const scales = ["", "Thousand", "Lakh", "Crore"];
+// // //         let words = "";
+// // //         let i = 0;
+// // //         let n = Math.round(num);
+// // //         while (n > 0) {
+// // //           let part = n % 100;
+// // //           if (part > 19) {
+// // //             words =
+// // //               tens[Math.floor(part / 10)] +
+// // //               (part % 10 ? " " + ones[part % 10] : "") +
+// // //               (i > 0 ? " " + scales[i] : "") +
+// // //               " " +
+// // //               words;
+// // //           } else if (part > 0) {
+// // //             words = ones[part] + (i > 0 ? " " + scales[i] : "") + " " + words;
+// // //           }
+// // //           n = Math.floor(n / 100);
+// // //           i += 2;
+// // //         }
+// // //         return words.trim() + " Only";
+// // //       };
+
+// // //       const netSalaryWords = convertNumberToWords(netSalary);
+
+// // //       const dataTableHtml = `
+// // //         <div style="font-family: Arial, Helvetica, sans-serif; font-size: 12px; color: #000; margin-bottom: 25px;">
+
+// // //           <div style="padding: 8px 0; text-align: center; font-weight: bold; font-size: 13px; color: #1a3c6d; margin-bottom: 12px;">
+// // //             PAYSLIP FOR - ${monthYear.toUpperCase()}
+// // //           </div>
+
+// // //           <div style="display: flex; flex-wrap: wrap; gap: 20px;">
+// // //             <div style="flex: 1; min-width: 48%; box-sizing: border-box;">
+// // //               <div style="margin-bottom: 10px;">
+// // //                 <strong style="display: inline-block; width: 130px; color: #333;">Employee Name:</strong>
+// // //                 ${employeeName.toUpperCase()}
+// // //               </div>
+// // //               <div style="margin-bottom: 10px;">
+// // //                 <strong style="display: inline-block; width: 130px; color: #333;">Employee ID:</strong>
+// // //                 ${empId}
+// // //               </div>
+// // //               <div style="margin-bottom: 10px;">
+// // //                 <strong style="display: inline-block; width: 130px; color: #333;">Designation:</strong>
+// // //                 ${designation.toUpperCase() || "N/A"}
+// // //               </div>
+// // //               <div style="margin-bottom: 10px;">
+// // //                 <strong style="display: inline-block; width: 130px; color: #333;">PF No:</strong>
+// // //                 ${employeeDetails?.pf_number || bankDetails?.pf_number || payrollData?.pf_number || "N/A"}
+// // //               </div>
+// // //               <div style="margin-bottom: 10px;">
+// // //                 <strong style="display: inline-block; width: 130px; color: #333;">ESI No:</strong>
+// // //                 ${employeeDetails?.esi_number || bankDetails?.esi_number || payrollData?.esi_number || "N/A"}
+// // //               </div>
+// // //               <div style="margin-bottom: 10px;">
+// // //                 <strong style="display: inline-block; width: 130px; color: #333;">Gender:</strong>
+// // //                 ${gender}
+// // //               </div>
+// // //             </div>
+
+// // //             <div style="flex: 1; min-width: 48%; box-sizing: border-box;">
+// // //               <div style="margin-bottom: 10px;">
+// // //                 <strong style="display: inline-block; width: 130px; color: #333;">PAN:</strong>
+// // //                 ${employeeDetails?.pan_number || bankDetails?.pan_number || "N/A"}
+// // //               </div>
+// // //               <div style="margin-bottom: 10px;">
+// // //                 <strong style="display: inline-block; width: 130px; color: #333;">UAN:</strong>
+// // //                 ${employeeDetails?.uan_number || bankDetails?.uin_number || "N/A"}
+// // //               </div>
+// // //               <div style="margin-bottom: 10px;">
+// // //                 <strong style="display: inline-block; width: 130px; color: #333;">Account No:</strong>
+// // //                 ${bankDetails?.account_number || "N/A"}
+// // //               </div>
+// // //               <div style="margin-bottom: 10px;">
+// // //                 <strong style="display: inline-block; width: 130px; color: #333;">Working Days:</strong>
+// // //                 ${totalWorkingDays}
+// // //               </div>
+// // //               <div style="margin-bottom: 10px;">
+// // //                 <strong style="display: inline-block; width: 130px; color: #333;">LOP Days:</strong>
+// // //                 ${leavesTaken}
+// // //               </div>
+// // //               <div style="margin-bottom: 10px;">
+// // //                 <strong style="display: inline-block; width: 130px; color: #333;">Date of Joining:</strong>
+// // //                 ${doj}
+// // //               </div>
+// // //             </div>
+// // //           </div>
+// // //         </div>
+
+// // //         <table style="width: 100%; border-collapse: collapse;">
+// // //           <thead>
+// // //             <tr style="background-color: #f0f0f0;">
+// // //               <th style="border: 1px solid #000; padding: 8px; text-align: left;">Earnings</th>
+// // //               <th style="border: 1px solid #000; padding: 8px; text-align: right;">Amount (₹)</th>
+// // //               <th style="border: 1px solid #000; padding: 8px; text-align: left;">Deductions</th>
+// // //               <th style="border: 1px solid #000; padding: 8px; text-align: right;">Amount (₹)</th>
+// // //             </tr>
+// // //           </thead>
+// // //           <tbody>
+// // //             <tr>
+// // //               <td style="border: 1px solid #000; padding: 8px;">Basic Salary</td>
+// // //               <td style="border: 1px solid #000; padding: 8px; text-align: right;">${basicSalary.toFixed(2)}</td>
+// // //               <td style="border: 1px solid #000; padding: 8px;">PF</td>
+// // //               <td style="border: 1px solid #000; padding: 8px; text-align: right;">${pf.toFixed(2)}</td>
+// // //             </tr>
+// // //             <tr>
+// // //               <td style="border: 1px solid #000; padding: 8px;">HRA</td>
+// // //               <td style="border: 1px solid #000; padding: 8px; text-align: right;">${hra.toFixed(2)}</td>
+// // //               <td style="border: 1px solid #000; padding: 8px;">ESIC</td>
+// // //               <td style="border: 1px solid #000; padding: 8px; text-align: right;">${esic.toFixed(2)}</td>
+// // //             </tr>
+// // //             <tr>
+// // //               <td style="border: 1px solid #000; padding: 8px;">Other Allowances</td>
+// // //               <td style="border: 1px solid #000; padding: 8px; text-align: right;">${allowance.toFixed(2)}</td>
+// // //               <td style="border: 1px solid #000; padding: 8px;">Professional Tax</td>
+// // //               <td style="border: 1px solid #000; padding: 8px; text-align: right;">${professionalTax.toFixed(2)}</td>
+// // //             </tr>
+// // //             ${bonus > 0 ? `
+// // //             <tr>
+// // //               <td style="border: 1px solid #000; padding: 8px;">Bonus</td>
+// // //               <td style="border: 1px solid #000; padding: 8px; text-align: right;">${bonus.toFixed(2)}</td>
+// // //               <td style="border: 1px solid #000; padding: 8px;"></td>
+// // //               <td style="border: 1px solid #000; padding: 8px;"></td>
+// // //             </tr>` : ""}
+// // //             <tr>
+// // //               <td style="border: 1px solid #000; padding: 8px;"><strong>Gross Salary</strong></td>
+// // //               <td style="border: 1px solid #000; padding: 8px; text-align: right;"><strong>${grossSalary.toFixed(2)}</strong></td>
+// // //               <td style="border: 1px solid #000; padding: 8px;">TDS</td>
+// // //               <td style="border: 1px solid #000; padding: 8px; text-align: right;">${tds.toFixed(2)}</td>
+// // //             </tr>
+// // //             <tr>
+// // //               <td style="border: 1px solid #000; padding: 8px;"></td>
+// // //               <td style="border: 1px solid #000; padding: 8px;"></td>
+// // //               <td style="border: 1px solid #000; padding: 8px;">Insurance</td>
+// // //               <td style="border: 1px solid #000; padding: 8px; text-align: right;">${insurance.toFixed(2)}</td>
+// // //             </tr>
+// // //             ${advanceRecovery > 0 ? `
+// // //             <tr>
+// // //               <td style="border: 1px solid #000; padding: 8px;"></td>
+// // //               <td style="border: 1px solid #000; padding: 8px;"></td>
+// // //               <td style="border: 1px solid #000; padding: 8px;">Advance Recovery</td>
+// // //               <td style="border: 1px solid #000; padding: 8px; text-align: right;">${advanceRecovery.toFixed(2)}</td>
+// // //             </tr>` : ""}
+// // //             ${lopDeduction > 0 ? `
+// // //             <tr>
+// // //               <td style="border: 1px solid #000; padding: 8px;"></td>
+// // //               <td style="border: 1px solid #000; padding: 8px;"></td>
+// // //               <td style="border: 1px solid #000; padding: 8px;">LOP Deduction</td>
+// // //               <td style="border: 1px solid #000; padding: 8px; text-align: right;">${lopDeduction.toFixed(2)}</td>
+// // //             </tr>` : ""}
+// // //             <tr style="background-color: #f0f0f0;">
+// // //               <td style="border: 1px solid #000; padding: 8px;"></td>
+// // //               <td style="border: 1px solid #000; padding: 8px;"></td>
+// // //               <td style="border: 1px solid #000; padding: 8px;"><strong>Total Deductions</strong></td>
+// // //               <td style="border: 1px solid #000; padding: 8px; text-align: right;"><strong>${totalDeductions.toFixed(2)}</strong></td>
+// // //             </tr>
+// // //             <tr style="background-color: #e0e0e0; font-size: 14px;">
+// // //               <td style="border: 1px solid #000; padding: 12px; text-align: center;" colSpan="4">
+// // //                 <strong>Net Salary: ₹${netSalary.toFixed(2)} (${netSalaryWords})</strong>
+// // //               </td>
+// // //             </tr>
+// // //           </tbody>
+// // //         </table>
+// // //       `;
+
+// // //       let baseHtml = templateHtml || `<div class="template-page"><div class="template-body"></div></div>`;
+// // //       if (templateCss) {
+// // //         baseHtml = `<style>${templateCss}</style>${baseHtml}`;
+// // //       }
+
+// // //       const parser = new DOMParser();
+// // //       let doc = parser.parseFromString(baseHtml, "text/html");
+// // //       let pageContainer = doc.querySelector(".template-page") || doc.body;
+// // //       pageContainer.style.position = "relative";
+// // //       pageContainer.style.minHeight = "100vh";
+// // //       pageContainer.style.boxSizing = "border-box";
+
+// // //       let bodyDiv = doc.querySelector(".template-body") || pageContainer;
+// // //       bodyDiv.innerHTML = dataTableHtml;
+// // //       bodyDiv.style.padding = "20px 40px";
+
+// // //       if (headerImgSrc && !doc.querySelector(".template-header")) {
+// // //         const headerDiv = doc.createElement("div");
+// // //         headerDiv.className = "template-header";
+// // //         headerDiv.style.marginBottom = "20px";
+// // //         headerDiv.style.textAlign = "center";
+// // //         const img = doc.createElement("img");
+// // //         img.src = headerImgSrc;
+// // //         img.style.maxWidth = "100%";
+// // //         img.style.display = "block";
+// // //         headerDiv.appendChild(img);
+// // //         pageContainer.insertBefore(headerDiv, bodyDiv);
+// // //       }
+
+// // //       if (footerImgSrc && !doc.querySelector(".template-footer")) {
+// // //         const footerDiv = doc.createElement("div");
+// // //         footerDiv.className = "template-footer";
+// // //         footerDiv.style.marginTop = "20px";
+// // //         footerDiv.style.textAlign = "center";
+// // //         const img = doc.createElement("img");
+// // //         img.src = footerImgSrc;
+// // //         img.style.maxWidth = "100%";
+// // //         img.style.display = "block";
+// // //         footerDiv.appendChild(img);
+// // //         pageContainer.appendChild(footerDiv);
+// // //       }
+
+// // //       if (watermarkImgSrc) {
+// // //         doc.querySelectorAll(".pdf-watermark").forEach((el) => el.remove());
+// // //         const wmWrapper = doc.createElement("div");
+// // //         wmWrapper.className = "pdf-watermark";
+// // //         wmWrapper.style.position = "absolute";
+// // //         wmWrapper.style.top = watermarkProps.yPct;
+// // //         wmWrapper.style.left = watermarkProps.xPct;
+// // //         wmWrapper.style.width = watermarkProps.wPct;
+// // //         wmWrapper.style.height = watermarkProps.hPct;
+// // //         wmWrapper.style.transform = "translate(-50%, -50%)";
+// // //         wmWrapper.style.opacity = watermarkProps.opacity;
+// // //         wmWrapper.style.pointerEvents = "none";
+// // //         wmWrapper.style.zIndex = "-1";
+
+// // //         const img = doc.createElement("img");
+// // //         img.src = watermarkImgSrc;
+// // //         img.style.width = "100%";
+// // //         img.style.height = "100%";
+// // //         img.style.objectFit = "contain";
+// // //         wmWrapper.appendChild(img);
+
+// // //         pageContainer.insertBefore(wmWrapper, pageContainer.firstChild);
+// // //       }
+
+// // //       let finalHtml = doc.documentElement.outerHTML;
+// // //       finalHtml = await inlineAllImages(finalHtml);
+
+// // //       const processedTemplate = {
+// // //         html: finalHtml,
+// // //         css: "",
+// // //       };
+
+// // //       const blob = await generatePayslipPDF(
+// // //         payrollData,
+// // //         selectedDate,
+// // //         bankDetails || {},
+// // //         attendance || {},
+// // //         employeeDetails || {},
+// // //         processedTemplate
+// // //       );
+
+// // //       if (!blob) {
+// // //         alert("Failed to generate PDF. Please try again.");
+// // //         return;
+// // //       }
+
+// // //       const url = URL.createObjectURL(blob);
+// // //       const a = document.createElement("a");
+// // //       a.href = url;
+// // //       a.download = `Payslip_${empId}_${selectedDate.month.toString().padStart(2, "0")}_${selectedDate.year}.pdf`;
+// // //       document.body.appendChild(a);
+// // //       a.click();
+// // //       a.remove();
+// // //       URL.revokeObjectURL(url);
+// // //     } catch (err) {
+// // //       console.error("Failed to download payslip:", err);
+// // //       alert("Error generating PDF. Check console for details.");
+// // //     }
+// // //   };
+
+// // //   useEffect(() => {
+// // //     const fetchSelectedTemplate = async () => {
+// // //       if (!orgId) {
+// // //         console.log("No orgId - skipping template fetch");
+// // //         return;
+// // //       }
+
+// // //       console.log("🔄 TEMPLATE FETCH STARTED for orgId:", orgId);
+
+// // //       try {
+// // //         const prefsRes = await axios.get(`${BACKEND_URL}/api/salary-preferences`, {
+// // //           headers,
+// // //           withCredentials: true,
+// // //         });
+
+// // //         const selectedId = prefsRes.data?.data?.[0]?.selected_template_id;
+// // //         if (!selectedId) {
+// // //           console.log("⚠️ NO SELECTED TEMPLATE ID");
+// // //           return;
+// // //         }
+
+// // //         console.log("Selected template ID:", selectedId);
+
+// // //         const templatesRes = await axios.get(`${BACKEND_URL}/api/orgs/${orgId}/templates`, {
+// // //           headers,
+// // //           withCredentials: true,
+// // //         });
+
+// // //         const templates = templatesRes.data || [];
+// // //         const selectedTemplate = templates.find((t) => t.id === selectedId);
+
+// // //         if (!selectedTemplate) {
+// // //           console.log(`Template ${selectedId} not found in list`);
+// // //           return;
+// // //         }
+
+// // //         console.log("✅ Using template:", selectedTemplate.name);
+
+// // //         let processedHtml = await replaceUploadUrlsInHtml(selectedTemplate.html || "");
+// // //         setTemplateHtml(processedHtml);
+// // //         setTemplateCss(selectedTemplate.css || "");
+
+// // //         let grapes = null;
+// // //         const grapesField = selectedTemplate.grapes_json || selectedTemplate.grapesJson;
+// // //         if (grapesField) {
+// // //           try {
+// // //             grapes = typeof grapesField === "string" ? JSON.parse(grapesField) : grapesField;
+// // //           } catch (e) {
+// // //             console.error("Failed to parse grapes_json", e);
+// // //           }
+// // //         }
+
+// // //         let headerSrc = null;
+// // //         let footerSrc = null;
+// // //         let wmUrl = null;
+// // //         let wp = { ...watermarkProps };
+
+// // //         if (grapes) {
+// // //           headerSrc = grapes.headerUrl || grapes.header_url || headerSrc;
+// // //           footerSrc = grapes.footerUrl || grapes.footer_url || footerSrc;
+// // //           if (grapes.watermark?.url) {
+// // //             wmUrl = grapes.watermark.url;
+// // //             wp = {
+// // //               xPct: ensurePercent(grapes.watermark.xPct || grapes.watermark.x || "50%"),
+// // //               yPct: ensurePercent(grapes.watermark.yPct || grapes.watermark.y || "50%"),
+// // //               wPct: ensurePercent(grapes.watermark.wPct || grapes.watermark.w || "60%"),
+// // //               hPct: ensurePercent(grapes.watermark.hPct || grapes.watermark.h || "60%"),
+// // //               opacity: grapes.watermark.opacity ?? 0.12,
+// // //             };
+// // //           }
+// // //         }
+
+// // //         let metaObj = null;
+// // //         if (selectedTemplate.meta) {
+// // //           try {
+// // //             metaObj = typeof selectedTemplate.meta === "string" ? JSON.parse(selectedTemplate.meta) : selectedTemplate.meta;
+// // //           } catch {}
+// // //         }
+// // //         if (metaObj?.uploads) {
+// // //           headerSrc = metaObj.uploads.header || headerSrc;
+// // //           footerSrc = metaObj.uploads.footer || footerSrc;
+// // //           wmUrl = metaObj.uploads.watermark || wmUrl;
+// // //         }
+
+// // //         if (!headerSrc && selectedTemplate.thumbnail_url) {
+// // //           headerSrc = `/api/orgs/${orgId}/uploads/${selectedTemplate.thumbnail_url}`;
+// // //         }
+
+// // //         if (headerSrc) {
+// // //           const dataUrl = await fetchProtectedImageDataUrl(headerSrc);
+// // //           if (dataUrl) setHeaderImgSrc(dataUrl);
+// // //         }
+// // //         if (footerSrc) {
+// // //           const dataUrl = await fetchProtectedImageDataUrl(footerSrc);
+// // //           if (dataUrl) setFooterImgSrc(dataUrl);
+// // //         }
+// // //         if (wmUrl) {
+// // //           const dataUrl = await fetchProtectedImageDataUrl(wmUrl);
+// // //           if (dataUrl) {
+// // //             setWatermarkImgSrc(dataUrl);
+// // //             setWatermarkProps(wp);
+// // //           }
+// // //         }
+
+// // //         if (selectedTemplate.html) {
+// // //           const parser = new DOMParser();
+// // //           const doc = parser.parseFromString(selectedTemplate.html, "text/html");
+// // //           const headerImg = doc.querySelector(".template-header img");
+// // //           const footerImg = doc.querySelector(".template-footer img");
+// // //           if (headerImg && !headerImgSrc) {
+// // //             const dataUrl = await fetchProtectedImageDataUrl(headerImg.getAttribute("src"));
+// // //             if (dataUrl) setHeaderImgSrc(dataUrl);
+// // //           }
+// // //           if (footerImg && !footerImgSrc) {
+// // //             const dataUrl = await fetchProtectedImageDataUrl(footerImg.getAttribute("src"));
+// // //             if (dataUrl) setFooterImgSrc(dataUrl);
+// // //           }
+// // //         }
+// // //       } catch (err) {
+// // //         console.error("TEMPLATE FETCH ERROR:", err);
+// // //       }
+// // //     };
+
+// // //     fetchSelectedTemplate();
+// // //   }, [orgId]);
+
+// // //   useEffect(() => {
+// // //     return () => {
+// // //       protectedImgCache.clear();
+// // //     };
+// // //   }, []);
+
+// // //   useEffect(() => {
+// // //     if (!employeeId || !orgId) {
+// // //       setError("Missing employee ID or organization. Please log in again.");
+// // //       return;
+// // //     }
+
+// // //     const fetchAllData = async () => {
+// // //       setLoading(true);
+// // //       setError(null);
+// // //       setPayrollData(null);
+
+// // //       try {
+// // //         const empRes = await axios.get(`${BACKEND_URL}/api/employee-details/${employeeId}`, {
+// // //           headers,
+// // //           withCredentials: true,
+// // //         });
+// // //         setEmployeeDetails(empRes.data || null);
+// // //         setAttendance(empRes.data?.attendanceStats || null);
+
+// // //         try {
+// // //           const bankRes = await axios.get(`${BACKEND_URL}/api/bank-details/${employeeId}`, {
+// // //             headers,
+// // //             withCredentials: true,
+// // //           });
+// // //           setBankDetails(bankRes.data || {});
+// // //         } catch {
+// // //           setBankDetails({});
+// // //         }
+
+// // //         try {
+// // //           const salaryRes = await axios.get(
+// // //             `${BACKEND_URL}/api/salary-slip?employee_id=${employeeId}&month=${selectedDate.month}&year=${selectedDate.year}`,
+// // //             { headers, withCredentials: true }
+// // //           );
+// // //           setPayrollData(salaryRes.data || null);
+// // //         } catch (salaryErr) {
+// // //           if (salaryErr.response?.status === 404 || salaryErr.response?.data?.error === "Not found") {
+// // //             setPayrollData(null);
+// // //           } else {
+// // //             throw salaryErr;
+// // //           }
+// // //         }
+// // //       } catch (err) {
+// // //         console.error("Data load failed:", err);
+// // //         setError("Failed to load data. Please try again.");
+// // //       } finally {
+// // //         setLoading(false);
+// // //       }
+// // //     };
+
+// // //     fetchAllData();
+// // //   }, [selectedDate, employeeId, orgId]);
+
+// // //   const previewName = payrollData?.full_name || employeeDetails?.full_name || employeeDetails?.name || "N/A";
+// // //   const previewDesignation = payrollData?.designation || employeeDetails?.designation || "N/A";
+// // //   const previewBasic = Number(payrollData?.basic_salary || 0);
+// // //   const previewHra = Number(payrollData?.hra || 0);
+// // //   const previewAllowance = Number(payrollData?.other_allowances || 0);
+// // //   const previewBonus = Number(payrollData?.bonus || 0);
+// // //   const previewPf = Number(payrollData?.employee_pf || payrollData?.pf || 0);
+// // //   const previewEsic = Number(payrollData?.esic || 0);
+// // //   const previewPt = Number(payrollData?.professional_tax || 0);
+// // //   const previewTds = Number(payrollData?.tds || 0);
+// // //   const previewInsurance = Number(payrollData?.insurance || 0);
+// // //   const previewAdvanceRecovery = Number(payrollData?.advance_recovery || 0);
+// // //   const previewLopDeduction = Number(payrollData?.lop_deduction || 0);
+// // //   const previewGross = Number(payrollData?.gross_salary || 0);
+// // //   const previewTotalDed =
+// // //     previewPf + previewEsic + previewPt + previewTds + previewInsurance + previewAdvanceRecovery + previewLopDeduction;
+// // //   const previewNet = Number(payrollData?.net_salary || previewGross - previewTotalDed);
+
+// // //   return (
+// // //     <div className="payroll-container">
+// // //       <h1 className="payroll-title">Employee Payslip</h1>
+
+// // //       <div className="payroll-controls">
+// // //         <label className="payroll-label">Select Month & Year:</label>
+// // //         <select
+// // //           value={`${selectedDate.year}-${selectedDate.month.toString().padStart(2, "0")}`}
+// // //           onChange={handleDateChange}
+// // //           className="payroll-select"
+// // //         >
+// // //           {[...Array(12)].map((_, i) => {
+// // //             const date = new Date();
+// // //             date.setMonth(date.getMonth() - i);
+// // //             const monthNum = date.getMonth() + 1;
+// // //             const yearNum = date.getFullYear();
+// // //             return (
+// // //               <option key={i} value={`${yearNum}-${monthNum.toString().padStart(2, "0")}`}>
+// // //                 {date.toLocaleString("default", { month: "long" })} {yearNum}
+// // //               </option>
+// // //             );
+// // //           })}
+// // //         </select>
+// // //       </div>
+
+// // //       {loading && <p>Loading payroll data...</p>}
+// // //       {error && <p className="error">{error}</p>}
+
+// // //       {!loading && !error && payrollData ? (
+// // //         <div className="payslip">
+// // //           <h2>
+// // //             Payslip for {new Date(selectedDate.year, selectedDate.month - 1).toLocaleString("default", { month: "long", year: "numeric" })}
+// // //           </h2>
+
+// // //           {/* On-screen preview (unchanged - shows Bank Name and Account No) */}
+// // //           <table style={{ width: "100%", marginBottom: "20px", borderCollapse: "collapse", fontSize: "14px" }}>
+// // //             <tbody>
+// // //               <tr>
+// // //                 <td style={{ padding: "8px" }}><strong>Employee Name:</strong> {previewName}</td>
+// // //                 <td style={{ padding: "8px" }}><strong>Employee ID:</strong> {employeeId}</td>
+// // //               </tr>
+// // //               <tr>
+// // //                 <td style={{ padding: "8px" }}><strong>Bank:</strong> {bankDetails?.bank_name || "N/A"}</td>
+// // //                 <td style={{ padding: "8px" }}><strong>Account No:</strong> {bankDetails?.account_number || "N/A"}</td>
+// // //               </tr>
+// // //             </tbody>
+// // //           </table>
+
+// // //           <table className="payslip-table">
+// // //             <thead>
+// // //               <tr>
+// // //                 <th>Earnings</th>
+// // //                 <th>Amount (₹)</th>
+// // //                 <th>Deductions</th>
+// // //                 <th>Amount (₹)</th>
+// // //               </tr>
+// // //             </thead>
+// // //             <tbody>
+// // //               <tr>
+// // //                 <td>Basic Salary</td>
+// // //                 <td>₹{previewBasic.toFixed(2)}</td>
+// // //                 <td>PF</td>
+// // //                 <td>₹{previewPf.toFixed(2)}</td>
+// // //               </tr>
+// // //               <tr>
+// // //                 <td>HRA</td>
+// // //                 <td>₹{previewHra.toFixed(2)}</td>
+// // //                 <td>ESIC</td>
+// // //                 <td>₹{previewEsic.toFixed(2)}</td>
+// // //               </tr>
+// // //               <tr>
+// // //                 <td>Other Allowances</td>
+// // //                 <td>₹{previewAllowance.toFixed(2)}</td>
+// // //                 <td>Professional Tax</td>
+// // //                 <td>₹{previewPt.toFixed(2)}</td>
+// // //               </tr>
+// // //               {previewBonus > 0 && (
+// // //                 <tr>
+// // //                   <td>Bonus</td>
+// // //                   <td>₹{previewBonus.toFixed(2)}</td>
+// // //                   <td></td>
+// // //                   <td></td>
+// // //                 </tr>
+// // //               )}
+// // //               <tr>
+// // //                 <td><strong>Gross Salary</strong></td>
+// // //                 <td><strong>₹{previewGross.toFixed(2)}</strong></td>
+// // //                 <td>TDS</td>
+// // //                 <td>₹{previewTds.toFixed(2)}</td>
+// // //               </tr>
+// // //               <tr>
+// // //                 <td></td>
+// // //                 <td></td>
+// // //                 <td>Insurance</td>
+// // //                 <td>₹{previewInsurance.toFixed(2)}</td>
+// // //               </tr>
+// // //               {previewAdvanceRecovery > 0 && (
+// // //                 <tr>
+// // //                   <td></td>
+// // //                   <td></td>
+// // //                   <td>Advance Recovery</td>
+// // //                   <td>₹{previewAdvanceRecovery.toFixed(2)}</td>
+// // //                 </tr>
+// // //               )}
+// // //               {previewLopDeduction > 0 && (
+// // //                 <tr>
+// // //                   <td></td>
+// // //                   <td></td>
+// // //                   <td>LOP Deduction</td>
+// // //                   <td>₹{previewLopDeduction.toFixed(2)}</td>
+// // //                 </tr>
+// // //               )}
+// // //               <tr className="total-row">
+// // //                 <td colSpan="2"></td>
+// // //                 <td><strong>Total Deductions</strong></td>
+// // //                 <td><strong>₹{previewTotalDed.toFixed(2)}</strong></td>
+// // //               </tr>
+// // //               <tr className="net-salary-row">
+// // //                 <td colSpan="2"><strong>Net Salary</strong></td>
+// // //                 <td colSpan="2"><strong>₹{previewNet.toFixed(2)}</strong></td>
+// // //               </tr>
+// // //             </tbody>
+// // //           </table>
+
+// // //           <button onClick={handleDownload} className="payroll-download-btn">
+// // //             Download PDF
+// // //           </button>
+// // //         </div>
+// // //       ) : (
+// // //         !loading &&
+// // //         !error && <p>No payroll data available for this month.</p>
+// // //       )}
+// // //     </div>
+// // //   );
+// // // };
+
+// // // export default PayrollSummary;
+
+
+
+// // /////------------working code above this line-------------/////
+
+
+// // "use client";
+// // import React, { useState, useEffect } from "react";
+// // import axios from "axios";
+// // import generatePayslipPDF from "../../utils/generatePayslipPDF";
+// // import { useAuth } from "../../context/AuthProvider.client";
+// // import "./PayrollSummary.css";
+
+// // const PayrollSummary = () => {
+// //   const { user } = useAuth();
+
+// //   const getCurrentMonthYear = () => {
+// //     const now = new Date();
+// //     return { month: now.getMonth() + 1, year: now.getFullYear() };
+// //   };
+
+// //   const [selectedDate, setSelectedDate] = useState(getCurrentMonthYear());
+// //   const [payrollData, setPayrollData] = useState(null);
+// //   const [bankDetails, setBankDetails] = useState(null);
+// //   const [attendance, setAttendance] = useState(null);
+// //   const [employeeDetails, setEmployeeDetails] = useState(null);
+// //   const [templateHtml, setTemplateHtml] = useState(null);
+// //   const [templateCss, setTemplateCss] = useState(null);
+// //   const [headerImgSrc, setHeaderImgSrc] = useState(null); // data URL
+// //   const [footerImgSrc, setFooterImgSrc] = useState(null); // data URL
+// //   const [watermarkImgSrc, setWatermarkImgSrc] = useState(null); // data URL
+// //   const [watermarkProps, setWatermarkProps] = useState({
+// //     xPct: "50%",
+// //     yPct: "50%",
+// //     wPct: "60%",
+// //     hPct: "60%",
+// //     opacity: 0.12,
+// //   });
+
+// //   const [loading, setLoading] = useState(false);
+// //   const [error, setError] = useState(null);
+
+// //   const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5001";
+// //   const API_KEY = process.env.NEXT_PUBLIC_API_KEY;
+
+// //   const employeeId = user?.employeeId;
+// //   const orgId =
+// //     user?.orgId ??
+// //     user?.org_id ??
+// //     user?.raw?.org_id ??
+// //     user?.Org_id ??
+// //     user?.raw?.Org_id ??
+// //     null;
+
+// //   const headers = {
+// //     "x-api-key": API_KEY ?? "",
+// //     "x-employee-id": employeeId ?? "",
+// //     "x-org-id": orgId ?? "",
+// //   };
+
+// //   // Cache for image data URLs
+// //   const protectedImgCache = new Map();
+
+// //   function normalizeUploadUrl(src, backendBase = BACKEND_URL) {
+// //     if (!src) return src;
+// //     if (src.startsWith("blob:") || src.startsWith("data:")) return src;
+
+// //     const backend = backendBase.replace(/\/$/, "");
+// //     if (src.startsWith("/api/")) {
+// //       return backend + src;
+// //     }
+// //     try {
+// //       const url = new URL(src, window.location.origin);
+// //       const frontendOrigin = window.location.origin.replace(/\/$/, "");
+// //       if (backend && url.origin === frontendOrigin) {
+// //         return backend + url.pathname + url.search + url.hash;
+// //       }
+// //       return src;
+// //     } catch (e) {
+// //       return src;
+// //     }
+// //   }
+
+// //   const blobToDataUrl = (blob) => {
+// //     return new Promise((resolve, reject) => {
+// //       const reader = new FileReader();
+// //       reader.onload = () => resolve(reader.result);
+// //       reader.onerror = reject;
+// //       reader.readAsDataURL(blob);
+// //     });
+// //   };
+
+// //   async function fetchProtectedImageDataUrl(src, backendBase = BACKEND_URL) {
+// //     if (!src) return null;
+// //     if (src.startsWith("data:")) return src;
+
+// //     const normalized = normalizeUploadUrl(src, backendBase);
+
+// //     const cached = protectedImgCache.get(normalized);
+// //     if (cached) {
+// //       console.log("✅ [IMAGE FETCH] CACHE HIT:", normalized);
+// //       return cached;
+// //     }
+
+// //     console.log("🔍 [IMAGE FETCH] Trying URL:", normalized);
+
+// //     try {
+// //       const res = await axios.get(normalized, {
+// //         responseType: "blob",
+// //         headers,
+// //         withCredentials: true,
+// //       });
+// //       const dataUrl = await blobToDataUrl(res.data);
+// //       protectedImgCache.set(normalized, dataUrl);
+// //       console.log("✅ [IMAGE FETCH] SUCCESS → data URL created");
+// //       return dataUrl;
+// //     } catch (err) {
+// //       console.warn("⚠️ [IMAGE FETCH] Axios failed:", err?.response?.status || err.message);
+// //     }
+
+// //     try {
+// //       const res = await fetch(normalized, { credentials: "include" });
+// //       if (!res.ok) throw new Error(`Status ${res.status}`);
+// //       const blob = await res.blob();
+// //       const dataUrl = await blobToDataUrl(blob);
+// //       protectedImgCache.set(normalized, dataUrl);
+// //       console.log("✅ [IMAGE FETCH] Fallback fetch → data URL created");
+// //       return dataUrl;
+// //     } catch (err) {
+// //       console.error("❌ [IMAGE FETCH] FAILED:", err.message || err);
+// //       return null;
+// //     }
+// //   }
+
+// //   async function replaceUploadUrlsInHtml(html = "", backendBase = BACKEND_URL) {
+// //     if (!html || typeof html !== "string") return html;
+// //     const uploadRegex = /\/api\/orgs\/\d+\/uploads\/[A-Za-z0-9._-]+/g;
+// //     const matches = html.match(uploadRegex);
+// //     if (!matches || matches.length === 0) return html;
+
+// //     const unique = Array.from(new Set(matches));
+// //     const replacements = {};
+
+// //     await Promise.all(
+// //       unique.map(async (m) => {
+// //         const normalized = normalizeUploadUrl(m, backendBase);
+// //         const dataUrl = await fetchProtectedImageDataUrl(normalized, backendBase);
+// //         replacements[m] = dataUrl || normalized;
+// //       })
+// //     );
+
+// //     let out = html;
+// //     Object.keys(replacements).forEach((orig) => {
+// //       const safe = orig.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+// //       out = out.replace(new RegExp(safe, "g"), replacements[orig]);
+// //     });
+// //     return out;
+// //   }
+
+// //   async function inlineAllImages(htmlString) {
+// //     if (!htmlString) return htmlString;
+// //     const parser = new DOMParser();
+// //     const doc = parser.parseFromString(htmlString, "text/html");
+// //     const imgs = doc.querySelectorAll("img");
+
+// //     await Promise.all(
+// //       Array.from(imgs).map(async (img) => {
+// //         let src = img.getAttribute("src");
+// //         if (!src || src.startsWith("data:") || src.startsWith("blob:")) return;
+// //         try {
+// //           const res = await fetch(src);
+// //           if (!res.ok) throw new Error();
+// //           const blob = await res.blob();
+// //           const dataUrl = await blobToDataUrl(blob);
+// //           img.setAttribute("src", dataUrl);
+// //         } catch (err) {
+// //           console.warn("Failed to inline image", src);
+// //           img.remove();
+// //         }
+// //       })
+// //     );
+// //     return doc.documentElement.outerHTML;
+// //   }
+
+// //   function ensurePercent(v, defaultVal = "50%") {
+// //     if (!v) return defaultVal;
+// //     if (typeof v === "number") return `${v}%`;
+// //     const str = String(v).trim();
+// //     return str.endsWith("%") ? str : `${str}%`;
+// //   }
+
+// //   const handleDateChange = (event) => {
+// //     const [year, month] = event.target.value.split("-");
+// //     setSelectedDate({
+// //       month: parseInt(month, 10),
+// //       year: parseInt(year, 10),
+// //     });
+// //   };
+
+// //   const handleDownload = async () => {
+// //     try {
+// //       if (!payrollData) {
+// //         alert("No payroll data available to download.");
+// //         return;
+// //       }
+
+// //       console.log("🚀 DOWNLOAD STARTED");
+// //       console.log("Header data URL:", !!headerImgSrc);
+// //       console.log("Footer data URL:", !!footerImgSrc);
+// //       console.log("Watermark data URL:", !!watermarkImgSrc);
+// //       console.log("Watermark props:", watermarkProps);
+
+// //       const employeeName = payrollData.full_name || employeeDetails?.full_name || employeeDetails?.name || "N/A";
+// //       const empId = payrollData.employee_id || employeeId || "N/A";
+// //       const designation = payrollData.designation || employeeDetails?.designation || "N/A";
+
+// //       const gender = employeeDetails?.gender || "N/A";
+
+// //       const dojRaw = employeeDetails?.joining_date || "N/A";
+// //       const doj = dojRaw !== "N/A" 
+// //         ? new Date(dojRaw).toLocaleDateString("en-IN", { day: "2-digit", month: "2-digit", year: "numeric" })
+// //         : "N/A";
+
+// //       const pfNo = employeeDetails?.pf_number || bankDetails?.pf_number || payrollData?.pf_number || "N/A";
+// //       const esiNo = employeeDetails?.esi_number || bankDetails?.esi_number || payrollData?.esi_number || "N/A";
+// //       const panNo = employeeDetails?.pan_number || bankDetails?.pan_number || "N/A";
+// //       const uanNo = employeeDetails?.uan_number || bankDetails?.uin_number || "N/A";
+// //       const accountNo = bankDetails?.account_number || "N/A";
+
+// //       const basicSalary = Number(payrollData.basic_salary || 0);
+// //       const hra = Number(payrollData.hra || 0);
+// //       const allowance = Number(payrollData.other_allowances || 0);
+// //       const bonus = Number(payrollData.bonus || 0);
+// //       const advanceRecovery = Number(payrollData.advance_recovery || 0);
+// //       const lopDeduction = Number(payrollData.lop_deduction || 0);
+// //       const pf = Number(payrollData.employee_pf || payrollData.pf || 0);
+// //       const esic = Number(payrollData.esic || 0);
+// //       const professionalTax = Number(payrollData.professional_tax || 0);
+// //       const tds = Number(payrollData.tds || 0);
+// //       const insurance = Number(payrollData.insurance || 0);
+// //       const grossSalary = Number(payrollData.gross_salary || 0);
+
+// //       const totalDeductions =
+// //         pf + esic + professionalTax + tds + insurance + advanceRecovery + lopDeduction;
+
+// //       const netSalary = Number(payrollData.net_salary || grossSalary - totalDeductions);
+
+// //       const leavesTaken = Number(payrollData.lop_days || 0);
+// //       const totalWorkingDays =
+// //         attendance?.total_working_days || (leavesTaken > 0 ? 30 - leavesTaken : 30);
+
+// //       const monthNames = [
+// //         "January", "February", "March", "April", "May", "June", "July", "August",
+// //         "September", "October", "November", "December",
+// //       ];
+// //       const monthYear = `${monthNames[selectedDate.month - 1]} ${selectedDate.year}`;
+
+// //       const convertNumberToWords = (num) => {
+// //         if (!num || num === 0) return "Zero Only";
+// //         const ones = [
+// //           "", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine",
+// //           "Ten", "Eleven", "Twelve", "Thirteen", "Fourteen", "Fifteen", "Sixteen",
+// //           "Seventeen", "Eighteen", "Nineteen",
+// //         ];
+// //         const tens = ["", "", "Twenty", "Thirty", "Forty", "Fifty", "Sixty", "Seventy", "Eighty", "Ninety"];
+// //         const scales = ["", "Thousand", "Lakh", "Crore"];
+// //         let words = "";
+// //         let i = 0;
+// //         let n = Math.round(num);
+// //         while (n > 0) {
+// //           let part = n % 100;
+// //           if (part > 19) {
+// //             words =
+// //               tens[Math.floor(part / 10)] +
+// //               (part % 10 ? " " + ones[part % 10] : "") +
+// //               (i > 0 ? " " + scales[i] : "") +
+// //               " " +
+// //               words;
+// //           } else if (part > 0) {
+// //             words = ones[part] + (i > 0 ? " " + scales[i] : "") + " " + words;
+// //           }
+// //           n = Math.floor(n / 100);
+// //           i += 2;
+// //         }
+// //         return words.trim() + " Only";
+// //       };
+
+// //       const netSalaryWords = convertNumberToWords(netSalary);
+
+// //       const dataTableHtml = `
+// //         <div style="font-family: Arial, Helvetica, sans-serif; font-size: 12px; color: #000; margin-bottom: 25px;">
+
+// //           <div style="padding: 8px 0; text-align: center; font-weight: bold; font-size: 13px; color: #1a3c6d; margin-bottom: 12px;">
+// //             PAYSLIP FOR - ${monthYear.toUpperCase()}
+// //           </div>
+
+// //           <div style="display: flex; flex-wrap: wrap; gap: 20px;">
+// //             <div style="flex: 1; min-width: 48%; box-sizing: border-box;">
+// //               <div style="margin-bottom: 10px;">
+// //                 <strong style="display: inline-block; width: 130px; color: #333;">Employee Name:</strong>
+// //                 ${employeeName.toUpperCase()}
+// //               </div>
+// //               <div style="margin-bottom: 10px;">
+// //                 <strong style="display: inline-block; width: 130px; color: #333;">Employee ID:</strong>
+// //                 ${empId}
+// //               </div>
+// //               ${designation && designation !== "N/A" ? `
+// //               <div style="margin-bottom: 10px;">
+// //                 <strong style="display: inline-block; width: 130px; color: #333;">Designation:</strong>
+// //                 ${designation.toUpperCase()}
+// //               </div>` : ''}
+// //               ${pfNo && pfNo !== "N/A" ? `
+// //               <div style="margin-bottom: 10px;">
+// //                 <strong style="display: inline-block; width: 130px; color: #333;">PF No:</strong>
+// //                 ${pfNo}
+// //               </div>` : ''}
+// //               ${esiNo && esiNo !== "N/A" ? `
+// //               <div style="margin-bottom: 10px;">
+// //                 <strong style="display: inline-block; width: 130px; color: #333;">ESI No:</strong>
+// //                 ${esiNo}
+// //               </div>` : ''}
+// //               ${gender && gender !== "N/A" ? `
+// //               <div style="margin-bottom: 10px;">
+// //                 <strong style="display: inline-block; width: 130px; color: #333;">Gender:</strong>
+// //                 ${gender}
+// //               </div>` : ''}
+// //             </div>
+
+// //             <div style="flex: 1; min-width: 48%; box-sizing: border-box;">
+// //               ${panNo && panNo !== "N/A" ? `
+// //               <div style="margin-bottom: 10px;">
+// //                 <strong style="display: inline-block; width: 130px; color: #333;">PAN:</strong>
+// //                 ${panNo}
+// //               </div>` : ''}
+// //               ${uanNo && uanNo !== "N/A" ? `
+// //               <div style="margin-bottom: 10px;">
+// //                 <strong style="display: inline-block; width: 130px; color: #333;">UAN:</strong>
+// //                 ${uanNo}
+// //               </div>` : ''}
+// //               ${accountNo && accountNo !== "N/A" ? `
+// //               <div style="margin-bottom: 10px;">
+// //                 <strong style="display: inline-block; width: 130px; color: #333;">Account No:</strong>
+// //                 ${accountNo}
+// //               </div>` : ''}
+// //               <div style="margin-bottom: 10px;">
+// //                 <strong style="display: inline-block; width: 130px; color: #333;">Working Days:</strong>
+// //                 ${totalWorkingDays}
+// //               </div>
+// //               ${leavesTaken > 0 ? `
+// //               <div style="margin-bottom: 10px;">
+// //                 <strong style="display: inline-block; width: 130px; color: #333;">LOP Days:</strong>
+// //                 ${leavesTaken}
+// //               </div>` : ''}
+// //               ${doj && doj !== "N/A" ? `
+// //               <div style="margin-bottom: 10px;">
+// //                 <strong style="display: inline-block; width: 130px; color: #333;">Date of Joining:</strong>
+// //                 ${doj}
+// //               </div>` : ''}
+// //             </div>
+// //           </div>
+// //         </div>
+
+// //         <table style="width: 100%; border-collapse: collapse;">
+// //           <thead>
+// //             <tr style="background-color: #f0f0f0;">
+// //               <th style="border: 1px solid #000; padding: 8px; text-align: left;">Earnings</th>
+// //               <th style="border: 1px solid #000; padding: 8px; text-align: right;">Amount (₹)</th>
+// //               <th style="border: 1px solid #000; padding: 8px; text-align: left;">Deductions</th>
+// //               <th style="border: 1px solid #000; padding: 8px; text-align: right;">Amount (₹)</th>
+// //             </tr>
+// //           </thead>
+// //           <tbody>
+// //             ${basicSalary > 0 ? `
+// //             <tr>
+// //               <td style="border: 1px solid #000; padding: 8px;">Basic Salary</td>
+// //               <td style="border: 1px solid #000; padding: 8px; text-align: right;">${basicSalary.toFixed(2)}</td>
+// //               <td style="border: 1px solid #000; padding: 8px;"></td>
+// //               <td style="border: 1px solid #000; padding: 8px;"></td>
+// //             </tr>` : ''}
+// //             ${hra > 0 ? `
+// //             <tr>
+// //               <td style="border: 1px solid #000; padding: 8px;">HRA</td>
+// //               <td style="border: 1px solid #000; padding: 8px; text-align: right;">${hra.toFixed(2)}</td>
+// //               <td style="border: 1px solid #000; padding: 8px;"></td>
+// //               <td style="border: 1px solid #000; padding: 8px;"></td>
+// //             </tr>` : ''}
+// //             ${allowance > 0 ? `
+// //             <tr>
+// //               <td style="border: 1px solid #000; padding: 8px;">Other Allowances</td>
+// //               <td style="border: 1px solid #000; padding: 8px; text-align: right;">${allowance.toFixed(2)}</td>
+// //               <td style="border: 1px solid #000; padding: 8px;"></td>
+// //               <td style="border: 1px solid #000; padding: 8px;"></td>
+// //             </tr>` : ''}
+// //             ${bonus > 0 ? `
+// //             <tr>
+// //               <td style="border: 1px solid #000; padding: 8px;">Bonus</td>
+// //               <td style="border: 1px solid #000; padding: 8px; text-align: right;">${bonus.toFixed(2)}</td>
+// //               <td style="border: 1px solid #000; padding: 8px;"></td>
+// //               <td style="border: 1px solid #000; padding: 8px;"></td>
+// //             </tr>` : ''}
+// //             ${pf > 0 ? `
+// //             <tr>
+// //               <td style="border: 1px solid #000; padding: 8px;"></td>
+// //               <td style="border: 1px solid #000; padding: 8px;"></td>
+// //               <td style="border: 1px solid #000; padding: 8px;">PF</td>
+// //               <td style="border: 1px solid #000; padding: 8px; text-align: right;">${pf.toFixed(2)}</td>
+// //             </tr>` : ''}
+// //             ${esic > 0 ? `
+// //             <tr>
+// //               <td style="border: 1px solid #000; padding: 8px;"></td>
+// //               <td style="border: 1px solid #000; padding: 8px;"></td>
+// //               <td style="border: 1px solid #000; padding: 8px;">ESIC</td>
+// //               <td style="border: 1px solid #000; padding: 8px; text-align: right;">${esic.toFixed(2)}</td>
+// //             </tr>` : ''}
+// //             ${professionalTax > 0 ? `
+// //             <tr>
+// //               <td style="border: 1px solid #000; padding: 8px;"></td>
+// //               <td style="border: 1px solid #000; padding: 8px;"></td>
+// //               <td style="border: 1px solid #000; padding: 8px;">Professional Tax</td>
+// //               <td style="border: 1px solid #000; padding: 8px; text-align: right;">${professionalTax.toFixed(2)}</td>
+// //             </tr>` : ''}
+// //             ${tds > 0 ? `
+// //             <tr>
+// //               <td style="border: 1px solid #000; padding: 8px;"></td>
+// //               <td style="border: 1px solid #000; padding: 8px;"></td>
+// //               <td style="border: 1px solid #000; padding: 8px;">TDS</td>
+// //               <td style="border: 1px solid #000; padding: 8px; text-align: right;">${tds.toFixed(2)}</td>
+// //             </tr>` : ''}
+// //             ${insurance > 0 ? `
+// //             <tr>
+// //               <td style="border: 1px solid #000; padding: 8px;"></td>
+// //               <td style="border: 1px solid #000; padding: 8px;"></td>
+// //               <td style="border: 1px solid #000; padding: 8px;">Insurance</td>
+// //               <td style="border: 1px solid #000; padding: 8px; text-align: right;">${insurance.toFixed(2)}</td>
+// //             </tr>` : ''}
+// //             ${advanceRecovery > 0 ? `
+// //             <tr>
+// //               <td style="border: 1px solid #000; padding: 8px;"></td>
+// //               <td style="border: 1px solid #000; padding: 8px;"></td>
+// //               <td style="border: 1px solid #000; padding: 8px;">Advance Recovery</td>
+// //               <td style="border: 1px solid #000; padding: 8px; text-align: right;">${advanceRecovery.toFixed(2)}</td>
+// //             </tr>` : ''}
+// //             ${lopDeduction > 0 ? `
+// //             <tr>
+// //               <td style="border: 1px solid #000; padding: 8px;"></td>
+// //               <td style="border: 1px solid #000; padding: 8px;"></td>
+// //               <td style="border: 1px solid #000; padding: 8px;">LOP Deduction</td>
+// //               <td style="border: 1px solid #000; padding: 8px; text-align: right;">${lopDeduction.toFixed(2)}</td>
+// //             </tr>` : ''}
+// //             <tr style="background-color: #f0f0f0;">
+// //               <td style="border: 1px solid #000; padding: 8px;"><strong>Gross Salary</strong></td>
+// //               <td style="border: 1px solid #000; padding: 8px; text-align: right;"><strong>${grossSalary.toFixed(2)}</strong></td>
+// //               <td style="border: 1px solid #000; padding: 8px;"><strong>Total Deductions</strong></td>
+// //               <td style="border: 1px solid #000; padding: 8px; text-align: right;"><strong>${totalDeductions.toFixed(2)}</strong></td>
+// //             </tr>
+// //             <tr style="background-color: #e0e0e0; font-size: 14px;">
+// //               <td style="border: 1px solid #000; padding: 12px; text-align: center;" colSpan="4">
+// //                 <strong>Net Salary: ₹${netSalary.toFixed(2)} (${netSalaryWords})</strong>
+// //               </td>
+// //             </tr>
+// //           </tbody>
+// //         </table>
+// //       `;
+
+// //       let baseHtml = templateHtml || `<div class="template-page"><div class="template-body"></div></div>`;
+// //       if (templateCss) {
+// //         baseHtml = `<style>${templateCss}</style>${baseHtml}`;
+// //       }
+
+// //       const parser = new DOMParser();
+// //       let doc = parser.parseFromString(baseHtml, "text/html");
+// //       let pageContainer = doc.querySelector(".template-page") || doc.body;
+// //       pageContainer.style.position = "relative";
+// //       pageContainer.style.minHeight = "100vh";
+// //       pageContainer.style.boxSizing = "border-box";
+
+// //       let bodyDiv = doc.querySelector(".template-body") || pageContainer;
+// //       bodyDiv.innerHTML = dataTableHtml;
+// //       bodyDiv.style.padding = "20px 40px";
+
+// //       if (headerImgSrc && !doc.querySelector(".template-header")) {
+// //         const headerDiv = doc.createElement("div");
+// //         headerDiv.className = "template-header";
+// //         headerDiv.style.marginBottom = "20px";
+// //         headerDiv.style.textAlign = "center";
+// //         const img = doc.createElement("img");
+// //         img.src = headerImgSrc;
+// //         img.style.maxWidth = "100%";
+// //         img.style.display = "block";
+// //         headerDiv.appendChild(img);
+// //         pageContainer.insertBefore(headerDiv, bodyDiv);
+// //       }
+
+// //       if (footerImgSrc && !doc.querySelector(".template-footer")) {
+// //         const footerDiv = doc.createElement("div");
+// //         footerDiv.className = "template-footer";
+// //         footerDiv.style.marginTop = "20px";
+// //         footerDiv.style.textAlign = "center";
+// //         const img = doc.createElement("img");
+// //         img.src = footerImgSrc;
+// //         img.style.maxWidth = "100%";
+// //         img.style.display = "block";
+// //         footerDiv.appendChild(img);
+// //         pageContainer.appendChild(footerDiv);
+// //       }
+
+// //       if (watermarkImgSrc) {
+// //         doc.querySelectorAll(".pdf-watermark").forEach((el) => el.remove());
+// //         const wmWrapper = doc.createElement("div");
+// //         wmWrapper.className = "pdf-watermark";
+// //         wmWrapper.style.position = "absolute";
+// //         wmWrapper.style.top = watermarkProps.yPct;
+// //         wmWrapper.style.left = watermarkProps.xPct;
+// //         wmWrapper.style.width = watermarkProps.wPct;
+// //         wmWrapper.style.height = watermarkProps.hPct;
+// //         wmWrapper.style.transform = "translate(-50%, -50%)";
+// //         wmWrapper.style.opacity = watermarkProps.opacity;
+// //         wmWrapper.style.pointerEvents = "none";
+// //         wmWrapper.style.zIndex = "-1";
+
+// //         const img = doc.createElement("img");
+// //         img.src = watermarkImgSrc;
+// //         img.style.width = "100%";
+// //         img.style.height = "100%";
+// //         img.style.objectFit = "contain";
+// //         wmWrapper.appendChild(img);
+
+// //         pageContainer.insertBefore(wmWrapper, pageContainer.firstChild);
+// //       }
+
+// //       let finalHtml = doc.documentElement.outerHTML;
+// //       finalHtml = await inlineAllImages(finalHtml);
+
+// //       const processedTemplate = {
+// //         html: finalHtml,
+// //         css: "",
+// //       };
+
+// //       const blob = await generatePayslipPDF(
+// //         payrollData,
+// //         selectedDate,
+// //         bankDetails || {},
+// //         attendance || {},
+// //         employeeDetails || {},
+// //         processedTemplate
+// //       );
+
+// //       if (!blob) {
+// //         alert("Failed to generate PDF. Please try again.");
+// //         return;
+// //       }
+
+// //       const url = URL.createObjectURL(blob);
+// //       const a = document.createElement("a");
+// //       a.href = url;
+// //       a.download = `Payslip_${empId}_${selectedDate.month.toString().padStart(2, "0")}_${selectedDate.year}.pdf`;
+// //       document.body.appendChild(a);
+// //       a.click();
+// //       a.remove();
+// //       URL.revokeObjectURL(url);
+// //     } catch (err) {
+// //       console.error("Failed to download payslip:", err);
+// //       alert("Error generating PDF. Check console for details.");
+// //     }
+// //   };
+
+// //   useEffect(() => {
+// //     const fetchSelectedTemplate = async () => {
+// //       if (!orgId) {
+// //         console.log("No orgId - skipping template fetch");
+// //         return;
+// //       }
+
+// //       console.log("🔄 TEMPLATE FETCH STARTED for orgId:", orgId);
+
+// //       try {
+// //         const prefsRes = await axios.get(`${BACKEND_URL}/api/salary-preferences`, {
+// //           headers,
+// //           withCredentials: true,
+// //         });
+
+// //         const selectedId = prefsRes.data?.data?.[0]?.selected_template_id;
+// //         if (!selectedId) {
+// //           console.log("⚠️ NO SELECTED TEMPLATE ID");
+// //           return;
+// //         }
+
+// //         console.log("Selected template ID:", selectedId);
+
+// //         const templatesRes = await axios.get(`${BACKEND_URL}/api/orgs/${orgId}/templates`, {
+// //           headers,
+// //           withCredentials: true,
+// //         });
+
+// //         const templates = templatesRes.data || [];
+// //         const selectedTemplate = templates.find((t) => t.id === selectedId);
+
+// //         if (!selectedTemplate) {
+// //           console.log(`Template ${selectedId} not found in list`);
+// //           return;
+// //         }
+
+// //         console.log("✅ Using template:", selectedTemplate.name);
+
+// //         let processedHtml = await replaceUploadUrlsInHtml(selectedTemplate.html || "");
+// //         setTemplateHtml(processedHtml);
+// //         setTemplateCss(selectedTemplate.css || "");
+
+// //         let grapes = null;
+// //         const grapesField = selectedTemplate.grapes_json || selectedTemplate.grapesJson;
+// //         if (grapesField) {
+// //           try {
+// //             grapes = typeof grapesField === "string" ? JSON.parse(grapesField) : grapesField;
+// //           } catch (e) {
+// //             console.error("Failed to parse grapes_json", e);
+// //           }
+// //         }
+
+// //         let headerSrc = null;
+// //         let footerSrc = null;
+// //         let wmUrl = null;
+// //         let wp = { ...watermarkProps };
+
+// //         if (grapes) {
+// //           headerSrc = grapes.headerUrl || grapes.header_url || headerSrc;
+// //           footerSrc = grapes.footerUrl || grapes.footer_url || footerSrc;
+// //           if (grapes.watermark?.url) {
+// //             wmUrl = grapes.watermark.url;
+// //             wp = {
+// //               xPct: ensurePercent(grapes.watermark.xPct || grapes.watermark.x || "50%"),
+// //               yPct: ensurePercent(grapes.watermark.yPct || grapes.watermark.y || "50%"),
+// //               wPct: ensurePercent(grapes.watermark.wPct || grapes.watermark.w || "60%"),
+// //               hPct: ensurePercent(grapes.watermark.hPct || grapes.watermark.h || "60%"),
+// //               opacity: grapes.watermark.opacity ?? 0.12,
+// //             };
+// //           }
+// //         }
+
+// //         let metaObj = null;
+// //         if (selectedTemplate.meta) {
+// //           try {
+// //             metaObj = typeof selectedTemplate.meta === "string" ? JSON.parse(selectedTemplate.meta) : selectedTemplate.meta;
+// //           } catch {}
+// //         }
+// //         if (metaObj?.uploads) {
+// //           headerSrc = metaObj.uploads.header || headerSrc;
+// //           footerSrc = metaObj.uploads.footer || footerSrc;
+// //           wmUrl = metaObj.uploads.watermark || wmUrl;
+// //         }
+
+// //         if (!headerSrc && selectedTemplate.thumbnail_url) {
+// //           headerSrc = `/api/orgs/${orgId}/uploads/${selectedTemplate.thumbnail_url}`;
+// //         }
+
+// //         if (headerSrc) {
+// //           const dataUrl = await fetchProtectedImageDataUrl(headerSrc);
+// //           if (dataUrl) setHeaderImgSrc(dataUrl);
+// //         }
+// //         if (footerSrc) {
+// //           const dataUrl = await fetchProtectedImageDataUrl(footerSrc);
+// //           if (dataUrl) setFooterImgSrc(dataUrl);
+// //         }
+// //         if (wmUrl) {
+// //           const dataUrl = await fetchProtectedImageDataUrl(wmUrl);
+// //           if (dataUrl) {
+// //             setWatermarkImgSrc(dataUrl);
+// //             setWatermarkProps(wp);
+// //           }
+// //         }
+
+// //         if (selectedTemplate.html) {
+// //           const parser = new DOMParser();
+// //           const doc = parser.parseFromString(selectedTemplate.html, "text/html");
+// //           const headerImg = doc.querySelector(".template-header img");
+// //           const footerImg = doc.querySelector(".template-footer img");
+// //           if (headerImg && !headerImgSrc) {
+// //             const dataUrl = await fetchProtectedImageDataUrl(headerImg.getAttribute("src"));
+// //             if (dataUrl) setHeaderImgSrc(dataUrl);
+// //           }
+// //           if (footerImg && !footerImgSrc) {
+// //             const dataUrl = await fetchProtectedImageDataUrl(footerImg.getAttribute("src"));
+// //             if (dataUrl) setFooterImgSrc(dataUrl);
+// //           }
+// //         }
+// //       } catch (err) {
+// //         console.error("TEMPLATE FETCH ERROR:", err);
+// //       }
+// //     };
+
+// //     fetchSelectedTemplate();
+// //   }, [orgId]);
+
+// //   useEffect(() => {
+// //     return () => {
+// //       protectedImgCache.clear();
+// //     };
+// //   }, []);
+
+// //   useEffect(() => {
+// //     if (!employeeId || !orgId) {
+// //       setError("Missing employee ID or organization. Please log in again.");
+// //       return;
+// //     }
+
+// //     const fetchAllData = async () => {
+// //       setLoading(true);
+// //       setError(null);
+// //       setPayrollData(null);
+
+// //       try {
+// //         const empRes = await axios.get(`${BACKEND_URL}/api/employee-details/${employeeId}`, {
+// //           headers,
+// //           withCredentials: true,
+// //         });
+// //         setEmployeeDetails(empRes.data || null);
+// //         setAttendance(empRes.data?.attendanceStats || null);
+
+// //         try {
+// //           const bankRes = await axios.get(`${BACKEND_URL}/api/bank-details/${employeeId}`, {
+// //             headers,
+// //             withCredentials: true,
+// //           });
+// //           setBankDetails(bankRes.data || {});
+// //         } catch {
+// //           setBankDetails({});
+// //         }
+
+// //         try {
+// //           const salaryRes = await axios.get(
+// //             `${BACKEND_URL}/api/salary-slip?employee_id=${employeeId}&month=${selectedDate.month}&year=${selectedDate.year}`,
+// //             { headers, withCredentials: true }
+// //           );
+// //           setPayrollData(salaryRes.data || null);
+// //         } catch (salaryErr) {
+// //           if (salaryErr.response?.status === 404 || salaryErr.response?.data?.error === "Not found") {
+// //             setPayrollData(null);
+// //           } else {
+// //             throw salaryErr;
+// //           }
+// //         }
+// //       } catch (err) {
+// //         console.error("Data load failed:", err);
+// //         setError("Failed to load data. Please try again.");
+// //       } finally {
+// //         setLoading(false);
+// //       }
+// //     };
+
+// //     fetchAllData();
+// //   }, [selectedDate, employeeId, orgId]);
+
+// //   const previewName = payrollData?.full_name || employeeDetails?.full_name || employeeDetails?.name || "N/A";
+// //   const previewDesignation = payrollData?.designation || employeeDetails?.designation || "N/A";
+// //   const previewBasic = Number(payrollData?.basic_salary || 0);
+// //   const previewHra = Number(payrollData?.hra || 0);
+// //   const previewAllowance = Number(payrollData?.other_allowances || 0);
+// //   const previewBonus = Number(payrollData?.bonus || 0);
+// //   const previewPf = Number(payrollData?.employee_pf || payrollData?.pf || 0);
+// //   const previewEsic = Number(payrollData?.esic || 0);
+// //   const previewPt = Number(payrollData?.professional_tax || 0);
+// //   const previewTds = Number(payrollData?.tds || 0);
+// //   const previewInsurance = Number(payrollData?.insurance || 0);
+// //   const previewAdvanceRecovery = Number(payrollData?.advance_recovery || 0);
+// //   const previewLopDeduction = Number(payrollData?.lop_deduction || 0);
+// //   const previewGross = Number(payrollData?.gross_salary || 0);
+// //   const previewTotalDed =
+// //     previewPf + previewEsic + previewPt + previewTds + previewInsurance + previewAdvanceRecovery + previewLopDeduction;
+// //   const previewNet = Number(payrollData?.net_salary || previewGross - previewTotalDed);
+
+// //   return (
+// //     <div className="payroll-container">
+// //       <h1 className="payroll-title">Employee Payslip</h1>
+
+// //       <div className="payroll-controls">
+// //         <label className="payroll-label">Select Month & Year:</label>
+// //         <select
+// //           value={`${selectedDate.year}-${selectedDate.month.toString().padStart(2, "0")}`}
+// //           onChange={handleDateChange}
+// //           className="payroll-select"
+// //         >
+// //           {[...Array(12)].map((_, i) => {
+// //             const date = new Date();
+// //             date.setMonth(date.getMonth() - i);
+// //             const monthNum = date.getMonth() + 1;
+// //             const yearNum = date.getFullYear();
+// //             return (
+// //               <option key={i} value={`${yearNum}-${monthNum.toString().padStart(2, "0")}`}>
+// //                 {date.toLocaleString("default", { month: "long" })} {yearNum}
+// //               </option>
+// //             );
+// //           })}
+// //         </select>
+// //       </div>
+
+// //       {loading && <p>Loading payroll data...</p>}
+// //       {error && <p className="error">{error}</p>}
+
+// //       {!loading && !error && payrollData ? (
+// //         <div className="payslip">
+// //           <h2>
+// //             Payslip for {new Date(selectedDate.year, selectedDate.month - 1).toLocaleString("default", { month: "long", year: "numeric" })}
+// //           </h2>
+
+// //           {/* On-screen preview (unchanged - shows Bank Name and Account No) */}
+// //           <table style={{ width: "100%", marginBottom: "20px", borderCollapse: "collapse", fontSize: "14px" }}>
+// //             <tbody>
+// //               <tr>
+// //                 <td style={{ padding: "8px" }}><strong>Employee Name:</strong> {previewName}</td>
+// //                 <td style={{ padding: "8px" }}><strong>Employee ID:</strong> {employeeId}</td>
+// //               </tr>
+// //               <tr>
+// //                 <td style={{ padding: "8px" }}><strong>Bank:</strong> {bankDetails?.bank_name || "N/A"}</td>
+// //                 <td style={{ padding: "8px" }}><strong>Account No:</strong> {bankDetails?.account_number || "N/A"}</td>
+// //               </tr>
+// //             </tbody>
+// //           </table>
+
+// //           <table className="payslip-table">
+// //             <thead>
+// //               <tr>
+// //                 <th>Earnings</th>
+// //                 <th>Amount (₹)</th>
+// //                 <th>Deductions</th>
+// //                 <th>Amount (₹)</th>
+// //               </tr>
+// //             </thead>
+// //             <tbody>
+// //               <tr>
+// //                 <td>Basic Salary</td>
+// //                 <td>₹{previewBasic.toFixed(2)}</td>
+// //                 <td>PF</td>
+// //                 <td>₹{previewPf.toFixed(2)}</td>
+// //               </tr>
+// //               <tr>
+// //                 <td>HRA</td>
+// //                 <td>₹{previewHra.toFixed(2)}</td>
+// //                 <td>ESIC</td>
+// //                 <td>₹{previewEsic.toFixed(2)}</td>
+// //               </tr>
+// //               <tr>
+// //                 <td>Other Allowances</td>
+// //                 <td>₹{previewAllowance.toFixed(2)}</td>
+// //                 <td>Professional Tax</td>
+// //                 <td>₹{previewPt.toFixed(2)}</td>
+// //               </tr>
+// //               {previewBonus > 0 && (
+// //                 <tr>
+// //                   <td>Bonus</td>
+// //                   <td>₹{previewBonus.toFixed(2)}</td>
+// //                   <td></td>
+// //                   <td></td>
+// //                 </tr>
+// //               )}
+// //               <tr>
+// //                 <td><strong>Gross Salary</strong></td>
+// //                 <td><strong>₹{previewGross.toFixed(2)}</strong></td>
+// //                 <td>TDS</td>
+// //                 <td>₹{previewTds.toFixed(2)}</td>
+// //               </tr>
+// //               <tr>
+// //                 <td></td>
+// //                 <td></td>
+// //                 <td>Insurance</td>
+// //                 <td>₹{previewInsurance.toFixed(2)}</td>
+// //               </tr>
+// //               {previewAdvanceRecovery > 0 && (
+// //                 <tr>
+// //                   <td></td>
+// //                   <td></td>
+// //                   <td>Advance Recovery</td>
+// //                   <td>₹{previewAdvanceRecovery.toFixed(2)}</td>
+// //                 </tr>
+// //               )}
+// //               {previewLopDeduction > 0 && (
+// //                 <tr>
+// //                   <td></td>
+// //                   <td></td>
+// //                   <td>LOP Deduction</td>
+// //                   <td>₹{previewLopDeduction.toFixed(2)}</td>
+// //                 </tr>
+// //               )}
+// //               <tr className="total-row">
+// //                 <td colSpan="2"></td>
+// //                 <td><strong>Total Deductions</strong></td>
+// //                 <td><strong>₹{previewTotalDed.toFixed(2)}</strong></td>
+// //               </tr>
+// //               <tr className="net-salary-row">
+// //                 <td colSpan="2"><strong>Net Salary</strong></td>
+// //                 <td colSpan="2"><strong>₹{previewNet.toFixed(2)}</strong></td>
+// //               </tr>
+// //             </tbody>
+// //           </table>
+
+// //           <button onClick={handleDownload} className="payroll-download-btn">
+// //             Download PDF
+// //           </button>
+// //         </div>
+// //       ) : (
+// //         !loading &&
+// //         !error && <p>No payroll data available for this month.</p>
+// //       )}
+// //     </div>
+// //   );
+// // };
+
+// // export default PayrollSummary;
+
+// "use client";
+// import React, { useState, useEffect } from "react";
+// import axios from "axios";
+// import generatePayslipPDF from "../../utils/generatePayslipPDF";
+// import { useAuth } from "../../context/AuthProvider.client";
+// import "./PayrollSummary.css";
+
+// const PayrollSummary = () => {
+//   const { user } = useAuth();
+
+//   const getCurrentMonthYear = () => {
+//     const now = new Date();
+//     return { month: now.getMonth() + 1, year: now.getFullYear() };
+//   };
+
+//   const [selectedDate, setSelectedDate] = useState(getCurrentMonthYear());
+//   const [payrollData, setPayrollData] = useState(null);
+//   const [bankDetails, setBankDetails] = useState(null);
+//   const [attendance, setAttendance] = useState(null);
+//   const [employeeDetails, setEmployeeDetails] = useState(null);
+//   const [templateHtml, setTemplateHtml] = useState(null);
+//   const [templateCss, setTemplateCss] = useState(null);
+//   const [headerImgSrc, setHeaderImgSrc] = useState(null); // data URL
+//   const [footerImgSrc, setFooterImgSrc] = useState(null); // data URL
+//   const [watermarkImgSrc, setWatermarkImgSrc] = useState(null); // data URL
+//   const [watermarkProps, setWatermarkProps] = useState({
+//     xPct: "50%",
+//     yPct: "50%",
+//     wPct: "60%",
+//     hPct: "60%",
+//     opacity: 0.12,
+//   });
+
+//   const [loading, setLoading] = useState(false);
+//   const [error, setError] = useState(null);
+
+//   const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5001";
+//   const API_KEY = process.env.NEXT_PUBLIC_API_KEY;
+
+//   const employeeId = user?.employeeId;
+//   const orgId =
+//     user?.orgId ??
+//     user?.org_id ??
+//     user?.raw?.org_id ??
+//     user?.Org_id ??
+//     user?.raw?.Org_id ??
+//     null;
+
+//   const headers = {
+//     "x-api-key": API_KEY ?? "",
+//     "x-employee-id": employeeId ?? "",
+//     "x-org-id": orgId ?? "",
+//   };
+
+//   // Cache for image data URLs
+//   const protectedImgCache = new Map();
+
+//   function normalizeUploadUrl(src, backendBase = BACKEND_URL) {
+//     if (!src) return src;
+//     if (src.startsWith("blob:") || src.startsWith("data:")) return src;
+
+//     const backend = backendBase.replace(/\/$/, "");
+//     if (src.startsWith("/api/")) {
+//       return backend + src;
+//     }
+//     try {
+//       const url = new URL(src, window.location.origin);
+//       const frontendOrigin = window.location.origin.replace(/\/$/, "");
+//       if (backend && url.origin === frontendOrigin) {
+//         return backend + url.pathname + url.search + url.hash;
+//       }
+//       return src;
+//     } catch (e) {
+//       return src;
+//     }
+//   }
+
+//   const blobToDataUrl = (blob) => {
+//     return new Promise((resolve, reject) => {
+//       const reader = new FileReader();
+//       reader.onload = () => resolve(reader.result);
+//       reader.onerror = reject;
+//       reader.readAsDataURL(blob);
+//     });
+//   };
+
+//   async function fetchProtectedImageDataUrl(src, backendBase = BACKEND_URL) {
+//     if (!src) return null;
+//     if (src.startsWith("data:")) return src;
+
+//     const normalized = normalizeUploadUrl(src, backendBase);
+
+//     const cached = protectedImgCache.get(normalized);
+//     if (cached) {
+//       console.log("✅ [IMAGE FETCH] CACHE HIT:", normalized);
+//       return cached;
+//     }
+
+//     console.log("🔍 [IMAGE FETCH] Trying URL:", normalized);
+
+//     try {
+//       const res = await axios.get(normalized, {
+//         responseType: "blob",
+//         headers,
+//         withCredentials: true,
+//       });
+//       const dataUrl = await blobToDataUrl(res.data);
+//       protectedImgCache.set(normalized, dataUrl);
+//       console.log("✅ [IMAGE FETCH] SUCCESS → data URL created");
+//       return dataUrl;
+//     } catch (err) {
+//       console.warn("⚠️ [IMAGE FETCH] Axios failed:", err?.response?.status || err.message);
+//     }
+
+//     try {
+//       const res = await fetch(normalized, { credentials: "include" });
+//       if (!res.ok) throw new Error(`Status ${res.status}`);
+//       const blob = await res.blob();
+//       const dataUrl = await blobToDataUrl(blob);
+//       protectedImgCache.set(normalized, dataUrl);
+//       console.log("✅ [IMAGE FETCH] Fallback fetch → data URL created");
+//       return dataUrl;
+//     } catch (err) {
+//       console.error("❌ [IMAGE FETCH] FAILED:", err.message || err);
+//       return null;
+//     }
+//   }
+
+//   async function replaceUploadUrlsInHtml(html = "", backendBase = BACKEND_URL) {
+//     if (!html || typeof html !== "string") return html;
+//     const uploadRegex = /\/api\/orgs\/\d+\/uploads\/[A-Za-z0-9._-]+/g;
+//     const matches = html.match(uploadRegex);
+//     if (!matches || matches.length === 0) return html;
+
+//     const unique = Array.from(new Set(matches));
+//     const replacements = {};
+
+//     await Promise.all(
+//       unique.map(async (m) => {
+//         const normalized = normalizeUploadUrl(m, backendBase);
+//         const dataUrl = await fetchProtectedImageDataUrl(normalized, backendBase);
+//         replacements[m] = dataUrl || normalized;
+//       })
+//     );
+
+//     let out = html;
+//     Object.keys(replacements).forEach((orig) => {
+//       const safe = orig.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+//       out = out.replace(new RegExp(safe, "g"), replacements[orig]);
+//     });
+//     return out;
+//   }
+
+//   async function inlineAllImages(htmlString) {
+//     if (!htmlString) return htmlString;
+//     const parser = new DOMParser();
+//     const doc = parser.parseFromString(htmlString, "text/html");
+//     const imgs = doc.querySelectorAll("img");
+
+//     await Promise.all(
+//       Array.from(imgs).map(async (img) => {
+//         let src = img.getAttribute("src");
+//         if (!src || src.startsWith("data:") || src.startsWith("blob:")) return;
+//         try {
+//           const res = await fetch(src);
+//           if (!res.ok) throw new Error();
+//           const blob = await res.blob();
+//           const dataUrl = await blobToDataUrl(blob);
+//           img.setAttribute("src", dataUrl);
+//         } catch (err) {
+//           console.warn("Failed to inline image", src);
+//           img.remove();
+//         }
+//       })
+//     );
+//     return doc.documentElement.outerHTML;
+//   }
+
+//   function ensurePercent(v, defaultVal = "50%") {
+//     if (!v) return defaultVal;
+//     if (typeof v === "number") return `${v}%`;
+//     const str = String(v).trim();
+//     return str.endsWith("%") ? str : `${str}%`;
+//   }
+
+//   const handleDateChange = (event) => {
+//     const [year, month] = event.target.value.split("-");
+//     setSelectedDate({
+//       month: parseInt(month, 10),
+//       year: parseInt(year, 10),
+//     });
+//   };
+
+//   const handleDownload = async () => {
+//     try {
+//       if (!payrollData) {
+//         alert("No payroll data available to download.");
+//         return;
+//       }
+
+//       console.log("🚀 DOWNLOAD STARTED");
+//       console.log("Header data URL:", !!headerImgSrc);
+//       console.log("Footer data URL:", !!footerImgSrc);
+//       console.log("Watermark data URL:", !!watermarkImgSrc);
+//       console.log("Watermark props:", watermarkProps);
+
+//       const employeeName = payrollData.full_name || employeeDetails?.full_name || employeeDetails?.name || "N/A";
+//       const empId = payrollData.employee_id || employeeId || "N/A";
+//       const designation = payrollData.designation || employeeDetails?.designation || "N/A";
+
+//       const gender = employeeDetails?.gender || "N/A";
+
+//       const dojRaw = employeeDetails?.joining_date || "N/A";
+//       const doj = dojRaw !== "N/A" 
+//         ? new Date(dojRaw).toLocaleDateString("en-IN", { day: "2-digit", month: "2-digit", year: "numeric" })
+//         : "N/A";
+
+//       const pfNo = employeeDetails?.pf_number || bankDetails?.pf_number || payrollData?.pf_number || "N/A";
+//       const esiNo = employeeDetails?.esi_number || bankDetails?.esi_number || payrollData?.esi_number || "N/A";
+//       const panNo = employeeDetails?.pan_number || bankDetails?.pan_number || "N/A";
+//       const uanNo = employeeDetails?.uan_number || bankDetails?.uin_number || "N/A";
+//       const accountNo = bankDetails?.account_number || "N/A";
+
+//       const basicSalary = Number(payrollData.basic_salary || 0);
+//       const hra = Number(payrollData.hra || 0);
+//       const allowance = Number(payrollData.other_allowances || 0);
+//       const bonus = Number(payrollData.bonus || 0);
+//       const advanceRecovery = Number(payrollData.advance_recovery || 0);
+//       const lopDeduction = Number(payrollData.lop_deduction || 0);
+//       const pf = Number(payrollData.employee_pf || payrollData.pf || 0);
+//       const esic = Number(payrollData.esic || 0);
+//       const professionalTax = Number(payrollData.professional_tax || 0);
+//       const tds = Number(payrollData.tds || 0);
+//       const insurance = Number(payrollData.insurance || 0);
+//       const grossSalary = Number(payrollData.gross_salary || 0);
+
+//       const totalDeductions =
+//         pf + esic + professionalTax + tds + insurance + advanceRecovery + lopDeduction;
+
+//       const netSalary = Number(payrollData.net_salary || grossSalary - totalDeductions);
+
+//       const leavesTaken = Number(payrollData.lop_days || 0);
+//       const totalWorkingDays =
+//         attendance?.total_working_days || (leavesTaken > 0 ? 30 - leavesTaken : 30);
+
+//       const monthNames = [
+//         "January", "February", "March", "April", "May", "June", "July", "August",
+//         "September", "October", "November", "December",
+//       ];
+//       const monthYear = `${monthNames[selectedDate.month - 1]} ${selectedDate.year}`;
+
+//       const convertNumberToWords = (num) => {
+//         if (!num || num === 0) return "Zero Only";
+//         const ones = [
+//           "", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine",
+//           "Ten", "Eleven", "Twelve", "Thirteen", "Fourteen", "Fifteen", "Sixteen",
+//           "Seventeen", "Eighteen", "Nineteen",
+//         ];
+//         const tens = ["", "", "Twenty", "Thirty", "Forty", "Fifty", "Sixty", "Seventy", "Eighty", "Ninety"];
+//         const scales = ["", "Thousand", "Lakh", "Crore"];
+//         let words = "";
+//         let i = 0;
+//         let n = Math.round(num);
+//         while (n > 0) {
+//           let part = n % 100;
+//           if (part > 19) {
+//             words =
+//               tens[Math.floor(part / 10)] +
+//               (part % 10 ? " " + ones[part % 10] : "") +
+//               (i > 0 ? " " + scales[i] : "") +
+//               " " +
+//               words;
+//           } else if (part > 0) {
+//             words = ones[part] + (i > 0 ? " " + scales[i] : "") + " " + words;
+//           }
+//           n = Math.floor(n / 100);
+//           i += 2;
+//         }
+//         return words.trim() + " Only";
+//       };
+
+//       const netSalaryWords = convertNumberToWords(netSalary);
+
+//       // Build employee details section (unchanged)
+//       const employeeDetailsHtml = `
+//         <div style="font-family: Arial, Helvetica, sans-serif; font-size: 12px; color: #000; margin-bottom: 25px;">
+
+//           <div style="padding: 8px 0; text-align: center; font-weight: bold; font-size: 13px; color: #1a3c6d; margin-bottom: 12px;">
+//             PAYSLIP FOR - ${monthYear.toUpperCase()}
+//           </div>
+
+//           <div style="display: flex; flex-wrap: wrap; gap: 20px;">
+//             <div style="flex: 1; min-width: 48%; box-sizing: border-box;">
+//               <div style="margin-bottom: 10px;">
+//                 <strong style="display: inline-block; width: 130px; color: #333;">Employee Name:</strong>
+//                 ${employeeName.toUpperCase()}
+//               </div>
+//               <div style="margin-bottom: 10px;">
+//                 <strong style="display: inline-block; width: 130px; color: #333;">Employee ID:</strong>
+//                 ${empId}
+//               </div>
+//               ${designation && designation !== "N/A" ? `
+//               <div style="margin-bottom: 10px;">
+//                 <strong style="display: inline-block; width: 130px; color: #333;">Designation:</strong>
+//                 ${designation.toUpperCase()}
+//               </div>` : ''}
+//               ${pfNo && pfNo !== "N/A" ? `
+//               <div style="margin-bottom: 10px;">
+//                 <strong style="display: inline-block; width: 130px; color: #333;">PF No:</strong>
+//                 ${pfNo}
+//               </div>` : ''}
+//               ${esiNo && esiNo !== "N/A" ? `
+//               <div style="margin-bottom: 10px;">
+//                 <strong style="display: inline-block; width: 130px; color: #333;">ESI No:</strong>
+//                 ${esiNo}
+//               </div>` : ''}
+//               ${gender && gender !== "N/A" ? `
+//               <div style="margin-bottom: 10px;">
+//                 <strong style="display: inline-block; width: 130px; color: #333;">Gender:</strong>
+//                 ${gender}
+//               </div>` : ''}
+//             </div>
+
+//             <div style="flex: 1; min-width: 48%; box-sizing: border-box;">
+//               ${panNo && panNo !== "N/A" ? `
+//               <div style="margin-bottom: 10px;">
+//                 <strong style="display: inline-block; width: 130px; color: #333;">PAN:</strong>
+//                 ${panNo}
+//               </div>` : ''}
+//               ${uanNo && uanNo !== "N/A" ? `
+//               <div style="margin-bottom: 10px;">
+//                 <strong style="display: inline-block; width: 130px; color: #333;">UAN:</strong>
+//                 ${uanNo}
+//               </div>` : ''}
+//               ${accountNo && accountNo !== "N/A" ? `
+//               <div style="margin-bottom: 10px;">
+//                 <strong style="display: inline-block; width: 130px; color: #333;">Account No:</strong>
+//                 ${accountNo}
+//               </div>` : ''}
+//               <div style="margin-bottom: 10px;">
+//                 <strong style="display: inline-block; width: 130px; color: #333;">Working Days:</strong>
+//                 ${totalWorkingDays}
+//               </div>
+//               ${leavesTaken > 0 ? `
+//               <div style="margin-bottom: 10px;">
+//                 <strong style="display: inline-block; width: 130px; color: #333;">LOP Days:</strong>
+//                 ${leavesTaken}
+//               </div>` : ''}
+//               ${doj && doj !== "N/A" ? `
+//               <div style="margin-bottom: 10px;">
+//                 <strong style="display: inline-block; width: 130px; color: #333;">Date of Joining:</strong>
+//                 ${doj}
+//               </div>` : ''}
+//             </div>
+//           </div>
+//         </div>
+//       `;
+
+//       // Build balanced earnings & deductions arrays
+//       const earnings = [];
+//       if (basicSalary > 0) earnings.push({ name: "Basic Salary", amount: basicSalary });
+//       if (hra > 0) earnings.push({ name: "HRA", amount: hra });
+//       if (allowance > 0) earnings.push({ name: "Other Allowances", amount: allowance });
+//       if (bonus > 0) earnings.push({ name: "Bonus", amount: bonus });
+
+//       const deductions = [];
+//       if (pf > 0) deductions.push({ name: "PF", amount: pf });
+//       if (esic > 0) deductions.push({ name: "ESIC", amount: esic });
+//       if (professionalTax > 0) deductions.push({ name: "Professional Tax", amount: professionalTax });
+//       if (tds > 0) deductions.push({ name: "TDS", amount: tds });
+//       if (insurance > 0) deductions.push({ name: "Insurance", amount: insurance });
+//       if (advanceRecovery > 0) deductions.push({ name: "Advance Recovery", amount: advanceRecovery });
+//       if (lopDeduction > 0) deductions.push({ name: "LOP Deduction", amount: lopDeduction });
+
+//       const maxRows = Math.max(earnings.length, deductions.length);
+
+//       let detailRows = "";
+//       for (let i = 0; i < maxRows; i++) {
+//         const earn = earnings[i] || { name: "", amount: 0 };
+//         const ded = deductions[i] || { name: "", amount: 0 };
+
+//         const earnName = earn.name || "&nbsp;";
+//         const earnAmt = earn.amount > 0 ? earn.amount.toFixed(2) : "";
+//         const dedName = ded.name || "&nbsp;";
+//         const dedAmt = ded.amount > 0 ? ded.amount.toFixed(2) : "";
+
+//         detailRows += `
+//           <tr>
+//             <td style="border: 1px solid #000; padding: 8px;">${earnName}</td>
+//             <td style="border: 1px solid #000; padding: 8px; text-align: right;">${earnAmt}</td>
+//             <td style="border: 1px solid #000; padding: 8px;">${dedName}</td>
+//             <td style="border: 1px solid #000; padding: 8px; text-align: right;">${dedAmt}</td>
+//           </tr>`;
+//       }
+
+//       const tableHtml = `
+//         <table style="width: 100%; border-collapse: collapse; margin-top: 20px;">
+//           <thead>
+//             <tr style="background-color: #f0f0f0;">
+//               <th style="border: 1px solid #000; padding: 8px; text-align: left;">Earnings</th>
+//               <th style="border: 1px solid #000; padding: 8px; text-align: right;">Amount (₹)</th>
+//               <th style="border: 1px solid #000; padding: 8px; text-align: left;">Deductions</th>
+//               <th style="border: 1px solid #000; padding: 8px; text-align: right;">Amount (₹)</th>
+//             </tr>
+//           </thead>
+//           <tbody>
+//             ${detailRows}
+//             <tr style="background-color: #f0f0f0;">
+//               <td style="border: 1px solid #000; padding: 8px;"><strong>Gross Salary</strong></td>
+//               <td style="border: 1px solid #000; padding: 8px; text-align: right;"><strong>${grossSalary.toFixed(2)}</strong></td>
+//               <td style="border: 1px solid #000; padding: 8px;"><strong>Total Deductions</strong></td>
+//               <td style="border: 1px solid #000; padding: 8px; text-align: right;"><strong>${totalDeductions.toFixed(2)}</strong></td>
+//             </tr>
+//             <tr style="background-color: #e0e0e0; font-size: 14px;">
+//               <td style="border: 1px solid #000; padding: 12px; text-align: center;" colSpan="4">
+//                 <strong>Net Salary: ₹${netSalary.toFixed(2)} (${netSalaryWords})</strong>
+//               </td>
+//             </tr>
+//           </tbody>
+//         </table>
+//       `;
+
+//       const dataTableHtml = employeeDetailsHtml + tableHtml;
+
+//       let baseHtml = templateHtml || `<div class="template-page"><div class="template-body"></div></div>`;
+//       if (templateCss) {
+//         baseHtml = `<style>${templateCss}</style>${baseHtml}`;
+//       }
+
+//       const parser = new DOMParser();
+//       let doc = parser.parseFromString(baseHtml, "text/html");
+//       let pageContainer = doc.querySelector(".template-page") || doc.body;
+//       pageContainer.style.position = "relative";
+//       pageContainer.style.minHeight = "100vh";
+//       pageContainer.style.boxSizing = "border-box";
+
+//       let bodyDiv = doc.querySelector(".template-body") || pageContainer;
+//       bodyDiv.innerHTML = dataTableHtml;
+//       bodyDiv.style.padding = "20px 40px";
+
+//       if (headerImgSrc && !doc.querySelector(".template-header")) {
+//         const headerDiv = doc.createElement("div");
+//         headerDiv.className = "template-header";
+//         headerDiv.style.marginBottom = "20px";
+//         headerDiv.style.textAlign = "center";
+//         const img = doc.createElement("img");
+//         img.src = headerImgSrc;
+//         img.style.maxWidth = "100%";
+//         img.style.display = "block";
+//         headerDiv.appendChild(img);
+//         pageContainer.insertBefore(headerDiv, bodyDiv);
+//       }
+
+//       if (footerImgSrc && !doc.querySelector(".template-footer")) {
+//         const footerDiv = doc.createElement("div");
+//         footerDiv.className = "template-footer";
+//         footerDiv.style.marginTop = "20px";
+//         footerDiv.style.textAlign = "center";
+//         const img = doc.createElement("img");
+//         img.src = footerImgSrc;
+//         img.style.maxWidth = "100%";
+//         img.style.display = "block";
+//         footerDiv.appendChild(img);
+//         pageContainer.appendChild(footerDiv);
+//       }
+
+//       if (watermarkImgSrc) {
+//         doc.querySelectorAll(".pdf-watermark").forEach((el) => el.remove());
+//         const wmWrapper = doc.createElement("div");
+//         wmWrapper.className = "pdf-watermark";
+//         wmWrapper.style.position = "absolute";
+//         wmWrapper.style.top = watermarkProps.yPct;
+//         wmWrapper.style.left = watermarkProps.xPct;
+//         wmWrapper.style.width = watermarkProps.wPct;
+//         wmWrapper.style.height = watermarkProps.hPct;
+//         wmWrapper.style.transform = "translate(-50%, -50%)";
+//         wmWrapper.style.opacity = watermarkProps.opacity;
+//         wmWrapper.style.pointerEvents = "none";
+//         wmWrapper.style.zIndex = "-1";
+
+//         const img = doc.createElement("img");
+//         img.src = watermarkImgSrc;
+//         img.style.width = "100%";
+//         img.style.height = "100%";
+//         img.style.objectFit = "contain";
+//         wmWrapper.appendChild(img);
+
+//         pageContainer.insertBefore(wmWrapper, pageContainer.firstChild);
+//       }
+
+//       let finalHtml = doc.documentElement.outerHTML;
+//       finalHtml = await inlineAllImages(finalHtml);
+
+//       const processedTemplate = {
+//         html: finalHtml,
+//         css: "",
+//       };
+
+//       const blob = await generatePayslipPDF(
+//         payrollData,
+//         selectedDate,
+//         bankDetails || {},
+//         attendance || {},
+//         employeeDetails || {},
+//         processedTemplate
+//       );
+
+//       if (!blob) {
+//         alert("Failed to generate PDF. Please try again.");
+//         return;
+//       }
+
+//       const url = URL.createObjectURL(blob);
+//       const a = document.createElement("a");
+//       a.href = url;
+//       a.download = `Payslip_${empId}_${selectedDate.month.toString().padStart(2, "0")}_${selectedDate.year}.pdf`;
+//       document.body.appendChild(a);
+//       a.click();
+//       a.remove();
+//       URL.revokeObjectURL(url);
+//     } catch (err) {
+//       console.error("Failed to download payslip:", err);
+//       alert("Error generating PDF. Check console for details.");
+//     }
+//   };
+
+//   useEffect(() => {
+//     const fetchSelectedTemplate = async () => {
+//       if (!orgId) {
+//         console.log("No orgId - skipping template fetch");
+//         return;
+//       }
+
+//       console.log("🔄 TEMPLATE FETCH STARTED for orgId:", orgId);
+
+//       try {
+//         const prefsRes = await axios.get(`${BACKEND_URL}/api/salary-preferences`, {
+//           headers,
+//           withCredentials: true,
+//         });
+
+//         const selectedId = prefsRes.data?.data?.[0]?.selected_template_id;
+//         if (!selectedId) {
+//           console.log("⚠️ NO SELECTED TEMPLATE ID");
+//           return;
+//         }
+
+//         console.log("Selected template ID:", selectedId);
+
+//         const templatesRes = await axios.get(`${BACKEND_URL}/api/orgs/${orgId}/templates`, {
+//           headers,
+//           withCredentials: true,
+//         });
+
+//         const templates = templatesRes.data || [];
+//         const selectedTemplate = templates.find((t) => t.id === selectedId);
+
+//         if (!selectedTemplate) {
+//           console.log(`Template ${selectedId} not found in list`);
+//           return;
+//         }
+
+//         console.log("✅ Using template:", selectedTemplate.name);
+
+//         let processedHtml = await replaceUploadUrlsInHtml(selectedTemplate.html || "");
+//         setTemplateHtml(processedHtml);
+//         setTemplateCss(selectedTemplate.css || "");
+
+//         let grapes = null;
+//         const grapesField = selectedTemplate.grapes_json || selectedTemplate.grapesJson;
+//         if (grapesField) {
+//           try {
+//             grapes = typeof grapesField === "string" ? JSON.parse(grapesField) : grapesField;
+//           } catch (e) {
+//             console.error("Failed to parse grapes_json", e);
+//           }
+//         }
+
+//         let headerSrc = null;
+//         let footerSrc = null;
+//         let wmUrl = null;
+//         let wp = { ...watermarkProps };
+
+//         if (grapes) {
+//           headerSrc = grapes.headerUrl || grapes.header_url || headerSrc;
+//           footerSrc = grapes.footerUrl || grapes.footer_url || footerSrc;
+//           if (grapes.watermark?.url) {
+//             wmUrl = grapes.watermark.url;
+//             wp = {
+//               xPct: ensurePercent(grapes.watermark.xPct || grapes.watermark.x || "50%"),
+//               yPct: ensurePercent(grapes.watermark.yPct || grapes.watermark.y || "50%"),
+//               wPct: ensurePercent(grapes.watermark.wPct || grapes.watermark.w || "60%"),
+//               hPct: ensurePercent(grapes.watermark.hPct || grapes.watermark.h || "60%"),
+//               opacity: grapes.watermark.opacity ?? 0.12,
+//             };
+//           }
+//         }
+
+//         let metaObj = null;
+//         if (selectedTemplate.meta) {
+//           try {
+//             metaObj = typeof selectedTemplate.meta === "string" ? JSON.parse(selectedTemplate.meta) : selectedTemplate.meta;
+//           } catch {}
+//         }
+//         if (metaObj?.uploads) {
+//           headerSrc = metaObj.uploads.header || headerSrc;
+//           footerSrc = metaObj.uploads.footer || footerSrc;
+//           wmUrl = metaObj.uploads.watermark || wmUrl;
+//         }
+
+//         if (!headerSrc && selectedTemplate.thumbnail_url) {
+//           headerSrc = `/api/orgs/${orgId}/uploads/${selectedTemplate.thumbnail_url}`;
+//         }
+
+//         if (headerSrc) {
+//           const dataUrl = await fetchProtectedImageDataUrl(headerSrc);
+//           if (dataUrl) setHeaderImgSrc(dataUrl);
+//         }
+//         if (footerSrc) {
+//           const dataUrl = await fetchProtectedImageDataUrl(footerSrc);
+//           if (dataUrl) setFooterImgSrc(dataUrl);
+//         }
+//         if (wmUrl) {
+//           const dataUrl = await fetchProtectedImageDataUrl(wmUrl);
+//           if (dataUrl) {
+//             setWatermarkImgSrc(dataUrl);
+//             setWatermarkProps(wp);
+//           }
+//         }
+
+//         if (selectedTemplate.html) {
+//           const parser = new DOMParser();
+//           const doc = parser.parseFromString(selectedTemplate.html, "text/html");
+//           const headerImg = doc.querySelector(".template-header img");
+//           const footerImg = doc.querySelector(".template-footer img");
+//           if (headerImg && !headerImgSrc) {
+//             const dataUrl = await fetchProtectedImageDataUrl(headerImg.getAttribute("src"));
+//             if (dataUrl) setHeaderImgSrc(dataUrl);
+//           }
+//           if (footerImg && !footerImgSrc) {
+//             const dataUrl = await fetchProtectedImageDataUrl(footerImg.getAttribute("src"));
+//             if (dataUrl) setFooterImgSrc(dataUrl);
+//           }
+//         }
+//       } catch (err) {
+//         console.error("TEMPLATE FETCH ERROR:", err);
+//       }
+//     };
+
+//     fetchSelectedTemplate();
+//   }, [orgId]);
+
+//   useEffect(() => {
+//     return () => {
+//       protectedImgCache.clear();
+//     };
+//   }, []);
+
+//   useEffect(() => {
+//     if (!employeeId || !orgId) {
+//       setError("Missing employee ID or organization. Please log in again.");
+//       return;
+//     }
+
+//     const fetchAllData = async () => {
+//       setLoading(true);
+//       setError(null);
+//       setPayrollData(null);
+
+//       try {
+//         const empRes = await axios.get(`${BACKEND_URL}/api/employee-details/${employeeId}`, {
+//           headers,
+//           withCredentials: true,
+//         });
+//         setEmployeeDetails(empRes.data || null);
+//         setAttendance(empRes.data?.attendanceStats || null);
+
+//         try {
+//           const bankRes = await axios.get(`${BACKEND_URL}/api/bank-details/${employeeId}`, {
+//             headers,
+//             withCredentials: true,
+//           });
+//           setBankDetails(bankRes.data || {});
+//         } catch {
+//           setBankDetails({});
+//         }
+
+//         try {
+//           const salaryRes = await axios.get(
+//             `${BACKEND_URL}/api/salary-slip?employee_id=${employeeId}&month=${selectedDate.month}&year=${selectedDate.year}`,
+//             { headers, withCredentials: true }
+//           );
+//           setPayrollData(salaryRes.data || null);
+//         } catch (salaryErr) {
+//           if (salaryErr.response?.status === 404 || salaryErr.response?.data?.error === "Not found") {
+//             setPayrollData(null);
+//           } else {
+//             throw salaryErr;
+//           }
+//         }
+//       } catch (err) {
+//         console.error("Data load failed:", err);
+//         setError("Failed to load data. Please try again.");
+//       } finally {
+//         setLoading(false);
+//       }
+//     };
+
+//     fetchAllData();
+//   }, [selectedDate, employeeId, orgId]);
+
+//   const previewName = payrollData?.full_name || employeeDetails?.full_name || employeeDetails?.name || "N/A";
+//   const previewDesignation = payrollData?.designation || employeeDetails?.designation || "N/A";
+//   const previewBasic = Number(payrollData?.basic_salary || 0);
+//   const previewHra = Number(payrollData?.hra || 0);
+//   const previewAllowance = Number(payrollData?.other_allowances || 0);
+//   const previewBonus = Number(payrollData?.bonus || 0);
+//   const previewPf = Number(payrollData?.employee_pf || payrollData?.pf || 0);
+//   const previewEsic = Number(payrollData?.esic || 0);
+//   const previewPt = Number(payrollData?.professional_tax || 0);
+//   const previewTds = Number(payrollData?.tds || 0);
+//   const previewInsurance = Number(payrollData?.insurance || 0);
+//   const previewAdvanceRecovery = Number(payrollData?.advance_recovery || 0);
+//   const previewLopDeduction = Number(payrollData?.lop_deduction || 0);
+//   const previewGross = Number(payrollData?.gross_salary || 0);
+//   const previewTotalDed =
+//     previewPf + previewEsic + previewPt + previewTds + previewInsurance + previewAdvanceRecovery + previewLopDeduction;
+//   const previewNet = Number(payrollData?.net_salary || previewGross - previewTotalDed);
+
+//   return (
+//     <div className="payroll-container">
+//       <h1 className="payroll-title">Employee Payslip</h1>
+
+//       <div className="payroll-controls">
+//         <label className="payroll-label">Select Month & Year:</label>
+//         <select
+//           value={`${selectedDate.year}-${selectedDate.month.toString().padStart(2, "0")}`}
+//           onChange={handleDateChange}
+//           className="payroll-select"
+//         >
+//           {[...Array(12)].map((_, i) => {
+//             const date = new Date();
+//             date.setMonth(date.getMonth() - i);
+//             const monthNum = date.getMonth() + 1;
+//             const yearNum = date.getFullYear();
+//             return (
+//               <option key={i} value={`${yearNum}-${monthNum.toString().padStart(2, "0")}`}>
+//                 {date.toLocaleString("default", { month: "long" })} {yearNum}
+//               </option>
+//             );
+//           })}
+//         </select>
+//       </div>
+
+//       {loading && <p>Loading payroll data...</p>}
+//       {error && <p className="error">{error}</p>}
+
+//       {!loading && !error && payrollData ? (
+//         <div className="payslip">
+//           <h2>
+//             Payslip for {new Date(selectedDate.year, selectedDate.month - 1).toLocaleString("default", { month: "long", year: "numeric" })}
+//           </h2>
+
+//           {/* On-screen preview (unchanged - shows Bank Name and Account No) */}
+//           <table style={{ width: "100%", marginBottom: "20px", borderCollapse: "collapse", fontSize: "14px" }}>
+//             <tbody>
+//               <tr>
+//                 <td style={{ padding: "8px" }}><strong>Employee Name:</strong> {previewName}</td>
+//                 <td style={{ padding: "8px" }}><strong>Employee ID:</strong> {employeeId}</td>
+//               </tr>
+//               <tr>
+//                 <td style={{ padding: "8px" }}><strong>Bank:</strong> {bankDetails?.bank_name || "N/A"}</td>
+//                 <td style={{ padding: "8px" }}><strong>Account No:</strong> {bankDetails?.account_number || "N/A"}</td>
+//               </tr>
+//             </tbody>
+//           </table>
+
+//           <table className="payslip-table">
+//             <thead>
+//               <tr>
+//                 <th>Earnings</th>
+//                 <th>Amount (₹)</th>
+//                 <th>Deductions</th>
+//                 <th>Amount (₹)</th>
+//               </tr>
+//             </thead>
+//             <tbody>
+//               <tr>
+//                 <td>Basic Salary</td>
+//                 <td>₹{previewBasic.toFixed(2)}</td>
+//                 <td>PF</td>
+//                 <td>₹{previewPf.toFixed(2)}</td>
+//               </tr>
+//               <tr>
+//                 <td>HRA</td>
+//                 <td>₹{previewHra.toFixed(2)}</td>
+//                 <td>ESIC</td>
+//                 <td>₹{previewEsic.toFixed(2)}</td>
+//               </tr>
+//               <tr>
+//                 <td>Other Allowances</td>
+//                 <td>₹{previewAllowance.toFixed(2)}</td>
+//                 <td>Professional Tax</td>
+//                 <td>₹{previewPt.toFixed(2)}</td>
+//               </tr>
+//               {previewBonus > 0 && (
+//                 <tr>
+//                   <td>Bonus</td>
+//                   <td>₹{previewBonus.toFixed(2)}</td>
+//                   <td></td>
+//                   <td></td>
+//                 </tr>
+//               )}
+//               <tr>
+//                 <td><strong>Gross Salary</strong></td>
+//                 <td><strong>₹{previewGross.toFixed(2)}</strong></td>
+//                 <td>TDS</td>
+//                 <td>₹{previewTds.toFixed(2)}</td>
+//               </tr>
+//               <tr>
+//                 <td></td>
+//                 <td></td>
+//                 <td>Insurance</td>
+//                 <td>₹{previewInsurance.toFixed(2)}</td>
+//               </tr>
+//               {previewAdvanceRecovery > 0 && (
+//                 <tr>
+//                   <td></td>
+//                   <td></td>
+//                   <td>Advance Recovery</td>
+//                   <td>₹{previewAdvanceRecovery.toFixed(2)}</td>
+//                 </tr>
+//               )}
+//               {previewLopDeduction > 0 && (
+//                 <tr>
+//                   <td></td>
+//                   <td></td>
+//                   <td>LOP Deduction</td>
+//                   <td>₹{previewLopDeduction.toFixed(2)}</td>
+//                 </tr>
+//               )}
+//               <tr className="total-row">
+//                 <td colSpan="2"></td>
+//                 <td><strong>Total Deductions</strong></td>
+//                 <td><strong>₹{previewTotalDed.toFixed(2)}</strong></td>
+//               </tr>
+//               <tr className="net-salary-row">
+//                 <td colSpan="2"><strong>Net Salary</strong></td>
+//                 <td colSpan="2"><strong>₹{previewNet.toFixed(2)}</strong></td>
+//               </tr>
+//             </tbody>
+//           </table>
+
+//           <button onClick={handleDownload} className="payroll-download-btn">
+//             Download PDF
+//           </button>
+//         </div>
+//       ) : (
+//         !loading &&
+//         !error && <p>No payroll data available for this month.</p>
+//       )}
+//     </div>
+//   );
+// };
+
+// export default PayrollSummary;
+
+
 "use client";
 import React, { useState, useEffect } from "react";
 import axios from "axios";
@@ -20,9 +5220,9 @@ const PayrollSummary = () => {
   const [employeeDetails, setEmployeeDetails] = useState(null);
   const [templateHtml, setTemplateHtml] = useState(null);
   const [templateCss, setTemplateCss] = useState(null);
-  const [headerBlob, setHeaderBlob] = useState(null);
-  const [footerBlob, setFooterBlob] = useState(null);
-  const [watermarkBlob, setWatermarkBlob] = useState(null);
+  const [headerImgSrc, setHeaderImgSrc] = useState(null); // data URL
+  const [footerImgSrc, setFooterImgSrc] = useState(null); // data URL
+  const [watermarkImgSrc, setWatermarkImgSrc] = useState(null); // data URL
   const [watermarkProps, setWatermarkProps] = useState({
     xPct: "50%",
     yPct: "50%",
@@ -34,8 +5234,7 @@ const PayrollSummary = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  const BACKEND_URL =
-    process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5001";
+  const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5001";
   const API_KEY = process.env.NEXT_PUBLIC_API_KEY;
 
   const employeeId = user?.employeeId;
@@ -52,6 +5251,9 @@ const PayrollSummary = () => {
     "x-employee-id": employeeId ?? "",
     "x-org-id": orgId ?? "",
   };
+
+  // Cache for image data URLs
+  const protectedImgCache = new Map();
 
   function normalizeUploadUrl(src, backendBase = BACKEND_URL) {
     if (!src) return src;
@@ -73,54 +5275,58 @@ const PayrollSummary = () => {
     }
   }
 
-  async function fetchProtectedBlobUrl(
-    src,
-    apiKey = API_KEY,
-    backendBase = BACKEND_URL
-  ) {
+  const blobToDataUrl = (blob) => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+  };
+
+  async function fetchProtectedImageDataUrl(src, backendBase = BACKEND_URL) {
     if (!src) return null;
-    if (src.startsWith("blob:") || src.startsWith("data:")) return src;
+    if (src.startsWith("data:")) return src;
 
     const normalized = normalizeUploadUrl(src, backendBase);
-    console.log("🔍 [BLOB FETCH] Trying URL:", normalized);
+
+    const cached = protectedImgCache.get(normalized);
+    if (cached) {
+      console.log("✅ [IMAGE FETCH] CACHE HIT:", normalized);
+      return cached;
+    }
+
+    console.log("🔍 [IMAGE FETCH] Trying URL:", normalized);
 
     try {
       const res = await axios.get(normalized, {
         responseType: "blob",
-        headers: { "x-api-key": apiKey || "" },
+        headers,
         withCredentials: true,
       });
-      const blobUrl = URL.createObjectURL(res.data);
-      console.log("✅ [BLOB FETCH] SUCCESS with auth headers:", blobUrl);
-      return blobUrl;
+      const dataUrl = await blobToDataUrl(res.data);
+      protectedImgCache.set(normalized, dataUrl);
+      console.log("✅ [IMAGE FETCH] SUCCESS → data URL created");
+      return dataUrl;
     } catch (err) {
-      console.warn(
-        "⚠️ [BLOB FETCH] Auth headers failed:",
-        err?.response?.status || err.message
-      );
+      console.warn("⚠️ [IMAGE FETCH] Axios failed:", err?.response?.status || err.message);
     }
 
     try {
       const res = await fetch(normalized, { credentials: "include" });
       if (!res.ok) throw new Error(`Status ${res.status}`);
       const blob = await res.blob();
-      const blobUrl = URL.createObjectURL(blob);
-      console.log("✅ [BLOB FETCH] SUCCESS with simple fetch:", blobUrl);
-      return blobUrl;
+      const dataUrl = await blobToDataUrl(blob);
+      protectedImgCache.set(normalized, dataUrl);
+      console.log("✅ [IMAGE FETCH] Fallback fetch → data URL created");
+      return dataUrl;
     } catch (err) {
-      console.error(
-        "❌ [BLOB FETCH] Simple fetch also FAILED:",
-        err.message || err
-      );
+      console.error("❌ [IMAGE FETCH] FAILED:", err.message || err);
       return null;
     }
   }
 
-  async function replaceUploadUrlsInHtml(
-    html = "",
-    apiKey = API_KEY,
-    backendBase = BACKEND_URL
-  ) {
+  async function replaceUploadUrlsInHtml(html = "", backendBase = BACKEND_URL) {
     if (!html || typeof html !== "string") return html;
     const uploadRegex = /\/api\/orgs\/\d+\/uploads\/[A-Za-z0-9._-]+/g;
     const matches = html.match(uploadRegex);
@@ -132,12 +5338,8 @@ const PayrollSummary = () => {
     await Promise.all(
       unique.map(async (m) => {
         const normalized = normalizeUploadUrl(m, backendBase);
-        const blobUrl = await fetchProtectedBlobUrl(
-          normalized,
-          apiKey,
-          backendBase
-        );
-        replacements[m] = blobUrl || normalized;
+        const dataUrl = await fetchProtectedImageDataUrl(normalized, backendBase);
+        replacements[m] = dataUrl || normalized;
       })
     );
 
@@ -163,12 +5365,7 @@ const PayrollSummary = () => {
           const res = await fetch(src);
           if (!res.ok) throw new Error();
           const blob = await res.blob();
-          const dataUrl = await new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onload = () => resolve(reader.result);
-            reader.onerror = reject;
-            reader.readAsDataURL(blob);
-          });
+          const dataUrl = await blobToDataUrl(blob);
           img.setAttribute("src", dataUrl);
         } catch (err) {
           console.warn("Failed to inline image", src);
@@ -202,385 +5399,343 @@ const PayrollSummary = () => {
       }
 
       console.log("🚀 DOWNLOAD STARTED");
-      console.log("Watermark blob:", !!watermarkBlob ? "YES" : "NO");
+      console.log("Header data URL:", !!headerImgSrc);
+      console.log("Footer data URL:", !!footerImgSrc);
+      console.log("Watermark data URL:", !!watermarkImgSrc);
       console.log("Watermark props:", watermarkProps);
-      console.log("Header blob:", !!headerBlob ? "YES" : "NO");
-      console.log("Footer blob:", !!footerBlob ? "YES" : "NO");
 
-      const employeeName =
-        payrollData.full_name || employeeDetails?.name || "N/A";
+      const employeeName = payrollData.full_name || employeeDetails?.full_name || employeeDetails?.name || "N/A";
       const empId = payrollData.employee_id || employeeId || "N/A";
-      const designation =
-        payrollData.designation || employeeDetails?.designation || "N/A";
+      const designation = payrollData.designation || employeeDetails?.designation || "N/A";
+
+      const gender = employeeDetails?.gender || "N/A";
+
+      const dojRaw = employeeDetails?.joining_date || "N/A";
+      const doj = dojRaw !== "N/A" 
+        ? new Date(dojRaw).toLocaleDateString("en-IN", { day: "2-digit", month: "2-digit", year: "numeric" })
+        : "N/A";
+
+      const pfNo = employeeDetails?.pf_number || bankDetails?.pf_number || payrollData?.pf_number || "N/A";
+      const esiNo = employeeDetails?.esi_number || bankDetails?.esi_number || payrollData?.esi_number || "N/A";
+      const panNo = employeeDetails?.pan_number || bankDetails?.pan_number || "N/A";
+      const uanNo = employeeDetails?.uan_number || bankDetails?.uin_number || "N/A";
+      const accountNo = bankDetails?.account_number || "N/A";
+      const bankName = bankDetails?.bank_name || "N/A";
 
       const basicSalary = Number(payrollData.basic_salary || 0);
       const hra = Number(payrollData.hra || 0);
+      const lta = Number(payrollData.lta || payrollData.lta_allowance || 0);
       const allowance = Number(payrollData.other_allowances || 0);
+      const incentives = Number(payrollData.incentives || payrollData.incentivePay || 0);
+      const overtime = Number(payrollData.overtime || payrollData.overtimePay || 0);
+      const statutoryBonus = Number(payrollData.statutory_bonus || payrollData.statutoryBonus || 0);
       const bonus = Number(payrollData.bonus || 0);
       const advanceRecovery = Number(payrollData.advance_recovery || 0);
       const lopDeduction = Number(payrollData.lop_deduction || 0);
-      const pf = Number(payrollData.employee_pf || payrollData.pf || 0);
+      const employeePf = Number(payrollData.employee_pf || payrollData.pf || 0);
+      const employerPf = Number(payrollData.employer_pf || payrollData.employerPF || 0);
       const esic = Number(payrollData.esic || 0);
+      const gratuity = Number(payrollData.gratuity || 0);
       const professionalTax = Number(payrollData.professional_tax || 0);
       const tds = Number(payrollData.tds || 0);
       const insurance = Number(payrollData.insurance || 0);
       const grossSalary = Number(payrollData.gross_salary || 0);
 
       const totalDeductions =
-        pf +
-        esic +
-        professionalTax +
-        tds +
-        insurance +
-        advanceRecovery +
-        lopDeduction;
+        employeePf + esic + professionalTax + tds + insurance + advanceRecovery + lopDeduction;
 
-      const netSalary = Number(
-        payrollData.net_salary || grossSalary - totalDeductions
-      );
+      const netSalary = Number(payrollData.net_salary || grossSalary - totalDeductions);
 
       const leavesTaken = Number(payrollData.lop_days || 0);
       const totalWorkingDays =
-        attendance?.total_working_days ||
-        (leavesTaken > 0 ? 30 - leavesTaken : 30);
+        attendance?.total_working_days || (leavesTaken > 0 ? 30 - leavesTaken : 30);
 
       const monthNames = [
-        "January",
-        "February",
-        "March",
-        "April",
-        "May",
-        "June",
-        "July",
-        "August",
-        "September",
-        "October",
-        "November",
-        "December",
+        "January", "February", "March", "April", "May", "June", "July", "August",
+        "September", "October", "November", "December",
       ];
-      const monthYear = `${monthNames[selectedDate.month - 1]} ${
-        selectedDate.year
-      }`;
+      const monthYear = `${monthNames[selectedDate.month - 1]} ${selectedDate.year}`;
 
+      // Correct Indian number-to-words (handles Lakh, Crore properly)
       const convertNumberToWords = (num) => {
-        if (!num || num === 0) return "Zero Only";
-        const ones = [
-          "",
-          "One",
-          "Two",
-          "Three",
-          "Four",
-          "Five",
-          "Six",
-          "Seven",
-          "Eight",
-          "Nine",
-          "Ten",
-          "Eleven",
-          "Twelve",
-          "Thirteen",
-          "Fourteen",
-          "Fifteen",
-          "Sixteen",
-          "Seventeen",
-          "Eighteen",
-          "Nineteen",
-        ];
-        const tens = [
-          "",
-          "",
-          "Twenty",
-          "Thirty",
-          "Forty",
-          "Fifty",
-          "Sixty",
-          "Seventy",
-          "Eighty",
-          "Ninety",
-        ];
+        if (!num || num === 0) return "Zero Rupees Only";
+
+        const ones = ["", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine", "Ten",
+          "Eleven", "Twelve", "Thirteen", "Fourteen", "Fifteen", "Sixteen", "Seventeen", "Eighteen", "Nineteen"];
+        const tens = ["", "", "Twenty", "Thirty", "Forty", "Fifty", "Sixty", "Seventy", "Eighty", "Ninety"];
+
         const scales = ["", "Thousand", "Lakh", "Crore"];
+
         let words = "";
+        let n = Math.floor(num); // Use integer part for words
+
         let i = 0;
-        let n = Math.round(num);
-        while (n > 0) {
-          let part = n % 100;
-          if (part > 19) {
-            words =
-              tens[Math.floor(part / 10)] +
-              (part % 10 ? " " + ones[part % 10] : "") +
-              (i > 0 ? " " + scales[i] : "") +
-              " " +
-              words;
-          } else if (part > 0) {
-            words = ones[part] + (i > 0 ? " " + scales[i] : "") + " " + words;
+        do {
+          let part = n % 1000;
+          if (part !== 0) {
+            let partWords = "";
+            if (part >= 100) {
+              partWords += ones[Math.floor(part / 100)] + " Hundred ";
+              part %= 100;
+            }
+            if (part >= 20) {
+              partWords += tens[Math.floor(part / 10)] + (part % 10 ? " " + ones[part % 10] : "");
+            } else if (part > 0) {
+              partWords += ones[part];
+            }
+            if (i > 0) partWords += " " + scales[i];
+            words = partWords + (words ? " " + words : "");
           }
-          n = Math.floor(n / 100);
-          i += 2;
-        }
-        return words.trim() + " Only";
+          n = Math.floor(n / 1000);
+          i++;
+        } while (n > 0);
+
+        return words.trim() + " Rupees Only";
       };
 
       const netSalaryWords = convertNumberToWords(netSalary);
 
-      const dataTableHtml = `
+      // Employee details section
+      const employeeDetailsHtml = `
         <div style="font-family: Arial, Helvetica, sans-serif; font-size: 12px; color: #000; margin-bottom: 25px;">
 
-  <!-- Optional subtle header (you can remove this div if you don't want any header) -->
-  <div style="padding: 8px 0; text-align: center; font-weight: bold; font-size: 13px; color: #1a3c6d; margin-bottom: 12px;">
-    EMPLOYEE DETAILS - ${monthYear.toUpperCase()}
-  </div>
+          <div style="padding: 8px 0; text-align: center; font-weight: bold; font-size: 13px; color: #1a3c6d; margin-bottom: 12px;">
+            PAYSLIP FOR - ${monthYear.toUpperCase()}
+          </div>
 
-  <!-- Two column content - no border -->
-  <div style="display: flex; flex-wrap: wrap; gap: 20px;">
-    <!-- Left column -->
-    <div style="flex: 1; min-width: 48%; box-sizing: border-box;">
-      <div style="margin-bottom: 10px;">
-        <strong style="display: inline-block; width: 130px; color: #333;">Employee Name:</strong>
-        ${employeeName.toUpperCase()}
-      </div>
-      <div style="margin-bottom: 10px;">
-        <strong style="display: inline-block; width: 130px; color: #333;">Employee ID:</strong>
-        ${empId}
-      </div>
-      <div style="margin-bottom: 10px;">
-        <strong style="display: inline-block; width: 130px; color: #333;">Designation:</strong>
-        ${designation.toUpperCase() || "N/A"}
-      </div>
-      <div style="margin-bottom: 10px;">
-        <strong style="display: inline-block; width: 130px; color: #333;">PF No:</strong>
-        ${bankDetails?.pf_number || payrollData?.pf_number || "N/A"}
-      </div>
-      <div style="margin-bottom: 10px;">
-        <strong style="display: inline-block; width: 130px; color: #333;">ESI No:</strong>
-        ${bankDetails?.esi_number || payrollData?.esi_number || "N/A"}
-      </div>
-    </div>
+          <div style="display: flex; flex-wrap: wrap; gap: 20px;">
+            <div style="flex: 1; min-width: 48%; box-sizing: border-box;">
+              <div style="margin-bottom: 10px;">
+                <strong style="display: inline-block; width: 130px; color: #333;">Employee Name:</strong>
+                ${employeeName.toUpperCase()}
+              </div>
+              <div style="margin-bottom: 10px;">
+                <strong style="display: inline-block; width: 130px; color: #333;">Employee ID:</strong>
+                ${empId}
+              </div>
+              ${designation && designation !== "N/A" ? `
+              <div style="margin-bottom: 10px;">
+                <strong style="display: inline-block; width: 130px; color: #333;">Designation:</strong>
+                ${designation.toUpperCase()}
+              </div>` : ''}
+              ${pfNo && pfNo !== "N/A" ? `
+              <div style="margin-bottom: 10px;">
+                <strong style="display: inline-block; width: 130px; color: #333;">PF No:</strong>
+                ${pfNo}
+              </div>` : ''}
+              ${esiNo && esiNo !== "N/A" ? `
+              <div style="margin-bottom: 10px;">
+                <strong style="display: inline-block; width: 130px; color: #333;">ESI No:</strong>
+                ${esiNo}
+              </div>` : ''}
+              ${gender && gender !== "N/A" ? `
+              <div style="margin-bottom: 10px;">
+                <strong style="display: inline-block; width: 130px; color: #333;">Gender:</strong>
+                ${gender}
+              </div>` : ''}
+            </div>
 
-    <!-- Right column -->
-    <div style="flex: 1; min-width: 48%; box-sizing: border-box;">
-      <div style="margin-bottom: 10px;">
-        <strong style="display: inline-block; width: 130px; color: #333;">PAN:</strong>
-        ${bankDetails?.pan_number || employeeDetails?.pan_number || "N/A"}
-      </div>
-      <div style="margin-bottom: 10px;">
-        <strong style="display: inline-block; width: 130px; color: #333;">UAN:</strong>
-        ${bankDetails?.uin_number || employeeDetails?.uan_number || "N/A"}
-      </div>
-      <div style="margin-bottom: 10px;">
-        <strong style="display: inline-block; width: 130px; color: #333;">Bank Name:</strong>
-        ${bankDetails?.bank_name || "N/A"}
-      </div>
-      <div style="margin-bottom: 10px;">
-        <strong style="display: inline-block; width: 130px; color: #333;">Account No:</strong>
-        ${bankDetails?.account_number || "N/A"}
-      </div>
-      <div style="margin-bottom: 10px;">
-        <strong style="display: inline-block; width: 130px; color: #333;">Working Days:</strong>
-        ${totalWorkingDays}
-      </div>
-      <div style="margin-bottom: 10px;">
-        <strong style="display: inline-block; width: 130px; color: #333;">LOP Days:</strong>
-        ${leavesTaken}
-      </div>
-    </div>
-  </div>
-</div>
-
-          <table style="width: 100%; border-collapse: collapse;">
-            <thead>
-              <tr style="background-color: #f0f0f0;">
-                <th style="border: 1px solid #000; padding: 8px; text-align: left;">Earnings</th>
-                <th style="border: 1px solid #000; padding: 8px; text-align: right;">Amount (₹)</th>
-                <th style="border: 1px solid #000; padding: 8px; text-align: left;">Deductions</th>
-                <th style="border: 1px solid #000; padding: 8px; text-align: right;">Amount (₹)</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td style="border: 1px solid #000; padding: 8px;">Basic Salary</td>
-                <td style="border: 1px solid #000; padding: 8px; text-align: right;">${basicSalary.toFixed(
-                  2
-                )}</td>
-                <td style="border: 1px solid #000; padding: 8px;">PF</td>
-                <td style="border: 1px solid #000; padding: 8px; text-align: right;">${pf.toFixed(
-                  2
-                )}</td>
-              </tr>
-              <tr>
-                <td style="border: 1px solid #000; padding: 8px;">HRA</td>
-                <td style="border: 1px solid #000; padding: 8px; text-align: right;">${hra.toFixed(
-                  2
-                )}</td>
-                <td style="border: 1px solid #000; padding: 8px;">ESIC</td>
-                <td style="border: 1px solid #000; padding: 8px; text-align: right;">${esic.toFixed(
-                  2
-                )}</td>
-              </tr>
-              <tr>
-                <td style="border: 1px solid #000; padding: 8px;">Other Allowances</td>
-                <td style="border: 1px solid #000; padding: 8px; text-align: right;">${allowance.toFixed(
-                  2
-                )}</td>
-                <td style="border: 1px solid #000; padding: 8px;">Professional Tax</td>
-                <td style="border: 1px solid #000; padding: 8px; text-align: right;">${professionalTax.toFixed(
-                  2
-                )}</td>
-              </tr>
-              ${
-                bonus > 0
-                  ? `
-              <tr>
-                <td style="border: 1px solid #000; padding: 8px;">Bonus</td>
-                <td style="border: 1px solid #000; padding: 8px; text-align: right;">${bonus.toFixed(
-                  2
-                )}</td>
-                <td style="border: 1px solid #000; padding: 8px;"></td>
-                <td style="border: 1px solid #000; padding: 8px;"></td>
-              </tr>`
-                  : ""
-              }
-              <tr>
-                <td style="border: 1px solid #000; padding: 8px;"><strong>Gross Salary</strong></td>
-                <td style="border: 1px solid #000; padding: 8px; text-align: right;"><strong>${grossSalary.toFixed(
-                  2
-                )}</strong></td>
-                <td style="border: 1px solid #000; padding: 8px;">TDS</td>
-                <td style="border: 1px solid #000; padding: 8px; text-align: right;">${tds.toFixed(
-                  2
-                )}</td>
-              </tr>
-              <tr>
-                <td style="border: 1px solid #000; padding: 8px;"></td>
-                <td style="border: 1px solid #000; padding: 8px;"></td>
-                <td style="border: 1px solid #000; padding: 8px;">Insurance</td>
-                <td style="border: 1px solid #000; padding: 8px; text-align: right;">${insurance.toFixed(
-                  2
-                )}</td>
-              </tr>
-              ${
-                advanceRecovery > 0
-                  ? `
-              <tr>
-                <td style="border: 1px solid #000; padding: 8px;"></td>
-                <td style="border: 1px solid #000; padding: 8px;"></td>
-                <td style="border: 1px solid #000; padding: 8px;">Advance Recovery</td>
-                <td style="border: 1px solid #000; padding: 8px; text-align: right;">${advanceRecovery.toFixed(
-                  2
-                )}</td>
-              </tr>`
-                  : ""
-              }
-              ${
-                lopDeduction > 0
-                  ? `
-              <tr>
-                <td style="border: 1px solid #000; padding: 8px;"></td>
-                <td style="border: 1px solid #000; padding: 8px;"></td>
-                <td style="border: 1px solid #000; padding: 8px;">LOP Deduction</td>
-                <td style="border: 1px solid #000; padding: 8px; text-align: right;">${lopDeduction.toFixed(
-                  2
-                )}</td>
-              </tr>`
-                  : ""
-              }
-              <tr style="background-color: #f0f0f0;">
-                <td style="border: 1px solid #000; padding: 8px;"></td>
-                <td style="border: 1px solid #000; padding: 8px;"></td>
-                <td style="border: 1px solid #000; padding: 8px;"><strong>Total Deductions</strong></td>
-                <td style="border: 1px solid #000; padding: 8px; text-align: right;"><strong>${totalDeductions.toFixed(
-                  2
-                )}</strong></td>
-              </tr>
-              <tr style="background-color: #e0e0e0; font-size: 14px;">
-                <td style="border: 1px solid #000; padding: 12px; text-align: center;" colSpan="4">
-                  <strong>Net Salary: ₹${netSalary.toFixed(
-                    2
-                  )} (${netSalaryWords})</strong>
-                </td>
-              </tr>
-            </tbody>
-          </table>
+            <div style="flex: 1; min-width: 48%; box-sizing: border-box;">
+              ${panNo && panNo !== "N/A" ? `
+              <div style="margin-bottom: 10px;">
+                <strong style="display: inline-block; width: 130px; color: #333;">PAN:</strong>
+                ${panNo}
+              </div>` : ''}
+              ${uanNo && uanNo !== "N/A" ? `
+              <div style="margin-bottom: 10px;">
+                <strong style="display: inline-block; width: 130px; color: #333;">UAN:</strong>
+                ${uanNo}
+              </div>` : ''}
+              ${bankName && bankName !== "N/A" ? `
+              <div style="margin-bottom: 10px;">
+                <strong style="display: inline-block; width: 130px; color: #333;">Bank Name:</strong>
+                ${bankName}
+              </div>` : ''}
+              ${accountNo && accountNo !== "N/A" ? `
+              <div style="margin-bottom: 10px;">
+                <strong style="display: inline-block; width: 130px; color: #333;">Account No:</strong>
+                ${accountNo}
+              </div>` : ''}
+              <div style="margin-bottom: 10px;">
+                <strong style="display: inline-block; width: 130px; color: #333;">Working Days:</strong>
+                ${totalWorkingDays}
+              </div>
+              ${leavesTaken > 0 ? `
+              <div style="margin-bottom: 10px;">
+                <strong style="display: inline-block; width: 130px; color: #333;">LOP Days:</strong>
+                ${leavesTaken}
+              </div>` : ''}
+              ${doj && doj !== "N/A" ? `
+              <div style="margin-bottom: 10px;">
+                <strong style="display: inline-block; width: 130px; color: #333;">Date of Joining:</strong>
+                ${doj}
+              </div>` : ''}
+            </div>
+          </div>
         </div>
       `;
 
-      let processedTemplate = null;
-      if (templateHtml) {
-        let htmlWithCss = templateHtml;
-        if (templateCss) {
-          htmlWithCss = `<style>${templateCss}</style>${htmlWithCss}`;
-        }
+      // Earnings
+      const earnings = [];
+      if (basicSalary > 0) earnings.push({ name: "Basic Salary", amount: basicSalary });
+      if (hra > 0) earnings.push({ name: "HRA", amount: hra });
+      if (lta > 0) earnings.push({ name: "LTA", amount: lta });
+      if (allowance > 0) earnings.push({ name: "Other Allowances", amount: allowance });
+      if (incentives > 0) earnings.push({ name: "Incentives", amount: incentives });
+      if (overtime > 0) earnings.push({ name: "Overtime", amount: overtime });
+      if (statutoryBonus > 0) earnings.push({ name: "Statutory Bonus", amount: statutoryBonus });
+      if (bonus > 0) earnings.push({ name: "Bonus", amount: bonus });
 
-        const parser = new DOMParser();
-        let doc = parser.parseFromString(htmlWithCss, "text/html");
-        const pageContainer = doc.querySelector(".template-page") || doc.body;
+      // Deductions (including employer contributions)
+      const deductions = [];
+      if (advanceRecovery > 0) deductions.push({ name: "Advance Recovery", amount: advanceRecovery });
+      if (employeePf > 0) deductions.push({ name: "Employee PF", amount: employeePf });
+      if (employerPf > 0) deductions.push({ name: "Employer PF", amount: employerPf });
+      if (esic > 0) deductions.push({ name: "ESIC", amount: esic });
+      if (gratuity > 0) deductions.push({ name: "Gratuity", amount: gratuity });
+      if (professionalTax > 0) deductions.push({ name: "Professional Tax", amount: professionalTax });
+      if (tds > 0) deductions.push({ name: "TDS", amount: tds });
+      if (insurance > 0) deductions.push({ name: "Insurance", amount: insurance });
+      if (lopDeduction > 0) deductions.push({ name: "LOP Deduction", amount: lopDeduction });
 
-        pageContainer.style.position = "relative";
-        pageContainer.style.minHeight = "100vh";
+      const maxRows = Math.max(earnings.length, deductions.length);
 
-        const bodyDiv = doc.querySelector(".template-body") || pageContainer;
-        bodyDiv.innerHTML = dataTableHtml;
-        bodyDiv.style.padding = "20px 40px";
-        bodyDiv.style.minHeight = "auto";
+      let detailRows = "";
+      for (let i = 0; i < maxRows; i++) {
+        const earn = earnings[i] || { name: "", amount: 0 };
+        const ded = deductions[i] || { name: "", amount: 0 };
 
-        if (headerBlob) {
-          doc.querySelectorAll(".template-header").forEach((el) => el.remove());
-          const headerDiv = doc.createElement("div");
-          headerDiv.className = "template-header";
-          const img = doc.createElement("img");
-          img.src = headerBlob;
-          img.style.maxWidth = "100%";
-          img.style.display = "block";
-          headerDiv.appendChild(img);
-          pageContainer.insertBefore(headerDiv, pageContainer.firstChild);
-        }
+        const earnName = earn.name || "&nbsp;";
+        const earnAmt = earn.amount > 0 ? earn.amount.toFixed(2) : "";
+        const dedName = ded.name || "&nbsp;";
+        const dedAmt = ded.amount > 0 ? ded.amount.toFixed(2) : "";
 
-        if (footerBlob) {
-          doc.querySelectorAll(".template-footer").forEach((el) => el.remove());
-          const footerDiv = doc.createElement("div");
-          footerDiv.className = "template-footer";
-          const img = doc.createElement("img");
-          img.src = footerBlob;
-          img.style.maxWidth = "100%";
-          img.style.display = "block";
-          footerDiv.appendChild(img);
-          pageContainer.appendChild(footerDiv);
-        }
-
-        if (watermarkBlob) {
-          console.log("✅ INJECTING WATERMARK");
-          doc.querySelectorAll(".pdf-watermark").forEach((el) => el.remove());
-          const wmWrapper = doc.createElement("div");
-          wmWrapper.className = "pdf-watermark";
-          wmWrapper.style.position = "absolute";
-          wmWrapper.style.top = watermarkProps.yPct;
-          wmWrapper.style.left = watermarkProps.xPct;
-          wmWrapper.style.width = watermarkProps.wPct;
-          wmWrapper.style.height = watermarkProps.hPct;
-          wmWrapper.style.transform = "translate(-50%, -50%)";
-          wmWrapper.style.opacity = watermarkProps.opacity;
-          wmWrapper.style.pointerEvents = "none";
-          wmWrapper.style.zIndex = "-1";
-
-          const img = doc.createElement("img");
-          img.src = watermarkBlob;
-          img.style.width = "100%";
-          img.style.height = "100%";
-          img.style.objectFit = "contain";
-
-          wmWrapper.appendChild(img);
-          pageContainer.insertBefore(wmWrapper, pageContainer.firstChild);
-        } else {
-          console.log("❌ NO WATERMARK BLOB - SKIPPING INJECTION");
-        }
-
-        let processedHtml = doc.documentElement.outerHTML;
-        processedHtml = await inlineAllImages(processedHtml);
-
-        processedTemplate = {
-          html: processedHtml,
-          css: "",
-        };
+        detailRows += `
+          <tr>
+            <td style="border: 1px solid #000; padding: 8px;">${earnName}</td>
+            <td style="border: 1px solid #000; padding: 8px; text-align: right;">${earnAmt}</td>
+            <td style="border: 1px solid #000; padding: 8px;">${dedName}</td>
+            <td style="border: 1px solid #000; padding: 8px; text-align: right;">${dedAmt}</td>
+          </tr>`;
       }
+
+      const tableHtml = `
+        <table style="width: 100%; border-collapse: collapse; margin-top: 20px;">
+          <thead>
+            <tr style="background-color: #f0f0f0;">
+              <th style="border: 1px solid #000; padding: 8px; text-align: left;">Earnings</th>
+              <th style="border: 1px solid #000; padding: 8px; text-align: right;">Amount (₹)</th>
+              <th style="border: 1px solid #000; padding: 8px; text-align: left;">Deductions</th>
+              <th style="border: 1px solid #000; padding: 8px; text-align: right;">Amount (₹)</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${detailRows}
+            <tr style="background-color: #f0f0f0;">
+              <td style="border: 1px solid #000; padding: 8px;"><strong>Gross Salary</strong></td>
+              <td style="border: 1px solid #000; padding: 8px; text-align: right;"><strong>${grossSalary.toFixed(2)}</strong></td>
+              <td style="border: 1px solid #000; padding: 8px;"><strong>Total Deductions</strong></td>
+              <td style="border: 1px solid #000; padding: 8px; text-align: right;"><strong>${totalDeductions.toFixed(2)}</strong></td>
+            </tr>
+            <!-- Extra gap before Net Salary section -->
+            <tr>
+              <td colspan="4" style="height: 30px; border: none;"></td>
+            </tr>
+            <tr style="background-color: #e0e0e0; font-size: 15px;">
+              <td colspan="2" style="border: 1px solid #000; padding: 15px 12px; text-align: left; font-weight: bold; color: #1a3c6d;">
+                Net Salary Payable
+              </td>
+              <td colspan="2" style="border: 1px solid #000; padding: 15px 12px; text-align: right; font-weight: bold; color: #1a3c6d;">
+                ₹${netSalary.toFixed(2)}
+              </td>
+            </tr>
+            <tr style="background-color: #e0e0e0; font-size: 14px;">
+              <td colspan="2" style="border: 1px solid #000; padding: 12px; text-align: left;">
+              Net Salary In Words:
+              </td>
+              <td colspan="2" style="border: 1px solid #000; padding: 12px; text-align: right;">
+                ${netSalaryWords}
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      `;
+
+      const dataTableHtml = employeeDetailsHtml + tableHtml;
+
+      let baseHtml = templateHtml || `<div class="template-page"><div class="template-body"></div></div>`;
+      if (templateCss) {
+        baseHtml = `<style>${templateCss}</style>${baseHtml}`;
+      }
+
+      const parser = new DOMParser();
+      let doc = parser.parseFromString(baseHtml, "text/html");
+      let pageContainer = doc.querySelector(".template-page") || doc.body;
+      pageContainer.style.position = "relative";
+      pageContainer.style.minHeight = "100vh";
+      pageContainer.style.boxSizing = "border-box";
+
+      let bodyDiv = doc.querySelector(".template-body") || pageContainer;
+      bodyDiv.innerHTML = dataTableHtml;
+      bodyDiv.style.padding = "20px 40px";
+
+      if (headerImgSrc && !doc.querySelector(".template-header")) {
+        const headerDiv = doc.createElement("div");
+        headerDiv.className = "template-header";
+        headerDiv.style.marginBottom = "20px";
+        headerDiv.style.textAlign = "center";
+        const img = doc.createElement("img");
+        img.src = headerImgSrc;
+        img.style.maxWidth = "100%";
+        img.style.display = "block";
+        headerDiv.appendChild(img);
+        pageContainer.insertBefore(headerDiv, bodyDiv);
+      }
+
+      if (footerImgSrc && !doc.querySelector(".template-footer")) {
+        const footerDiv = doc.createElement("div");
+        footerDiv.className = "template-footer";
+        footerDiv.style.marginTop = "20px";
+        footerDiv.style.textAlign = "center";
+        const img = doc.createElement("img");
+        img.src = footerImgSrc;
+        img.style.maxWidth = "100%";
+        img.style.display = "block";
+        footerDiv.appendChild(img);
+        pageContainer.appendChild(footerDiv);
+      }
+
+      if (watermarkImgSrc) {
+        doc.querySelectorAll(".pdf-watermark").forEach((el) => el.remove());
+        const wmWrapper = doc.createElement("div");
+        wmWrapper.className = "pdf-watermark";
+        wmWrapper.style.position = "absolute";
+        wmWrapper.style.top = watermarkProps.yPct;
+        wmWrapper.style.left = watermarkProps.xPct;
+        wmWrapper.style.width = watermarkProps.wPct;
+        wmWrapper.style.height = watermarkProps.hPct;
+        wmWrapper.style.transform = "translate(-50%, -50%)";
+        wmWrapper.style.opacity = watermarkProps.opacity;
+        wmWrapper.style.pointerEvents = "none";
+        wmWrapper.style.zIndex = "-1";
+
+        const img = doc.createElement("img");
+        img.src = watermarkImgSrc;
+        img.style.width = "100%";
+        img.style.height = "100%";
+        img.style.objectFit = "contain";
+        wmWrapper.appendChild(img);
+
+        pageContainer.insertBefore(wmWrapper, pageContainer.firstChild);
+      }
+
+      let finalHtml = doc.documentElement.outerHTML;
+      finalHtml = await inlineAllImages(finalHtml);
+
+      const processedTemplate = {
+        html: finalHtml,
+        css: "",
+      };
 
       const blob = await generatePayslipPDF(
         payrollData,
@@ -599,9 +5754,7 @@ const PayrollSummary = () => {
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `Payslip_${empId}_${selectedDate.month
-        .toString()
-        .padStart(2, "0")}_${selectedDate.year}.pdf`;
+      a.download = `Payslip_${empId}_${selectedDate.month.toString().padStart(2, "0")}_${selectedDate.year}.pdf`;
       document.body.appendChild(a);
       a.click();
       a.remove();
@@ -611,6 +5764,8 @@ const PayrollSummary = () => {
       alert("Error generating PDF. Check console for details.");
     }
   };
+
+  // Rest of the code (useEffect hooks, preview, return JSX) remains unchanged
 
   useEffect(() => {
     const fetchSelectedTemplate = async () => {
@@ -622,13 +5777,10 @@ const PayrollSummary = () => {
       console.log("🔄 TEMPLATE FETCH STARTED for orgId:", orgId);
 
       try {
-        const prefsRes = await axios.get(
-          `${BACKEND_URL}/api/salary-preferences`,
-          {
-            headers,
-            withCredentials: true,
-          }
-        );
+        const prefsRes = await axios.get(`${BACKEND_URL}/api/salary-preferences`, {
+          headers,
+          withCredentials: true,
+        });
 
         const selectedId = prefsRes.data?.data?.[0]?.selected_template_id;
         if (!selectedId) {
@@ -638,13 +5790,10 @@ const PayrollSummary = () => {
 
         console.log("Selected template ID:", selectedId);
 
-        const templatesRes = await axios.get(
-          `${BACKEND_URL}/api/orgs/${orgId}/templates`,
-          {
-            headers,
-            withCredentials: true,
-          }
-        );
+        const templatesRes = await axios.get(`${BACKEND_URL}/api/orgs/${orgId}/templates`, {
+          headers,
+          withCredentials: true,
+        });
 
         const templates = templatesRes.data || [];
         const selectedTemplate = templates.find((t) => t.id === selectedId);
@@ -656,91 +5805,84 @@ const PayrollSummary = () => {
 
         console.log("✅ Using template:", selectedTemplate.name);
 
-        let processedHtml = await replaceUploadUrlsInHtml(
-          selectedTemplate.html || ""
-        );
+        let processedHtml = await replaceUploadUrlsInHtml(selectedTemplate.html || "");
         setTemplateHtml(processedHtml);
         setTemplateCss(selectedTemplate.css || "");
 
+        let grapes = null;
+        const grapesField = selectedTemplate.grapes_json || selectedTemplate.grapesJson;
+        if (grapesField) {
+          try {
+            grapes = typeof grapesField === "string" ? JSON.parse(grapesField) : grapesField;
+          } catch (e) {
+            console.error("Failed to parse grapes_json", e);
+          }
+        }
+
         let headerSrc = null;
         let footerSrc = null;
-
-        if (selectedTemplate.html) {
-          const parser = new DOMParser();
-          const doc = parser.parseFromString(
-            selectedTemplate.html,
-            "text/html"
-          );
-          const headerImg = doc.querySelector(".template-header img");
-          if (headerImg) headerSrc = headerImg.getAttribute("src");
-          const footerImg = doc.querySelector(".template-footer img");
-          if (footerImg) footerSrc = footerImg.getAttribute("src");
-        }
-
-        if (headerSrc) {
-          const blobUrl = await fetchProtectedBlobUrl(headerSrc);
-          if (blobUrl) setHeaderBlob(blobUrl);
-        }
-
-        if (footerSrc) {
-          const blobUrl = await fetchProtectedBlobUrl(footerSrc);
-          if (blobUrl) setFooterBlob(blobUrl);
-        }
-
         let wmUrl = null;
         let wp = { ...watermarkProps };
 
-        const grapesField =
-          selectedTemplate.grapes_json || selectedTemplate.grapesJson;
-        if (grapesField) {
-          try {
-            const grapes =
-              typeof grapesField === "string"
-                ? JSON.parse(grapesField)
-                : grapesField;
-            if (grapes?.watermark?.url) {
-              wmUrl = grapes.watermark.url;
-              wp = {
-                xPct: ensurePercent(grapes.watermark.xPct),
-                yPct: ensurePercent(grapes.watermark.yPct),
-                wPct: ensurePercent(grapes.watermark.wPct),
-                hPct: ensurePercent(grapes.watermark.hPct),
-                opacity: grapes.watermark.opacity ?? 0.12,
-              };
-              console.log("✅ WATERMARK FROM grapes_json:", wmUrl, wp);
-            }
-          } catch (e) {
-            console.error("❌ GRAPES PARSE ERROR:", e);
+        if (grapes) {
+          headerSrc = grapes.headerUrl || grapes.header_url || headerSrc;
+          footerSrc = grapes.footerUrl || grapes.footer_url || footerSrc;
+          if (grapes.watermark?.url) {
+            wmUrl = grapes.watermark.url;
+            wp = {
+              xPct: ensurePercent(grapes.watermark.xPct || grapes.watermark.x || "50%"),
+              yPct: ensurePercent(grapes.watermark.yPct || grapes.watermark.y || "50%"),
+              wPct: ensurePercent(grapes.watermark.wPct || grapes.watermark.w || "60%"),
+              hPct: ensurePercent(grapes.watermark.hPct || grapes.watermark.h || "60%"),
+              opacity: grapes.watermark.opacity ?? 0.12,
+            };
           }
         }
 
-        if (!wmUrl && selectedTemplate.meta) {
+        let metaObj = null;
+        if (selectedTemplate.meta) {
           try {
-            const meta =
-              typeof selectedTemplate.meta === "string"
-                ? JSON.parse(selectedTemplate.meta)
-                : selectedTemplate.meta;
-            if (meta?.watermarkPlacement) {
-              wp = {
-                ...wp,
-                ...meta.watermarkPlacement,
-                xPct: ensurePercent(meta.watermarkPlacement.xPct),
-                yPct: ensurePercent(meta.watermarkPlacement.yPct),
-                wPct: ensurePercent(meta.watermarkPlacement.wPct),
-                hPct: ensurePercent(meta.watermarkPlacement.hPct),
-              };
-            }
-          } catch (e) {
-            console.warn("Meta parse error", e);
-          }
+            metaObj = typeof selectedTemplate.meta === "string" ? JSON.parse(selectedTemplate.meta) : selectedTemplate.meta;
+          } catch {}
+        }
+        if (metaObj?.uploads) {
+          headerSrc = metaObj.uploads.header || headerSrc;
+          footerSrc = metaObj.uploads.footer || footerSrc;
+          wmUrl = metaObj.uploads.watermark || wmUrl;
         }
 
+        if (!headerSrc && selectedTemplate.thumbnail_url) {
+          headerSrc = `/api/orgs/${orgId}/uploads/${selectedTemplate.thumbnail_url}`;
+        }
+
+        if (headerSrc) {
+          const dataUrl = await fetchProtectedImageDataUrl(headerSrc);
+          if (dataUrl) setHeaderImgSrc(dataUrl);
+        }
+        if (footerSrc) {
+          const dataUrl = await fetchProtectedImageDataUrl(footerSrc);
+          if (dataUrl) setFooterImgSrc(dataUrl);
+        }
         if (wmUrl) {
-          const blobUrl = await fetchProtectedBlobUrl(wmUrl);
-          if (blobUrl) {
-            setWatermarkBlob(blobUrl);
+          const dataUrl = await fetchProtectedImageDataUrl(wmUrl);
+          if (dataUrl) {
+            setWatermarkImgSrc(dataUrl);
             setWatermarkProps(wp);
-            console.log("✅ WATERMARK BLOB SET SUCCESSFULLY");
+          }
+        }
+
+        if (selectedTemplate.html) {
+          const parser = new DOMParser();
+          const doc = parser.parseFromString(selectedTemplate.html, "text/html");
+          const headerImg = doc.querySelector(".template-header img");
+          const footerImg = doc.querySelector(".template-footer img");
+          if (headerImg && !headerImgSrc) {
+            const dataUrl = await fetchProtectedImageDataUrl(headerImg.getAttribute("src"));
+            if (dataUrl) setHeaderImgSrc(dataUrl);
+          }
+          if (footerImg && !footerImgSrc) {
+            const dataUrl = await fetchProtectedImageDataUrl(footerImg.getAttribute("src"));
+            if (dataUrl) setFooterImgSrc(dataUrl);
           }
         }
       } catch (err) {
@@ -753,11 +5895,9 @@ const PayrollSummary = () => {
 
   useEffect(() => {
     return () => {
-      [headerBlob, footerBlob, watermarkBlob].forEach((url) => {
-        if (url && url.startsWith("blob:")) URL.revokeObjectURL(url);
-      });
+      protectedImgCache.clear();
     };
-  }, [headerBlob, footerBlob, watermarkBlob]);
+  }, []);
 
   useEffect(() => {
     if (!employeeId || !orgId) {
@@ -771,24 +5911,18 @@ const PayrollSummary = () => {
       setPayrollData(null);
 
       try {
-        const empRes = await axios.get(
-          `${BACKEND_URL}/api/employee-details/${employeeId}`,
-          {
-            headers,
-            withCredentials: true,
-          }
-        );
+        const empRes = await axios.get(`${BACKEND_URL}/api/employee-details/${employeeId}`, {
+          headers,
+          withCredentials: true,
+        });
         setEmployeeDetails(empRes.data || null);
         setAttendance(empRes.data?.attendanceStats || null);
 
         try {
-          const bankRes = await axios.get(
-            `${BACKEND_URL}/api/bank-details/${employeeId}`,
-            {
-              headers,
-              withCredentials: true,
-            }
-          );
+          const bankRes = await axios.get(`${BACKEND_URL}/api/bank-details/${employeeId}`, {
+            headers,
+            withCredentials: true,
+          });
           setBankDetails(bankRes.data || {});
         } catch {
           setBankDetails({});
@@ -801,10 +5935,7 @@ const PayrollSummary = () => {
           );
           setPayrollData(salaryRes.data || null);
         } catch (salaryErr) {
-          if (
-            salaryErr.response?.status === 404 ||
-            salaryErr.response?.data?.error === "Not found"
-          ) {
+          if (salaryErr.response?.status === 404 || salaryErr.response?.data?.error === "Not found") {
             setPayrollData(null);
           } else {
             throw salaryErr;
@@ -821,9 +5952,8 @@ const PayrollSummary = () => {
     fetchAllData();
   }, [selectedDate, employeeId, orgId]);
 
-  const previewName = payrollData?.full_name || employeeDetails?.name || "N/A";
-  const previewDesignation =
-    payrollData?.designation || employeeDetails?.designation || "N/A";
+  const previewName = payrollData?.full_name || employeeDetails?.full_name || employeeDetails?.name || "N/A";
+  const previewDesignation = payrollData?.designation || employeeDetails?.designation || "N/A";
   const previewBasic = Number(payrollData?.basic_salary || 0);
   const previewHra = Number(payrollData?.hra || 0);
   const previewAllowance = Number(payrollData?.other_allowances || 0);
@@ -837,16 +5967,8 @@ const PayrollSummary = () => {
   const previewLopDeduction = Number(payrollData?.lop_deduction || 0);
   const previewGross = Number(payrollData?.gross_salary || 0);
   const previewTotalDed =
-    previewPf +
-    previewEsic +
-    previewPt +
-    previewTds +
-    previewInsurance +
-    previewAdvanceRecovery +
-    previewLopDeduction;
-  const previewNet = Number(
-    payrollData?.net_salary || previewGross - previewTotalDed
-  );
+    previewPf + previewEsic + previewPt + previewTds + previewInsurance + previewAdvanceRecovery + previewLopDeduction;
+  const previewNet = Number(payrollData?.net_salary || previewGross - previewTotalDed);
 
   return (
     <div className="payroll-container">
@@ -855,9 +5977,7 @@ const PayrollSummary = () => {
       <div className="payroll-controls">
         <label className="payroll-label">Select Month & Year:</label>
         <select
-          value={`${selectedDate.year}-${selectedDate.month
-            .toString()
-            .padStart(2, "0")}`}
+          value={`${selectedDate.year}-${selectedDate.month.toString().padStart(2, "0")}`}
           onChange={handleDateChange}
           className="payroll-select"
         >
@@ -867,10 +5987,7 @@ const PayrollSummary = () => {
             const monthNum = date.getMonth() + 1;
             const yearNum = date.getFullYear();
             return (
-              <option
-                key={i}
-                value={`${yearNum}-${monthNum.toString().padStart(2, "0")}`}
-              >
+              <option key={i} value={`${yearNum}-${monthNum.toString().padStart(2, "0")}`}>
                 {date.toLocaleString("default", { month: "long" })} {yearNum}
               </option>
             );
@@ -884,38 +6001,18 @@ const PayrollSummary = () => {
       {!loading && !error && payrollData ? (
         <div className="payslip">
           <h2>
-            Payslip for{" "}
-            {new Date(selectedDate.year, selectedDate.month - 1).toLocaleString(
-              "default",
-              { month: "long", year: "numeric" }
-            )}
+            Payslip for {new Date(selectedDate.year, selectedDate.month - 1).toLocaleString("default", { month: "long", year: "numeric" })}
           </h2>
 
-          <table
-            style={{
-              width: "100%",
-              marginBottom: "20px",
-              borderCollapse: "collapse",
-              fontSize: "14px",
-            }}
-          >
+          <table style={{ width: "100%", marginBottom: "20px", borderCollapse: "collapse", fontSize: "14px" }}>
             <tbody>
               <tr>
-                <td style={{ padding: "8px" }}>
-                  <strong>Employee Name:</strong> {previewName}
-                </td>
-                <td style={{ padding: "8px" }}>
-                  <strong>Employee ID:</strong> {employeeId}
-                </td>
+                <td style={{ padding: "8px" }}><strong>Employee Name:</strong> {previewName}</td>
+                <td style={{ padding: "8px" }}><strong>Employee ID:</strong> {employeeId}</td>
               </tr>
               <tr>
-                <td style={{ padding: "8px" }}>
-                  <strong>Bank:</strong> {bankDetails?.bank_name || "N/A"}
-                </td>
-                <td style={{ padding: "8px" }}>
-                  <strong>Account No:</strong>{" "}
-                  {bankDetails?.account_number || "N/A"}
-                </td>
+                <td style={{ padding: "8px" }}><strong>Bank:</strong> {bankDetails?.bank_name || "N/A"}</td>
+                <td style={{ padding: "8px" }}><strong>Account No:</strong> {bankDetails?.account_number || "N/A"}</td>
               </tr>
             </tbody>
           </table>
@@ -957,12 +6054,8 @@ const PayrollSummary = () => {
                 </tr>
               )}
               <tr>
-                <td>
-                  <strong>Gross Salary</strong>
-                </td>
-                <td>
-                  <strong>₹{previewGross.toFixed(2)}</strong>
-                </td>
+                <td><strong>Gross Salary</strong></td>
+                <td><strong>₹{previewGross.toFixed(2)}</strong></td>
                 <td>TDS</td>
                 <td>₹{previewTds.toFixed(2)}</td>
               </tr>
@@ -990,20 +6083,12 @@ const PayrollSummary = () => {
               )}
               <tr className="total-row">
                 <td colSpan="2"></td>
-                <td>
-                  <strong>Total Deductions</strong>
-                </td>
-                <td>
-                  <strong>₹{previewTotalDed.toFixed(2)}</strong>
-                </td>
+                <td><strong>Total Deductions</strong></td>
+                <td><strong>₹{previewTotalDed.toFixed(2)}</strong></td>
               </tr>
               <tr className="net-salary-row">
-                <td colSpan="2">
-                  <strong>Net Salary</strong>
-                </td>
-                <td colSpan="2">
-                  <strong>₹{previewNet.toFixed(2)}</strong>
-                </td>
+                <td colSpan="2"><strong>Net Salary</strong></td>
+                <td colSpan="2"><strong>₹{previewNet.toFixed(2)}</strong></td>
               </tr>
             </tbody>
           </table>
@@ -1013,7 +6098,8 @@ const PayrollSummary = () => {
           </button>
         </div>
       ) : (
-        !loading && !error && <p>No payroll data available for this month.</p>
+        !loading &&
+        !error && <p>No payroll data available for this month.</p>
       )}
     </div>
   );

@@ -1,11 +1,13 @@
+
 "use client";
 
 import React, { useState, useEffect } from "react";
+import axios from "axios";
 import generatePayslipPDF from "../../utils/generatePayslipPDF";
 import "./generate_payslip.css";
 import Modal from "../Modal/Modal.client";
 import { useAuth } from "../../context/AuthProvider.client";
-
+import '@fortawesome/fontawesome-free/css/all.min.css';
 export default function GeneratePayslip() {
   const { user } = useAuth();
 
@@ -20,7 +22,7 @@ export default function GeneratePayslip() {
   const meId = user?.employeeId ?? user?.id ?? null;
 
   const API_KEY = process.env.NEXT_PUBLIC_API_KEY;
-  const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
+  const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5001";
 
   const getHeaders = (extra = {}) => {
     const base = {
@@ -89,6 +91,7 @@ export default function GeneratePayslip() {
 
   const showAlert = (message, title = "") =>
     setAlertModal({ isVisible: true, title, message });
+
   const closeAlert = () =>
     setAlertModal({ isVisible: false, title: "", message: "" });
 
@@ -98,6 +101,584 @@ export default function GeneratePayslip() {
 
   const closeViewDetails = () =>
     setViewDetailsModal({ isVisible: false, employee: null });
+
+  // ────────────────────────────────────────────────
+  // Template fetching & image protection logic
+  // ────────────────────────────────────────────────
+
+  const [templateHtml, setTemplateHtml] = useState(null);
+  const [templateCss, setTemplateCss] = useState(null);
+  const [headerImgSrc, setHeaderImgSrc] = useState(null);
+  const [footerImgSrc, setFooterImgSrc] = useState(null);
+  const [watermarkImgSrc, setWatermarkImgSrc] = useState(null);
+  const [watermarkProps, setWatermarkProps] = useState({
+    xPct: "50%",
+    yPct: "50%",
+    wPct: "60%",
+    hPct: "60%",
+    opacity: 0.12,
+  });
+
+  const protectedImgCache = new Map();
+
+  const normalizeUploadUrl = (src) => {
+    if (!src) return src;
+    if (src.startsWith("blob:") || src.startsWith("data:")) return src;
+    const backend = BACKEND_URL.replace(/\/$/, "");
+    if (src.startsWith("/api/")) return backend + src;
+    return src;
+  };
+
+  const blobToDataUrl = (blob) =>
+    new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+
+  const fetchProtectedImageDataUrl = async (src) => {
+    if (!src) return null;
+    if (src.startsWith("data:")) return src;
+
+    const normalized = normalizeUploadUrl(src);
+    if (protectedImgCache.has(normalized)) return protectedImgCache.get(normalized);
+
+    try {
+      const res = await axios.get(normalized, {
+        responseType: "blob",
+        headers: getHeaders(),
+        withCredentials: true,
+      });
+      const dataUrl = await blobToDataUrl(res.data);
+      protectedImgCache.set(normalized, dataUrl);
+      return dataUrl;
+    } catch (err) {
+      console.warn("Image fetch failed:", err);
+      return null;
+    }
+  };
+
+  const replaceUploadUrlsInHtml = async (html = "") => {
+    if (!html || typeof html !== "string") return html;
+    const uploadRegex = /\/api\/orgs\/\d+\/uploads\/[A-Za-z0-9._-]+/g;
+    const matches = html.match(uploadRegex);
+    if (!matches || matches.length === 0) return html;
+
+    const unique = Array.from(new Set(matches));
+    const replacements = {};
+
+    await Promise.all(
+      unique.map(async (m) => {
+        const dataUrl = await fetchProtectedImageDataUrl(m);
+        replacements[m] = dataUrl || m;
+      })
+    );
+
+    let out = html;
+    Object.keys(replacements).forEach((orig) => {
+      const safe = orig.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      out = out.replace(new RegExp(safe, "g"), replacements[orig]);
+    });
+    return out;
+  };
+
+  const ensurePercent = (v, defaultVal = "50%") => {
+    if (!v) return defaultVal;
+    if (typeof v === "number") return `${v}%`;
+    const str = String(v).trim();
+    return str.endsWith("%") ? str : `${str}%`;
+  };
+
+  useEffect(() => {
+    const fetchSelectedTemplate = async () => {
+      if (!orgId) return;
+
+      try {
+        const prefsRes = await axios.get(`${BACKEND_URL}/api/salary-preferences`, {
+          headers: getHeaders(),
+          withCredentials: true,
+        });
+
+        const selectedId = prefsRes.data?.data?.[0]?.selected_template_id;
+        if (!selectedId) return;
+
+        const templatesRes = await axios.get(`${BACKEND_URL}/api/orgs/${orgId}/templates`, {
+          headers: getHeaders(),
+          withCredentials: true,
+        });
+
+        const templates = templatesRes.data || [];
+        const selectedTemplate = templates.find((t) => t.id === selectedId);
+        if (!selectedTemplate) return;
+
+        let processedHtml = await replaceUploadUrlsInHtml(selectedTemplate.html || "");
+        setTemplateHtml(processedHtml);
+        setTemplateCss(selectedTemplate.css || "");
+
+        let grapes = null;
+        const grapesField = selectedTemplate.grapes_json || selectedTemplate.grapesJson;
+        if (grapesField) {
+          try {
+            grapes = typeof grapesField === "string" ? JSON.parse(grapesField) : grapesField;
+          } catch (e) {
+            console.error("Failed to parse grapes_json", e);
+          }
+        }
+
+        let headerSrc = null;
+        let footerSrc = null;
+        let wmUrl = null;
+        let wp = { ...watermarkProps };
+
+        if (grapes) {
+          headerSrc = grapes.headerUrl || grapes.header_url;
+          footerSrc = grapes.footerUrl || grapes.footer_url;
+          if (grapes.watermark?.url) {
+            wmUrl = grapes.watermark.url;
+            wp = {
+              xPct: ensurePercent(grapes.watermark.xPct || "50%"),
+              yPct: ensurePercent(grapes.watermark.yPct || "50%"),
+              wPct: ensurePercent(grapes.watermark.wPct || "60%"),
+              hPct: ensurePercent(grapes.watermark.hPct || "60%"),
+              opacity: grapes.watermark.opacity ?? 0.12,
+            };
+          }
+        }
+
+        let metaObj = null;
+        if (selectedTemplate.meta) {
+          try {
+            metaObj = typeof selectedTemplate.meta === "string" ? JSON.parse(selectedTemplate.meta) : selectedTemplate.meta;
+          } catch {}
+        }
+        if (metaObj?.uploads) {
+          headerSrc = metaObj.uploads.header || headerSrc;
+          footerSrc = metaObj.uploads.footer || footerSrc;
+          wmUrl = metaObj.uploads.watermark || wmUrl;
+        }
+
+        if (!headerSrc && selectedTemplate.thumbnail_url) {
+          headerSrc = `/api/orgs/${orgId}/uploads/${selectedTemplate.thumbnail_url}`;
+        }
+
+        if (headerSrc) {
+          const dataUrl = await fetchProtectedImageDataUrl(headerSrc);
+          if (dataUrl) setHeaderImgSrc(dataUrl);
+        }
+        if (footerSrc) {
+          const dataUrl = await fetchProtectedImageDataUrl(footerSrc);
+          if (dataUrl) setFooterImgSrc(dataUrl);
+        }
+        if (wmUrl) {
+          const dataUrl = await fetchProtectedImageDataUrl(wmUrl);
+          if (dataUrl) {
+            setWatermarkImgSrc(dataUrl);
+            setWatermarkProps(wp);
+          }
+        }
+      } catch (err) {
+        console.error("TEMPLATE FETCH ERROR:", err);
+      }
+    };
+
+    fetchSelectedTemplate();
+  }, [orgId, BACKEND_URL]);
+
+  // ────────────────────────────────────────────────
+  // Number to words (Indian style)
+  // ────────────────────────────────────────────────
+
+  const convertNumberToWords = (num) => {
+    if (!num || num === 0) return "Zero Rupees Only";
+
+    const ones = ["", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine", "Ten",
+      "Eleven", "Twelve", "Thirteen", "Fourteen", "Fifteen", "Sixteen", "Seventeen", "Eighteen", "Nineteen"];
+    const tens = ["", "", "Twenty", "Thirty", "Forty", "Fifty", "Sixty", "Seventy", "Eighty", "Ninety"];
+    const scales = ["", "Thousand", "Lakh", "Crore"];
+
+    let words = "";
+    let n = Math.floor(num);
+    let i = 0;
+
+    do {
+      let part = n % 1000;
+      if (part !== 0) {
+        let partWords = "";
+        if (part >= 100) {
+          partWords += ones[Math.floor(part / 100)] + " Hundred ";
+          part %= 100;
+        }
+        if (part >= 20) {
+          partWords += tens[Math.floor(part / 10)] + (part % 10 ? " " + ones[part % 10] : "");
+        } else if (part > 0) {
+          partWords += ones[part];
+        }
+        if (i > 0) partWords += " " + scales[i];
+        words = partWords + (words ? " " + words : "");
+      }
+      n = Math.floor(n / 1000);
+      i++;
+    } while (n > 0);
+
+    return words.trim() + " Rupees Only";
+  };
+
+  // ────────────────────────────────────────────────
+  // Build HTML content for PDF
+  // ────────────────────────────────────────────────
+
+  const buildDataTableHtml = (data) => {
+    const {
+      employeeName = "N/A",
+      employeeId = "N/A",
+      designation = "N/A",
+      dateOfJoining = "N/A",
+      accountNo = "N/A",
+      bankName = "N/A",
+      workingDays = 30,
+      leavesTaken = 0,
+      uinNo = "N/A",
+      panNumber = "N/A",
+      esiNumber = "N/A",
+      pfNumber = "N/A",
+      gender = "N/A",
+      basic = 0,
+      hra = 0,
+      otherAllowance = 0,
+      bonus = 0,
+      pf = 0,
+      esiInsurance = 0,
+      professionalTax = 0,
+      tds = 0,
+      grossEarnings = 0,
+      totalDeductions = 0,
+      netSalary = 0,
+      monthYear = "",
+      netSalaryWords = "Zero Rupees Only",
+    } = data;
+
+    const employeeDetailsHtml = `
+      <div style="font-family: Arial, Helvetica, sans-serif; font-size: 12px; color: #000; margin-bottom: 25px;">
+        <div style="padding: 8px 0; text-align: center; font-weight: bold; font-size: 13px; color: #1a3c6d; margin-bottom: 12px;">
+          PAYSLIP FOR - ${monthYear.toUpperCase()}
+        </div>
+
+        <div style="display: flex; flex-wrap: wrap; gap: 20px;">
+          <div style="flex: 1; min-width: 48%; box-sizing: border-box;">
+            <div style="margin-bottom: 10px;">
+              <strong style="display: inline-block; width: 130px; color: #333;">Employee Name:</strong>
+              ${employeeName.toUpperCase()}
+            </div>
+            ${gender && gender !== "N/A" ? `
+            <div style="margin-bottom: 10px;">
+              <strong style="display: inline-block; width: 130px; color: #333;">Gender:</strong>
+              ${gender.charAt(0).toUpperCase() + gender.slice(1).toLowerCase()}
+            </div>` : ''}
+            <div style="margin-bottom: 10px;">
+              <strong style="display: inline-block; width: 130px; color: #333;">Employee ID:</strong>
+              ${employeeId}
+            </div>
+            ${designation && designation !== "N/A" ? `
+            <div style="margin-bottom: 10px;">
+              <strong style="display: inline-block; width: 130px; color: #333;">Designation:</strong>
+              ${designation.toUpperCase()}
+            </div>` : ''}
+            ${pfNumber && pfNumber !== "N/A" ? `
+            <div style="margin-bottom: 10px;">
+              <strong style="display: inline-block; width: 130px; color: #333;">PF No:</strong>
+              ${pfNumber}
+            </div>` : ''}
+            ${esiNumber && esiNumber !== "N/A" ? `
+            <div style="margin-bottom: 10px;">
+              <strong style="display: inline-block; width: 130px; color: #333;">ESI No:</strong>
+              ${esiNumber}
+            </div>` : ''}
+          </div>
+
+          <div style="flex: 1; min-width: 48%; box-sizing: border-box;">
+            ${panNumber && panNumber !== "N/A" ? `
+            <div style="margin-bottom: 10px;">
+              <strong style="display: inline-block; width: 130px; color: #333;">PAN:</strong>
+              ${panNumber}
+            </div>` : ''}
+            ${uinNo && uinNo !== "N/A" ? `
+            <div style="margin-bottom: 10px;">
+              <strong style="display: inline-block; width: 130px; color: #333;">UAN:</strong>
+              ${uinNo}
+            </div>` : ''}
+            ${bankName && bankName !== "N/A" ? `
+            <div style="margin-bottom: 10px;">
+              <strong style="display: inline-block; width: 130px; color: #333;">Bank Name:</strong>
+              ${bankName}
+            </div>` : ''}
+            ${accountNo && accountNo !== "N/A" ? `
+            <div style="margin-bottom: 10px;">
+              <strong style="display: inline-block; width: 130px; color: #333;">Account No:</strong>
+              ${accountNo}
+            </div>` : ''}
+            <div style="margin-bottom: 10px;">
+              <strong style="display: inline-block; width: 130px; color: #333;">Working Days:</strong>
+              ${workingDays}
+            </div>
+            ${leavesTaken > 0 ? `
+            <div style="margin-bottom: 10px;">
+              <strong style="display: inline-block; width: 130px; color: #333;">LOP Days:</strong>
+              ${leavesTaken}
+            </div>` : ''}
+            ${dateOfJoining && dateOfJoining !== "N/A" ? `
+            <div style="margin-bottom: 10px;">
+              <strong style="display: inline-block; width: 130px; color: #333;">Date of Joining:</strong>
+              ${dateOfJoining}
+            </div>` : ''}
+          </div>
+        </div>
+      </div>
+    `;
+
+    const earnings = [];
+    if (basic > 0) earnings.push({ name: "Basic Salary", amount: basic });
+    if (hra > 0) earnings.push({ name: "HRA", amount: hra });
+    if (otherAllowance > 0) earnings.push({ name: "Other Allowances", amount: otherAllowance });
+    if (bonus > 0) earnings.push({ name: "Bonus", amount: bonus });
+
+    const deductions = [];
+    if (pf > 0) deductions.push({ name: "PF", amount: pf });
+    if (esiInsurance > 0) deductions.push({ name: "ESIC", amount: esiInsurance });
+    if (professionalTax > 0) deductions.push({ name: "Professional Tax", amount: professionalTax });
+    if (tds > 0) deductions.push({ name: "TDS", amount: tds });
+
+    const maxRows = Math.max(earnings.length, deductions.length);
+
+    let detailRows = "";
+    for (let i = 0; i < maxRows; i++) {
+      const earn = earnings[i] || { name: "", amount: 0 };
+      const ded = deductions[i] || { name: "", amount: 0 };
+
+      const earnName = earn.name || " ";
+      const earnAmt = earn.amount > 0 ? earn.amount.toFixed(2) : "";
+      const dedName = ded.name || " ";
+      const dedAmt = ded.amount > 0 ? ded.amount.toFixed(2) : "";
+
+      detailRows += `
+        <tr>
+          <td style="border: 1px solid #000; padding: 8px;">${earnName}</td>
+          <td style="border: 1px solid #000; padding: 8px; text-align: right;">${earnAmt}</td>
+          <td style="border: 1px solid #000; padding: 8px;">${dedName}</td>
+          <td style="border: 1px solid #000; padding: 8px; text-align: right;">${dedAmt}</td>
+        </tr>`;
+    }
+
+    const tableHtml = `
+      <table style="width: 100%; border-collapse: collapse; margin-top: 20px;">
+        <thead>
+          <tr style="background-color: #f0f0f0;">
+            <th style="border: 1px solid #000; padding: 8px; text-align: left;">Earnings</th>
+            <th style="border: 1px solid #000; padding: 8px; text-align: right;">Amount (₹)</th>
+            <th style="border: 1px solid #000; padding: 8px; text-align: left;">Deductions</th>
+            <th style="border: 1px solid #000; padding: 8px; text-align: right;">Amount (₹)</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${detailRows}
+          <tr style="background-color: #f0f0f0;">
+            <td style="border: 1px solid #000; padding: 8px;"><strong>Gross Salary</strong></td>
+            <td style="border: 1px solid #000; padding: 8px; text-align: right;"><strong>${grossEarnings.toFixed(2)}</strong></td>
+            <td style="border: 1px solid #000; padding: 8px;"><strong>Total Deductions</strong></td>
+            <td style="border: 1px solid #000; padding: 8px; text-align: right;"><strong>${totalDeductions.toFixed(2)}</strong></td>
+          </tr>
+          <tr>
+            <td colspan="4" style="height: 30px; border: none;"></td>
+          </tr>
+          <tr style="background-color: #e0e0e0; font-size: 15px;">
+            <td colspan="2" style="border: 1px solid #000; padding: 15px 12px; text-align: left; font-weight: bold; color: #1a3c6d;">
+              Net Salary Payable
+            </td>
+            <td colspan="2" style="border: 1px solid #000; padding: 15px 12px; text-align: right; font-weight: bold; color: #1a3c6d;">
+              ₹${netSalary.toFixed(2)}
+            </td>
+          </tr>
+          <tr style="background-color: #e0e0e0; font-size: 14px;">
+            <td colspan="2" style="border: 1px solid #000; padding: 12px; text-align: left;">
+              In Words:
+            </td>
+            <td colspan="2" style="border: 1px solid #000; padding: 12px; text-align: right;">
+              ${netSalaryWords}
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    `;
+
+    return employeeDetailsHtml + tableHtml;
+  };
+
+  const buildProcessedTemplate = (tableHtml) => {
+    let baseHtml = templateHtml || `<div class="template-page"><div class="template-body"></div></div>`;
+    if (templateCss) baseHtml = `<style>${templateCss}</style>${baseHtml}`;
+
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(baseHtml, "text/html");
+    let pageContainer = doc.querySelector(".template-page") || doc.body;
+    pageContainer.style.position = "relative";
+    pageContainer.style.minHeight = "100vh";
+    pageContainer.style.boxSizing = "border-box";
+
+    let bodyDiv = doc.querySelector(".template-body") || pageContainer;
+    bodyDiv.innerHTML = tableHtml;
+    bodyDiv.style.padding = "20px 40px";
+
+    if (headerImgSrc && !doc.querySelector(".template-header")) {
+      const headerDiv = doc.createElement("div");
+      headerDiv.className = "template-header";
+      headerDiv.style.marginBottom = "20px";
+      headerDiv.style.textAlign = "center";
+      const img = doc.createElement("img");
+      img.src = headerImgSrc;
+      img.style.maxWidth = "100%";
+      img.style.display = "block";
+      headerDiv.appendChild(img);
+      pageContainer.insertBefore(headerDiv, bodyDiv);
+    }
+
+    if (footerImgSrc && !doc.querySelector(".template-footer")) {
+      const footerDiv = doc.createElement("div");
+      footerDiv.className = "template-footer";
+      footerDiv.style.marginTop = "20px";
+      footerDiv.style.textAlign = "center";
+      const img = doc.createElement("img");
+      img.src = footerImgSrc;
+      img.style.maxWidth = "100%";
+      img.style.display = "block";
+      footerDiv.appendChild(img);
+      pageContainer.appendChild(footerDiv);
+    }
+
+    if (watermarkImgSrc) {
+      doc.querySelectorAll(".pdf-watermark").forEach((el) => el.remove());
+      const wmWrapper = doc.createElement("div");
+      wmWrapper.className = "pdf-watermark";
+      wmWrapper.style.position = "absolute";
+      wmWrapper.style.top = watermarkProps.yPct;
+      wmWrapper.style.left = watermarkProps.xPct;
+      wmWrapper.style.width = watermarkProps.wPct;
+      wmWrapper.style.height = watermarkProps.hPct;
+      wmWrapper.style.transform = "translate(-50%, -50%)";
+      wmWrapper.style.opacity = watermarkProps.opacity;
+      wmWrapper.style.pointerEvents = "none";
+      wmWrapper.style.zIndex = "-1";
+
+      const img = doc.createElement("img");
+      img.src = watermarkImgSrc;
+      img.style.width = "100%";
+      img.style.height = "100%";
+      img.style.objectFit = "contain";
+      wmWrapper.appendChild(img);
+
+      pageContainer.insertBefore(wmWrapper, pageContainer.firstChild);
+    }
+
+    return doc.documentElement.outerHTML;
+  };
+
+  // ────────────────────────────────────────────────
+  // Data preparation
+  // ────────────────────────────────────────────────
+
+  const prepareManualPayslipData = () => {
+    const { grossEarnings, totalDeductions, netSalary } = calculateSummary();
+
+    const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+    const monthYear = `${monthNames[selectedMonth - 1]} ${selectedYear}`;
+
+    const netSalaryWords = convertNumberToWords(Math.round(netSalary));
+
+    return {
+      employeeName: formData.employeeName || "N/A",
+      employeeId: formData.employeeId || "N/A",
+      designation: formData.designation || "N/A",
+      dateOfJoining: formData.dateOfJoining || "N/A",
+      accountNo: formData.accountNo || "N/A",
+      bankName: "",
+      workingDays: parseFloat(formData.workingDays) || 30,
+      leavesTaken: parseFloat(formData.leavesTaken) || 0,
+      uinNo: formData.uinNo || "N/A",
+      panNumber: formData.panNumber || "N/A",
+      esiNumber: formData.esiNumber || "N/A",
+      pfNumber: formData.pfNumber || "N/A",
+      gender: formData.gender || "N/A",
+      basic: parseFloat(formData.basic) || 0,
+      hra: parseFloat(formData.hra) || 0,
+      otherAllowance: parseFloat(formData.otherAllowance) || 0,
+      bonus: 0,
+      pf: parseFloat(formData.pf) || 0,
+      esiInsurance: parseFloat(formData.esiInsurance) || 0,
+      professionalTax: parseFloat(formData.professionalTax) || 0,
+      tds: parseFloat(formData.tds) || 0,
+      grossEarnings,
+      totalDeductions,
+      netSalary,
+      monthYear,
+      netSalaryWords,
+    };
+  };
+
+  const prepareSavedPayslipData = (employee) => {
+    const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+    const monthYear = `${monthNames[(employee.month || new Date().getMonth() + 1) - 1]} ${employee.year || new Date().getFullYear()}`;
+
+    const netSalary = parseFloat(employee.net_salary || 0);
+    const netSalaryWords = convertNumberToWords(Math.round(netSalary));
+
+    return {
+      employeeName: employee.employee_name || "N/A",
+      employeeId: employee.employee_id || "N/A",
+      designation: (employee.designation || employee.position || "") + (employee.department_name ? ` (${employee.department_name})` : ""),
+      dateOfJoining: employee.date_of_joining ? employee.date_of_joining.split("T")[0] : "N/A",
+      accountNo: employee.account_no || "N/A",
+      bankName: "",
+      workingDays: parseFloat(employee.working_days || 30),
+      leavesTaken: parseFloat(employee.leaves_taken || 0),
+      uinNo: employee.uin_no || "N/A",
+      panNumber: employee.pan_number || "N/A",
+      esiNumber: employee.esi_number || "N/A",
+      pfNumber: employee.pf_number || "N/A",
+      gender: employee.gender || "N/A",
+      basic: parseFloat(employee.basic || 0),
+      hra: parseFloat(employee.hra || 0),
+      otherAllowance: parseFloat(employee.other_allowance || 0),
+      bonus: 0,
+      pf: parseFloat(employee.pf || 0),
+      esiInsurance: parseFloat(employee.esi_insurance || 0),
+      professionalTax: parseFloat(employee.professional_tax || 0),
+      tds: parseFloat(employee.tds || 0),
+      grossEarnings: parseFloat(employee.gross_earnings || 0),
+      totalDeductions: parseFloat(employee.total_deductions || 0),
+      netSalary,
+      monthYear,
+      netSalaryWords,
+    };
+  };
+
+  const generatePdfWithTemplate = async (tableData) => {
+    const tableHtml = buildDataTableHtml(tableData);
+    const finalHtml = buildProcessedTemplate(tableHtml);
+
+    const pdfBlob = await generatePayslipPDF(
+      {}, // dummy payrollData
+      { month: selectedMonth, year: selectedYear },
+      {},
+      {},
+      {},
+      { html: finalHtml }
+    );
+
+    return pdfBlob;
+  };
+
+  // ────────────────────────────────────────────────
+  // Data fetching
+  // ────────────────────────────────────────────────
 
   useEffect(() => {
     let mounted = true;
@@ -111,10 +692,7 @@ export default function GeneratePayslip() {
           headers: getHeaders(),
         });
 
-        if (!resp.ok) {
-          const text = await resp.text().catch(() => "");
-          throw new Error(text || `HTTP ${resp.status}`);
-        }
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
 
         const data = await resp.json();
         if (!mounted) return;
@@ -124,26 +702,18 @@ export default function GeneratePayslip() {
         setFilteredEmployeeData(list);
       } catch (err) {
         console.error("Fetch payslip list error:", err);
-        showAlert(
-          "Failed to load payslip data: " + (err.message || err),
-          "Error"
-        );
+        showAlert("Failed to load payslip data", "Error");
       }
     };
 
     fetchEmployeeData();
 
-    return () => {
-      mounted = false;
-    };
+    return () => { mounted = false; };
   }, [BACKEND_URL, orgId]);
 
   useEffect(() => {
     let mounted = true;
-    if (!user?.orgId) {
-      console.warn("OrgId not available yet, skipping API call");
-      return;
-    }
+
     const fetchFormEmployees = async () => {
       if (!orgId || !BACKEND_URL) return;
 
@@ -153,10 +723,7 @@ export default function GeneratePayslip() {
           headers: getHeaders(),
         });
 
-        if (!resp.ok) {
-          const text = await resp.text().catch(() => "");
-          throw new Error(text || `HTTP ${resp.status}`);
-        }
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
 
         const data = await resp.json();
         if (!mounted) return;
@@ -168,22 +735,12 @@ export default function GeneratePayslip() {
 
         const normalized = list.map((item) => ({
           employee_id: item.employee_id || item.employeeId || "",
-          employee_name:
-            item.employee_name || item.employeeName || item.name || "",
+          employee_name: item.employee_name || item.employeeName || item.name || "",
           gender: item.gender || "",
           designation: item.position || item.designation || "",
-          department_name:
-            item.department_name ||
-            item.departmentName ||
-            item.department ||
-            "",
-          date_of_joining:
-            item.joining_date ||
-            item.date_of_joining ||
-            item.joiningDate ||
-            null,
-          account_no:
-            item.account_number || item.account_no || item.accountNo || "",
+          department_name: item.department_name || item.departmentName || item.department || "",
+          date_of_joining: item.joining_date || item.date_of_joining || item.joiningDate || null,
+          account_no: item.account_number || item.account_no || item.accountNo || "",
           uin_no: item.uan_number || item.uan || item.uanNumber || "",
           pan_number: item.pan_number || item.panNumber || "",
           esi_number: item.esi_number || item.esiNumber || "",
@@ -194,18 +751,13 @@ export default function GeneratePayslip() {
         setFormEmployeeList(normalized);
       } catch (err) {
         console.error("Employee dropdown fetch error:", err);
-        showAlert(
-          "Failed to load employee list for form: " + (err.message || err),
-          "Warning"
-        );
+        showAlert("Failed to load employee list for form", "Warning");
       }
     };
 
     fetchFormEmployees();
 
-    return () => {
-      mounted = false;
-    };
+    return () => { mounted = false; };
   }, [BACKEND_URL, orgId]);
 
   useEffect(() => {
@@ -223,8 +775,13 @@ export default function GeneratePayslip() {
         )
       );
     }, 300);
+
     return () => clearTimeout(timer);
   }, [searchQuery, employeeData]);
+
+  // ────────────────────────────────────────────────
+  // Form handlers
+  // ────────────────────────────────────────────────
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -311,80 +868,46 @@ export default function GeneratePayslip() {
     esiInsurance: "ESI/Insurance",
     professionalTax: "Professional Tax",
     tds: "TDS",
-    grossEarnings: "Gross Earnings",
-    totalDeductions: "Total Deductions",
-    netSalary: "Net Salary",
-    selectedMonth: "Month",
-    selectedYear: "Year",
   };
 
   const validateForm = () => {
     const requiredFields = [
-      "employeeName",
-      "employeeId",
-      "gender",
-      "designation",
-      "dateOfJoining",
-      "accountNo",
-      "workingDays",
-      "leavesTaken",
-      "uinNo",
-      "panNumber",
-      "basic",
-      "hra",
-      "otherAllowance",
-      "tds",
+      "employeeName", "employeeId", "gender", "designation",
+      "dateOfJoining", "accountNo", "workingDays", "leavesTaken",
+      "uinNo", "panNumber", "basic", "hra", "otherAllowance", "tds",
     ];
 
     for (const field of requiredFields) {
       const val = (formData[field] || "").toString().trim();
-      if (!val) return `Please fill in ${fieldLabels[field] || field}`;
+      if (!val) return `Please fill ${fieldLabels[field] || field}`;
     }
 
     const datePattern = /^\d{4}-\d{2}-\d{2}$/;
     if (formData.dateOfJoining && !datePattern.test(formData.dateOfJoining))
-      return "Date of Joining must be in YYYY-MM-DD format";
+      return "Date of Joining must be YYYY-MM-DD";
 
     const date = new Date(formData.dateOfJoining);
     if (formData.dateOfJoining && (isNaN(date.getTime()) || date > new Date()))
-      return "Please enter a valid Date of Joining in YYYY-MM-DD format";
+      return "Invalid Date of Joining";
 
-    const numericFields = [
-      "workingDays",
-      "leavesTaken",
-      "basic",
-      "hra",
-      "otherAllowance",
-      "pf",
-      "esiInsurance",
-      "professionalTax",
-      "tds",
-    ];
+    const numericFields = ["workingDays", "leavesTaken", "basic", "hra", "otherAllowance", "pf", "esiInsurance", "professionalTax", "tds"];
     for (const field of numericFields) {
-      if (
-        formData[field] &&
-        (isNaN(parseFloat(formData[field])) || parseFloat(formData[field]) < 0)
-      )
-        return `${
-          fieldLabels[field] || field
-        } must be a valid non-negative number`;
+      if (formData[field] && (isNaN(parseFloat(formData[field])) || parseFloat(formData[field]) < 0))
+        return `${fieldLabels[field] || field} must be non-negative number`;
     }
 
     const panPattern = /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/;
     if (formData.panNumber && !panPattern.test(formData.panNumber))
-      return "PAN Number must be in the format AAAAA9999A (e.g., ABCDE1234F)";
+      return "Invalid PAN format (ABCDE1234F)";
 
     if (!["Male", "Female"].includes(formData.gender))
-      return "Gender must be either Male or Female";
+      return "Gender must be Male or Female";
 
     if (!selectedMonth || selectedMonth < 1 || selectedMonth > 12)
-      return "Please select a valid month (1-12)";
-    if (
-      !selectedYear ||
-      selectedYear < 1900 ||
-      selectedYear > new Date().getFullYear() + 1
-    )
-      return "Please select a valid year";
+      return "Invalid month";
+
+    if (!selectedYear || selectedYear < 1900 || selectedYear > new Date().getFullYear() + 1)
+      return "Invalid year";
 
     return null;
   };
@@ -416,53 +939,6 @@ export default function GeneratePayslip() {
       net_salary: netSalary || 0,
       month: parseInt(selectedMonth) || 0,
       year: parseInt(selectedYear) || 0,
-    };
-  };
-
-  const preparePayslipData = () => {
-    const { grossEarnings, totalDeductions, netSalary } = calculateSummary();
-    return {
-      payrollData: {
-        employee_name: formData.employeeName || "Unknown",
-        employee_id: formData.employeeId || "PW-000001",
-        designation: formData.designation || "N/A",
-        joining_date:
-          formData.dateOfJoining || new Date().toISOString().split("T")[0],
-        uin_number: formData.uinNo || "N/A",
-        basic_salary: parseFloat(formData.basic) || 0,
-        hra: parseFloat(formData.hra) || 0,
-        allowance: parseFloat(formData.otherAllowance) || 0,
-        pf: parseFloat(formData.pf) || 0,
-        insurance: parseFloat(formData.esiInsurance) || 0,
-        pt: parseFloat(formData.professionalTax) || 0,
-        tds: parseFloat(formData.tds) || 0,
-        total_earnings: grossEarnings || 0,
-        total_deductions: totalDeductions || 0,
-        net_salary: netSalary || 0,
-        special_allowance: 0,
-        rnrbonus: 0,
-        advance_taken: 0,
-        advance_recovery: 0,
-        salary_advance: 0,
-      },
-      selectedDate: {
-        month: parseInt(selectedMonth) || 1,
-        year: parseInt(selectedYear) || new Date().getFullYear(),
-      },
-      bankDetails: {
-        account_number: formData.accountNo || "N/A",
-        bank_name: "",
-        esi_number: formData.esiNumber || "",
-        pf_number: formData.pfNumber || "",
-      },
-      attendance: {
-        total_working_days: parseInt(formData.workingDays) || 0,
-        leave_count: parseInt(formData.leavesTaken) || 0,
-      },
-      employeeDetails: {
-        gender: formData.gender || "N/A",
-        pan_number: formData.panNumber || "N/A",
-      },
     };
   };
 
@@ -543,12 +1019,11 @@ export default function GeneratePayslip() {
       }
 
       showAlert(
-        isEditing
-          ? "Payslip updated successfully!"
-          : "Payslip saved successfully!",
+        isEditing ? "Payslip updated!" : "Payslip saved!",
         "Success"
       );
 
+      // Refresh list
       const refreshed = await fetch(`${BACKEND_URL}/old-employee/list`, {
         credentials: "include",
         headers: getHeaders(),
@@ -567,7 +1042,7 @@ export default function GeneratePayslip() {
       setEditingEmployeeId(null);
     } catch (err) {
       console.error("Save error:", err);
-      showAlert(`Error saving payslip: ${err.message || err}`, "Error");
+      showAlert(`Error: ${err.message}`, "Error");
     } finally {
       setIsLoading(false);
     }
@@ -581,30 +1056,21 @@ export default function GeneratePayslip() {
       return;
     }
 
+    setIsLoading(true);
     setError(null);
-    const payslipData = preparePayslipData();
 
     try {
-      const pdfBlob = await generatePayslipPDF(
-        payslipData.payrollData,
-        payslipData.selectedDate,
-        payslipData.bankDetails,
-        payslipData.attendance,
-        payslipData.employeeDetails,
-        false
-      );
+      const tableData = prepareManualPayslipData();
+      const pdfBlob = await generatePdfWithTemplate(tableData);
 
-      const url = URL.createObjectURL(
-        pdfBlob instanceof Blob
-          ? pdfBlob
-          : new Blob([pdfBlob], { type: "application/pdf" })
-      );
+      const url = URL.createObjectURL(pdfBlob);
       setPdfUrl(url);
       setPreview(true);
-      setShowModal(true);
     } catch (err) {
       console.error("Preview error:", err);
-      showAlert("Failed to generate preview: " + (err.message || err), "Error");
+      showAlert("Failed to generate preview", "Error");
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -618,37 +1084,20 @@ export default function GeneratePayslip() {
     setIsLoading(true);
 
     try {
-      const payslipData = preparePayslipData();
+      const tableData = prepareManualPayslipData();
+      const pdfBlob = await generatePdfWithTemplate(tableData);
 
-      const pdfBlob = await generatePayslipPDF(
-        payslipData.payrollData,
-        payslipData.selectedDate,
-        payslipData.bankDetails,
-        payslipData.attendance,
-        payslipData.employeeDetails,
-        false
-      );
-
-      const blob =
-        pdfBlob instanceof Blob
-          ? pdfBlob
-          : new Blob([pdfBlob], { type: "application/pdf" });
-
-      const url = window.URL.createObjectURL(blob);
-
+      const url = URL.createObjectURL(pdfBlob);
       const a = document.createElement("a");
       a.href = url;
       a.download = `${formData.employeeId}_${selectedMonth}_${selectedYear}_Payslip.pdf`;
-      document.body.appendChild(a);
       a.click();
+      URL.revokeObjectURL(url);
 
-      a.remove();
-      window.URL.revokeObjectURL(url);
-
-      showAlert("Payslip downloaded successfully!", "Success");
+      showAlert("Payslip downloaded!", "Success");
     } catch (err) {
       console.error(err);
-      showAlert("Failed to download PDF: " + (err.message || err), "Error");
+      showAlert("Failed to download PDF", "Error");
     } finally {
       setIsLoading(false);
     }
@@ -658,73 +1107,20 @@ export default function GeneratePayslip() {
     setIsLoading(true);
 
     try {
-      const payslipData = {
-        payrollData: {
-          employee_id: employee.employee_id,
-          employee_name: employee.employee_name,
-          designation: employee.designation,
-          basic_salary: employee.basic,
-          hra: employee.hra,
-          allowance: employee.other_allowance,
-          pf: employee.pf,
-          insurance: employee.esi_insurance,
-          pt: employee.professional_tax,
-          tds: employee.tds,
-          total_earnings: employee.gross_earnings,
-          total_deductions: employee.total_deductions,
-          net_salary: employee.net_salary,
-        },
-        selectedDate: {
-          month: employee.month || new Date().getMonth() + 1,
-          year: employee.year || new Date().getFullYear(),
-        },
-        bankDetails: {
-          account_number: employee.account_no,
-          esi_number: employee.esi_number,
-          pf_number: employee.pf_number,
-        },
-        attendance: {
-          total_working_days: employee.working_days,
-          leave_count: employee.leaves_taken,
-        },
-        employeeDetails: {
-          gender: employee.gender,
-          joining_date: employee.date_of_joining,
-          pan_number: employee.pan_number,
-          uin_number: employee.uin_no,
-        },
-      };
+      const tableData = prepareSavedPayslipData(employee);
+      const pdfBlob = await generatePdfWithTemplate(tableData);
 
-      const pdfBlob = await generatePayslipPDF(
-        payslipData.payrollData,
-        payslipData.selectedDate,
-        payslipData.bankDetails,
-        payslipData.attendance,
-        payslipData.employeeDetails,
-        false
-      );
-
-      const blob =
-        pdfBlob instanceof Blob
-          ? pdfBlob
-          : new Blob([pdfBlob], { type: "application/pdf" });
-
-      const url = window.URL.createObjectURL(blob);
-
+      const url = URL.createObjectURL(pdfBlob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `${employee.employee_id}_${payslipData.selectedDate.month}_${payslipData.selectedDate.year}_Payslip.pdf`;
-
-      document.body.appendChild(a);
+      a.download = `${employee.employee_id}_${employee.month}_${employee.year}_Payslip.pdf`;
       a.click();
-      a.remove();
+      URL.revokeObjectURL(url);
 
-      window.URL.revokeObjectURL(url);
-
-      showAlert(`Payslip for ${employee.employee_name} downloaded!`, "Success");
+      showAlert(`Downloaded payslip for ${employee.employee_name}`, "Success");
     } catch (err) {
       console.error(err);
-      showAlert(`Download failed: ${err.message || err}`, "Error");
+      showAlert("Download failed", "Error");
     } finally {
       setIsLoading(false);
     }
@@ -733,27 +1129,19 @@ export default function GeneratePayslip() {
   useEffect(() => {
     return () => {
       if (pdfUrl) URL.revokeObjectURL(pdfUrl);
+      protectedImgCache.clear();
     };
   }, [pdfUrl]);
 
+  // ────────────────────────────────────────────────
+  // Render
+  // ────────────────────────────────────────────────
+
   const detailFields = [
-    "accountNo",
-    "workingDays",
-    "leavesTaken",
-    "uinNo",
-    "panNumber",
-    "esiNumber",
-    "pfNumber",
-    "basic",
-    "hra",
-    "otherAllowance",
-    "pf",
-    "esiInsurance",
-    "professionalTax",
-    "tds",
-    "grossEarnings",
-    "totalDeductions",
-    "netSalary",
+    "accountNo", "workingDays", "leavesTaken", "uinNo", "panNumber",
+    "esiNumber", "pfNumber", "basic", "hra", "otherAllowance",
+    "pf", "esiInsurance", "professionalTax", "tds",
+    "grossEarnings", "totalDeductions", "netSalary"
   ];
 
   const tableHeaders = [
@@ -764,35 +1152,21 @@ export default function GeneratePayslip() {
     "Date of Joining",
     "Bank Details",
     "Edit Data",
-    "Download",
+    "Download"
   ];
 
   const fieldOrder = [
-    "employeeId",
-    "employeeName",
-    "gender",
-    "designation",
-    "dateOfJoining",
-    "accountNo",
-    "workingDays",
-    "leavesTaken",
-    "uinNo",
-    "panNumber",
-    "esiNumber",
-    "pfNumber",
-    "basic",
-    "hra",
-    "otherAllowance",
-    "pf",
-    "esiInsurance",
-    "professionalTax",
-    "tds",
+    "employeeId", "employeeName", "gender", "designation",
+    "dateOfJoining", "accountNo", "workingDays", "leavesTaken",
+    "uinNo", "panNumber", "esiNumber", "pfNumber",
+    "basic", "hra", "otherAllowance", "pf", "esiInsurance",
+    "professionalTax", "tds"
   ];
 
-  const fieldsForRows = fieldOrder.concat(["selectedMonth", "selectedYear"]);
   const rows = [];
-  for (let i = 0; i < fieldsForRows.length; i += 3)
-    rows.push(fieldsForRows.slice(i, i + 3));
+  for (let i = 0; i < fieldOrder.length; i += 3) {
+    rows.push(fieldOrder.slice(i, i + 3));
+  }
 
   return (
     <div className="generatePayslip-container">
@@ -807,6 +1181,7 @@ export default function GeneratePayslip() {
             onChange={handleSearchChange}
           />
         </div>
+
         <button
           className="generatePayslip-create-btn"
           onClick={() => {
@@ -838,10 +1213,7 @@ export default function GeneratePayslip() {
           <tbody>
             {filteredEmployeeData.length === 0 ? (
               <tr>
-                <td
-                  colSpan={tableHeaders.length}
-                  style={{ textAlign: "center" }}
-                >
+                <td colSpan={tableHeaders.length} style={{ textAlign: "center" }}>
                   No payslip data found
                 </td>
               </tr>
@@ -855,43 +1227,44 @@ export default function GeneratePayslip() {
                     {employee.employee_id}
                   </td>
                   <td className="generatePayslip-table-cell">
-                    {employee.gender}
+                    {employee.gender || "-"}
                   </td>
                   <td className="generatePayslip-table-cell">
                     {(employee.designation || employee.position || "") +
-                      (employee.department_name
-                        ? ` (${employee.department_name})`
-                        : "")}
+                      (employee.department_name ? ` (${employee.department_name})` : "")}
                   </td>
                   <td className="generatePayslip-table-cell">
-                    {(employee.date_of_joining || "").split("T")[0]}
+                    {(employee.date_of_joining || "").split("T")[0] || "-"}
                   </td>
-                  <td className="generatePayslip-table-cell">
+                  <td className="generatePayslip-table-cell generatePayslip-action-cell">
                     <button
-                      className="generatePayslip-view-btn"
+                      type="button"
+                      className="generatePayslip-view-btn action-btn"
                       onClick={() => handleViewDetails(employee)}
-                      title="View Bank Details"
+                      title="View Details"
                     >
-                      <i className="fas fa-eye" />
+                      <i className="fas fa-eye"></i>
                     </button>
                   </td>
-                  <td className="generatePayslip-table-cell">
+                  <td className="generatePayslip-table-cell generatePayslip-action-cell">
                     <button
-                      className="generatePayslip-edit-btn"
+                      type="button"
+                      className="generatePayslip-edit-btn action-btn"
                       onClick={() => handleEdit(employee)}
                       title="Edit Payslip"
                     >
-                      <i className="fas fa-pencil-alt" />
+                      <i className="fas fa-pencil-alt"></i>
                     </button>
                   </td>
-                  <td className="generatePayslip-table-cell">
+                  <td className="generatePayslip-table-cell generatePayslip-action-cell">
                     <button
-                      className="generatePayslip-download-btn"
+                      type="button"
+                      className="generatePayslip-download-btn action-btn"
                       onClick={() => handleDownloadForEmployee(employee)}
-                      title="Download Payslip PDF"
+                      title="Download PDF"
                       disabled={isLoading}
                     >
-                      <i className="fas fa-download" />
+                      <i className="fas fa-download"></i>
                     </button>
                   </td>
                 </tr>
@@ -956,22 +1329,11 @@ export default function GeneratePayslip() {
                           htmlFor={field}
                           className="generatePayslip-form-label"
                         >
-                          {fieldLabels[field]}
+                          {fieldLabels[field] || field}
                           {[
-                            "employeeName",
-                            "employeeId",
-                            "gender",
-                            "designation",
-                            "dateOfJoining",
-                            "accountNo",
-                            "workingDays",
-                            "leavesTaken",
-                            "uinNo",
-                            "panNumber",
-                            "basic",
-                            "hra",
-                            "otherAllowance",
-                            "tds",
+                            "employeeName", "employeeId", "gender", "designation",
+                            "dateOfJoining", "accountNo", "workingDays", "leavesTaken",
+                            "uinNo", "panNumber", "basic", "hra", "otherAllowance", "tds"
                           ].includes(field) && (
                             <span className="generatePayslip-required"> *</span>
                           )}
@@ -993,9 +1355,7 @@ export default function GeneratePayslip() {
                                     key={emp.employee_id || emp.id}
                                     value={emp.employee_id || emp.employeeId}
                                   >
-                                    {`${emp.employee_id || emp.employeeId} - ${
-                                      emp.employee_name || emp.name || ""
-                                    }`}
+                                    {`${emp.employee_id || emp.employeeId} - ${emp.employee_name || ""}`}
                                   </option>
                                 ))}
                               </select>
@@ -1027,8 +1387,8 @@ export default function GeneratePayslip() {
                               }}
                             >
                               {manualEmployeeId
-                                ? "Select from employee list"
-                                : "Enter employee ID manually"}
+                                ? "Select from list"
+                                : "Enter manually"}
                             </small>
                           </>
                         ) : field === "selectedMonth" ? (
@@ -1042,9 +1402,7 @@ export default function GeneratePayslip() {
                             <option value="">Select Month</option>
                             {[...Array(12)].map((_, i) => (
                               <option key={i + 1} value={i + 1}>
-                                {new Date(0, i).toLocaleString("default", {
-                                  month: "long",
-                                })}
+                                {new Date(0, i).toLocaleString("default", { month: "long" })}
                               </option>
                             ))}
                           </select>
@@ -1088,27 +1446,14 @@ export default function GeneratePayslip() {
                             onChange={handleChange}
                             className="generatePayslip-popup-input"
                             type={
-                              [
-                                "workingDays",
-                                "leavesTaken",
-                                "basic",
-                                "hra",
-                                "otherAllowance",
-                                "pf",
-                                "esiInsurance",
-                                "professionalTax",
-                                "tds",
-                              ].includes(field)
+                              ["workingDays", "leavesTaken", "basic", "hra", "otherAllowance",
+                               "pf", "esiInsurance", "professionalTax", "tds"].includes(field)
                                 ? "number"
                                 : field === "dateOfJoining"
-                                ? "text"
+                                ? "date"
                                 : "text"
                             }
-                            placeholder={
-                              field === "dateOfJoining"
-                                ? "YYYY-MM-DD"
-                                : undefined
-                            }
+                            placeholder={field === "dateOfJoining" ? "YYYY-MM-DD" : undefined}
                           />
                         )}
                       </div>
@@ -1200,37 +1545,23 @@ export default function GeneratePayslip() {
                   <tr key={field}>
                     <td>{fieldLabels[field]}</td>
                     <td>
-                      {field === "accountNo" &&
-                        (viewDetailsModal.employee.account_no || "-")}
-                      {field === "workingDays" &&
-                        (viewDetailsModal.employee.working_days || 0)}
-                      {field === "leavesTaken" &&
-                        (viewDetailsModal.employee.leaves_taken || 0)}
-                      {field === "uinNo" &&
-                        (viewDetailsModal.employee.uin_no || "-")}
-                      {field === "panNumber" &&
-                        (viewDetailsModal.employee.pan_number || "-")}
-                      {field === "esiNumber" &&
-                        (viewDetailsModal.employee.esi_number || "-")}
-                      {field === "pfNumber" &&
-                        (viewDetailsModal.employee.pf_number || "-")}
-                      {field === "basic" &&
-                        (viewDetailsModal.employee.basic || 0)}
+                      {field === "accountNo" && (viewDetailsModal.employee.account_no || "-")}
+                      {field === "workingDays" && (viewDetailsModal.employee.working_days || 0)}
+                      {field === "leavesTaken" && (viewDetailsModal.employee.leaves_taken || 0)}
+                      {field === "uinNo" && (viewDetailsModal.employee.uin_no || "-")}
+                      {field === "panNumber" && (viewDetailsModal.employee.pan_number || "-")}
+                      {field === "esiNumber" && (viewDetailsModal.employee.esi_number || "-")}
+                      {field === "pfNumber" && (viewDetailsModal.employee.pf_number || "-")}
+                      {field === "basic" && (viewDetailsModal.employee.basic || 0)}
                       {field === "hra" && (viewDetailsModal.employee.hra || 0)}
-                      {field === "otherAllowance" &&
-                        (viewDetailsModal.employee.other_allowance || 0)}
+                      {field === "otherAllowance" && (viewDetailsModal.employee.other_allowance || 0)}
                       {field === "pf" && (viewDetailsModal.employee.pf || 0)}
-                      {field === "esiInsurance" &&
-                        (viewDetailsModal.employee.esi_insurance || 0)}
-                      {field === "professionalTax" &&
-                        (viewDetailsModal.employee.professional_tax || 0)}
+                      {field === "esiInsurance" && (viewDetailsModal.employee.esi_insurance || 0)}
+                      {field === "professionalTax" && (viewDetailsModal.employee.professional_tax || 0)}
                       {field === "tds" && (viewDetailsModal.employee.tds || 0)}
-                      {field === "grossEarnings" &&
-                        (viewDetailsModal.employee.gross_earnings || 0)}
-                      {field === "totalDeductions" &&
-                        (viewDetailsModal.employee.total_deductions || 0)}
-                      {field === "netSalary" &&
-                        (viewDetailsModal.employee.net_salary || 0)}
+                      {field === "grossEarnings" && (viewDetailsModal.employee.gross_earnings || 0)}
+                      {field === "totalDeductions" && (viewDetailsModal.employee.total_deductions || 0)}
+                      {field === "netSalary" && (viewDetailsModal.employee.net_salary || 0)}
                     </td>
                   </tr>
                 ))}

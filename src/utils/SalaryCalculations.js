@@ -1,3 +1,4 @@
+
 export const getCurrentYearMonth = () => {
   const year = new Date().getFullYear();
   const month = String(new Date().getMonth() + 1).padStart(2, "0");
@@ -50,6 +51,7 @@ export const parseWorkDate = (dateStr) => {
     return null;
   }
 };
+
 export const getPayrollFilter = () => {
   const today = new Date();
   const currentYear = today.getFullYear();
@@ -75,6 +77,7 @@ export const getPayrollFilter = () => {
 
   return { targetMonthStr, targetYear, windowStart, windowEnd };
 };
+
 export const getWorkingDaysInMonth = (year, month) => {
   const daysInMonth = new Date(year, month, 0).getDate();
   let workingDays = 0;
@@ -152,6 +155,10 @@ export const calculateSalaryDetails = (
     planData = {};
   }
 
+  // ────────────────────────────────────────────────
+  // Basic, HRA, LTA, Other Allowances – unchanged
+  // ────────────────────────────────────────────────
+
   if (
     planData.isBasicSalary &&
     planData.basicSalaryType === "percentage" &&
@@ -223,6 +230,10 @@ export const calculateSalaryDetails = (
     );
   }
   console.log(`Other Allowances (monthly): ₹${otherAllowances}`);
+
+  // ────────────────────────────────────────────────
+  // Overtime – unchanged
+  // ────────────────────────────────────────────────
 
   const { targetMonthStr, targetYear, windowStart, windowEnd } =
     getPayrollFilter();
@@ -298,6 +309,11 @@ export const calculateSalaryDetails = (
   }, 0);
 
   console.log(`Total overtimePay for employee ${employeeId}: ₹${overtimePay}`);
+
+  // ────────────────────────────────────────────────
+  // Regular Bonus – unchanged
+  // ────────────────────────────────────────────────
+
   console.log(
     `Filtering bonus records for current month ${currentYear}-${currentMonthStr}`
   );
@@ -355,10 +371,82 @@ export const calculateSalaryDetails = (
     `recordBonusPayYearly for employee ${employeeId}: ₹${recordBonusPayYearly}`
   );
 
+  // ────────────────────────────────────────────────
+  // STATUTORY BONUS – NEW LOGIC ADDED HERE
+  // ────────────────────────────────────────────────
+
+  // 1. Try to find statutory bonus from the same bonusRecords table
+  const statutoryBonusesThisMonth = safeBonusRecords.filter((bonus) => {
+    const date = parseApplicableMonth(bonus.applicable_month);
+    const isCurrentMonth =
+      date &&
+      date.getFullYear() === currentYear &&
+      String(date.getMonth() + 1).padStart(2, "0") === currentMonthStr;
+
+    // You can adjust this condition based on how you mark statutory bonuses in your DB
+    // Common fields: is_statutory, type, category, bonus_type, name, etc.
+    return (
+      isCurrentMonth &&
+      (bonus.is_statutory === true ||
+        bonus.type?.toLowerCase() === "statutory" ||
+        bonus.category?.toLowerCase() === "statutory" ||
+        bonus.bonus_type?.toLowerCase() === "statutory_bonus" ||
+        (bonus.name && bonus.name.toLowerCase().includes("statutory")))
+    );
+  });
+
+  let statutoryBonusFromRecords = statutoryBonusesThisMonth.reduce((sum, bonus) => {
+    let amount = 0;
+    if (bonus.fixed_amount) {
+      amount = parseFloat(bonus.fixed_amount || 0);
+    } else if (bonus.percentage_ctc) {
+      amount = (parseFloat(bonus.percentage_ctc || 0) / 100) * ctc;
+    } else if (bonus.percentage_basic || bonus.percentage_salary) {
+      amount = (parseFloat(bonus.percentage_basic || bonus.percentage_salary || 0) / 100) * basicSalary;
+    } else if (bonus.percentage_monthly_salary) {
+      amount = parseFloat(bonus.percentage_monthly_salary || 0) * monthlyCtc;
+    }
+    console.log(
+      `Statutory bonus from record: ₹${amount} (ID: ${bonus.id || "N/A"})`
+    );
+    return sum + amount;
+  }, 0);
+
+  // 2. If no record-based statutory bonus found → apply common Indian rule (8.33% of basic/wages, capped)
+  let statutoryBonusCalculated = 0;
+  if (statutoryBonusFromRecords === 0 && planData.isStatutoryBonusApplicable !== false) {
+    // Common practice: 8.33% of monthly basic salary (or minimum wages), often capped at ₹700/month
+    const base = planData.statutoryBonusBase === "gross" 
+      ? (basicSalary + otherAllowances) 
+      : basicSalary;
+    
+    statutoryBonusCalculated = base * 0.0833;
+    
+    // Optional: apply common cap (₹700 is frequent, but confirm your company policy)
+    // statutoryBonusCalculated = Math.min(statutoryBonusCalculated, 700);
+    
+    console.log(
+      `Calculated statutory bonus (no record found): ${statutoryBonusCalculated.toFixed(2)} (8.33% of ${planData.statutoryBonusBase || "basic"})`
+    );
+  }
+
+  // Final value: prefer record-based, fallback to calculated
+  statutoryBonus = statutoryBonusFromRecords > 0 
+    ? statutoryBonusFromRecords 
+    : statutoryBonusCalculated;
+
+  // You can also accumulate yearly if needed (optional)
+  // statutoryBonusYearly = ... (similar logic over whole year)
+
+  // ────────────────────────────────────────────────
+  // Rest of your code – completely unchanged
+  // ────────────────────────────────────────────────
+
   const bonusPay = recordBonusPay + statutoryBonus;
   console.log(
     `✅ Total bonusPay (monthly) for employee ${employeeId}: ₹${bonusPay}`
   );
+
   const empId = String(employeeId).toUpperCase();
   const matchedKey = Object.keys(employeeIncentiveData).find(
     (key) => String(key).toUpperCase() === empId
@@ -378,6 +466,7 @@ export const calculateSalaryDetails = (
   console.log(
     `Incentive Pay (monthly, current month only) for employee ${employeeId}: ₹${incentivePay}`
   );
+
   grossSalary =
     basicSalary +
     hra +
@@ -699,6 +788,7 @@ export const calculateSalaryDetails = (
   return salaryDetails;
 };
 
+// The rest of your file (calculateTotals, getMonthlySalary) remains 100% unchanged
 export const calculateTotals = (
   employees,
   overtimeRecords,

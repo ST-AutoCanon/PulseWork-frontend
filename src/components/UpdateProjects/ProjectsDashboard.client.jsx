@@ -116,6 +116,7 @@ const ProjectsDashboard = () => {
   const dashboardData = user?.dashboardData || user?.dashboard || {};
   const userDepartment = (dashboardData.department || "").toLowerCase();
   const employeeId = user?.employeeId ?? user?.id ?? null;
+  const containerRef = useRef(null);
 
   const normalizedRole = (userRole || "").trim();
   const normalizedDept = (userDepartment || "").trim().toLowerCase();
@@ -156,7 +157,7 @@ const ProjectsDashboard = () => {
         url = `${BACKEND}/projects`;
       } else {
         url = `${BACKEND}/projects/employeeProjects?employeeId=${encodeURIComponent(
-          employeeId
+          employeeId,
         )}`;
       }
 
@@ -190,7 +191,7 @@ const ProjectsDashboard = () => {
   const invoiceTypeKey = getInvoiceTypeKey(selectedInvoiceType);
   const invoiceNumber = getFormattedInvoiceNumber(
     invoiceTypeKey,
-    invoiceSequence
+    invoiceSequence,
   );
 
   useEffect(() => {
@@ -201,7 +202,7 @@ const ProjectsDashboard = () => {
     try {
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_BACKEND_URL}/invoice/template-number?invoiceType=${invoiceTypeKey}`,
-        { credentials: "include", headers: buildHeaders() }
+        { credentials: "include", headers: buildHeaders() },
       );
       if (!response.ok) throw new Error("Failed to fetch invoice number");
       const data = await response.json();
@@ -222,7 +223,7 @@ const ProjectsDashboard = () => {
           credentials: "include",
           headers: buildHeaders(),
           body: JSON.stringify({}),
-        }
+        },
       );
       if (!response.ok) {
         throw new Error(`Error: ${response.status} ${response.statusText}`);
@@ -284,16 +285,107 @@ const ProjectsDashboard = () => {
   };
 
   useEffect(() => {
-    if (currentScreen === "invoices") {
-      setTimeout(() => {
-        const invoiceScreen = document.getElementById("invoiceScreen");
-        if (invoiceScreen) {
-          invoiceScreen.scrollIntoView({ behavior: "smooth" });
-        } else {
-          window.scrollTo({ top: 0, behavior: "smooth" });
+    if (currentScreen !== "invoices") return;
+
+    const isScrollable = (el) => {
+      if (!el || el === document.body || el === document.documentElement) {
+        return true;
+      }
+      const style = window.getComputedStyle(el);
+      const overflowY = style.overflowY;
+      const canScroll =
+        overflowY === "auto" ||
+        overflowY === "scroll" ||
+        overflowY === "overlay";
+      return canScroll && el.scrollHeight > el.clientHeight;
+    };
+
+    const findClosestScrollParent = (el) => {
+      let node = el;
+      while (
+        node &&
+        node !== document.body &&
+        node !== document.documentElement
+      ) {
+        if (isScrollable(node)) return node;
+        node = node.parentElement;
+      }
+      if (containerRef?.current && isScrollable(containerRef.current))
+        return containerRef.current;
+      return (
+        document.scrollingElement || document.documentElement || document.body
+      );
+    };
+
+    const scrollToInvoiceTop = (invoiceEl, scrollParent, headerOffset = 0) => {
+      if (!invoiceEl || !scrollParent) return;
+
+      if (
+        scrollParent === document.scrollingElement ||
+        scrollParent === document.documentElement ||
+        scrollParent === document.body
+      ) {
+        const top =
+          invoiceEl.getBoundingClientRect().top +
+          window.pageYOffset -
+          headerOffset;
+        window.scrollTo({ top: Math.max(0, top), behavior: "smooth" });
+        return;
+      }
+
+      const invoiceRect = invoiceEl.getBoundingClientRect();
+      const parentRect = scrollParent.getBoundingClientRect();
+
+      const target =
+        invoiceRect.top -
+        parentRect.top +
+        scrollParent.scrollTop -
+        headerOffset;
+      scrollParent.scrollTo({ top: Math.max(0, target), behavior: "smooth" });
+    };
+
+    let attempts = 0;
+    const maxAttempts = 12;
+    const headerOffset = 0;
+
+    const tryScroll = () => {
+      attempts++;
+      const invoiceEl = document.getElementById("invoiceScreen");
+      if (invoiceEl) {
+        const scrollParent = findClosestScrollParent(invoiceEl);
+
+        scrollToInvoiceTop(invoiceEl, scrollParent, headerOffset);
+
+        try {
+          invoiceEl.focus && invoiceEl.focus({ preventScroll: true });
+        } catch (e) {
+          try {
+            invoiceEl.focus && invoiceEl.focus();
+          } catch (_) {}
         }
-      }, 50);
-    }
+      } else if (attempts < maxAttempts) {
+        requestAnimationFrame(tryScroll);
+      } else {
+        const fallback =
+          containerRef?.current ||
+          document.scrollingElement ||
+          document.documentElement ||
+          document.body;
+        try {
+          if (
+            fallback === document.scrollingElement ||
+            fallback === document.documentElement ||
+            fallback === document.body
+          ) {
+            window.scrollTo({ top: 0, behavior: "smooth" });
+          } else {
+            fallback.scrollTo({ top: 0, behavior: "smooth" });
+          }
+        } catch (e) {}
+      }
+    };
+
+    requestAnimationFrame(tryScroll);
   }, [currentScreen]);
 
   const filteredProjects = projects.filter((proj) => {
@@ -312,7 +404,7 @@ const ProjectsDashboard = () => {
   };
 
   return (
-    <div className="project-dashboard">
+    <div className="project-dashboard" ref={containerRef}>
       {currentScreen === "projects" && (
         <>
           <div className="project-header">
@@ -429,7 +521,6 @@ const ProjectsDashboard = () => {
           )}
         </>
       )}
-
       {showForm && (
         <div className="pj-modal">
           <div className="pj-modal-content">
@@ -441,14 +532,14 @@ const ProjectsDashboard = () => {
           </div>
         </div>
       )}
-
       {currentScreen === "invoices" && (
-        <Invoice
-          project={selectedProject}
-          onBack={() => setCurrentScreen("projects")}
-        />
+        <div id="invoiceScreen" tabIndex={-1} style={{ outline: "none" }}>
+          <Invoice
+            project={selectedProject}
+            onBack={() => setCurrentScreen("projects")}
+          />
+        </div>
       )}
-
       {currentScreen === "projects" &&
         showDownloadForm &&
         activeTab === "General Templates" && (
@@ -457,7 +548,6 @@ const ProjectsDashboard = () => {
             onCancel={() => setShowDownloadForm(false)}
           />
         )}
-
       <div style={{ position: "absolute", top: "-10000px", left: "-10000px" }}>
         <div ref={printRef}>
           <InvoiceTemplate

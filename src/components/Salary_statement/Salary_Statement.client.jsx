@@ -1,5 +1,4 @@
 
-"use client";
 import React, { useState, useEffect } from "react";
 import * as XLSX from "xlsx";
 import axios from "axios";
@@ -53,6 +52,7 @@ const Salary_Statement = () => {
 
   const [templates, setTemplates] = useState([]);
   const [selectedTemplate, setSelectedTemplate] = useState("");
+  const [isTemplateEnabled, setIsTemplateEnabled] = useState(false);
   const [templateLoading, setTemplateLoading] = useState(true);
 
   const templateUrl = "/templates/Statement_Template.xlsx";
@@ -494,24 +494,33 @@ const Salary_Statement = () => {
   };
 
   const handleMonthYearChange = async (event) => {
-    const [month, year] = event.target.value.split("_");
+    const value = event.target.value;
+    if (!value) return;
+    const [month, year] = value.split("_");
     setSelectedMonth(month);
     setSelectedYear(year);
     setIsMonthYearSelected(true);
     setIsFileUploaded(false);
     setError("");
     await fetchSalaryData(month, year);
-    
-    await savePreferences(month, year, selectedTemplate);
+    await savePreferences(month, year);
   };
-
 
   const handleTemplateChange = async (e) => {
     const newTemplateId = e.target.value;
     setSelectedTemplate(newTemplateId);
-    if (selectedMonth && selectedYear) {
-      await savePreferences(selectedMonth, selectedYear, newTemplateId);
+    await savePreferences();
+  };
+
+  const handleEnableTemplate = async (e) => {
+    const enabled = e.target.checked;
+    setIsTemplateEnabled(enabled);
+    if (enabled && !selectedTemplate && templates.length > 0) {
+      setSelectedTemplate(String(templates[0].id));
+    } else if (!enabled) {
+      setSelectedTemplate("");
     }
+    await savePreferences();
   };
 
   const fetchSalaryData = async (month = selectedMonth, year = selectedYear) => {
@@ -562,7 +571,6 @@ const Salary_Statement = () => {
     }
   };
 
-  
   const loadPreferences = async () => {
     if (!orgId) return;
     try {
@@ -577,43 +585,43 @@ const Salary_Statement = () => {
         setIsMonthYearSelected(true);
         await fetchSalaryData(prefs.selected_month, prefs.selected_year);
 
-        
-        if (prefs.selected_template_id) {
-          setSelectedTemplate(String(prefs.selected_template_id));
-        }
+        setSelectedTemplate(prefs.selected_template_id ? String(prefs.selected_template_id) : "");
+        setIsTemplateEnabled(!!prefs.selected_template_id);
       } else {
-     
         const lastMonthDate = new Date(new Date().getFullYear(), new Date().getMonth() - 1, 1);
         const month = lastMonthDate.toLocaleString("default", { month: "short" });
         const year = lastMonthDate.getFullYear();
         setSelectedMonth(month);
         setSelectedYear(year);
         setIsMonthYearSelected(true);
+        setIsTemplateEnabled(false);
+        setSelectedTemplate("");
         await fetchSalaryData(month, year);
       }
     } catch (err) {
       console.error("Failed to load preferences, using fallback:", err);
-   
       const lastMonthDate = new Date(new Date().getFullYear(), new Date().getMonth() - 1, 1);
       const month = lastMonthDate.toLocaleString("default", { month: "short" });
       const year = lastMonthDate.getFullYear();
       setSelectedMonth(month);
       setSelectedYear(year);
       setIsMonthYearSelected(true);
+      setIsTemplateEnabled(false);
+      setSelectedTemplate("");
       await fetchSalaryData(month, year);
     }
   };
 
- 
-  const savePreferences = async (month = selectedMonth, year = selectedYear, templateId = selectedTemplate) => {
+  const savePreferences = async (month = selectedMonth, year = selectedYear) => {
     if (!orgId || !month || !year) return;
+    const templateId = isTemplateEnabled && selectedTemplate ? Number(selectedTemplate) : null;
     try {
       await axios.post(
         `${BACKEND_URL}/api/salary-preferences`,
         {
           selected_month: month,
           selected_year: year,
-          selected_template_id: templateId ? Number(templateId) : null,
+          selected_template_id: templateId,
         },
         {
           withCredentials: true,
@@ -626,27 +634,34 @@ const Salary_Statement = () => {
   };
 
   useEffect(() => {
-    if (templates.length > 0 && selectedTemplate) {
-      const valid = templates.some((t) => String(t.id) === selectedTemplate);
-      if (!valid && templates[0]) {
-        setSelectedTemplate(String(templates[0].id));
-        savePreferences(selectedMonth, selectedYear, templates[0].id);
-      }
-    } else if (templates.length > 0 && !selectedTemplate) {
-      setSelectedTemplate(String(templates[0].id));
-      savePreferences(selectedMonth, selectedYear, templates[0].id);
-    }
-  }, [templates]);
+    if (!isTemplateEnabled || templates.length === 0) return;
 
- 
+    let shouldUpdate = false;
+    let newTemplateId = selectedTemplate;
+
+    if (!selectedTemplate) {
+      newTemplateId = String(templates[0].id);
+      shouldUpdate = true;
+    } else {
+      const isValid = templates.some((t) => String(t.id) === selectedTemplate);
+      if (!isValid) {
+        newTemplateId = String(templates[0].id);
+        shouldUpdate = true;
+      }
+    }
+
+    if (shouldUpdate) {
+      setSelectedTemplate(newTemplateId);
+      savePreferences();
+    }
+  }, [templates, isTemplateEnabled]);
+
   useEffect(() => {
     if (hydrated && orgId) {
       loadPreferences();
       fetchTemplates();
     }
   }, [hydrated, orgId]);
-
-  
 
   const filterSalaryData = (e) => {
     const searchValue = e.target.value.toLowerCase();
@@ -736,22 +751,36 @@ const Salary_Statement = () => {
           <div className="salary-card">
             <label>Payslip Template</label>
             {templateLoading ? (
-              <p>Loading...</p>
-            ) : templates.length > 0 ? (
-              <select
-                value={selectedTemplate}
-                onChange={handleTemplateChange}
-                className="salary-month-year-dropdown"
-              >
-                <option value="">-- Select --</option>
-                {templates.map((tmpl) => (
-                  <option key={tmpl.id} value={String(tmpl.id)}>
-                    {tmpl.name} {tmpl.template_type && `(${tmpl.template_type})`}
-                  </option>
-                ))}
-              </select>
+              <p>Loading templates...</p>
+            ) : templates.length === 0 ? (
+              <p>No templates available</p>
             ) : (
-              <p>No templates</p>
+              <>
+                <div className="enable-checkbox-container">
+                  <input
+                    type="checkbox"
+                    id="enable-template"
+                    checked={isTemplateEnabled}
+                    onChange={handleEnableTemplate}
+                  />
+                  <label htmlFor="enable-template" className="enable-label">
+                    Enable payslip template
+                  </label>
+                </div>
+                <select
+                  value={selectedTemplate}
+                  onChange={handleTemplateChange}
+                  disabled={!isTemplateEnabled}
+                  className="salary-month-year-dropdown"
+                >
+                  <option value="">-- Select Template --</option>
+                  {templates.map((tmpl) => (
+                    <option key={tmpl.id} value={String(tmpl.id)}>
+                      {tmpl.name} {tmpl.template_type && `(${tmpl.template_type})`}
+                    </option>
+                  ))}
+                </select>
+              </>
             )}
           </div>
 

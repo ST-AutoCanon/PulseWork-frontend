@@ -1,3 +1,4 @@
+
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 
@@ -83,6 +84,12 @@ const generatePayslipPDF = async (
   const bonus = Number(payrollData.bonus || 0);
   const advanceRecovery = Number(payrollData.advance_recovery || 0);
   const lopDeduction = Number(payrollData.lop_deduction || 0);
+
+  // Advance installment detail text (provided by backend or fallback)
+  const advanceInstallmentText =
+    payrollData?.advance_installment_text ||
+    payrollData?.advance_installment ||
+    (advanceRecovery > 0 ? "Recovery applied" : "");
 
   const pf = Number(payrollData.employee_pf || payrollData.pf || 0);
   const esic = Number(payrollData.esic || 0);
@@ -182,6 +189,9 @@ const generatePayslipPDF = async (
       "{{net_salary}}": netSalary.toFixed(2),
       "{{net_salary_words}}": netSalaryWords,
       "{{month_year}}": monthYear,
+      // New placeholders for advance detail
+      "{{advance_recovery_detail}}": advanceInstallmentText || "None",
+      "{{advance_installment_text}}": advanceInstallmentText || "None",
     };
 
     Object.entries(placeholders).forEach(([key, value]) => {
@@ -204,6 +214,7 @@ const generatePayslipPDF = async (
     return pdf.output("blob");
   }
 
+  // Fallback jsPDF + autoTable
   const doc = new jsPDF();
   const pageWidth = doc.internal.pageSize.getWidth();
   const margin = 10;
@@ -219,21 +230,34 @@ const generatePayslipPDF = async (
     ],
     ["Bonus", bonus.toFixed(2), "TDS", tds.toFixed(2)],
     ["", "", "Insurance", insurance.toFixed(2)],
-    ["", "", "Advance Recovery", advanceRecovery.toFixed(2)],
     ["", "", "LOP Deduction", lopDeduction.toFixed(2)],
-    [
-      "Gross Salary",
-      grossSalary.toFixed(2),
-      "Total Deductions",
-      totalDeductions.toFixed(2),
-    ],
   ];
+
+  // Advance Recovery row
+  if (advanceRecovery > 0) {
+    body.push(["", "", "Advance Recovery", advanceRecovery.toFixed(2)]);
+    // Add detail row if text is available
+    if (advanceInstallmentText && advanceInstallmentText.trim() !== "") {
+      body.push(["", "", advanceInstallmentText, ""]);
+    }
+  }
+
+  body.push([
+    "Gross Salary",
+    grossSalary.toFixed(2),
+    "Total Deductions",
+    totalDeductions.toFixed(2),
+  ]);
 
   autoTable(doc, {
     startY: 120,
     head: [["Earnings", "Amount (₹)", "Deductions", "Amount (₹)"]],
     body,
     theme: "grid",
+    styles: { fontSize: 10, cellPadding: 4 },
+    columnStyles: {
+      2: { fontStyle: advanceInstallmentText ? "italic" : "normal" }, // Make detail row italic
+    },
   });
 
   const finalY = doc.lastAutoTable.finalY + 10;

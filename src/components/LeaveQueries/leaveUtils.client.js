@@ -1,3 +1,4 @@
+
 export const parseLocalDate = (dateStr) => {
   if (!dateStr) return "";
   if (typeof dateStr === "string" && dateStr.length === 10) return dateStr;
@@ -5,6 +6,7 @@ export const parseLocalDate = (dateStr) => {
   const d = new Date(dateStr);
   if (isNaN(d.getTime())) return "";
 
+  // normalize to local date (strip time part by adjusting timezone offset)
   d.setMinutes(d.getMinutes() + d.getTimezoneOffset());
   return d.toISOString().split("T")[0];
 };
@@ -44,6 +46,7 @@ export const calculateDays = (startDate, endDate, h_f_day = "") => {
 export const getAdvanceNoticeDays = (setting) => {
   if (!setting) return 0;
 
+  // allow a few shapes: { advance_notice_days }, { advanceNoticeDays }, { advance_notice }, { advanceNotice }
   const raw =
     setting?.advance_notice_days ??
     setting?.advanceNoticeDays ??
@@ -67,6 +70,11 @@ export const computeRequestedDays = (start, end, h_f_day) => {
   return diff;
 };
 
+/**
+ * Default leave settings (client fallback).
+ * Added "earned" because other components (PolicyModal, etc.) expect it.
+ * These are used only as a fallback when no active policy exists.
+ */
 export const defaultLeaveSettings = [
   {
     type: "casual",
@@ -93,6 +101,15 @@ export const defaultLeaveSettings = [
     advance_notice_days: 0,
   },
   {
+    type: "earned",
+    label: "Earned Leave",
+    value: 0,
+    carry_forward: 0,
+    enabled: true,
+    // earned may have additional keys like working_days / earned_leaves
+    advance_notice_days: 0,
+  },
+  {
     type: "other",
     label: "Other",
     value: 0,
@@ -101,6 +118,54 @@ export const defaultLeaveSettings = [
     advance_notice_days: 3,
   },
 ];
+
+export function normalizeLeaveTypes(arr = []) {
+  if (!Array.isArray(arr)) return [];
+  return arr.map((t) => {
+    if (typeof t === "string") {
+      const k = String(t).trim().toLowerCase();
+      return { key: k, label: t, gender: "all" };
+    }
+    // common shapes: { key, type, type_key, display_name, label, name, ... }
+    const key = (
+      t.key ||
+      t.type ||
+      t.type_key ||
+      t.typeKey ||
+      t.typeKey ||
+      t.type_name ||
+      t.name ||
+      ""
+    )
+      .toString()
+      .trim();
+    const label =
+      t.label || t.display_name || t.name || key || String(t).toString();
+    const gender = (t.gender || t.sex || "all").toString();
+    const min_age = t.min_age ?? t.minAge ?? t.min ?? null;
+    const max_age = t.max_age ?? t.maxAge ?? t.max ?? null;
+    return {
+      key: String(key).toLowerCase(),
+      label,
+      gender,
+      min_age,
+      max_age,
+      ...t,
+    };
+  });
+}
+
+export const getTypeKey = (t) => {
+  if (!t) return "";
+  if (typeof t === "string") return t;
+  return t.key ?? t.type ?? t.type_key ?? t.name ?? "";
+};
+
+export const getTypeLabel = (t) => {
+  if (!t) return "";
+  if (typeof t === "string") return t;
+  return t.label ?? t.display_name ?? t.name ?? getTypeKey(t) ?? "";
+};
 
 export const monthName = (m, year) =>
   new Date(year, m - 1, 1).toLocaleString(undefined, { month: "short" });

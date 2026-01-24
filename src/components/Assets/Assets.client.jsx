@@ -445,46 +445,28 @@ const Assets = () => {
   };
 
   const openAssignPopup = (asset) => {
-    const assetId = asset.id;
-    setSelectedAssetId(assetId);
+  const assetId = asset.id;
+  setSelectedAssetId(assetId);
 
-    try {
-      let parsed = [];
-      if (asset.assigned_to) {
-        parsed =
-          typeof asset.assigned_to === "string"
-            ? JSON.parse(asset.assigned_to)
-            : asset.assigned_to;
-      }
-      const formattedAssignments = parsed.length
-        ? parsed.reverse().map((a) => ({
-            assignedTo: a.name || "",
-            startDate: a.startDate || asset.valuation_date || "",
-            returnDate: a.returnDate || "",
-            assigningStatus: a.status || "Assigned",
-            comments: a.comments || "",
-            employeeId: a.employeeId || "",
-          }))
-        : [
-            {
-              assignedTo: "",
-              startDate: asset.valuation_date || "",
-              returnDate: "",
-              assigningStatus: "Pending",
-              comments: "",
-              employeeId: "",
-            },
-          ];
+  try {
+    let parsed = [];
+    if (asset.assigned_to) {
+      parsed =
+        typeof asset.assigned_to === "string"
+          ? JSON.parse(asset.assigned_to)
+          : asset.assigned_to;
+    }
 
-      setAssignmentRowsByAsset((prev) => ({
-        ...prev,
-        [assetId]: formattedAssignments,
-      }));
-    } catch (err) {
-      console.error("Error parsing assigned_to:", err);
-      setAssignmentRowsByAsset((prev) => ({
-        ...prev,
-        [assetId]: [
+    let formattedAssignments = parsed.length
+      ? parsed.reverse().map((a) => ({
+          assignedTo: a.name || "",
+          startDate: a.startDate || asset.valuation_date || "",
+          returnDate: a.returnDate || "",
+          assigningStatus: a.status || "Assigned",
+          comments: a.comments || "",
+          employeeId: a.employeeId || "",
+        }))
+      : [
           {
             assignedTo: "",
             startDate: asset.valuation_date || "",
@@ -493,13 +475,50 @@ const Assets = () => {
             comments: "",
             employeeId: "",
           },
-        ],
-      }));
+        ];
+
+    // Auto-add a new pending row if the latest assignment is returned
+    let rows = [...formattedAssignments];
+    if (rows.length > 0) {
+      const latest = rows[0];
+      if (latest.returnDate || latest.assigningStatus === "Returned") {
+        const today = new Date().toISOString().split("T")[0];
+        const newPendingRow = {
+          assignedTo: "",
+          employeeId: "",
+          startDate: today,
+          returnDate: "",
+          assigningStatus: "Pending",
+          comments: "",
+        };
+        rows = [newPendingRow, ...rows];
+      }
     }
 
-    setShowAssignPopup(true);
-    setSelectedAsset(asset);
-  };
+    setAssignmentRowsByAsset((prev) => ({
+      ...prev,
+      [assetId]: rows,
+    }));
+  } catch (err) {
+    console.error("Error parsing assigned_to:", err);
+    setAssignmentRowsByAsset((prev) => ({
+      ...prev,
+      [assetId]: [
+        {
+          assignedTo: "",
+          startDate: asset.valuation_date || "",
+          returnDate: "",
+          assigningStatus: "Pending",
+          comments: "",
+          employeeId: "",
+        },
+      ],
+    }));
+  }
+
+  setShowAssignPopup(true);
+  setSelectedAsset(asset);
+};
 
   const closeAssignPopup = () => {
     setShowAssignPopup(false);
@@ -1261,19 +1280,8 @@ const Assets = () => {
                   )}
                 </div>
 
-                <div className="row">
-                  <label>Status</label>
-                  <div className="asset-status-dropdown">
-                    <select
-                      value={status}
-                      onChange={(e) => setStatus(e.target.value)}
-                    >
-                      <option value="In Use">In Use</option>
-                      <option value="Not Using">Not Using</option>
-                      <option value="Decommissioned">Decommissioned</option>
-                    </select>
-                  </div>
-                </div>
+               
+                
 
                 <div className="row">
                   <label>Upload Document</label>
@@ -1595,107 +1603,108 @@ const Assets = () => {
                 <div>Comments</div>
               </div>
 
-              {assignmentRowsByAsset[selectedAssetId]?.map(
-                (assignment, index) => (
-                  <div key={index} className="assetform-row">
-                    <div style={{ position: "relative", width: "100%" }}>
-                      <input
-                        type="text"
-                        placeholder="Assigned To"
-                        value={assignment.assignedTo}
-                        onChange={(e) => handleAssignedToInputChange(e, index)}
-                        onBlur={() => handleBlurAssignPopup(index)}
-                        className={`input-style ${
-                          fieldErrors[index]?.assignedTo ? "error-border" : ""
-                        }`}
-                        autoComplete="off"
-                      />
+              {assignmentRowsByAsset[selectedAssetId]?.map((assignment, index) => (
+  <div key={index} className="assetform-row">
+    <div style={{ position: "relative", width: "100%" }}>
+      <input
+        type="text"
+        placeholder="Assigned To"
+        value={assignment.assignedTo}
+        onChange={(e) => handleAssignedToInputChange(e, index)}
+        onBlur={() => handleBlurAssignPopup(index)}
+        disabled={index > 0}
+        className={`input-style ${
+          fieldErrors[index]?.assignedTo ? "error-border" : ""
+        }`}
+        autoComplete="off"
+      />
 
-                      {popupSuggestions[index]?.length > 0 && (
-                        <ul
-                          style={{
-                            position: "absolute",
-                            top: "100%",
-                            left: "0px",
-                            background: "#fff",
-                            border: "1px solid #ccc",
-                            zIndex: 9999,
-                            width: "250px",
-                            listStyle: "none",
-                            padding: 0,
-                            margin: 0,
-                            maxHeight: "150px",
-                            overflowY: "auto",
-                            boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)",
-                          }}
-                        >
-                          {popupSuggestions[index].map((emp, i) => (
-                            <li
-                              key={i}
-                              onMouseDown={(e) => {
-                                e.preventDefault();
-                                handleSuggestionSelect(emp, index);
-                              }}
-                              style={{
-                                padding: "8px",
-                                cursor: "pointer",
-                                borderBottom: "1px solid #eee",
-                              }}
-                            >
-                              {emp.name} ({emp.employeeId})
-                            </li>
-                          ))}
-                        </ul>
-                      )}
-                    </div>
+      {/* Suggestions only on the top (editable) row */}
+      {index === 0 && popupSuggestions[index]?.length > 0 && (
+        <ul
+          style={{
+            position: "absolute",
+            top: "100%",
+            left: "0px",
+            background: "#fff",
+            border: "1px solid #ccc",
+            zIndex: 9999,
+            width: "250px",
+            listStyle: "none",
+            padding: 0,
+            margin: 0,
+            maxHeight: "150px",
+            overflowY: "auto",
+            boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)",
+          }}
+        >
+          {popupSuggestions[index].map((emp, i) => (
+            <li
+              key={i}
+              onMouseDown={(e) => {
+                e.preventDefault();
+                handleSuggestionSelect(emp, index);
+              }}
+              style={{
+                padding: "8px",
+                cursor: "pointer",
+                borderBottom: "1px solid #eee",
+              }}
+            >
+              {emp.name} ({emp.employeeId || ""})
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
 
-                    <input
-                      type="date"
-                      value={assignment.startDate}
-                      onChange={(e) =>
-                        updateAssignment(index, "startDate", e.target.value)
-                      }
-                      className={`input-style ${
-                        fieldErrors[index]?.startDate ? "error-border" : ""
-                      }`}
-                    />
-                    <input
-                      type="date"
-                      value={assignment.returnDate}
-                      onChange={(e) =>
-                        updateAssignment(index, "returnDate", e.target.value)
-                      }
-                      className={`input-style ${
-                        fieldErrors[index]?.returnDate ? "error-border" : ""
-                      }`}
-                    />
+    <input
+      type="date"
+      value={assignment.startDate}
+      onChange={(e) =>
+        updateAssignment(index, "startDate", e.target.value)
+      }
+      disabled={index > 0}
+      className={`input-style ${
+        fieldErrors[index]?.startDate ? "error-border" : ""
+      }`}
+    />
 
-                    <select
-                      value={assignment.assigningStatus}
-                      onChange={(e) =>
-                        updateAssignment(
-                          index,
-                          "assigningStatus",
-                          e.target.value
-                        )
-                      }
-                    >
-                      <option value="Pending">Unassigned</option>
-                      <option value="Assigned">Assigned</option>
-                      <option value="Returned">Returned</option>
-                      <option value="Decommissioned">Decommissioned</option>
-                    </select>
+    <input
+      type="date"
+      value={assignment.returnDate}
+      onChange={(e) =>
+        updateAssignment(index, "returnDate", e.target.value)
+      }
+      disabled={index > 0}
+      className={`input-style ${
+        fieldErrors[index]?.returnDate ? "error-border" : ""
+      }`}
+    />
 
-                    <textarea
-                      placeholder="Enter comments"
-                      value={assignment.comments}
-                      onChange={(e) =>
-                        updateAssignment(index, "comments", e.target.value)
-                      }
-                    />
-                  </div>
-                )
-              )}
+    <select
+      value={assignment.assigningStatus}
+      onChange={(e) =>
+        updateAssignment(index, "assigningStatus", e.target.value)
+      }
+      disabled={index > 0}
+    >
+      <option value="Pending">Unassigned</option>
+      <option value="Assigned">Assigned</option>
+      <option value="Returned">Returned</option>
+      <option value="Decommissioned">Decommissioned</option>
+    </select>
+
+    <textarea
+      placeholder="Enter comments"
+      value={assignment.comments}
+      onChange={(e) =>
+        updateAssignment(index, "comments", e.target.value)
+      }
+      disabled={index > 0}
+    />
+  </div>
+))}
             </div>
           </div>
 
@@ -1780,3 +1789,4 @@ const Assets = () => {
 };
 
 export default Assets;
+

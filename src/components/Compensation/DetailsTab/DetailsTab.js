@@ -816,27 +816,43 @@ const DetailsTab = ({
     tab === "yearly" ? comp.yearly || 0 : comp.monthly || 0;
 
   const filteredEarnings = components.filter((comp) => {
-    if (comp.label === "Overtime Pay" || comp.label === "Incentives")
-      return true;
-    const amount = getAmountForTab(comp, activeTab);
-    return comp.category === "Earnings" && parseFloat(amount) > 0;
-  });
+  if (comp.category !== "Earnings") return false;
 
-  const deductedComponents = components.filter((comp) => {
-    if (
-      comp.label === "LOP Deduction" ||
-      comp.label === "TDS" ||
-      comp.label === "Advance Recovery"
-    )
-      return comp.deductedFromNet;
-    if (comp.label === "LOP Deduction") return true;
-    const amount = getAmountForTab(comp, activeTab);
-    return (
-      comp.category === "Deductions" &&
-      comp.deductedFromNet &&
-      parseFloat(amount) > 0
-    );
-  });
+  const amount = parseFloat(getAmountForTab(comp, activeTab) || 0);
+  return amount > 0;
+});
+
+
+ const deductedComponents = components.filter((comp) => {
+  const amount = parseFloat(getAmountForTab(comp, activeTab) || 0);
+
+  // 🔥 TDS → show ONLY if > 0
+  if (comp.label === "TDS") {
+    return amount > 0;
+  }
+
+  // 🔥 LOP Deduction → show ONLY if > 0
+  if (comp.label === "LOP Deduction") {
+    return amount > 0;
+  }
+
+  // 🔥 Incentives → show ONLY if > 0
+  if (comp.label === "Incentives") {
+    return amount > 0;
+  }
+
+  // Advance Recovery → keep existing rule
+  if (comp.label === "Advance Recovery") {
+    return comp.deductedFromNet && amount > 0;
+  }
+
+  return (
+    comp.category === "Deductions" &&
+    comp.deductedFromNet &&
+    amount > 0
+  );
+});
+
 
   const employerComponents = components.filter((comp) => {
     if (

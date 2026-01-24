@@ -23,6 +23,52 @@ const rolesWithTeamView = new Set([
   "super_admin",
 ]);
 
+// normalize helpers (shared / canonical used across modal + hook)
+function normalizeKey(s = "") {
+  return String(s || "")
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, "_")
+    .replace(/[^a-z0-9_]/g, "");
+}
+
+function prettyFromKey(s = "") {
+  return String(s)
+    .replace(/[_-]+/g, " ")
+    .split(" ")
+    .map((w) => (w ? w[0].toUpperCase() + w.slice(1) : ""))
+    .join(" ");
+}
+
+function normalizeLeaveTypes(raw = []) {
+  const arr = Array.isArray(raw) ? raw : [];
+  return arr.map((t) => {
+    if (typeof t === "string") {
+      const key = normalizeKey(t);
+      return { key, label: prettyFromKey(key), raw: t, is_active: true };
+    }
+    const key =
+      t.type_key ??
+      t.key ??
+      t.type ??
+      t.typeKey ??
+      t.name ??
+      t.display_name ??
+      "";
+    const label = t.display_name ?? t.label ?? t.name ?? key ?? "";
+    return {
+      key: normalizeKey(key),
+      label: label || prettyFromKey(key),
+      gender: t.gender ?? t.gender_name ?? null,
+      min_age: t.min_age ?? t.minAge ?? null,
+      max_age: t.max_age ?? t.maxAge ?? null,
+      is_active:
+        typeof t.is_active === "boolean" ? t.is_active : (t.active ?? true),
+      ...t,
+    };
+  });
+}
+
 export default function useLeaveRequest() {
   const { user } = useAuth();
   const employeeId = user?.employeeId;
@@ -70,6 +116,10 @@ export default function useLeaveRequest() {
   const [policies, setPolicies] = useState([]);
   const [activePolicy, setActivePolicy] = useState(null);
   const [leaveRequests, setLeaveRequests] = useState({ self: [], team: [] });
+  const [leaveTypes, setLeaveTypes] = useState([]); // normalized types from DB
+
+  // user profile (from separate table) - contains gender, dob etc.
+  const [userProfile, setUserProfile] = useState(null);
 
   const now = new Date();
   const [lopMonth, setLopMonth] = useState(now.getMonth() + 1);
@@ -116,6 +166,62 @@ export default function useLeaveRequest() {
     }));
   };
 
+  const canonicalTypeMatch = (candidate, ...keywords) => {
+    if (!candidate) return false;
+    const c = String(candidate).toLowerCase();
+    return keywords.some((k) => c.includes(k));
+  };
+
+  // compute age from DOB string (ISO or parseable)
+  const computeAge = (dob) => {
+    if (!dob) return null;
+    try {
+      const d = new Date(dob);
+      if (isNaN(d.getTime())) return null;
+      const diff = Date.now() - d.getTime();
+      const ageDt = new Date(diff);
+      return Math.abs(ageDt.getUTCFullYear() - 1970);
+    } catch {
+      return null;
+    }
+  };
+
+  // check if user already has same-type leave in same month (self requests)
+  const hasExistingSameMonthForType = (typeKey, startDateStr) => {
+    try {
+      const start = startDateStr ? new Date(startDateStr) : new Date();
+      const month = start.getMonth();
+      const year = start.getFullYear();
+      const wanted = normalizeKey(typeKey || "");
+      const arr = (leaveRequests.self || []).filter((r) => {
+        const rTypeRaw = String(r.leave_type || r.type || r.leaveType || "");
+        const rType = normalizeKey(rTypeRaw);
+        if (!rType) return false;
+        // use includes to allow label-based matching, but compare normalized forms
+        if (!rType.includes(wanted)) return false;
+        const s = new Date(
+          r.start_date || r.startDate || r.date || r.from || 0,
+        );
+        if (isNaN(s.getTime())) return false;
+        const status = (r.status || "").toLowerCase();
+        if (["rejected", "cancelled"].includes(status)) return false;
+        return s.getMonth() === month && s.getFullYear() === year;
+      });
+      return arr.length > 0;
+    } catch {
+      return false;
+    }
+  };
+
+  const pickNumber = (...vals) => {
+    for (const v of vals) {
+      if (v === null || v === undefined) continue;
+      const n = Number(v);
+      if (!isNaN(n)) return n;
+    }
+    return 0;
+  };
+
   const handleUpdate = async (leaveId, payload = null) => {
     const update = payload || statusUpdates[leaveId] || {};
     const status = update.status || "";
@@ -127,7 +233,7 @@ export default function useLeaveRequest() {
       return;
     }
     if (String(status).toLowerCase() === "rejected" && !comments) {
-      showAlert("Please enter comments when rejecting a request.");
+      showAlert("Please enter comments when rejecting a leave request.");
       return;
     }
 
@@ -135,7 +241,7 @@ export default function useLeaveRequest() {
       const nextTeam = (prev.team || []).map((r) =>
         String(r.leave_id || r.id) === String(leaveId)
           ? { ...r, status, comments: comments || r.comments }
-          : r
+          : r,
       );
       return { ...prev, team: nextTeam };
     });
@@ -146,7 +252,7 @@ export default function useLeaveRequest() {
       return clone;
     });
 
-    const normalizeBoolean = (v) => {
+    const normalizedBool = (v) => {
       if (v === true || v === false) return v;
       if (typeof v === "string") {
         const t = v.trim().toLowerCase();
@@ -158,35 +264,26 @@ export default function useLeaveRequest() {
       return false;
     };
 
-    const pickNumber = (...vals) => {
-      for (const v of vals) {
-        if (v === null || v === undefined) continue;
-        const n = Number(v);
-        if (!isNaN(n)) return n;
-      }
-      return 0;
-    };
-
     const compensated =
       pickNumber(
         update.compensated_days,
         update.compensatedDays,
         update.compensated,
-        0
+        0,
       ) || 0;
     const deducted =
       pickNumber(
         update.deducted_days,
         update.deductedDays,
         update.deducted,
-        0
+        0,
       ) || 0;
     const lop =
       pickNumber(
         update.loss_of_pay_days,
         update.lopDays,
         update.loss_of_pay,
-        0
+        0,
       ) || 0;
     const preservedRaw =
       update.preserved_leave_days ??
@@ -201,13 +298,13 @@ export default function useLeaveRequest() {
     let totalDays = pickNumber(
       update.total_days,
       update.totalDays,
-      update.totalDaysRequested
+      update.totalDaysRequested,
     );
 
     if (!totalDays) {
       const row =
         (leaveRequests.team || []).find(
-          (r) => String(r.leave_id || r.id) === String(leaveId)
+          (r) => String(r.leave_id || r.id) === String(leaveId),
         ) || null;
       if (row) {
         try {
@@ -218,8 +315,8 @@ export default function useLeaveRequest() {
       }
     }
 
-    const isDefaultedFlag = normalizeBoolean(
-      update.is_defaulted ?? update.isDefaulted ?? false
+    const isDefaultedFlag = normalizedBool(
+      update.is_defaulted ?? update.isDefaulted ?? false,
     );
 
     const body = {
@@ -280,69 +377,117 @@ export default function useLeaveRequest() {
     }
   };
 
-  const fetchLeaveBalance = async () => {
-    if (!employeeId) return;
+  // fetch user profile (gender/dob) from separate table(s). Try several likely endpoints.
+  const fetchUserProfile = async () => {
+    if (!employeeId) return null;
+    const candidates = [
+      `${BACKEND}/api/employee/${employeeId}`,
+      `${BACKEND}/api/employees/${employeeId}`,
+      `${BACKEND}/api/profile/${employeeId}`,
+      `${BACKEND}/api/employee/profile/${employeeId}`,
+      `${BACKEND}/api/employee-profile/${employeeId}`,
+    ];
+    for (const url of candidates) {
+      try {
+        const res = await fetch(url, { credentials: "include", headers });
+        if (!res.ok) continue;
+        const json = await res.json();
+        // try to find profile in json.data or json.message or top-level
+        const profile =
+          json?.data ||
+          json?.message ||
+          json ||
+          (json?.result && json.result[0]) ||
+          null;
+        if (profile) {
+          // normalize keys
+          const gender =
+            profile.gender ||
+            profile.sex ||
+            profile.Gender ||
+            profile.gender_name ||
+            null;
+          const dob =
+            profile.dob ||
+            profile.date_of_birth ||
+            profile.dateOfBirth ||
+            profile.DOB ||
+            null;
+          const normalized = { ...profile, gender, dob };
+          setUserProfile(normalized);
+          return normalized;
+        }
+      } catch (err) {
+        // ignore and try next
+      }
+    }
+    setUserProfile(null);
+    return null;
+  };
+
+  const fetchLeaveTypes = async () => {
     try {
-      const res = await fetch(
-        `${BACKEND}/api/leave-policies/employee/${employeeId}/leave-balance`,
-        { credentials: "include", headers }
+      let url = `${BACKEND}/types`;
+      const params = new URLSearchParams();
+      const gender =
+        (userProfile?.gender || user?.gender || user?.sex || "").toString() ||
+        "";
+      const age = computeAge(
+        userProfile?.dob || user?.date_of_birth || user?.dob,
       );
-      if (!res.ok) throw new Error("Failed to load leave balance");
+      if (gender) params.append("gender", gender);
+      if (age !== null && Number.isFinite(age))
+        params.append("age", String(age));
+      if ([...params].length) url = `${url}?${params.toString()}`;
+
+      console.debug("fetchLeaveTypes: trying", url, "headers:", headers);
+      let res = await fetch(url, {
+        credentials: "include",
+        headers,
+        cache: "no-store",
+      });
+
+      if (res.status === 404) {
+        const fallback = `${BACKEND}/types${params.toString() ? `?${params.toString()}` : ""}`;
+        console.warn("fetchLeaveTypes: primary 404, trying fallback", fallback);
+        res = await fetch(fallback, {
+          credentials: "include",
+          headers,
+          cache: "no-store",
+        });
+      }
+
+      if (!res.ok)
+        throw new Error(`Failed to load leave types (HTTP ${res.status})`);
       const json = await res.json();
-      setBalances(json.data || []);
+      const arr = json?.data ?? (Array.isArray(json) ? json : []);
+      const normalized = normalizeLeaveTypes(arr);
+      setLeaveTypes(normalized);
+      console.debug("fetchLeaveTypes -> normalized:", normalized);
+      return normalized;
     } catch (err) {
-      console.error("fetchLeaveBalance:", err);
-      showAlert("Could not fetch leave balance.");
-      setBalances([]);
+      console.warn("fetchLeaveTypes failed:", err);
+      setLeaveTypes([]);
+      return [];
     }
   };
 
   const fetchPolicies = async () => {
     try {
-      const res = await fetch(`${BACKEND}/api/leave-policies`, {
+      const url = `${BACKEND}/api/leave-policies?_=${Date.now()}`;
+      const res = await fetch(url, {
         credentials: "include",
         headers,
+        cache: "no-store",
       });
-      const json = await res.json();
-      setPolicies(json.data || []);
+      const json = await res.json().catch(() => null);
+      console.debug("useLeaveRequest: fetchPolicies", res.status, json);
+      setPolicies(json?.data || json || []);
     } catch (err) {
-      console.error("fetchPolicies:", err);
+      console.error("Failed to fetch leave policies:", err);
       setPolicies([]);
     }
   };
-
-  useEffect(() => {
-    fetchPolicies();
-    fetchLeaveBalance();
-  }, []);
-
-  useEffect(() => {
-    if (!Array.isArray(policies) || policies.length === 0) {
-      setActivePolicy(null);
-      return;
-    }
-    const today = new Date();
-    const inRange = policies.find((p) => {
-      try {
-        const s = new Date(p.year_start);
-        const e = new Date(p.year_end);
-        return s <= today && today <= e;
-      } catch {
-        return false;
-      }
-    });
-    setActivePolicy(
-      inRange ||
-        policies
-          .slice()
-          .sort((a, b) => new Date(b.year_start) - new Date(a.year_start))[0] ||
-        null
-    );
-  }, [policies]);
-
-  useEffect(() => {
-    if (employeeId) fetchLeaveRequests();
-  }, [employeeId, teamSearch, teamStatus, filters.from_date, filters.to_date]);
 
   const extractArrayFromTeamResult = (obj) => {
     if (!obj) return [];
@@ -402,7 +547,7 @@ export default function useLeaveRequest() {
         if (teamResponse.ok) {
           const teamResult = await teamResponse.json();
           teamRequests = extractArrayFromTeamResult(
-            teamResult?.data ?? teamResult ?? teamResult?.message ?? {}
+            teamResult?.data ?? teamResult ?? teamResult?.message ?? {},
           );
         } else {
           console.warn("Team fetch returned non-ok", teamResponse.status);
@@ -410,10 +555,122 @@ export default function useLeaveRequest() {
       }
 
       setLeaveRequests({ self: selfRequests, team: teamRequests });
+      return { self: selfRequests, team: teamRequests };
     } catch (err) {
       console.error("fetchLeaveRequests error:", err);
       setLeaveRequests({ self: [], team: [] });
+      return { self: [], team: [] };
     }
+  };
+
+  const fetchLeaveBalance = async () => {
+    if (!employeeId) return;
+    try {
+      const res = await fetch(
+        `${BACKEND}/api/leave-policies/employee/${employeeId}/leave-balance`,
+        { credentials: "include", headers },
+      );
+      if (!res.ok) throw new Error("Failed to load leave balance");
+      const json = await res.json();
+      let arr = json.data || [];
+
+      // augment with menstrual monthly grant if eligible and not used this month
+      arr = augmentBalancesWithMenstrual(arr);
+
+      setBalances(arr);
+      return arr;
+    } catch (err) {
+      console.error("fetchLeaveBalance:", err);
+      showAlert("Could not fetch leave balance.");
+      setBalances([]);
+      return [];
+    }
+  };
+
+  // augmentation for monthly menstrual 1-day entitlement (ephemeral client-side)
+  const augmentBalancesWithMenstrual = (balanceArray = []) => {
+    if (!Array.isArray(balanceArray)) return [];
+    const copy = balanceArray.slice();
+    // find likely menstrual row
+    const idx = copy.findIndex((b) =>
+      canonicalTypeMatch(b.type || b.label || "", "menstrual", "menstr"),
+    );
+    const gender = (userProfile?.gender || user?.gender || user?.sex || "")
+      .toString()
+      .toLowerCase();
+    const dob = userProfile?.dob || user?.date_of_birth || user?.dob;
+    const age = computeAge(dob);
+    const eligible =
+      gender === "female" && (age === null || (age >= 18 && age <= 52));
+    const currentMonth = new Date().getMonth();
+    const currentYear = new Date().getFullYear();
+
+    if (!eligible) {
+      // ensure menstrual balances are not carried forward accidentally
+      if (idx >= 0) {
+        const existing = { ...copy[idx] };
+        // no carry forward for menstrual - ensure carry_forward property zeroed if present
+        if ("carry_forward" in existing) existing.carry_forward = 0;
+        copy[idx] = existing;
+      }
+      return copy;
+    }
+
+    // If no menstrual row exists, add ephemeral row for this month with 1 day
+    if (idx === -1) {
+      // only add if user has not already taken menstrual leave this month
+      const usedThisMonth = hasExistingSameMonthForType("menstrual");
+      if (!usedThisMonth) {
+        copy.push({
+          type: "menstrual",
+          label: "Menstrual Leave",
+          allowance: 1,
+          used: 0,
+          remaining: 1,
+          carry_forward: 0,
+          ephemeral_month: currentMonth,
+          ephemeral_year: currentYear,
+          ephemeral: true,
+        });
+      } else {
+        // user already used menstrual this month => no ephemeral grant
+      }
+      return copy;
+    }
+
+    // idx exists - modify existing row if necessary
+    const original = { ...copy[idx] };
+    // determine whether backend already provided a monthly grant or not by checking flags
+    // We'll add 1 if user hasn't used in this month and backend did not already provide it.
+    const usedThisMonth = hasExistingSameMonthForType(
+      original.type || original.label || "menstrual",
+    );
+    const alreadyEphemeralForThisMonth =
+      original.ephemeral_month === currentMonth &&
+      original.ephemeral_year === currentYear;
+
+    if (!usedThisMonth && !alreadyEphemeralForThisMonth) {
+      // add 1 to allowance & remaining (client-side only)
+      const baseAllowance = Number(original.allowance ?? original.earned ?? 0);
+      const baseUsed = Number(original.used ?? 0);
+      const baseRemaining = Number(
+        original.remaining ?? baseAllowance - baseUsed,
+      );
+      original.allowance = baseAllowance + 1;
+      original.remaining = baseRemaining + 1;
+      original.ephemeral = true;
+      original.ephemeral_month = currentMonth;
+      original.ephemeral_year = currentYear;
+      // ensure no carry forward
+      original.carry_forward = 0;
+      copy[idx] = original;
+    } else {
+      // ensure carry_forward is zero (menstrual should lapse)
+      original.carry_forward = 0;
+      copy[idx] = original;
+    }
+
+    return copy;
   };
 
   const loadLeaveBalance = async (employeeIdToLoad) => {
@@ -426,7 +683,9 @@ export default function useLeaveRequest() {
       const res = await fetch(url, { credentials: "include", headers });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const json = await res.json();
-      const arr = json.data || [];
+      let arr = json.data || [];
+      // augment as above for menstrual
+      arr = augmentBalancesWithMenstrual(arr);
       setLeaveBalancesCache((prev) => ({ ...prev, [employeeIdToLoad]: arr }));
       return arr;
     } catch (err) {
@@ -438,10 +697,10 @@ export default function useLeaveRequest() {
 
   const getBalanceForType = (type) => {
     if (!balances || balances.length === 0) return null;
+    const wanted = normalizeKey(type || "");
     return (
-      balances.find(
-        (b) => String(b.type).toLowerCase() === String(type).toLowerCase()
-      ) || null
+      balances.find((b) => normalizeKey(b.type || b.label || "") === wanted) ||
+      null
     );
   };
 
@@ -500,7 +759,11 @@ export default function useLeaveRequest() {
         try {
           const response = await fetch(
             `${BACKEND}/cancel/${id}/${employeeId}`,
-            { method: "DELETE", credentials: "include", headers }
+            {
+              method: "DELETE",
+              credentials: "include",
+              headers,
+            },
           );
           if (response.ok) {
             showAlert("Leave request cancelled successfully!");
@@ -513,10 +776,11 @@ export default function useLeaveRequest() {
           showAlert("An error occurred while cancelling the leave request.");
         }
         closeConfirm();
-      }
+      },
     );
   };
 
+  // MAIN submit with gender/age/menstrual rules
   const handleSubmit = async (e) => {
     e?.preventDefault?.();
     if (
@@ -533,67 +797,217 @@ export default function useLeaveRequest() {
       return;
     }
 
-    const selectedType = String(formData.leavetype || "").toLowerCase();
+    const selectedTypeRaw = String(formData.leavetype || "");
+    const selectedKey = normalizeKey(selectedTypeRaw);
+
     let setting = null;
     if (activePolicy && Array.isArray(activePolicy.leave_settings)) {
       setting = activePolicy.leave_settings.find(
-        (s) => String(s.type || "").toLowerCase() === selectedType
+        (s) => normalizeKey(s.type || "") === selectedKey,
       );
     }
     if (!setting) {
       setting = defaultLeaveSettings.find(
-        (s) => String(s.type || "").toLowerCase() === selectedType
+        (s) => normalizeKey(s.type || "") === selectedKey,
       );
+    }
+    if (!setting) {
+      // if user selected a label instead of key, try best-effort lookup in leaveTypes
+      const foundType = (leaveTypes || []).find((t) => {
+        const tkeys = [t.key, t.type, t.label]
+          .filter(Boolean)
+          .map((x) => normalizeKey(x));
+        return tkeys.includes(selectedKey);
+      });
+      if (foundType) {
+        setting = { type: foundType.key || foundType.type || foundType.label };
+      }
     }
     if (!setting) {
       showAlert("Selected leave type is not available.");
       return;
     }
 
+    // fetch user gender & dob (use userProfile if available); if not yet fetched, try to fetch
+    if (!userProfile) await fetchUserProfile();
+
+    const personGender = (
+      userProfile?.gender ||
+      user?.gender ||
+      user?.sex ||
+      ""
+    )
+      .toString()
+      .toLowerCase();
+    const personDob = userProfile?.dob || user?.date_of_birth || user?.dob;
+    const personAge = computeAge(personDob);
+
+    // canonical matching for menstrual / maternity / paternity
+    const isMenstrual = canonicalTypeMatch(
+      selectedTypeRaw,
+      "menstrual",
+      "menstr",
+    );
+    const isMaternity = canonicalTypeMatch(
+      selectedTypeRaw,
+      "matern",
+      "maternity",
+    );
+    const isPaternity = canonicalTypeMatch(
+      selectedTypeRaw,
+      "patern",
+      "paternity",
+    );
+
+    // MENSTRUAL rules
+    if (isMenstrual) {
+      // gender check
+      if (personGender && personGender !== "female") {
+        showAlert("Menstrual leave is available only for female employees.");
+        return;
+      }
+      // age check (Karnataka guideline 18-52) - skip strict rejection if DOB missing, but warn
+      if (personAge !== null && (personAge < 18 || personAge > 52)) {
+        showAlert(
+          "Menstrual leave is allowed only for females aged between 18 and 52.",
+        );
+        return;
+      }
+      if (personAge === null) {
+        // warn but proceed with age-unknown: allow but inform
+        showAlert(
+          "DOB not available in profile — age-based eligibility for menstrual leave could not be verified.",
+        );
+        // we don't return; allow to continue (you may decide to block instead)
+      }
+      // single-day only
+      const requestedDays = computeRequestedDays(
+        formData.startDate,
+        formData.endDate,
+        formData.h_f_day,
+      );
+      if (requestedDays !== 1) {
+        showAlert("Menstrual leave can be taken only for a single day.");
+        return;
+      }
+      // not allowed if already taken same month
+      const alreadyThisMonth = hasExistingSameMonthForType(
+        selectedTypeRaw,
+        formData.startDate,
+      );
+      if (alreadyThisMonth) {
+        showAlert(
+          "You have already taken menstrual leave in this month. Monthly limit reached.",
+        );
+        return;
+      }
+    }
+
+    // MATERNITY rules
+    if (isMaternity) {
+      if (personGender && personGender !== "female") {
+        showAlert("Maternity leave is available only for female employees.");
+        return;
+      }
+      const requestedDays = computeRequestedDays(
+        formData.startDate,
+        formData.endDate,
+        formData.h_f_day,
+      );
+      if (requestedDays > 182) {
+        showAlert(
+          "Maternity leave exceeds maximum allowed duration (182 days).",
+        );
+        return;
+      }
+    }
+
+    // PATERNITY rules
+    if (isPaternity) {
+      if (personGender && personGender !== "male") {
+        showAlert("Paternity leave is available only for male employees.");
+        return;
+      }
+      const requestedDays = computeRequestedDays(
+        formData.startDate,
+        formData.endDate,
+        formData.h_f_day,
+      );
+      if (requestedDays > 15) {
+        showAlert(
+          "Paternity leave exceeds maximum allowed duration (15 days).",
+        );
+        return;
+      }
+    }
+
+    // regular notice day checks
     const noticeDays = getAdvanceNoticeDays(setting);
     if (!editingId && noticeDays > 0) {
       const today = new Date();
       const minDate = new Date(
         today.getFullYear(),
         today.getMonth(),
-        today.getDate()
+        today.getDate(),
       );
       minDate.setDate(minDate.getDate() + noticeDays);
       const chosenStartRaw = new Date(formData.startDate);
       const chosenStart = new Date(
         chosenStartRaw.getFullYear(),
         chosenStartRaw.getMonth(),
-        chosenStartRaw.getDate()
+        chosenStartRaw.getDate(),
       );
       if (chosenStart < minDate) {
         showAlert(
           !activePolicy
             ? `By default, a ${setting.type} request requires at least ${noticeDays} day(s) advance. You must apply at least ${noticeDays} day(s) before the start date.`
-            : `You must apply for ${formData.leavetype} at least ${noticeDays} day(s) before the start date.`
+            : `You must apply for ${formData.leavetype} at least ${noticeDays} day(s) before the start date.`,
         );
         return;
       }
     }
 
+    // compute requestedDays and allowances (taking into account our menstrual ephemeral grant)
     const requestedDays = computeRequestedDays(
       formData.startDate,
       formData.endDate,
-      formData.h_f_day
+      formData.h_f_day,
     );
-    const balanceRow = getBalanceForType(setting.type);
+
+    // ensure balances are up-to-date: fetch balances if empty
+    if (!balances || balances.length === 0) {
+      await fetchLeaveBalance();
+    }
+
+    // find the balance row (use normalized keys)
+    let balanceRow =
+      (balances || []).find(
+        (b) =>
+          normalizeKey(b.type || b.label || "") ===
+          normalizeKey(setting.type || selectedTypeRaw),
+      ) ||
+      (balances || []).find((b) =>
+        normalizeKey(b.type || b.label || "").includes(
+          normalizeKey(selectedTypeRaw),
+        ),
+      ) ||
+      null;
+
+    // fall back to default policy settings when balance not found
     let allowance = 0,
       used = 0,
       remaining = 0,
       carry_forward = Number(setting.carry_forward || 0);
+
     if (balanceRow) {
       allowance = Number(
         balanceRow.allowance ??
           balanceRow.earned ??
           balanceRow.annual_allowance ??
-          0
+          0,
       );
       used = Number(balanceRow.used ?? 0);
-      remaining = Number(balanceRow.remaining ?? 0);
+      remaining = Number(balanceRow.remaining ?? allowance - used);
       carry_forward = Number(balanceRow.carry_forward ?? carry_forward);
     } else {
       if (String(setting.type).toLowerCase() === "earned")
@@ -602,6 +1016,10 @@ export default function useLeaveRequest() {
       used = 0;
       remaining = allowance - used;
     }
+
+    // Special handling: if selected type is menstrual and we previously augmented balances with ephemeral 1-day grant,
+    // that grant should have been included in balanceRow.remaining via augmentBalancesWithMenstrual above.
+    // So remaining already reflects it.
 
     const requestData = { employeeId, name: employeeName, ...formData };
     const url = editingId
@@ -622,13 +1040,14 @@ export default function useLeaveRequest() {
           showAlert(
             editingId
               ? "Leave request updated successfully!"
-              : "Leave request submitted successfully!"
+              : "Leave request submitted successfully!",
           );
           setFormVisible(false);
           setEditingId(null);
           resetForm();
-          fetchLeaveRequests();
-          fetchLeaveBalance();
+          // refresh lists and balances
+          await fetchLeaveRequests();
+          await fetchLeaveBalance();
         } else {
           showAlert(responseData.message || "Failed to submit leave request.");
         }
@@ -638,6 +1057,7 @@ export default function useLeaveRequest() {
       }
     };
 
+    // Loss-of-pay flow and continue confirmation
     if (requestedDays > remaining && !activePolicy) {
       await doSubmit(requestData, url, method);
       return;
@@ -655,6 +1075,61 @@ export default function useLeaveRequest() {
 
     await doSubmit(requestData, url, method);
   };
+
+  // initial load: fetch profile, leave types, policies, leave-requests and balances (in sequence)
+  useEffect(() => {
+    (async () => {
+      try {
+        await fetchUserProfile();
+      } catch (err) {
+        // ignore profile errors
+      }
+      try {
+        await fetchPolicies();
+      } catch (err) {}
+      // fetch requests first (so augmentBalancesWithMenstrual can check usage this month)
+      try {
+        await fetchLeaveRequests();
+      } catch (err) {}
+      try {
+        await fetchLeaveTypes();
+      } catch (err) {}
+      try {
+        await fetchLeaveBalance();
+      } catch (err) {}
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [employeeId]);
+
+  // update activePolicy when policies change
+  useEffect(() => {
+    if (!Array.isArray(policies) || policies.length === 0) {
+      setActivePolicy(null);
+      return;
+    }
+    const today = new Date();
+    const inRange = policies.find((p) => {
+      try {
+        const s = new Date(p.year_start);
+        const e = new Date(p.year_end);
+        return s <= today && today <= e;
+      } catch {
+        return false;
+      }
+    });
+    setActivePolicy(
+      inRange ||
+        policies
+          .slice()
+          .sort((a, b) => new Date(b.year_start) - new Date(a.year_start))[0] ||
+        null,
+    );
+  }, [policies]);
+
+  useEffect(() => {
+    if (employeeId) fetchLeaveRequests();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [employeeId, teamSearch, teamStatus, filters.from_date, filters.to_date]);
 
   return {
     isFormVisible,
@@ -702,7 +1177,7 @@ export default function useLeaveRequest() {
         const json = await res.json();
         const payload = json?.data || {};
         const val = Number(
-          payload.total_lop ?? payload.totalLop ?? payload.lop ?? 0
+          payload.total_lop ?? payload.totalLop ?? payload.lop ?? 0,
         );
         setMonthlyLop(Number.isFinite(val) ? val : 0);
         return val;
@@ -726,7 +1201,7 @@ export default function useLeaveRequest() {
         const json = await res.json();
         const payload = json?.data || {};
         const val = Number(
-          payload.total_lop ?? payload.totalLop ?? payload.lop ?? 0
+          payload.total_lop ?? payload.totalLop ?? payload.lop ?? 0,
         );
         setMonthlyLop(Number.isFinite(val) ? val : 0);
         return val;
@@ -754,5 +1229,12 @@ export default function useLeaveRequest() {
     setLopYear,
     loadLeaveBalance,
     getBalanceForType,
+
+    // new exports
+    fetchLeaveTypes,
+    leaveTypes,
+    userProfile,
+    // utility export if consumers want a canonical normalizer
+    normalizeLeaveTypes,
   };
 }

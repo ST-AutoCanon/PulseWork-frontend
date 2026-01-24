@@ -1,3 +1,5 @@
+// File: Admin.client.jsx
+
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
@@ -7,6 +9,11 @@ import Modal from "../Modal/Modal.client";
 import CompensationPopup from "./CompensationPopup.client";
 import { IoSearch } from "react-icons/io5";
 import { useAuth } from "../../context/AuthProvider.client";
+import {
+  normalizeLeaveTypes,
+  getTypeKey,
+  getTypeLabel,
+} from "./leaveUtils.client";
 
 const formatDate = (isoDate) => {
   if (!isoDate) return "";
@@ -17,7 +24,7 @@ const parseDateOnly = (isoDate) => {
   if (!isoDate) return null;
   const d = new Date(isoDate);
   if (isNaN(d.getTime())) {
-    const parts = isoDate.split("-");
+    const parts = String(isoDate).split("-");
     if (parts.length >= 3) {
       const [y, m, day] = parts;
       return new Date(Number(y), Number(m) - 1, Number(day));
@@ -36,13 +43,33 @@ const calculateDays = (startDate, endDate) => {
   return diffDays >= 0 ? diffDays + 1 : 0;
 };
 
-const API_BASE = process.env.NEXT_PUBLIC_BACKEND_URL;
+const API_BASE = process.env.NEXT_PUBLIC_BACKEND_URL || "";
+
+const computeAge = (dob) => {
+  if (!dob) return null;
+  try {
+    const d = new Date(dob);
+    if (isNaN(d.getTime())) return null;
+    const diff = Date.now() - d.getTime();
+    const ageDt = new Date(diff);
+    return Math.abs(ageDt.getUTCFullYear() - 1970);
+  } catch {
+    return null;
+  }
+};
+
+const canonicalTypeMatch = (candidate, ...keywords) => {
+  if (!candidate) return false;
+  const c = String(candidate).toLowerCase();
+  return keywords.some((k) => c.includes(k));
+};
 
 export default function Admin({ openPolicyId = null }) {
   const { user } = useAuth();
 
   const [leaveQueries, setLeaveQueries] = useState([]);
   const [policies, setPolicies] = useState([]);
+  const [leaveTypes, setLeaveTypes] = useState([]);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("Pending");
   const [fromDate, setFromDate] = useState("");
@@ -141,6 +168,30 @@ export default function Admin({ openPolicyId = null }) {
     return h;
   }, [user]);
 
+  const fetchLeaveTypes = useCallback(async () => {
+    try {
+      const url = `${API_BASE}/types`;
+      const res = await fetch(url, {
+        credentials: "include",
+        headers: buildHeaders(),
+      });
+      if (!res.ok) {
+        console.warn("[fetchLeaveTypes] non-ok", res.status);
+        setLeaveTypes([]);
+        return [];
+      }
+      const json = await res.json().catch(() => null);
+      const raw = json?.data ?? json ?? [];
+      const normalized = normalizeLeaveTypes(raw);
+      setLeaveTypes(normalized);
+      return normalized;
+    } catch (err) {
+      console.error("[fetchLeaveTypes] error:", err);
+      setLeaveTypes([]);
+      return [];
+    }
+  }, [buildHeaders]);
+
   const fetchPolicies = useCallback(async () => {
     try {
       const url = `${API_BASE}/api/leave-policies`;
@@ -149,7 +200,12 @@ export default function Admin({ openPolicyId = null }) {
         credentials: "include",
         headers: buildHeaders(),
       });
-      const json = await res.json().catch(() => null);
+      let json = null;
+      try {
+        json = await res.json();
+      } catch (e) {
+        console.warn("[fetchPolicies] parse error", e);
+      }
 
       setPolicies((json && (json.data || json.policies)) || []);
     } catch (err) {
@@ -165,8 +221,11 @@ export default function Admin({ openPolicyId = null }) {
   }, [policies]);
 
   useEffect(() => {
+    // initial data load
     fetchPolicies();
     fetchLeaveQueries();
+    fetchLeaveTypes();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [statusFilter, fromDate, toDate, search, user?.employeeId, user?.orgId]);
 
   useEffect(() => {
@@ -185,6 +244,7 @@ export default function Admin({ openPolicyId = null }) {
       if (toDate) paramsObj.to_date = toDate;
 
       const params = new URLSearchParams(paramsObj).toString();
+      // leave routes are mounted at "/" so admin endpoint is /admin/leave (no /api prefix)
       const url = `${API_BASE}/admin/leave${params ? `?${params}` : ""}`;
 
       const res = await fetch(url, {
@@ -196,17 +256,15 @@ export default function Admin({ openPolicyId = null }) {
         json = await res.json();
       } catch (e) {
         console.error("[fetchLeaveQueries] JSON parse error", e);
-        const text = await res.text();
-
         showAlert("Failed to parse server response for leave queries.");
         return;
       }
 
-      if (json && (json.success || json.status === "success")) {
+      if (json && (json.success || json.status === "success" || json.data)) {
         setLeaveQueries(json.data || json.leave_queries || json.message || []);
         setStatusUpdates({});
       } else {
-        showAlert(json.message || "Failed to fetch leave queries");
+        showAlert(json?.message || "Failed to fetch leave queries");
       }
     } catch (err) {
       console.error("[fetchLeaveQueries] Error:", err);
@@ -242,6 +300,118 @@ export default function Admin({ openPolicyId = null }) {
     }
   };
 
+  const fetchEmployeeProfile = async (employeeId) => {
+    if (!employeeId) return null;
+    const candidates = [
+      `${API_BASE}/api/employee/${employeeId}`,
+      `${API_BASE}/api/employees/${employeeId}`,
+      `${API_BASE}/api/profile/${employeeId}`,
+      `${API_BASE}/api/employee/profile/${employeeId}`,
+      `${API_BASE}/api/employee-profile/${employeeId}`,
+    ];
+    for (const url of candidates) {
+      try {
+        const res = await fetch(url, {
+          credentials: "include",
+          headers: buildHeaders(),
+        });
+        if (!res.ok) continue;
+        const json = await res.json();
+        const profile = json?.data || json?.message || json || null;
+        if (profile) {
+          const gender =
+            profile.gender || profile.sex || profile.Gender || null;
+          const dob =
+            profile.dob || profile.date_of_birth || profile.dateOfBirth || null;
+          return { ...profile, gender, dob };
+        }
+      } catch (err) {
+        // ignore
+      }
+    }
+    return null;
+  };
+
+  const augmentBalancesWithMenstrual = (balanceArray = [], profile = null) => {
+    if (!Array.isArray(balanceArray)) return [];
+    const copy = balanceArray.slice();
+    const idx = copy.findIndex((b) =>
+      canonicalTypeMatch(b.type || b.label || "", "menstrual", "menstr"),
+    );
+    const gender = (profile?.gender || "").toString().toLowerCase();
+    const dob = profile?.dob || null;
+    const age = computeAge(dob);
+    const eligible =
+      gender === "female" && (age === null || (age >= 18 && age <= 52));
+    const currentMonth = new Date().getMonth();
+    const currentYear = new Date().getFullYear();
+
+    if (!eligible) {
+      if (idx >= 0) {
+        const existing = { ...copy[idx] };
+        if ("carry_forward" in existing) existing.carry_forward = 0;
+        copy[idx] = existing;
+      }
+      return copy;
+    }
+
+    const usedThisMonth = (leaveQueries || []).some((r) => {
+      try {
+        const type = String(r.leave_type || r.type || "").toLowerCase();
+        if (!type.includes("menstr")) return false;
+        const s = new Date(r.start_date || r.startDate || r.date || 0);
+        if (isNaN(s.getTime())) return false;
+        const status = (r.status || "").toLowerCase();
+        if (["rejected", "cancelled"].includes(status)) return false;
+        return s.getMonth() === currentMonth && s.getFullYear() === currentYear;
+      } catch {
+        return false;
+      }
+    });
+
+    if (idx === -1) {
+      if (!usedThisMonth) {
+        copy.push({
+          type: "menstrual",
+          label: "Menstrual Leave",
+          allowance: 1,
+          used: 0,
+          remaining: 1,
+          carry_forward: 0,
+          ephemeral: true,
+          ephemeral_month: currentMonth,
+          ephemeral_year: currentYear,
+        });
+      }
+      return copy;
+    }
+
+    const original = { ...copy[idx] };
+    const alreadyEphemeralForThisMonth =
+      original.ephemeral_month === currentMonth &&
+      original.ephemeral_year === currentYear;
+
+    if (!usedThisMonth && !alreadyEphemeralForThisMonth) {
+      const baseAllowance = Number(original.allowance ?? original.earned ?? 0);
+      const baseUsed = Number(original.used ?? 0);
+      const baseRemaining = Number(
+        original.remaining ?? baseAllowance - baseUsed,
+      );
+      original.allowance = baseAllowance + 1;
+      original.remaining = baseRemaining + 1;
+      original.ephemeral = true;
+      original.ephemeral_month = currentMonth;
+      original.ephemeral_year = currentYear;
+      original.carry_forward = 0;
+      copy[idx] = original;
+    } else {
+      original.carry_forward = 0;
+      copy[idx] = original;
+    }
+
+    return copy;
+  };
+
   const loadLeaveBalance = async (employeeId) => {
     if (leaveBalances[employeeId]) {
       return leaveBalances[employeeId];
@@ -258,13 +428,19 @@ export default function Admin({ openPolicyId = null }) {
         json = await res.json();
       } catch (e) {
         console.error("[loadLeaveBalance] JSON parse error", e);
-        const text = await res.text();
-
         setLeaveBalances((b) => ({ ...b, [employeeId]: [] }));
         return [];
       }
 
-      const data = json.data || [];
+      let data = json.data || [];
+
+      try {
+        const profile = await fetchEmployeeProfile(employeeId);
+        data = augmentBalancesWithMenstrual(data, profile);
+      } catch (err) {
+        // ignore augmentation failures
+      }
+
       setLeaveBalances((b) => ({ ...b, [employeeId]: data }));
       return data;
     } catch (err) {
@@ -428,7 +604,7 @@ export default function Admin({ openPolicyId = null }) {
         return { ok: false, status: res.status, body: json || text };
       }
 
-      if (json && json.success) {
+      if (json && (json.success || json.status === "success")) {
         setUpdatedQueries((s) => new Set(s).add(leaveId));
         await fetchLeaveQueries();
         return { ok: true, status: res.status, body: json };
@@ -443,7 +619,7 @@ export default function Admin({ openPolicyId = null }) {
     } catch (err) {
       console.error("[doUpdate] Unexpected error:", err);
       showAlert(
-        "Error updating leave (network or client error). Check console."
+        "Error updating leave (network or client error). Check console.",
       );
       return { ok: false, error: err };
     }
@@ -480,7 +656,28 @@ export default function Admin({ openPolicyId = null }) {
     if (upd.status === "Approved") {
       const days = calculateDays(query.start_date, query.end_date);
       const balances = await loadLeaveBalance(query.employee_id);
-      const bal = balances.find((r) => r.type === query.leave_type);
+      const bal =
+        balances.find((r) => {
+          // match robustly by type key/label and by DB leave types
+          const t = (r.type || r.label || "").toString().toLowerCase();
+          const qType = (query.leave_type || "").toString().toLowerCase();
+          if (!t || !qType) return false;
+          if (t === qType) return true;
+          // compare normalized leaveTypes loaded from /leave/types
+          const matchByDb = (leaveTypes || []).some((lt) => {
+            const ltKey = (lt.key || "").toString().toLowerCase();
+            const ltLabel = (lt.label || "").toString().toLowerCase();
+            return (
+              ltKey === qType ||
+              ltLabel === qType ||
+              ltKey === t ||
+              ltLabel === t
+            );
+          });
+          if (matchByDb) return true;
+          return t.includes(qType) || qType.includes(t);
+        }) || null;
+
       const remaining =
         bal && bal.remaining !== undefined ? Number(bal.remaining) || 0 : 0;
 
@@ -531,6 +728,8 @@ export default function Admin({ openPolicyId = null }) {
         return;
       }
 
+      // ... same LopModal flows as before (approveDeficit, setAllCompensated, setAllDeducted, applyFlexibleSplit)
+      // Reusing the implementation from your original file (kept unchanged)
       const approveDeficit = async () => {
         const preserved_leave_days = Number(remaining) || 0;
         const lopDaysVal = Number(days) || 0;
@@ -634,7 +833,7 @@ export default function Admin({ openPolicyId = null }) {
         const lop_days = Math.max(0, daysNum - deducted_clamped);
         const preserved_leave_days = Math.max(
           0,
-          remainingNum - deducted_clamped
+          remainingNum - deducted_clamped,
         );
 
         const payload = {
@@ -684,7 +883,7 @@ export default function Admin({ openPolicyId = null }) {
       const applyFlexibleSplit = async (
         compensatedDays,
         deductedDays,
-        lopDays
+        lopDays,
       ) => {
         const c = Number(compensatedDays) || 0;
         const d = Number(deductedDays) || 0;
@@ -719,7 +918,7 @@ export default function Admin({ openPolicyId = null }) {
 
         let preserved_leave_days = Math.max(
           0,
-          Number(remaining) - Number(deducted_clamped)
+          Number(remaining) - Number(deducted_clamped),
         );
         preserved_leave_days = Number(preserved_leave_days.toFixed(2));
 
@@ -763,7 +962,7 @@ export default function Admin({ openPolicyId = null }) {
         ) {
           console.warn(
             "[applyFlexibleSplit] fallback: treating 2xx as success",
-            result
+            result,
           );
           const msg = (result.body && result.body.message) || "Leave updated";
           showAlert(msg);
@@ -791,7 +990,7 @@ export default function Admin({ openPolicyId = null }) {
         deductedDays: Math.min(Number(remaining), Number(days)),
         lopDays: Math.max(
           0,
-          Number(days) - Math.min(Number(remaining), Number(days))
+          Number(days) - Math.min(Number(remaining), Number(days)),
         ),
         approveDeficit,
         setAllCompensated,
@@ -860,19 +1059,7 @@ export default function Admin({ openPolicyId = null }) {
           {policyAlerts.map((a) => (
             <div
               key={a.id}
-              className={`policy-alert-item ${
-                a.severity === "critical" ? "alert-critical" : "alert-warning"
-              }`}
-              style={{
-                padding: "10px",
-                borderRadius: 6,
-                marginBottom: 8,
-                background: a.severity === "critical" ? "#fff1f0" : "#fff8e6",
-                borderLeft:
-                  a.severity === "critical"
-                    ? "4px solid #e74c3c"
-                    : "4px solid #ffb020",
-              }}
+              className={`policy-alert-item ${a.severity === "critical" ? "alert-critical" : "alert-warning"}`}
             >
               <div
                 style={{
@@ -892,8 +1079,8 @@ export default function Admin({ openPolicyId = null }) {
                     <strong>
                       {new Date(a.policy.year_start).toLocaleDateString()} —{" "}
                       {new Date(a.policy.year_end).toLocaleDateString()}
-                    </strong>
-                    {" • "}
+                    </strong>{" "}
+                    •{" "}
                     <span style={{ fontWeight: 700 }}>
                       {a.daysLeft} day{a.daysLeft !== 1 ? "s" : ""} left
                     </span>
@@ -989,9 +1176,8 @@ export default function Admin({ openPolicyId = null }) {
                     currentStatus === "Approved"
                       ? "status-approved"
                       : currentStatus === "Rejected"
-                      ? "status-rejected"
-                      : "";
-
+                        ? "status-rejected"
+                        : "";
                   const isAlreadyUpdated =
                     query.status !== "pending" && query.status !== "Pending";
                   const isUpdating =
@@ -1020,7 +1206,7 @@ export default function Admin({ openPolicyId = null }) {
                             handleStatusChange(
                               query.leave_id,
                               "status",
-                              e.target.value
+                              e.target.value,
                             )
                           }
                           className={`status-dropdown ${statusClass}`}
@@ -1044,7 +1230,7 @@ export default function Admin({ openPolicyId = null }) {
                                 handleStatusChange(
                                   query.leave_id,
                                   "comments",
-                                  e.target.value
+                                  e.target.value,
                                 )
                               }
                               className="comments-input"
@@ -1055,9 +1241,7 @@ export default function Admin({ openPolicyId = null }) {
                       </td>
                       <td>
                         <button
-                          className={`update-button ${
-                            isAlreadyUpdated ? "disabled-button" : ""
-                          }`}
+                          className={`update-button ${isAlreadyUpdated ? "disabled-button" : ""}`}
                           onClick={() => handleUpdate(query.leave_id, query)}
                           disabled={
                             isAlreadyUpdated ||

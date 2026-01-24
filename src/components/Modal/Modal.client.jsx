@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useEffect, useRef } from "react";
@@ -36,7 +37,7 @@ export default function Modal({
         onClose?.();
       } else if (e.key === "Tab") {
         const focusableEls = modalRef.current.querySelectorAll(
-          'a[href], area[href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), button:not([disabled]), [tabindex]:not([tabindex="-1"])'
+          'a[href], area[href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), button:not([disabled]), [tabindex]:not([tabindex]:not([tabindex="-1"]))'
         );
         const firstEl = focusableEls[0];
         const lastEl = focusableEls[focusableEls.length - 1];
@@ -75,7 +76,7 @@ export default function Modal({
 
   const content = (
     <div
-      className={`custom-modal-overlay ${className}`}
+      className={`ac-modal-overlay ${className}`}
       onClick={() => onClose?.()}
       aria-hidden={false}
       data-testid="modal-overlay"
@@ -83,7 +84,7 @@ export default function Modal({
       <div
         id={id}
         ref={modalRef}
-        className={`custom-modal-content ${customClass}`}
+        className={`ac-modal-content ${customClass}`}
         role="dialog"
         aria-modal="true"
         aria-labelledby={title ? `${id}-title` : undefined}
@@ -91,13 +92,13 @@ export default function Modal({
         onClick={(e) => e.stopPropagation()}
       >
         {title && (
-          <div className="modal-header">
-            <h2 id={`${id}-title`} className="modal-title">
+          <div className="ac-modal-header">
+            <h2 id={`${id}-title`} className="ac-modal-title">
               {title}
             </h2>
             <button
               aria-label="Close"
-              className="modal-close-btn"
+              className="ac-modal-close-btn"
               onClick={() => onClose?.()}
             >
               ✕
@@ -105,11 +106,11 @@ export default function Modal({
           </div>
         )}
 
-        <div className="modal-body">{children}</div>
+        <div className="ac-modal-body">{children}</div>
 
         {buttons && buttons.length > 0 && (
           <div
-            className="modal-buttons"
+            className="ac-modal-footer"
             role="toolbar"
             aria-label="Modal actions"
           >
@@ -123,7 +124,7 @@ export default function Modal({
                     console.error("Modal button handler error:", err);
                   }
                 }}
-                className={button.className || "modal-btn"}
+                className={button.className || "ac-modal-btn"}
                 type={button.type || "button"}
               >
                 {button.label}

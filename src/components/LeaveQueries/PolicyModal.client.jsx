@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
@@ -18,6 +19,50 @@ const BUILT_IN = [
   { key: "earned", label: "Earned Leave" },
 ];
 
+// normalizeLeaveTypes helper
+function normalizeKey(s = "") {
+  return String(s || "")
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, "_")
+    .replace(/[^a-z0-9_]/g, "");
+}
+function prettyFromKey(s = "") {
+  return String(s)
+    .replace(/[_-]+/g, " ")
+    .split(" ")
+    .map((w) => (w ? w[0].toUpperCase() + w.slice(1) : ""))
+    .join(" ");
+}
+function normalizeLeaveTypes(raw = []) {
+  const arr = Array.isArray(raw) ? raw : [];
+  return arr.map((t) => {
+    if (typeof t === "string") {
+      const key = normalizeKey(t);
+      return { key, label: prettyFromKey(key), raw: t, is_active: true };
+    }
+    const key =
+      t.type_key ??
+      t.key ??
+      t.type ??
+      t.typeKey ??
+      t.name ??
+      t.display_name ??
+      "";
+    const label = t.display_name ?? t.label ?? t.name ?? key ?? "";
+    return {
+      key: normalizeKey(key),
+      label: label || prettyFromKey(key),
+      gender: t.gender ?? t.gender_name ?? null,
+      min_age: t.min_age ?? t.minAge ?? null,
+      max_age: t.max_age ?? t.maxAge ?? null,
+      is_active:
+        typeof t.is_active === "boolean" ? t.is_active : (t.active ?? true),
+      ...t,
+    };
+  });
+}
+
 export default function PolicyModal({
   isOpen,
   onClose,
@@ -28,14 +73,18 @@ export default function PolicyModal({
   const employeeId = user?.employeeId ?? null;
   const orgId = user?.orgId ?? user?.org_id ?? null;
 
-  const headers = {
-    "x-api-key": process.env.NEXT_PUBLIC_API_KEY,
-    "Content-Type": "application/json",
-    ...(employeeId ? { "x-employee-id": employeeId } : {}),
-    ...(orgId ? { "x-org-id": orgId } : {}),
+  // build headers at time of request (so we never send stale/undefined values)
+  const buildHeaders = () => {
+    const h = { "Content-Type": "application/json" };
+    const apiKey = process.env.NEXT_PUBLIC_API_KEY;
+    if (apiKey) h["x-api-key"] = apiKey;
+    if (employeeId) h["x-employee-id"] = employeeId;
+    if (orgId) h["x-org-id"] = orgId;
+    return h;
   };
 
   const [policies, setPolicies] = useState([]);
+  const [leaveTypes, setLeaveTypes] = useState([]); // fetched & normalized: { key, label, ... }
   const [alert, setAlert] = useState(null);
   const [policyAlerts, setPolicyAlerts] = useState([]);
   const [confirmDelete, setConfirmDelete] = useState({
@@ -106,32 +155,6 @@ export default function PolicyModal({
   }, [policies]);
 
   useEffect(() => {
-    try {
-      const toStore = (policyAlerts || []).map((a) => ({
-        id: `policy-${a.id}`,
-        type: "policy",
-        message:
-          a.severity === "critical"
-            ? `Policy ending soon — ${a.daysLeft} day${
-                a.daysLeft !== 1 ? "s" : ""
-              } left`
-            : `Policy ending in ${a.daysLeft} day${
-                a.daysLeft !== 1 ? "s" : ""
-              }`,
-        policyId: a.id,
-        year_start: a.policy?.year_start,
-        year_end: a.policy?.year_end,
-        daysLeft: a.daysLeft,
-        severity: a.severity,
-        triggered_at: new Date().toISOString(),
-      }));
-      localStorage.setItem("policyAlerts", JSON.stringify(toStore));
-    } catch (err) {
-      console.error("Failed to persist policy alerts:", err);
-    }
-  }, [policyAlerts]);
-
-  useEffect(() => {
     if (!isOpen) return;
 
     const aborter = new AbortController();
@@ -140,24 +163,79 @@ export default function PolicyModal({
       setLoadError(null);
       clearAlert();
       try {
-        const res = await fetch(`${API_BASE}/api/leave-policies`, {
+        // --- FETCH POLICIES (force fresh to avoid ETag cache) ---
+        const headers = buildHeaders();
+        const policyUrl = `${API_BASE}/api/leave-policies?_=${Date.now()}`;
+        const pRes = await fetch(policyUrl, {
           credentials: "include",
           headers,
           signal: aborter.signal,
+          cache: "no-store",
         });
-        if (!res.ok) {
+        let pJson = null;
+        try {
+          pJson = await pRes.json();
+        } catch (_) {
+          pJson = null;
+        }
+        // handle different response shapes:
+        // - data: [] (simple array)
+        // - data: { policies: [...], defaultLeaveSettings: [...] }
+        // - top-level array
+        let list = [];
+        if (pRes.ok) {
+          if (Array.isArray(pJson?.data)) list = pJson.data;
+          else if (pJson?.data && Array.isArray(pJson.data.policies))
+            list = pJson.data.policies;
+          else if (Array.isArray(pJson)) list = pJson;
+          else if (pJson?.data && Array.isArray(pJson.data)) list = pJson.data;
+          else list = [];
+          setPolicies(list);
+          setLoadError(null);
+        } else {
           setPolicies([]);
           setLoadError("Could not load policies.");
-        } else {
-          const json = await res.json();
-          const list = json?.data || [];
-          setPolicies(list);
-          await runAutoExtendOnLoad(list);
-          setLoadError(null);
+        }
+
+        // --- FETCH LEAVE TYPES (try /types) ---
+        try {
+          const typesUrl = `${API_BASE}/types`;
+          let tRes = await fetch(typesUrl, {
+            credentials: "include",
+            headers: buildHeaders(),
+            signal: aborter.signal,
+            cache: "no-store",
+          });
+
+          if (tRes.status === 404) {
+            // no namespaced endpoint; still try again (same URL fallback is harmless)
+            tRes = await fetch(typesUrl, {
+              credentials: "include",
+              headers: buildHeaders(),
+              signal: aborter.signal,
+              cache: "no-store",
+            });
+          }
+
+          if (tRes.ok) {
+            const tJson = await tRes.json().catch(() => null);
+            const arr = Array.isArray(tJson?.data)
+              ? tJson.data
+              : Array.isArray(tJson)
+                ? tJson
+                : [];
+            const normalized = normalizeLeaveTypes(arr);
+            setLeaveTypes(normalized);
+          } else {
+            setLeaveTypes([]);
+          }
+        } catch (err) {
+          console.warn("PolicyModal: Failed to load leave types:", err);
+          setLeaveTypes([]);
         }
       } catch (err) {
         if (err.name === "AbortError") return;
-        console.error("Failed to fetch policies:", err);
+        console.error("PolicyModal: Failed to fetch policies:", err);
         setPolicies([]);
         setLoadError("Could not load policies.");
       } finally {
@@ -169,7 +247,7 @@ export default function PolicyModal({
     autoOpenedRef.current = null;
 
     return () => aborter.abort();
-  }, [isOpen, employeeId, orgId]);
+  }, [isOpen, employeeId, orgId, onSaved]);
 
   useEffect(() => {
     if (!isOpen || openPolicyId == null) return;
@@ -223,25 +301,30 @@ export default function PolicyModal({
       ...f,
       config: { ...f.config, [key]: { ...f.config[key], ...patch } },
     }));
-  const addExtra = () =>
+
+  // Add a blank extra row — admin must pick a leave type from dropdown
+  const addExtra = () => {
     updateForm({
       extras: [
         ...form.extras,
         {
-          id: Date.now(),
-          label: "",
+          id: Date.now() + Math.random(),
+          typeKey: "", // leaveTypes key
           value: "",
           carryForward: "",
           advanceNoticeDays: "",
         },
       ],
     });
+  };
+
   const removeExtra = (id) =>
     updateForm({ extras: form.extras.filter((r) => r.id !== id) });
   const updateExtra = (id, patch) =>
-    updateForm({
-      extras: form.extras.map((r) => (r.id === id ? { ...r, ...patch } : r)),
-    });
+    setForm((f) => ({
+      ...f,
+      extras: f.extras.map((r) => (r.id === id ? { ...r, ...patch } : r)),
+    }));
 
   const onEdit = (policy) => {
     const cfg = BUILT_IN.reduce((acc, { key }) => {
@@ -257,15 +340,40 @@ export default function PolicyModal({
       };
       return acc;
     }, {});
+
     const extras = (policy.leave_settings || [])
       .filter((ls) => !BUILT_IN.some((b) => b.key === ls.type))
-      .map((ls) => ({
-        id: Date.now() + Math.random(),
-        label: ls.type,
-        value: ls.value ?? "",
-        carryForward: ls.carry_forward ?? "",
-        advanceNoticeDays: ls.advance_notice_days ?? "",
-      }));
+      .map((ls) => {
+        const found = (leaveTypes || []).find(
+          (t) => String(t.key).toLowerCase() === String(ls.type).toLowerCase(),
+        );
+        if (found) {
+          return {
+            id: Date.now() + Math.random(),
+            typeKey: found.key,
+            value: ls.value ?? "",
+            carryForward: ls.carry_forward ?? "",
+            advanceNoticeDays: ls.advance_notice_days ?? "",
+          };
+        } else {
+          const missingKey = String(ls.type || "custom").trim();
+          setLeaveTypes((prev) => {
+            const exists = (prev || []).some(
+              (p) => String(p.key).toLowerCase() === missingKey.toLowerCase(),
+            );
+            if (exists) return prev;
+            return [...(prev || []), { key: missingKey, label: missingKey }];
+          });
+          return {
+            id: Date.now() + Math.random(),
+            typeKey: missingKey,
+            value: ls.value ?? "",
+            carryForward: ls.carry_forward ?? "",
+            advanceNoticeDays: ls.advance_notice_days ?? "",
+          };
+        }
+      });
+
     setForm({
       id: policy.id,
       period: policy.period,
@@ -304,9 +412,16 @@ export default function PolicyModal({
       showAlert(
         id
           ? "Another policy already uses this date range. Choose different dates or edit the existing policy."
-          : "A policy already exists for this start/end date (or overlaps). Please pick different dates or edit the existing policy."
+          : "A policy already exists for this start/end date (or overlaps). Please pick different dates or edit the existing policy.",
       );
       return;
+    }
+
+    for (const ex of extras) {
+      if (!ex.typeKey || ex.typeKey.trim() === "") {
+        showAlert("Please select a leave type for every added leave.");
+        return;
+      }
     }
 
     const settings = [
@@ -322,13 +437,16 @@ export default function PolicyModal({
         carry_forward: Number(config[key].carryForward) || 0,
         advance_notice_days: Number(config[key].advanceNoticeDays || 0),
       })),
-      ...extras.map(({ label, value, carryForward, advanceNoticeDays }) => ({
-        type: (label || "").trim() || "Custom",
-        enabled: true,
-        value: Number(value) || 0,
-        carry_forward: Number(carryForward) || 0,
-        advance_notice_days: Number(advanceNoticeDays || 0),
-      })),
+      ...extras.map(({ typeKey, value, carryForward, advanceNoticeDays }) => {
+        const typeString = String(typeKey || "Custom");
+        return {
+          type: typeString,
+          enabled: true,
+          value: Number(value) || 0,
+          carry_forward: Number(carryForward) || 0,
+          advance_notice_days: Number(advanceNoticeDays || 0),
+        };
+      }),
     ];
 
     const payload = {
@@ -344,17 +462,37 @@ export default function PolicyModal({
       const res = await fetch(url, {
         method: id ? "PUT" : "POST",
         credentials: "include",
-        headers,
+        headers: buildHeaders(),
         body: JSON.stringify(payload),
       });
-      if (!res.ok) throw new Error(`Save failed ${res.status}`);
-      const fresh = await fetch(`${API_BASE}/api/leave-policies`, {
+
+      let resJson = null;
+      try {
+        resJson = await res.json();
+      } catch (_) {
+        resJson = null;
+      }
+      if (!res.ok) {
+        const serverMsg =
+          (resJson && (resJson.message || resJson.error)) ||
+          `Save failed ${res.status}`;
+        throw new Error(serverMsg);
+      }
+
+      // refetch policies (force fresh)
+      const freshUrl = `${API_BASE}/api/leave-policies?_=${Date.now()}`;
+      const fresh = await fetch(freshUrl, {
         credentials: "include",
-        headers,
+        headers: buildHeaders(),
+        cache: "no-store",
       });
+      const freshJson = fresh.ok ? await fresh.json().catch(() => null) : null;
       if (fresh.ok) {
-        const json = await fresh.json();
-        const list = json.data || [];
+        let list = [];
+        if (Array.isArray(freshJson?.data)) list = freshJson.data;
+        else if (freshJson?.data && Array.isArray(freshJson.data.policies))
+          list = freshJson.data.policies;
+        else if (Array.isArray(freshJson)) list = freshJson;
         setPolicies(list);
         setLoadError(null);
       } else {
@@ -401,16 +539,22 @@ export default function PolicyModal({
       const res = await fetch(`${API_BASE}/api/leave-policies/${id}`, {
         method: "DELETE",
         credentials: "include",
-        headers,
+        headers: buildHeaders(),
       });
       if (!res.ok) throw new Error("Delete failed");
       const fresh = await fetch(`${API_BASE}/api/leave-policies`, {
         credentials: "include",
-        headers,
+        headers: buildHeaders(),
+        cache: "no-store",
       });
       if (fresh.ok) {
         const json = await fresh.json();
-        setPolicies(json.data || []);
+        const list = Array.isArray(json?.data)
+          ? json.data
+          : Array.isArray(json)
+            ? json
+            : [];
+        setPolicies(list);
       } else {
         setPolicies([]);
       }
@@ -446,7 +590,7 @@ export default function PolicyModal({
       const ts = new Date().toISOString();
       localStorage.setItem(key, ts);
       showAlert(
-        "Alert ignored — if the policy ends and no changes are made, it will be auto-extended up to 3 months."
+        "Alert ignored — if the policy ends and no changes are made, it will be auto-extended up to 3 months.",
       );
       if (daysUntil(policy.year_end) < 0) {
         extendPolicyIfNeeded(policy, ts).catch((err) => {
@@ -461,7 +605,7 @@ export default function PolicyModal({
   const extendPolicyIfNeeded = async (
     policy,
     ignoredAtISO = null,
-    monthsToAdd = 3
+    monthsToAdd = 3,
   ) => {
     if (!policy || !policy.id || !policy.year_end) return false;
     const ignoredKey = `policyIgnored:${policy.id}`;
@@ -500,7 +644,7 @@ export default function PolicyModal({
       const res = await fetch(`${API_BASE}/api/leave-policies/${policy.id}`, {
         method: "PUT",
         credentials: "include",
-        headers,
+        headers: buildHeaders(),
         body: JSON.stringify(payload),
       });
 
@@ -512,11 +656,17 @@ export default function PolicyModal({
 
       const fresh = await fetch(`${API_BASE}/api/leave-policies`, {
         credentials: "include",
-        headers,
+        headers: buildHeaders(),
+        cache: "no-store",
       });
       if (fresh.ok) {
         const json = await fresh.json();
-        setPolicies(json.data || []);
+        const list = Array.isArray(json?.data)
+          ? json.data
+          : Array.isArray(json)
+            ? json
+            : [];
+        setPolicies(list);
       } else {
         setPolicies([]);
       }
@@ -524,7 +674,7 @@ export default function PolicyModal({
       if (typeof onSaved === "function") onSaved();
 
       showAlert(
-        `Policy automatically extended to ${newEnd.toLocaleDateString()} (grace extension).`
+        `Policy automatically extended to ${newEnd.toLocaleDateString()} (grace extension).`,
       );
       return true;
     } catch (err) {
@@ -599,7 +749,7 @@ export default function PolicyModal({
                       </strong>{" "}
                       •{" "}
                       <span className="days-left">
-                        {a.daysLeft} day{a.daysLeft !== 1 ? "s" : ""} left
+                        {a.daysLeft} day{a.daysLeft !== 1 ? "s" : ""}
                       </span>
                     </div>
                   </div>
@@ -657,9 +807,20 @@ export default function PolicyModal({
               </label>
             </div>
 
-            <button type="button" className="add-extra-btn" onClick={addExtra}>
-              <MdAddCircleOutline /> Add Leave Type
-            </button>
+            <div style={{ marginTop: 12 }}>
+              <label style={{ display: "block", marginBottom: 6 }}>
+                Add Leave Type from system
+              </label>
+              <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                <button
+                  type="button"
+                  className="add-extra-btn"
+                  onClick={addExtra}
+                >
+                  <MdAddCircleOutline /> Add Leave Type
+                </button>
+              </div>
+            </div>
 
             <div className="leave-types-grid">
               {BUILT_IN.map(({ key, label }) => (
@@ -737,17 +898,39 @@ export default function PolicyModal({
               ))}
 
               {form.extras.map(
-                ({ id, label, value, carryForward, advanceNoticeDays }) => (
+                ({ id, typeKey, value, carryForward, advanceNoticeDays }) => (
                   <div key={id} className="leave-type-row extra-row">
+                    {/* Dropdown of leaveTypes (from DB) — NO free text */}
+                    <select
+                      value={typeKey || ""}
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        updateExtra(id, { typeKey: v });
+                      }}
+                      required
+                    >
+                      <option value="">-- select leave type --</option>
+                      {(leaveTypes || []).map((t, idx) => (
+                        <option key={idx} value={t.key || t}>
+                          {t.label || t.key || t}
+                        </option>
+                      ))}
+                    </select>
+
+                    {/* Show selected label read-only for clarity */}
                     <input
                       type="text"
-                      placeholder="Leave name"
-                      value={label}
-                      onChange={(e) =>
-                        updateExtra(id, { label: e.target.value })
+                      placeholder="Selected leave label"
+                      value={
+                        (leaveTypes.find((t) => t.key === typeKey) || {})
+                          .label ||
+                        typeKey ||
+                        ""
                       }
-                      required
+                      readOnly
+                      style={{ opacity: 0.85 }}
                     />
+
                     <input
                       type="number"
                       placeholder="Leaves / year"
@@ -780,7 +963,7 @@ export default function PolicyModal({
                       onClick={() => removeExtra(id)}
                     />
                   </div>
-                )
+                ),
               )}
             </div>
 

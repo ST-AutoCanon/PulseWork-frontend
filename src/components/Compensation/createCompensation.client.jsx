@@ -2652,7 +2652,7 @@ const CreateCompensation = () => {
                       >
                         <option value="">Select</option>
                         <option value="basic">Basic Salary</option>
-                        <option value="gross">Gross Salary</option>
+                        {/* <option value="gross">Gross Salary</option> */}
                       </select>
                     </div>
                   </div>
@@ -2703,7 +2703,7 @@ const CreateCompensation = () => {
                       >
                         <option value="">Select</option>
                         <option value="basic">Basic Salary</option>
-                        <option value="gross">Gross Salary</option>
+                        {/* <option value="gross">Gross Salary</option> */}
                       </select>
                     </div>
                   </div>

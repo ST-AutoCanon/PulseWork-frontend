@@ -1,4 +1,5 @@
-.custom-modal-overlay {
+
+.ac-modal-overlay {
   position: fixed;
   top: 0;
   left: 0;
@@ -11,44 +12,93 @@
   z-index: 1000;
 }
 
-.custom-modal-content {
+.ac-modal-content {
   background-color: #fff;
-  border-radius: 5px;
+  border-radius: 8px;
   max-width: 500px;
   width: 90%;
-  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
-  border: 10px solid #00468c;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+  border: 8px solid #00468c;
+  display: flex;
+  flex-direction: column;
 }
 
-.modal-title {
-  margin-top: 0;
-  font-size: 1.5rem;
-  opacity: 1 !important;
-  z-index: 99999 !important;
-  margin-left: 10%;
-}
-
-.modal-body {
+.ac-modal-header {
+  display: flex;
+  justify-content: space-between;
   align-items: center;
-  text-align: center;
+  padding: 16px 24px;
+  border-bottom: 1px solid #e5e7eb;
+  background-color: #f9fafb;
+  border-radius: 8px 8px 0 0;
 }
 
-.modal-buttons {
+.ac-modal-title {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.ac-modal-close-btn {
+  background: none;
+  border: none;
+  font-size: 1.8rem;
+  cursor: pointer;
+  color: #6b7280;
+  padding: 0;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ac-modal-close-btn:hover {
+  color: #ef4444;
+}
+
+.ac-modal-body {
+  padding: 32px 24px;
+  text-align: center;
+  font-size: 1.1rem;
+  color: #374151;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+}
+
+.ac-modal-body p {
+  margin: 0;
+  line-height: 1.6;
+}
+
+.ac-modal-footer {
   display: flex;
   justify-content: center;
-  padding: 2%;
+  gap: 12px;
+  padding: 16px 24px;
+  border-top: 1px solid #e5e7eb;
+  background-color: #f9fafb;
+  border-radius: 0 0 8px 8px;
 }
 
-.modal-buttons button {
-  margin-left: 10px;
-  padding: 8px 16px;
+.ac-modal-btn {
+  padding: 10px 24px;
   border: none;
-  border-radius: 3px;
+  border-radius: 6px;
   background-color: #7ac142;
   color: #fff;
+  font-size: 1rem;
+  font-weight: 500;
   cursor: pointer;
+  min-width: 100px;
 }
 
-.modal-buttons button:hover {
+.ac-modal-btn:hover {
   background-color: #65a037;
 }

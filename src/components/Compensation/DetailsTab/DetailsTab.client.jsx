@@ -42,6 +42,22 @@ const DetailsTab = ({
     return <p>Unable to calculate salary details</p>;
   }
 
+  // === TDS Rate & Amount (safe extraction) ===
+  const tdsRate = Number(
+    salaryDetails.tdsRate ||
+    salaryDetails.tds_percentage ||
+    salaryDetails.tdsPercent ||
+    salaryDetails.incomeTaxRate ||
+    planData.tds_percentage ||
+    planData.tds_rate ||
+    planData.tds ||
+    0
+  );
+
+  let tdsMonthly = Number(salaryDetails.tds || salaryDetails.tdsMonthly || salaryDetails.incomeTax || 0);
+  tdsMonthly = Math.round(tdsMonthly * 100) / 100; // Avoid floating-point issues
+  const tdsYearly = Math.round(tdsMonthly * 12 * 100) / 100;
+
   const now = new Date();
   const currentYear = now.getFullYear();
   const currentMonthStr = String(now.getMonth() + 1).padStart(2, "0");
@@ -115,7 +131,7 @@ const DetailsTab = ({
     { label: "Bonus Pay", monthly: monthlyBonusPay, yearly: yearlyBonusPay },
   ];
 
-  const deductions = [
+  const baseDeductions = [
     {
       label: "LOP Deduction",
       monthly: monthlyLopValue,
@@ -137,6 +153,23 @@ const DetailsTab = ({
       yearly: salaryDetails.professionalTax * 12,
     },
   ].filter((item) => getAmount(item) > 0);
+
+  let deductions = [...baseDeductions];
+
+  // Only add TDS row if the amount > 0 in the current tab
+  // This completely hides the "TDS0% (default)₹0.00" row when TDS is default/zero
+  const tdsAmountInCurrentTab = getAmount({ monthly: tdsMonthly, yearly: tdsYearly });
+  if (tdsAmountInCurrentTab > 0) {
+    const tdsLabel = tdsRate > 0 
+      ? `TDS ${tdsRate}%` 
+      : `TDS0% (default)`;
+
+    deductions.push({
+      label: tdsLabel,
+      monthly: tdsMonthly,
+      yearly: tdsYearly,
+    });
+  }
 
   const correctedGross =
     salaryDetails.grossSalary + monthlyBonusPay - salaryDetails.bonusPay;

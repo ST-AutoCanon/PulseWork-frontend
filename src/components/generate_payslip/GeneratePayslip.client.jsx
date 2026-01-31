@@ -360,7 +360,7 @@ export default function GeneratePayslip() {
 
     const employeeDetailsHtml = `
       <div style="font-family: Arial, Helvetica, sans-serif; font-size: 12px; color: #000; margin-bottom: 25px;">
-        <div style="padding: 8px 0; text-align: center; font-weight: bold; font-size: 13px; color: #1a3c6d; margin-bottom: 12px;">
+        <div style="padding: 8px 0; text-align: center; font-weight: bold; font-size: 18px; color: #1a3c6d; margin-bottom: 12px;">
           PAYSLIP FOR - ${monthYear.toUpperCase()}
         </div>
 
@@ -404,7 +404,7 @@ export default function GeneratePayslip() {
             </div>` : ''}
             ${uinNo && uinNo !== "N/A" ? `
             <div style="margin-bottom: 10px;">
-              <strong style="display: inline-block; width: 130px; color: #333;">UAN:</strong>
+              <strong style="display: inline-block; width: 130px; color: #333;">UIN:</strong>
               ${uinNo}
             </div>` : ''}
             ${bankName && bankName !== "N/A" ? `
@@ -1464,20 +1464,32 @@ export default function GeneratePayslip() {
             )}
 
             <div className="generatePayslip-form-buttons">
-              <button
-                onClick={() => {
-                  setShowModal(false);
-                  setPreview(false);
-                  setError(null);
-                  setSuccess(null);
-                  if (pdfUrl) URL.revokeObjectURL(pdfUrl);
-                  setEditingEmployeeId(null);
-                }}
-                className="generatePayslip-cancel-btn"
-                disabled={isLoading}
-              >
-                Cancel
-              </button>
+             <button
+  onClick={() => {
+    if (preview) {
+      // Just go back to form
+      setPreview(false);
+      if (pdfUrl) {
+        URL.revokeObjectURL(pdfUrl);
+        setPdfUrl(null);
+      }
+    } else {
+      // Full close + reset
+      setShowModal(false);
+      setPreview(false);
+      setError(null);
+      setSuccess(null);
+      if (pdfUrl) URL.revokeObjectURL(pdfUrl);
+      setPdfUrl(null);
+      setEditingEmployeeId(null);
+      setFormData(initialFormData);  // optional: only if you want to clear form
+    }
+  }}
+  className="generatePayslip-cancel-btn"
+  disabled={isLoading}
+>
+  {preview ? "Back" : "Cancel"}
+</button>
 
               {preview ? (
                 <>

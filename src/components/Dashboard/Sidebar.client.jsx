@@ -37,6 +37,8 @@ import SalaryDetails from "../Compensation/SalaryDetails/SalaryDetails.client";
 
 import Salary_Statement from "../Salary_statement/Salary_Statement.client";
 import GeneratePayslip from "../generate_payslip/GeneratePayslip.client";
+import OvertimeDetails from "../Compensation/OvertimeDetails";
+import OvertimeSupervisor from "../Compensation/overtimeSupervisor";
 
 const Sidebar = ({ setActiveContent }) => {
   const { user, hydrated } = useAuth();
@@ -77,6 +79,12 @@ const Sidebar = ({ setActiveContent }) => {
           path: "/compensation",
           icon: "MdOutlineAccountBalanceWallet",
         },
+              {
+        label: "Overtime Summary",
+        path: "/OvertimeDetails",
+        icon: "MdAccessTime",
+      },
+
         {
           label: "Leave Queries",
           path: "/leaveQueries",
@@ -186,6 +194,9 @@ const Sidebar = ({ setActiveContent }) => {
       "/letterHead": () => <LetterHead />,
       "/assets": () => <Assets />,
       "/vendors": () => <Vendors />,
+      "/Overtime": () => <OvertimeDetails />,
+      "/OvertimeDetails": () => <OvertimeSupervisor />,
+      "/OvertimeSummary": () => <OvertimeSupervisor />,
       "/report": () => <Report />,
       "/TaskManagement": (role, sub) => {
         if (sub === "admin" && role === "Admin") return <TaskManagementAdmin />;
@@ -325,13 +336,24 @@ const Sidebar = ({ setActiveContent }) => {
       setShowSalaryDropdown(true);
     } else {
       const resolver = pathToComponent[item.path];
-      if (resolver) content = resolver(role);
+      console.log("Clicking item:", item.path, "Resolver exists:", !!resolver);
+      if (resolver) {
+        content = resolver.length > 0 ? resolver(role) : resolver();
+        console.log("Content resolved:", !!content);
+      } else {
+        console.warn("No resolver found for path:", item.path);
+      }
       setShowCompensationDropdown(false);
       setShowTaskDropdown(false);
       setShowSalaryDropdown(false);
     }
 
-    if (content) setActiveContent(content);
+    if (content) {
+      setActiveNav(item.path);
+      setActiveContent(content);
+    } else {
+      console.warn("No content to display for path:", item.path);
+    }
   };
 
   useEffect(() => {
@@ -384,7 +406,8 @@ const Sidebar = ({ setActiveContent }) => {
     const defaultPath =
       role === "SuperAdmin" ? "/CreateOrganization" : "/dashboard";
     const resolver = pathToComponent[defaultPath] || (() => <MyEmpDashboard />);
-    setActiveContent(resolver(role));
+    const initialContent = resolver.length > 0 ? resolver(role) : resolver();
+    setActiveContent(initialContent);
     setActiveItem(defaultPath);
     setActiveNav(defaultPath);
   }, [user, hydrated, defaultMenuItems, pathToComponent, setActiveContent]);
@@ -569,7 +592,7 @@ const Sidebar = ({ setActiveContent }) => {
       </div>
 
       <div className="bottom-nav">
-        {menuItems.slice(0, 4).map((item, index) => {
+        {menuItems.slice(0, 5).map((item, index) => {
           const Icon = resolveIcon(item.icon);
           const isActive = activeNav.startsWith(item.path);
 

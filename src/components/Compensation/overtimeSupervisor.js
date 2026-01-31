@@ -1,56 +1,42 @@
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import axios from "axios";
 import "./overtimeSupervisor.css";
-import Modal from "../Modal/Modal";
-
-const API_KEY = process.env.REACT_APP_API_KEY;
+import Modal from "../../../src/components/Modal/Modal.client.jsx";
+import { useAuth } from "../../context/AuthProvider.client";
 
 const OvertimeSupervisor = () => {
-  const [employees, setEmployees] = useState([]);
-  const [overtimeRecords, setOvertimeRecords] = useState([]);
-  const [compensationData, setCompensationData] = useState([]);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [selectedMonth, setSelectedMonth] = useState("current");
+  const { user, hydrated } = useAuth();
+  
+  const [data, setData] = useState([]);
+  const [selected, setSelected] = useState(new Set());
+  const [statusMap, setStatusMap] = useState({}); 
+  const [edited, setEdited] = useState({});
+  const [rateMap, setRateMap] = useState({});
+  const [defaultHoursMap, setDefaultHoursMap] = useState({});
+  const [tab, setTab] = useState("current");
+  const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const [error, setError] = useState(null);
+
+  const API_KEY = process.env.NEXT_PUBLIC_API_KEY;
+  const BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
+
+  const meId = user?.employeeId ?? user?.id ?? null;
+  const orgId = user?.orgId ?? user?.org_id ?? null;
+  const myName = user?.name ?? "";
+
+  const headers = {
+    "x-api-key": API_KEY,
+    "x-employee-id": meId,
+    "x-org-id": orgId,
+    "Content-Type": "application/json",
+  };
+
   const [alertModal, setAlertModal] = useState({
     isVisible: false,
     title: "",
     message: "",
   });
-
-  const getLocalDateStr = (date) => {
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, "0");
-    const day = String(date.getDate()).padStart(2, "0");
-    return `${year}-${month}-${day}`;
-  };
-
-  const getMonthName = (offset) => {
-    const today = new Date();
-    const currentMonth = today.getMonth();
-    const targetMonth = currentMonth - offset;
-    const year = today.getFullYear() + Math.floor(targetMonth / 12);
-    const adjustedTargetMonth = ((targetMonth % 12) + 12) % 12;
-    const date = new Date(year, adjustedTargetMonth, 1);
-    const monthName = date.toLocaleString("en-US", {
-      month: "long",
-      year: "numeric",
-    });
-
-    return monthName;
-  };
-
-  const [monthOptions] = useState([
-    { type: "current", offset: 0, label: getMonthName(0) },
-    { type: "last", offset: 1, label: getMonthName(1) },
-    { type: "twoMonthsAgo", offset: 2, label: getMonthName(2) },
-  ]);
-  const [cutoffDate, setCutoffDate] = useState(30);
-
-  const { user } = useAuth();
-  const meId = user?.employeeId ?? user?.id ?? user?.employee_id ?? null;
-  const headers = { "x-api-key": API_KEY, "x-employee-id": meId };
 
   const showAlert = (message, title = "") => {
     setAlertModal({ isVisible: true, title, message });
@@ -60,524 +46,548 @@ const OvertimeSupervisor = () => {
     setAlertModal({ isVisible: false, title: "", message: "" });
   };
 
-  const fetchCutoffDate = async () => {
-    try {
-      const response = await axios.get(
-        `${process.env.REACT_APP_BACKEND_URL}/api/salaryCalculationperiods`,
-        { headers }
-      );
-      const fetchedCutoff = response.data.data[0]?.cutoff_date || 30;
-      setCutoffDate(fetchedCutoff);
-      return fetchedCutoff;
-    } catch (error) {
-      console.error("Error fetching cutoff date:", error);
-      return 30;
-    }
+  const monthLabel = (offset) => {
+    const d = new Date();
+    d.setMonth(d.getMonth() - offset);
+    return d.toLocaleString("default", { month: "long", year: "numeric" });
   };
 
-  const getDateRange = (type, cutoff) => {
-    const today = new Date();
-    const currentMonth = today.getMonth();
-    const currentYear = today.getFullYear();
+  const toLocalDate = (dateStr) => {
+    const d = new Date(dateStr);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(
+      2,
+      "0"
+    )}-${String(d.getDate()).padStart(2, "0")}`;
+  };
 
-    let startDate, endDate;
+  const fetchData = async () => {
+  if (!hydrated || !meId || !orgId || !BASE_URL) {
+    console.warn("Missing required data:", { hydrated, meId, orgId, BASE_URL });
+    setError("Missing employee ID, organization, or API configuration");
+    setLoading(false);
+    return;
+  }
+  
+  setLoading(true);
+  setError(null);
 
-    if (type === "current") {
-      startDate = new Date(currentYear, currentMonth - 1, cutoff);
-      endDate = new Date(currentYear, currentMonth, cutoff);
-    } else if (type === "last") {
-      startDate = new Date(currentYear, currentMonth - 2, cutoff);
-      endDate = new Date(currentYear, currentMonth - 1, cutoff);
-    } else if (type === "twoMonthsAgo") {
-      startDate = new Date(currentYear, currentMonth - 3, cutoff);
-      endDate = new Date(currentYear, currentMonth - 2, cutoff);
+  try {
+    const cutoffRes = await axios.get(
+      `${BASE_URL}/api/salaryCalculationperiods`,
+      { withCredentials: true, headers }
+    );
+    const cutoff_date = cutoffRes.data?.data?.[0]?.cutoff_date || 28;
+
+    const now = new Date();
+    let selectedYear = now.getFullYear();
+    let selectedMonth = now.getMonth(); // 0-based
+    if (tab === "prev1") selectedMonth -= 1;
+    else if (tab === "prev2") selectedMonth -= 2;
+    if (selectedMonth < 0) {
+      selectedMonth += 12;
+      selectedYear -= 1;
     }
 
-    const nextDayEnd = new Date(endDate);
-    nextDayEnd.setDate(nextDayEnd.getDate() + 1);
+    let prevYear = selectedYear;
+    let prevMonth = selectedMonth - 1;
+    if (prevMonth < 0) {
+      prevMonth = 11;
+      prevYear -= 1;
+    }
 
-    const range = {
-      startDate: getLocalDateStr(startDate),
-      endDate: getLocalDateStr(nextDayEnd),
+    const daysInPrevMonth = new Date(prevYear, prevMonth + 1, 0).getDate();
+    const effectivePrevCutoff = Math.min(cutoff_date, daysInPrevMonth);
+
+    const daysInThisMonth = new Date(selectedYear, selectedMonth + 1, 0).getDate();
+    const effectiveThisCutoff = Math.min(cutoff_date, daysInThisMonth);
+
+   
+    let startYear = selectedYear;
+    let startMonth = selectedMonth;
+    let startDay;
+
+    const nowDay = now.getDate();
+
+    if (nowDay <= cutoff_date) {
+  
+      startMonth = prevMonth;
+      startYear = prevYear;
+      startDay = effectivePrevCutoff + 1;
+    } else {
+     
+      startMonth = prevMonth;
+      startYear = prevYear;
+      startDay = effectivePrevCutoff + 1;
+
+  
+      if (startDay > daysInPrevMonth) {
+        startDay -= daysInPrevMonth;
+        startMonth = selectedMonth;
+        startYear = selectedYear;
+      }
+    }
+
+    let periodEndDay = nowDay <= cutoff_date 
+      ? effectiveThisCutoff 
+      : nowDay;
+
+    const periodStart = new Date(startYear, startMonth, startDay);
+    const periodEnd = new Date(selectedYear, selectedMonth, periodEndDay);
+
+    const fmtYMD = (d) =>
+      `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    
+    const startDate = fmtYMD(periodStart);
+    const endDate = fmtYMD(periodEnd);
+
+    console.log("Cutoff Date:", cutoff_date);
+    console.log("Period:", startDate, "to", endDate);
+    console.log("Debug info:", {
+      tab,
+      today: now.toISOString().split("T")[0],
+      nowDay,
+      cutoff_date,
+      selectedMonth: selectedMonth + 1,
+      selectedYear,
+      startDay,
+      periodEndDay,
+      effectivePrevCutoff,
+      effectiveThisCutoff,
+      daysInPrevMonth,
+      daysInThisMonth
+    });
+
+    const extraUrl = `${BASE_URL}/api/compensation/employee-extra-hours?startDate=${startDate}&endDate=${endDate}`;
+    console.log("Fetching extra-hours URL:", extraUrl);
+
+    const [extraRes, summaryRes, assignedRes, planListRes, teamRes] =
+      await Promise.all([
+        axios.get(extraUrl, { withCredentials: true, headers }),
+        axios.get(`${BASE_URL}/api/compensation/overtime-status-summary`, {
+          withCredentials: true,
+          headers,
+        }),
+        axios.get(`${BASE_URL}/api/compensation/assigned`, {
+          withCredentials: true,
+          headers,
+        }),
+        axios.get(`${BASE_URL}/api/compensations/list`, {
+          withCredentials: true,
+          headers,
+        }),
+        axios.get(`${BASE_URL}/api/overtime-summary/${meId}`, {
+          withCredentials: true,
+          headers,
+        }),
+      ]);
+
+    console.log("[DEBUG] Full response from employee-extra-hours:", extraRes.data);
+
+    const teamEmployeeIds = new Set(
+      (teamRes.data?.data || []).map((e) => e.employee_id)
+    );
+
+    const rateObj = {};
+    const hoursObj = {};
+    const assignedData = assignedRes.data?.data || [];
+    const planList = planListRes.data?.data || [];
+    const planHoursMap = {};
+    planList.forEach((p) => {
+      planHoursMap[p.id] = parseFloat(p.plan_data?.defaultWorkingHours) || 8;
+    });
+    assignedData.forEach((a) => {
+      const rate = parseFloat(a.plan_data?.overtimePayAmount || 0);
+      const defHrs = planHoursMap[a.id] || 8;
+      (a.assigned_data || []).forEach((emp) => {
+        rateObj[emp.employee_id] = rate;
+        hoursObj[emp.employee_id] = defHrs;
+      });
+    });
+    setRateMap(rateObj);
+    setDefaultHoursMap(hoursObj);
+
+    const rawMain = (extraRes.data?.data || []).filter((item) =>
+      teamEmployeeIds.has(item.employee_id)
+    );
+
+    // ───────────────────────────────────────────────────────────────
+    // Debug: show raw work_date values coming from backend
+    // ───────────────────────────────────────────────────────────────
+    if (rawMain.length > 0) {
+      console.log(`[DEBUG] Received ${rawMain.length} extra-hours records`);
+      rawMain.forEach((item, i) => {
+        console.log(
+          `  Record ${i + 1}: employee=${item.employee_id || '?'}, ` +
+          `work_date="${item.work_date}", type=${typeof item.work_date}`
+        );
+      });
+    } else {
+      console.log("[DEBUG] Backend returned ZERO extra-hours records for this period");
+    }
+
+    // More tolerant date parser
+    const parseYMD = (s) => {
+      if (!s) return null;
+      // Remove time part if present (ISO format)
+      let datePart = s.split('T')[0].split(' ')[0];
+      // Replace other separators
+      datePart = datePart.replace(/[-/.]/g, '-');
+      const parts = datePart.split('-');
+      if (parts.length !== 3) return null;
+
+      let [y, m, d] = parts.map(p => parseInt(p, 10));
+      
+      // Detect DD-MM-YYYY and swap
+      if (y < 100 && m <= 12 && d >= 1 && d <= 31) {
+        [y, m, d] = [2000 + y, d, m]; // assuming 20xx
+      }
+
+      if (isNaN(y) || isNaN(m) || isNaN(d) || m < 1 || m > 12 || d < 1 || d > 31) {
+        return null;
+      }
+
+      return new Date(y, m - 1, d);
     };
 
-    return range;
-  };
+    const mainData = rawMain
+      .map((item) => {
+        const localDate = toLocalDate(item.work_date);
+        const totalHrs = parseFloat(item.total_hours_worked) || 0;
+        const defHrs = hoursObj[item.employee_id] || 8;
+        const extra = totalHrs > defHrs ? totalHrs - defHrs : 0;
 
-  const fetchEmployees = async () => {
-    try {
-      const response = await axios.get(
-        `${process.env.REACT_APP_BACKEND_URL}/api/overtime-summary/${meId}`,
-        { headers }
-      );
+        const sessions = (item.sessions || []).map((s) => ({
+          ...s,
+          extra_hours:
+            item.sessions.length > 0
+              ? (extra / item.sessions.length).toFixed(2)
+              : "0.00",
+        }));
 
-      if (response.data.success) {
-        setEmployees(response.data.data);
+        return {
+          ...item,
+          work_date: localDate,
+          extra_hours: extra.toFixed(2),
+          sessions,
+          employee_name: item.employee_name || "—",
+        };
+      })
+      .filter((row) => {
+        const sDate = parseYMD(startDate);
+        const eDate = parseYMD(endDate);
+        const dt = parseYMD(row.work_date);
 
-        if (response.data.data.length === 0) {
-          setError("No employees found for this supervisor.");
-          console.warn("No employees found for supervisor:", meId);
-        }
-      } else {
-        setError("Failed to fetch employee data: Invalid response");
-        showAlert("Failed to fetch employee data");
-      }
-    } catch (error) {
-      console.error("Error fetching employees:", error);
-      setError(`Failed to fetch employee data: ${error.message}`);
-      showAlert(`Failed to fetch employee data: ${error.message}`);
-    }
-  };
+        const isValid = dt && sDate && eDate && dt >= sDate && dt <= eDate;
 
-  const fetchCompensationData = async () => {
-    try {
-      const response = await axios.get(
-        `${process.env.REACT_APP_BACKEND_URL}/api/compensation/assigned`,
-        { headers }
-      );
-
-      if (response.data.success) {
-        const validatedData = response.data.data.map((comp) => {
-          let planData = {};
-          if (comp.plan_data) {
-            try {
-              planData =
-                typeof comp.plan_data === "string"
-                  ? JSON.parse(comp.plan_data)
-                  : comp.plan_data;
-            } catch (e) {
-              console.warn(
-                `Invalid JSON in plan_data for employee_id ${comp.employee_id}:`,
-                comp.plan_data
-              );
-              planData = {};
-            }
-          }
-          return { ...comp, plan_data: planData };
-        });
-        setCompensationData(validatedData);
-      } else {
-        console.warn("Failed to fetch compensation data: Invalid response");
-      }
-    } catch (error) {
-      console.error("Error fetching compensation data:", error);
-      console.warn(
-        `Failed to fetch compensation data: ${error.message}, using defaults`
-      );
-    }
-  };
-
-  const fetchOvertimeData = async () => {
-    setLoading(true);
-    const selectedMonthOption = monthOptions.find(
-      (option) => option.type === selectedMonth
-    );
-    if (!selectedMonthOption) {
-      console.warn("No selected month option found for:", selectedMonth);
-      setLoading(false);
-      return;
-    }
-
-    const { startDate, endDate } = getDateRange(selectedMonth, cutoffDate);
-    try {
-      const response = await axios.get(
-        `${process.env.REACT_APP_BACKEND_URL}/api/compensation/employee-extra-hours?startDate=${startDate}&endDate=${endDate}`,
-        { headers }
-      );
-      if (response.data.success) {
-        const employeeIds = employees.map((emp) => emp.employee_id);
-        let rawData = response.data.data || [];
-
-        const originalEndDate = new Date(endDate + "T00:00:00");
-        originalEndDate.setDate(originalEndDate.getDate() - 1);
-        const originalEndStr = getLocalDateStr(originalEndDate);
-        const filteredRaw = rawData.filter(
-          (item) =>
-            employeeIds.includes(item.employee_id) &&
-            item.work_date >= startDate &&
-            item.work_date <= originalEndStr
-        );
-
-        const processedRecords = filteredRaw
-          .map((item) => {
-            const comp = compensationData.find(
-              (c) => c.employee_id === item.employee_id
-            );
-            const defaultHours =
-              parseFloat(comp?.plan_data?.defaultWorkingHours) || 8;
-            let totalHours;
-            let sessions;
-            if (item.sessions && item.total_hours_worked !== undefined) {
-              totalHours = parseFloat(item.total_hours_worked) || 0;
-              sessions = [...(item.sessions || [])];
-            } else {
-              totalHours = parseFloat(item.hours_worked) || 0;
-              sessions = [
-                { punch_id: item.punch_id, apportioned_hours: totalHours },
-              ];
-            }
-            const extraHours = Math.max(0, totalHours - defaultHours);
-            const totalApportioned = sessions.reduce(
-              (sum, s) => sum + (parseFloat(s.apportioned_hours) || 0),
-              0
-            );
-            sessions.forEach((s) => {
-              s.extra_hours =
-                totalApportioned > 0
-                  ? ((parseFloat(s.apportioned_hours) || 0) /
-                      totalApportioned) *
-                    extraHours
-                  : 0;
-            });
-            const id = item.work_date
-              ? `${item.employee_id}-${item.work_date}`
-              : `temp-${item.employee_id}-${Math.random()
-                  .toString(36)
-                  .substr(2, 9)}`;
-            if (totalHours > 24) {
-              console.warn(
-                `Unusually high total_hours for ${id}: ${totalHours}`
-              );
-            }
-            if (extraHours > 14) {
-              console.warn(
-                `Unusually high extra_hours for ${id}: ${extraHours}`
-              );
-            }
-            let rate = parseFloat(item.rate) || 0;
-            if (comp && comp.plan_data && comp.plan_data.overtimePayAmount) {
-              rate = parseFloat(comp.plan_data.overtimePayAmount) || 0;
-            } else if (comp) {
-              console.warn(
-                `No overtimePayAmount for employee_id ${item.employee_id}`
-              );
-            } else {
-              console.warn(
-                `No compensation data for employee_id ${item.employee_id}, using fallback rate`
-              );
-            }
-            return {
-              id,
-              date: item.work_date
-                ? item.work_date
-                : item.punch_in_time
-                ? new Date(item.punch_in_time).toISOString().split("T")[0]
-                : "Unknown",
-              employee_id: item.employee_id || "Unknown",
-              hours: extraHours,
-              hours_worked: totalHours,
-              rate,
-              project: item.project || item.projects || "",
-              supervisor:
-                item.supervisor ||
-                item.supervisors ||
-                employees.find((emp) => emp.employee_id === item.employee_id)
-                  ?.supervisor_name ||
-                "Unknown",
-              comments: item.comments || "",
-              status: item.status || "Pending",
-              sessions,
-            };
-          })
-          .filter((item) => item.hours > 0);
-        const uniqueRecords = Array.from(
-          new Map(processedRecords.map((item) => [item.id, item])).values()
-        );
-        setOvertimeRecords(uniqueRecords);
-
-        if (uniqueRecords.length === 0) {
-          console.warn(
-            "No overtime records returned for employees with extra hours > 0 in this date range"
+        // Extra debug for filtered rows
+        if (!isValid && row.work_date) {
+          console.log(
+            `[FILTERED OUT] work_date="${row.work_date}" → parsed=`,
+            dt ? dt.toISOString().split('T')[0] : "INVALID",
+            `  (range: ${startDate} – ${endDate})`
           );
-          setError(
-            "No overtime records found for employees with extra hours in this period."
-          );
-        } else {
-          setError("");
         }
-      } else {
-        setError(
-          `Failed to fetch overtime data: ${
-            response.data.error || "Invalid response"
-          }`
-        );
-        showAlert(
-          `Failed to fetch overtime data: ${
-            response.data.error || "Invalid response"
-          }`
-        );
-      }
-    } catch (error) {
-      console.error("Error fetching overtime data:", error);
-      const errorMessage =
-        error.response?.data?.error || error.message || "Network error";
-      setError(`Failed to fetch overtime data: ${errorMessage}`);
-      showAlert(`Failed to fetch overtime data: ${errorMessage}`);
-    } finally {
-      setLoading(false);
-    }
-  };
 
-  const handleInputChange = (id, field, value) => {
-    if (field !== "rate") return;
-    const numValue = parseFloat(value);
-    if (isNaN(numValue) || numValue < 0) {
-      showAlert("Rate must be a positive number", "Error");
+        return isValid;
+      });
+
+    if (mainData.length !== rawMain.length) {
+      console.log(
+        "Supervisor view: filtered out",
+        rawMain.length - mainData.length,
+        "out-of-range rows"
+      );
+    }
+
+    setData(mainData);
+
+    const statusMap = {};
+    const summaryData = summaryRes.data?.data || [];
+    summaryData.forEach((r) => {
+      if (
+        r.employee_id &&
+        r.work_date &&
+        teamEmployeeIds.has(r.employee_id)
+      ) {
+        const key = `${r.employee_id}-${toLocalDate(r.work_date)}`;
+        // Store actual status (Approved, Rejected, or undefined for pending)
+        if (r.status) {
+          statusMap[key] = r.status;
+        }
+      }
+    });
+    setStatusMap(statusMap);
+  } catch (err) {
+    console.error("Fetch error:", err);
+    const errorMsg = err.response?.data?.error || err.message || "Failed to load data";
+    setError(errorMsg);
+    showAlert(errorMsg);
+  } finally {
+    setLoading(false);
+  }
+};
+  useEffect(() => {
+    if (!hydrated || !meId) {
+      console.log("Waiting for hydration and user data...", { hydrated, meId });
       return;
     }
-    setOvertimeRecords((prevData) =>
-      prevData.map((row) => (row.id === id ? { ...row, [field]: value } : row))
+    fetchData();
+  }, [tab, hydrated, meId]);
+
+  const filtered = useMemo(() => {
+    if (!search) return data;
+    const q = search.toLowerCase();
+    return data.filter(
+      (r) =>
+        r.employee_id?.toLowerCase().includes(q) ||
+        r.employee_name?.toLowerCase().includes(q) ||
+        r.work_date?.includes(q)
+    );
+  }, [data, search]);
+
+  const rowKey = (item) => `${item.employee_id}-${item.work_date}`;
+  const getRowStatus = (item) => statusMap[rowKey(item)];
+  const isProcessed = (item) => statusMap[rowKey(item)] !== undefined; // Approved or Rejected
+  const isRowSelected = (item) => selected.has(rowKey(item));
+
+  const toggleRow = (item) => {
+    if (isProcessed(item)) return; // Disable if approved or rejected
+    const key = rowKey(item);
+    setSelected((prev) => {
+      const n = new Set(prev);
+      n.has(key) ? n.delete(key) : n.add(key);
+      return n;
+    });
+  };
+
+  const toggleAll = () => {
+    const keys = filtered.filter((r) => !isProcessed(r)).map(rowKey);
+    setSelected((prev) =>
+      keys.every((k) => prev.has(k)) ? new Set() : new Set(keys)
     );
   };
 
-  const handleStatusChange = async (recordId, status) => {
-    try {
-      setLoading(true);
-      const row = overtimeRecords.find((row) => row.id === recordId);
-      if (!row) {
-        throw new Error("Row not found for recordId: " + recordId);
-      }
-      if (row.status !== "Pending") {
-        throw new Error(
-          `Cannot change status of row with status: ${row.status}`
-        );
-      }
-      if (row.sessions.every((s) => (parseFloat(s.extra_hours) || 0) === 0)) {
-        throw new Error("No extra hours to approve/reject.");
-      }
+  const isAllSelected =
+    filtered.filter((r) => !isProcessed(r)).length > 0 &&
+    filtered
+      .filter((r) => !isProcessed(r))
+      .every((r) => selected.has(rowKey(r)));
 
-      const payload = {
-        data: row.sessions.map((s) => ({
-          punch_id: s.punch_id,
-          work_date: row.date,
-          employee_id: row.employee_id,
-          extra_hours: parseFloat(s.extra_hours) || 0,
-          rate: parseFloat(row.rate) || 0,
-          project: row.project || "",
-          supervisor: row.supervisor || "",
-          comments: row.comments || "",
-          status: status,
-        })),
-      };
+  const buildPayload = (status, parent) => {
+    const groupKey = rowKey(parent);
 
-      const response = await axios.post(
-        `${process.env.REACT_APP_BACKEND_URL}/api/compensation/overtime-bulk`,
-        payload,
-        {
-          headers: {
-            "x-api-key": API_KEY,
-            "x-employee-id": meId,
-            "Content-Type": "application/json",
-          },
-        }
-      );
+    const effectiveRate =
+      edited[groupKey]?.rate !== undefined
+        ? parseFloat(edited[groupKey].rate)
+        : rateMap[parent.employee_id] ?? 0;
 
-      showAlert(
-        `Overtime record ${status.toLowerCase()} successfully`,
-        "Success"
-      );
+    const effectiveComments = edited[groupKey]?.comments ?? "";
 
-      setOvertimeRecords((prevData) =>
-        prevData.map((row) => (row.id === recordId ? { ...row, status } : row))
-      );
-    } catch (error) {
-      console.error("Error updating status:", error);
-      showAlert(
-        error.response?.data?.error || error.message || "Network error",
-        "Error"
-      );
-    } finally {
-      setLoading(false);
-    }
+    return [
+      {
+        punch_id: `${parent.employee_id}_${parent.work_date}`,
+        work_date: parent.work_date,
+        employee_id: parent.employee_id,
+        extra_hours: parseFloat(parent.extra_hours) || 0,
+        rate: effectiveRate ? parseFloat(effectiveRate.toFixed(2)) : 0,
+
+        project: parent.project_name?.trim() || "",
+
+        supervisor: myName.trim() || meId,
+
+        comments: effectiveComments,
+        status: status,
+      },
+    ];
   };
 
-  const initData = async () => {
-    if (!meId) {
-      setError("Supervisor ID not found in localStorage.");
-      setLoading(false);
-      console.error("No meId found in localStorage");
-      return;
-    }
-
-    setLoading(true);
-    setError("");
+  const bulkUpdate = async (payload, action) => {
+    if (!payload.length) return;
 
     try {
-      await fetchEmployees();
+      const res = await axios.post(
+       `${BASE_URL}/api/compensation/overtime-bulk`,
+        { data: payload },
+        { withCredentials: true, headers }
+      );
 
-      try {
-        await fetchCompensationData();
-      } catch (compError) {
-        console.warn(
-          "Compensation fetch failed, proceeding with defaults:",
-          compError
-        );
+      showAlert(`Successfully ${action} ${payload.length} record(s)`);
+
+      await fetchData();
+      setSelected(new Set());
+      setEdited({});
+    } catch (err) {
+      console.error("Update error:", err.response?.data || err);
+      showAlert(`Failed: ${err.response?.data?.details || err.message}`);
+    }
+  };
+
+  const approveAll = () => {
+    const payload = [];
+    filtered.forEach((r) => {
+      if (selected.has(rowKey(r))) {
+        payload.push(...buildPayload("Approved", r));
       }
+    });
 
-      await fetchCutoffDate();
-    } catch (error) {
-      console.error("Error in fetching data:", error);
-      setError(`Failed to fetch data: ${error.message}`);
-      showAlert(`Failed to fetch data: ${error.message}`);
-    } finally {
-      setLoading(false);
-    }
+    if (payload.length) bulkUpdate(payload, "Approved");
   };
 
-  useEffect(() => {
-    initData();
-  }, [meId]);
+  const rejectAll = () => {
+    const payload = [];
+    filtered.forEach((r) => {
+      if (selected.has(rowKey(r))) {
+        payload.push(...buildPayload("Rejected", r));
+      }
+    });
 
-  useEffect(() => {
-    if (loading || employees.length === 0 || monthOptions.length === 0) return;
-    fetchOvertimeData();
-  }, [selectedMonth, cutoffDate, employees, compensationData]);
-
-  const handleSearchChange = (e) => {
-    setSearchTerm(e.target.value);
+    if (payload.length) bulkUpdate(payload, "Rejected");
   };
 
-  const handleMonthChange = (e) => {
-    setSelectedMonth(e.target.value);
-    setError("");
-  };
+  const approveOne = (row) =>
+    bulkUpdate(buildPayload("Approved", row), "Approved");
 
-  const filteredRecords = overtimeRecords.filter((record) => {
-    const employee = employees.find(
-      (emp) => emp.employee_id === record.employee_id
-    );
-    const matchesSearch =
-      employee &&
-      employee.employee_name.toLowerCase().includes(searchTerm.toLowerCase());
-    if (!matchesSearch && employee) {
-    }
-    return matchesSearch || !searchTerm;
-  });
+  const rejectOne = (row) =>
+    bulkUpdate(buildPayload("Rejected", row), "Rejected");
+
+  if (loading) return <div className="ot-loading">Loading…</div>;
 
   return (
-    <div className="employees-container">
-      <h1>Employee Overtime Summary</h1>
-      <div className="header-container">
-        <div className="employee-search-container">
-          <input
-            type="text"
-            placeholder="Search by Employee Name..."
-            value={searchTerm}
-            onChange={handleSearchChange}
-            className="search-input"
-          />
-          <i className="fas fa-search search-icon"></i>
-        </div>
-        <div className="month-selector-container">
-          <label htmlFor="monthSelector">Select Month: </label>
-          <select
-            id="monthSelector"
-            value={selectedMonth}
-            onChange={handleMonthChange}
-            className="month-selector"
+    <div className="ot-container">
+      <h1>Supervisor Overtime Approval</h1>
+
+      <div className="ot-tabs">
+        {["prev2", "prev1", "current"].map((t) => (
+          <button
+            key={t}
+            className={tab === t ? "ot-tab active" : "ot-tab"}
+            onClick={() => setTab(t)}
           >
-            {monthOptions.map((option) => (
-              <option key={option.type} value={option.type}>
-                {option.label}
-              </option>
-            ))}
-          </select>
+            {monthLabel(t === "prev2" ? 2 : t === "prev1" ? 1 : 0)}
+          </button>
+        ))}
+      </div>
+
+      <div className="ot-controls">
+        <input
+          type="text"
+          placeholder="Search by ID, Name, Date..."
+          className="ot-search"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
+        <div className="ot-bulk-actions">
+          <button
+            className="ot-btn ot-btn-approve"
+            onClick={approveAll}
+            disabled={selected.size === 0}
+          >
+            Approve Selected
+          </button>
+          <button
+            className="ot-btn ot-btn-reject"
+            onClick={rejectAll}
+            disabled={selected.size === 0}
+          >
+            Reject Selected
+          </button>
         </div>
       </div>
 
-      {loading ? (
-        <div>Loading overtime records...</div>
-      ) : error ? (
-        <div className="error-message">{error}</div>
-      ) : filteredRecords.length === 0 ? (
-        <div>
-          No overtime records found for employees with extra hours in this
-          period.
-        </div>
+      {filtered.length === 0 ? (
+        <p className="ot-no-data">No overtime records found for your team</p>
       ) : (
-        <div className="table-scroll-wrapper">
-          <table className="employee-table">
+        <div className="ot-table-wrapper">
+          <table className="ot-table">
             <thead>
-              <tr className="header-row">
-                <th>Employee ID</th>
-                <th>Employee Name</th>
-
-                <th>Date</th>
-                <th> Hours Worked</th>
-                <th>Extra Hours</th>
-                <th>Rate</th>
-                <th>Status</th>
-                <th>Actions</th>
+              <tr>
+                <th className="ot-th ot-th-select">
+                  <input
+                    type="checkbox"
+                    checked={isAllSelected}
+                    onChange={toggleAll}
+                  />
+                </th>
+                <th className="ot-th">Date</th>
+                <th className="ot-th">Employee ID</th>
+                <th className="ot-th">Name</th>
+                <th className="ot-th ot-align-right">Total Hrs</th>
+                <th className="ot-th ot-align-right">Extra Hrs</th>
+                <th className="ot-th ot-align-right">Rate</th>
+                <th className="ot-th">Status</th>
+                <th className="ot-th">Actions</th>
               </tr>
             </thead>
             <tbody>
-              {filteredRecords.map((record) => {
-                const employee = employees.find(
-                  (emp) => emp.employee_id === record.employee_id
-                );
-                return (
-                  <tr key={record.id}>
-                    <td>{record.employee_id}</td>
-                    <td>
-                      {employee ? employee.employee_name : record.employee_id}
-                    </td>
+              {filtered.map((row) => {
+                const key = rowKey(row);
+                const status = getRowStatus(row);
+                const isDisabled = isProcessed(row);
+                const sel = isRowSelected(row);
+                const defaultRate = rateMap[row.employee_id] ?? 0;
 
-                    <td>{record.date}</td>
-                    <td>{record.hours_worked.toFixed(2)} hours</td>
-                    <td>{record.hours.toFixed(2)} hours</td>
-                    <td>
+                return (
+                  <tr key={key} className={isDisabled ? "ot-row-disabled" : ""}>
+                    <td className="ot-td ot-td-select">
                       <input
-                        type="number"
-                        value={record.rate}
-                        onChange={(e) =>
-                          handleInputChange(record.id, "rate", e.target.value)
-                        }
-                        className="rate-input"
-                        disabled={
-                          record.status === "Approved" ||
-                          record.status === "Rejected" ||
-                          loading
-                        }
-                        min="0"
-                        step="0.01"
+                        type="checkbox"
+                        checked={sel}
+                        disabled={isDisabled}
+                        onChange={() => toggleRow(row)}
                       />
                     </td>
-                    <td className={`status-${record.status.toLowerCase()}`}>
-                      {record.status}
+                    <td className="ot-td">{row.work_date}</td>
+                    <td className="ot-td">{row.employee_id}</td>
+                    <td className="ot-td">{row.employee_name}</td>
+                    <td className="ot-td ot-align-right">
+                      {Number(row.total_hours_worked || 0).toFixed(2)}
                     </td>
-                    <td>
-                      <div className="action-buttons">
-                        <button
-                          onClick={() =>
-                            handleStatusChange(record.id, "Approved")
-                          }
-                          className="approve-button"
-                          disabled={record.status !== "Pending" || loading}
-                        >
-                          <svg className="action-icon" viewBox="0 0 24 24">
-                            <path
-                              fill="currentColor"
-                              d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"
-                            />
-                          </svg>
-                          Approve
-                        </button>
-                        <button
-                          onClick={() =>
-                            handleStatusChange(record.id, "Rejected")
-                          }
-                          className="reject-button"
-                          disabled={record.status !== "Pending" || loading}
-                        >
-                          <svg className="action-icon" viewBox="0 0 24 24">
-                            <path
-                              fill="currentColor"
-                              d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm5 13.59L15.59 17 12 13.41 8.41 17 7 15.59 10.59 12 7 8.41 8.41 7 12 10.59 15.59 7 17 8.41 13.41 12 17 15.59z"
-                            />
-                          </svg>
-                          Reject
-                        </button>
-                      </div>
+                    <td className="ot-td ot-align-right">
+                      {parseFloat(row.extra_hours || 0).toFixed(2)}
+                    </td>
+                    <td className="ot-td ot-align-right">
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={(edited[key]?.rate ?? defaultRate).toFixed(2)}
+                        onChange={(e) => {
+                          const val = parseFloat(e.target.value) || 0;
+                          setEdited((prev) => ({
+                            ...prev,
+                            [key]: { ...(prev[key] || {}), rate: val },
+                          }));
+                        }}
+                        disabled={isDisabled}
+                        className="ot-input-rate"
+                      />
+                    </td>
+                    <td className="ot-td">
+                      <span
+                        className={`ot-status ot-status-${
+                          status === "Approved" ? "approved" : status === "Rejected" ? "rejected" : "pending"
+                        }`}
+                      >
+                        {status || "Pending"}
+                      </span>
+                    </td>
+                    <td className="ot-td ot-td-actions">
+                      {!isDisabled && (
+                        <>
+                          <button
+                            className="ot-btn-icon ot-btn-approve"
+                            onClick={() => approveOne(row)}
+                          >
+                            <i className="fas fa-check"></i>
+                          </button>
+                          <button
+                            className="ot-btn-icon ot-btn-reject"
+                            onClick={() => rejectOne(row)}
+                          >
+                            <i className="fas fa-times"></i>
+                          </button>
+                        </>
+                      )}
                     </td>
                   </tr>
                 );

@@ -375,73 +375,82 @@ const Salary_Statement = () => {
   };
 
   const handleUpload = async () => {
-    if (!file) {
-      setError("❌ Please select a valid file to upload!");
-      showAlert("❌ Please select a valid file to upload!", "No File Selected");
-      return;
-    }
+  if (!file) {
+    setError("❌ Please select a valid file to upload!");
+    showAlert("❌ Please select a valid file to upload!", "No File Selected");
+    return;
+  }
 
-    if (invalidCells.size > 0) {
-      let errorMessage =
-        "❌ Cannot save due to invalid data in the following cells:\n";
-      invalidCells.forEach((colSet, rowIndex) => {
-        colSet.forEach((colIndex) => {
-          const columnName = tableHeaders[colIndex] || `Column ${colIndex + 1}`;
-          errorMessage += `- Row ${rowIndex + 2}, ${columnName}\n`;
-        });
+  if (invalidCells.size > 0) {
+    let errorMessage = "❌ Cannot save due to invalid data in the following cells:\n";
+    invalidCells.forEach((colSet, rowIndex) => {
+      colSet.forEach((colIndex) => {
+        const columnName = tableHeaders[colIndex] || `Column ${colIndex + 1}`;
+        errorMessage += `- Row ${rowIndex + 2}, ${columnName}\n`;
       });
-      errorMessage +=
-        "Please correct the highlighted (red) cells in the table and try again.";
-      setError(errorMessage);
-      showAlert(errorMessage, "Invalid Data Detected");
-      return;
-    }
+    });
+    errorMessage += "Please correct the highlighted (red) cells in the table and try again.";
+    setError(errorMessage);
+    showAlert(errorMessage, "Invalid Data Detected");
+    return;
+  }
 
-    try {
-      const formData = new FormData();
-      formData.append("file", file);
+  if (!selectedMonth || !selectedYear) {
+    setError("❌ Please select Month & Year before uploading");
+    showAlert("Please select Month & Year first", "Missing Selection");
+    return;
+  }
 
-      const response = await axios.post(
-        `${BACKEND_URL}/salary/upload`,
-        formData,
-        {
-          withCredentials: true,
-          headers: { ...headers, "Content-Type": "multipart/form-data" },
-        }
-      );
+  try {
+    const formData = new FormData();
+    formData.append("file", file);
+    // ─── Add these two critical lines ───
+    formData.append("month", selectedMonth.toLowerCase());   // e.g. "jan", "feb", "mar"...
+    formData.append("year", selectedYear);                   // e.g. "2026"
 
-      if (response.data.message) {
-        const successMessage = response.data.message;
-        setError("");
-        showAlert(successMessage, "Upload Successful");
-        setIsFileUploaded(true);
-        setFile(null);
-        setFileName("No file chosen");
-        setTableData([]);
-        setTableHeaders([]);
-        setInvalidCells(new Map());
-        setUpdatedCells(new Map());
-        setExcelData([]);
-        setPrevTableData([]);
-        setShowNote(true);
-        setUploadMessage(successMessage);
-      } else if (response.data.error) {
-        const errorMsg = response.data.error;
-        setError(`❌ Upload failed: ${errorMsg}`);
-        showAlert(`❌ Upload failed: ${errorMsg}`, "Upload Error");
+    const response = await axios.post(
+      `${BACKEND_URL}/salary/upload`,   // ← make sure this matches your route
+      formData,
+      {
+        withCredentials: true,
+        headers: { ...headers, "Content-Type": "multipart/form-data" },
       }
-    } catch (err) {
-      console.error("❌ Error uploading file:", err);
-      const errorMsg =
-        err.response?.data?.error ||
-        err.response?.data?.message ||
-        err.message ||
-        "Unknown server error";
+    );
+
+    if (response.data.message) {
+      const successMessage = response.data.message;
+      setError("");
+      showAlert(successMessage, "Upload Successful");
+      setIsFileUploaded(true);
+      setFile(null);
+      setFileName("No file chosen");
+      setTableData([]);
+      setTableHeaders([]);
+      setInvalidCells(new Map());
+      setUpdatedCells(new Map());
+      setExcelData([]);
+      setPrevTableData([]);
+      setShowNote(true);
+      setUploadMessage(successMessage);
+
+      // Optional: refresh the displayed salary data after upload
+      await fetchSalaryData(selectedMonth, selectedYear);
+    } else if (response.data.error) {
+      const errorMsg = response.data.error;
       setError(`❌ Upload failed: ${errorMsg}`);
       showAlert(`❌ Upload failed: ${errorMsg}`, "Upload Error");
     }
-  };
-
+  } catch (err) {
+    console.error("❌ Error uploading file:", err);
+    const errorMsg =
+      err.response?.data?.error ||
+      err.response?.data?.message ||
+      err.message ||
+      "Unknown server error";
+    setError(`❌ Upload failed: ${errorMsg}`);
+    showAlert(`❌ Upload failed: ${errorMsg}`, "Upload Error");
+  }
+};
   const calculateTotalSalary = () => {
     if (
       !tableData ||

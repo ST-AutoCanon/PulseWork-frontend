@@ -34,12 +34,12 @@ import CreateCompensation from "../Compensation/createCompensation.client";
 import AssignCompensation from "../Compensation/assignCompensation.client";
 import SalaryBreakupMain from "../Compensation/SalaryBreakupMain.client";
 import SalaryDetails from "../Compensation/SalaryDetails/SalaryDetails.client";
-
+import EmployeeLogin from "../EmployeeLogin/EmployeeLogin.client";
 import Salary_Statement from "../Salary_statement/Salary_Statement.client";
 import GeneratePayslip from "../generate_payslip/GeneratePayslip.client";
 import OvertimeDetails from "../Compensation/OvertimeDetails";
 import OvertimeSupervisor from "../Compensation/overtimeSupervisor";
-
+import ExitFlow from "../ExitFlow/ExitFlow.client";
 const Sidebar = ({ setActiveContent }) => {
   const { user, hydrated } = useAuth();
   const [menuItems, setMenuItems] = useState([]);
@@ -100,6 +100,12 @@ const Sidebar = ({ setActiveContent }) => {
           path: "/payrollSummary",
           icon: "MdReceiptLong",
         },
+        {
+         label: "Exit Flow",
+  path: "/exitFlow",
+  icon: "MdLogout",
+},
+
         { label: "Assets", path: "/assets", icon: "MdLaptop" },
         { label: "Vendors", path: "/vendors", icon: "MdLocalShipping" },
         {
@@ -136,6 +142,11 @@ const Sidebar = ({ setActiveContent }) => {
           path: "/TaskManagement",
           icon: "MdTaskAlt",
         },
+             {
+  label: "Exit Flow",
+  path: "/exitFlow",
+  icon: "MdLogout",
+},
       ],
       Employee: [
         { label: "Dashboard", path: "/dashboard", icon: "MdOutlineDashboard" },
@@ -184,6 +195,7 @@ const Sidebar = ({ setActiveContent }) => {
         role === "Admin" ? <LeaveQueries /> : <LeaveRequest />,
       "/payrollSummary": () => <PayrollSummary />,
       "/messenger": () => <Chat />,
+      "/EmployeeLogin": () => <EmployeeLogin />,
       "/reimbursement": (role) => {
         if (role === "Admin") return <RbAdmin />;
         if (role === "Manager") return <RbTeamLead />;
@@ -198,6 +210,7 @@ const Sidebar = ({ setActiveContent }) => {
       "/OvertimeDetails": () => <OvertimeSupervisor />,
       "/OvertimeSummary": () => <OvertimeSupervisor />,
       "/report": () => <Report />,
+      "/ExitFlow": () => <ExitFlow />,
       "/TaskManagement": (role, sub) => {
         if (sub === "admin" && role === "Admin") return <TaskManagementAdmin />;
         if (sub === "team") return <TaskManagement />;

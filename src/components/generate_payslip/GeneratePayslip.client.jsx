@@ -359,8 +359,8 @@ export default function GeneratePayslip() {
     } = data;
 
     const employeeDetailsHtml = `
-      <div style="font-family: Arial, Helvetica, sans-serif; font-size: 12px; color: #000; margin-bottom: 25px;">
-        <div style="padding: 8px 0; text-align: center; font-weight: bold; font-size: 18px; color: #1a3c6d; margin-bottom: 12px;">
+      <div style="font-family: Arial, Helvetica, sans-serif; font-size: 12px; color: #000; margin-bottom: 0px;">
+        <div style="padding: 8px 0; text-align: center; font-weight: bold; font-size: 25px; color: #1a3c6d; margin-bottom: 40px;;">
           PAYSLIP FOR - ${monthYear.toUpperCase()}
         </div>
 
@@ -857,7 +857,7 @@ export default function GeneratePayslip() {
     accountNo: "Account Number",
     workingDays: "Working Days",
     leavesTaken: "Leaves Taken",
-    uinNo: "UIN No",
+    uinNo: "UAN No",
     panNumber: "PAN Number",
     esiNumber: "ESI Number",
     pfNumber: "PF Number",
@@ -919,8 +919,9 @@ export default function GeneratePayslip() {
       employee_id: formData.employeeId || "",
       gender: formData.gender || "",
       designation: formData.designation || "",
-      date_of_joining: formData.dateOfJoining || "",
-      account_no: formData.accountNo || "",
+date_of_joining: formData.dateOfJoining || "", 
+
+account_no: formData.accountNo || "",
       working_days: parseInt(formData.workingDays) || 0,
       leaves_taken: parseInt(formData.leavesTaken) || 0,
       uin_no: formData.uinNo || "",
@@ -1536,52 +1537,78 @@ export default function GeneratePayslip() {
       )}
 
       {viewDetailsModal.isVisible && viewDetailsModal.employee && (
-        <Modal
-          isVisible={viewDetailsModal.isVisible}
-          onClose={closeViewDetails}
-          buttons={[{ label: "Close", onClick: closeViewDetails }]}
-        >
-          <h3 className="generatePayslip-details-title">
-            Details for {viewDetailsModal.employee.employee_name}
-          </h3>
-          <div className="generatePayslip-details-container">
-            <table className="generatePayslip-details-table">
-              <thead>
-                <tr>
-                  <th>Field</th>
-                  <th>Value</th>
-                </tr>
-              </thead>
-              <tbody>
-                {detailFields.map((field) => (
-                  <tr key={field}>
-                    <td>{fieldLabels[field]}</td>
-                    <td>
-                      {field === "accountNo" && (viewDetailsModal.employee.account_no || "-")}
-                      {field === "workingDays" && (viewDetailsModal.employee.working_days || 0)}
-                      {field === "leavesTaken" && (viewDetailsModal.employee.leaves_taken || 0)}
-                      {field === "uinNo" && (viewDetailsModal.employee.uin_no || "-")}
-                      {field === "panNumber" && (viewDetailsModal.employee.pan_number || "-")}
-                      {field === "esiNumber" && (viewDetailsModal.employee.esi_number || "-")}
-                      {field === "pfNumber" && (viewDetailsModal.employee.pf_number || "-")}
-                      {field === "basic" && (viewDetailsModal.employee.basic || 0)}
-                      {field === "hra" && (viewDetailsModal.employee.hra || 0)}
-                      {field === "otherAllowance" && (viewDetailsModal.employee.other_allowance || 0)}
-                      {field === "pf" && (viewDetailsModal.employee.pf || 0)}
-                      {field === "esiInsurance" && (viewDetailsModal.employee.esi_insurance || 0)}
-                      {field === "professionalTax" && (viewDetailsModal.employee.professional_tax || 0)}
-                      {field === "tds" && (viewDetailsModal.employee.tds || 0)}
-                      {field === "grossEarnings" && (viewDetailsModal.employee.gross_earnings || 0)}
-                      {field === "totalDeductions" && (viewDetailsModal.employee.total_deductions || 0)}
-                      {field === "netSalary" && (viewDetailsModal.employee.net_salary || 0)}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </Modal>
-      )}
+  <Modal
+    isVisible={viewDetailsModal.isVisible}
+    onClose={closeViewDetails}
+    buttons={[{ label: "Close", onClick: closeViewDetails }]}
+    title={`Payslip Details — ${viewDetailsModal.employee.employee_name || "Employee"}`}
+  >
+    <div className="employee-details-professional-wrapper">
+
+      {/* Header Section */}
+      <div className="details-header-section">
+        <h4 className="employee-name-title">
+          {viewDetailsModal.employee.employee_name || "—"}
+        </h4>
+        <div className="employee-id-line">
+          Employee ID: <strong>{viewDetailsModal.employee.employee_id || "—"}</strong>
+        </div>
+        <div className="month-year-line">
+          Month/Year: <strong>
+            {viewDetailsModal.employee.month ? `${new Date(0, viewDetailsModal.employee.month - 1).toLocaleString('default', { month: 'long' })} ${viewDetailsModal.employee.year || "—"}` : "—"}
+          </strong>
+        </div>
+      </div>
+
+      <div className="details-grid-container">
+
+        {/* Personal & Identity Information */}
+        <div className="details-card">
+          <h5 className="card-title">Personal Details</h5>
+          <dl className="details-grid">
+            <dt>Gender</dt>             <dd>{viewDetailsModal.employee.gender || "—"}</dd>
+            <dt>Designation</dt>         <dd>{viewDetailsModal.employee.designation || viewDetailsModal.employee.position || "—"}</dd>
+            <dt>Date of Joining</dt>     <dd>{viewDetailsModal.employee.date_of_joining?.split("T")[0] || "—"}</dd>
+            <dt>PAN Number</dt>          <dd className="mono">{viewDetailsModal.employee.pan_number || "—"}</dd>
+            <dt>UAN </dt>           <dd className="mono">{viewDetailsModal.employee.uin_no || "—"}</dd>
+            <dt>PF Number</dt>           <dd className="mono">{viewDetailsModal.employee.pf_number || "—"}</dd>
+            <dt>ESI Number</dt>          <dd className="mono">{viewDetailsModal.employee.esi_number || "—"}</dd>
+          </dl>
+        </div>
+
+        {/* Bank & Attendance */}
+        <div className="details-card">
+          <h5 className="card-title">Bank & Attendance</h5>
+          <dl className="details-grid">
+            <dt>Bank Account No</dt>     <dd className="mono">{viewDetailsModal.employee.account_no || "—"}</dd>
+            <dt>Working Days</dt>        <dd>{viewDetailsModal.employee.working_days || "30"}</dd>
+            <dt>LOP Days</dt>            <dd>{viewDetailsModal.employee.leaves_taken || "0"}</dd>
+          </dl>
+        </div>
+
+        {/* Salary Breakdown */}
+        <div className="details-card salary-breakdown-card">
+          <h5 className="card-title">Salary Details</h5>
+          <dl className="details-grid salary-grid">
+            <dt className="earning">Basic</dt>              <dd className="amount">{viewDetailsModal.employee.basic?.toLocaleString('en-IN') || "0.00"}</dd>
+            <dt className="earning">HRA</dt>                <dd className="amount">{viewDetailsModal.employee.hra?.toLocaleString('en-IN') || "0.00"}</dd>
+            <dt className="earning">Other Allowance</dt>    <dd className="amount">{viewDetailsModal.employee.other_allowance?.toLocaleString('en-IN') || "0.00"}</dd>
+
+            <dt className="deduction">PF</dt>               <dd className="amount deduction">{viewDetailsModal.employee.pf?.toLocaleString('en-IN') || "0.00"}</dd>
+            <dt className="deduction">ESIC</dt>             <dd className="amount deduction">{viewDetailsModal.employee.esi_insurance?.toLocaleString('en-IN') || "0.00"}</dd>
+            <dt className="deduction">Professional Tax</dt> <dd className="amount deduction">{viewDetailsModal.employee.professional_tax?.toLocaleString('en-IN') || "0.00"}</dd>
+            <dt className="deduction">TDS</dt>              <dd className="amount deduction">{viewDetailsModal.employee.tds?.toLocaleString('en-IN') || "0.00"}</dd>
+
+            <dt className="total">Gross Earnings</dt>       <dd className="amount total">{viewDetailsModal.employee.gross_earnings?.toLocaleString('en-IN') || "0.00"}</dd>
+            <dt className="total">Total Deductions</dt>     <dd className="amount deduction total">{viewDetailsModal.employee.total_deductions?.toLocaleString('en-IN') || "0.00"}</dd>
+            <dt className="net">Net Salary</dt>             <dd className="amount net">{viewDetailsModal.employee.net_salary?.toLocaleString('en-IN') || "0.00"}</dd>
+          </dl>
+        </div>
+
+      </div>
+    </div>
+  </Modal>
+)}
 
       <Modal
         isVisible={alertModal.isVisible}

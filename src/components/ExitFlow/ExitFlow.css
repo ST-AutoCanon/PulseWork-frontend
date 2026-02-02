@@ -1,0 +1,2475 @@
+/* ExitFlow.module.css - Scoped version (no global selectors) */
+/* ── Resignation Wrapper ── */
+.exf-resignation-wrapper {
+  margin: 2.5rem 0;
+  padding: 2.5rem;
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+  border: 1px solid #e5e7eb;
+}
+
+/* ── Initial Apply Area ── */
+.exf-resignation-apply-area {
+  text-align: center;
+  padding: 3.5rem 1.5rem;
+}
+
+.exf-section-title {
+  margin-bottom: 1.2rem;
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: #111827;
+}
+
+.exf-resignation-info {
+  color: #6b7280;
+  font-size: 1.05rem;
+  margin-bottom: 2.5rem;
+  line-height: 1.6;
+  max-width: 620px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.exf-resignation-apply-btn {
+  padding: 1rem 2.8rem;
+  font-size: 1.15rem;
+  min-width: 320px;
+  box-shadow: 0 4px 14px rgba(122, 193, 66, 0.25);
+}
+
+/* ── Form Container when opened ── */
+.exf-resignation-form-container {
+  animation: fadeInUp 0.4s ease;
+}
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.exf-resignation-form-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+  padding-bottom: 1.25rem;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.exf-resignation-form-title {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #111827;
+}
+
+.exf-resignation-close-btn {
+  background: none;
+  border: none;
+  font-size: 2.5rem;
+  color: #9ca3af;
+  cursor: pointer;
+  line-height: 1;
+  padding: 0.3rem 0.7rem;
+  border-radius: 8px;
+  transition: all 0.2s;
+}
+
+.exf-resignation-close-btn:hover {
+  color: #374151;
+  background: rgba(0,0,0,0.05);
+}
+
+/* Form Layout */
+.exf-resignation-form {
+  max-width: 780px;
+  margin: 0 auto;
+}
+
+.exf-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1.8rem 2.4rem;
+}
+
+.exf-form-group--full {
+  grid-column: 1 / -1;
+}
+
+.exf-form-label {
+  font-weight: 600;
+  font-size: 0.98rem;
+  color: #374151;
+  margin-bottom: 0.6rem;
+  display: block;
+}
+
+.exf-form-label--required::after {
+  content: " *";
+  color: #ef4444;
+  font-weight: bold;
+}
+
+.exf-form-input,
+.exf-form-select {
+  width: 100%;
+  padding: 0.85rem 1.2rem;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 1rem;
+  transition: all 0.2s ease;
+  background: #ffffff;
+}
+
+.exf-form-input:focus,
+.exf-form-select:focus {
+  border-color: #7ac142;
+  box-shadow: 0 0 0 3px rgba(122, 193, 66, 0.15);
+  outline: none;
+}
+
+.exf-form-textarea {
+  width: 100%;
+  padding: 0.85rem 1.2rem;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 1rem;
+  min-height: 110px;
+  resize: vertical;
+  background: #ffffff;
+}
+
+.exf-form-textarea:focus {
+  border-color: #7ac142;
+  box-shadow: 0 0 0 3px rgba(122, 193, 66, 0.15);
+  outline: none;
+}
+
+/* Action Buttons */
+.exf-resignation-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 1.25rem;
+  margin-top: 2.8rem;
+  padding-top: 1.6rem;
+  border-top: 1px solid #e5e7eb;
+}
+
+.exf-btn {
+  padding: 0.85rem 2rem;
+  font-size: 1rem;
+  font-weight: 600;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: none;
+}
+
+.exf-btn--primary {
+  background: #7ac142;
+  color: white;
+  box-shadow: 0 4px 12px rgba(122, 193, 66, 0.25);
+}
+
+.exf-btn--primary:hover:not(:disabled) {
+  background: #68a236;
+  transform: translateY(-1px);
+}
+
+.exf-btn--secondary {
+  background: #6b7280;
+  color: white;
+}
+
+.exf-btn--secondary:hover:not(:disabled) {
+  background: #5a606d;
+}
+/* ── Resignation Wrapper ── */
+.exf-resignation-wrapper {
+  margin: 2.5rem 0;
+  padding: 2.5rem;
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+  border: 1px solid #e5e7eb;
+}
+
+/* ── Initial Apply Area ── */
+.exf-resignation-apply-area {
+  text-align: center;
+  padding: 3.5rem 1.5rem;
+}
+
+.exf-section-title {
+  margin-bottom: 1.2rem;
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: #111827;
+}
+
+.exf-resignation-info {
+  color: #6b7280;
+  font-size: 1.05rem;
+  margin-bottom: 2.5rem;
+  line-height: 1.6;
+  max-width: 620px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.exf-resignation-apply-btn {
+  padding: 1rem 2.8rem;
+  font-size: 1.15rem;
+  min-width: 320px;
+  box-shadow: 0 4px 14px rgba(122, 193, 66, 0.25);
+}
+
+/* ── Form Container when opened ── */
+.exf-resignation-form-container {
+  animation: fadeInUp 0.4s ease;
+}
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.exf-resignation-form-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+  padding-bottom: 1.25rem;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.exf-resignation-form-title {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #111827;
+}
+
+.exf-resignation-close-btn {
+  background: none;
+  border: none;
+  font-size: 2.5rem;
+  color: #9ca3af;
+  cursor: pointer;
+  line-height: 1;
+  padding: 0.3rem 0.7rem;
+  border-radius: 8px;
+  transition: all 0.2s;
+}
+
+.exf-resignation-close-btn:hover {
+  color: #374151;
+  background: rgba(0,0,0,0.05);
+}
+
+/* Form Layout */
+.exf-resignation-form {
+  max-width: 780px;
+  margin: 0 auto;
+}
+
+.exf-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1.8rem 2.4rem;
+}
+
+.exf-form-group--full {
+  grid-column: 1 / -1;
+}
+
+.exf-form-label {
+  font-weight: 600;
+  font-size: 0.98rem;
+  color: #374151;
+  margin-bottom: 0.6rem;
+  display: block;
+}
+
+.exf-form-label--required::after {
+  content: " *";
+  color: #ef4444;
+  font-weight: bold;
+}
+
+.exf-form-input,
+.exf-form-select {
+  width: 100%;
+  padding: 0.85rem 1.2rem;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 1rem;
+  transition: all 0.2s ease;
+  background: #ffffff;
+}
+
+.exf-form-input:focus,
+.exf-form-select:focus {
+  border-color: #7ac142;
+  box-shadow: 0 0 0 3px rgba(122, 193, 66, 0.15);
+  outline: none;
+}
+
+.exf-form-textarea {
+  width: 100%;
+  padding: 0.85rem 1.2rem;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 1rem;
+  min-height: 110px;
+  resize: vertical;
+  background: #ffffff;
+}
+
+.exf-form-textarea:focus {
+  border-color: #7ac142;
+  box-shadow: 0 0 0 3px rgba(122, 193, 66, 0.15);
+  outline: none;
+}
+
+/* Action Buttons */
+.exf-resignation-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 1.25rem;
+  margin-top: 2.8rem;
+  padding-top: 1.6rem;
+  border-top: 1px solid #e5e7eb;
+}
+
+.exf-btn {
+  padding: 0.85rem 2rem;
+  font-size: 1rem;
+  font-weight: 600;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: none;
+}
+
+.exf-btn--primary {
+  background: #7ac142;
+  color: white;
+  box-shadow: 0 4px 12px rgba(122, 193, 66, 0.25);
+}
+
+.exf-btn--primary:hover:not(:disabled) {
+  background: #68a236;
+  transform: translateY(-1px);
+}
+
+.exf-btn--secondary {
+  background: #6b7280;
+  color: white;
+}
+
+.exf-btn--secondary:hover:not(:disabled) {
+  background: #5a606d;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .exf-form-grid {
+    grid-template-columns: 1fr;
+  }
+  .exf-resignation-apply-btn {
+    width: 100%;
+    max-width: 420px;
+  }
+  .exf-resignation-wrapper {
+    padding: 1.8rem;
+  }
+}
+
+/* ── Team Panels ── */
+
+.exf-panel-title {
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: #00468c;           /* deep blue */
+  margin-bottom: 1.25rem;
+}
+
+.exf-count {
+  font-size: 0.95rem;
+  color: #6b7280;
+  font-weight: 500;
+}
+
+/* ── Table Container ── */
+.exf-table-container {
+  
+    overflow-x: auto;
+  border-radius: 10px;
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  overflow-x: auto;
+  border-radius: 10px;
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.exf-table {
+  min-width: 100%;
+  border-collapse: collapse;
+  font-size: 0.95rem;
+    overflow-x: auto;
+  border-radius: 10px;
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.exf-table thead {
+  background: #00468c;           /* deep blue header */
+}
+
+.exf-table th {
+  padding: 1rem 1.25rem;
+  text-align: left;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: white;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+}
+
+.exf-table td {
+  padding: 1rem 1.25rem;
+  color: #374151;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.exf-table tr:hover {
+  background: #f8fdf3;           /* very light green hover */
+  transition: background 0.15s;
+}
+
+.exf-table .font-medium {
+  font-weight: 600;
+  color: #00468c;
+}
+
+/* ── Badges ── */
+.exf-badge {
+  padding: 0.35rem 0.9rem;
+  border-radius: 9999px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  display: inline-block;
+}
+
+.exf-badge-pending {
+  background: #fef3c7;
+  color: #92400e;
+  border: 1px solid #fcd34d;
+}
+
+.exf-badge-approved {
+  background: #d1fae5;
+  color: #065f46;
+  border: 1px solid #6ee7b7;
+}
+
+.exf-badge-rejected {
+  background: #fee2e2;
+  color: #991b1b;
+  border: 1px solid #f87171;
+}
+
+/* ── Review Button ── */
+.exf-btn-review {
+  background: #7fbd2c;           /* your green */
+  color: white;
+  padding: 0.5rem 1.2rem;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.exf-btn-review:hover {
+  background: #6fa924;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 10px rgba(127, 189, 44, 0.3);
+}
+
+/* ── Empty State ── */
+.exf-empty-state {
+  padding: 3rem 1.5rem;
+  text-align: center;
+  color: #6b7280;
+  font-size: 0.95rem;
+  background: #f9fafb;
+  border-radius: 10px;
+  border: 1px dashed #d1d5db;
+}
+/* ── Clearance Panel ── */
+
+/* Restore white background to ALL tables in the component */
+.exf-table-container,
+.exf-table-wrapper,
+.exf-data-table,
+.exf-table,
+.exf-clearance-table,
+.exf-team-view table,
+.exf-team-panel table {
+  background: #ffffff !important;
+}
+
+.exf-table tbody tr,
+.exf-data-table tbody tr,
+.exf-clearance-table tbody tr {
+  background: #ffffff !important;
+}
+
+/* Add vertical borders to ALL tables (team + HR/Admin + clearance) */
+.exf-table,
+.exf-data-table,
+.exf-clearance-table {
+  border-collapse: separate;
+  border-spacing: 0;
+  border: 1px solid #e5e7eb;          /* outer frame */
+}
+
+/* Vertical + horizontal lines on cells */
+.exf-table th,
+.exf-table td,
+.exf-data-table th,
+.exf-data-table td,
+.exf-clearance-table th,
+.exf-clearance-table td {
+  border-right: 1px solid #e5e7eb;     /* vertical line */
+  border-bottom: 1px solid #e5e7eb;    /* keep your existing horizontal */
+  padding: 1rem 1.25rem;
+}
+
+/* Remove right border from the last column in each row */
+.exf-table tr td:last-child,
+.exf-table tr th:last-child,
+.exf-data-table tr td:last-child,
+.exf-data-table tr th:last-child,
+.exf-clearance-table tr td:last-child,
+.exf-clearance-table tr th:last-child {
+  border-right: none;
+}
+.exf-info-grid {
+  display: grid;
+  grid-template-columns: 1fr;          /* ← force single column on mobile */
+  gap: 1.25rem;
+}
+
+/* Make sure the date picker section always spans full width */
+.exf-info-grid > div.mt-6 {
+  grid-column: 1 / -1;                /* spans all columns */
+  width: 100%;
+}
+
+/* On larger screens, keep the original two-column layout for other fields */
+@media (min-width: 640px) {
+  .exf-info-grid {
+    grid-template-columns: 140px 1fr; /* your original label + value layout */
+  }
+  
+  .exf-info-grid > div.mt-6 {
+    grid-column: 1 / -1;              /* still full width */
+  }
+}
+/* Stronger bottom border under header */
+.exf-table thead th,
+.exf-data-table thead th,
+.exf-clearance-table thead th {
+  border-bottom: 2px solid #cbd5e1;
+}
+.exf-panel-title {
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: #00468c;           /* your dark blue */
+  margin-bottom: 1.25rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.exf-count-badge {
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: #6b7280;
+  background: #f1f5f9;
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+}
+
+/* ── Table Container ── */
+.exf-table-container {
+  overflow-x: auto;
+  border-radius: 10px;
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.exf-clearance-table {
+  min-width: 100%;
+  border-collapse: collapse;
+  font-size: 0.95rem;
+    overflow-x: auto;
+  border-radius: 10px;
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.exf-clearance-table thead {
+  background: #00468c;           /* dark blue header */
+}
+
+.exf-clearance-table th {
+  padding: 1rem 1.25rem;
+  text-align: left;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: white;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  white-space: nowrap;
+}
+
+.exf-clearance-table td {
+  padding: 1rem 1.25rem;
+  color: #374151;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.exf-clearance-table tr:hover {
+  background: #f8fdf3;           /* very light green hover */
+  transition: background 0.15s;
+}
+
+.exf-clearance-table .font-medium {
+  font-weight: 600;
+  color: #00468c;
+}
+
+/* ── Status Badges ── */
+.exf-status-badge {
+  padding: 0.4rem 1rem;
+  border-radius: 9999px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  display: inline-block;
+  text-align: center;
+  min-width: 80px;
+}
+
+.exf-badge-cleared {
+  background: #7fbd2c;           /* your green */
+  color: white;
+  border: 1px solid #6fa924;
+}
+
+.exf-badge-pending {
+  background: #fef3c7;
+  color: #92400e;
+  border: 1px solid #fcd34d;
+}
+
+/* ── Review Button ── */
+.exf-btn-review {
+  background: #7fbd2c;           /* green accent */
+  color: white;
+  padding: 0.55rem 1.3rem;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.exf-btn-review:hover {
+  background: #6fa924;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(127, 189, 44, 0.3);
+}
+
+/* ── Empty State ── */
+.exf-empty-state {
+  padding: 3rem 1.5rem;
+  text-align: center;
+  color: #6b7280;
+  font-size: 0.95rem;
+  background: #f9fafb;
+  border-radius: 10px;
+  border: 1px dashed #d1d5db;
+}
+/* ── Modal Backdrop (keep light overlay) ── */
+.exf-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+/* ── Modal Content (light & clean) ── */
+.exf-modal-content {
+  background: white;
+  border-radius: 12px;
+  width: 90%;
+  max-width: 720px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+}
+
+/* ── Compact Header ── */
+.exf-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.25rem 2rem;
+  background: #00468c;           /* your dark blue */
+  color: white;
+  border-radius: 12px 12px 0 0;
+}
+
+.exf-modal-title {
+  margin: 0;
+  font-size: 1.35rem;
+  font-weight: 700;
+}
+
+.exf-modal-close {
+  background: none;
+  border: none;
+  font-size: 2rem;
+  color: white;
+  cursor: pointer;
+  line-height: 1;
+  padding: 0.3rem 0.8rem;
+  border-radius: 6px;
+  transition: background 0.2s;
+}
+
+.exf-modal-close:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+/* ── Info Section ── */
+.exf-modal-info-section {
+  padding: 1.5rem 2rem;
+  background: #f9fafb;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.exf-info-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1.25rem;
+}
+
+.exf-info-item {
+  display: flex;
+  flex-direction: column;
+}
+
+.exf-info-item.full-width {
+  grid-column: 1 / -1;
+}
+
+.exf-info-label {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #6b7280;
+  margin-bottom: 0.4rem;
+}
+
+.exf-info-value {
+  font-size: 1rem;
+  color: #374151;
+  font-weight: 500;
+}
+
+/* ── Clearance Content ── */
+.exf-clearance-content {
+  padding: 1.5rem 2rem;
+}
+
+.exf-clearance-group {
+  margin-bottom: 2.5rem;
+}
+
+.exf-group-title {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: #00468c;
+  margin-bottom: 1.25rem;
+}
+
+.exf-items-container {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.exf-clearance-item {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 1.25rem;
+  position: relative;
+  transition: all 0.2s;
+}
+
+.exf-clearance-item:hover {
+  border-color: #7fbd2c;
+  box-shadow: 0 4px 16px rgba(127, 189, 44, 0.12);
+}
+
+.exf-item-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+}
+
+.exf-item-name {
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: #00468c;
+}
+
+.exf-item-badge {
+  padding: 0.35rem 0.9rem;
+  border-radius: 9999px;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.exf-item-badge.pending {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.exf-item-badge.in-progress {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+.exf-item-badge.completed {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.exf-item-description {
+  color: #4b5563;
+  margin-bottom: 1rem;
+}
+
+.exf-files-container {
+  margin: 1rem 0;
+}
+
+.exf-files-title {
+  font-weight: 600;
+  color: #6b7280;
+  margin-bottom: 0.6rem;
+}
+
+.exf-file-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem;
+  background: #f9fafb;
+  border-radius: 6px;
+  border: 1px solid #e5e7eb;
+  margin-bottom: 0.5rem;
+}
+
+.exf-file-name {
+  flex: 1;
+  color: #374151;
+}
+
+.exf-approval-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-top: 1.25rem;
+}
+
+.exf-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.95rem;
+  color: #374151;
+  cursor: pointer;
+}
+
+.exf-checkbox input {
+  width: 1.1rem;
+  height: 1.1rem;
+  accent-color: #7fbd2c;
+}
+
+/* Loading Overlay */
+.exf-item-loading {
+  position: absolute;
+  inset: 0;
+  background: rgba(255, 255, 255, 0.75);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #00468c;
+  font-weight: 600;
+  border-radius: 10px;
+}
+/* --------------------------------------------------
+   Colors
+-------------------------------------------------- */
+:root {
+  --exf-primary:   #00468c;
+  --exf-success:   #7fbd2c;
+  --exf-danger:    #dc2626;
+  --exf-info:      #2563eb;
+  --exf-gray:      #6b7280;
+  --exf-light:     #f3f4f6;
+  --exf-border:    #d1d5db;
+}
+
+/* Modal */
+.exf-modal-content {
+  padding: 1.5rem;
+  background: white;
+  border-radius: 0.75rem;
+  max-width: 720px;
+  margin: 0 auto;
+}
+
+.exf-modal-title {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--exf-primary);
+  margin-bottom: 1.25rem;
+}
+
+/* Info Section */
+.exf-info-grid {
+  display: grid;
+  gap: 0.75rem 1.25rem;
+  grid-template-columns: 140px 1fr;
+  margin-bottom: 1.5rem;
+}
+
+.exf-info-row {
+  display: contents;
+}
+
+.exf-label {
+  font-weight: 500;
+  color: var(--exf-gray);
+  white-space: nowrap;
+}
+
+.exf-value {
+  color: #111827;
+  font-weight: 500;
+}
+
+.exf-full-width {
+  grid-column: 1 / -1;
+}
+
+/* Clearance Section */
+.exf-clearance-section {
+  margin-top: 2rem;
+}
+
+.exf-section {
+  margin-bottom: 2.5rem;
+}
+
+.exf-section-title {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--exf-primary);
+  margin-bottom: 1rem;
+}
+
+.exf-empty-text {
+  color: #9ca3af;
+  font-style: italic;
+}
+
+/* Cards */
+.exf-card {
+  background: #f9fafb;
+  border: 1px solid var(--exf-border);
+  border-radius: 0.5rem;
+  padding: 1.25rem;
+  margin-bottom: 1rem;
+  position: relative;
+  overflow: hidden;
+}
+
+.exf-card-title {
+  font-weight: 600;
+  color: #111827;
+  margin-bottom: 0.375rem;
+}
+
+.exf-card-description {
+  font-size: 0.875rem;
+  color: #4b5563;
+  margin-bottom: 0.75rem;
+}
+
+.exf-card-detail {
+  font-size: 0.875rem;
+  color: #4b5563;
+}
+
+/* Files */
+.exf-files-list {
+  margin-top: 1rem;
+}
+
+.exf-files-title {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #374151;
+  margin-bottom: 0.5rem;
+}
+
+.exf-file-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.375rem;
+  padding: 0.625rem 1rem;
+  margin-bottom: 0.5rem;
+  font-size: 0.875rem;
+}
+
+.exf-file-name {
+  flex: 1;
+  color: #374151;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin-right: 1rem;
+}
+
+.exf-file-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+/* Checkboxes & Approvals */
+.exf-checkbox {
+  width: 1rem;
+  height: 1rem;
+  border-radius: 0.25rem;
+  border-color: #d1d5db;
+}
+
+.exf-checkbox:checked {
+  background-color: var(--exf-primary);
+  border-color: var(--exf-primary);
+}
+
+.exf-checkbox-label {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #374151;
+}
+
+.exf-checkbox-label span {
+  margin-left: 0.5rem;
+}
+
+.exf-approval-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+/* Status */
+.exf-status {
+  font-size: 0.875rem;
+  margin-top: 0.75rem;
+  color: #4b5563;
+}
+
+.exf-status-value {
+  font-weight: 600;
+  text-transform: capitalize;
+}
+
+/* Loading overlay */
+.exf-loading-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(255, 255, 255, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.875rem;
+  color: var(--exf-primary);
+  font-weight: 500;
+}
+
+/* Buttons */
+
+
+.exf-btn-sm {
+  padding: 0.375rem 0.75rem;
+  font-size: 0.75rem;
+}
+
+.exf-btn-full {
+  width: 100%;
+}
+
+.exf-btn-primary {
+  background: var(--exf-primary);
+  color: white;
+  border: none;
+}
+
+.exf-btn-primary:hover {
+  background: #003a75;
+}
+
+.exf-btn-success {
+  background: var(--exf-success);
+  color: white;
+  border: none;
+}
+
+.exf-btn-success:hover {
+  background: #6fa824;
+}
+
+.exf-btn-danger {
+  background: var(--exf-danger);
+  color: white;
+  border: none;
+}
+
+.exf-btn-danger:hover {
+  background: #b91c1c;
+}
+
+.exf-btn-secondary {
+  background: #e5e7eb;
+  color: #374151;
+  border: none;
+}
+
+.exf-btn-secondary:hover {
+  background: #d1d5db;
+}
+
+.exf-btn-outline {
+  background: transparent;
+  border: 1px solid #9ca3af;
+  color: #374151;
+}
+
+.exf-btn-outline:hover {
+  background: #f3f4f6;
+}
+
+.exf-btn-info {
+  background: var(--exf-info);
+  color: white;
+  border: none;
+}
+
+/* Actions footer */
+.exf-modal-actions {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: flex-end;
+  margin-top: 2rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid #e5e7eb;
+}
+/* Finalize Button */
+.exf-finalize-wrapper {
+  text-align: center;
+  margin-top: 2rem;
+}
+
+.exf-finalize-btn {
+  background: #7fbd2c;
+  color: white;
+  padding: 0.9rem 2rem;
+  font-size: 1.05rem;
+  font-weight: 600;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s;
+  min-width: 260px;
+}
+
+.exf-finalize-btn:hover:not(:disabled) {
+  background: #6fa924;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(127, 189, 44, 0.3);
+}
+
+/* Action Buttons */
+.exf-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 1rem;
+  padding: 1.25rem 2rem;
+  border-top: 1px solid #e5e7eb;
+  background: #f9fafb;
+  border-radius: 0 0 12px 12px;
+}
+
+.exf-btn {
+  padding: 0.75rem 1.5rem;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: none;
+}
+
+.exf-btn--primary,
+.exf-btn--success {
+  background: #7fbd2c;
+  color: white;
+}
+
+.exf-btn--secondary {
+  background: #6b7280;
+  color: white;
+}
+
+.exf-btn--danger {
+  background: #ef4444;
+  color: white;
+}
+
+.exf-btn--info {
+  background: #3b82f6;
+  color: white;
+}
+/* ── Panel Title ── */
+.exf-panel-title {
+  font-size: 1.375rem;
+  font-weight: 600;
+  color: var(--exf-primary); /* #00468c */
+  margin-bottom: 1.25rem;
+}
+
+/* ── Empty State ── */
+.exf-empty-state {
+  text-align: center;
+  padding: 3rem 1rem;
+  color: #6b7280;
+  font-size: 0.875rem;
+  background: #f9fafb;
+  border-radius: 0.5rem;
+  border: 1px solid #e5e7eb;
+}
+
+/* ── Table Container ── */
+.exf-table-container {
+  overflow-x: auto;
+  border-radius: 0.5rem;
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+/* ── Data Table ── */
+.exf-data-table {
+  min-width: 100%;
+  border-collapse: collapse;
+  background: white;
+  font-size: 0.875rem;
+}
+
+.exf-data-table thead {
+  background: #f9fafb;
+}
+
+.exf-data-table th,
+.exf-data-table td {
+  padding: 0.75rem 1.25rem;
+  text-align: left;
+  vertical-align: middle;
+}
+
+.exf-data-table th {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #4b5563;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+}
+
+.exf-data-table td {
+  color: #374151;
+}
+
+.exf-table-row {
+  transition: background-color 0.15s;
+}
+
+.exf-table-row:hover {
+  background-color: #f8fafc;
+}
+
+.exf-table-row td {
+  border-bottom: 1px solid #f3f4f6;
+}
+
+/* ── Badges / Status Pills ── */
+.exf-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.25rem 0.625rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  border-radius: 9999px; /* pill shape */
+  text-transform: capitalize;
+  min-width: 80px;
+}
+
+.exf-badge-pending {
+  background-color: #fef3c7; /* amber-100 */
+  color: #92400e; /* amber-800 */
+}
+
+.exf-badge-success {
+  background-color: #7fbd2c; /* your accent green */
+  color: white;
+}
+
+.exf-badge-danger {
+  background-color: #dc2626;
+  color: white;
+}
+
+.exf-badge-info {
+  background-color: #2563eb;
+  color: white;
+}
+
+.exf-badge-default {
+  background-color: #e5e7eb;
+  color: #374151;
+}
+
+/* ── Buttons ── (reusing from modal) */
+.exf-btn {
+  font-weight: 500;
+  border-radius: 0.375rem;
+  font-size: 0.875rem;
+  transition: all 0.2s;
+}
+
+.exf-btn-sm {
+  padding: 0.375rem 0.875rem;
+  font-size: 0.8125rem;
+}
+
+.exf-btn-primary {
+  background: var(--exf-primary); /* #00468c */
+  color: white;
+  border: none;
+}
+
+.exf-btn-primary:hover {
+  background: #003a75;
+}
+
+/* Make sure text is visible */
+.exf-btn-primary,
+.exf-btn-success,
+.exf-btn-danger,
+.exf-btn-info {
+  color: white !important;
+}
+
+/* ── Clearance Status Badge ── */
+.exf-badge-success {
+  background-color: #7fbd2c;     /* your green accent */
+  color: white;
+  padding: 0.35rem 0.75rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  border-radius: 9999px;
+  min-width: 90px;
+  display: inline-block;
+  text-align: center;
+}
+
+.exf-badge-pending {
+  background-color: #fef3c7;     /* soft amber */
+  color: #92400e;
+  padding: 0.35rem 0.75rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  border-radius: 9999px;
+  min-width: 90px;
+  display: inline-block;
+  text-align: center;
+}
+
+/* ── Table adjustments for this view ── */
+.exf-data-table th:nth-child(7),
+.exf-data-table td:nth-child(7) {
+  min-width: 120px;   /* give clearance status enough space */
+}
+
+.exf-data-table th:nth-child(8),
+.exf-data-table td:nth-child(8) {
+  min-width: 100px;
+}
+
+/* Make sure primary button is clearly visible */
+.exf-btn-primary {
+  background-color: #00468c;
+  color: white;
+  border: none;
+  font-weight: 500;
+  padding: 0.4rem 1rem;
+  border-radius: 0.375rem;
+  transition: background-color 0.2s;
+}
+
+.exf-btn-primary:hover {
+  background-color: #003366;
+}
+
+.exf-btn-primary:focus {
+  outline: 2px solid #00468c;
+  outline-offset: 2px;
+}
+/* Responsive */
+@media (max-width: 768px) {
+  .exf-modal-content {
+    width: 95%;
+    margin: 1rem;
+  }
+  .exf-info-grid {
+    grid-template-columns: 1fr;
+  }
+  .exf-modal-actions {
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+  .exf-btn {
+    width: 100%;
+  }
+}
+/* Responsive */
+@media (max-width: 1024px) {
+  .exf-clearance-table th,
+  .exf-clearance-table td {
+    padding: 0.9rem 1rem;
+    font-size: 0.9rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .exf-panel-title {
+    font-size: 1.2rem;
+  }
+  .exf-table-container {
+    font-size: 0.9rem;
+  }
+}
+/* Responsive adjustments */
+@media (max-width: 1024px) {
+  .exf-table th,
+  .exf-table td {
+    padding: 0.9rem 1rem;
+    font-size: 0.9rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .exf-panel-title {
+    font-size: 1.2rem;
+  }
+  .exf-table-container {
+    font-size: 0.9rem;
+  }
+}
+/* Responsive */
+@media (max-width: 768px) {
+  .exf-form-grid {
+    grid-template-columns: 1fr;
+  }
+  .exf-resignation-apply-btn {
+    width: 100%;
+    max-width: 420px;
+  }
+  .exf-resignation-wrapper {
+    padding: 1.8rem;
+  }
+}
+.exf-container {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 2rem 1.5rem;
+  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+  min-height: 100vh;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", sans-serif;
+  color: #1f2937;
+}
+
+/* ── Error Banner ── */
+.exf-error-banner {
+  background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+  color: #7f1d1d;
+  padding: 1.25rem 1.75rem;
+  border-radius: 12px;
+  margin-bottom: 2rem;
+  border-left: 5px solid #ef4444;
+  font-weight: 500;
+  box-shadow: 0 4px 15px rgba(239, 68, 68, 0.15);
+  animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ── Tabs ── */
+.exf-tabs-wrapper {
+  margin-bottom: 2.5rem;
+}
+
+.exf-tabs {
+  display: flex;
+  border-bottom: 2px solid rgba(229, 231, 235, 0.6);
+  gap: 0.5rem;
+  background: rgba(255, 255, 255, 0.5);
+  padding: 0.5rem;
+  border-radius: 12px;
+  backdrop-filter: blur(10px);
+}
+
+.exf-tab {
+  padding: 0.85rem 1.75rem;
+  font-weight: 500;
+  color: #6b7280;
+  background: transparent;
+  border: none;
+  border-bottom: 3px solid transparent;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  border-radius: 8px;
+  font-size: 0.95rem;
+  letter-spacing: 0.3px;
+}
+
+.exf-tab:hover {
+  background: #ffffff;
+  color: #7ac142;
+  transform: translateY(-2px);
+}
+
+.exf-tab--active {
+  color: #ffffff;
+  background: #7ac142;
+  font-weight: 600;
+  box-shadow: #7ac142;
+}
+
+/* ── Cards & Sections ── */
+.exf-card {
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+  overflow: hidden;
+  transition: all 0.3s ease;
+  border: 1px solid rgba(229, 231, 235, 0.5);
+}
+
+.exf-card:hover {
+  box-shadow: 0 15px 40px rgba(0, 0, 0, 0.12);
+  transform: translateY(-2px);
+}
+
+.exf-self-view {
+  padding: 2.5rem;
+}
+
+
+
+.exf-section + .exf-section {
+  border-top: 1px solid #f3f4f6;
+}
+
+.exf-title {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: #111827;
+  margin-bottom: 1.75rem;
+  letter-spacing: -0.5px;
+}
+
+/* ── Status Grid ── */
+.exf-status-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 1.5rem 2rem;
+  margin-bottom: 2rem;
+}
+
+.exf-status-item {
+  background: linear-gradient(135deg, #f9fafb 0%, #f3f4f6 100%);
+  padding: 1.5rem;
+  border-radius: 12px;
+  border: 1px solid #e5e7eb;
+  transition: all 0.3s ease;
+}
+
+.exf-status-item:hover {
+  background: linear-gradient(135deg, #f0f9ff 0%, #f3f4f6 100%);
+  border-color: #bfdbfe;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.1);
+}
+
+.exf-full-width {
+  grid-column: 1 / -1;
+}
+
+.exf-status-label {
+  font-size: 0.8rem;
+  color: #6b7280;
+  font-weight: 600;
+  margin-bottom: 0.75rem;
+  display: block;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.exf-status-value {
+  font-weight: 600;
+  color: #111827;
+  font-size: 1.05rem;
+}
+
+.exf-comment-box {
+  background: linear-gradient(135deg, #f0f9ff 0%, #f1f5f9 100%);
+  padding: 1.25rem;
+  border-radius: 10px;
+  margin-top: 0.75rem;
+  font-size: 0.95rem;
+  border: 1px solid #bfdbfe;
+  color: #1e40af;
+  line-height: 1.6;
+}
+
+/* ── Withdraw Section ── */
+.exf-withdraw-section {
+  margin-top: 2.5rem;
+  padding: 2rem;
+  background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
+  border-radius: 12px;
+  border: 2px solid #fcd34d;
+  transition: all 0.3s ease;
+}
+
+.exf-withdraw-section:hover {
+  box-shadow: 0 8px 20px rgba(245, 158, 11, 0.15);
+}
+
+.exf-help-text {
+  color: #92400e;
+  font-size: 0.9rem;
+  margin: 1rem 0 1.5rem;
+  line-height: 1.6;
+}
+
+/* ── Outcome Box ── */
+.exf-outcome-box {
+  padding: 3.5rem 3rem;
+  border-radius: 16px;
+  text-align: center;
+  margin-bottom: 2.5rem;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.exf-outcome--resigned {
+  background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
+  border: 2px solid #6ee7b7;
+  box-shadow: 0 10px 30px rgba(16, 185, 129, 0.15);
+}
+
+.exf-outcome--rejected {
+  background: linear-gradient(135deg, #fef2f2 0%, #fecaca 100%);
+  border: 2px solid #f87171;
+  box-shadow: 0 10px 30px rgba(239, 68, 68, 0.15);
+}
+
+.exf-outcome--withdrawn {
+  background: linear-gradient(135deg, #eff6ff 0%, #bfdbfe 100%);
+  border: 2px solid #60a5fa;
+  box-shadow: 0 10px 30px rgba(59, 130, 246, 0.15);
+}
+
+.exf-outcome-icon {
+  font-size: 4.5rem;
+  margin-bottom: 1.5rem;
+  animation: bounce 2s infinite;
+}
+
+@keyframes bounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+
+.exf-outcome-title {
+  font-size: 2rem;
+  font-weight: 800;
+  margin-bottom: 1.25rem;
+  letter-spacing: -0.5px;
+}
+
+.exf-outcome-message {
+  font-size: 1.1rem;
+  color: #374151;
+  line-height: 1.8;
+  margin-bottom: 1.5rem;
+}
+
+/* ── Form styling (scoped) ── */
+.exf-form {
+  max-width: 650px;
+}
+
+.exf-form-group {
+  margin-bottom: 1.75rem;
+}
+
+.exf-form-group > label {
+  display: block;
+  margin-bottom: 0.75rem;
+  font-weight: 600;
+  color: #374151;
+  font-size: 0.95rem;
+  letter-spacing: 0.3px;
+}
+
+/* ── Modal (backdrop + content) ── */
+.exf-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.65);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  backdrop-filter: blur(4px);
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.exf-modal-content {
+  background: white;
+  border-radius: 20px;
+  width: 90%;
+  max-width: 600px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 25px 50px rgba(0, 0, 0, 0.2);
+  animation: slideUp 0.3s ease;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.exf-modal-title {
+  font-size: 1.3rem;
+  font-weight: 700;
+  padding: 1.75rem;
+  margin: 0;
+  color: #111827;
+  letter-spacing: -0.3px;
+}
+
+.exf-modal-info {
+  padding: 0 1.75rem;
+}
+
+.exf-modal-row {
+  padding: 1rem 0;
+  border-bottom: 1px solid #f3f4f6;
+  display: grid;
+  grid-template-columns: 200px 1fr;
+  gap: 1rem;
+}
+
+.exf-modal-row:last-child {
+  border-bottom: none;
+}
+
+.exf-modal-label {
+  font-weight: 600;
+  color: #6b7280;
+  font-size: 0.9rem;
+}
+
+.exf-modal-value {
+  color: #111827;
+  word-break: break-word;
+}
+
+.exf-modal-actions {
+  padding: 1.5rem 1.75rem;
+  border-top: 1px solid #f3f4f6;
+  display: flex;
+  justify-content: flex-end;
+  gap: 1rem;
+  background: #f9fafb;
+}
+
+/* ── KT Modal specific ── */
+.exf-kt-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.75rem 2rem;
+  border-bottom: 2px solid #f3f4f6;
+  background: linear-gradient(135deg, #f9fafb 0%, #f3f4f6 100%);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.exf-kt-modal-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin: 0;
+  color: #111827;
+}
+
+.exf-kt-modal-close {
+  font-size: 2rem;
+  font-weight: 300;
+  color: #9ca3af;
+  background: none;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+}
+
+.exf-kt-modal-close:hover {
+  color: #111827;
+  background: rgba(17, 24, 39, 0.05);
+}
+
+.exf-kt-modal-body {
+  padding: 2rem;
+}
+
+.exf-kt-form-group {
+  margin-bottom: 1.75rem;
+}
+
+.exf-kt-form-label {
+  display: block;
+  margin-bottom: 0.75rem;
+  font-weight: 600;
+  color: #374151;
+  font-size: 0.95rem;
+  letter-spacing: 0.3px;
+}
+
+.exf-kt-required {
+  color: #ef4444;
+  font-weight: 700;
+}
+
+.exf-kt-form-input,
+.exf-kt-form-textarea,
+.exf-kt-form-select {
+  width: 100%;
+  padding: 0.9rem 1.25rem;
+  border: 2px solid #e5e7eb;
+  border-radius: 10px;
+  font-size: 1rem;
+  transition: all 0.3s ease;
+  background: white;
+}
+
+.exf-kt-form-input:focus,
+.exf-kt-form-textarea:focus,
+.exf-kt-form-select:focus {
+  border-color: #2563eb;
+  outline: none;
+  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.1);
+  background: #f8fafc;
+}
+
+.exf-kt-form-textarea {
+  min-height: 140px;
+  resize: vertical;
+}
+
+.exf-kt-file-upload-container {
+  margin-bottom: 1rem;
+}
+
+.exf-kt-file-upload-btn {
+  padding: 0.85rem 1.5rem;
+  background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+  color: #1d4ed8;
+  border: 2px dashed #3b82f6;
+  border-radius: 10px;
+  cursor: pointer;
+  display: inline-block;
+  font-weight: 500;
+  transition: all 0.3s ease;
+}
+
+.exf-kt-file-upload-btn:hover {
+  background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+  border-color: #2563eb;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2);
+}
+
+.exf-kt-file-selected {
+  margin-top: 0.85rem;
+  font-size: 0.85rem;
+  color: #059669;
+  display: block;
+  font-weight: 500;
+  padding: 0.75rem;
+  background: #ecfdf5;
+  border-radius: 8px;
+  border-left: 3px solid #10b981;
+  padding-left: 1rem;
+}
+
+.exf-kt-form-row {
+  display: flex;
+  gap: 1.75rem;
+  flex-wrap: wrap;
+}
+
+.exf-kt-form-group-half {
+  flex: 1;
+  min-width: 45%;
+}
+
+
+.exf-kt-modal-footer {
+  padding: 1.5rem 2rem;
+  border-top: 2px solid #f3f4f6;
+  display: flex;
+  justify-content: flex-end;
+  gap: 1rem;
+  background: linear-gradient(135deg, #f9fafb 0%, #f3f4f6 100%);
+  position: sticky;
+  bottom: 0;/* ── Resignation Apply Button Section ── */
+.exf-resign-section {
+  margin: 2.5rem 0;
+  padding: 2.5rem;
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+  border: 1px solid #e5e7eb;
+}
+
+.exf-resign-prompt {
+  text-align: center;
+  padding: 3rem 1rem;
+}
+
+.exf-resign-hint {
+  color: #6b7280;
+  font-size: 1.05rem;
+  margin: 1.2rem auto 2.5rem;
+  max-width: 600px;
+  line-height: 1.6;
+}
+
+.exf-resign-apply-btn {
+  padding: 1rem 2.8rem;
+  font-size: 1.15rem;
+  min-width: 300px;
+  box-shadow: 0 4px 14px rgba(122, 193, 66, 0.25); /* green accent shadow */
+}
+
+/* ── Form when opened ── */
+.exf-resign-form-card {
+  animation: fadeInUp 0.4s ease;
+}
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.exf-resign-form-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+  padding-bottom: 1.2rem;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.exf-form-title {
+  margin: 0;
+  font-size: 1.45rem;
+  font-weight: 700;
+  color: #111827;
+}
+
+.exf-close-resign {
+  background: none;
+  border: none;
+  font-size: 2.4rem;
+  color: #9ca3af;
+  cursor: pointer;
+  line-height: 1;
+  padding: 0.2rem 0.6rem;
+  border-radius: 8px;
+}
+
+.exf-close-resign:hover {
+  color: #374151;
+  background: rgba(0,0,0,0.05);
+}
+
+/* Form layout */
+.exf-resign-form {
+  max-width: 760px;
+  margin: 0 auto;
+}
+
+.exf-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1.8rem 2.2rem;
+}
+
+.exf-form-group.full-width {
+  grid-column: 1 / -1;
+}
+
+.exf-label {
+  font-weight: 600;
+  font-size: 0.98rem;
+  color: #374151;
+  margin-bottom: 0.5rem;
+  display: block;
+}
+
+.exf-label.required::after {
+  content: " *";
+  color: #ef4444;
+  font-weight: bold;
+}
+
+.exf-input,
+.exf-select {
+  width: 100%;
+  padding: 0.8rem 1.1rem;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 1rem;
+  transition: all 0.2s;
+  background: #ffffff;
+}
+
+.exf-input:focus,
+.exf-select:focus {
+  border-color: #7ac142;
+  box-shadow: 0 0 0 3px rgba(122, 193, 66, 0.15);
+  outline: none;
+}
+
+.exf-textarea {
+  width: 100%;
+  padding: 0.8rem 1.1rem;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 1rem;
+  min-height: 110px;
+  resize: vertical;
+  background: #ffffff;
+}
+
+.exf-textarea:focus {
+  border-color: #7ac142;
+  box-shadow: 0 0 0 3px rgba(122, 193, 66, 0.15);
+  outline: none;
+}
+
+/* Action buttons */
+.exf-resign-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 1.2rem;
+  margin-top: 2.5rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid #e5e7eb;
+}
+
+.exf-resign-actions .btn {
+  padding: 0.8rem 2rem;
+  font-size: 1rem;
+  min-width: 150px;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .exf-form-grid {
+    grid-template-columns: 1fr;
+  }
+  .exf-resign-apply-btn {
+    width: 100%;
+    max-width: 400px;
+  }
+}
+  z-index: 10;
+}
+
+.exf-kt-btn {
+  padding: 0.75rem 1.75rem;
+  border-radius: 10px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  border: none;
+  font-size: 0.95rem;
+}
+
+.exf-kt-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.exf-kt-btn--cancel {
+  background: #f3f4f6;
+  color: #374151;
+  border: 2px solid #d1d5db;
+}
+
+.exf-kt-btn--cancel:hover:not(:disabled) {
+  background: #e5e7eb;
+  border-color: #9ca3af;
+}
+
+.exf-kt-btn--primary {
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+  color: white;
+  box-shadow: 0 4px 15px rgba(37, 99, 235, 0.3);
+}
+
+.exf-kt-btn--primary:hover:not(:disabled) {
+  box-shadow: 0 6px 20px rgba(37, 99, 235, 0.4);
+  transform: translateY(-2px);
+}
+
+/* ── General Button classes (still scoped under .exf-container) ── */
+.exf-container .btn {
+  padding: 0.8rem 1.75rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+  border: none;
+}
+
+.exf-container .btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.exf-container .btn-primary        { background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%); color: white; box-shadow: 0 4px 15px rgba(37,99,235,0.3); }
+.exf-container .btn-warning       { background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: white; box-shadow: 0 4px 15px rgba(245,158,11,0.3); }
+.exf-container .btn-success       { background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; box-shadow: 0 4px 15px rgba(16,185,129,0.3); }
+.exf-container .btn-danger        { background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); color: white; box-shadow: 0 4px 15px rgba(239,68,68,0.3); }
+.exf-container .btn-secondary     { background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%); color: white; box-shadow: 0 4px 15px rgba(107,114,128,0.3); }
+.exf-container .btn-review        { background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%); color: white; box-shadow: 0 4px 15px rgba(139,92,246,0.3); }
+.exf-container .btn-info          { background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); color: white; box-shadow: 0 4px 15px rgba(59,130,246,0.3); }
+.exf-container .btn-outline       { background: transparent; color: #2563eb; border: 2px solid #2563eb; }
+
+.exf-container .btn:hover:not(:disabled) {
+  box-shadow: 0 6px 20px rgba(0,0,0,0.18);
+  transform: translateY(-2px);
+}
+
+/* ── Badges ── */
+.exf-container .badge {
+  padding: 0.5rem 1.25rem;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  display: inline-block;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.badge-pending   { background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); color: #92400e; border: 1px solid #fcd34d; }
+.badge-approved  { background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%); color: #065f46; border: 1px solid #6ee7b7; }
+.badge-rejected  { background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%); color: #991b1b; border: 1px solid #f87171; }
+.badge-discuss   { background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%); color: #1e40af; border: 1px solid #60a5fa; }
+
+/* ── Tables (scoped) ── */
+.exf-container table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.exf-container thead {
+  background: #f9fafb;
+}
+
+.exf-container th {
+  padding: 1rem 1.25rem;
+  text-align: left;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #374151;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-bottom: 2px solid #cbd5e1;
+  background: linear-gradient(135deg, #f8fafc 0%, #f3f4f6 100%);
+}
+
+.exf-container td {
+  padding: 1rem 1.25rem;
+  text-align: left;
+  font-size: 0.9rem;
+  border-bottom: 1px solid #e5e7eb;
+  color: #374151;
+}
+.exf-btn-primary {
+  background-color: #7fbd2c !important;
+  color: white !important;
+}
+
+.exf-btn-primary:hover {
+  background-color: #6fa824 !important;
+}
+.exf-container tbody tr {
+  transition: all 0.3s ease;
+}
+
+.exf-container tbody tr:hover {
+  background: linear-gradient(135deg, #f8fafc 0%, #f3f4f6 100%);
+}
+
+/* ── Team panels ── */
+
+
+.exf-panel-title {
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: #111827;
+  letter-spacing: -0.3px;
+  margin-bottom: 1.25rem;
+}
+
+/* ── Spinner ── */
+.exf-container .spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid #e5e7eb;
+  border-top: 4px solid #2563eb;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin: 0 auto 1.5rem;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ── Misc helpers ── */
+.exf-awaiting {
+  color: #2563eb;
+  font-weight: 600;
+  margin-top: 0.75rem;
+  font-size: 0.9rem;
+  animation: pulse 2s ease-in-out infinite;
+}
+
+.exf-divider
+{
+  width: 90%;
+  min-height: 120px;
+  padding: 0.9rem 1.25rem;
+  border: 2px solid #e5e7eb;
+  border-radius: 10px;
+  font-size: 1rem;
+  transition: all 0.3s ease;
+  background: white;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+.exf-withdrawal-status {
+  padding: 1.25rem;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 8px;
+}
+
+.mt-4  { margin-top: 1rem; }
+
+.mt-6
+  {
+     margin-top: 1.5rem;
+    
+    
+    }
+
+.mb-3  { margin-bottom: 0.75rem; }
+.mb-4  { margin-bottom: 1rem; }
+.mb-6  { margin-bottom: 1.5rem; }
+.space-y-4 > * + * { margin-top: 1rem; }
+.space-y-6 > * + * { margin-top: 1.5rem; }
+.space-y-8 > * + * { margin-top: 2rem; }
+
+
+/* ── Responsive adjustments ── */
+@media (max-width: 768px) {
+  .exf-container {
+    padding: 1rem;
+  }
+
+  .exf-self-view,
+  .exf-section {
+    padding: 1.25rem;
+  }
+
+  .exf-title {
+    font-size: 1.5rem;
+  }
+
+  .exf-status-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .exf-tabs {
+    flex-wrap: wrap;
+  }
+
+  .exf-tab {
+    padding: 0.7rem 1.25rem;
+    font-size: 0.85rem;
+  }
+
+  .exf-modal-content {
+    width: 95%;
+  }
+
+  .exf-kt-modal-header,
+  .exf-kt-modal-body,
+  .exf-kt-modal-footer {
+    padding: 1.25rem;
+  }
+
+  .exf-outcome-box {
+    padding: 2rem 1.5rem;
+  }
+
+  .exf-outcome-icon {
+    font-size: 3rem;
+  }
+
+  .exf-container .btn {
+    padding: 0.65rem 1.25rem;
+    font-size: 0.8rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .exf-container {
+    padding: 0.75rem;
+  }
+
+  .exf-title {
+    font-size: 1.25rem;
+  }
+
+  .exf-modal-content {
+    width: 100%;
+    max-height: 100vh;
+    border-radius: 20px 20px 0 0;
+  }
+
+  .exf-container .btn {
+    width: 100%;
+  }
+
+  .exf-modal-row {
+    grid-template-columns: 1fr;
+  }
+}

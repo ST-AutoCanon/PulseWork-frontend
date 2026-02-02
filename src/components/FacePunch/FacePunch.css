@@ -2,13 +2,12 @@
   position: relative;
   width: 520px;
   height: 360px;
-  margin: 10px auto;
+  margin: 40px auto 0;
   background-color: #f0edec0f;
   border-radius: 12px;
   overflow: hidden;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
   transition: transform 0.3s ease;
-  margin-top: 60%;
 }
 
 .face-punch-container:hover {
@@ -109,13 +108,14 @@
 }
 
 @media (max-width: 480px) {
+  @media (max-width: 480px) {
   .face-punch-container {
     width: 92%;
     height: auto;
     aspect-ratio: 4/3;
     margin-top: 240px;
-    border-radius: 14px;
   }
+}
 
   .status-message,
   .cooldown-message {

@@ -374,7 +374,7 @@ const buildAdvanceDetailText = (
 
       const employeeDetailsHtml = `
         <div style="font-family: Arial, Helvetica, sans-serif; font-size: 12px; color: #000; margin-bottom: 25px;">
-          <div style="padding: 8px 0; text-align: center; font-weight: bold; font-size: 13px; color: #1a3c6d; margin-bottom: 12px;">
+          <div style="padding: 8px 0; text-align: center; font-weight: bold; font-size: 25px; color: #1a3c6d; margin-bottom: 40px;">
             PAYSLIP FOR - ${monthYear.toUpperCase()}
           </div>
           <div style="display: flex; flex-wrap: wrap; gap: 20px;">

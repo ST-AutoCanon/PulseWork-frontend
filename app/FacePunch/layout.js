@@ -1,4 +1,4 @@
-import ProtectedLayout from "../FacePunch/FacePunch.client.jsx";
+import ProtectedLayout from "../../src/components/FacePunch/FacePunch.client";
 
 export default function DashboardLayout({ children }) {
   return <ProtectedLayout>{children}</ProtectedLayout>;

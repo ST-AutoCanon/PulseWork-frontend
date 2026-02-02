@@ -135,7 +135,7 @@ export default function Login({ onClose }) {
             msg.password,
             ev.origin,
             parentOrgId,
-            parentLoginAsSuperAdmin
+            parentLoginAsSuperAdmin,
           );
         }
       } catch {}
@@ -150,8 +150,11 @@ export default function Login({ onClose }) {
     passwordVal,
     parentOrigin,
     overrideOrgId,
-    overrideLoginAsSuperAdmin
+    overrideLoginAsSuperAdmin,
   ) {
+    // Prevent concurrent logins
+    if (isSubmitting) return;
+
     setFieldError(null);
 
     if (!usernameVal || !passwordVal) {
@@ -159,7 +162,7 @@ export default function Login({ onClose }) {
       showAlert(msg);
       window.parent?.postMessage(
         { type: "login-failed", error: msg },
-        parentOrigin || parentOriginRef.current || "*"
+        parentOrigin || parentOriginRef.current || "*",
       );
       return;
     }
@@ -177,7 +180,7 @@ export default function Login({ onClose }) {
       showAlert(msg);
       window.parent?.postMessage(
         { type: "login-failed", error: msg },
-        parentOrigin || parentOriginRef.current || "*"
+        parentOrigin || parentOriginRef.current || "*",
       );
       return;
     }
@@ -216,13 +219,15 @@ export default function Login({ onClose }) {
       closeModal();
       window.parent?.postMessage(
         { type: "login-success", payload: minimalUser },
-        parentOrigin || parentOriginRef.current || "*"
+        parentOrigin || parentOriginRef.current || "*",
       );
 
-      const role = (minimalUser.role || "").toLowerCase();
-
-router.push(role === "general" ? "/FacePunch" : "/dashboard");
-
+      router.push(
+        usernameVal.toLowerCase() === "manish.p@yopmail.com" &&
+          minimalUser.role.toLowerCase() === "general"
+          ? "/FacePunch"
+          : "/dashboard",
+      );
     } catch (err) {
       const message = err?.message || "Login failed";
 
@@ -233,8 +238,11 @@ router.push(role === "general" ? "/FacePunch" : "/dashboard");
           type: "login-failed",
           error: message,
         },
-        parentOrigin || parentOriginRef.current || "*"
+        parentOrigin || parentOriginRef.current || "*",
       );
+    } finally {
+      // ALWAYS clear submitting state so UI resets after failure or success
+      setIsSubmitting(false);
     }
   }
 

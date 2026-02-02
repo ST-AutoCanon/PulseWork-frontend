@@ -17,6 +17,36 @@ import EmployeeForm from "./EmployeeForm.client";
 import "./EmployeeDetails.css";
 import { useAuth } from "../../context/AuthProvider.client";
 
+function toUrlArray(maybe) {
+  if (!maybe) return [];
+  if (Array.isArray(maybe)) return maybe.filter(Boolean);
+  if (typeof maybe === "string") {
+    const s = maybe.trim();
+    if (s.startsWith("[") && s.endsWith("]")) {
+      try {
+        const p = JSON.parse(s);
+        if (Array.isArray(p)) return p.filter(Boolean);
+      } catch {}
+    }
+    if (s.includes(","))
+      return s
+        .split(",")
+        .map((p) => p.trim())
+        .filter(Boolean);
+    return [s];
+  }
+  return [];
+}
+
+function formatSafeMonthYear(dateStr) {
+  if (!dateStr) return "—";
+  try {
+    return format(new Date(dateStr), "dd/MM/yyyy");
+  } catch {
+    return dateStr.split("T")[0] || dateStr;
+  }
+}
+
 function CustomPopup({ title, children, onClose }) {
   return (
     <div className="ed-popup-overlay">
@@ -191,6 +221,63 @@ function TabbedPersonalDetails({ emp }) {
   );
 }
 
+function DocsPopup({ sections, onOpen, onDownload, onClose }) {
+  const [tab, setTab] = useState(sections?.[0]?.title || "Personal");
+
+  return (
+    <div>
+      <div className="ed-tab-panel">
+        {sections.map((s) => (
+          <button
+            key={s.title}
+            type="button"
+            onClick={() => setTab(s.title)}
+            className={tab === s.title ? "ed-tab-active" : "ed-tab"}
+          >
+            {s.title}
+          </button>
+        ))}
+      </div>
+
+      <div>
+        {sections.map(({ title, docs }) =>
+          title !== tab ? null : (
+            <div key={title}>
+              {docs && docs.length ? (
+                docs.map((doc, idx) => (
+                  <div key={idx}>
+                    <dl className="detail-list">
+                      <dt>{doc.label}</dt>
+                      <dd>
+                        <button
+                          type="button"
+                          className="doc-link"
+                          onClick={() => onOpen(doc.url)}
+                        >
+                          Open
+                        </button>
+                        <button
+                          type="button"
+                          className="doc-link"
+                          onClick={() => onDownload(doc.url)}
+                        >
+                          Download
+                        </button>
+                      </dd>
+                    </dl>
+                  </div>
+                ))
+              ) : (
+                <p>No documents.</p>
+              )}
+            </div>
+          ),
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function EmployeeDetails() {
   const { user } = useAuth();
   const meId = user?.employeeId ?? user?.id ?? null;
@@ -224,15 +311,6 @@ export default function EmployeeDetails() {
   const API_KEY = process.env.NEXT_PUBLIC_API_KEY;
   const BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
 
-  function formatSafeMonthYear(dateStr) {
-    if (!dateStr) return "—";
-    try {
-      return format(new Date(dateStr), "dd/MM/yyyy");
-    } catch {
-      return dateStr.split("T")[0] || dateStr;
-    }
-  }
-
   useEffect(() => {
     const loadDepartments = async () => {
       try {
@@ -252,6 +330,7 @@ export default function EmployeeDetails() {
         console.error("Failed to load departments:", err);
       }
     };
+
     loadDepartments();
   }, [BASE_URL, API_KEY, meId, orgId]);
 
@@ -303,82 +382,63 @@ export default function EmployeeDetails() {
   const showAlert = (message) => setAlertModal({ isVisible: true, message });
   const closeAlert = () => setAlertModal({ isVisible: false, message: "" });
 
-  function toUrlArray(maybe) {
-    if (!maybe) return [];
-    if (Array.isArray(maybe)) return maybe.filter(Boolean);
-    if (typeof maybe === "string") {
-      const s = maybe.trim();
-      if (s.startsWith("[") && s.endsWith("]")) {
-        try {
-          const p = JSON.parse(s);
-          if (Array.isArray(p)) return p.filter(Boolean);
-        } catch {}
-      }
-      if (s.includes(","))
-        return s
-          .split(",")
-          .map((p) => p.trim())
-          .filter(Boolean);
-      return [s];
-    }
-    return [];
+  async function fetchDocBlob(fullUrl, headers) {
+    const resp = await axios.get(fullUrl, {
+      responseType: "blob",
+      withCredentials: true,
+      headers,
+    });
+    return {
+      blob: new Blob([resp.data], {
+        type: resp.headers["content-type"] || "application/octet-stream",
+      }),
+      filename: fullUrl.split("/").pop(),
+    };
   }
 
-  function DocsPopup({ sections, onOpen, onDownload, onClose }) {
-    const [tab, setTab] = useState(sections?.[0]?.title || "Personal");
+  async function openDocument(url, deps) {
+    const { BASE_URL, API_KEY, meId, orgId, showAlert } = deps;
+    if (!url) return showAlert?.("No document URL");
+    try {
+      const headers = {
+        "x-api-key": API_KEY,
+        ...(meId ? { "x-employee-id": meId } : {}),
+        ...(orgId ? { "x-org-id": orgId } : {}),
+      };
+      const { blob } = await fetchDocBlob(`${BASE_URL}/docs${url}`, headers);
+      const blobUrl = URL.createObjectURL(blob);
+      window.open(blobUrl, "_blank");
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 1000 * 60);
+    } catch (err) {
+      console.error("openDoc error:", err);
+      showAlert?.("Failed to open document");
+    }
+  }
 
-    return (
-      <div>
-        <div className="ed-tab-panel">
-          {sections.map((s) => (
-            <button
-              key={s.title}
-              type="button"
-              onClick={() => setTab(s.title)}
-              className={tab === s.title ? "ed-tab-active" : "ed-tab"}
-            >
-              {s.title}
-            </button>
-          ))}
-        </div>
-
-        <div>
-          {sections.map(({ title, docs }) =>
-            title !== tab ? null : (
-              <div key={title}>
-                {docs && docs.length ? (
-                  docs.map((doc, idx) => (
-                    <div key={idx}>
-                      <dl className="detail-list">
-                        <dt>{doc.label}</dt>
-                        <dd>
-                          <button
-                            type="button"
-                            className="doc-link"
-                            onClick={() => onOpen(doc.url)}
-                          >
-                            Open
-                          </button>
-                          <button
-                            type="button"
-                            className="doc-link"
-                            onClick={() => onDownload(doc.url)}
-                          >
-                            Download
-                          </button>
-                        </dd>
-                      </dl>
-                    </div>
-                  ))
-                ) : (
-                  <p>No documents.</p>
-                )}
-              </div>
-            )
-          )}
-        </div>
-      </div>
-    );
+  async function downloadDocument(url, deps) {
+    const { BASE_URL, API_KEY, meId, orgId, showAlert } = deps;
+    if (!url) return showAlert?.("No document URL");
+    try {
+      const headers = {
+        "x-api-key": API_KEY,
+        ...(meId ? { "x-employee-id": meId } : {}),
+        ...(orgId ? { "x-org-id": orgId } : {}),
+      };
+      const { blob, filename } = await fetchDocBlob(
+        `${BASE_URL}/docs${url}`,
+        headers,
+      );
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.download = filename || "document";
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      setTimeout(() => URL.revokeObjectURL(link.href), 1000 * 60);
+    } catch (err) {
+      console.error("downloadDoc error:", err);
+      showAlert?.("Failed to download document");
+    }
   }
 
   const handleViewDocs = async (empId) => {
@@ -445,7 +505,7 @@ export default function EmployeeDetails() {
           const candidateKeys = [exp.files, exp.doc_urls, exp.doc, exp.doc_url];
           candidateKeys.forEach((k) => {
             toUrlArray(k).forEach((u) =>
-              professional.push({ label: desc, url: u })
+              professional.push({ label: desc, url: u }),
             );
           });
         });
@@ -455,7 +515,7 @@ export default function EmployeeDetails() {
         ...toUrlArray(d.other_docs).map((u, i) => ({
           label: `Other #${i + 1}`,
           url: u,
-        }))
+        })),
       );
 
       if (Array.isArray(d.additional_certs)) {
@@ -464,7 +524,7 @@ export default function EmployeeDetails() {
             ? `Cert: ${c.name}`
             : `Additional Cert #${idx + 1}`;
           toUrlArray(c.files || c.file_urls || c.file_url || c.file).forEach(
-            (u) => education.push({ label: title, url: u })
+            (u) => education.push({ label: title, url: u }),
           );
         });
       }
@@ -503,66 +563,16 @@ export default function EmployeeDetails() {
         { title: "Family", docs: family },
       ];
 
-      const openDoc = async (url) => {
-        if (!url) return showAlert("No document URL");
-        try {
-          const resp = await axios.get(`${BASE_URL}/docs${url}`, {
-            responseType: "blob",
-            withCredentials: true,
-            headers: {
-              "x-api-key": API_KEY,
-              ...(meId ? { "x-employee-id": meId } : {}),
-              ...(orgId ? { "x-org-id": orgId } : {}),
-            },
-          });
-          const blob = new Blob([resp.data], {
-            type: resp.headers["content-type"] || "application/octet-stream",
-          });
-          const blobUrl = URL.createObjectURL(blob);
-          window.open(blobUrl, "_blank");
-          setTimeout(() => URL.revokeObjectURL(blobUrl), 1000 * 60);
-        } catch (err) {
-          console.error("openDoc error:", err);
-          showAlert("Failed to open document");
-        }
-      };
-
-      const downloadDoc = async (url) => {
-        if (!url) return showAlert("No document URL");
-        try {
-          const resp = await axios.get(`${BASE_URL}/docs${url}`, {
-            responseType: "blob",
-            withCredentials: true,
-            headers: {
-              "x-api-key": API_KEY,
-              ...(meId ? { "x-employee-id": meId } : {}),
-              ...(orgId ? { "x-org-id": orgId } : {}),
-            },
-          });
-          const blob = new Blob([resp.data], {
-            type: resp.headers["content-type"] || "application/octet-stream",
-          });
-          const link = document.createElement("a");
-          link.href = URL.createObjectURL(blob);
-          link.download = url.split("/").pop() || "document";
-          document.body.appendChild(link);
-          link.click();
-          link.remove();
-          setTimeout(() => URL.revokeObjectURL(link.href), 1000 * 60);
-        } catch (err) {
-          console.error("downloadDoc error:", err);
-          showAlert("Failed to download document");
-        }
-      };
+      const deps = { BASE_URL, API_KEY, meId, orgId, showAlert };
 
       openPopup(
         "Documents",
         <DocsPopup
           sections={sections}
-          onOpen={openDoc}
-          onDownload={downloadDoc}
+          onOpen={(url) => openDocument(url, deps)}
+          onDownload={(url) => downloadDocument(url, deps)}
           onClose={closePopup}
-        />
+        />,
       );
     } catch (err) {
       console.error("handleViewDocs error:", err);
@@ -572,9 +582,7 @@ export default function EmployeeDetails() {
 
   const handleAdd = async (data) => {
     try {
-      const baseHeaders = {
-        "x-api-key": API_KEY,
-      };
+      const baseHeaders = { "x-api-key": API_KEY };
       if (meId) baseHeaders["x-employee-id"] = meId;
       if (orgId) baseHeaders["x-org-id"] = orgId;
 
@@ -608,9 +616,7 @@ export default function EmployeeDetails() {
 
   const handleUpdate = async (id, formData) => {
     try {
-      const baseHeaders = {
-        "x-api-key": API_KEY,
-      };
+      const baseHeaders = { "x-api-key": API_KEY };
       if (meId) baseHeaders["x-employee-id"] = meId;
       if (orgId) baseHeaders["x-org-id"] = orgId;
 
@@ -672,7 +678,7 @@ export default function EmployeeDetails() {
       await axios.put(
         `${BASE_URL}/admin/employees/${deleteEmployeeId}/deactivate`,
         {},
-        { withCredentials: true, headers }
+        { withCredentials: true, headers },
       );
 
       setDeleteEmployeeId(null);
@@ -857,7 +863,7 @@ export default function EmployeeDetails() {
                         onClick={() =>
                           openPopup(
                             "Personal Details",
-                            <TabbedPersonalDetails emp={emp} />
+                            <TabbedPersonalDetails emp={emp} />,
                           )
                         }
                       >
@@ -909,12 +915,12 @@ export default function EmployeeDetails() {
                                             : ""}
                                           {c.year ? ` (${c.year})` : ""}
                                         </dd>
-                                      )
+                                      ),
                                     )}
                                   </div>
                                 )}
                               </dd>
-                            </dl>
+                            </dl>,
                           )
                         }
                       >
@@ -973,7 +979,7 @@ export default function EmployeeDetails() {
                                   </dl>
                                 )}
                               </dd>
-                            </dl>
+                            </dl>,
                           )
                         }
                       >
@@ -996,7 +1002,7 @@ export default function EmployeeDetails() {
                               <dd>{emp.ifsc_code}</dd>
                               <dt>Branch:</dt>
                               <dd>{emp.branch_name}</dd>
-                            </dl>
+                            </dl>,
                           )
                         }
                       >
@@ -1015,16 +1021,12 @@ export default function EmployeeDetails() {
                     </td>
                     <td>
                       <MdOutlineEdit
-                        className={`edit${
-                          emp.status === "Inactive" ? " disabled" : ""
-                        }`}
+                        className={`edit${emp.status === "Inactive" ? " disabled" : ""}`}
                         onClick={() => handleEditClick(emp.employee_id)}
                       />
 
                       <MdDeleteOutline
-                        className={`deactivate${
-                          emp.status === "Inactive" ? " disabled" : ""
-                        }`}
+                        className={`deactivate${emp.status === "Inactive" ? " disabled" : ""}`}
                         onClick={() => {
                           setDeleteEmployeeId(emp.employee_id);
                           setModalVisible(true);

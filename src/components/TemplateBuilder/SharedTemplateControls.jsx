@@ -1,4 +1,4 @@
-import React, { useRef } from "react";
+import React, { useRef, useState, useEffect } from "react";
 import { BODY_TYPES } from "./templatePresets";
 import stylesLocal from "./UploadScan.module.css";
 
@@ -16,9 +16,17 @@ export default function SharedTemplateControls({
   onBodyTypeChange,
   showEditor = false,
   onSetActiveArea,
-  activeArea = "body",
+  activeArea = "header",
 }) {
   const fileInputRef = externalFileInputRef || useRef(null);
+
+  const [localActive, setLocalActive] = useState(
+    String(activeArea || "header"),
+  );
+
+  useEffect(() => {
+    setLocalActive(String(activeArea || "header"));
+  }, [activeArea]);
 
   function onSelectWatermark(e) {
     const f = e.target.files?.[0] || null;
@@ -61,6 +69,8 @@ export default function SharedTemplateControls({
   };
 
   function handleSetActiveArea(area) {
+    setLocalActive(area);
+
     if (typeof onSetActiveArea === "function") {
       try {
         onSetActiveArea(area);
@@ -68,38 +78,47 @@ export default function SharedTemplateControls({
         console.warn("onSetActiveArea threw", e);
       }
     }
-    if (area === "body" && typeof onBodyTypeChange === "function") {
-      try {
-        onBodyTypeChange(bodyType);
-      } catch (e) {
-        console.warn("onBodyTypeChange threw", e);
-      }
-    }
   }
+
+  const baseBtnStyle = {
+    padding: "8px 12px",
+    borderRadius: "8px",
+    border: "1px solid #e6e9eb",
+    background: "transparent",
+    cursor: "pointer",
+    fontSize: "13px",
+    fontWeight: 400,
+    color: "#333",
+    transition: "all 0.15s ease-in-out",
+    minWidth: 64,
+    textAlign: "center",
+  };
+
+  const activeBtnStyle = {
+    border: "2px solid #0f6679",
+    background: "#f0f7f9",
+    color: "#0f6679",
+    fontWeight: 600,
+    boxShadow: "0 1px 0 rgba(15,102,121,0.12)",
+  };
+
+  const hoverStyle = {};
 
   return (
     <div className={styles?.sharedControls || stylesLocal.controls}>
       <div style={{ marginBottom: 12 }}>
         <div style={{ fontSize: 13, marginBottom: 6 }}>Insert into</div>
         <div style={{ display: "flex", gap: 8 }}>
-          {["header", "body", "footer"].map((a) => {
-            const isActive = String(activeArea || "body") === a;
+          {["header", "footer"].map((a) => {
+            const isActive = String(localActive || "header") === a;
+
             return (
               <button
                 key={a}
                 onClick={() => handleSetActiveArea(a)}
-                style={{
-                  padding: "8px 12px",
-                  borderRadius: "8px",
-                  border: isActive ? "2px solid #0f6679" : "1px solid #e6e9eb",
-                  background: isActive ? "#f0f7f9" : "transparent",
-                  cursor: "pointer",
-                  fontSize: "13px",
-                  fontWeight: isActive ? "600" : "400",
-                  color: isActive ? "#0f6679" : "#333",
-                }}
                 type="button"
                 aria-pressed={isActive}
+                style={{ ...baseBtnStyle, ...(isActive ? activeBtnStyle : {}) }}
               >
                 {a[0].toUpperCase() + a.slice(1)}
               </button>

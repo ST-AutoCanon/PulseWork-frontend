@@ -1142,10 +1142,10 @@ export function fieldsToBoxes(fields = [], startYPct = 5) {
       fieldType: f.type || "text",
       content:
         f.type === "label"
-          ? f.content ?? f.label ?? ""
+          ? (f.content ?? f.label ?? "")
           : f.type === "image"
-          ? f.content ?? ""
-          : f.content ?? "",
+            ? (f.content ?? "")
+            : (f.content ?? ""),
       xPct,
       yPct,
       wPct,
@@ -1162,6 +1162,7 @@ export function fieldsToBoxes(fields = [], startYPct = 5) {
       tableRows: f.tableRows || null,
       imageUrl: f.type === "image" ? f.content || null : null,
       isLabel: f.type === "label",
+      area: "body",
     };
 
     boxes.push(box);

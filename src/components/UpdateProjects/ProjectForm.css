@@ -233,7 +233,9 @@
   border-radius: 5px;
   font-size: small;
   font-weight: bold;
-  transition: background-color 0.3s ease, transform 0.1s ease,
+  transition:
+    background-color 0.3s ease,
+    transform 0.1s ease,
     box-shadow 0.3s ease;
 }
 
@@ -261,7 +263,9 @@
   background-color: #fff;
   font-size: small;
   font-weight: bold;
-  transition: background-color 0.3s ease, transform 0.1s ease,
+  transition:
+    background-color 0.3s ease,
+    transform 0.1s ease,
     box-shadow 0.3s ease;
 }
 
@@ -802,7 +806,9 @@ input[type="checkbox"]:checked::after {
 .pj-download {
   font-size: x-large;
   color: #00468c;
-  transition: transform 0.1s ease, color 0.1s ease;
+  transition:
+    transform 0.1s ease,
+    color 0.1s ease;
   cursor: pointer;
 }
 
@@ -825,7 +831,6 @@ input[type="checkbox"]:checked::after {
 
 .required {
   color: red;
-  font-size: larger;
 }
 
 .sp2-radio {

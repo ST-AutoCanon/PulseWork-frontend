@@ -150,7 +150,7 @@ async function ensureBoxesBlobUrls(boxes = []) {
         ) {
           src = `${String(BACKEND_URL).replace(
             /\/$/,
-            ""
+            "",
           )}/api/orgs/${orgId}/uploads/${src}`;
         }
 
@@ -174,7 +174,7 @@ async function ensureBoxesBlobUrls(boxes = []) {
           console.warn(
             "ensureBoxesBlobUrls: fetchProtectedImage failed for",
             src,
-            e
+            e,
           );
         }
 
@@ -190,7 +190,7 @@ async function ensureBoxesBlobUrls(boxes = []) {
       }
 
       return nb;
-    })
+    }),
   );
 }
 
@@ -224,7 +224,7 @@ async function replaceUploadUrlsInHtml(html = "", apiKey, backendBase) {
   if (!html) return html;
   if (!backendBase) {
     console.warn(
-      "replaceUploadUrlsInHtml: backendBase required for relative /api/ urls"
+      "replaceUploadUrlsInHtml: backendBase required for relative /api/ urls",
     );
     return html;
   }
@@ -250,7 +250,7 @@ async function replaceUploadUrlsInHtml(html = "", apiKey, backendBase) {
       const existing = img.getAttribute("style") || "";
       const extra = "pointer-events: none; user-select: none;";
       img.setAttribute("style", (existing ? existing + ";" : "") + extra);
-    })
+    }),
   );
 
   return doc.body ? doc.body.innerHTML : html;
@@ -259,7 +259,7 @@ async function replaceUploadUrlsInHtml(html = "", apiKey, backendBase) {
 async function resolveTemplateProtectedAssets(
   template = {},
   apiKey,
-  backendBase
+  backendBase,
 ) {
   if (!template) return template;
 
@@ -285,7 +285,7 @@ async function resolveTemplateProtectedAssets(
           if (!backendBase) {
             console.warn(
               "resolveTemplateProtectedAssets: backendBase required for relative /api/ urls",
-              src
+              src,
             );
             return;
           }
@@ -295,7 +295,7 @@ async function resolveTemplateProtectedAssets(
         const blob = await fetchProtectedImage(src, apiKey, employeeId);
         if (blob) t[field] = blob;
       }
-    })
+    }),
   );
 
   if (
@@ -324,7 +324,7 @@ async function resolveTemplateProtectedAssets(
             if (!backendBase) {
               console.warn(
                 "resolveTemplateProtectedAssets: backendBase required for relative /api/ urls in grapesJson",
-                src
+                src,
               );
             } else {
               const base = backendBase.replace(/\/$/, "");
@@ -351,7 +351,7 @@ async function resolveTemplateProtectedAssets(
               if (!backendBase) {
                 console.warn(
                   "resolveTemplateProtectedAssets: backendBase required for relative /api/ urls in grapesJson property",
-                  src
+                  src,
                 );
                 continue;
               }
@@ -370,7 +370,7 @@ async function resolveTemplateProtectedAssets(
     } catch (err) {
       console.warn(
         "resolveTemplateProtectedAssets: grapesJson processing failed",
-        err
+        err,
       );
     }
   }
@@ -401,6 +401,8 @@ export default function TemplateBuilder() {
     hPct: "60%",
     opacity: 0.12,
   });
+  const HEADER_HEIGHT_PCT = 10;
+  const FOOTER_HEIGHT_PCT = 10;
   const [watermarkEnabled, setWatermarkEnabled] = useState(false);
   const [watermarkFile, setWatermarkFile] = useState(null);
   const fileInputWatermarkRef = useRef(null);
@@ -422,7 +424,7 @@ export default function TemplateBuilder() {
     (fieldsToBoxes(PRESET_FIELDS["letter"] || []) || []).map((b) => ({
       ...b,
       locked: false,
-    }))
+    })),
   );
 
   const [showEditor, setShowEditor] = useState(false);
@@ -488,12 +490,12 @@ export default function TemplateBuilder() {
             row.map((cell) =>
               typeof cell === "string"
                 ? applyPlaceholdersToString(cell, ph)
-                : cell
-            )
+                : cell,
+            ),
           );
         }
         return { ...newBox, locked: false };
-      })
+      }),
     );
   }
 
@@ -513,7 +515,7 @@ export default function TemplateBuilder() {
           newBox.content = seal;
         }
         return { ...newBox, locked: false };
-      })
+      }),
     );
   }
 
@@ -531,7 +533,7 @@ export default function TemplateBuilder() {
         if (patch.hasOwnProperty("imageUrl")) merged.imageUrl = patch.imageUrl;
         if (patch.hasOwnProperty("content")) merged.content = patch.content;
         return merged;
-      })
+      }),
     );
   }
 
@@ -579,7 +581,10 @@ export default function TemplateBuilder() {
   useEffect(() => {
     try {
       const preset = PRESET_FIELDS[bodyType] || [];
-      const presetBoxes = fieldsToBoxes(preset || []).map((b) => ({
+      const presetBoxes = fieldsToBoxes(
+        preset || [],
+        HEADER_HEIGHT_PCT + 1,
+      ).map((b) => ({
         ...b,
         locked: false,
         style: { ...(b.style || {}) },
@@ -603,7 +608,7 @@ export default function TemplateBuilder() {
     if (!bodyBoxes || bodyBoxes.length === 0) {
       console.warn(
         "TemplateBuilder: bodyBoxes is empty (possible overwrite).",
-        { mode, showEditor }
+        { mode, showEditor },
       );
     }
   }, [bodyBoxes]);
@@ -678,7 +683,7 @@ export default function TemplateBuilder() {
             console.warn(
               "[fetchPublicBasicTemplates] failed to fetch template html",
               fileUrl,
-              err
+              err,
             );
           }
           let thumbnail = null;
@@ -694,7 +699,7 @@ export default function TemplateBuilder() {
               console.warn(
                 "[fetchPublicBasicTemplates] thumbnail normalize failed",
                 entry.thumbnail,
-                e
+                e,
               );
             }
           }
@@ -709,7 +714,7 @@ export default function TemplateBuilder() {
             origin: "public",
             rawEntry: entry,
           };
-        })
+        }),
       );
 
       setPublicTemplates(loaded);
@@ -717,7 +722,7 @@ export default function TemplateBuilder() {
     } catch (err) {
       console.warn(
         "[fetchPublicBasicTemplates] failed to load local basic templates:",
-        err && err.message
+        err && err.message,
       );
       setPublicTemplates([]);
     } finally {
@@ -794,7 +799,7 @@ export default function TemplateBuilder() {
         const resolved = await resolveTemplateProtectedAssets(
           template,
           API_KEY,
-          BACKEND_URL
+          BACKEND_URL,
         );
 
         try {
@@ -825,10 +830,10 @@ export default function TemplateBuilder() {
         ];
 
         const headerBlob = headerCandidates.find(
-          (x) => typeof x === "string" && x
+          (x) => typeof x === "string" && x,
         );
         const footerBlob = footerCandidates.find(
-          (x) => typeof x === "string" && x
+          (x) => typeof x === "string" && x,
         );
 
         if (headerBlob) resolved._headerBlob = headerBlob;
@@ -902,11 +907,11 @@ export default function TemplateBuilder() {
       setSavedTemplates((prev) => {
         try {
           const exists = prev.some(
-            (t) => String(t.id) === String(normalized.id)
+            (t) => String(t.id) === String(normalized.id),
           );
           if (exists)
             return prev.map((t) =>
-              String(t.id) === String(normalized.id) ? normalized : t
+              String(t.id) === String(normalized.id) ? normalized : t,
             );
           return [normalized, ...prev];
         } catch (e) {
@@ -921,7 +926,7 @@ export default function TemplateBuilder() {
       const resolved = await resolveTemplateProtectedAssets(
         normalized,
         API_KEY,
-        BACKEND_URL
+        BACKEND_URL,
       );
 
       let parsedBodyBoxes = null;
@@ -962,7 +967,7 @@ export default function TemplateBuilder() {
           if (BACKEND_URL && orgId) {
             src = `${BACKEND_URL.replace(
               /\/$/,
-              ""
+              "",
             )}/api/orgs/${orgId}/uploads/${src}`;
           }
         }
@@ -1065,7 +1070,7 @@ export default function TemplateBuilder() {
           resolved?.meta?.seal_url,
           resolved?.meta?.uploads?.qr,
           resolved?.meta?.uploads?.seal,
-        ].filter(Boolean)
+        ].filter(Boolean),
       );
 
       const filtered = foundAll.filter((u) => {
@@ -1154,12 +1159,12 @@ export default function TemplateBuilder() {
     if (typeof template === "string" || typeof template === "number") {
       const idStr = String(template);
       const found = (savedTemplates || []).find(
-        (t) => String(t.id) === idStr || String(t._id) === idStr
+        (t) => String(t.id) === idStr || String(t._id) === idStr,
       );
       if (!found) {
         console.warn(
           "openSavedTemplate: template id not found in savedTemplates:",
-          idStr
+          idStr,
         );
         return;
       }
@@ -1191,7 +1196,7 @@ export default function TemplateBuilder() {
         if (BACKEND_URL && orgId) {
           src = `${BACKEND_URL.replace(
             /\/$/,
-            ""
+            "",
           )}/api/orgs/${orgId}/uploads/${src}`;
         }
       }
@@ -1217,12 +1222,12 @@ export default function TemplateBuilder() {
         resolved = await resolveTemplateProtectedAssets(
           template,
           API_KEY,
-          BACKEND_URL
+          BACKEND_URL,
         );
       } catch (e) {
         console.warn(
           "openSavedTemplate: resolveTemplateProtectedAssets failed",
-          e
+          e,
         );
       }
 
@@ -1360,7 +1365,7 @@ export default function TemplateBuilder() {
             rawHeader,
             rawFooter,
             watermarkUrl,
-          ].filter(Boolean)
+          ].filter(Boolean),
         );
 
         const filtered = found.filter((u) => {
@@ -1374,7 +1379,7 @@ export default function TemplateBuilder() {
 
         if (!watermarkUrl && filtered.length) {
           const candid = filtered.find(
-            (u) => u !== rawHeader && u !== rawFooter
+            (u) => u !== rawHeader && u !== rawFooter,
           );
           if (candid) watermarkUrl = candid;
         }
@@ -1389,13 +1394,13 @@ export default function TemplateBuilder() {
       if (watermarkBlobUrl) {
         if (headerBlobUrl && headerBlobUrl === watermarkBlobUrl) {
           console.warn(
-            "openSavedTemplate: clearing header because it matched watermark"
+            "openSavedTemplate: clearing header because it matched watermark",
           );
           headerBlobUrl = null;
         }
         if (footerBlobUrl && footerBlobUrl === watermarkBlobUrl) {
           console.warn(
-            "openSavedTemplate: clearing footer because it matched watermark"
+            "openSavedTemplate: clearing footer because it matched watermark",
           );
           footerBlobUrl = null;
         }
@@ -1581,11 +1586,11 @@ export default function TemplateBuilder() {
         try {
           if (!normalized) return prev;
           const exists = prev.some(
-            (t) => String(t.id) === String(normalized.id)
+            (t) => String(t.id) === String(normalized.id),
           );
           if (exists)
             return prev.map((t) =>
-              String(t.id) === String(normalized.id) ? normalized : t
+              String(t.id) === String(normalized.id) ? normalized : t,
             );
           return [normalized, ...prev];
         } catch (e) {
@@ -1666,7 +1671,7 @@ export default function TemplateBuilder() {
       const resolved = await resolveTemplateProtectedAssets(
         entry,
         API_KEY,
-        BACKEND_URL
+        BACKEND_URL,
       );
 
       const cat = entry.category || inferCategory(entry);
@@ -1784,7 +1789,7 @@ export default function TemplateBuilder() {
       });
       if (!res.ok) throw new Error(`Delete failed (${res.status})`);
       setSavedTemplates((prev) =>
-        prev.filter((t) => String(t.id || t._id) !== String(id))
+        prev.filter((t) => String(t.id || t._id) !== String(id)),
       );
       if (
         viewingTemplate &&
@@ -1864,7 +1869,7 @@ export default function TemplateBuilder() {
       fieldsToBoxes(PRESET_FIELDS[bodyType] || []).map((b) => ({
         ...b,
         locked: false,
-      }))
+      })),
     );
     setShowEditor(false);
   }
@@ -1876,17 +1881,17 @@ export default function TemplateBuilder() {
   const handlePreviewChange = useCallback(
     ({ headerUrl, footerUrl, watermarkUrl }) => {
       setPreviewHeaderUrl((prev) =>
-        prev === headerUrl ? prev : headerUrl || null
+        prev === headerUrl ? prev : headerUrl || null,
       );
       setPreviewFooterUrl((prev) =>
-        prev === footerUrl ? prev : footerUrl || null
+        prev === footerUrl ? prev : footerUrl || null,
       );
       setPreviewWatermarkUrl((prev) => {
         const newVal = watermarkUrl || null;
         return prev === newVal ? prev : newVal;
       });
     },
-    []
+    [],
   );
 
   const sharedUploadProps = {
@@ -1944,7 +1949,7 @@ export default function TemplateBuilder() {
         (t) =>
           (t.name || "").toLowerCase().includes(q) ||
           (t.description || "").toLowerCase().includes(q) ||
-          (t.id || "").toLowerCase().includes(q)
+          (t.id || "").toLowerCase().includes(q),
       );
     }
     return list;
@@ -1963,7 +1968,7 @@ export default function TemplateBuilder() {
           (t.description || "").toLowerCase().includes(q) ||
           String(t.id || "")
             .toLowerCase()
-            .includes(q)
+            .includes(q),
       );
     }
     return list;
@@ -2191,7 +2196,7 @@ export default function TemplateBuilder() {
               }
               watermarkProps={
                 mode === "view"
-                  ? viewingTemplate?.watermarkProps ?? watermarkProps
+                  ? (viewingTemplate?.watermarkProps ?? watermarkProps)
                   : watermarkProps
               }
               onWatermarkChange={handleWatermarkChange}
@@ -2215,6 +2220,8 @@ export default function TemplateBuilder() {
                   : bodyBoxes
               }
               width={700}
+              headerHeightPct={HEADER_HEIGHT_PCT}
+              footerHeightPct={FOOTER_HEIGHT_PCT}
             />
           </div>
         </div>
@@ -2274,6 +2281,8 @@ export default function TemplateBuilder() {
           qrUrl,
           sealUrl,
         }}
+        headerHeightPct={HEADER_HEIGHT_PCT}
+        footerHeightPct={FOOTER_HEIGHT_PCT}
       />
       {saveModalOpen && (
         <div className={styles.modalOverlay} role="dialog" aria-modal="true">

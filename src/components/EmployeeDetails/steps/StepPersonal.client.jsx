@@ -18,9 +18,21 @@ export default function StepPersonal({ data, onChange }) {
           name="first_name"
           value={data.first_name || ""}
           onChange={(e) => onChange("first_name", e.target.value)}
-          pattern="^[A-Z][a-zA-Z]+$"
+          pattern="^[A-Z][a-zA-Z]*(?:\s[A-Z][a-zA-Z]*)*$"
           title="Must start with a capital letter and contain only letters"
           required
+        />
+      </label>
+
+      <label>
+        Middle Name
+        <input
+          type="text"
+          name="middle_name"
+          value={data.middle_name || ""}
+          onChange={(e) => onChange("middle_name", e.target.value)}
+          pattern="^[A-Z][a-zA-Z]*(?:\s[A-Z][a-zA-Z]*)*$"
+          title="Must start with a capital letter and contain only letters"
         />
       </label>
 
@@ -31,7 +43,7 @@ export default function StepPersonal({ data, onChange }) {
           name="last_name"
           value={data.last_name || ""}
           onChange={(e) => onChange("last_name", e.target.value)}
-          pattern="^[A-Z][a-zA-Z]*$"
+          pattern="^[A-Z][a-zA-Z]*(?:\s[A-Z][a-zA-Z]*)*$"
           title="Must start with a capital letter and contain only letters"
           required
         />

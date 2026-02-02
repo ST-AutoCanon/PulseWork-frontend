@@ -115,7 +115,7 @@ const CreateOrganization = ({ employeeId: propEmployeeId = null }) => {
       "x-api-key": API_KEY,
       ...(employeeId ? { "x-employee-id": employeeId } : {}),
     }),
-    [API_KEY, employeeId]
+    [API_KEY, employeeId],
   );
 
   const toInputDate = (val) => {
@@ -229,62 +229,71 @@ const CreateOrganization = ({ employeeId: propEmployeeId = null }) => {
       : "End date cannot be before start date.";
   };
 
-  const validateForm = (currentStep) => {
+  const FIELD_DISPLAY_NAMES = {
+    employeePrefix: "Employee ID Prefix",
+    cPanNo: "Company PAN No",
+    adminEmail: "Admin Email ID",
+    contactEmail: "Contact Email ID",
+    contactPhone: "Contact Phone No",
+    startDate: "Start Date",
+    endDate: "End Date",
+    sidebarAccess: "Sidebar Access",
+  };
+
+  const buildErrorMessages = (errorsObj) =>
+    Object.entries(errorsObj)
+      .filter(([_, err]) => err)
+      .map(([key, err]) => `${FIELD_DISPLAY_NAMES[key] || key}: ${err}`);
+
+  const validateStepOne = () => {
     const newErrors = {};
-    let errorMessages = [];
+    newErrors.employeePrefix = validatePrefix(employeePrefix);
+    newErrors.cPanNo = validatePanNumber(cPanNo);
+    newErrors.adminEmail =
+      validateEmail(adminEmail) ||
+      (adminEmail ? "" : "Admin Email ID is required.");
+    newErrors.contactEmail =
+      validateEmail(contactEmail) ||
+      (contactEmail ? "" : "Contact Email ID is required.");
+    newErrors.contactPhone =
+      validateMobileNumber(contactPhone) ||
+      (contactPhone ? "" : "Contact Phone No is required.");
+    newErrors.startDate = startDate ? "" : "Start Date is required.";
+    newErrors.endDate =
+      validateDates(startDate, endDate) ||
+      (endDate ? "" : "End Date is required.");
 
-    if (currentStep === 1) {
-      newErrors.employeePrefix = validatePrefix(employeePrefix);
-      newErrors.cPanNo = validatePanNumber(cPanNo);
-      newErrors.adminEmail =
-        validateEmail(adminEmail) ||
-        (adminEmail ? "" : "Admin Email ID is required.");
-      newErrors.contactEmail =
-        validateEmail(contactEmail) ||
-        (contactEmail ? "" : "Contact Email ID is required.");
-      newErrors.contactPhone =
-        validateMobileNumber(contactPhone) ||
-        (contactPhone ? "" : "Contact Phone No is required.");
-      newErrors.startDate = startDate ? "" : "Start Date is required.";
-      newErrors.endDate =
-        validateDates(startDate, endDate) ||
-        (endDate ? "" : "End Date is required.");
+    const messages = buildErrorMessages(newErrors);
+    return { newErrors, messages };
+  };
 
-      errorMessages = Object.entries(newErrors)
-        .filter(([_, error]) => error)
-        .map(([key, error]) => {
-          const fieldNames = {
-            employeePrefix: "Employee ID Prefix",
-            cPanNo: "Company PAN No",
-            adminEmail: "Admin Email ID",
-            contactEmail: "Contact Email ID",
-            contactPhone: "Contact Phone No",
-            startDate: "Start Date",
-            endDate: "End Date",
-          };
-          return `${fieldNames[key] || key}: ${error}`;
-        });
-    } else if (currentStep === 2) {
-      newErrors.sidebarAccess = sidebarAccess.some(
-        (access) => access.roles.length > 0
-      )
-        ? ""
-        : "At least one sidebar item must have a role assigned.";
-      if (newErrors.sidebarAccess) {
-        errorMessages.push(
-          "Sidebar Access: At least one sidebar item must have a role assigned."
-        );
-      }
-    }
+  const validateStepTwo = () => {
+    const newErrors = {};
+    newErrors.sidebarAccess = sidebarAccess.some(
+      (access) => access.roles.length > 0,
+    )
+      ? ""
+      : "At least one sidebar item must have a role assigned.";
+    const messages = newErrors.sidebarAccess
+      ? ["Sidebar Access: At least one sidebar item must have a role assigned."]
+      : [];
+    return { newErrors, messages };
+  };
+
+  const validateForm = (currentStep) => {
+    const { newErrors, messages } =
+      currentStep === 1 ? validateStepOne() : validateStepTwo();
 
     setErrors(newErrors);
     setMessage(
-      errorMessages.length > 0
-        ? `❌ Please fix the following errors:\n${errorMessages.join("\n")}`
-        : ""
+      messages.length > 0
+        ? `❌ Please fix the following errors:\n${messages.join("\n")}`
+        : "",
     );
-    return Object.values(newErrors).every((error) => error === "");
+
+    return Object.values(newErrors).every((err) => err === "");
   };
+  // --- end validation helpers ---
 
   const updateFieldError = (field, value) => {
     let error = "";
@@ -374,8 +383,8 @@ const CreateOrganization = ({ employeeId: propEmployeeId = null }) => {
         const list = Array.isArray(payload?.data)
           ? payload.data
           : Array.isArray(payload)
-          ? payload
-          : [];
+            ? payload
+            : [];
 
         const extracted = list.map((r) => {
           if (typeof r === "string") return r;
@@ -383,7 +392,7 @@ const CreateOrganization = ({ employeeId: propEmployeeId = null }) => {
         });
 
         const normalized = Array.from(new Set(extracted.filter(Boolean))).sort(
-          (a, b) => a.localeCompare(b)
+          (a, b) => a.localeCompare(b),
         );
 
         setRoles(normalized);
@@ -392,7 +401,7 @@ const CreateOrganization = ({ employeeId: propEmployeeId = null }) => {
         setRoles([]);
         showAlert(
           "Failed to load roles from server. Sidebar-role assignment will be disabled until roles load. Please retry or contact support.",
-          "Error"
+          "Error",
         );
       } finally {
         setRolesLoading(false);
@@ -419,14 +428,14 @@ const CreateOrganization = ({ employeeId: propEmployeeId = null }) => {
         setSidebarItems(data);
         if (!isEditing || sidebarAccess.length === 0) {
           setSidebarAccess(
-            data.map((item) => ({ sidebar_item_id: item.id, roles: [] }))
+            data.map((item) => ({ sidebar_item_id: item.id, roles: [] })),
           );
         }
       } catch (err) {
         console.error("Sidebar menu fetch error:", err);
         showAlert(
           "Failed to fetch sidebar menu items. Please try again or contact support.",
-          "Error"
+          "Error",
         );
         setSidebarItems([]);
         setSidebarAccess([]);
@@ -448,7 +457,7 @@ const CreateOrganization = ({ employeeId: propEmployeeId = null }) => {
               method: "GET",
               credentials: "include",
               headers,
-            }
+            },
           );
           if (!res.ok) {
             throw new Error(`Failed to fetch sidebar access: ${res.status}`);
@@ -468,7 +477,7 @@ const CreateOrganization = ({ employeeId: propEmployeeId = null }) => {
           console.error("Sidebar access fetch error:", err);
           showAlert(
             "Failed to fetch sidebar access. Please try again or contact support.",
-            "Error"
+            "Error",
           );
         }
       }
@@ -525,15 +534,15 @@ const CreateOrganization = ({ employeeId: propEmployeeId = null }) => {
       prev.map((access) =>
         access.sidebar_item_id === sidebarItemId
           ? { ...access, roles: selectedRoles }
-          : access
-      )
+          : access,
+      ),
     );
     if (shouldValidate) {
       updateFieldError("sidebarAccess", [
         ...sidebarAccess.map((access) =>
           access.sidebar_item_id === sidebarItemId
             ? { ...access, roles: selectedRoles }
-            : access
+            : access,
         ),
       ]);
     }
@@ -587,7 +596,7 @@ const CreateOrganization = ({ employeeId: propEmployeeId = null }) => {
         console.error("Non-JSON response received:", text);
         showAlert(
           `Server returned a non-JSON response (status: ${response.status}). Check the server configuration or URL.`,
-          "Error"
+          "Error",
         );
         return;
       }
@@ -596,7 +605,7 @@ const CreateOrganization = ({ employeeId: propEmployeeId = null }) => {
       if (response.ok) {
         showAlert(
           data.message || "Organization deleted successfully.",
-          "Success"
+          "Success",
         );
         setOrgTableData((prev) => prev.filter((org) => org.id !== orgId));
         setFilteredOrgData((prev) => prev.filter((org) => org.id !== orgId));
@@ -604,14 +613,14 @@ const CreateOrganization = ({ employeeId: propEmployeeId = null }) => {
         showAlert(
           data.message ||
             `Failed to delete organization (status: ${response.status}).`,
-          "Error"
+          "Error",
         );
       }
     } catch (error) {
       console.error("Delete organization error:", error);
       showAlert(
         `Network error: ${error.message}. Please check your connection or server status.`,
-        "Error"
+        "Error",
       );
     }
   };
@@ -689,7 +698,7 @@ const CreateOrganization = ({ employeeId: propEmployeeId = null }) => {
       access.roles.map((role) => ({
         sidebar_item_id: access.sidebar_item_id,
         role,
-      }))
+      })),
     );
 
     try {
@@ -715,18 +724,18 @@ const CreateOrganization = ({ employeeId: propEmployeeId = null }) => {
       if (response.ok) {
         showAlert(
           `Organization ${isEditing ? "updated" : "created"} successfully.`,
-          "Success"
+          "Success",
         );
         if (isEditing) {
           setOrgTableData((prev) =>
             prev.map((org) =>
-              org.id === currentOrgId ? { ...org, ...orgData } : org
-            )
+              org.id === currentOrgId ? { ...org, ...orgData } : org,
+            ),
           );
           setFilteredOrgData((prev) =>
             prev.map((org) =>
-              org.id === currentOrgId ? { ...org, ...orgData } : org
-            )
+              org.id === currentOrgId ? { ...org, ...orgData } : org,
+            ),
           );
         } else {
           const res = await fetch(`${BASE_URL}/api/organizations`, {
@@ -769,7 +778,7 @@ const CreateOrganization = ({ employeeId: propEmployeeId = null }) => {
     } catch (error) {
       console.error(
         `${isEditing ? "Update" : "Create"} organization error:`,
-        error
+        error,
       );
       showAlert(`Server error: ${error.message}`, "Error");
     } finally {
@@ -1222,7 +1231,7 @@ const CreateOrganization = ({ employeeId: propEmployeeId = null }) => {
                           {sidebarItems.map((item) => {
                             const selectedRoles =
                               sidebarAccess.find(
-                                (access) => access.sidebar_item_id === item.id
+                                (access) => access.sidebar_item_id === item.id,
                               )?.roles || [];
                             return (
                               <div
@@ -1247,7 +1256,7 @@ const CreateOrganization = ({ employeeId: propEmployeeId = null }) => {
                                   isOpen={openDropdownId === item.id}
                                   onToggle={() =>
                                     setOpenDropdownId((prev) =>
-                                      prev === item.id ? null : item.id
+                                      prev === item.id ? null : item.id,
                                     )
                                   }
                                 />
@@ -1258,7 +1267,7 @@ const CreateOrganization = ({ employeeId: propEmployeeId = null }) => {
                       ) : (
                         <p className="orgprefix-no-data">
                           {alertModal.message.includes(
-                            "Failed to fetch sidebar menu items"
+                            "Failed to fetch sidebar menu items",
                           )
                             ? "Unable to load sidebar items. Please try again or contact support."
                             : "No sidebar items found."}
@@ -1290,8 +1299,8 @@ const CreateOrganization = ({ employeeId: propEmployeeId = null }) => {
                           ? "Updating..."
                           : "Saving..."
                         : isEditing
-                        ? "Update"
-                        : "Save"}
+                          ? "Update"
+                          : "Save"}
                     </button>
                   </div>
                 </div>

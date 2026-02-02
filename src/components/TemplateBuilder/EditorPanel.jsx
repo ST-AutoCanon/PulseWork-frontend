@@ -27,6 +27,8 @@ export default function EditorPanel(props) {
     selectedFieldId = null,
     setSelectedFieldId = null,
     showEditor = false,
+    headerHeightPct = 10,
+    footerHeightPct = 10,
   } = props;
 
   const {
@@ -51,6 +53,17 @@ export default function EditorPanel(props) {
   const showA4Preview =
     (mode === "basic" || mode === "scratch") && !shouldMountDedicatedEditor;
 
+  const CANVAS_WIDTH = 794;
+  const A4_RATIO = 297 / 210;
+  const canvasHeightPx = Math.round(CANVAS_WIDTH * A4_RATIO);
+
+  const headerPx = Math.round(
+    ((Number(headerHeightPct) || 10) / 100) * canvasHeightPx,
+  );
+  const footerPx = Math.round(
+    ((Number(footerHeightPct) || 10) / 100) * canvasHeightPx,
+  );
+
   return (
     <main className={styles.editorPanel}>
       <div
@@ -60,9 +73,9 @@ export default function EditorPanel(props) {
       >
         {showA4Preview && (
           <A4Preview
-            headerUrl={previewUrls?.headerUrl}
-            footerUrl={previewUrls?.footerUrl}
-            watermarkUrl={previewUrls?.watermarkUrl}
+            headerUrl={previewUrls?.previewHeaderUrl}
+            footerUrl={previewUrls?.previewFooterUrl}
+            watermarkUrl={previewUrls?.previewWatermarkUrl}
             watermarkProps={watermarkProps}
             bodyBoxes={bodyBoxes}
             editable={true}
@@ -70,6 +83,8 @@ export default function EditorPanel(props) {
             onBoxesChange={setBodyBoxes}
             onWatermarkChange={handleWatermarkChange}
             selectedBoxId={selectedFieldId}
+            headerHeightPct={headerHeightPct}
+            footerHeightPct={footerHeightPct}
           />
         )}
 
@@ -142,12 +157,15 @@ export default function EditorPanel(props) {
                       );
                     }
                   })()}
+                  initialBoxesAreBodyRelative={true}
                   onSave={handleCustomSave}
                   canvasWidthPx={794}
-                  watermarkUrl={previewUrls?.watermarkUrl}
+                  watermarkUrl={previewUrls?.previewWatermarkUrl}
                   watermarkProps={watermarkProps}
                   watermarkEditable={watermarkEnabled || showEditor}
                   onWatermarkChange={handleWatermarkChange}
+                  headerHeightPct={headerHeightPct} // <-- forwarded
+                  footerHeightPct={footerHeightPct} // <-- forwarded
                 />
               )}
             </div>
@@ -187,13 +205,16 @@ export default function EditorPanel(props) {
             key={"scratch-" + Date.now()}
             background={null}
             initialBoxes={fieldsToBoxes(PRESET_FIELDS[bodyType] || [])}
+            initialBoxesAreBodyRelative={true}
             initialBodyType={bodyType}
             onSave={handleCustomSave}
             canvasWidthPx={794}
-            watermarkUrl={previewUrls?.watermarkUrl}
+            watermarkUrl={previewUrls?.previewWatermarkUrl}
             watermarkProps={watermarkProps}
             watermarkEditable={watermarkEnabled || showEditor}
             onWatermarkChange={handleWatermarkChange}
+            headerHeightPct={headerHeightPct}
+            footerHeightPct={footerHeightPct}
           />
         )}
       </div>

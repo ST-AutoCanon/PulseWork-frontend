@@ -50,9 +50,7 @@ export default function SidebarPanel(props) {
           Build from Scratch
         </button>
         <button
-          className={`${styles.modeBtn} ${
-            mode === "basic" ? styles.active : ""
-          }`}
+          className={`${styles.modeBtn} ${mode === "basic" ? styles.active : ""}`}
           onClick={() => setAppMode("basic")}
           aria-pressed={mode === "basic"}
         >
@@ -124,7 +122,7 @@ export default function SidebarPanel(props) {
                     } else {
                       console.warn(
                         "openSavedTemplate not provided to SidebarPanel",
-                        extra
+                        extra,
                       );
                     }
                   }}
@@ -205,12 +203,7 @@ export default function SidebarPanel(props) {
               >
                 + Table
               </button>
-              <button
-                className={styles.modeBtn}
-                onClick={actions.actionTogglePreview}
-              >
-                Preview
-              </button>
+
               <button
                 className={styles.modeBtn}
                 onClick={actions.actionDeleteSelected}

@@ -112,31 +112,68 @@ export default function ChatList({ onSelect }) {
   }, [tab, BASE_URL, headers, meId]);
 
   const filteredRooms = rooms.filter((r) =>
-    r.is_group ? tab === "group" : tab === "private"
+    r.is_group ? tab === "group" : tab === "private",
   );
+
   const suggestions = employees.filter(
     (u) =>
       (u.name || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (u.employee_id || "").toLowerCase().includes(searchTerm.toLowerCase())
+      (u.employee_id || "").toLowerCase().includes(searchTerm.toLowerCase()),
   );
+
+  const handleCreateRoomResponse = (resp) => {
+    if (resp && resp.success && resp.room) {
+      const newRoom = resp.room;
+      setRooms((rs) => {
+        if (rs.some((r) => String(r.id) === String(newRoom.id))) return rs;
+        return [newRoom, ...rs];
+      });
+
+      setActiveId(newRoom.id);
+      if (typeof onSelect === "function") onSelect(newRoom);
+    } else {
+      console.error("Failed to create room:", resp && resp.error);
+    }
+  };
+
+  const handleSuggestionClick = (u) => {
+    if (!socket) {
+      console.warn("Socket not ready — cannot create room");
+      return;
+    }
+    if (!socket.connected) {
+      console.warn("Socket not connected — cannot create room");
+      return;
+    }
+
+    socket.emit(
+      "create_room",
+      { name: "", isGroup: false, members: [u.employee_id] },
+      (resp) => handleCreateRoomResponse(resp),
+    );
+
+    setSearchTerm("");
+  };
+
+  const performDeleteGroup = async (roomId) => {
+    try {
+      await axios.delete(`${BASE_URL}/rooms/${roomId}`, {
+        withCredentials: true,
+        headers,
+      });
+      setRooms((rs) => rs.filter((r) => r.id !== roomId));
+      if (activeId === roomId) setActiveId(null);
+    } catch (err) {
+      console.error("Failed to delete group:", err);
+    } finally {
+      closeAlert();
+    }
+  };
 
   const deleteGroup = (roomId) => {
     showAlert({
       message: "Are you sure you want to delete this group permanently?",
-      onConfirm: async () => {
-        try {
-          await axios.delete(`${BASE_URL}/rooms/${roomId}`, {
-            withCredentials: true,
-            headers,
-          });
-          setRooms((rs) => rs.filter((r) => r.id !== roomId));
-          if (activeId === roomId) setActiveId(null);
-        } catch (err) {
-          console.error("Failed to delete group:", err);
-        } finally {
-          closeAlert();
-        }
-      },
+      onConfirm: () => performDeleteGroup(roomId),
     });
   };
 
@@ -181,52 +218,7 @@ export default function ChatList({ onSelect }) {
                     <div
                       key={u.employee_id}
                       className="suggestion-item"
-                      onClick={() => {
-                        if (!socket) {
-                          console.warn("Socket not ready — cannot create room");
-                          return;
-                        }
-                        if (!socket.connected) {
-                          console.warn(
-                            "Socket not connected — cannot create room"
-                          );
-                          return;
-                        }
-
-                        socket.emit(
-                          "create_room",
-                          {
-                            name: "",
-                            isGroup: false,
-                            members: [u.employee_id],
-                          },
-                          (resp) => {
-                            if (resp && resp.success && resp.room) {
-                              const newRoom = resp.room;
-                              setRooms((rs) => {
-                                if (
-                                  rs.some(
-                                    (r) => String(r.id) === String(newRoom.id)
-                                  )
-                                )
-                                  return rs;
-                                return [newRoom, ...rs];
-                              });
-
-                              setActiveId(newRoom.id);
-                              if (typeof onSelect === "function")
-                                onSelect(newRoom);
-                            } else {
-                              console.error(
-                                "Failed to create room:",
-                                resp && resp.error
-                              );
-                            }
-                          }
-                        );
-
-                        setSearchTerm("");
-                      }}
+                      onClick={() => handleSuggestionClick(u)}
                     >
                       <UserAvatar
                         photoUrl={u.photo_url}
@@ -277,6 +269,7 @@ export default function ChatList({ onSelect }) {
                 )}
               </span>
             </div>
+
             {r.is_group === 1 && String(r.createdBy) === String(meId) && (
               <button
                 className="delete-group-btn"
@@ -288,6 +281,7 @@ export default function ChatList({ onSelect }) {
             )}
           </div>
         ))}
+
         {filteredRooms.length === 0 && (
           <div className="empty-placeholder">
             {tab === "private" ? "No private chats" : "No groups yet"}

@@ -63,114 +63,12 @@ const Sidebar = ({ setActiveContent }) => {
     () => ({
       Admin: [
         { label: "Dashboard", path: "/dashboard", icon: "MdOutlineDashboard" },
-        {
-          label: "Employee Details",
-          path: "/employeeDetails",
-          icon: "MdPeople",
-        },
-        { label: "Add Department", path: "/addDepartment", icon: "MdDomain" },
-        {
-          label: "Update Projects",
-          path: "/updateProjects",
-          icon: "MdWorkOutline",
-        },
-        {
-          label: "Compensation",
-          path: "/compensation",
-          icon: "MdOutlineAccountBalanceWallet",
-        },
-              {
-        label: "Overtime Summary",
-        path: "/OvertimeDetails",
-        icon: "MdAccessTime",
-      },
-
-        {
-          label: "Leave Queries",
-          path: "/leaveQueries",
-          icon: "MdOutlineCommentBank",
-        },
-        {
-          label: "Reimbursement",
-          path: "/reimbursement",
-          icon: "MdCurrencyRupee",
-        },
-        {
-          label: "Payroll Summary",
-          path: "/payrollSummary",
-          icon: "MdReceiptLong",
-        },
-        {
-         label: "Exit Flow",
-  path: "/exitFlow",
-  icon: "MdLogout",
-},
-
-        { label: "Assets", path: "/assets", icon: "MdLaptop" },
-        { label: "Vendors", path: "/vendors", icon: "MdLocalShipping" },
-        {
-          label: "Task Management",
-          path: "/TaskManagement",
-          icon: "MdTaskAlt",
-        },
-        { label: "Messenger", path: "/messenger", icon: "MdChat" },
       ],
       Manager: [
         { label: "Dashboard", path: "/dashboard", icon: "MdOutlineDashboard" },
-        {
-          label: "Employee Queries",
-          path: "/employeeQueries",
-          icon: "MdOutlineContactPhone",
-        },
-        {
-          label: "Compensation",
-          path: "/compensation",
-          icon: "MdOutlineAccountBalanceWallet",
-        },
-        {
-          label: "Leave Queries",
-          path: "/leaveQueries",
-          icon: "MdOutlineCommentBank",
-        },
-        {
-          label: "Reimbursement",
-          path: "/reimbursement",
-          icon: "MdCurrencyRupee",
-        },
-        {
-          label: "Task Management",
-          path: "/TaskManagement",
-          icon: "MdTaskAlt",
-        },
-             {
-  label: "Exit Flow",
-  path: "/exitFlow",
-  icon: "MdLogout",
-},
       ],
       Employee: [
         { label: "Dashboard", path: "/dashboard", icon: "MdOutlineDashboard" },
-        {
-          label: "Leave Request",
-          path: "/leaveQueries",
-          icon: "MdOutlineCommentBank",
-        },
-        {
-          label: "Reimbursement",
-          path: "/reimbursement",
-          icon: "MdCurrencyRupee",
-        },
-        {
-          label: "Salary Statement",
-          path: "/Salary_Statement",
-          icon: "MdReceipt",
-        },
-        {
-          label: "Task Management",
-          path: "/TaskManagement",
-          icon: "MdTaskAlt",
-        },
-        { label: "Messenger", path: "/messenger", icon: "MdChat" },
       ],
       SuperAdmin: [
         {
@@ -180,7 +78,7 @@ const Sidebar = ({ setActiveContent }) => {
         },
       ],
     }),
-    []
+    [],
   );
 
   const pathToComponent = useMemo(
@@ -217,7 +115,7 @@ const Sidebar = ({ setActiveContent }) => {
         return <TaskManagementEmployee />;
       },
     }),
-    []
+    [],
   );
 
   const normalizeMenu = (items = []) =>

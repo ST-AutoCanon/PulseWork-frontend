@@ -2,6 +2,7 @@
 
 import React, {
   useEffect,
+  useLayoutEffect,
   useRef,
   useState,
   forwardRef,
@@ -10,6 +11,7 @@ import React, {
 import { Rnd } from "react-rnd";
 import { v4 as uuidv4 } from "uuid";
 import styles from "./CustomTemplateEditor.module.css";
+import FieldPropertiesPanel from "./FieldPropertiesPanel";
 
 const A4_RATIO = 297 / 210;
 
@@ -49,6 +51,7 @@ const TableCell = ({ ...props }) => {
     editingTableMode,
     updateTableCell,
     setEditingCell,
+    boxStyle = {},
   } = props;
   const editingCellRef = useRef(null);
 
@@ -85,8 +88,26 @@ const TableCell = ({ ...props }) => {
     setEditingCell(null);
   };
 
-  const borderStyle = table.border ? "1px solid rgba(0,0,0,0.12)" : "none";
-  const cellBackground = table.cellBackground || "transparent";
+  const headerOnTop = table.__isHeader === true;
+  const borderColor =
+    table.borderColor || boxStyle.borderColor || "rgba(0,0,0,0.12)";
+  const borderStyle = table.border ? `1px solid ${borderColor}` : "none";
+
+  const cellBackground = headerOnTop
+    ? table.headerBackground ||
+      boxStyle.headerBackground ||
+      table.cellBackground ||
+      boxStyle.cellBackground ||
+      "transparent"
+    : table.rowBackground ||
+      boxStyle.rowBackground ||
+      table.cellBackground ||
+      boxStyle.cellBackground ||
+      "transparent";
+
+  const cellColor = headerOnTop
+    ? table.headerColor || boxStyle.headerColor || undefined
+    : table.rowColor || boxStyle.rowColor || undefined;
 
   return (
     <td
@@ -109,6 +130,7 @@ const TableCell = ({ ...props }) => {
         overflow: "hidden",
         whiteSpace: "pre-wrap",
         background: cellBackground,
+        color: cellColor,
       }}
     >
       {isEditingCell && isEditingCell.r === rIdx && isEditingCell.c === cIdx ? (
@@ -144,6 +166,7 @@ const TableCell = ({ ...props }) => {
 const CustomTemplateEditor = forwardRef(function CustomTemplateEditor(
   {
     initialBoxes = [],
+    initialBoxesAreBodyRelative = false,
     onUploadImage,
     canvasWidthPx = 1000,
     onSave,
@@ -155,7 +178,7 @@ const CustomTemplateEditor = forwardRef(function CustomTemplateEditor(
     watermarkEditable = false,
     onWatermarkChange = null,
   },
-  ref
+  ref,
 ) {
   const containerRef = useRef(null);
   const fileInputRef = useRef(null);
@@ -170,7 +193,7 @@ const CustomTemplateEditor = forwardRef(function CustomTemplateEditor(
   const [editingTableMode, setEditingTableMode] = useState(null);
   const [canvasWidthActual, setCanvasWidthActual] = useState(canvasWidthPx);
   const [canvasHeightActual, setCanvasHeightActual] = useState(
-    Math.round(canvasWidthPx * A4_RATIO)
+    Math.round(canvasWidthPx * A4_RATIO),
   );
   const [pageBackground, setPageBackground] = useState("#ffffff");
 
@@ -189,11 +212,11 @@ const CustomTemplateEditor = forwardRef(function CustomTemplateEditor(
       wPct: "60%",
       hPct: "60%",
       opacity: 0.12,
-    }
+    },
   );
 
   const [localWatermarkUrl, setLocalWatermarkUrl] = useState(
-    watermarkUrl || null
+    watermarkUrl || null,
   );
 
   useEffect(() => {
@@ -215,26 +238,59 @@ const CustomTemplateEditor = forwardRef(function CustomTemplateEditor(
     100 - (Number(String(footerHeightPct).replace("%", "")) || 10);
   const bodyHeightPct = bodyBottomPct - bodyTopPct;
 
+  function areaFromTopPct(topNum, hPctNum) {
+    const header = Number(String(headerHeightPct).replace("%", "")) || 10;
+    const footer = Number(String(footerHeightPct).replace("%", "")) || 10;
+    const bodyTop = header;
+    const bodyBottom = 100 - footer;
+    const center = topNum + hPctNum / 2;
+    if (center <= header) return "header";
+    if (center >= bodyBottom) return "footer";
+    return "body";
+  }
+
   useEffect(() => {
+    if (!Array.isArray(initialBoxes) || initialBoxes.length === 0) {
+      setBoxes([]);
+      return;
+    }
+
+    const parsePct = (s) => {
+      try {
+        const str = String(s || "0").trim();
+        if (str.endsWith("%")) return Number(str.replace("%", "")) || 0;
+        const n = Number(str);
+        return Number.isFinite(n) ? n : 0;
+      } catch {
+        return 0;
+      }
+    };
+
     function shiftBoxesToBody(src = []) {
-      if (!Array.isArray(src)) return [];
       return src.map((b) => {
         const nb = { ...b };
         try {
-          const yNum = Number(String(nb.yPct || "0").replace("%", "")) || 0;
-          const hNum = Number(String(nb.hPct || "0").replace("%", "")) || 0;
-          let newY = yNum + bodyTopPct;
-          if (newY + hNum > bodyBottomPct - 0.5) {
-            newY = Math.max(bodyTopPct + 0.5, bodyBottomPct - hNum - 0.5);
+          const yNum = parsePct(nb.yPct);
+          const hNum = parsePct(nb.hPct || "0");
+
+          nb.area = nb.area || areaFromTopPct(yNum, hNum);
+
+          let candidateTop = yNum;
+
+          if (initialBoxesAreBodyRelative && nb.area === "body") {
+            candidateTop = yNum + bodyTopPct;
           }
-          nb.yPct = `${newY}%`;
+
+          const clampedTop = clampToArea(candidateTop, hNum, nb.area);
+          nb.yPct = `${clampedTop}%`;
         } catch (e) {}
         return nb;
       });
     }
 
-    const shifted = shiftBoxesToBody(initialBoxes || []);
-    setBoxes(shifted);
+    const normalized = shiftBoxesToBody(initialBoxes || []);
+    setBoxes(normalized);
+
     return () => {
       createdUrlsRef.current.forEach((u) => {
         try {
@@ -243,9 +299,14 @@ const CustomTemplateEditor = forwardRef(function CustomTemplateEditor(
       });
       createdUrlsRef.current = [];
     };
-  }, [JSON.stringify(initialBoxes), headerHeightPct, footerHeightPct]);
+  }, [
+    JSON.stringify(initialBoxes),
+    headerHeightPct,
+    footerHeightPct,
+    initialBoxesAreBodyRelative,
+  ]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const el = containerRef.current;
     if (!el) return;
 
@@ -254,8 +315,8 @@ const CustomTemplateEditor = forwardRef(function CustomTemplateEditor(
       const available = Math.max(320, rect.width - 24);
       const w = Math.min(canvasWidthPx, Math.floor(available));
       const h = Math.round(w * A4_RATIO);
-      setCanvasWidthActual(w);
-      setCanvasHeightActual(h);
+      setCanvasWidthActual((prev) => (prev !== w ? w : prev));
+      setCanvasHeightActual((prev) => (prev !== h ? h : prev));
     }
 
     recompute();
@@ -289,14 +350,14 @@ const CustomTemplateEditor = forwardRef(function CustomTemplateEditor(
     const maxAllowed = bodyBottom - hPctNum - 0.5;
     return Math.min(
       Math.max(minAllowed + 0.5, yPctNum),
-      Math.max(minAllowed + 0.5, maxAllowed)
+      Math.max(minAllowed + 0.5, maxAllowed),
     );
   }
 
   function addBox(type = "text") {
     if (activeArea === "body") {
       console.warn(
-        "Adding new boxes into the document body is disabled. Select Header or Footer in the side panel to add elements."
+        "Adding new boxes into the document body is disabled. Select Header or Footer in the side panel to add elements.",
       );
       return null;
     }
@@ -309,7 +370,7 @@ const CustomTemplateEditor = forwardRef(function CustomTemplateEditor(
     if (activeArea === "header") {
       topPct = Math.max(
         0.5,
-        Number(String(headerHeightPct).replace("%", "")) / 2 - hPctNum / 2
+        Number(String(headerHeightPct).replace("%", "")) / 2 - hPctNum / 2,
       );
     } else if (activeArea === "footer") {
       const footer = Number(String(footerHeightPct).replace("%", "")) || 10;
@@ -317,7 +378,7 @@ const CustomTemplateEditor = forwardRef(function CustomTemplateEditor(
     } else {
       topPct = Math.max(
         0.5,
-        Number(String(headerHeightPct).replace("%", "")) / 2 - hPctNum / 2
+        Number(String(headerHeightPct).replace("%", "")) / 2 - hPctNum / 2,
       );
     }
 
@@ -329,7 +390,7 @@ const CustomTemplateEditor = forwardRef(function CustomTemplateEditor(
       const rows = 3;
       const cols = 3;
       const data = Array.from({ length: rows }).map(() =>
-        Array.from({ length: cols }).map(() => "")
+        Array.from({ length: cols }).map(() => ""),
       );
       const box = {
         id,
@@ -343,11 +404,13 @@ const CustomTemplateEditor = forwardRef(function CustomTemplateEditor(
           border: true,
           cellPadding: 6,
           cellBackground: "transparent",
+          textAlign: "left",
         },
         xPct: `${leftPct}%`,
         yPct: `${topPct}%`,
         wPct: `${wPctNum}%`,
         hPct: `${hPctNum}%`,
+        area: activeArea,
         style: {
           fontFamily: "Arial, sans-serif",
           fontSize: 12,
@@ -356,6 +419,11 @@ const CustomTemplateEditor = forwardRef(function CustomTemplateEditor(
           fontWeight: "400",
           fontStyle: "normal",
           textAlign: "left",
+          headerBackground: "#f8fafc",
+          headerColor: "#0f1724",
+          rowBackground: "transparent",
+          rowColor: "#0f1724",
+          borderColor: "rgba(0,0,0,0.12)",
         },
       };
       setBoxes((prev) => [...prev, box]);
@@ -370,12 +438,13 @@ const CustomTemplateEditor = forwardRef(function CustomTemplateEditor(
         type === "text"
           ? "Editable text"
           : type === "placeholder"
-          ? "[[FIELD_NAME]]"
-          : "",
+            ? "[[FIELD_NAME]]"
+            : "",
       xPct: `${leftPct}%`,
       yPct: `${topPct}%`,
       wPct: `${wPctNum}%`,
       hPct: `${hPctNum}%`,
+      area: activeArea,
       style: {
         fontFamily: "Arial, sans-serif",
         fontSize: 14,
@@ -404,6 +473,28 @@ const CustomTemplateEditor = forwardRef(function CustomTemplateEditor(
     if (editingTableMode === selectedId) setEditingTableMode(null);
   }
 
+  function normalizeTableForSave(b) {
+    if (b.table && typeof b.table === "object") return b.table;
+    const headers = Array.isArray(b.tableHeaders) ? b.tableHeaders : null;
+    const rows = Array.isArray(b.tableRows) ? b.tableRows : null;
+    if (!headers && !rows) return undefined;
+    const cols =
+      (headers && headers.length) || (rows && rows[0] ? rows[0].length : 0);
+    const data = rows
+      ? rows.map((r) => Array.from(r))
+      : cols
+        ? [Array.from({ length: cols }).map(() => "")]
+        : [];
+    return {
+      rows: data.length,
+      cols,
+      data,
+      header: !!(headers && headers.length),
+      border: true,
+      cellPadding: 6,
+    };
+  }
+
   function saveTemplate() {
     const payload = {
       page: {
@@ -420,12 +511,13 @@ const CustomTemplateEditor = forwardRef(function CustomTemplateEditor(
         id: b.id,
         type: b.type,
         content: b.content,
-        table: b.table || undefined,
+        table: normalizeTableForSave(b),
         xPct: b.xPct,
         yPct: b.yPct,
         wPct: b.wPct,
         hPct: b.hPct,
         style: b.style || {},
+        area: b.area || "body",
       })),
       meta: { savedAt: new Date().toISOString() },
     };
@@ -443,19 +535,26 @@ const CustomTemplateEditor = forwardRef(function CustomTemplateEditor(
   function handleDragStop(id, e, d) {
     draggingRef.current = false;
     const { left, top } = pxToPct(d.x, d.y, 0, 0, innerCanvasRef.current);
+
     try {
-      const b = boxes.find((bx) => bx.id === id);
+      const b = boxes.find((bx) => bx.id === id) || {};
       const hPctNum = Number(String(b.hPct || "6%").replace("%", "")) || 6;
       const topNum = Number(String(top).replace("%", "")) || 0;
-      const boxCenter = topNum + hPctNum / 2;
-      let area = "body";
+
+      let area = b.area || "body";
       const headerEnd = Number(String(headerHeightPct).replace("%", "")) || 10;
       const footerStart =
         100 - (Number(String(footerHeightPct).replace("%", "")) || 10);
-      if (boxCenter <= headerEnd) area = "header";
-      else if (boxCenter >= footerStart) area = "footer";
+
+      if (!b.area) {
+        const boxCenter = topNum + hPctNum / 2;
+        if (boxCenter <= headerEnd) area = "header";
+        else if (boxCenter >= footerStart) area = "footer";
+        else area = "body";
+      }
+
       const clampedTop = clampToArea(topNum, hPctNum, area);
-      updateBox(id, { xPct: left, yPct: `${clampedTop}%` });
+      updateBox(id, { xPct: left, yPct: `${clampedTop}%`, area });
     } catch (err) {
       updateBox(id, { xPct: left, yPct: top });
     }
@@ -472,24 +571,33 @@ const CustomTemplateEditor = forwardRef(function CustomTemplateEditor(
       topPx,
       wPx,
       hPx,
-      innerCanvasRef.current
+      innerCanvasRef.current,
     );
+
     try {
+      const b = boxes.find((bx) => bx.id === id) || {};
       const hPctNum = Number(String(height).replace("%", "")) || 6;
       const topNum = Number(String(top).replace("%", "")) || 0;
-      const boxCenter = topNum + hPctNum / 2;
+
+      let area = b.area || "body";
       const headerEnd = Number(String(headerHeightPct).replace("%", "")) || 10;
       const footerStart =
         100 - (Number(String(footerHeightPct).replace("%", "")) || 10);
-      let area = "body";
-      if (boxCenter <= headerEnd) area = "header";
-      else if (boxCenter >= footerStart) area = "footer";
+
+      if (!b.area) {
+        const boxCenter = topNum + hPctNum / 2;
+        if (boxCenter <= headerEnd) area = "header";
+        else if (boxCenter >= footerStart) area = "footer";
+        else area = "body";
+      }
+
       const clampedTop = clampToArea(topNum, hPctNum, area);
       updateBox(id, {
         xPct: left,
         yPct: `${clampedTop}%`,
         wPct: width,
         hPct: height,
+        area,
       });
     } catch (err) {
       updateBox(id, { xPct: left, yPct: top, wPct: width, hPct: height });
@@ -558,7 +666,7 @@ const CustomTemplateEditor = forwardRef(function CustomTemplateEditor(
         data[r][c] = value;
         table.data = data;
         return { ...b, table };
-      })
+      }),
     );
   }
 
@@ -571,7 +679,7 @@ const CustomTemplateEditor = forwardRef(function CustomTemplateEditor(
         const newRow = Array.from({ length: table.cols || 1 }).map(() => "");
         table.data = [...(table.data || []), newRow];
         return { ...b, table };
-      })
+      }),
     );
   }
 
@@ -584,7 +692,7 @@ const CustomTemplateEditor = forwardRef(function CustomTemplateEditor(
         table.rows = (table.rows || 0) - 1;
         table.data = (table.data || []).slice(0, table.rows);
         return { ...b, table };
-      })
+      }),
     );
   }
 
@@ -596,7 +704,7 @@ const CustomTemplateEditor = forwardRef(function CustomTemplateEditor(
         table.cols = (table.cols || 0) + 1;
         table.data = (table.data || []).map((row) => [...row, ""]);
         return { ...b, table };
-      })
+      }),
     );
   }
 
@@ -609,7 +717,7 @@ const CustomTemplateEditor = forwardRef(function CustomTemplateEditor(
         table.cols = (table.cols || 0) - 1;
         table.data = (table.data || []).map((row) => row.slice(0, table.cols));
         return { ...b, table };
-      })
+      }),
     );
   }
 
@@ -622,7 +730,7 @@ const CustomTemplateEditor = forwardRef(function CustomTemplateEditor(
       width: "100%",
       height: "100%",
       outline: isSelected ? "2px dashed rgba(17,94,202,0.7)" : "none",
-      padding: "6px",
+      padding: box.style?.padding ?? 6,
       boxSizing: "border-box",
       cursor: mode === "select" ? "move" : "text",
       fontSize:
@@ -710,6 +818,7 @@ const CustomTemplateEditor = forwardRef(function CustomTemplateEditor(
               draggable={false}
               onDragStart={(e) => e.preventDefault()}
               className={styles["logo-img"]}
+              style={{ width: "100%", height: "100%", objectFit: "contain" }}
             />
           ) : (
             <div className={styles["logo-placeholder"]} data-no-drag="true">
@@ -721,19 +830,88 @@ const CustomTemplateEditor = forwardRef(function CustomTemplateEditor(
     }
 
     if (box.type === "table") {
-      const table = box.table || { rows: 0, cols: 0, data: [] };
-      const isEditingCell =
-        editingCell && editingCell.boxId === box.id ? editingCell : null;
+      const legacyHeaders = box.tableHeaders || box.headers || null;
+      const legacyRows = box.tableRows || box.rows || null;
+
+      const tableFromLegacy =
+        legacyHeaders || legacyRows
+          ? (() => {
+              const headers = Array.isArray(legacyHeaders) ? legacyHeaders : [];
+              const rows = Array.isArray(legacyRows) ? legacyRows : [];
+
+              const cols = headers.length || (rows[0] ? rows[0].length : 0);
+
+              let data;
+              if (rows.length) {
+                data = rows.map((r) => Array.from(r));
+              } else if (cols) {
+                data = [Array.from({ length: cols }).map(() => "")];
+              } else {
+                data = [];
+              }
+
+              return {
+                rows: data.length,
+                cols: cols,
+                data,
+                header: headers.length > 0,
+                border:
+                  typeof box.table?.border !== "undefined"
+                    ? box.table.border
+                    : true,
+                cellPadding: box.table?.cellPadding ?? 6,
+                cellBackground: box.table?.cellBackground ?? "transparent",
+                textAlign: box.table?.textAlign ?? "left",
+                headerBackground: box.style?.headerBackground,
+                headerColor: box.style?.headerColor,
+                rowBackground: box.style?.rowBackground,
+                rowColor: box.style?.rowColor,
+                borderColor: box.style?.borderColor,
+              };
+            })()
+          : null;
+
+      const table = box.table
+        ? { ...box.table }
+        : tableFromLegacy || { rows: 0, cols: 0, data: [] };
+
+      const tableProps = {
+        ...table,
+        headerBackground: table.headerBackground || box.style?.headerBackground,
+        headerColor: table.headerColor || box.style?.headerColor,
+        rowBackground: table.rowBackground || box.style?.rowBackground,
+        rowColor: table.rowColor || box.style?.rowColor,
+        borderColor: table.borderColor || box.style?.borderColor,
+        cellBackground: table.cellBackground || box.style?.cellBackground,
+        cellPadding: table.cellPadding || 6,
+        textAlign: table.textAlign || box.style?.textAlign || "left",
+      };
+
+      let headersArr =
+        table.headers ||
+        (Array.isArray(box.tableHeaders) ? box.tableHeaders : null);
+      let bodyRows = Array.isArray(table.data) ? table.data : [];
+
+      if (
+        !headersArr &&
+        table.header &&
+        Array.isArray(table.data) &&
+        table.data.length > 0
+      ) {
+        headersArr = table.data[0];
+        bodyRows = table.data.slice(1);
+      }
 
       return (
         <div
           className={styles["table-box"]}
           onClick={(e) => e.stopPropagation()}
+          style={{ width: "100%", height: "100%", overflow: "hidden" }}
         >
           <table
             className={styles["table-el"]}
             style={{
-              borderCollapse: table.border ? "collapse" : "separate",
+              borderCollapse: tableProps.border ? "collapse" : "separate",
               tableLayout: "fixed",
               fontFamily: box.style?.fontFamily || "Arial, sans-serif",
               fontSize: box.style?.fontSize
@@ -741,13 +919,41 @@ const CustomTemplateEditor = forwardRef(function CustomTemplateEditor(
                 : undefined,
               color: box.style?.color || undefined,
               width: "100%",
-              height: "100%",
+              height: "auto",
             }}
           >
+            {headersArr && (
+              <thead>
+                <tr>
+                  {headersArr.map((h, idx) => (
+                    <th
+                      key={`h-${idx}`}
+                      style={{
+                        padding: tableProps.cellPadding || 6,
+                        textAlign: tableProps.textAlign || "left",
+                        background:
+                          tableProps.headerBackground || "transparent",
+                        color: tableProps.headerColor || undefined,
+                        border: tableProps.border
+                          ? `1px solid ${tableProps.borderColor || "rgba(0,0,0,0.12)"}`
+                          : "none",
+                        fontWeight: 600,
+                        verticalAlign: "top",
+                        overflow: "hidden",
+                        whiteSpace: "pre-wrap",
+                      }}
+                    >
+                      {String(h ?? "").trim()}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+            )}
+
             <tbody>
-              {(table.data || []).map((row, rIdx) => (
+              {(bodyRows || []).map((row, rIdx) => (
                 <tr key={`r-${rIdx}`}>
-                  {row.map((cell, cIdx) => {
+                  {(row || []).map((cell, cIdx) => {
                     return (
                       <TableCell
                         key={`c-${rIdx}-${cIdx}`}
@@ -755,12 +961,20 @@ const CustomTemplateEditor = forwardRef(function CustomTemplateEditor(
                         rIdx={rIdx}
                         cIdx={cIdx}
                         cellValue={cell}
-                        isEditingCell={isEditingCell}
-                        table={table}
+                        isEditingCell={
+                          editingCell && editingCell.boxId === box.id
+                            ? editingCell
+                            : null
+                        }
+                        table={{
+                          ...tableProps,
+                          header: !!headersArr || !!table.header,
+                        }}
                         mode={mode}
                         editingTableMode={editingTableMode}
                         updateTableCell={updateTableCell}
                         setEditingCell={setEditingCell}
+                        boxStyle={box.style || {}}
                       />
                     );
                   })}
@@ -775,33 +989,82 @@ const CustomTemplateEditor = forwardRef(function CustomTemplateEditor(
     return <div style={baseInline}>{box.content}</div>;
   }
 
-  const selectedBox = boxes.find((b) => b.id === selectedId) || null;
-
-  function applyStyleProp(prop, value) {
-    if (!selectedBox) return;
-    const style = { ...(selectedBox.style || {}) };
-    style[prop] = value;
-    updateBox(selectedBox.id, { style });
-  }
-  function toggleBold() {
-    if (!selectedBox) return;
-    const cur = selectedBox.style?.fontWeight || "400";
-    applyStyleProp("fontWeight", cur === "700" ? "400" : "700");
-  }
-  function toggleItalic() {
-    if (!selectedBox) return;
-    const cur = selectedBox.style?.fontStyle || "normal";
-    applyStyleProp("fontStyle", cur === "italic" ? "normal" : "italic");
-  }
-
-  function startEditingSelected() {
+  function updateSelectedFieldStyle(nextStyle) {
     if (!selectedId) return;
-    const box = boxes.find((b) => b.id === selectedId);
-    if (!box) return;
-    if (box.type === "text" || box.type === "placeholder") {
-      setEditingId(box.id);
-    }
+    setBoxes((prev) =>
+      prev.map((b) =>
+        b.id === selectedId
+          ? { ...b, style: { ...(b.style || {}), ...(nextStyle || {}) } }
+          : b,
+      ),
+    );
   }
+
+  function updateSelectedFieldContent(nextContent) {
+    if (!selectedId) return;
+    setBoxes((prev) =>
+      prev.map((b) =>
+        b.id === selectedId ? { ...b, content: nextContent } : b,
+      ),
+    );
+  }
+
+  function updatePageStyle(nextPageStyle) {
+    if (!nextPageStyle) return;
+    setPageBackground(nextPageStyle.background || pageBackground);
+  }
+
+  useImperativeHandle(ref, () => ({
+    addText: () => addBox("text"),
+    addField: () => addBox("placeholder"),
+    addLogo: () => {
+      const id = addBox("logo");
+      if (id) {
+        setSelectedId(id);
+        setTimeout(() => openFilePickerForLogo(id), 50);
+      }
+    },
+    addTable: () => addBox("table"),
+    togglePreview: () =>
+      setMode((m) => (m === "preview" ? "select" : "preview")),
+    deleteSelected: () => removeSelected(),
+    getData: () => saveTemplate(),
+    getHtml: () => {
+      return saveTemplate();
+    },
+    setActiveArea: (area) => {
+      if (["header", "body", "footer"].includes(area)) setActiveArea(area);
+    },
+    setWatermark: (url, props) => {
+      setLocalWatermarkUrl(url || null);
+      if (props) {
+        setLocalWatermark(props);
+        if (typeof onWatermarkChange === "function") onWatermarkChange(props);
+      }
+    },
+    clearWatermark: () => {
+      setLocalWatermarkUrl(null);
+      if (typeof onWatermarkChange === "function")
+        onWatermarkChange({
+          xPct: "50%",
+          yPct: "50%",
+          wPct: "60%",
+          hPct: "60%",
+          opacity: 0.12,
+        });
+    },
+    applyStyleProp: (prop, value) => {
+      if (!selectedId) return;
+      const b = boxes.find((bx) => bx.id === selectedId);
+      if (!b) return;
+      const style = { ...(b.style || {}) };
+      style[prop] = value;
+      updateBox(selectedId, { style });
+    },
+    getBoxes: () => boxes,
+    setBoxes: (next) => setBoxes(next),
+    setSelectedId: (id) => setSelectedId(id),
+  }));
 
   const wmDragRef = useRef(null);
 
@@ -851,47 +1114,6 @@ const CustomTemplateEditor = forwardRef(function CustomTemplateEditor(
     window.removeEventListener("mouseup", onWatermarkMouseUp);
   }
 
-  useImperativeHandle(ref, () => ({
-    addText: () => addBox("text"),
-    addField: () => addBox("placeholder"),
-    addLogo: () => {
-      const id = addBox("logo");
-      if (id) {
-        setSelectedId(id);
-        setTimeout(() => openFilePickerForLogo(id), 50);
-      }
-    },
-    addTable: () => addBox("table"),
-    togglePreview: () =>
-      setMode((m) => (m === "preview" ? "select" : "preview")),
-    deleteSelected: () => removeSelected(),
-    getData: () => saveTemplate(),
-    getHtml: () => {
-      return saveTemplate();
-    },
-    setActiveArea: (area) => {
-      if (["header", "body", "footer"].includes(area)) setActiveArea(area);
-    },
-    setWatermark: (url, props) => {
-      setLocalWatermarkUrl(url || null);
-      if (props) {
-        setLocalWatermark(props);
-        if (typeof onWatermarkChange === "function") onWatermarkChange(props);
-      }
-    },
-    clearWatermark: () => {
-      setLocalWatermarkUrl(null);
-      if (typeof onWatermarkChange === "function")
-        onWatermarkChange({
-          xPct: "50%",
-          yPct: "50%",
-          wPct: "60%",
-          hPct: "60%",
-          opacity: 0.12,
-        });
-    },
-  }));
-
   function watermarkStyle() {
     if (!localWatermark) return { display: "none" };
     const xNum =
@@ -928,31 +1150,27 @@ const CustomTemplateEditor = forwardRef(function CustomTemplateEditor(
 
   return (
     <div className={styles["cte-root"]}>
-      <div className={styles["props-bar"]}>
-        <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-          <div className={styles["props-subtitle"]}>Editor</div>
-        </div>
-
-        <div style={{ marginLeft: "auto", display: "flex", gap: 8 }}>
-          <button
-            className={styles["control-btn"]}
-            onClick={() => {
-              setMode((m) => (m === "preview" ? "select" : "preview"));
-            }}
-            type="button"
-          >
-            {mode === "preview" ? "Exit Preview" : "Preview"}
-          </button>
-          <button
-            className={styles["control-btn"]}
-            onClick={() => {
-              saveTemplate();
-            }}
-            type="button"
-          >
-            Save
-          </button>
-        </div>
+      <div
+        style={{
+          marginLeft: 12,
+          display: "flex",
+          width: "100%",
+          justifyContent: "center",
+          padding: 0,
+        }}
+      >
+        <FieldPropertiesPanel
+          selectedFieldId={selectedId}
+          boxes={boxes}
+          setSelectedFieldId={setSelectedId}
+          updateSelectedFieldStyle={(next) => updateSelectedFieldStyle(next)}
+          updateSelectedFieldContent={(next) =>
+            updateSelectedFieldContent(next)
+          }
+          pageStyle={{ background: pageBackground }}
+          updatePageStyle={(next) => updatePageStyle(next)}
+          onUploadImage={onUploadImage}
+        />
       </div>
 
       <div className={styles["canvas-wrap"]}>
@@ -1018,20 +1236,76 @@ const CustomTemplateEditor = forwardRef(function CustomTemplateEditor(
             )}
 
             {boxes.map((b) => {
+              const parsePctNum = (val) => {
+                try {
+                  if (val === null || typeof val === "undefined") return 0;
+                  const s = String(val).trim();
+                  if (s.endsWith("%")) return Number(s.replace("%", "")) || 0;
+                  const n = Number(s);
+                  return Number.isFinite(n) ? n : 0;
+                } catch (err) {
+                  return 0;
+                }
+              };
+
+              const rawYnum = parsePctNum(b.yPct);
+              const rawHnum = parsePctNum(b.hPct || "0");
+
+              const declaredArea = b.area || areaFromTopPct(rawYnum, rawHnum);
+
+              const normalizedY = clampToArea(rawYnum, rawHnum, declaredArea);
+
+              const renderYPct = `${normalizedY}%`;
+
               const px = pctToPx(
                 b.xPct,
-                b.yPct,
+                renderYPct,
                 b.wPct,
                 b.hPct,
-                innerCanvasRef.current
+                innerCanvasRef.current,
               );
-              const kWidth = px.width || Math.max(160, canvasWidthActual * 0.2);
-              const kHeight =
-                px.height || Math.max(40, canvasHeightActual * 0.08);
-              const kX =
-                typeof px.left === "number" ? px.left : canvasWidthActual * 0.4;
-              const kY =
-                typeof px.top === "number" ? px.top : canvasHeightActual * 0.04;
+
+              const pctToNumber = (val, total) => {
+                if (val === null || typeof val === "undefined") return 0;
+                const s = String(val).trim();
+                if (s.endsWith("%"))
+                  return (parseFloat(s.replace("%", "")) / 100) * total;
+                const n = parseFloat(s);
+                return Number.isFinite(n) ? n : 0;
+              };
+
+              const leftPx =
+                typeof px.left === "number"
+                  ? px.left
+                  : pctToNumber(b.xPct || "0%", canvasWidthActual);
+
+              const topPx =
+                typeof px.top === "number"
+                  ? px.top
+                  : pctToNumber(
+                      renderYPct || b.yPct || "0%",
+                      canvasHeightActual,
+                    );
+
+              const widthPx =
+                typeof px.width === "number"
+                  ? px.width
+                  : b.wPct
+                    ? pctToNumber(b.wPct, canvasWidthActual)
+                    : Math.max(160, canvasWidthActual * 0.2);
+
+              const heightPx =
+                typeof px.height === "number"
+                  ? px.height
+                  : b.hPct
+                    ? pctToNumber(b.hPct, canvasHeightActual)
+                    : Math.max(40, canvasHeightActual * 0.08);
+
+              const kWidth = Math.max(1, widthPx);
+              const kHeight = Math.max(1, heightPx);
+              const kX = leftPx;
+              const kY = topPx;
+
               const isSelected = selectedId === b.id;
               const isEditing = editingId === b.id;
               const disableDragForCell =

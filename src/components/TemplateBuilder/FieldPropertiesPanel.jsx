@@ -1,19 +1,29 @@
-import React from "react";
+import React, { useRef } from "react";
 import styles from "./UploadScan.module.css";
 
 export default function FieldPropertiesPanel({
+  boxes,
+  bodyBoxes,
   selectedFieldId,
-  bodyBoxes = [],
   setSelectedFieldId,
   updateSelectedFieldStyle,
   updateSelectedFieldContent,
   pageStyle = { background: "transparent" },
   updatePageStyle = null,
+  onUploadImage,
 }) {
+  const list = Array.isArray(boxes)
+    ? boxes
+    : Array.isArray(bodyBoxes)
+      ? bodyBoxes
+      : [];
+
   const sel =
-    Array.isArray(bodyBoxes) && selectedFieldId
-      ? bodyBoxes.find((b) => String(b.id) === String(selectedFieldId))
+    selectedFieldId && list.length
+      ? list.find((b) => String(b.id) === String(selectedFieldId))
       : null;
+
+  const fileRef = useRef(null);
 
   if (!selectedFieldId || !sel) {
     return (
@@ -38,6 +48,42 @@ export default function FieldPropertiesPanel({
   const borderColor = s.borderColor ?? "#cbd5e1";
 
   const isTable = sel.type === "table";
+  const isImage = sel.type === "image" || sel.type === "logo";
+
+  function onColorChange(next) {
+    if (!updateSelectedFieldStyle) return;
+    updateSelectedFieldStyle(next);
+  }
+
+  function handleFileClick() {
+    if (!fileRef.current) return;
+    try {
+      fileRef.current.value = "";
+    } catch (e) {}
+    fileRef.current.click();
+  }
+
+  function handleFileChange(e) {
+    const f = e.target.files?.[0] || null;
+    try {
+      e.target.value = "";
+    } catch (err) {}
+    if (!f) return;
+    if (typeof onUploadImage === "function") {
+      try {
+        onUploadImage(f, sel);
+        return;
+      } catch (err) {
+        console.warn("onUploadImage threw", err);
+      }
+    }
+    try {
+      const url = URL.createObjectURL(f);
+      if (updateSelectedFieldContent) updateSelectedFieldContent(url);
+    } catch (err) {
+      console.warn("creating blob url failed", err);
+    }
+  }
 
   return (
     <div className={styles.fieldPanel}>
@@ -196,6 +242,26 @@ export default function FieldPropertiesPanel({
             <span>Bold</span>
           </label>
         </div>
+
+        {isImage && (
+          <div className={styles.propItem}>
+            <div className={styles.label}>Image</div>
+            <button
+              type="button"
+              className={styles.previewBtn}
+              onClick={handleFileClick}
+            >
+              Upload
+            </button>
+            <input
+              ref={fileRef}
+              type="file"
+              accept="image/*"
+              style={{ display: "none" }}
+              onChange={handleFileChange}
+            />
+          </div>
+        )}
 
         <div className={styles.propItemRight}>
           <button

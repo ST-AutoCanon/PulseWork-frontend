@@ -282,7 +282,7 @@
   border: 1px solid #eef2f6;
   border-radius: 8px;
   background: #fff;
-  width: 700px;
+  width: 72%;
   box-sizing: border-box;
 }
 
@@ -294,7 +294,7 @@
   background: #fff;
   color: #64748b;
   font-size: 13px;
-  width: 700px;
+  width: 99%;
   box-sizing: border-box;
 }
 
@@ -362,8 +362,9 @@
 .mono {
   font-size: 12px;
   color: #334155;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, "Roboto Mono",
-    "Noto Mono", monospace;
+  font-family:
+    ui-monospace, SFMono-Regular, Menlo, Monaco, "Roboto Mono", "Noto Mono",
+    monospace;
 }
 
 .checkboxLabel {

@@ -5,14 +5,85 @@ import { MdOutlineCancel } from "react-icons/md";
 import FileInput from "../FileInput.client";
 import { useAuth } from "../../../context/AuthProvider.client";
 
+const BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
+
+function getHeadersForOrg(orgId) {
+  const headers = {};
+  if (process.env.NEXT_PUBLIC_API_KEY)
+    headers["x-api-key"] = process.env.NEXT_PUBLIC_API_KEY;
+  if (orgId) headers["x-org-id"] = orgId;
+  return headers;
+}
+
+async function fetchAndExtract(
+  url,
+  orgId,
+  extractor = (json) => json.data || [],
+) {
+  try {
+    const res = await fetch(url, {
+      credentials: "include",
+      headers: getHeadersForOrg(orgId),
+    });
+    const json = await res.json();
+    return extractor(json) || [];
+  } catch {
+    return [];
+  }
+}
+
+function normalizeHistoryResponse(json) {
+  if (!json) return [];
+  if (json.data && Array.isArray(json.data.history)) return json.data.history;
+  if (Array.isArray(json.data)) return json.data;
+  if (Array.isArray(json)) return json;
+  return [];
+}
+
+function findPreviousSupervisor(entries = []) {
+  if (!entries.length) return null;
+
+  entries.sort((a, b) => {
+    const da = a.start_date ? new Date(a.start_date) : new Date(0);
+    const db = b.start_date ? new Date(b.start_date) : new Date(0);
+    return da - db;
+  });
+
+  let currentIndex = entries.findIndex((e) => e.end_date === null);
+  if (currentIndex === -1) currentIndex = entries.length - 1;
+
+  const currentSupId = entries[currentIndex]?.supervisor_id;
+
+  let prev = null;
+  for (let i = currentIndex - 1; i >= 0; i--) {
+    const e = entries[i];
+    if (!e) continue;
+    if (!currentSupId || e.supervisor_id !== currentSupId) {
+      prev = e;
+      break;
+    }
+  }
+
+  if (!prev) return null;
+
+  return {
+    ...prev,
+    start_date: prev.start_date ? prev.start_date.split("T")[0] : "",
+    end_date: prev.end_date ? prev.end_date.split("T")[0] : null,
+  };
+}
+
+function formatDate(iso) {
+  if (!iso) return "";
+  return iso.split("T")[0];
+}
+
 export default function StepProfessional({ data, onChange, departments = [] }) {
   const [roleOptions, setRoleOptions] = useState([]);
   const [positionsList, setPositionsList] = useState([]);
   const [supervisorsList, setSupervisorsList] = useState([]);
   const [prevSupervisor, setPrevSupervisor] = useState(null);
   const [historyFetched, setHistoryFetched] = useState(false);
-
-  const BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
 
   const { user } = useAuth();
   const orgId =
@@ -22,22 +93,6 @@ export default function StepProfessional({ data, onChange, departments = [] }) {
     user?.organization_id ??
     null;
 
-  function getHeaders() {
-    const headers = {};
-    if (process.env.NEXT_PUBLIC_API_KEY) {
-      headers["x-api-key"] = process.env.NEXT_PUBLIC_API_KEY;
-    }
-    if (orgId) {
-      headers["x-org-id"] = orgId;
-    }
-    return headers;
-  }
-
-  const formatDate = (iso) => {
-    if (!iso) return "";
-    return iso.split("T")[0];
-  };
-
   useEffect(() => {
     if (!data.employee_id) {
       setPrevSupervisor(null);
@@ -46,57 +101,13 @@ export default function StepProfessional({ data, onChange, departments = [] }) {
     }
 
     setHistoryFetched(false);
+    const url = `${BASE_URL}/supervisor/history/${data.employee_id}`;
 
-    fetch(`${BASE_URL}/supervisor/history/${data.employee_id}`, {
-      credentials: "include",
-      headers: getHeaders(),
-    })
-      .then((res) => res.json())
+    fetch(url, { credentials: "include", headers: getHeadersForOrg(orgId) })
+      .then((r) => r.json())
       .then((json) => {
-        const entries =
-          json && json.data && Array.isArray(json.data.history)
-            ? json.data.history
-            : Array.isArray(json.data)
-            ? json.data
-            : Array.isArray(json)
-            ? json
-            : [];
-
-        if (!entries.length) {
-          setPrevSupervisor(null);
-          setHistoryFetched(true);
-          return;
-        }
-
-        entries.sort((a, b) => {
-          const da = a.start_date ? new Date(a.start_date) : new Date(0);
-          const db = b.start_date ? new Date(b.start_date) : new Date(0);
-          return da - db;
-        });
-
-        let currentIndex = entries.findIndex((e) => e.end_date === null);
-        if (currentIndex === -1) currentIndex = entries.length - 1;
-
-        const currentSupId = entries[currentIndex]?.supervisor_id;
-
-        let prev = null;
-        for (let i = currentIndex - 1; i >= 0; i--) {
-          const e = entries[i];
-          if (!e) continue;
-          if (!currentSupId || e.supervisor_id !== currentSupId) {
-            prev = e;
-            break;
-          }
-        }
-
-        if (prev) {
-          prev = {
-            ...prev,
-            start_date: prev.start_date ? prev.start_date.split("T")[0] : "",
-            end_date: prev.end_date ? prev.end_date.split("T")[0] : null,
-          };
-        }
-
+        const entries = normalizeHistoryResponse(json);
+        const prev = findPreviousSupervisor(entries);
         setPrevSupervisor(prev);
         setHistoryFetched(true);
       })
@@ -105,17 +116,15 @@ export default function StepProfessional({ data, onChange, departments = [] }) {
         setPrevSupervisor(null);
         setHistoryFetched(true);
       });
-  }, [data.employee_id, BASE_URL, orgId]);
+  }, [data.employee_id, orgId]);
 
   useEffect(() => {
-    fetch(`${BASE_URL}/user_roles`, {
-      credentials: "include",
-      headers: getHeaders(),
-    })
-      .then((r) => r.json())
-      .then((json) => setRoleOptions(json.data || []))
-      .catch(() => setRoleOptions([]));
-  }, [BASE_URL, orgId]);
+    const url = `${BASE_URL}/user_roles`;
+    (async () => {
+      const items = await fetchAndExtract(url, orgId, (j) => j.data || []);
+      setRoleOptions(items);
+    })();
+  }, [orgId]);
 
   useEffect(() => {
     if (!data.role) {
@@ -123,16 +132,13 @@ export default function StepProfessional({ data, onChange, departments = [] }) {
       return;
     }
     const deptParam = data.department_id || "";
-    fetch(
-      `${BASE_URL}/positions?role=${encodeURIComponent(
-        data.role
-      )}&department_id=${deptParam}`,
-      { credentials: "include", headers: getHeaders() }
-    )
-      .then((res) => res.json())
-      .then((json) => setPositionsList(json.data || []))
-      .catch(() => setPositionsList([]));
-  }, [data.role, data.department_id, BASE_URL, orgId]);
+    const url = `${BASE_URL}/positions?role=${encodeURIComponent(data.role)}&department_id=${deptParam}`;
+
+    (async () => {
+      const items = await fetchAndExtract(url, orgId, (j) => j.data || []);
+      setPositionsList(items);
+    })();
+  }, [data.role, data.department_id, orgId]);
 
   useEffect(() => {
     if (!data.position) {
@@ -140,16 +146,13 @@ export default function StepProfessional({ data, onChange, departments = [] }) {
       return;
     }
     const deptParam = data.department_id || "";
-    fetch(
-      `${BASE_URL}/positions/supervisors?position=${encodeURIComponent(
-        data.position
-      )}&department_id=${deptParam}`,
-      { credentials: "include", headers: getHeaders() }
-    )
-      .then((res) => res.json())
-      .then((json) => setSupervisorsList(json.data || []))
-      .catch(() => setSupervisorsList([]));
-  }, [data.position, data.department_id, BASE_URL, orgId]);
+    const url = `${BASE_URL}/positions/supervisors?position=${encodeURIComponent(data.position)}&department_id=${deptParam}`;
+
+    (async () => {
+      const items = await fetchAndExtract(url, orgId, (j) => j.data || []);
+      setSupervisorsList(items);
+    })();
+  }, [data.position, data.department_id, orgId]);
 
   const expList = Array.isArray(data.experience) ? data.experience : [];
   const isAdmin = (data.role || "").toLowerCase() === "admin";
@@ -333,7 +336,7 @@ export default function StepProfessional({ data, onChange, departments = [] }) {
         <div className="total-experience">
           <strong>
             Total Experience:{" "}
-            {years > 0 && `${years} yr${years > 1 ? "s" : ""} `}
+            {years > 0 && `${years} yr${years > 1 ? "s" : ""} `}{" "}
             {months > 0 && `${months} mo${months > 1 ? "s" : ""}`}
             {years === 0 && months === 0 && "0"}
           </strong>

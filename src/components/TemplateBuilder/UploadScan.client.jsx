@@ -64,7 +64,7 @@ export default function UploadScan({
   const [templateBoxes, setTemplateBoxes] = useState(null);
 
   const [localBodyType, setLocalBodyType] = useState(
-    bodyTypeProp ?? initialBodyType ?? "letter"
+    bodyTypeProp ?? initialBodyType ?? "letter",
   );
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -267,7 +267,7 @@ export default function UploadScan({
       const boxes = getBoxes().map((b) =>
         String(b.id) === String(selectedFieldId)
           ? { ...b, style: { ...(b.style || {}), ...(newStyle || {}) } }
-          : b
+          : b,
       );
       setTemplateBoxes(boxes);
       if (typeof setBodyBoxes === "function") {
@@ -284,7 +284,7 @@ export default function UploadScan({
       bodyBoxes,
       updateSelectedBoxStyle,
       setBodyBoxes,
-    ]
+    ],
   );
 
   const handleUpdateSelectedBoxContent = useCallback(
@@ -320,7 +320,7 @@ export default function UploadScan({
         }
       }
     },
-    [selectedFieldId, updateSelectedBoxContent, setBodyBoxes]
+    [selectedFieldId, updateSelectedBoxContent, setBodyBoxes],
   );
 
   const handleBoxesChangeFromPreview = useCallback(
@@ -334,7 +334,7 @@ export default function UploadScan({
         }
       }
     },
-    [setBodyBoxes]
+    [setBodyBoxes],
   );
 
   const handleWatermarkChangeFromPreview = useCallback(
@@ -354,7 +354,7 @@ export default function UploadScan({
         if (typeof next.opacity === "number") setWatermarkOpacity(next.opacity);
       }
     },
-    [onWatermarkChange]
+    [onWatermarkChange],
   );
 
   const effectiveWatermarkProps = React.useMemo(() => {
@@ -394,7 +394,7 @@ export default function UploadScan({
     setError("");
     if (!headerFile && !footerFile && !watermarkFile && !watermarkUrlProp) {
       setError(
-        "Please select at least one image (header, footer or watermark)."
+        "Please select at least one image (header, footer or watermark).",
       );
       return;
     }
@@ -436,7 +436,7 @@ export default function UploadScan({
           bodyType: localBodyType,
           watermark: !!(useWatermark && (watermarkFile || watermarkUrlProp)),
           watermarkPlacement: wp,
-        })
+        }),
       );
 
       if (useWatermark && watermarkUrlProp && !watermarkFile) {
@@ -480,7 +480,7 @@ export default function UploadScan({
                 .includes("qr") ||
               String(b.id || "")
                 .toLowerCase()
-                .includes("qr")
+                .includes("qr"),
           ) || null;
         if (qrBox) fileMap.qr = qrBox.id || qrBox.fieldName || null;
       }
@@ -488,8 +488,8 @@ export default function UploadScan({
         const sealBox =
           (layoutToSend || []).find((b) =>
             /seal|stamp|logo|companyseal/i.test(
-              String(b.fieldName || "") || String(b.id || "")
-            )
+              String(b.fieldName || "") || String(b.id || ""),
+            ),
           ) || null;
         if (sealBox) fileMap.seal = sealBox.id || sealBox.fieldName || null;
       }
@@ -573,7 +573,7 @@ export default function UploadScan({
     const fontSizeVal = s.fontSize || 11;
     const fontWeightIsBold = String(s.fontWeight) === "700";
     const paddingVal =
-      typeof s.padding === "number" ? s.padding : s.padding ?? 6;
+      typeof s.padding === "number" ? s.padding : (s.padding ?? 6);
 
     const isImageField =
       sel.type === "image" ||
@@ -978,7 +978,7 @@ export default function UploadScan({
                         if (!value) continue;
                         const re = new RegExp(
                           "\\[\\s*" + escRx(token) + "\\s*\\]",
-                          "gi"
+                          "gi",
                         );
                         out = out.replace(re, value);
                       }
@@ -998,17 +998,17 @@ export default function UploadScan({
                           row.map((cell) =>
                             typeof cell === "string"
                               ? replaceTokensInString(cell)
-                              : cell
-                          )
+                              : cell,
+                          ),
                         );
                       }
 
                       const fname = String(
-                        nb.fieldName || nb.name || ""
+                        nb.fieldName || nb.name || "",
                       ).toLowerCase();
                       if (
                         /(^|[^a-z])(qr|qrcode|qr_code)([^a-z]|$)/i.test(
-                          fname
+                          fname,
                         ) ||
                         /\bqr\b/i.test(fname)
                       ) {
@@ -1261,6 +1261,8 @@ export default function UploadScan({
           bodyBoxes={previewBoxes}
           width={Number(a4PreviewWidth) || 360}
           selectedBoxId={selectedFieldId}
+          headerHeightPct={10}
+          footerHeightPct={10}
         />
       </div>
     </div>

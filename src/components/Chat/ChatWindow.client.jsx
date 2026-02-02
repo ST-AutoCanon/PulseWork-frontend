@@ -68,7 +68,7 @@ async function getLocationAndAddress() {
           lng: null,
           address: "Permission denied or unavailable",
         }),
-      { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 },
     );
   });
 }
@@ -102,6 +102,7 @@ export default function ChatWindow({ room, onBack }) {
     message: "",
     onConfirm: null,
   });
+
   const showAlert = ({ title = "", message, onConfirm }) =>
     setAlertModal({ isVisible: true, title, message, onConfirm });
   const closeAlert = () =>
@@ -126,7 +127,7 @@ export default function ChatWindow({ room, onBack }) {
           if (perm.state === "prompt")
             navigator.geolocation.getCurrentPosition(
               () => {},
-              () => {}
+              () => {},
             );
         })
         .catch(() => {});
@@ -211,8 +212,8 @@ export default function ChatWindow({ room, onBack }) {
     const fd = new FormData();
     fd.append("file", file);
     const base = (process.env.NEXT_PUBLIC_BACKEND_URL || "").replace(
-      /\/+$/,
-      ""
+      /\/+$/g,
+      "",
     );
     const url = `${base}/ChatUploads`;
     const resp = await axios.post(url, fd, { withCredentials: true, headers });
@@ -289,8 +290,8 @@ export default function ChatWindow({ room, onBack }) {
   const downloadFile = async (filename) => {
     try {
       const base = (process.env.NEXT_PUBLIC_BACKEND_URL || "").replace(
-        /\/+$/,
-        ""
+        /\/+$/g,
+        "",
       );
       const url = `${base}${filename}`;
       const resp = await fetch(url, { credentials: "include", headers });
@@ -314,7 +315,10 @@ export default function ChatWindow({ room, onBack }) {
       axios
         .get(
           `${process.env.NEXT_PUBLIC_BACKEND_URL}/rooms/${room.id}/members`,
-          { withCredentials: true, headers }
+          {
+            withCredentials: true,
+            headers,
+          },
         )
         .then((r) => setMembers(r.data))
         .catch(console.error);
@@ -336,6 +340,32 @@ export default function ChatWindow({ room, onBack }) {
     });
     return groups;
   }, [msgs, room]);
+
+  const openMapAtLocation = (lat, lng) => {
+    const url = `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
+    window.open(url, "_blank");
+  };
+
+  const performDeleteMessage = async (messageId) => {
+    try {
+      await axios.delete(
+        `${process.env.NEXT_PUBLIC_BACKEND_URL}/rooms/${room.id}/messages/${messageId}`,
+        { withCredentials: true, headers },
+      );
+      setMsgs((old) => old.filter((x) => x.id !== messageId));
+    } catch (err) {
+      console.error("Failed to delete message:", err);
+    } finally {
+      closeAlert();
+    }
+  };
+
+  const openDeleteMessageAlert = (messageId) => {
+    showAlert({
+      message: "Are you sure you want to permanently delete this message?",
+      onConfirm: () => performDeleteMessage(messageId),
+    });
+  };
 
   if (!room) return <div className="chat-window empty">Select a chat</div>;
 
@@ -395,9 +425,7 @@ export default function ChatWindow({ room, onBack }) {
                     />
                   )}
                   <div
-                    className={`msg-bubble ${
-                      isMe ? "me-bubble" : "them-bubble"
-                    }`}
+                    className={`msg-bubble ${isMe ? "me-bubble" : "them-bubble"}`}
                   >
                     {room.is_group === 1 && !isMe && m.sender_name && (
                       <div className="msg-sender">{m.sender_name}</div>
@@ -426,10 +454,7 @@ export default function ChatWindow({ room, onBack }) {
                         className="msg-address-icon"
                         title={m.location.address}
                         onClick={() =>
-                          window.open(
-                            `https://www.google.com/maps/search/?api=1&query=${m.location.lat},${m.location.lng}`,
-                            "_blank"
-                          )
+                          openMapAtLocation(m.location.lat, m.location.lng)
                         }
                       >
                         <FaMapMarkerAlt />
@@ -439,22 +464,7 @@ export default function ChatWindow({ room, onBack }) {
                       <button
                         className="msg-delete-btn"
                         title="Delete message"
-                        onClick={() =>
-                          showAlert({
-                            message:
-                              "Are you sure you want to permanently delete this message?",
-                            onConfirm: async () => {
-                              await axios.delete(
-                                `${process.env.NEXT_PUBLIC_BACKEND_URL}/rooms/${room.id}/messages/${m.id}`,
-                                { withCredentials: true, headers }
-                              );
-                              setMsgs((old) =>
-                                old.filter((x) => x.id !== m.id)
-                              );
-                              closeAlert();
-                            },
-                          })
-                        }
+                        onClick={() => openDeleteMessageAlert(m.id)}
                       >
                         <FaTrash />
                       </button>

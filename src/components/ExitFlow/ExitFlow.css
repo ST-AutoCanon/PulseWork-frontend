@@ -574,6 +574,295 @@
   width: 100%;
 }
 
+/* File row container – ensure good spacing */
+.exf-card .flex.items-center.justify-between.bg-gray-50.p-2.rounded {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 0.75rem 1.25rem;
+  margin-bottom: 0.75rem;
+  gap: 1.25rem;                    /* ← increased gap between name and buttons */
+}
+
+/* File name takes max space, prevents crowding */
+.exf-card .text-sm.text-gray-700.truncate {
+  flex: 1 1 auto;                  /* grow and shrink naturally */
+  min-width: 0;
+  margin-right: 1.5rem;            /* ← more breathing room before buttons */
+  font-size: 0.875rem;
+  color: #374151;
+}
+
+/* Button group – bigger gap + flex alignment */
+.exf-card .flex.gap-2 {
+  display: flex;
+  align-items: center;
+  gap: 1rem !important;            /* ← increased from 0.5rem → 1rem (main fix) */
+  flex-shrink: 0;
+}
+
+/* Individual buttons – better size & touch area */
+.exf-card .exf-btn.exf-btn-sm {
+  padding: 0.45rem 1.1rem;         /* slightly larger padding */
+  font-size: 0.8125rem;
+  min-width: 78px;                 /* prevents buttons from being too small */
+  border-radius: 6px;
+  white-space: nowrap;
+  transition: all 0.2s ease;
+}
+
+/* Hover feedback */
+.exf-card .exf-btn.exf-btn-sm:hover {
+  background: #eff6ff;
+  color: #2563eb;
+  border-color: #bfdbfe;
+  transform: translateY(-1px);
+}
+
+/* Mobile – stack if very tight screen */
+@media (max-width: 480px) {
+  .exf-card .flex.items-center.justify-between.bg-gray-50.p-2.rounded {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+  
+  .exf-card .flex.gap-2 {
+    width: 100%;
+    justify-content: flex-end;
+    gap: 0.75rem;
+  }
+  
+  .exf-card .exf-btn.exf-btn-sm {
+    flex: 1;
+    min-width: unset;
+  }
+}
+/* ==========================================================================
+   Exit Clearance / Knowledge Transfer & Assets Section
+   Plain CSS - modern & professional look
+   ========================================================================== */
+
+.exf-clearance-section {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 32px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  margin-top: 24px;
+}
+
+.exf-section-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #1e293b;
+  margin-bottom: 20px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.exf-empty-text {
+  color: #64748b;
+  font-style: italic;
+  text-align: center;
+  padding: 32px 0;
+  font-size: 0.95rem;
+}
+
+/* Card */
+.exf-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 20px;
+  margin-bottom: 16px;
+  position: relative;
+  transition: all 0.18s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.exf-card:hover {
+  border-color: #cbd5e1;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  transform: translateY(-1px);
+}
+
+.exf-card-title {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #0f172a;
+  margin: 0 0 6px 0;
+}
+
+.exf-card-detail {
+  color: #475569;
+  font-size: 0.95rem;
+  line-height: 1.5;
+  margin: 0;
+}
+
+/* Uploaded files list */
+.exf-card .file-item {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  padding: 10px 14px;
+  margin-top: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.9rem;
+}
+
+.exf-card .file-item span {
+  color: #334155;
+  max-width: 70%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.exf-card .file-actions {
+  display: flex;
+  gap: 10px;
+}
+
+/* Approvals / checkboxes */
+.exf-approvals {
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid #f1f5f9;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.exf-checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  user-select: none;
+  font-size: 0.95rem;
+  color: #334155;
+}
+
+.exf-checkbox {
+  width: 18px;
+  height: 18px;
+  accent-color: #6366f1;
+  cursor: pointer;
+}
+
+.exf-checkbox:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Buttons */
+.exf-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 6px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.exf-btn-sm {
+  padding: 8px 14px;
+  font-size: 0.875rem;
+}
+
+.exf-btn-primary {
+  background: #6366f1;
+  color: white;
+}
+
+.exf-btn-primary:hover {
+  background: #4f46e5;
+}
+
+.exf-btn-primary:active {
+  background: #4338ca;
+}
+
+.exf-btn:hover:not(:disabled) {
+  filter: brightness(1.05);
+}
+
+.exf-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* Loading overlay */
+.exf-loading-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(255, 255, 255, 0.75);
+  backdrop-filter: blur(2px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #475569;
+  font-weight: 500;
+  font-size: 1rem;
+  z-index: 10;
+  border-radius: 10px;
+}
+
+/* Finalize button - full width style */
+.exf-btn-full {
+  width: 100%;
+  padding: 14px 24px;
+  font-size: 1.05rem;
+  margin-top: 32px;
+  background: #6366f1;
+  color: white;
+  border-radius: 8px;
+  font-weight: 600;
+}
+
+.exf-btn-full:hover {
+  background: #4f46e5;
+}
+
+.exf-btn-full:disabled {
+  background: #a5b4fc;
+  cursor: not-allowed;
+}
+
+/* Small responsive adjustments */
+@media (max-width: 640px) {
+  .exf-clearance-section {
+    padding: 24px 16px;
+  }
+
+  .exf-btn-full {
+    padding: 14px;
+  }
+
+  .exf-approvals {
+    gap: 16px;
+  }
+
+  .file-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .file-actions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+}
 /* On larger screens, keep the original two-column layout for other fields */
 @media (min-width: 640px) {
   .exf-info-grid {

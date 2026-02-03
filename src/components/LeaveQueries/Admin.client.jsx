@@ -1,4 +1,4 @@
-
+// File: Admin.client.jsx
 
 "use client";
 
@@ -8,6 +8,7 @@ import PolicyModal from "./PolicyModal.client";
 import Modal from "../Modal/Modal.client";
 import CompensationPopup from "./CompensationPopup.client";
 import { IoSearch } from "react-icons/io5";
+import { MdOutlineRemoveRedEye, MdOutlineAttachFile } from "react-icons/md";
 import { useAuth } from "../../context/AuthProvider.client";
 import {
   normalizeLeaveTypes,
@@ -104,6 +105,16 @@ export default function Admin({ openPolicyId = null }) {
     applyFlexibleSplit: null,
     error: "",
   });
+
+  // Attachment modal state
+  const [attachmentsModal, setAttachmentsModal] = useState({
+    isVisible: false,
+    title: "",
+    files: [],
+  });
+
+  // cache mapping leaveId -> normalized attachments (pre-resolved)
+  const [attachmentsMap, setAttachmentsMap] = useState({});
 
   const showAlert = (message, title = "") => {
     setLopModal((m) => ({ ...m, isVisible: false }));
@@ -1015,6 +1026,298 @@ export default function Admin({ openPolicyId = null }) {
     }));
   };
 
+  // -------------------------
+  // Attachment helpers
+  // -------------------------
+  const buildFileUrl = (filePath) => {
+    if (!filePath) return "";
+    if (/^https?:\/\//i.test(filePath)) return filePath;
+    if (API_BASE) {
+      const prefix = API_BASE.endsWith("/") ? API_BASE.slice(0, -1) : API_BASE;
+      return `${prefix}/${filePath.replace(/^\//, "")}`;
+    }
+    return filePath;
+  };
+
+  const extractAttachments = (query) => {
+    if (!query) return [];
+
+    const candidates = [
+      query.attachments,
+      query.leave_attachments,
+      query.files,
+      query.attachments_list,
+      query.files_list,
+      query.attachment_list,
+      query.attachmentsData,
+      query.data && query.data.attachments,
+      query.data,
+      query.payload,
+    ];
+
+    for (let cand of candidates) {
+      if (!cand) continue;
+
+      if (Array.isArray(cand) && cand.length > 0) return cand;
+
+      if (typeof cand === "object" && cand !== null) {
+        if (Array.isArray(cand.data) && cand.data.length > 0) return cand.data;
+        if (Array.isArray(cand.attachments) && cand.attachments.length > 0)
+          return cand.attachments;
+        if (Array.isArray(cand.rows) && cand.rows.length > 0) return cand.rows;
+        if (Array.isArray(cand.list) && cand.list.length > 0) return cand.list;
+      }
+
+      if (typeof cand === "string") {
+        try {
+          const parsed = JSON.parse(cand);
+          if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+          if (parsed && Array.isArray(parsed.data) && parsed.data.length > 0)
+            return parsed.data;
+        } catch (e) {}
+      }
+    }
+
+    const possibleSingle =
+      query.file_name ||
+      query.file_path ||
+      query.file_url ||
+      query.fileUrl ||
+      query.filename;
+    if (possibleSingle) {
+      return [
+        {
+          id: query.id || null,
+          file_name:
+            query.file_name ||
+            query.filename ||
+            query.name ||
+            `attachment-${query.id || "1"}`,
+          file_path: query.file_path || query.file_url || query.url || null,
+          mime_type: query.mime_type || query.type || "",
+          size: query.size || null,
+          created_at: query.created_at || null,
+        },
+      ];
+    }
+
+    return [];
+  };
+
+  const normalizeAttachment = (raw) => {
+    if (!raw) return null;
+    if (typeof raw === "string") {
+      return {
+        id: null,
+        file_name: raw.split("/").pop(),
+        file_path: raw,
+        mime_type: "",
+        size: null,
+        created_at: null,
+        url: raw,
+      };
+    }
+
+    return {
+      id:
+        raw.id || raw.file_id || raw.attachment_id || raw.attachmentId || null,
+      file_name:
+        raw.file_name ||
+        raw.filename ||
+        raw.name ||
+        raw.fileName ||
+        (raw.file_path ? String(raw.file_path).split("/").pop() : "attachment"),
+      file_path:
+        raw.file_path ||
+        raw.path ||
+        raw.url ||
+        raw.file_url ||
+        raw.filePath ||
+        null,
+      mime_type: raw.mime_type || raw.type || raw.contentType || "",
+      size: raw.size || raw.file_size || raw.length || null,
+      created_at: raw.created_at || raw.createdAt || raw.uploaded_at || null,
+      // keep any direct url the server provided
+      url: raw.url || raw.file_url || null,
+    };
+  };
+
+  const normalizeList = (rawList) => {
+    if (!Array.isArray(rawList)) return [];
+    return rawList.map((r) => normalizeAttachment(r)).filter(Boolean);
+  };
+
+  const getNormalizedPreviewList = (query) => {
+    const raw = extractAttachments(query);
+    return normalizeList(raw);
+  };
+
+  const openAttachments = async (query, providedAttachments = null) => {
+    if (!query) return;
+    const lid = String(query.leave_id || query.id || query.leaveId || "");
+
+    // priority: providedAttachments -> cache -> extract from query -> fetch endpoints
+    let normalized =
+      Array.isArray(providedAttachments) && providedAttachments.length > 0
+        ? normalizeList(providedAttachments)
+        : [];
+
+    if ((!normalized || normalized.length === 0) && attachmentsMap[lid]) {
+      normalized = attachmentsMap[lid];
+    }
+
+    if (!normalized || normalized.length === 0) {
+      const raw = extractAttachments(query);
+      if (Array.isArray(raw) && raw.length > 0) {
+        normalized = normalizeList(raw);
+      }
+    }
+
+    if (!normalized || normalized.length === 0) {
+      const candidates = [
+        `${API_BASE}/admin/leave/${query.leave_id}/attachments`,
+        `${API_BASE}/leave/${query.leave_id}/attachments`,
+        `${API_BASE}/api/leave/${query.leave_id}/attachments`,
+        `${API_BASE}/api/admin/leave/${query.leave_id}/attachments`,
+        `${API_BASE}/employee/leave/${query.leave_id}/attachments`,
+      ].filter(Boolean);
+
+      for (const url of candidates) {
+        try {
+          const res = await fetch(url, {
+            credentials: "include",
+            headers: buildHeaders(),
+          });
+          if (!res.ok) continue;
+          const json = await res.json().catch(() => null);
+          const raw = json?.data || json?.attachments || json || [];
+          if (Array.isArray(raw) && raw.length > 0) {
+            normalized = normalizeList(raw);
+            break;
+          }
+        } catch (err) {
+          // ignore
+        }
+      }
+    }
+
+    if (!normalized || normalized.length === 0) {
+      showAlert("No attachments found for this leave request.");
+      setAttachmentsModal({
+        isVisible: true,
+        title: `Attachments — ${query.name || query.employee_id || query.leave_id}`,
+        files: [],
+      });
+      return;
+    }
+
+    setAttachmentsMap((prev) => ({ ...prev, [lid]: normalized }));
+    setAttachmentsModal({
+      isVisible: true,
+      title: `Attachments — ${query.name || query.employee_id || query.leave_id}`,
+      files: normalized,
+    });
+  };
+
+  const closeAttachments = () => {
+    setAttachmentsModal({ isVisible: false, title: "", files: [] });
+  };
+  const openFileInNewTab = async (file) => {
+    if (!file) return;
+
+    const attachmentId = file.id || file.attachment_id || null;
+    let url = "";
+    if (attachmentId) {
+      const base = API_BASE.replace(/\/$/, "");
+      url = `${base}/attachments/${encodeURIComponent(attachmentId)}`;
+    } else {
+      url = file.url || file.file_url || file.file_path || "";
+      if (!/^https?:\/\//i.test(url) && API_BASE) {
+        url = `${API_BASE.replace(/\/$/, "")}/${String(url).replace(/^\//, "")}`;
+      }
+    }
+
+    if (!url) {
+      showAlert("No URL available for this file.");
+      return;
+    }
+
+    try {
+      // fetch the file using tenant/employee headers
+      const res = await fetch(url, {
+        method: "GET",
+        credentials: "include",
+        headers: buildHeaders(),
+      });
+
+      if (!res.ok) {
+        let json = null;
+        try {
+          json = await res.json();
+        } catch (e) {}
+        const serverMsg =
+          (json && (json.message || json.error)) ||
+          `Failed to fetch file (HTTP ${res.status})`;
+        showAlert(serverMsg);
+        return;
+      }
+
+      // get blob and determine MIME
+      const arrayBuffer = await res.arrayBuffer();
+      const serverContentType = res.headers.get("Content-Type") || "";
+      const knownMime = file.mime_type || file.mime || serverContentType || "";
+      // if we have a known mime (pdf,image), use it — browsers will render PDFs/images inline
+      const mime = knownMime || "application/octet-stream";
+
+      // create a blob using the chosen mime (helps force inline rendering)
+      const blob = new Blob([arrayBuffer], { type: mime });
+      const objectUrl = URL.createObjectURL(blob);
+
+      // Preferred: open a blank window and set its location to the blob URL.
+      // This avoids replacing the current tab and normally renders inline when possible.
+      let opened = false;
+      try {
+        const newWin = window.open("", "_blank", "noopener,noreferrer");
+        if (newWin) {
+          newWin.location.href = objectUrl;
+          opened = true;
+        }
+      } catch (e) {
+        opened = false;
+      }
+
+      // Fallback: create anchor WITHOUT download attribute so browser opens inline if it can.
+      if (!opened) {
+        const a = document.createElement("a");
+        a.href = objectUrl;
+        a.target = "_blank";
+        a.rel = "noopener noreferrer";
+        // do NOT set a.download — that forces a download
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+      }
+
+      // revoke after some time (give user time to view)
+      setTimeout(
+        () => {
+          try {
+            URL.revokeObjectURL(objectUrl);
+          } catch (e) {}
+        },
+        2 * 60 * 1000,
+      ); // 2 minutes
+    } catch (err) {
+      console.error("[openFileInNewTab] error:", err);
+      showAlert(
+        "Could not open file. Network error or server refused access. Check console.",
+      );
+    }
+  };
+
+  // -------------------------
+  // Render
+  // -------------------------
   return (
     <div className="admin-container">
       <div className="policy-header">
@@ -1162,6 +1465,7 @@ export default function Admin({ openPolicyId = null }) {
                 <th>Days</th>
                 <th>Status</th>
                 <th>Comments</th>
+                <th>Attachment</th> {/* <-- new column */}
                 <th>Action</th>
               </tr>
             </thead>
@@ -1183,6 +1487,63 @@ export default function Admin({ openPolicyId = null }) {
                   const isUpdating =
                     statusUpdates[query.leave_id]?.status &&
                     statusUpdates[query.leave_id]?.status !== query.status;
+
+                  // attachments quick preview (robust)
+                  const previewList = getNormalizedPreviewList(query);
+
+                  // Primary change: show View button if either attachments are embedded
+                  // OR we have a leave_id (server may hold attachments separately).
+                  // This matches SelfTable behavior: let user try to fetch even if row doesn't include attachments.
+                  const hasEmbeddedAttachments =
+                    previewList && previewList.length > 0;
+                  const hasPossibleServerAttachments = Boolean(query.leave_id);
+
+                  const hasAttachments =
+                    hasEmbeddedAttachments || hasPossibleServerAttachments;
+
+                  let attachmentCell = null;
+                  if (hasAttachments) {
+                    const count = hasEmbeddedAttachments
+                      ? previewList.length
+                      : query.attachment_count || query.attachments_count || "";
+                    attachmentCell = (
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 8,
+                        }}
+                      >
+                        <button
+                          className="attachments-btn"
+                          onClick={() =>
+                            // if we have embedded previewList, pass it so we avoid an extra fetch;
+                            // otherwise openAttachments will probe server endpoints.
+                            openAttachments(
+                              query,
+                              hasEmbeddedAttachments ? previewList : null,
+                            )
+                          }
+                          title="View attachments"
+                          style={{
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: 6,
+                            padding: "6px 10px",
+                            cursor: "pointer",
+                          }}
+                        >
+                          <MdOutlineRemoveRedEye className="eye-icon" />
+                          <span>View {count ? `(${count})` : ""}</span>
+                        </button>
+                      </div>
+                    );
+                  } else {
+                    attachmentCell = (
+                      <div className="no-attachments">Not Attached</div>
+                    );
+                  }
+                  // --------------------------------------------------------
 
                   return (
                     <tr
@@ -1239,6 +1600,10 @@ export default function Admin({ openPolicyId = null }) {
                           )}
                         </div>
                       </td>
+
+                      {/* Attachment cell */}
+                      <td>{attachmentCell}</td>
+
                       <td>
                         <button
                           className={`update-button ${isAlreadyUpdated ? "disabled-button" : ""}`}
@@ -1268,6 +1633,93 @@ export default function Admin({ openPolicyId = null }) {
         buttons={[{ label: "OK", onClick: closeAlert }]}
       >
         <p>{alertModal.message}</p>
+      </Modal>
+
+      {/* Attachments modal — shows file names; clicking name opens file in new tab */}
+      <Modal
+        isVisible={attachmentsModal.isVisible}
+        onClose={closeAttachments}
+        buttons={[{ label: "Close", onClick: closeAttachments }]}
+      >
+        <div className="attachments-modal-content">
+          <h4>{attachmentsModal.title}</h4>
+
+          {attachmentsModal.files.length === 0 && <p>No attachments found.</p>}
+
+          <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
+            {attachmentsModal.files.map((f, idx) => {
+              // compute a usable URL (but we won't fetch blobs here; open in new tab)
+              const urlCandidate =
+                f.url || f.file_path || f.file_url || f.url || "";
+              const safeName = f.file_name || `attachment-${idx + 1}`;
+              const sizeLabel = f.size ? ` • ${f.size} bytes` : "";
+              return (
+                <li
+                  key={f.id || idx}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    padding: "8px 6px",
+                    borderBottom: "1px solid #eee",
+                  }}
+                >
+                  <div
+                    style={{ display: "flex", alignItems: "center", gap: 8 }}
+                  >
+                    <MdOutlineAttachFile />
+                    <button
+                      type="button"
+                      onClick={() => openFileInNewTab(f)}
+                      style={{
+                        background: "none",
+                        border: "none",
+                        padding: 0,
+                        textDecoration: "underline",
+                        color: "#0070f3",
+                        cursor: "pointer",
+                        fontSize: 14,
+                        textAlign: "left",
+                      }}
+                    >
+                      {safeName}
+                    </button>
+                    <span
+                      style={{ color: "#666", marginLeft: 8, fontSize: 12 }}
+                    >
+                      {f.mime_type ? `(${f.mime_type})` : null}
+                    </span>
+                  </div>
+
+                  <div
+                    style={{ display: "flex", alignItems: "center", gap: 12 }}
+                  >
+                    {urlCandidate ? (
+                      <button
+                        type="button"
+                        onClick={() => openFileInNewTab(f)}
+                        className="attachment-link-button"
+                        style={{
+                          background: "transparent",
+                          border: "1px solid #ddd",
+                          padding: "4px 8px",
+                          borderRadius: 4,
+                          cursor: "pointer",
+                        }}
+                      >
+                        Open
+                      </button>
+                    ) : (
+                      <span style={{ color: "#999", fontSize: 12 }}>
+                        No URL
+                      </span>
+                    )}
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
       </Modal>
     </div>
   );

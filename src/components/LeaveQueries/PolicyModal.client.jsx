@@ -1,4 +1,4 @@
-
+// PolicyModal.client.js
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
@@ -39,7 +39,13 @@ function normalizeLeaveTypes(raw = []) {
   return arr.map((t) => {
     if (typeof t === "string") {
       const key = normalizeKey(t);
-      return { key, label: prettyFromKey(key), raw: t, is_active: true };
+      return {
+        key,
+        label: prettyFromKey(key),
+        raw: t,
+        is_active: true,
+        gender: "All",
+      };
     }
     const key =
       t.type_key ??
@@ -53,7 +59,7 @@ function normalizeLeaveTypes(raw = []) {
     return {
       key: normalizeKey(key),
       label: label || prettyFromKey(key),
-      gender: t.gender ?? t.gender_name ?? null,
+      gender: t.gender ?? t.gender_name ?? "All", // <<< GENDER: capture gender if present
       min_age: t.min_age ?? t.minAge ?? null,
       max_age: t.max_age ?? t.maxAge ?? null,
       is_active:
@@ -84,7 +90,7 @@ export default function PolicyModal({
   };
 
   const [policies, setPolicies] = useState([]);
-  const [leaveTypes, setLeaveTypes] = useState([]); // fetched & normalized: { key, label, ... }
+  const [leaveTypes, setLeaveTypes] = useState([]); // fetched & normalized: { key, label, gender, ... }
   const [alert, setAlert] = useState(null);
   const [policyAlerts, setPolicyAlerts] = useState([]);
   const [confirmDelete, setConfirmDelete] = useState({
@@ -179,9 +185,6 @@ export default function PolicyModal({
           pJson = null;
         }
         // handle different response shapes:
-        // - data: [] (simple array)
-        // - data: { policies: [...], defaultLeaveSettings: [...] }
-        // - top-level array
         let list = [];
         if (pRes.ok) {
           if (Array.isArray(pJson?.data)) list = pJson.data;
@@ -208,7 +211,6 @@ export default function PolicyModal({
           });
 
           if (tRes.status === 404) {
-            // no namespaced endpoint; still try again (same URL fallback is harmless)
             tRes = await fetch(typesUrl, {
               credentials: "include",
               headers: buildHeaders(),
@@ -313,6 +315,7 @@ export default function PolicyModal({
           value: "",
           carryForward: "",
           advanceNoticeDays: "",
+          gender: "All", // <<< GENDER default
         },
       ],
     });
@@ -354,6 +357,7 @@ export default function PolicyModal({
             value: ls.value ?? "",
             carryForward: ls.carry_forward ?? "",
             advanceNoticeDays: ls.advance_notice_days ?? "",
+            gender: ls.gender ?? found.gender ?? "All", // <<< GENDER preserved from saved policy or from leaveTypes
           };
         } else {
           const missingKey = String(ls.type || "custom").trim();
@@ -362,7 +366,14 @@ export default function PolicyModal({
               (p) => String(p.key).toLowerCase() === missingKey.toLowerCase(),
             );
             if (exists) return prev;
-            return [...(prev || []), { key: missingKey, label: missingKey }];
+            return [
+              ...(prev || []),
+              {
+                key: missingKey,
+                label: missingKey,
+                gender: ls.gender ?? "All",
+              },
+            ];
           });
           return {
             id: Date.now() + Math.random(),
@@ -370,6 +381,7 @@ export default function PolicyModal({
             value: ls.value ?? "",
             carryForward: ls.carry_forward ?? "",
             advanceNoticeDays: ls.advance_notice_days ?? "",
+            gender: ls.gender ?? "All",
           };
         }
       });
@@ -437,16 +449,24 @@ export default function PolicyModal({
         carry_forward: Number(config[key].carryForward) || 0,
         advance_notice_days: Number(config[key].advanceNoticeDays || 0),
       })),
-      ...extras.map(({ typeKey, value, carryForward, advanceNoticeDays }) => {
-        const typeString = String(typeKey || "Custom");
-        return {
-          type: typeString,
-          enabled: true,
-          value: Number(value) || 0,
-          carry_forward: Number(carryForward) || 0,
-          advance_notice_days: Number(advanceNoticeDays || 0),
-        };
-      }),
+      ...extras.map(
+        ({ typeKey, value, carryForward, advanceNoticeDays, gender }) => {
+          const typeString = String(typeKey || "Custom");
+          // determine gender: prefer explicit selection, else fall back to leaveTypes metadata, else 'All'
+          const resolvedGender =
+            gender ||
+            (leaveTypes || []).find((t) => t.key === typeKey)?.gender ||
+            "All";
+          return {
+            type: typeString,
+            enabled: true,
+            value: Number(value) || 0,
+            carry_forward: Number(carryForward) || 0,
+            advance_notice_days: Number(advanceNoticeDays || 0),
+            gender: resolvedGender, // <<< GENDER included in payload
+          };
+        },
+      ),
     ];
 
     const payload = {
@@ -898,14 +918,28 @@ export default function PolicyModal({
               ))}
 
               {form.extras.map(
-                ({ id, typeKey, value, carryForward, advanceNoticeDays }) => (
+                ({
+                  id,
+                  typeKey,
+                  value,
+                  carryForward,
+                  advanceNoticeDays,
+                  gender,
+                }) => (
                   <div key={id} className="leave-type-row extra-row">
                     {/* Dropdown of leaveTypes (from DB) — NO free text */}
                     <select
                       value={typeKey || ""}
                       onChange={(e) => {
                         const v = e.target.value;
-                        updateExtra(id, { typeKey: v });
+                        // if the selected leave type has a default gender, set it
+                        const found = (leaveTypes || []).find(
+                          (t) => t.key === v,
+                        );
+                        updateExtra(id, {
+                          typeKey: v,
+                          gender: found?.gender ?? "All",
+                        });
                       }}
                       required
                     >
@@ -913,23 +947,24 @@ export default function PolicyModal({
                       {(leaveTypes || []).map((t, idx) => (
                         <option key={idx} value={t.key || t}>
                           {t.label || t.key || t}
+                          {t.gender ? ` (${t.gender})` : ""}
                         </option>
                       ))}
                     </select>
 
-                    {/* Show selected label read-only for clarity */}
-                    <input
-                      type="text"
-                      placeholder="Selected leave label"
-                      value={
-                        (leaveTypes.find((t) => t.key === typeKey) || {})
-                          .label ||
-                        typeKey ||
-                        ""
+                    {/* Gender selector for this extra leave */}
+                    <select
+                      value={gender || "All"}
+                      onChange={(e) =>
+                        updateExtra(id, { gender: e.target.value })
                       }
-                      readOnly
-                      style={{ opacity: 0.85 }}
-                    />
+                      title="Apply this leave only to a specific gender"
+                      style={{ minWidth: 120 }}
+                    >
+                      <option value="All">All</option>
+                      <option value="Male">Male</option>
+                      <option value="Female">Female</option>
+                    </select>
 
                     <input
                       type="number"
@@ -990,6 +1025,10 @@ export default function PolicyModal({
                   const notice = ls.advance_notice_days
                     ? ` • Notice ${ls.advance_notice_days}d`
                     : "";
+                  const genderLabel =
+                    ls.gender && String(ls.gender).toLowerCase() !== "all"
+                      ? ` • Gender ${ls.gender}`
+                      : "";
                   if ((ls.type || "").toLowerCase() === "earned") {
                     return (
                       <li key={ls.type + idx} className="policy-setting-item">
@@ -1001,6 +1040,7 @@ export default function PolicyModal({
                         <span className="setting-meta">
                           CF {ls.carry_forward ?? 0}
                           {notice}
+                          {genderLabel}
                         </span>
                       </li>
                     );
@@ -1023,6 +1063,7 @@ export default function PolicyModal({
                       <span className="setting-meta">
                         CF {ls.carry_forward ?? 0}
                         {notice}
+                        {genderLabel}
                       </span>
                     </li>
                   );

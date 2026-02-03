@@ -2,18 +2,11 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import { MdOutlineCancel } from "react-icons/md";
-import { getAdvanceNoticeDays } from "./leaveUtils.client";
+import {
+  getAdvanceNoticeDays,
+  computeRequestedDays,
+} from "./leaveUtils.client";
 
-/**
- * LeaveFormModal
- * - Uses leaveTypeOptions (from parent) which already contains eligibility flags.
- * - When a leave type is selected we compute required advance-notice days from:
- *    1) activePolicy.leave_settings (exact match)
- *    2) defaultLeaveSettings (fallback)
- *    3) leaveTypes meta (DB) which may include advance_notice_days/advanceNoticeDays/advance_notice
- *
- * - If advance-notice > 0 and not editing, we show a small hint and update the start-date min.
- */
 export default function LeaveFormModal({
   isVisible,
   onClose,
@@ -28,24 +21,23 @@ export default function LeaveFormModal({
   defaultLeaveSettings,
   leaveTypes = [],
   userProfile = null,
+  // Option A: attachments state provided by hook
+  attachments = [],
+  setAttachments = () => {},
 }) {
   if (!isVisible) return null;
 
   const todayIso = useMemo(() => new Date().toISOString().split("T")[0], []);
-  // dynamic min start date (default to today)
   const [minStartAllowed, setMinStartAllowed] = useState(todayIso);
   const [advanceNoticeDays, setAdvanceNoticeDays] = useState(0);
 
-  // utility to format yyyy-mm-dd
   const formatIso = (d) =>
     d instanceof Date ? d.toISOString().split("T")[0] : String(d);
 
-  // find setting in active policy or default settings by typeKey (case-insensitive)
   const findSettingInPolicyOrDefault = (typeKey) => {
     if (!typeKey) return null;
     const keyLower = String(typeKey || "").toLowerCase();
 
-    // 1) active policy
     if (activePolicy && Array.isArray(activePolicy.leave_settings)) {
       const found = activePolicy.leave_settings.find(
         (s) => String(s.type || "").toLowerCase() === keyLower,
@@ -53,7 +45,6 @@ export default function LeaveFormModal({
       if (found) return found;
     }
 
-    // 2) defaultLeaveSettings (client-side defaults)
     if (Array.isArray(defaultLeaveSettings)) {
       const found = defaultLeaveSettings.find(
         (s) => String(s.type || "").toLowerCase() === keyLower,
@@ -61,7 +52,6 @@ export default function LeaveFormModal({
       if (found) return found;
     }
 
-    // 3) DB-driven leaveTypes meta
     if (Array.isArray(leaveTypes)) {
       const found = leaveTypes.find((t) => {
         const k = (t?.key || t?.type || t?.type_key || t).toString();
@@ -73,7 +63,6 @@ export default function LeaveFormModal({
     return null;
   };
 
-  // determine notice days number from a setting object (various possible shapes)
   const extractNoticeDays = (setting) => {
     if (!setting) return 0;
     const candidates = [
@@ -89,7 +78,6 @@ export default function LeaveFormModal({
       if (!isNaN(n) && Number.isFinite(n) && n > 0)
         return Math.max(0, Math.floor(n));
     }
-    // support getAdvanceNoticeDays util for known shapes
     try {
       const t = getAdvanceNoticeDays(setting);
       if (typeof t === "number" && Number.isFinite(t))
@@ -98,7 +86,6 @@ export default function LeaveFormModal({
     return 0;
   };
 
-  // compute min allowed start based on notice days (today + noticeDays)
   const computeMinStartForNotice = (noticeDays) => {
     try {
       const d = new Date();
@@ -110,7 +97,18 @@ export default function LeaveFormModal({
     }
   };
 
-  // effect: whenever selected leave type changes, update notice & min date
+  const calcRequestedDays = () => {
+    try {
+      const s = formData.startDate || "";
+      const e = formData.endDate || "";
+      const hf = formData.h_f_day || "Full Day";
+      if (!s || !e) return 0;
+      return Number(computeRequestedDays(s, e, hf) || 0);
+    } catch {
+      return 0;
+    }
+  };
+
   useEffect(() => {
     const selectedType = formData.leavetype || "";
     if (!selectedType) {
@@ -118,37 +116,35 @@ export default function LeaveFormModal({
       setMinStartAllowed(todayIso);
       return;
     }
-
     const setting = findSettingInPolicyOrDefault(selectedType);
     const notice = extractNoticeDays(setting);
-
     setAdvanceNoticeDays(notice);
     setMinStartAllowed(computeMinStartForNotice(notice));
 
-    // show alert once (only when selecting, not editing)
     if (!editingId && notice > 0) {
       const label =
         (leaveTypeOptions || []).find(
           (o) => String(o.type) === String(selectedType),
         )?.label || selectedType;
       const msg = activePolicy
-        ? `This "${label}" leave requires at least ${notice} day(s) advance. Please pick a start date on or after ${computeMinStartForNotice(notice)}.`
-        : `By default, a "${label}" leave requires at least ${notice} day(s) advance. Please pick a start date on or after ${computeMinStartForNotice(notice)}.`;
+        ? `This "${label}" leave requires at least ${notice} day(s) advance. Please pick a start date on or after ${computeMinStartForNotice(
+            notice,
+          )}.`
+        : `By default, a "${label}" leave requires at least ${notice} day(s) advance. Please pick a start date on or after ${computeMinStartForNotice(
+            notice,
+          )}.`;
       try {
         showAlert?.(msg);
-      } catch (e) {
-        // ignore
-      }
+      } catch (e) {}
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     formData.leavetype,
     activePolicy,
     defaultLeaveSettings,
-    JSON.stringify(leaveTypes || []), // simplistic dependency for leaveTypes meta
+    JSON.stringify(leaveTypes || []),
   ]);
 
-  // when user changes startDate manually, warn if earlier than allowed
   const handleStartChange = (e) => {
     handleInputChange(e);
     const chosen = e.target.value;
@@ -166,13 +162,122 @@ export default function LeaveFormModal({
   const selectedOpt = leaveTypeOptions.find(
     (o) => String(o.type) === String(formData.leavetype),
   );
-
   const effectiveMinStart = editingId ? todayIso : minStartAllowed || todayIso;
+
+  // Attachment logic
+  const requestedDays = calcRequestedDays();
+  const selectedTypeStr = (formData.leavetype || "").toString().toLowerCase();
+
+  const isSickType =
+    /sick/i.test(selectedTypeStr) || selectedTypeStr === "sick";
+  const isMaternityType = /matern/i.test(selectedTypeStr);
+  const isPaternityType = /patern/i.test(selectedTypeStr);
+
+  const showAttachmentOption =
+    (isSickType && requestedDays > 3) || isMaternityType || isPaternityType;
+
+  const formatSize = (bytes) => {
+    if (!bytes) return "0 KB";
+    const kb = bytes / 1024;
+    if (kb < 1024) return `${Math.round(kb)} KB`;
+    return `${(kb / 1024).toFixed(2)} MB`;
+  };
+
+  // Keep formData.attachments metadata in sync with attachments (hook-level real File objects)
+  useEffect(() => {
+    try {
+      if (!Array.isArray(attachments) || attachments.length === 0) {
+        // if there are no hook attachments, preserve existing formData.attachments if it contains server-side attachments
+        // but if formData.attachments are all client-side empty metadata we clear them
+        const meta = Array.isArray(formData.attachments)
+          ? formData.attachments
+          : [];
+        const allLocalNoFile =
+          meta.length > 0 &&
+          meta.every((m) => !m.serverId && !m.fileUrl && !m.remote);
+        if (meta.length === 0 || allLocalNoFile) {
+          setFormData((prev) => ({ ...prev, attachments: [] }));
+        }
+        return;
+      }
+      // Build metadata array from real File objects (no file references inside JSON)
+      const meta = attachments.map((f) => ({
+        name: f.name,
+        size: f.size,
+        type: f.type,
+        // do NOT include the File object itself in formData metadata (keeps JSON clean)
+        // we intentionally do not put file: f here
+        uploaded: false,
+      }));
+      setFormData((prev) => ({ ...prev, attachments: meta }));
+    } catch (err) {
+      // swallow
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [attachments]);
+
+  // When file input changes, store *real* File objects into hook-level attachments
+  const handleFilesChange = (e) => {
+    const files = e.target.files;
+    if (!files) return;
+    const arrFiles = Array.from(files).filter((f) => {
+      const ext = (f.name || "").toLowerCase();
+      const okMime =
+        (f.type && f.type.startsWith("image/")) || f.type === "application/pdf";
+      const okExt = /\.(png|jpg|jpeg|gif|bmp|webp|pdf)$/i.test(ext);
+      return okMime || okExt;
+    });
+
+    if (arrFiles.length === 0) {
+      showAlert("No supported files selected. Use images or PDFs only.");
+      return;
+    }
+
+    // Merge with existing File objects (hook)
+    const existingHook = Array.isArray(attachments) ? attachments : [];
+    const newHook = existingHook.concat(arrFiles);
+    setAttachments(newHook);
+
+    // metadata update handled by useEffect above
+
+    // clear native input to allow same-file selection again
+    try {
+      e.target.value = "";
+    } catch {}
+  };
+
+  // Remove by index (index is relative to displayed list; we keep attachments & metadata aligned)
+  const removeAttachment = (idx) => {
+    // If we have hook-level File objects, remove from that first
+    const hookArr = Array.isArray(attachments) ? attachments.slice() : null;
+    if (hookArr && hookArr.length > 0) {
+      if (idx >= 0 && idx < hookArr.length) {
+        hookArr.splice(idx, 1);
+        setAttachments(hookArr);
+      }
+    } else {
+      // fall back to metadata-only removal (possible when showing previously uploaded files)
+      const metaArr = Array.isArray(formData.attachments)
+        ? formData.attachments.slice()
+        : [];
+      if (idx >= 0 && idx < metaArr.length) {
+        metaArr.splice(idx, 1);
+        setFormData({ ...formData, attachments: metaArr });
+      }
+    }
+  };
 
   return (
     <div className="leave-modal">
       <div className="leave-modal-content">
-        <form className="leave-form" onSubmit={handleSubmit}>
+        <form
+          className="leave-form"
+          onSubmit={(e) => {
+            // leave submission handled by hook's handleSubmit
+            // pass event through so default prevention happens upstream
+            handleSubmit?.(e);
+          }}
+        >
           <div className="leave-form-header">
             <h2>Leave Request Form</h2>
             <MdOutlineCancel
@@ -190,9 +295,7 @@ export default function LeaveFormModal({
                 name="leavetype"
                 value={formData.leavetype || ""}
                 onChange={(e) => {
-                  // propagate
                   handleInputChange(e);
-                  // additional logic runs in effect above
                 }}
                 required
               >
@@ -227,14 +330,13 @@ export default function LeaveFormModal({
                 required
                 min={effectiveMinStart}
               />
-              {/* Inline hint about advance-notice */}
               {!editingId && advanceNoticeDays > 0 && (
                 <div
                   className="leave-note"
                   style={{ fontSize: 13, color: "#333", marginTop: 6 }}
                 >
-                  This leave requires <strong>{advanceNoticeDays}</strong> day
-                  (s) advance. Earliest allowed start:{" "}
+                  This leave requires <strong>{advanceNoticeDays}</strong>{" "}
+                  day(s) advance. Earliest allowed start:{" "}
                   <strong>{effectiveMinStart}</strong>.
                 </div>
               )}
@@ -283,7 +385,66 @@ export default function LeaveFormModal({
               />
             </div>
 
-            {/* Helpful hint for menstrual / maternity / paternity */}
+            {/* Attachment input (Option A) */}
+            {showAttachmentOption && (
+              <div className="leave-form-group">
+                <label htmlFor="attachments">Attach supporting documents</label>
+
+                <input
+                  id="attachments"
+                  type="file"
+                  name="attachments"
+                  onChange={handleFilesChange}
+                  multiple
+                  accept="image/*,application/pdf"
+                />
+
+                <div>
+                  Attach medical certificate or other supporting files if
+                  available. (Images or PDF only)
+                </div>
+
+                {/* Prefer hook-level attachments for display; fallback to formData.attachments */}
+                {Array.isArray(attachments) && attachments.length > 0 ? (
+                  <ul className="leave-form-attachments">
+                    {attachments.map((f, idx) => (
+                      <li key={`${f.name || f.filename}-${idx}`}>
+                        <span>
+                          {f.name || f.originalname || f.filename} —{" "}
+                          {formatSize(f.size)}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => removeAttachment(idx)}
+                          aria-label={`Remove ${f.name || f.originalname || f.filename}`}
+                        >
+                          Remove
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                ) : Array.isArray(formData.attachments) &&
+                  formData.attachments.length > 0 ? (
+                  <ul className="leave-form-attachments">
+                    {formData.attachments.map((f, idx) => (
+                      <li key={`${f.name}-${idx}`}>
+                        <span>
+                          {f.name} — {formatSize(f.size)}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => removeAttachment(idx)}
+                          aria-label={`Remove ${f.name}`}
+                        >
+                          Remove
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
+              </div>
+            )}
+
             {selectedOpt &&
               typeof selectedOpt.type === "string" &&
               /menstr|matern|patern/i.test(selectedOpt.type) && (

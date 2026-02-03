@@ -18,7 +18,7 @@ import { useAuth } from "../../context/AuthProvider.client";
 function getCookie(name) {
   if (typeof document === "undefined") return null;
   const m = document.cookie.match(
-    new RegExp("(?:^|; )" + name.replace(/[-.+*]/g, "\\$&") + "=([^;]*)")
+    new RegExp("(?:^|; )" + name.replace(/[-.+*]/g, "\\$&") + "=([^;]*)"),
   );
   return m ? decodeURIComponent(m[1]) : null;
 }
@@ -82,7 +82,7 @@ const RbTeamLead = () => {
   const teamLeadId = getEmployeeIdFromContextOrCookie(user);
 
   const initialDepartmentId = extractDepartment(
-    user?.raw ?? user ?? employeeData
+    user?.raw ?? user ?? employeeData,
   );
   const initialOrgId = extractOrgId(user?.raw ?? user);
   const [view, setView] = useState("team");
@@ -159,7 +159,7 @@ const RbTeamLead = () => {
       });
       return h;
     },
-    [user, apiKey, orgId]
+    [user, apiKey, orgId],
   );
   const resolveDepartmentIdOnce = useCallback(async () => {
     if (departmentId) return departmentId;
@@ -200,7 +200,7 @@ const RbTeamLead = () => {
           console.debug(
             "resolveDepartmentIdOnce: candidate failed",
             p,
-            err?.response?.status
+            err?.response?.status,
           );
         }
       }
@@ -265,7 +265,7 @@ const RbTeamLead = () => {
           console.debug(
             "resolveOrgIdOnce: candidate failed",
             p,
-            err?.response?.status
+            err?.response?.status,
           );
         }
       }
@@ -310,7 +310,7 @@ const RbTeamLead = () => {
       } catch (error) {
         console.error(
           "Error fetching projects:",
-          error?.response?.data || error?.message || error
+          error?.response?.data || error?.message || error,
         );
       }
     };
@@ -346,7 +346,7 @@ const RbTeamLead = () => {
     } catch (err) {
       console.warn(
         "Could not fetch employees for participant selection. Falling back to demo list.",
-        err?.response?.data || err?.message || err
+        err?.response?.data || err?.message || err,
       );
       setEmployeeOptions([
         { employee_id: teamLeadId || "E000", name: "You", position: "" },
@@ -360,7 +360,9 @@ const RbTeamLead = () => {
     if (!hydrated) return;
     fetchEmployees();
   }, [view, hydrated]);
+  // put this alongside your other helpers (formatDisplayDate / formatRange)
   const resolveDateDisplay = (payload = {}, claim = {}) => {
+    // helper to pick first present value from a list of keys
     const pick = (obj, keys = []) => {
       for (const k of keys) {
         if (
@@ -374,6 +376,7 @@ const RbTeamLead = () => {
       return null;
     };
 
+    // candidate single-date fields (line payload preferred)
     const singleDateKeys = [
       "date",
       "expense_date",
@@ -388,6 +391,7 @@ const RbTeamLead = () => {
       "submittedAt",
     ];
 
+    // candidate range fields (start / end)
     const startKeys = [
       "date_from",
       "from",
@@ -409,13 +413,16 @@ const RbTeamLead = () => {
       "toDate",
     ];
 
+    // 1) If payload has explicit range, prefer that
     const start = pick(payload, startKeys);
     const end = pick(payload, endKeys);
     if (start || end) return formatRange(start, end);
 
+    // 2) If payload has a single date-ish field, use it
     const single = pick(payload, singleDateKeys);
     if (single) return formatDisplayDate(single);
 
+    // 3) Fallback to claim-level dates (sometimes the line payload is empty)
     const claimStart = pick(claim, startKeys);
     const claimEnd = pick(claim, endKeys);
     if (claimStart || claimEnd) return formatRange(claimStart, claimEnd);
@@ -423,6 +430,7 @@ const RbTeamLead = () => {
     const claimSingle = pick(claim, singleDateKeys);
     if (claimSingle) return formatDisplayDate(claimSingle);
 
+    // 4) last resort: created_at / submitted_at / createdAt on rb
     const lastResort =
       claim.created_at ||
       claim.createdAt ||
@@ -509,10 +517,10 @@ const RbTeamLead = () => {
       if (!effectiveOrgForParam) {
         console.error(
           "fetchEmployees aborted: orgId missing; headers:",
-          buildHeaders()
+          buildHeaders(),
         );
         showAlert(
-          "Organization id (x-org-id) is missing from your session. The backend requires it."
+          "Organization id (x-org-id) is missing from your session. The backend requires it.",
         );
         return;
       }
@@ -541,7 +549,7 @@ const RbTeamLead = () => {
         });
         const flatClaims = response.data || [];
         const filteredFlatClaims = flatClaims.filter(
-          (c) => String(c.employee_id) !== String(teamLeadId)
+          (c) => String(c.employee_id) !== String(teamLeadId),
         );
         const grouped = filteredFlatClaims.reduce((acc, claim) => {
           const empId = claim.employee_id;
@@ -559,14 +567,14 @@ const RbTeamLead = () => {
       } catch (primaryError) {
         console.error(
           "Primary fetchEmployees failed (primary headers):",
-          primaryError?.message || primaryError
+          primaryError?.message || primaryError,
         );
         if (primaryError.response) {
           console.error(
             "response.status:",
             primaryError.response.status,
             "data:",
-            primaryError.response.data
+            primaryError.response.data,
           );
           const msg =
             primaryError?.response?.data?.error ||
@@ -574,7 +582,7 @@ const RbTeamLead = () => {
             primaryError.message;
           if ([401, 403].includes(primaryError.response.status)) {
             showAlert(
-              msg || "Authentication error while fetching team reimbursements."
+              msg || "Authentication error while fetching team reimbursements.",
             );
             return;
           } else {
@@ -583,7 +591,7 @@ const RbTeamLead = () => {
           }
         } else if (primaryError.request) {
           console.warn(
-            "No response from server (possible CORS/network). Attempting fallback request using query params and minimal headers."
+            "No response from server (possible CORS/network). Attempting fallback request using query params and minimal headers.",
           );
         } else {
           console.error("setup error:", primaryError);
@@ -614,7 +622,7 @@ const RbTeamLead = () => {
           });
           const flatClaims = response2.data || [];
           const filteredFlatClaims = flatClaims.filter(
-            (c) => String(c.employee_id) !== String(teamLeadId)
+            (c) => String(c.employee_id) !== String(teamLeadId),
           );
           const grouped = filteredFlatClaims.reduce((acc, claim) => {
             const empId = claim.employee_id;
@@ -633,14 +641,14 @@ const RbTeamLead = () => {
         } catch (fallbackError) {
           console.error(
             "Fallback fetchEmployees also failed:",
-            fallbackError?.message || fallbackError
+            fallbackError?.message || fallbackError,
           );
           if (fallbackError.response) {
             console.error(
               "response.status:",
               fallbackError.response.status,
               "data:",
-              fallbackError.response.data
+              fallbackError.response.data,
             );
             const msg =
               fallbackError?.response?.data?.error ||
@@ -650,7 +658,7 @@ const RbTeamLead = () => {
           } else if (fallbackError.request) {
             console.error(
               "No response from server for fallback (likely CORS / network). Request object:",
-              fallbackError.request
+              fallbackError.request,
             );
             showAlert("Network Error");
           } else {
@@ -663,7 +671,7 @@ const RbTeamLead = () => {
     } catch (error) {
       console.error(
         "Unexpected error in fetchEmployees top-level catch:",
-        error
+        error,
       );
       showAlert("Error fetching employees.");
     }
@@ -688,7 +696,7 @@ const RbTeamLead = () => {
       } catch (primaryErr) {
         console.warn(
           "Primary self fetch failed, trying fallback minimal headers",
-          primaryErr?.message || primaryErr
+          primaryErr?.message || primaryErr,
         );
         try {
           const minimalHeaders = {};
@@ -756,6 +764,24 @@ const RbTeamLead = () => {
             claimEmployee: claim?.employee_id,
           });
 
+          // 0) Try canonical serve endpoint first (preferred)
+          if (claim?.id && filename) {
+            try {
+              const serveUrl = `${absBase}/reimbursement/attachment/serve?claimId=${encodeURIComponent(
+                claim.id,
+              )}&filename=${encodeURIComponent(filename)}`;
+              const served = await tryFetchBlob(serveUrl);
+              if (served.ok)
+                return {
+                  name: filename,
+                  url: URL.createObjectURL(served.blob),
+                };
+            } catch (e) {
+              console.debug("serve endpoint attempt failed", e);
+            }
+          }
+
+          // 1) Try naive legacy path if year/month parseable and claim employee available
           const match = String(filename).match(/^(\d{4})-(\d{2})-/);
           const year = match ? match[1] : null;
           const month = match ? match[2] : null;
@@ -764,71 +790,108 @@ const RbTeamLead = () => {
 
           if (year && month && empIdFromClaim) {
             const cand = `${absBase}/reimbursement/${encodeURIComponent(
-              year
+              year,
             )}/${encodeURIComponent(month)}/${encodeURIComponent(
-              empIdFromClaim
+              empIdFromClaim,
             )}/${encodeURIComponent(filename)}`;
             const result = await tryFetchBlob(cand);
             if (result.ok)
               return { name: filename, url: URL.createObjectURL(result.blob) };
           }
 
+          // 2) Query metadata endpoint (if available) and try server-provided options
           try {
-            const metaResp = await axios.get(
-              `${absBase}/reimbursement/attachment/meta?claimId=${encodeURIComponent(
-                claim?.id || ""
-              )}&filename=${encodeURIComponent(filename)}`,
-              { withCredentials: true, headers: buildHeaders() }
-            );
-            const meta = metaResp.data;
-            const attachmentsMeta = Array.isArray(meta?.attachments)
-              ? meta.attachments
+            const metaUrl = `${absBase}/reimbursement/attachment/meta?claimId=${encodeURIComponent(
+              claim?.id || "",
+            )}&filename=${encodeURIComponent(filename)}`;
+            const metaResp = await axios.get(metaUrl, {
+              withCredentials: true,
+              headers: buildHeaders(),
+            });
+            const attachmentsMeta = Array.isArray(metaResp.data?.attachments)
+              ? metaResp.data.attachments
               : [];
+
             if (attachmentsMeta.length) {
               const att = attachmentsMeta[0];
+
+              // 2a) If DB row provides a fully-qualified URL, try it
               if (att.url && /^https?:\/\//i.test(att.url)) {
                 const r = await tryFetchBlob(att.url);
                 if (r.ok)
                   return { name: filename, url: URL.createObjectURL(r.blob) };
               }
 
+              // 2b) If DB row has file_path pointing into your project (absolute or relative),
+              // attempt to derive a backend URL by locating the 'reimbursement/...' substring.
               if (att.file_path) {
-                const candidatePath = att.file_path.startsWith("/")
-                  ? `${absBase}${att.file_path}`
-                  : `${absBase}/${att.file_path}`;
-                const r2 = await tryFetchBlob(candidatePath);
-                if (r2.ok)
-                  return { name: filename, url: URL.createObjectURL(r2.blob) };
+                try {
+                  const p = String(att.file_path);
+                  const idx = p.toLowerCase().indexOf("reimbursement");
+                  if (idx !== -1) {
+                    // normalize backslashes -> forward slashes for URL
+                    const rel = p.slice(idx).replace(/\\/g, "/");
+                    const candidatePath = `${absBase}/${rel.replace(
+                      /^\/+/,
+                      "",
+                    )}`;
+                    const r2 = await tryFetchBlob(candidatePath);
+                    if (r2.ok)
+                      return {
+                        name: filename,
+                        url: URL.createObjectURL(r2.blob),
+                      };
+                  }
+                } catch (e) {
+                  console.debug("file_path -> candidate URL attempt failed", e);
+                }
               }
 
+              // 2c) If metadata includes employee_id + file_name, try reconstructed path
               const attEmp = att.employee_id || att.emp_id || att.employeeId;
-              if (attEmp && att.file_name) {
-                const m2 = String(att.file_name).match(/^(\d{4})-(\d{2})-/);
+              const attName =
+                att.file_name || att.filename || att.fileName || filename;
+              if (attEmp && attName) {
+                const m2 = String(attName).match(/^(\d{4})-(\d{2})-/);
                 if (m2) {
                   const c = `${absBase}/reimbursement/${m2[1]}/${
                     m2[2]
                   }/${encodeURIComponent(attEmp)}/${encodeURIComponent(
-                    att.file_name
+                    attName,
                   )}`;
                   const r3 = await tryFetchBlob(c);
                   if (r3.ok)
-                    return {
-                      name: att.file_name,
-                      url: URL.createObjectURL(r3.blob),
-                    };
+                    return { name: attName, url: URL.createObjectURL(r3.blob) };
                 }
+              }
+
+              // 2d) As a last resort, try serving using the claimId + filename again (in case meta changed server-side)
+              if (claim?.id && filename) {
+                try {
+                  const serveAgain = `${absBase}/reimbursement/attachment/serve?claimId=${encodeURIComponent(
+                    claim.id,
+                  )}&filename=${encodeURIComponent(filename)}`;
+                  const s2 = await tryFetchBlob(serveAgain);
+                  if (s2.ok)
+                    return {
+                      name: filename,
+                      url: URL.createObjectURL(s2.blob),
+                    };
+                } catch {}
               }
             }
           } catch (metaErr) {
-            console.warn(
-              "Attachment metadata lookup failed",
-              metaErr?.response?.data || metaErr.message || metaErr
+            // metadata endpoint might not exist — that's OK, continue to other fallbacks
+            console.debug(
+              "Attachment metadata lookup failed or missing",
+              metaErr?.response?.data || metaErr?.message || metaErr,
             );
           }
 
+          // 3) Nothing worked for this file
           console.warn("All attempts failed for", filename);
           return null;
-        })
+        }),
       );
 
       const goodFiles = (fetchedFiles || []).filter(Boolean);
@@ -887,7 +950,8 @@ const RbTeamLead = () => {
       if (typeof p === "object")
         return p.name || p.employee_name || p.employee_id || JSON.stringify(p);
       const found = employeeOptions.find(
-        (e) => String(e.employee_id) === String(p) || String(e.id) === String(p)
+        (e) =>
+          String(e.employee_id) === String(p) || String(e.id) === String(p),
       );
       if (found) return found.name;
       return String(p);
@@ -956,7 +1020,7 @@ const RbTeamLead = () => {
       .map((p) =>
         typeof p === "object"
           ? p.employee_id || p.id || p.employeeId
-          : String(p)
+          : String(p),
       )
       .filter(Boolean)
       .map(String);
@@ -966,7 +1030,7 @@ const RbTeamLead = () => {
   };
   const handleParticipantSelectionChange = (selectedArray) => {
     const ids = (selectedArray || []).map((it) =>
-      typeof it === "string" ? it : it.employee_id || it.id || it.employeeId
+      typeof it === "string" ? it : it.employee_id || it.id || it.employeeId,
     );
     setParticipantsForEdit(ids.map(String));
   };
@@ -983,7 +1047,7 @@ const RbTeamLead = () => {
         {
           withCredentials: true,
           headers: { ...buildHeaders(), "Content-Type": "application/json" },
-        }
+        },
       );
       showAlert("Participants updated.");
       setIsParticipantsModalOpen(false);
@@ -997,7 +1061,7 @@ const RbTeamLead = () => {
   };
   const handleDownloadPDF = (claim) => {
     showAlert(
-      "Download not implemented in this patch — implement server-side file endpoint."
+      "Download not implemented in this patch — implement server-side file endpoint.",
     );
   };
   const updateStatus = async (claimId) => {
@@ -1012,8 +1076,10 @@ const RbTeamLead = () => {
         backendBase ? backendBase : ""
       }/reimbursement/${claimId}/status`;
 
+      // pick a reliable actor id for headers and approver_id
       const actor = getEmployeeIdFromContextOrCookie(user) || teamLeadId || "";
 
+      // Build request body using fields server expects
       const body = {
         status: newStatus,
         approver_comments: comments[claimId] || "",
@@ -1021,12 +1087,14 @@ const RbTeamLead = () => {
         project: projectSelections[claimId] || "",
       };
 
+      // Build headers and ensure x-employee-id / x-org-id present
       const headers = { ...buildHeaders(), "Content-Type": "application/json" };
       if (!headers["x-employee-id"] && actor)
         headers["x-employee-id"] = String(actor).trim();
       if (!headers["x-org-id"] && orgId)
         headers["x-org-id"] = String(orgId).trim();
 
+      // send primary request
       await axios.put(url, body, {
         withCredentials: true,
         headers,
@@ -1037,6 +1105,7 @@ const RbTeamLead = () => {
     } catch (err) {
       console.error("updateStatus failed:", err);
 
+      // Secondary fallback: minimal headers but ensure x-employee-id present
       try {
         const url = `${
           backendBase ? backendBase : ""
@@ -1072,6 +1141,7 @@ const RbTeamLead = () => {
 
   const updatePaymentStatus = async (claimIdParam, paymentOptionParam) => {
     try {
+      // Accept explicit args, otherwise fallback to modal state
       const claimId =
         claimIdParam ||
         (selectedPaymentClaim &&
@@ -1095,6 +1165,7 @@ const RbTeamLead = () => {
         (backendBase ? `${backendBase}` : "") +
         `/reimbursement/${encodeURIComponent(claimId)}/payment`;
 
+      // build headers and ensure required headers present
       const headers = { ...buildHeaders(), "Content-Type": "application/json" };
       const actor = getEmployeeIdFromContextOrCookie(user) || teamLeadId;
       if (!headers["x-employee-id"] && actor)
@@ -1111,10 +1182,11 @@ const RbTeamLead = () => {
         {
           withCredentials: true,
           headers,
-        }
+        },
       );
 
       showAlert("Payment status updated.");
+      // reset modal state
       setIsPaymentModalOpen(false);
       setSelectedPaymentClaim(null);
       setSelectedPaymentOption("");
@@ -1122,12 +1194,13 @@ const RbTeamLead = () => {
     } catch (err) {
       console.error("updatePaymentStatus failed:", err);
       try {
+        // fallback minimal headers
         const url =
           (backendBase ? `${backendBase}` : "") +
           `/reimbursement/${encodeURIComponent(
             claimIdParam ||
               (selectedPaymentClaim && selectedPaymentClaim.id) ||
-              ""
+              "",
           )}/payment`;
         const minimalHeaders = {};
         if (apiKey) minimalHeaders["x-api-key"] = String(apiKey).trim();
@@ -1139,7 +1212,7 @@ const RbTeamLead = () => {
         await axios.put(
           url,
           { payment_status: paymentOptionParam || selectedPaymentOption || "" },
-          { withCredentials: true, headers: minimalHeaders }
+          { withCredentials: true, headers: minimalHeaders },
         );
 
         showAlert("Payment status updated (fallback).");
@@ -1280,7 +1353,7 @@ const RbTeamLead = () => {
                         {filteredClaims
                           .reduce(
                             (sum, claim) => sum + getClaimAmount(claim),
-                            0
+                            0,
                           )
                           .toLocaleString("en-IN", {
                             minimumFractionDigits: 2,
@@ -1295,11 +1368,11 @@ const RbTeamLead = () => {
                           .filter(
                             (claim) =>
                               String(claim.status || "").toLowerCase() ===
-                              "approved"
+                              "approved",
                           )
                           .reduce(
                             (sum, claim) => sum + getClaimAmount(claim),
-                            0
+                            0,
                           )
                           .toLocaleString("en-IN", {
                             minimumFractionDigits: 2,
@@ -1344,15 +1417,15 @@ const RbTeamLead = () => {
                                     .sort(
                                       (a, b) =>
                                         (a.line_index || 0) -
-                                        (b.line_index || 0)
+                                        (b.line_index || 0),
                                     )
                                 : [];
 
                               const claimLevelInvs = parseInvoicesForClaim(rb);
                               const invSet = new Set(
                                 (claimLevelInvs || []).map((i) =>
-                                  String(i).trim()
-                                )
+                                  String(i).trim(),
+                                ),
                               );
 
                               lines.forEach((ln) => {
@@ -1422,7 +1495,7 @@ const RbTeamLead = () => {
                                         lines && lines.length
                                           ? lines[0].payload
                                           : {},
-                                        rb
+                                        rb,
                                       )}
                                     </td>
 
@@ -1433,7 +1506,7 @@ const RbTeamLead = () => {
                                         {
                                           minimumFractionDigits: 2,
                                           maximumFractionDigits: 2,
-                                        }
+                                        },
                                       )}
                                     </td>
 
@@ -1476,7 +1549,7 @@ const RbTeamLead = () => {
                                           onClick={() =>
                                             handleOpenAttachments(
                                               attachments[rb.id],
-                                              rb
+                                              rb,
                                             )
                                           }
                                         >
@@ -1491,9 +1564,9 @@ const RbTeamLead = () => {
                                           onClick={() =>
                                             handleOpenAttachments(
                                               Object.values(
-                                                rb.line_attachments_map
+                                                rb.line_attachments_map,
                                               ).flat(),
-                                              rb
+                                              rb,
                                             )
                                           }
                                         >
@@ -1526,7 +1599,7 @@ const RbTeamLead = () => {
                                           onChange={(e) =>
                                             handleStatusChange(
                                               rb.id,
-                                              e.target.value
+                                              e.target.value,
                                             )
                                           }
                                         >
@@ -1642,7 +1715,7 @@ const RbTeamLead = () => {
                                               : "N/A"}
                                             {rb.paid_date
                                               ? ` (${formatDisplayDate(
-                                                  rb.paid_date
+                                                  rb.paid_date,
                                                 )})`
                                               : ""}
                                           </span>
@@ -1742,7 +1815,7 @@ const RbTeamLead = () => {
                                           <td
                                             className="participants-cell-col"
                                             title={getParticipantNamesForClaim(
-                                              rb
+                                              rb,
                                             )}
                                           >
                                             <div className="rbadmin-comments">
@@ -1771,9 +1844,9 @@ const RbTeamLead = () => {
                                                         file_name:
                                                           a.file_name ||
                                                           a.filename,
-                                                      })
+                                                      }),
                                                     ),
-                                                    rb
+                                                    rb,
                                                   )
                                                 }
                                               >
@@ -1869,7 +1942,7 @@ const RbTeamLead = () => {
             initialSelection={
               participantsForEdit && participantsForEdit.length
                 ? employeeOptions.filter((eo) =>
-                    participantsForEdit.includes(String(eo.employee_id))
+                    participantsForEdit.includes(String(eo.employee_id)),
                   )
                 : []
             }
@@ -1882,7 +1955,7 @@ const RbTeamLead = () => {
               {participantsForEdit && participantsForEdit.length ? (
                 participantsForEdit.map((pid) => {
                   const found = employeeOptions.find(
-                    (e) => String(e.employee_id) === String(pid)
+                    (e) => String(e.employee_id) === String(pid),
                   );
                   return (
                     <div key={pid} className="selected-item">
@@ -1987,7 +2060,7 @@ const RbTeamLead = () => {
               onClick={() =>
                 updatePaymentStatus(
                   selectedPaymentClaim?.id,
-                  selectedPaymentOption
+                  selectedPaymentOption,
                 )
               }
               disabled={!selectedPaymentOption}

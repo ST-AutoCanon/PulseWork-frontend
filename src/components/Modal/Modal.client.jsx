@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useEffect, useRef } from "react";
@@ -27,7 +26,7 @@ export default function Modal({
     document.body.style.overflow = "hidden";
 
     const focusable = modalRef.current?.querySelector(
-      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
     );
     (focusable || modalRef.current)?.focus?.();
 
@@ -37,7 +36,7 @@ export default function Modal({
         onClose?.();
       } else if (e.key === "Tab") {
         const focusableEls = modalRef.current.querySelectorAll(
-          'a[href], area[href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), button:not([disabled]), [tabindex]:not([tabindex]:not([tabindex="-1"]))'
+          'a[href], area[href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), button:not([disabled]), [tabindex]:not([tabindex]:not([tabindex="-1"]))',
         );
         const firstEl = focusableEls[0];
         const lastEl = focusableEls[focusableEls.length - 1];
@@ -96,13 +95,6 @@ export default function Modal({
             <h2 id={`${id}-title`} className="ac-modal-title">
               {title}
             </h2>
-            <button
-              aria-label="Close"
-              className="ac-modal-close-btn"
-              onClick={() => onClose?.()}
-            >
-              ✕
-            </button>
           </div>
         )}
 

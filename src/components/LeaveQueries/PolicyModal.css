@@ -88,6 +88,26 @@
   align-items: center;
   gap: 0.75rem;
 }
+/* Make select look identical to leave/year & carry forward inputs */
+.leave-type-row select {
+  width: 120px; /* SAME as inputs */
+  padding: 0.4rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  background: #fff;
+  font-size: 0.9rem;
+}
+
+/* Extra row still flexible but aligned */
+.extra-row select {
+  width: 120px;
+}
+
+/* Disabled / readonly feel consistency */
+.leave-type-row select:disabled {
+  background: #f5f5f5;
+  cursor: not-allowed;
+}
 
 .built-in-label {
   flex: 1;

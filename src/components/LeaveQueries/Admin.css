@@ -49,6 +49,33 @@
   padding: 2%;
   border-radius: 5px;
 }
+.attachment-cell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.attachment-btn {
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: 1px solid #ddd;
+  background: #fff;
+  cursor: pointer;
+}
+.attachment-btn:hover {
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+}
+.attachments-modal-content {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.attachment-item {
+  border-bottom: 1px solid #f0f0f0;
+  padding: 10px 0;
+}
+.attachment-meta {
+  margin-bottom: 8px;
+}
 
 .search-bar {
   display: flex;
@@ -183,7 +210,9 @@
   color: white;
   border: none;
   border-radius: 5px;
-  transition: background-color 0.3s ease, transform 0.1s ease,
+  transition:
+    background-color 0.3s ease,
+    transform 0.1s ease,
     box-shadow 0.3s ease;
 }
 
@@ -209,7 +238,9 @@
   font-size: small;
   border-radius: 4px;
   cursor: pointer;
-  transition: background-color 0.3s ease, transform 0.1s ease,
+  transition:
+    background-color 0.3s ease,
+    transform 0.1s ease,
     box-shadow 0.3s ease;
   height: 30px;
 }
@@ -307,7 +338,9 @@
   border-radius: 4px;
   font-size: 1rem;
   cursor: pointer;
-  transition: background-color 0.2s, transform 0.1s;
+  transition:
+    background-color 0.2s,
+    transform 0.1s;
 }
 
 .policy-form button:hover {
@@ -419,6 +452,8 @@
   color: white;
   border: none;
   border-radius: 5px;
-  transition: background-color 0.3s ease, transform 0.1s ease,
+  transition:
+    background-color 0.3s ease,
+    transform 0.1s ease,
     box-shadow 0.3s ease;
 }

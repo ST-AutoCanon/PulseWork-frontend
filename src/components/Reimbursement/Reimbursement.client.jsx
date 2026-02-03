@@ -80,7 +80,7 @@ const buildBackendAttachmentUrl = (BACKEND, year, month, empId, filename) => {
   if (!BACKEND) return null;
   if (!year || !month || !empId || !filename) return null;
   return `${BACKEND}/reimbursement/${year}/${month}/${empId}/${normalizeFilename(
-    filename
+    filename,
   )}`;
 };
 
@@ -151,6 +151,7 @@ const makeClientUniqueName = (file, rowIdx = null) => {
 const Reimbursement = () => {
   const { user } = useAuth();
 
+  // —— removed all localStorage fallbacks — derive from user / env only ——
   const role = String(user?.role || "Employee");
   const authToken =
     user?.raw?.token ||
@@ -167,15 +168,18 @@ const Reimbursement = () => {
     "";
   const departmentId = user?.raw?.department_id || user?.department_id || "";
 
+  // --- orgId state & resolution (to avoid "orgId required" errors) ---
   const [orgId, setOrgId] = useState(
     user?.orgId ||
       user?.raw?.org_id ||
       user?.org_id ||
       user?.organization_id ||
-      null
+      null,
   );
   const [orgResolveTried, setOrgResolveTried] = useState(false);
   const [resolvingOrg, setResolvingOrg] = useState(false);
+  const [selectedClaim, setSelectedClaim] = useState(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   const resolveOrgIdOnce = useCallback(async () => {
     if (orgId) return orgId;
@@ -253,7 +257,7 @@ const Reimbursement = () => {
           console.debug(
             "resolveOrgIdOnce: candidate failed",
             p,
-            err?.response?.status
+            err?.response?.status,
           );
         }
       }
@@ -270,7 +274,7 @@ const Reimbursement = () => {
       return found;
     }
     console.warn(
-      "Could not resolve orgId from profile endpoints; requests may fail if backend requires x-org-id"
+      "Could not resolve orgId from profile endpoints; requests may fail if backend requires x-org-id",
     );
     return null;
   }, [authToken, orgId, orgResolveTried, resolvingOrg]);
@@ -283,6 +287,14 @@ const Reimbursement = () => {
   const [editingId, setEditingId] = useState(null);
   const [expandedClaims, setExpandedClaims] = useState(new Set());
   const initialAttachmentsRef = useRef([]);
+  // ensure backendBase is defined in client files
+  const backendBase =
+    (
+      process.env.NEXT_PUBLIC_BACKEND_URL ||
+      process.env.REACT_APP_BACKEND_URL ||
+      ""
+    ) // empty string falls back to default below
+      .replace(/\/$/, "") || "http://localhost:5001";
 
   const toggleExpand = (claimId) => {
     setExpandedClaims((prev) => {
@@ -306,12 +318,12 @@ const Reimbursement = () => {
   const [submitErrorMessage, setSubmitErrorMessage] = useState("");
   const [projects, setProjects] = useState([]);
   const [statusFilter, setStatusFilter] = useState(
-    role === "Admin" ? "approved" : "pending"
+    role === "Admin" ? "approved" : "pending",
   );
 
   const [participantMode, setParticipantMode] = useState("single");
   const [participants, setParticipants] = useState(
-    employeeId ? [employeeId] : []
+    employeeId ? [employeeId] : [],
   );
   const [employeeOptions, setEmployeeOptions] = useState([]);
 
@@ -376,6 +388,7 @@ const Reimbursement = () => {
     _forceShowTransport: false,
   });
 
+  // BACKEND resolution (support NEXT_PUBLIC and REACT_APP only)
   const RAW_BACKEND =
     process.env.NEXT_PUBLIC_BACKEND_URL ||
     process.env.REACT_APP_BACKEND_URL ||
@@ -387,6 +400,7 @@ const Reimbursement = () => {
     return RAW_BACKEND.replace(/\/$/, "");
   })();
 
+  // Build headers: prefer resolved orgId state
   const buildHeaders = useCallback(() => {
     const h = {};
     const apiKey =
@@ -415,7 +429,7 @@ const Reimbursement = () => {
         "buildHeaders -> x-employee-id:",
         h["x-employee-id"],
         "x-org-id:",
-        h["x-org-id"]
+        h["x-org-id"],
       );
     }
 
@@ -424,7 +438,7 @@ const Reimbursement = () => {
 
   const extractErrorMessage = (
     err,
-    fallback = "An unexpected error occurred."
+    fallback = "An unexpected error occurred.",
   ) => {
     const data = err?.response?.data;
     if (data) {
@@ -434,7 +448,7 @@ const Reimbursement = () => {
           const status = err?.response?.status;
           if (status === 415)
             return `Invalid file type. Allowed: ${ALLOWED_EXT.join(
-              ", "
+              ", ",
             ).toUpperCase()}.`;
           if (status === 403 || status === 401)
             return "You are not authorized to upload this file.";
@@ -520,7 +534,7 @@ const Reimbursement = () => {
             .join("\n");
           showAlert(
             `The following files are not allowed:\n${names}`,
-            "Invalid file(s)"
+            "Invalid file(s)",
           );
           setFormData((p) => ({ ...p, attachments: validation.valids }));
           setSelectedFiles(validation.valids.map((f) => f.name));
@@ -578,6 +592,7 @@ const Reimbursement = () => {
 
   const fetchReimbursements = useCallback(async () => {
     try {
+      // ensure orgId resolved before requesting (most backend endpoints require x-org-id)
       if (!orgId && !orgResolveTried) await resolveOrgIdOnce();
 
       const url =
@@ -613,13 +628,13 @@ const Reimbursement = () => {
                 process.env.NEXT_PUBLIC_BACKEND_URL ||
                 process.env.REACT_APP_BACKEND_URL
               }/reimbursement/${claim.id}/attachments`,
-              { withCredentials: true, headers: buildHeaders() }
+              { withCredentials: true, headers: buildHeaders() },
             );
             attachmentsData[claim.id] = attachRes.data.attachments || [];
           } catch {
             attachmentsData[claim.id] = [];
           }
-        })
+        }),
       );
       const dataWithAttach = (data || []).map((claim) => {
         const list = attachmentsData[claim.id] || [];
@@ -649,7 +664,7 @@ const Reimbursement = () => {
     } catch (err) {
       console.error("Error fetching reimbursements:", err);
       setErrorMessage(
-        extractErrorMessage(err, "Error fetching reimbursements")
+        extractErrorMessage(err, "Error fetching reimbursements"),
       );
     }
   }, [
@@ -670,7 +685,7 @@ const Reimbursement = () => {
           process.env.NEXT_PUBLIC_BACKEND_URL ||
           process.env.REACT_APP_BACKEND_URL
         }/projectdrop`,
-        { withCredentials: true, headers: buildHeaders() }
+        { withCredentials: true, headers: buildHeaders() },
       );
       setProjects(res.data || []);
     } catch (err) {
@@ -707,7 +722,7 @@ const Reimbursement = () => {
       setEmployeeOptions(mapped);
     } catch (err) {
       console.warn(
-        "Could not fetch /reimbursement/employees — falling back to demo list"
+        "Could not fetch /reimbursement/employees — falling back to demo list",
       );
       setEmployeeOptions([
         { employee_id: employeeId || "E000", name: "You", position: "" },
@@ -885,7 +900,7 @@ const Reimbursement = () => {
       if (Array.isArray(payload.dates) && payload.dates.length) {
         base.dates = payload.dates
           .map((d) =>
-            d instanceof Date ? d.toISOString().slice(0, 10) : String(d).trim()
+            d instanceof Date ? d.toISOString().slice(0, 10) : String(d).trim(),
           )
           .filter(Boolean);
       }
@@ -896,7 +911,7 @@ const Reimbursement = () => {
             payload.date
               .split(",")
               .map((s) => s.trim())
-              .filter(Boolean)
+              .filter(Boolean),
           );
         } else {
           base.date = payload.date;
@@ -912,7 +927,7 @@ const Reimbursement = () => {
       if (Array.isArray(base.dates)) {
         base.dates = base.dates
           .map((d) =>
-            d instanceof Date ? d.toISOString().slice(0, 10) : String(d).trim()
+            d instanceof Date ? d.toISOString().slice(0, 10) : String(d).trim(),
           )
           .filter(Boolean);
       }
@@ -927,7 +942,8 @@ const Reimbursement = () => {
         const attachList = (lam && (lam[String(ln.id)] || lam[ln.id])) || [];
         const filenames = attachList
           .map(
-            (a) => a?.file_name || a?.filename || a?.name || a?.fileName || null
+            (a) =>
+              a?.file_name || a?.filename || a?.name || a?.fileName || null,
           )
           .filter(Boolean);
 
@@ -946,7 +962,7 @@ const Reimbursement = () => {
     const initialList = (attachments[claim.id] || [])
       .map(
         (a) =>
-          a?.file_name || a?.filename || a?.name || a?.fileName || String(a)
+          a?.file_name || a?.filename || a?.name || a?.fileName || String(a),
       )
       .filter(Boolean);
     initialAttachmentsRef.current = initialList;
@@ -1144,10 +1160,10 @@ const Reimbursement = () => {
       new Set(
         (part || [])
           .map((p) =>
-            typeof p === "object" ? p.employee_id || p.id || p.employeeId : p
+            typeof p === "object" ? p.employee_id || p.id || p.employeeId : p,
           )
-          .filter(Boolean)
-      )
+          .filter(Boolean),
+      ),
     );
 
     const names = ids.map((id) => {
@@ -1166,7 +1182,7 @@ const Reimbursement = () => {
         (e) =>
           String(e.employee_id) === String(id) ||
           String(e.id) === String(id) ||
-          String(e.empId) === String(id)
+          String(e.empId) === String(id),
       );
       if (found) return found.name;
 
@@ -1179,166 +1195,347 @@ const Reimbursement = () => {
   };
 
   const tryExtractYearMonthFromPathLocal = tryExtractYearMonthFromPath;
-
+  // Replace your current handleOpenAttachments with this improved version
+  // Replace your current handleOpenAttachments with this improved version
   const handleOpenAttachments = async (files, claim) => {
     try {
-      if (!files || files.length === 0) {
+      const absBase =
+        (backendBase && String(backendBase).trim().replace(/\/$/, "")) ||
+        "http://localhost:5001";
+
+      const log = (...args) => {
+        if (typeof console !== "undefined" && console.info)
+          console.info("[attachments]", ...args);
+      };
+
+      const tryFetchBlob = async (url, extraHeaders = {}) => {
+        try {
+          log("tryFetchBlob ->", url);
+          const resp = await axios.get(url, {
+            withCredentials: true,
+            headers: { ...buildHeaders(), ...extraHeaders },
+            responseType: "blob",
+          });
+
+          const status = resp.status;
+          const ct = resp.headers ? resp.headers["content-type"] : "unknown";
+          const blob = resp.data;
+          const size = blob && typeof blob.size === "number" ? blob.size : null;
+
+          log("fetch result", { url, status, contentType: ct, size });
+
+          // treat only 2xx + non-empty blob as success
+          if (status >= 200 && status < 300 && size && size > 0) {
+            return { ok: true, blob, contentType: ct, status };
+          }
+          return { ok: false, status, contentType: ct, size, resp };
+        } catch (err) {
+          const status = err?.response?.status || null;
+          const ct = err?.response?.headers?.["content-type"] || null;
+          log("fetch error", { url, status, message: err?.message });
+          return { ok: false, status, err };
+        }
+      };
+
+      // Normalize incoming files param to candidate list
+      let candidateFiles = Array.isArray(files) ? files.slice() : [];
+
+      // 1) Try claim attachments endpoint (canonical)
+      if ((!candidateFiles || candidateFiles.length === 0) && claim?.id) {
+        try {
+          const url = `${absBase}/reimbursement/${encodeURIComponent(
+            claim.id,
+          )}/attachments`;
+          log("fetching attachments-by-claim:", url);
+          const resp = await axios.get(url, {
+            withCredentials: true,
+            headers: buildHeaders(),
+          });
+          const list = Array.isArray(resp.data)
+            ? resp.data
+            : Array.isArray(resp.data?.attachments)
+              ? resp.data.attachments
+              : resp.data?.data || [];
+          candidateFiles = Array.isArray(list) ? list : [];
+          log("attachments-by-claim returned", claim.id, candidateFiles.length);
+        } catch (err) {
+          log(
+            "attachments-by-claim failed:",
+            err?.response?.data || err?.message || err,
+          );
+        }
+      }
+
+      // 2) fallback: claim.attachments or lines[].payload.attachments
+      if ((!candidateFiles || candidateFiles.length === 0) && claim) {
+        if (Array.isArray(claim.attachments) && claim.attachments.length) {
+          candidateFiles = claim.attachments.slice();
+        } else if (Array.isArray(claim.lines) && claim.lines.length) {
+          const fromLines = claim.lines
+            .map(
+              (l) =>
+                (l?.payload || {}).attachments ||
+                (l?.payload || {}).line_attachments ||
+                [],
+            )
+            .flat()
+            .filter(Boolean)
+            .map((it) => (typeof it === "string" ? { file_name: it } : it));
+          if (fromLines.length) candidateFiles = fromLines;
+        }
+      }
+
+      // 3) fallback: line_attachments_map (team view)
+      if (
+        (!candidateFiles || candidateFiles.length === 0) &&
+        claim?.line_attachments_map
+      ) {
+        try {
+          const maps = Object.values(claim.line_attachments_map).flat();
+          if (maps && maps.length) candidateFiles = maps;
+        } catch (e) {}
+      }
+
+      if (!candidateFiles || candidateFiles.length === 0) {
         showAlert("No attachments available.");
         return;
       }
 
-      const effectiveOrgId =
-        orgId ||
-        user?.raw?.org_id ||
-        user?.orgId ||
-        (buildHeaders && buildHeaders()["x-org-id"]) ||
-        null;
+      // Helper: try legacy URL /reimbursement/{year}/{month}/{emp}/{filename}
+      const tryLegacyByParts = async (year, month, empId, filename) => {
+        if (!year || !month || !empId || !filename) return { ok: false };
+        const legacyUrl = `${absBase}/reimbursement/${encodeURIComponent(
+          year,
+        )}/${encodeURIComponent(month)}/${encodeURIComponent(
+          empId,
+        )}/${encodeURIComponent(filename)}`;
+        return await tryFetchBlob(legacyUrl);
+      };
 
-      const fetchedFiles = await Promise.all(
-        (files || []).map(async (file) => {
-          try {
-            const filename =
-              file.filename || file.file_name || file.fileName || "";
-            if (!filename) return null;
+      // attempt resolution for a single candidate
+      const resolveCandidate = async (fileOrAtt) => {
+        const filename =
+          fileOrAtt.file_name ||
+          fileOrAtt.filename ||
+          fileOrAtt.fileName ||
+          fileOrAtt.name ||
+          "";
+        const attEmp =
+          fileOrAtt.employee_id ||
+          fileOrAtt.emp_id ||
+          fileOrAtt.employeeId ||
+          claim?.employee_id ||
+          claim?.employeeId ||
+          null;
+        log("resolveCandidate", filename, attEmp);
 
-            // try to infer year/month from filename first (e.g. 2026-01-12_03.png)
-            const match = String(filename).match(/^(\d{4})-(\d{2})-/);
-            let year = match ? match[1] : null;
-            let month = match ? match[2] : null;
+        // 1) absolute URL already present?
+        const providedUrl =
+          fileOrAtt.url || fileOrAtt.file_url || fileOrAtt.filePath || null;
+        if (providedUrl && /^https?:\/\//i.test(String(providedUrl))) {
+          const r = await tryFetchBlob(providedUrl);
+          if (r.ok)
+            return {
+              name: filename || providedUrl,
+              url: URL.createObjectURL(r.blob),
+              contentType: r.contentType,
+            };
+        }
 
-            // if file includes an explicit path/url from backend, prefer that
-            if (file.url || file.path) {
-              try {
-                const resp = await axios.get(file.url || file.path, {
-                  withCredentials: true,
-                  headers: buildHeaders(),
-                  responseType: "blob",
-                });
-                return {
-                  name: filename,
-                  url: URL.createObjectURL(
-                    new Blob([resp.data], {
-                      type: resp.headers["content-type"],
-                    })
-                  ),
-                };
-              } catch (err) {
-                console.warn(
-                  "Direct file.url fetch failed, will try constructed paths",
-                  err?.response?.status || err.message
-                );
-                // fall through to constructed URLs
-              }
-            }
+        // 2) canonical serve endpoint
+        if (claim?.id && filename) {
+          const serveUrl = `${absBase}/reimbursement/attachment/serve?claimId=${encodeURIComponent(
+            claim.id,
+          )}&filename=${encodeURIComponent(filename)}`;
+          const rserve = await tryFetchBlob(serveUrl);
+          if (rserve.ok)
+            return {
+              name: filename,
+              url: URL.createObjectURL(rserve.blob),
+              contentType: rserve.contentType,
+            };
+        }
 
-            // require employee id to construct path
-            const empId =
-              claim?.employee_id || claim?.employeeId || claim?.empId;
-            if (!empId) return null;
-
-            // build candidate URLs (org-aware then legacy)
-            const candidates = [];
-            if (year && month && effectiveOrgId) {
-              candidates.push(
-                `${backendBase.replace(
-                  /\/$/,
-                  ""
-                )}/reimbursement/${encodeURIComponent(
-                  effectiveOrgId
-                )}/${encodeURIComponent(year)}/${encodeURIComponent(
-                  month
-                )}/${encodeURIComponent(empId)}/${encodeURIComponent(filename)}`
-              );
-            }
-            if (year && month) {
-              candidates.push(
-                `${backendBase.replace(
-                  /\/$/,
-                  ""
-                )}/reimbursement/${encodeURIComponent(
-                  year
-                )}/${encodeURIComponent(month)}/${encodeURIComponent(
-                  empId
-                )}/${encodeURIComponent(filename)}`
-              ); // legacy
-            }
-
-            // If we couldn't parse year/month from filename, attempt a fallback
-            if (candidates.length === 0) {
-              // try a backend helper path (if implemented) or attempt to fetch via claim-based endpoint
-              candidates.push(
-                `${backendBase.replace(
-                  /\/$/,
-                  ""
-                )}/reimbursement/attachment?claimId=${encodeURIComponent(
-                  claim?.id || ""
-                )}&filename=${encodeURIComponent(filename)}`
-              );
-              if (effectiveOrgId) {
-                candidates.push(
-                  `${backendBase.replace(
-                    /\/$/,
-                    ""
-                  )}/reimbursement/${encodeURIComponent(
-                    effectiveOrgId
-                  )}/attachment?claimId=${encodeURIComponent(
-                    claim?.id || ""
-                  )}&filename=${encodeURIComponent(filename)}`
-                );
-              }
-            }
-
-            // try candidate URLs in order
-            for (const url of candidates) {
-              try {
-                const response = await axios.get(url, {
-                  withCredentials: true,
-                  headers: buildHeaders(),
-                  responseType: "blob",
-                });
-                return {
-                  name: filename,
-                  url: URL.createObjectURL(
-                    new Blob([response.data], {
-                      type: response.headers["content-type"],
-                    })
-                  ),
-                };
-              } catch (err) {
-                // if 404 try next candidate, otherwise log and continue
-                const status = err?.response?.status;
-                console.warn(
-                  "Attachment candidate failed:",
-                  url,
-                  status || err.message
-                );
-                if (status && status !== 404) {
-                  // non-404: break out and return null for this file
-                  break;
-                }
-                // else continue to next candidate
-              }
-            }
-
-            // nothing worked
-            console.warn("All attachment fetch attempts failed for", filename);
-            return null;
-          } catch (err) {
-            console.error("attachment fetch unexpected error", err);
-            return null;
+        // 3) if DB row provided file_path and it contains '/reimbursement/' (request via backend)
+        if (fileOrAtt.file_path) {
+          const fp = String(fileOrAtt.file_path || "");
+          if (/\/?reimbursement\//i.test(fp)) {
+            const candidatePath = fp.startsWith("/")
+              ? `${absBase}${fp}`
+              : `${absBase}/${fp}`;
+            const r3 = await tryFetchBlob(candidatePath);
+            if (r3.ok)
+              return {
+                name: filename || candidatePath.split("/").pop(),
+                url: URL.createObjectURL(r3.blob),
+                contentType: r3.contentType,
+              };
           }
-        })
+        }
+
+        // 4) legacy naive url using filename prefix YYYY-MM
+        if (filename) {
+          const m = String(filename).match(/^(\d{4})-(\d{2})-/);
+          const year = m ? m[1] : null;
+          const month = m ? m[2] : null;
+          const empForPath =
+            attEmp || claim?.employee_id || claim?.employeeId || null;
+          if (year && month && empForPath) {
+            const r4 = await tryLegacyByParts(
+              year,
+              month,
+              empForPath,
+              filename,
+            );
+            if (r4.ok)
+              return {
+                name: filename,
+                url: URL.createObjectURL(r4.blob),
+                contentType: r4.contentType,
+              };
+          }
+        }
+
+        // 5) try derive year/month from file_path or claim dates
+        if (fileOrAtt.file_path) {
+          const fp = String(fileOrAtt.file_path || "").replace(/\\/g, "/");
+          const pMatch = fp.match(
+            /\/reimbursement\/(\d{4})\/(\d{2})\/([^/]+)\/([^/]+)$/,
+          );
+          if (pMatch) {
+            const r = await tryLegacyByParts(
+              pMatch[1],
+              pMatch[2],
+              pMatch[3],
+              fileOrAtt.file_name || pMatch[4],
+            );
+            if (r.ok)
+              return {
+                name: fileOrAtt.file_name || pMatch[4],
+                url: URL.createObjectURL(r.blob),
+                contentType: r.contentType,
+              };
+          }
+        }
+
+        const dateCandidates = [
+          claim?.created_at || claim?.createdAt || claim?.date || null,
+          (Array.isArray(claim?.lines) && claim.lines[0]?.payload?.date) ||
+            null,
+          (Array.isArray(claim?.lines) && claim.lines[0]?.date) || null,
+        ].filter(Boolean);
+
+        if (dateCandidates.length && filename) {
+          for (const dRaw of dateCandidates) {
+            const d = tryParseDate(dRaw);
+            if (!d) continue;
+            const year = String(d.getFullYear());
+            const month = String(d.getMonth() + 1).padStart(2, "0");
+            const empForPath =
+              attEmp || claim?.employee_id || claim?.employeeId || null;
+            if (year && month && empForPath) {
+              const r = await tryLegacyByParts(
+                year,
+                month,
+                empForPath,
+                filename,
+              );
+              if (r.ok)
+                return {
+                  name: filename,
+                  url: URL.createObjectURL(r.blob),
+                  contentType: r.contentType,
+                };
+            }
+          }
+        }
+
+        // 6) metadata endpoint as final attempt
+        try {
+          const metaUrl = `${absBase}/reimbursement/attachment/meta?claimId=${encodeURIComponent(
+            claim?.id || "",
+          )}&filename=${encodeURIComponent(filename)}`;
+          log("meta lookup", metaUrl);
+          const metaResp = await axios.get(metaUrl, {
+            withCredentials: true,
+            headers: buildHeaders(),
+          });
+          const metas = Array.isArray(metaResp.data?.attachments)
+            ? metaResp.data.attachments
+            : [];
+          if (metas.length) {
+            const meta = metas[0];
+            if (meta.url && /^https?:\/\//i.test(meta.url)) {
+              const rM = await tryFetchBlob(meta.url);
+              if (rM.ok)
+                return {
+                  name: meta.file_name || filename,
+                  url: URL.createObjectURL(rM.blob),
+                  contentType: rM.contentType,
+                };
+            }
+            if (meta.file_path) {
+              const candidatePath = meta.file_path.startsWith("/")
+                ? `${absBase}${meta.file_path}`
+                : `${absBase}/${meta.file_path}`;
+              const rM2 = await tryFetchBlob(candidatePath);
+              if (rM2.ok)
+                return {
+                  name: meta.file_name || filename,
+                  url: URL.createObjectURL(rM2.blob),
+                  contentType: rM2.contentType,
+                };
+            }
+            const metaEmp = meta.employee_id || meta.emp_id || meta.employeeId;
+            if (metaEmp && meta.file_name) {
+              const mm = String(meta.file_name).match(/^(\d{4})-(\d{2})-/);
+              if (mm) {
+                const cand = `${absBase}/reimbursement/${mm[1]}/${
+                  mm[2]
+                }/${encodeURIComponent(metaEmp)}/${encodeURIComponent(
+                  meta.file_name,
+                )}`;
+                const rM3 = await tryFetchBlob(cand);
+                if (rM3.ok)
+                  return {
+                    name: meta.file_name,
+                    url: URL.createObjectURL(rM3.blob),
+                    contentType: rM3.contentType,
+                  };
+              }
+            }
+          }
+        } catch (metaErr) {
+          log("meta lookup failed", filename, metaErr?.message || metaErr);
+        }
+
+        // nothing worked
+        log("all attempts failed for", filename);
+        return null;
+      };
+
+      // Resolve all candidates
+      const resolves = await Promise.all(
+        candidateFiles.map((c) => resolveCandidate(c)),
+      );
+      const goodFiles = (resolves || []).filter(Boolean);
+
+      log(
+        "goodFiles count:",
+        goodFiles.length,
+        goodFiles.map((g) => ({ name: g.name })),
       );
 
-      const goodFiles = (fetchedFiles || []).filter(Boolean);
       if (goodFiles.length === 0) {
         showAlert("No attachments could be retrieved (file not found).");
         return;
       }
 
+      // ensure we set state and open modal
       setSelectedFiles(goodFiles);
       setSelectedClaim(claim);
       setIsModalOpen(true);
+      log("attachments modal opened with files:", goodFiles.length);
     } catch (error) {
       console.error("Error fetching attachments:", error);
       showAlert("No attachments found for this screen.");
@@ -1371,7 +1568,7 @@ const Reimbursement = () => {
       : 0;
     if (wordCount < 10) {
       showAlert(
-        `Purpose Details / Comments must be at least 10 words. You have ${wordCount}.`
+        `Purpose Details / Comments must be at least 10 words. You have ${wordCount}.`,
       );
       return;
     }
@@ -1380,8 +1577,8 @@ const Reimbursement = () => {
       formData.invoices && Array.isArray(formData.invoices)
         ? formData.invoices
         : formData.invoices
-        ? [formData.invoices]
-        : [];
+          ? [formData.invoices]
+          : [];
     const claimType = formData.claim_type || null;
     const rowsObj =
       formData.claim_rows && typeof formData.claim_rows === "object"
@@ -1406,14 +1603,14 @@ const Reimbursement = () => {
 
     if (!cleanedInvoices.length) {
       showAlert(
-        "Invoice / Bill Number is required. Please add at least one invoice (marked *)."
+        "Invoice / Bill Number is required. Please add at least one invoice (marked *).",
       );
       setSubmitErrorMessage("Invoice number required.");
       return;
     }
 
     const dupeLocal = cleanedInvoices.find(
-      (v, idx) => cleanedInvoices.indexOf(v) !== idx
+      (v, idx) => cleanedInvoices.indexOf(v) !== idx,
     );
     if (dupeLocal) {
       showAlert(`Duplicate invoice number in form: "${dupeLocal}"`);
@@ -1435,12 +1632,12 @@ const Reimbursement = () => {
         showAlert(
           `Duplicate invoice detected: "${inv}" is already used in reimbursement ID ${
             existingMap[inv.toLowerCase()]
-          }. Please verify and use a unique invoice number.`
+          }. Please verify and use a unique invoice number.`,
         );
         setSubmitErrorMessage(
           `Duplicate invoice "${inv}" found in claim ${
             existingMap[inv.toLowerCase()]
-          }.`
+          }.`,
         );
         return;
       }
@@ -1459,7 +1656,7 @@ const Reimbursement = () => {
           .join("\n");
         showAlert(
           `Cannot submit. The following files are not allowed:\n${names}`,
-          "Invalid file(s)"
+          "Invalid file(s)",
         );
       } else showAlert("Cannot submit due to invalid attachments.");
       setSubmitErrorMessage("Invalid attachments present.");
@@ -1626,7 +1823,7 @@ const Reimbursement = () => {
             process.env.REACT_APP_BACKEND_URL
           }/reimbursement/${editingId}`,
           fd,
-          cfg
+          cfg,
         );
       } else {
         res = await axios.post(
@@ -1636,7 +1833,7 @@ const Reimbursement = () => {
             process.env.REACT_APP_BACKEND_URL
           }/reimbursement`,
           fd,
-          cfg
+          cfg,
         );
       }
 
@@ -1679,7 +1876,7 @@ const Reimbursement = () => {
         {
           withCredentials: true,
           headers: buildHeaders(),
-        }
+        },
       );
       showAlert(res.data.message || "Deleted");
       fetchReimbursements();
@@ -1721,7 +1918,7 @@ const Reimbursement = () => {
     const selfOpt = employeeOptions.find(
       (e) =>
         String(e.employee_id) === String(employeeId) ||
-        String(e.id) === String(employeeId)
+        String(e.id) === String(employeeId),
     );
     const displayName = selfOpt ? selfOpt.name : "You";
     const isSelected =
@@ -2024,11 +2221,11 @@ const Reimbursement = () => {
                                   .map(formatDisplayDate)
                                   .join(" - ")
                               : String(primaryClaimDate).includes(" - ")
-                              ? String(primaryClaimDate)
-                                  .split(" - ")
-                                  .map(formatDisplayDate)
-                                  .join(" - ")
-                              : formatDisplayDate(primaryClaimDate)
+                                ? String(primaryClaimDate)
+                                    .split(" - ")
+                                    .map(formatDisplayDate)
+                                    .join(" - ")
+                                : formatDisplayDate(primaryClaimDate)
                             : " "}
                         </div>
                       </td>
@@ -2045,7 +2242,7 @@ const Reimbursement = () => {
 
                       <td>
                         {Number(
-                          claim.aggregated_total || claim.total_amount || 0
+                          claim.aggregated_total || claim.total_amount || 0,
                         ).toFixed(2)}
                       </td>
 
@@ -2057,7 +2254,7 @@ const Reimbursement = () => {
                             onClick={() =>
                               handleOpenAttachments(
                                 attachments[claim.id],
-                                claim
+                                claim,
                               )
                             }
                           >
@@ -2074,8 +2271,8 @@ const Reimbursement = () => {
                             claim.status === "approved"
                               ? "rb-approved"
                               : claim.status === "rejected"
-                              ? "rb-rejected"
-                              : ""
+                                ? "rb-rejected"
+                                : ""
                           }`}
                         >
                           {claim.status || "-"}
@@ -2235,7 +2432,7 @@ const Reimbursement = () => {
                                   onClick={() =>
                                     handleOpenAttachments(
                                       attachmentsForThis,
-                                      claim
+                                      claim,
                                     )
                                   }
                                 >

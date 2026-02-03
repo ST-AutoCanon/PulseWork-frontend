@@ -38,9 +38,12 @@ export default function LeaveRequest() {
       ),
     );
 
-  // build leaveTypeOptions: prefer activePolicy.leave_settings, else dynamic leaveTypes from hook (gender/age filtered), fallback to policy/default
+  // build leaveTypeOptions:
+  // prefer activePolicy.leave_settings (only types used in the active policy),
+  // then prefer dynamic hook.leaveTypes (from /types endpoint),
+  // then fallback to policy/default settings.
   const leaveTypeOptions = useMemo(() => {
-    // If an active policy exists, use only the leave settings from it
+    // 1. If there's an active policy with leave_settings — use that ONLY
     if (
       hook.activePolicy &&
       Array.isArray(hook.activePolicy.leave_settings) &&
@@ -49,78 +52,27 @@ export default function LeaveRequest() {
       return hook.activePolicy.leave_settings
         .filter((s) => s && (s.enabled === undefined ? true : s.enabled))
         .map((s) => {
-          const key = String(s.type || "").toLowerCase();
-          const pretty =
-            key === "casual"
-              ? "Casual Leave"
-              : key === "earned"
-                ? "Earned Leave"
-                : s.label || key.charAt(0).toUpperCase() + key.slice(1);
-          return { type: key, label: pretty, disabled: false, reason: null };
+          const key = (s.type || s.type_key || "").toString();
+          const label =
+            s.label ||
+            key
+              .replace(/[_-]+/g, " ")
+              .replace(/\b\w/g, (ch) => ch.toUpperCase());
+          return { type: key, label, disabled: !s.enabled ? true : false };
         });
     }
 
-    // No active policy — if normalized dynamic types from hook are present, use them
+    // 2. Next try dynamic leaveTypes from hook (normalized objects)
     const fromHook = (hook.leaveTypes || []).map((t) => {
-      // t may be { key, label, gender, min_age, max_age } or a simple string
       const key = t.key || t.type || String(t).trim();
       const label = t.label || t.name || String(key).replace(/_/g, " ");
-      // compute eligibility from metadata if present
-      const genderMeta = (t.gender || "").toString().toLowerCase();
-      const minAge = t.min_age ?? t.minAge ?? t.min ?? null;
-      const maxAge = t.max_age ?? t.maxAge ?? t.max ?? null;
-      let disabled = false;
-      let reason = null;
-      const userGender = (
-        hook.userProfile?.gender ||
-        user?.gender ||
-        user?.sex ||
-        ""
-      )
-        .toString()
-        .toLowerCase();
-      const userDob =
-        hook.userProfile?.dob || user?.date_of_birth || user?.dob || null;
-      const computeAge = (dob) => {
-        if (!dob) return null;
-        try {
-          const d = new Date(dob);
-          if (isNaN(d.getTime())) return null;
-          const diff = Date.now() - d.getTime();
-          const ageDt = new Date(diff);
-          return Math.abs(ageDt.getUTCFullYear() - 1970);
-        } catch {
-          return null;
-        }
-      };
-      const age = computeAge(userDob);
-      if (genderMeta && userGender && genderMeta !== userGender) {
-        disabled = true;
-        reason = `Not eligible (gender: ${genderMeta})`;
-      }
-      if (
-        !disabled &&
-        minAge !== null &&
-        age !== null &&
-        age < Number(minAge)
-      ) {
-        disabled = true;
-        reason = `Not eligible (minimum age ${minAge})`;
-      }
-      if (
-        !disabled &&
-        maxAge !== null &&
-        age !== null &&
-        age > Number(maxAge)
-      ) {
-        disabled = true;
-        reason = `Not eligible (maximum age ${maxAge})`;
-      }
+      const disabled = !!t.disabled;
+      const reason = t.reason || null;
       return { type: key, label, disabled, reason };
     });
-
     if (fromHook && fromHook.length > 0) return fromHook;
 
+    // 3. Finally fallback to activePolicy settings (if any) or defaultLeaveSettings
     const settings =
       hook.activePolicy?.leave_settings?.length > 0
         ? hook.activePolicy.leave_settings
@@ -206,6 +158,9 @@ export default function LeaveRequest() {
         defaultLeaveSettings={hook.defaultLeaveSettings}
         leaveTypes={hook.leaveTypes}
         userProfile={hook.userProfile}
+        /* <-- ADDED: wire attachments state into the modal */
+        attachments={hook.attachments}
+        setAttachments={hook.setAttachments}
       />
 
       <TeamTable

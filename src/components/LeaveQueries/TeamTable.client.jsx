@@ -18,7 +18,7 @@ export default function TeamTable({
   if (!canViewTeam) return null;
 
   const sortedLeaves = (leaveRequests.team || []).sort(
-    (a, b) => (b.leave_id || b.id || 0) - (a.leave_id || a.id || 0)
+    (a, b) => (b.leave_id || b.id || 0) - (a.leave_id || a.id || 0),
   );
 
   const getCurrentStatus = (leave) => {
@@ -30,8 +30,8 @@ export default function TeamTable({
     status === "Approved"
       ? "status-approved"
       : status === "Rejected"
-      ? "status-rejected"
-      : "status-pending";
+        ? "status-rejected"
+        : "status-pending";
 
   const [localInputs, setLocalInputs] = useState({});
 
@@ -111,7 +111,7 @@ export default function TeamTable({
         const balances = await loadLeaveBalance(leave.employee_id);
         if (Array.isArray(balances)) {
           const b = balances.find(
-            (r) => String(r.type) === String(leave.leave_type)
+            (r) => String(r.type) === String(leave.leave_type),
           );
           if (b && b.remaining !== undefined) return Number(b.remaining) || 0;
         }
@@ -265,7 +265,7 @@ export default function TeamTable({
         const lop_days = Math.max(0, daysNum - deducted_clamped);
         const preserved_leave_days = Math.max(
           0,
-          remainingNum - deducted_clamped
+          remainingNum - deducted_clamped,
         );
 
         const payload = {
@@ -312,7 +312,7 @@ export default function TeamTable({
       const applyFlexibleSplit = async (
         compensatedDays,
         deductedDays,
-        lopDays
+        lopDays,
       ) => {
         const c = Number(compensatedDays) || 0;
         const d = Number(deductedDays) || 0;
@@ -337,7 +337,7 @@ export default function TeamTable({
 
         let preserved_leave_days = Math.max(
           0,
-          Number(remaining) - Number(deducted_clamped)
+          Number(remaining) - Number(deducted_clamped),
         );
         preserved_leave_days = Number(preserved_leave_days.toFixed(2));
 
@@ -395,7 +395,7 @@ export default function TeamTable({
         deductedDays: Math.min(Number(remaining), Number(days)),
         lopDays: Math.max(
           0,
-          Number(days) - Math.min(Number(remaining), Number(days))
+          Number(days) - Math.min(Number(remaining), Number(days)),
         ),
         approveDeficit,
         setAllCompensated,
@@ -451,7 +451,7 @@ export default function TeamTable({
               const days = calculateDays(
                 leave.start_date,
                 leave.end_date,
-                leave.H_F_day
+                leave.H_F_day,
               );
 
               return (
@@ -489,7 +489,7 @@ export default function TeamTable({
                         handleStatusChange?.(leave.leave_id, "status", val);
                       }}
                       className={`status-dropdown ${getStatusClass(
-                        currentStatus
+                        currentStatus,
                       )}`}
                       disabled={isAlreadyUpdated(leave)}
                     >
@@ -546,7 +546,7 @@ export default function TeamTable({
           const days = calculateDays(
             leave.start_date,
             leave.end_date,
-            leave.H_F_day
+            leave.H_F_day,
           );
           const name =
             leave.name ||

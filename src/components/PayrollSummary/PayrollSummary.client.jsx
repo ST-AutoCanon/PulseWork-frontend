@@ -159,16 +159,25 @@ const buildAdvanceDetailText = (
       const dataUrl = await blobToDataUrl(res.data);
       protectedImgCache.set(normalized, dataUrl);
       return dataUrl;
-    } catch (err) {}
+    } catch (err) {
+      console.warn("⚠️ [AXIOS] Failed to fetch image:", normalized, err.response?.status);
+    }
     try {
-      const res = await fetch(normalized, { credentials: "include" });
-      if (!res.ok) throw new Error(`Status ${res.status}`);
+      const res = await fetch(normalized, { 
+        credentials: "include",
+        headers,
+      });
+      if (!res.ok) {
+        console.warn(`⚠️ [FETCH] Image not found: ${res.status} ${normalized}`);
+        throw new Error(`HTTP ${res.status}`);
+      }
       const blob = await res.blob();
       const dataUrl = await blobToDataUrl(blob);
       protectedImgCache.set(normalized, dataUrl);
       return dataUrl;
     } catch (err) {
-      console.error("❌ [IMAGE FETCH] FAILED:", err.message || err);
+      console.error("❌ [IMAGE FETCH] FAILED:", normalized, err.message || err);
+      // Return null instead of data URL - image will fail to load gracefully
       return null;
     }
   }
@@ -205,14 +214,18 @@ const buildAdvanceDetailText = (
         let src = img.getAttribute("src");
         if (!src || src.startsWith("data:") || src.startsWith("blob:")) return;
         try {
-          const res = await fetch(src);
-          if (!res.ok) throw new Error();
+          // Try to fetch with credentials for protected images
+          const res = await fetch(src, {
+            credentials: "include",
+            headers,
+          });
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
           const blob = await res.blob();
           const dataUrl = await blobToDataUrl(blob);
           img.setAttribute("src", dataUrl);
         } catch (err) {
-          console.warn("Failed to inline image", src);
-          img.remove();
+          console.warn("Failed to inline image", src, err);
+          // Don't remove - keep the original src, might work in PDF generation
         }
       })
     );
@@ -285,9 +298,26 @@ const buildAdvanceDetailText = (
       }
       console.log("🚀 DOWNLOAD STARTED");
       console.log("Header data URL present:", !!headerImgSrc);
+      console.log("Header data URL (first 100 chars):", headerImgSrc?.substring(0, 100));
       console.log("Footer data URL present:", !!footerImgSrc);
+      console.log("Footer data URL (first 100 chars):", footerImgSrc?.substring(0, 100));
       console.log("Watermark data URL present:", !!watermarkImgSrc);
+      console.log("Watermark data URL (first 100 chars):", watermarkImgSrc?.substring(0, 100));
       console.log("Watermark props:", watermarkProps);
+
+      // Check if any required images failed to load
+      const missingImages = [];
+      if (!headerImgSrc) missingImages.push("Header");
+      if (!footerImgSrc) missingImages.push("Footer");
+      if (!watermarkImgSrc) missingImages.push("Watermark");
+      
+      if (missingImages.length > 0) {
+        console.warn("⚠️ WARNING: The following template images failed to load and will not appear in the PDF:", missingImages.join(", "));
+        const shouldContinue = confirm(
+          `Template images are missing (${missingImages.join(", ")}). PDF will be generated without them. Continue?`
+        );
+        if (!shouldContinue) return;
+      }
 
       const employeeName = payrollData.full_name || employeeDetails?.full_name || employeeDetails?.name || "N/A";
       const empId = payrollData.employee_id || employeeId || "N/A";
@@ -561,32 +591,37 @@ const buildAdvanceDetailText = (
       bodyDiv.style.padding = "20px 40px";
 
       if (headerImgSrc && !doc.querySelector(".template-header")) {
+        console.log("➕ Adding header image to DOM");
         const headerDiv = doc.createElement("div");
         headerDiv.className = "template-header";
         headerDiv.style.marginBottom = "20px";
         headerDiv.style.textAlign = "center";
         const img = doc.createElement("img");
-        img.src = headerImgSrc;
+        img.src = headerImgSrc; // This should already be a data URL
         img.style.maxWidth = "100%";
         img.style.display = "block";
         headerDiv.appendChild(img);
         pageContainer.insertBefore(headerDiv, bodyDiv);
+        console.log("✅ Header image added");
       }
 
       if (footerImgSrc && !doc.querySelector(".template-footer")) {
+        console.log("➕ Adding footer image to DOM");
         const footerDiv = doc.createElement("div");
         footerDiv.className = "template-footer";
         footerDiv.style.marginTop = "20px";
         footerDiv.style.textAlign = "center";
         const img = doc.createElement("img");
-        img.src = footerImgSrc;
+        img.src = footerImgSrc; // This should already be a data URL
         img.style.maxWidth = "100%";
         img.style.display = "block";
         footerDiv.appendChild(img);
         pageContainer.appendChild(footerDiv);
+        console.log("✅ Footer image added");
       }
 
       if (watermarkImgSrc) {
+        console.log("➕ Adding watermark image to DOM");
         doc.querySelectorAll(".pdf-watermark").forEach((el) => el.remove());
         const wmWrapper = doc.createElement("div");
         wmWrapper.className = "pdf-watermark";
@@ -600,15 +635,17 @@ const buildAdvanceDetailText = (
         wmWrapper.style.pointerEvents = "none";
         wmWrapper.style.zIndex = "-1";
         const img = doc.createElement("img");
-        img.src = watermarkImgSrc;
+        img.src = watermarkImgSrc; // This should already be a data URL
         img.style.width = "100%";
         img.style.height = "100%";
         img.style.objectFit = "contain";
         wmWrapper.appendChild(img);
         pageContainer.insertBefore(wmWrapper, pageContainer.firstChild);
+        console.log("✅ Watermark image added");
       }
 
       let finalHtml = doc.documentElement.outerHTML;
+      console.log("📝 Final HTML includes images:", finalHtml.includes("data:image"));
       finalHtml = await inlineAllImages(finalHtml);
 
       const processedTemplate = {
@@ -715,18 +752,34 @@ const buildAdvanceDetailText = (
         }
 
         if (headerSrc) {
+          console.log("📷 [TEMPLATE] Loading header from:", headerSrc);
           const dataUrl = await fetchProtectedImageDataUrl(headerSrc);
-          if (dataUrl) setHeaderImgSrc(dataUrl);
+          if (dataUrl) {
+            console.log("✅ [TEMPLATE] Header loaded successfully");
+            setHeaderImgSrc(dataUrl);
+          } else {
+            console.warn("⚠️ [TEMPLATE] Failed to load header image - file may not exist at:", headerSrc);
+          }
         }
         if (footerSrc) {
+          console.log("📷 [TEMPLATE] Loading footer from:", footerSrc);
           const dataUrl = await fetchProtectedImageDataUrl(footerSrc);
-          if (dataUrl) setFooterImgSrc(dataUrl);
+          if (dataUrl) {
+            console.log("✅ [TEMPLATE] Footer loaded successfully");
+            setFooterImgSrc(dataUrl);
+          } else {
+            console.warn("⚠️ [TEMPLATE] Failed to load footer image - file may not exist at:", footerSrc);
+          }
         }
         if (wmUrl) {
+          console.log("📷 [TEMPLATE] Loading watermark from:", wmUrl);
           const dataUrl = await fetchProtectedImageDataUrl(wmUrl);
           if (dataUrl) {
+            console.log("✅ [TEMPLATE] Watermark loaded successfully");
             setWatermarkImgSrc(dataUrl);
             setWatermarkProps(wp);
+          } else {
+            console.warn("⚠️ [TEMPLATE] Failed to load watermark image - file may not exist at:", wmUrl);
           }
         }
 

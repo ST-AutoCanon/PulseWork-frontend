@@ -373,33 +373,54 @@ const OvertimeSupervisor = () => {
       .filter((r) => !isProcessed(r))
       .every((r) => selected.has(rowKey(r)));
 
-  const buildPayload = (status, parent) => {
-    const groupKey = rowKey(parent);
+  // const buildPayload = (status, parent) => {
+  //   const groupKey = rowKey(parent);
 
-    const effectiveRate =
-      edited[groupKey]?.rate !== undefined
-        ? parseFloat(edited[groupKey].rate)
-        : rateMap[parent.employee_id] ?? 0;
+  //   const effectiveRate =
+  //     edited[groupKey]?.rate !== undefined
+  //       ? parseFloat(edited[groupKey].rate)
+  //       : rateMap[parent.employee_id] ?? 0;
 
-    const effectiveComments = edited[groupKey]?.comments ?? "";
+  //   const effectiveComments = edited[groupKey]?.comments ?? "";
 
-    return [
-      {
-        punch_id: `${parent.employee_id}_${parent.work_date}`,
-        work_date: parent.work_date,
-        employee_id: parent.employee_id,
-        extra_hours: parseFloat(parent.extra_hours) || 0,
-        rate: effectiveRate ? parseFloat(effectiveRate.toFixed(2)) : 0,
+  //   return [
+  //     {
+  //       punch_id: `${parent.employee_id}_${parent.work_date}`,
+  //       work_date: parent.work_date,
+  //       employee_id: parent.employee_id,
+  //       extra_hours: parseFloat(parent.extra_hours) || 0,
+  //       rate: effectiveRate ? parseFloat(effectiveRate.toFixed(2)) : 0,
 
-        project: parent.project_name?.trim() || "",
+  //       project: parent.project_name?.trim() || "",
 
-        supervisor: myName.trim() || meId,
+  //       supervisor: myName.trim() || meId,
 
-        comments: effectiveComments,
-        status: status,
-      },
-    ];
-  };
+  //       comments: effectiveComments,
+  //       status: status,
+  //     },
+  //   ];
+  // };
+const buildPayload = (status, row) => {
+  const key = rowKey(row);
+  const rateToSend =
+    edited[key]?.rate !== undefined
+      ? edited[key].rate
+      : (rateMap[row.employee_id] ?? 0);
+
+  return [
+    {
+      punch_id: `${row.employee_id}_${row.work_date}`,
+      work_date: row.work_date,
+      employee_id: row.employee_id,
+      extra_hours: parseFloat(row.extra_hours) || 0,
+      rate: parseFloat(rateToSend.toFixed(2)),
+      project: row.project_name?.trim() || "",
+      supervisor: myName.trim() || meId,
+      comments: edited[key]?.comments ?? "",
+      status,
+    },
+  ];
+};
 
   const bulkUpdate = async (payload, action) => {
     if (!payload.length) return;
@@ -444,8 +465,39 @@ const OvertimeSupervisor = () => {
     if (payload.length) bulkUpdate(payload, "Rejected");
   };
 
-  const approveOne = (row) =>
-    bulkUpdate(buildPayload("Approved", row), "Approved");
+  // const approveOne = (row) =>
+  //   bulkUpdate(buildPayload("Approved", row), "Approved");
+const approveOne = (row) => {
+  const key = rowKey(row);
+
+  const rateToUse =
+    edited[key]?.rate !== undefined
+      ? edited[key].rate
+      : (rateMap[row.employee_id] ?? 0);
+
+  console.log("Approving → rate sent:", rateToUse);
+
+  const payload = buildPayload("Approved", row); // will use rateToUse
+
+  bulkUpdate(payload, "Approved").then(() => {
+    // After successful update → patch local data
+    setData((prevData) =>
+      prevData.map((item) =>
+        rowKey(item) === key
+          ? { ...item, approved_rate: rateToUse } // ← new field
+          : item
+      )
+    );
+
+    // Also clear edited state for this row
+    setEdited((prev) => {
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
+  });
+};
+
 
   const rejectOne = (row) =>
     bulkUpdate(buildPayload("Rejected", row), "Rejected");
@@ -545,24 +597,41 @@ const OvertimeSupervisor = () => {
                     <td className="ot-td ot-align-right">
                       {parseFloat(row.extra_hours || 0).toFixed(2)}
                     </td>
-                    <td className="ot-td ot-align-right">
-                      <input
-                        type="number"
-                        step="0.01"
-                        min="0"
-                        value={(edited[key]?.rate ?? defaultRate).toFixed(2)}
-                        onChange={(e) => {
-                          const val = parseFloat(e.target.value) || 0;
-                          setEdited((prev) => ({
-                            ...prev,
-                            [key]: { ...(prev[key] || {}), rate: val },
-                          }));
-                        }}
-                        disabled={isDisabled}
-                        className="ot-input-rate"
-                      />
-                    </td>
-                    <td className="ot-td">
+                   <td className="ot-td ot-align-right">
+  {getRowStatus(row) === "Approved" ? (
+    <span className="ot-approved-rate">
+      {(row.approved_rate ?? rateMap[row.employee_id] ?? 0).toFixed(2)}
+    </span>
+  ) : (
+    <input
+      type="number"
+      step="0.01"
+      min="0"
+      value={
+        edited[key]?.rate !== undefined
+          ? edited[key].rate.toFixed(2)
+          : (rateMap[row.employee_id] ?? 0).toFixed(2)
+      }
+      disabled={isDisabled}
+      className="ot-input-rate"
+      onChange={(e) => {
+        const val = parseFloat(e.target.value) || 0;
+        setEdited((prev) => ({
+          ...prev,
+          [key]: { ...(prev[key] || {}), rate: val },
+        }));
+      }}
+      onBlur={(e) => {
+        const val = parseFloat(e.target.value) || 0;
+        setEdited((prev) => ({
+          ...prev,
+          [key]: { ...(prev[key] || {}), rate: val },
+        }));
+      }}
+    />
+  )}
+</td>
+  <td className="ot-td">
                       <span
                         className={`ot-status ot-status-${
                           status === "Approved" ? "approved" : status === "Rejected" ? "rejected" : "pending"
@@ -575,9 +644,15 @@ const OvertimeSupervisor = () => {
                       {!isDisabled && (
                         <>
                           <button
-                            className="ot-btn-icon ot-btn-approve"
-                            onClick={() => approveOne(row)}
-                          >
+  className="ot-btn-icon ot-btn-approve"
+  onClick={() =>
+    approveOne(
+      row,
+      edited[key]?.rate ?? defaultRate
+    )
+  }
+>
+
                             <i className="fas fa-check"></i>
                           </button>
                           <button

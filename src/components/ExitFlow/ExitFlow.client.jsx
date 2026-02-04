@@ -7,6 +7,7 @@ import { useAuth } from "../../context/AuthProvider.client";
 import "./ExitFlow.css";
 import { createPortal } from "react-dom";
 import Modal from "../Modal/Modal.client";
+import ClearanceModal from "./ClearanceModal.jsx";
 
 export default function ExitFlow() {
   const { user } = useAuth();
@@ -63,7 +64,7 @@ const closeAlert = () => {
   const roleLower = role?.toLowerCase() || "";
 
 const isAdmin = roleLower === "admin";
-// const isHr    = roleLower === "hr" || roleLower === "human resource" || roleLower === "hr admin"; // adjust as needed
+const isHr = roleLower === "hr" || roleLower === "human resource" || roleLower === "hr admin";
 const isSupervisorLike = ["supervisor", "manager", "team lead"].includes(roleLower);
   const [newKtForm, setNewKtForm] = useState({
     topic: "",
@@ -90,6 +91,8 @@ const isSupervisorLike = ["supervisor", "manager", "team lead"].includes(roleLow
     returnDate: "",
   });
   const [exitCompleted, setExitCompleted] = useState(false);
+  const [showClearanceModal, setShowClearanceModal] = useState(false);
+
 useEffect(() => {
   if (isAdmin && activeTab !== "all") {
     setActiveTab("all");
@@ -142,6 +145,7 @@ useEffect(() => {
   const fetchClearanceItems = async (exitId) => {
     if (!exitId) return;
     try {
+      console.log("[CLEARANCE] Fetching items for exit:", exitId);
       const res = await axios.get(`${BACKEND_URL}/api/clearance/${exitId}/items`, {
         headers: {
           "x-api-key": API_KEY,
@@ -151,9 +155,16 @@ useEffect(() => {
         withCredentials: true,
       });
       const items = res.data?.data || [];
-      setKtPlans(items.filter(item => item.item_type === "KT"));
-      setAssets(items.filter(item => item.item_type === "ASSET"));
-      console.log("[CLEARANCE] Items loaded:", items.length);
+      console.log("[CLEARANCE] Raw items from API:", JSON.stringify(items, null, 2));
+      
+      const ktItems = items.filter(item => item.item_type === "KT");
+      const assetItems = items.filter(item => item.item_type === "ASSET");
+      
+      console.log("[CLEARANCE] KT items:", ktItems.length, ktItems);
+      console.log("[CLEARANCE] Asset items:", assetItems.length, assetItems);
+      
+      setKtPlans(ktItems);
+      setAssets(assetItems);
     } catch (err) {
       console.error("[CLEARANCE] Fetch failed:", err.message);
       setErrorMessage("Failed to load clearance items");
@@ -202,13 +213,34 @@ const url =
       const requests = res.data?.data || res.data || [];
       console.log("[TEAM REQUESTS] Raw response:", res.data);
       console.log("[TEAM REQUESTS] Total count:", requests.length);
-      console.log("[TEAM REQUESTS] Pending normal:", requests.filter(r => r.supervisor_status === "PENDING" || r.hr_status === "PENDING").length);
-      console.log("[TEAM REQUESTS] Pending withdraw:", requests.filter(r => r.withdrawal_requested_at && r.withdrawal_supervisor_status === "PENDING").length);
-      console.log("[TEAM REQUESTS] Resigned:", requests.filter(r => r.final_outcome === "RESIGNED").length);
+      console.log("[TEAM REQUESTS] All statuses:", requests.map(r => ({ id: r.id, emp_id: r.employee_id, supervisor_status: r.supervisor_status, hr_status: r.hr_status, withdrawal_supervisor_status: r.withdrawal_supervisor_status, withdrawal_hr_status: r.withdrawal_hr_status })));
       setAllTeamRequests(requests);
+      
+      // Filter pending data based on role
+      const effectiveRole = role?.toLowerCase() === "manager" ? "supervisor" : role?.toLowerCase();
+      let filteredPendingNormal = [];
+      let filteredPendingWithdraw = [];
+      
+      if (effectiveRole === "supervisor") {
+        // Supervisors see pending resignations (but NOT if withdrawal is requested - those go in withdrawal list only)
+        filteredPendingNormal = requests.filter(r => r.supervisor_status === "PENDING" && !r.withdrawal_requested_at);
+        filteredPendingWithdraw = requests.filter(r => r.withdrawal_requested_at && r.withdrawal_supervisor_status === "PENDING");
+      } else if (effectiveRole === "hr" || effectiveRole === "admin") {
+        // HR sees pending resignations (but NOT if withdrawal is requested - those go in withdrawal list only)
+        filteredPendingNormal = requests.filter(r => r.hr_status === "PENDING" && !r.withdrawal_requested_at);
+        filteredPendingWithdraw = requests.filter(r => r.withdrawal_requested_at && r.withdrawal_hr_status === "PENDING");
+      }
+      
+      console.log("[TEAM REQUESTS] Effective role:", effectiveRole);
+      console.log("[TEAM REQUESTS] Filtered pending normal:", filteredPendingNormal.length, "items");
+      console.log("[TEAM REQUESTS] Filtered pending withdraw:", filteredPendingWithdraw.length, "items");
+      if (filteredPendingNormal.length > 0) {
+        console.log("[TEAM REQUESTS] First pending normal:", filteredPendingNormal[0]);
+      }
+      
       setPendingData({
-        normal: requests.filter(r => r.supervisor_status === "PENDING" || r.hr_status === "PENDING"),
-        withdraw: requests.filter(r => r.withdrawal_requested_at && r.withdrawal_supervisor_status === "PENDING"),
+        normal: filteredPendingNormal,
+        withdraw: filteredPendingWithdraw,
       });
       setResignedClearance(requests.filter(r => r.final_outcome === "RESIGNED"));
     } catch (err) {
@@ -253,6 +285,8 @@ const url =
             "x-api-key": API_KEY,
             "x-employee-id": employeeId,
             "x-org-id": orgId,
+            // NOTE: Do NOT set Content-Type - let axios handle it for FormData
+            // "Content-Type": "multipart/form-data" will be set automatically with boundary
           },
           withCredentials: true,
         }
@@ -507,6 +541,34 @@ const url =
     }
   };
 
+  const handleFinalizeClearance = async () => {
+    setLoading(true);
+    setErrorMessage("");
+    try {
+      if (!selfRequest?.id) throw new Error("No exit request found");
+      const res = await axios.post(
+        `${BACKEND_URL}/api/clearance/finalize`,
+        { exitId: selfRequest.id },
+        {
+          headers: {
+            "x-api-key": API_KEY,
+            "x-employee-id": employeeId,
+            "x-org-id": orgId,
+          },
+          withCredentials: true,
+        }
+      );
+      setExitCompleted(true);
+      showAlert("Clearance process finalized successfully!", "Success", "success");
+      setShowClearanceModal(false);
+    } catch (err) {
+      setErrorMessage(err.response?.data?.error || "Failed to finalize clearance");
+      console.error("[FINALIZE CLEARANCE] Failed:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleFinalizeExit = async () => {
     setLoading(true);
     setErrorMessage("");
@@ -697,49 +759,7 @@ const url =
     <>
       <div className="exf-container">
         {errorMessage && <div className="exf-error-banner">{errorMessage}</div>}
-       {/* <div className="exf-tabs-wrapper">
-  <div className="exf-tabs" role="tablist">
-    <button
-      type="button"
-      role="tab"
-      aria-selected={activeTab === "self"}
-      aria-controls="tabpanel-self"
-      id="tab-self"
-      className={`exf-tab ${activeTab === "self" ? "exf-tab--active" : ""}`}
-      onClick={() => setActiveTab("self")}
-    >
-      My Status
-    </button>
-
-    {hasTeam && (
-      <button
-        type="button"
-        role="tab"
-        aria-selected={activeTab === "team"}
-        aria-controls="tabpanel-team"
-        id="tab-team"
-        className={`exf-tab ${activeTab === "team" ? "exf-tab--active" : ""}`}
-        onClick={() => setActiveTab("team")}
-      >
-        My Team
-      </button>
-    )}
-
-    {isHr && (
-      <button
-        type="button"
-        role="tab"
-        aria-selected={activeTab === "all"}
-        aria-controls="tabpanel-all"
-        id="tab-all"
-        className={`exf-tab ${activeTab === "all" ? "exf-tab--active" : ""}`}
-        onClick={() => setActiveTab("all")}
-      >
-        All Employees
-      </button>
-    )}
-  </div>
-</div> */}<div className="exf-tabs-wrapper">
+       <div className="exf-tabs-wrapper">
   <div className="exf-tabs" role="tablist">
 
     {/* My Status – shown to everyone EXCEPT pure Admin */}
@@ -902,183 +922,23 @@ const url =
               </p>
             </div>
           ) : (
-            <>
-              <div className="exf-tabs-wrapper mb-4">
-                <div className="exf-tabs">
-                  <button
-                    className={`exf-tab ${clearanceActiveTab === "kt" ? "exf-tab--active" : ""}`}
-                    onClick={() => setClearanceActiveTab("kt")}
-                  >
-                    KT Plan
-                  </button>
-                  <button
-                    className={`exf-tab ${clearanceActiveTab === "assets" ? "exf-tab--active" : ""}`}
-                    onClick={() => setClearanceActiveTab("assets")}
-                  >
-                    Assets
-                  </button>
-                </div>
-              </div>
-              {clearanceActiveTab === "kt" && (
-                <div className="mt-6">
-                  <div className="flex justify-between items-center mb-6">
-                    <h3 className="text-lg font-semibold text-gray-800">
-                      Knowledge Transfer Clearance
-                    </h3>
-                    <button
-                      onClick={() => setShowAddKTModal(true)}
-                      className="btn btn-primary px-5 py-2 text-sm"
-                    >
-                      + Add KT Plan
-                    </button>
-                  </div>
-                  {ktPlans.length === 0 ? (
-                    <div className="text-center py-12 bg-gray-50 rounded-lg border border-dashed">
-                      <p className="text-gray-500 mb-3">No KT plans added yet.</p>
-                      <p className="text-sm text-gray-600">
-                        Add your handover topics and upload related documents.
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="space-y-4">
-                      {ktPlans.map((kt) => (
-                        <div
-                          key={kt.id}
-                          className="border rounded-lg p-4 bg-white shadow-sm relative"
-                        >
-                          <div className="flex justify-between items-start">
-                            <div className="flex-1">
-                              <p className="font-medium text-gray-900">{kt.title}</p>
-                              <p className="text-sm text-gray-600 mt-1">{kt.description}</p>
-                              {kt.attached_files && kt.attached_files.length > 0 && (
-                                <div className="mt-2 space-y-2">
-                                  <p className="text-xs font-medium text-gray-700">Uploaded files:</p>
-                                  {kt.attached_files.map((file, idx) => {
-                                    const fileName = file.split("/").pop();
-                                    return (
-                                      <div key={idx} className="flex items-center justify-between bg-gray-100 p-2 rounded">
-                                        <span className="text-sm text-gray-700 truncate">{fileName}</span>
-                                        <div className="flex gap-2">
-                                          <button
-                                            className="btn btn-secondary btn-sm"
-                                            onClick={() => viewFile(file)}
-                                          >
-                                            View
-                                          </button>
-                                          <button
-                                            className="btn btn-outline btn-sm"
-                                            onClick={() => downloadFile(file, fileName)}
-                                          >
-                                            Download
-                                          </button>
-                                        </div>
-                                      </div>
-                                    );
-                                  })}
-                                </div>
-                              )}
-                              <p className="text-sm mt-2">
-                                <strong>Status:</strong> {kt.status || "Pending"}
-                              </p>
-                            </div>
-                            <div className="ml-4 text-right flex flex-col gap-2">
-                              <button
-                                className="btn btn-outline btn-sm"
-                                onClick={() => startEditKt(kt)}
-                                disabled={loading}
-                              >
-                                Edit
-                              </button>
-                              <div className="space-y-2 text-sm">
-                                <label className="flex items-center justify-end">
-                                  <input
-                                    type="checkbox"
-                                    checked={kt.supervisor_approved || false}
-                                    onChange={(e) =>
-                                      handleApproveItem(kt.id, e.target.checked, "KT")
-                                    }
-                                    disabled={!["supervisor", "manager"].includes(role)}
-                                    className="h-4 w-4"
-                                  />
-                                  <span className="ml-2">Supervisor Approved</span>
-                                </label>
-                                <label className="flex items-center justify-end">
-                                  <input
-                                    type="checkbox"
-                                    checked={kt.hr_approved || false}
-                                    onChange={(e) =>
-                                      handleApproveItem(kt.id, e.target.checked, "KT")
-                                    }
-                                    disabled={role !== "hr"}
-                                    className="h-4 w-4"
-                                  />
-                                  <span className="ml-2">HR Approved</span>
-                                </label>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
-              {clearanceActiveTab === "assets" && (
-                <div className="space-y-6">
-                  <div className="bg-white p-5 rounded-lg border border-gray-200">
-                    <h4 className="font-medium mb-4">Add New Asset</h4>
-                    <div className="grid grid-cols-1 gap-4">
-                      <input
-                        type="text"
-                        placeholder="Asset Name (e.g. Laptop Dell XYZ - SN123)"
-                        value={newAssetForm.name}
-                        onChange={(e) =>
-                          setNewAssetForm({ ...newAssetForm, name: e.target.value })
-                        }
-                        className="p-2 border rounded"
-                      />
-                      <input
-                        type="date"
-                        placeholder="Return Date"
-                        value={newAssetForm.returnDate}
-                        onChange={(e) =>
-                          setNewAssetForm({ ...newAssetForm, returnDate: e.target.value })
-                        }
-                        className="p-2 border rounded"
-                      />
-                      <button
-                        className="btn btn-primary"
-                        onClick={handleAddAsset}
-                        disabled={loading}
-                      >
-                        Add Asset
-                      </button>
-                    </div>
-                  </div>
-                  <div className="space-y-4">
-                    {assets.map((asset) => (
-                      <div
-                        key={asset.id}
-                        className="bg-gray-50 p-4 rounded border"
-                      >
-                        <h5 className="font-medium">{asset.title}</h5>
-                        <p>
-                          Return Date:{" "}
-                          {asset.planned_date
-                            ? new Date(asset.planned_date).toLocaleDateString()
-                            : "—"}
-                        </p>
-                        <div className="mt-2 text-sm">
-                          Supervisor Approved: {asset.supervisor_approved ? "Yes" : "No"}
-                          <br />
-                          HR Approved: {asset.hr_approved ? "Yes" : "No"}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </>
+            <button
+              onClick={async () => {
+                console.log("[EMPLOYEE] Opening clearance modal, fetching data...");
+                setShowClearanceModal(true);
+                // Fetch clearance items when opening modal
+                if (selfRequest?.id) {
+                  console.log("[EMPLOYEE] Fetching items for exit ID:", selfRequest.id);
+                  await fetchClearanceItems(selfRequest.id);
+                  console.log("[EMPLOYEE] Items fetched successfully");
+                } else {
+                  console.error("[EMPLOYEE] selfRequest.id not available!");
+                }
+              }}
+              className="btn btn-primary px-6 py-3 text-base"
+            >
+              📋 Open Exit Clearance
+            </button>
           )}
         </div>
       </>
@@ -1222,62 +1082,7 @@ const url =
     )}
   </div>
 )}
-                {/* {(!selfRequest ||
-                  !selfRequest.final_outcome ||
-                  selfRequest.final_outcome !== "RESIGNED") && (
-                  <>
-                    <h2 className="exf-title">Submit Resignation Request</h2>
-                    <form className="exf-form">
-                      <div className="exf-form-group">
-                        <label>Reason for leaving</label>
-                        <select
-                          value={form.reason}
-                          onChange={(e) => setForm({ ...form, reason: e.target.value })}
-                        >
-                          <option value="">-- Select Reason --</option>
-                          <option value="Career Growth">Career Growth</option>
-                          <option value="Higher Studies">Higher Studies</option>
-                          <option value="Personal Reasons">Personal Reasons</option>
-                          <option value="Other">Other</option>
-                        </select>
-                      </div>
-                      {form.reason === "Other" && (
-                        <div className="exf-form-group">
-                          <label>Please specify</label>
-                          <textarea
-                            placeholder="Enter your specific reason..."
-                            value={form.otherReason}
-                            onChange={(e) => setForm({ ...form, otherReason: e.target.value })}
-                          />
-                        </div>
-                      )}
-                      <div className="exf-form-group">
-                        <label>Proposed Last Working Day</label>
-                        <input
-                          type="date"
-                          value={form.proposedLwd}
-                          onChange={(e) => setForm({ ...form, proposedLwd: e.target.value })}
-                        />
-                      </div>
-                      <div className="exf-form-group">
-                        <label>Additional Comments (optional)</label>
-                        <textarea
-                          placeholder="Any remarks or additional information..."
-                          value={form.comment}
-                          onChange={(e) => setForm({ ...form, comment: e.target.value })}
-                        />
-                      </div>
-                      <button
-                        type="button"
-                        className="btn btn-primary exf-full-width"
-                        onClick={handleApply}
-                        disabled={loading}
-                      >
-                        {loading ? "Submitting..." : "Submit Resignation"}
-                      </button>
-                    </form>
-                  </>
-                )} */}
+               
               </div>
             )}
           </div>
@@ -1296,155 +1101,7 @@ const url =
               </div>
             ) : (
               <>
-                {/* <div className="exf-team-panel">
-                  <h2 className="exf-panel-title mb-3">
-                    Exit Requests from My Team ({teamMembers.length} members)
-                  </h2>
-                  {allTeamRequests.length === 0 ? (
-                    <div className="text-center py-10 text-gray-500 text-sm bg-gray-50 rounded-lg border border-gray-200">
-                      No exit requests submitted by your team members yet.
-                    </div>
-                  ) : (
-                    <div className="overflow-x-auto rounded-lg border border-gray-200 shadow-sm">
-                      <table className="min-w-full divide-y divide-gray-200">
-                        <thead className="bg-gray-50">
-                          <tr>
-                            <th className="px-5 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Emp ID</th>
-                            <th className="px-5 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Name</th>
-                            <th className="px-5 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Reason</th>
-                            <th className="px-5 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Proposed LWD</th>
-                            <th className="px-5 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Supervisor</th>
-                            <th className="px-5 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">HR</th>
-                            <th className="px-5 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Outcome</th>
-                            <th className="px-5 py-3 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Action</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-100 bg-white">
-                          {allTeamRequests.map((req) => (
-                            <tr key={req.id} className="hover:bg-gray-50 transition-colors">
-                              <td className="px-5 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{req.employee_id}</td>
-                              <td className="px-5 py-4 whitespace-nowrap text-sm text-gray-700">{req.employee_name || "—"}</td>
-                              <td className="px-5 py-4 text-sm text-gray-700 max-w-xs truncate">{req.reason}</td>
-                              <td className="px-5 py-4 whitespace-nowrap text-sm text-gray-600">
-                                {req.proposed_lwd ? new Date(req.proposed_lwd).toLocaleDateString() : "—"}
-                              </td>
-                              <td className="px-5 py-4 whitespace-nowrap text-sm text-gray-600">
-                                <span className={`badge badge-${(req.supervisor_status || "pending").toLowerCase()}`}>
-                                  {req.supervisor_status || "Pending"}
-                                </span>
-                              </td>
-                              <td className="px-5 py-4 whitespace-nowrap text-sm text-gray-600">
-                                <span className={`badge badge-${(req.hr_status || "pending").toLowerCase()}`}>
-                                  {req.hr_status || "Pending"}
-                                </span>
-                              </td>
-                              <td className="px-5 py-4 whitespace-nowrap text-sm text-gray-600">
-                                {req.final_outcome || "Active"}
-                              </td>
-                              <td className="px-5 py-4 whitespace-nowrap text-center">
-                                <button
-                                  className="btn btn-review px-4 py-1.5 text-sm"
-                                  onClick={() => setSelectedRequest({ ...req, type: req.final_outcome === "RESIGNED" ? "clearance" : "normal" })}
-                                >
-                                  Review
-                                </button>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
-                </div>
-                <div className="exf-team-panel">
-                  <h2 className="exf-panel-title mb-3">Pending Resignations (My Team)</h2>
-                  {pendingData.normal.length === 0 ? (
-                    <div className="text-center py-10 text-gray-500 text-sm bg-gray-50 rounded-lg border border-gray-200">
-                      No pending resignation requests
-                    </div>
-                  ) : (
-                    <div className="overflow-x-auto rounded-lg border border-gray-200 shadow-sm">
-                      <table className="min-w-full divide-y divide-gray-200">
-                        <thead className="bg-gray-50">
-                          <tr>
-                            <th className="px-5 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Emp ID</th>
-                            <th className="px-5 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Reason</th>
-                            <th className="px-5 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Proposed LWD</th>
-                            <th className="px-5 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Applied On</th>
-                            <th className="px-5 py-3 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Action</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-100 bg-white">
-                          {pendingData.normal.map((req) => (
-                            <tr key={req.id} className="hover:bg-gray-50 transition-colors">
-                              <td className="px-5 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{req.employee_id}</td>
-                              <td className="px-5 py-4 text-sm text-gray-700 max-w-xs truncate">{req.reason}</td>
-                              <td className="px-5 py-4 whitespace-nowrap text-sm text-gray-600">
-                                {req.proposed_lwd ? new Date(req.proposed_lwd).toLocaleDateString() : "—"}
-                              </td>
-                              <td className="px-5 py-4 whitespace-nowrap text-sm text-gray-500">
-                                {new Date(req.applied_at).toLocaleDateString()}
-                              </td>
-                              <td className="px-5 py-4 whitespace-nowrap text-center">
-                                <button
-                                  className="btn btn-review px-4 py-1.5 text-sm"
-                                  onClick={() => setSelectedRequest({ ...req, type: req.final_outcome === "RESIGNED" ? "clearance" : "normal" })}
-                                >
-                                  Review
-                                </button>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
-                </div>
-                <div className="exf-team-panel">
-                  <h2 className="exf-panel-title mb-3">Pending Withdrawal Requests (My Team)</h2>
-                  {pendingData.withdraw.length === 0 ? (
-                    <div className="text-center py-10 text-gray-500 text-sm bg-gray-50 rounded-lg border border-gray-200">
-                      No pending withdrawal requests
-                    </div>
-                  ) : (
-                    <div className="overflow-x-auto rounded-lg border border-gray-200 shadow-sm">
-                      <table className="min-w-full divide-y divide-gray-200">
-                        <thead className="bg-gray-50">
-                          <tr>
-                            <th className="px-5 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Emp ID</th>
-                            <th className="px-5 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Reason</th>
-                            <th className="px-5 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Requested On</th>
-                            <th className="px-5 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Supervisor</th>
-                            <th className="px-5 py-3 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Action</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-100 bg-white">
-                          {pendingData.withdraw.map((req) => (
-                            <tr key={req.id} className="hover:bg-gray-50 transition-colors">
-                              <td className="px-5 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{req.employee_id}</td>
-                              <td className="px-5 py-4 text-sm text-gray-700 max-w-xs truncate">{req.withdrawal_reason || "—"}</td>
-                              <td className="px-5 py-4 whitespace-nowrap text-sm text-gray-500">
-                                {req.withdrawal_requested_at ? new Date(req.withdrawal_requested_at).toLocaleString() : "—"}
-                              </td>
-                              <td className="px-5 py-4 whitespace-nowrap text-sm text-gray-600">
-                                {req.withdrawal_supervisor_status || "Pending"}
-                              </td>
-                              <td className="px-5 py-4 whitespace-nowrap text-center">
-                                <button
-                                  className="btn btn-review px-4 py-1.5 text-sm"
-                                  onClick={() => setSelectedRequest({ ...req, type: "withdrawal" })}
-                                >
-                                  Review
-                                </button>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
-                </div> */}
-                {/* Exit Requests from My Team */}
+              
 <div className="exf-team-panel">
   <h2 className="exf-panel-title mb-4">
     Exit Requests from My Team <span className="exf-count">({teamMembers.length} members)</span>
@@ -1470,7 +1127,7 @@ const url =
           </tr>
         </thead>
         <tbody>
-          {allTeamRequests.map((req) => (
+          {allTeamRequests.filter(req => !req.withdrawal_requested_at).map((req) => (
             <tr key={req.id}>
               <td className="font-medium">{req.employee_id}</td>
               <td>{req.employee_name || "—"}</td>
@@ -1554,6 +1211,7 @@ const url =
   )}
 </div>
 
+
 {/* Pending Withdrawal Requests (My Team) */}
 <div className="exf-team-panel">
   <h2 className="exf-panel-title mb-4">Pending Withdrawal Requests (My Team)</h2>
@@ -1605,248 +1263,7 @@ const url =
   )}
 </div>
                 {["hr", "supervisor", "manager"].includes(role) && (
-                  // <div className="exf-team-panel mt-8 border-t pt-6">
-                  //   <h2 className="exf-panel-title mb-3">
-                  //     Resigned Employees & Clearance Status
-                  //   </h2>
-                  //   {resignedClearance.length === 0 ? (
-                  //     <div className="text-center py-10 text-gray-500 text-sm bg-gray-50 rounded-lg border border-gray-200">
-                  //       No resigned employees to review
-                  //     </div>
-                  //   ) : (
-                  //     <div className="overflow-x-auto rounded-lg border border-gray-200 shadow-sm">
-                  //       <table className="min-w-full divide-y divide-gray-200">
-                  //         <thead className="bg-gray-50">
-                  //           <tr>
-                  //             <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Emp ID</th>
-                  //             <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Final LWD</th>
-                  //             <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Prop. KT</th>
-                  //             <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Prop. Assets</th>
-                  //             <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Final KT</th>
-                  //             <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Final Assets</th>
-                  //             <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Status</th>
-                  //             <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Action</th>
-                  //           </tr>
-                  //         </thead>
-                  //         <tbody className="divide-y divide-gray-100 bg-white">
-                  //           {resignedClearance.map((req) => (
-                  //             <tr key={req.id} className="hover:bg-gray-50 transition-colors">
-                  //               <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">{req.employee_id}</td>
-                  //               <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
-                  //                 {req.final_lwd ? new Date(req.final_lwd).toLocaleDateString() : "—"}
-                  //               </td>
-                  //               <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
-                  //                 {req.kt_proposed_date ? new Date(req.kt_proposed_date).toLocaleDateString() : "—"}
-                  //               </td>
-                  //               <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
-                  //                 {req.assets_proposed_date ? new Date(req.assets_proposed_date).toLocaleDateString() : "—"}
-                  //               </td>
-                  //               <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
-                  //                 {req.kt_planned_date ? new Date(req.kt_planned_date).toLocaleDateString() : "—"}
-                  //               </td>
-                  //               <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
-                  //                 {req.assets_return_planned_date ? new Date(req.assets_return_planned_date).toLocaleDateString() : "—"}
-                  //               </td>
-                  //               <td className="px-4 py-3 whitespace-nowrap text-center text-sm">
-                  //                 <span
-                  //                   className={`inline-block px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                  //                     req.kt_completed && req.assets_returned
-                  //                       ? "bg-green-100 text-green-800"
-                  //                       : "bg-amber-100 text-amber-800"
-                  //                   }`}
-                  //                 >
-                  //                   {req.kt_completed && req.assets_returned ? "Cleared" : "Pending"}
-                  //                 </span>
-                  //               </td>
-                  //               <td className="px-4 py-3 whitespace-nowrap text-center">
-                  //                 <button
-                  //                   className="btn btn-review px-4 py-1.5 text-xs"
-                  //                   onClick={() => setSelectedRequest({ ...req, type: "clearance" })}
-                  //                 >
-                  //                   Review
-                  //                 </button>
-                  //               </td>
-                  //             </tr>
-                  //           ))}
-                  //         </tbody>
-                  //       </table>
-                  //     </div>
-                  //   )}
-                  // </div>
-//                   <div className="exf-team-panel mt-8 border-t pt-6">
-//   <h2 className="exf-panel-title mb-4">
-//     Resigned Employees & Clearance Status
-//     <span className="exf-count-badge">({resignedClearance.length})</span>
-//   </h2>
-
-//   {resignedClearance.length === 0 ? (
-//     <div className="exf-empty-state">
-//       No resigned employees to review
-//     </div>
-//   ) : (
-//     <div className="exf-table-container">
-//       <table className="exf-clearance-table">
-//         <thead>
-//           <tr>
-//             <th>Emp ID</th>
-//             <th>Final LWD</th>
-//             <th>Prop. KT</th>
-//             <th>Prop. Assets</th>
-//             <th>Final KT</th>
-//             <th>Final Assets</th>
-//             <th className="text-center">Status</th>
-//             <th className="text-center">Action</th>
-//           </tr>
-//         </thead>
-//         <tbody>
-//           {resignedClearance.map((req) => (
-//             <tr key={req.id}>
-//               <td className="font-medium">{req.employee_id}</td>
-//               <td>
-//                 {req.final_lwd
-//                   ? new Date(req.final_lwd).toLocaleDateString()
-//                   : "—"}
-//               </td>
-//               <td>
-//                 {req.kt_proposed_date
-//                   ? new Date(req.kt_proposed_date).toLocaleDateString()
-//                   : "—"}
-//               </td>
-//               <td>
-//                 {req.assets_proposed_date
-//                   ? new Date(req.assets_proposed_date).toLocaleDateString()
-//                   : "—"}
-//               </td>
-//               <td>
-//                 {req.kt_planned_date
-//                   ? new Date(req.kt_planned_date).toLocaleDateString()
-//                   : "—"}
-//               </td>
-//               <td>
-//                 {req.assets_return_planned_date
-//                   ? new Date(req.assets_return_planned_date).toLocaleDateString()
-//                   : "—"}
-//               </td>
-//               <td className="text-center">
-//                 <span
-//                   className={`exf-status-badge ${
-//                     req.kt_completed && req.assets_returned
-//                       ? "exf-badge-cleared"
-//                       : "exf-badge-pending"
-//                   }`}
-//                 >
-//                   {req.kt_completed && req.assets_returned ? "Cleared" : "Pending"}
-//                 </span>
-//               </td>
-//               <td className="text-center">
-//                 <button
-//                   className="exf-btn-review"
-//                   onClick={() => setSelectedRequest({ ...req, type: "clearance" })}
-//                 >
-//                   Review
-//                 </button>
-//               </td>
-//             </tr>
-//           ))}
-//         </tbody>
-//       </table>
-//     </div>
-//   )}
-// </div>
-//                <div className="exf-team-panel mt-8 border-t border-gray-200 pt-6">
-//   <h2 className="exf-panel-title mb-4">
-//     Resigned Employees & Clearance Status ({resignedClearance.length})
-//   </h2>
-
-//   {resignedClearance.length === 0 ? (
-//     <div className="exf-empty-state">
-//       No resigned employees requiring clearance in the organization
-//     </div>
-//   ) : (
-//     <div className="exf-table-wrapper">
-//       <table className="exf-data-table">
-//         <thead>
-//           <tr>
-//             <th>Emp ID</th>
-//             <th>Final LWD</th>
-//             <th>KT Clearance</th>
-//             <th>Assets Clearance</th>
-//             <th className="text-center">Overall Status</th>
-//             <th className="text-center">Action</th>
-//           </tr>
-//         </thead>
-
-//         <tbody>
-//           {resignedClearance.map((req) => {
-//             // You can adjust logic based on your actual data structure
-//             const ktFullyApproved = req.kt_supervisor_approved && req.kt_hr_approved;
-//             const assetsFullyApproved = req.assets_supervisor_approved && req.assets_hr_approved;
-
-//             const ktStatusClass = ktFullyApproved
-//               ? "exf-badge-success"
-//               : "exf-badge-pending";
-//             const assetsStatusClass = assetsFullyApproved
-//               ? "exf-badge-success"
-//               : "exf-badge-pending";
-
-//             const overallCleared = ktFullyApproved && assetsFullyApproved;
-
-//             return (
-//               <tr key={req.id} className="exf-table-row">
-//                 <td className="exf-table-cell font-medium text-gray-900">
-//                   {req.employee_id}
-//                 </td>
-//                 <td className="exf-table-cell whitespace-nowrap text-gray-600">
-//                   {req.final_lwd
-//                     ? new Date(req.final_lwd).toLocaleDateString("en-GB", {
-//                         day: "2-digit",
-//                         month: "short",
-//                         year: "numeric",
-//                       })
-//                     : "—"}
-//                 </td>
-
-//                 {/* KT Clearance */}
-//                 <td className="exf-table-cell text-center">
-//                   <span className={`exf-badge ${ktStatusClass}`}>
-//                     {ktFullyApproved ? "Approved" : "Pending"}
-//                   </span>
-//                 </td>
-
-//                 {/* Assets Clearance */}
-//                 <td className="exf-table-cell text-center">
-//                   <span className={`exf-badge ${assetsStatusClass}`}>
-//                     {assetsFullyApproved ? "Approved" : "Pending"}
-//                   </span>
-//                 </td>
-
-//                 {/* Overall */}
-//                 <td className="exf-table-cell text-center">
-//                   <span
-//                     className={`exf-badge ${
-//                       overallCleared ? "exf-badge-success" : "exf-badge-pending"
-//                     }`}
-//                   >
-//                     {overallCleared ? "Cleared" : "Pending"}
-//                   </span>
-//                 </td>
-
-//                 <td className="exf-table-cell text-center">
-//                   <button
-//                     className="exf-btn exf-btn-primary exf-btn-sm"
-//                     onClick={() => setSelectedRequest({ ...req, type: "clearance" })}
-//                   >
-//                     Review
-//                   </button>
-//                 </td>
-//               </tr>
-//             );
-//           })}
-//         </tbody>
-//       </table>
-//     </div>
-//   )}
-// </div>
+                
 
 <div className="exf-team-panel mt-8 border-t border-gray-200 pt-6">
   <h2 className="exf-panel-title mb-4">
@@ -1903,67 +1320,9 @@ const url =
           </div>
         )}
 
-{(role === "hr" || role === "admin" || isAdmin) && activeTab === "all" && (          <div className="exf-team-view space-y-8">
-            {/* <div className="exf-team-panel">
-              <h2 className="exf-panel-title mb-3">
-                All Organization Exit Requests ({allTeamRequests.length})
-              </h2>
-              {allTeamRequests.length === 0 ? (
-                <div className="text-center py-10 text-gray-500 text-sm bg-gray-50 rounded-lg border border-gray-200">
-                  No exit requests found across the organization
-                </div>
-              ) : (
-                <div className="overflow-x-auto rounded-lg border border-gray-200 shadow-sm">
-                  <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        <th className="px-5 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Emp ID</th>
-                        <th className="px-5 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Name</th>
-                        <th className="px-5 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Reason</th>
-                        <th className="px-5 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Proposed LWD</th>
-                        <th className="px-5 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Supervisor</th>
-                        <th className="px-5 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">HR</th>
-                        <th className="px-5 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Outcome</th>
-                        <th className="px-5 py-3 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Action</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-100 bg-white">
-                      {allTeamRequests.map((req) => (
-                        <tr key={req.id} className="hover:bg-gray-50 transition-colors">
-                          <td className="px-5 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{req.employee_id}</td>
-                          <td className="px-5 py-4 whitespace-nowrap text-sm text-gray-700">{req.employee_name || "—"}</td>
-                          <td className="px-5 py-4 text-sm text-gray-700 max-w-xs truncate">{req.reason}</td>
-                          <td className="px-5 py-4 whitespace-nowrap text-sm text-gray-600">
-                            {req.proposed_lwd ? new Date(req.proposed_lwd).toLocaleDateString() : "—"}
-                          </td>
-                          <td className="px-5 py-4 whitespace-nowrap text-sm text-gray-600">
-                            <span className={`badge badge-${(req.supervisor_status || "pending").toLowerCase()}`}>
-                              {req.supervisor_status || "Pending"}
-                            </span>
-                          </td>
-                          <td className="px-5 py-4 whitespace-nowrap text-sm text-gray-600">
-                            <span className={`badge badge-${(req.hr_status || "pending").toLowerCase()}`}>
-                              {req.hr_status || "Pending"}
-                            </span>
-                          </td>
-                          <td className="px-5 py-4 whitespace-nowrap text-sm text-gray-600">
-                            {req.final_outcome || "Active"}
-                          </td>
-                          <td className="px-5 py-4 whitespace-nowrap text-center">
-                            <button
-                              className="btn btn-review px-4 py-1.5 text-sm"
-                              onClick={() => setSelectedRequest({ ...req, type: req.final_outcome === "RESIGNED" ? "clearance" : "normal" })}
-                            >
-                              Review
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </div> */}
+{(role === "hr" || role === "admin" || isAdmin) && activeTab === "all" && (       
+     <div className="exf-team-view space-y-8">
+           
 
             <div className="exf-team-panel">
   <h2 className="exf-panel-title">
@@ -2048,7 +1407,52 @@ const url =
     </div>
   )}
 </div>
-
+{/* Pending Resignations – now visible to HR/Admin in All Employees tab */}
+<div className="exf-team-panel mt-8">
+  <h2 className="exf-panel-title mb-4">Pending Resignations (All Organization)</h2>
+  
+  {pendingData.normal.length === 0 ? (
+    <div className="exf-empty-state">
+      No pending resignation requests in the organization
+    </div>
+  ) : (
+    <div className="exf-table-container">
+      <table className="exf-table">
+        <thead>
+          <tr>
+            <th>Emp ID</th>
+            <th>Reason</th>
+            <th>Proposed LWD</th>
+            <th>Applied On</th>
+            <th className="text-center">Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {pendingData.normal.map((req) => (
+            <tr key={req.id}>
+              <td className="font-medium">{req.employee_id}</td>
+              <td className="max-w-xs truncate">{req.reason}</td>
+              <td>
+                {req.proposed_lwd
+                  ? new Date(req.proposed_lwd).toLocaleDateString()
+                  : "—"}
+              </td>
+              <td>{new Date(req.applied_at).toLocaleDateString()}</td>
+              <td className="text-center">
+                <button
+                  className="exf-btn-review"
+                  onClick={() => setSelectedRequest({ ...req, type: req.final_outcome === "RESIGNED" ? "clearance" : "normal" })}
+                >
+                  Review
+                </button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )}
+</div>
             {/* NEW: Withdrawal Requests for HR (shows only what HR needs to act on) */}
             <div className="exf-team-panel mt-8 border-t pt-6">
               <h2 className="exf-panel-title mb-3">
@@ -2099,7 +1503,7 @@ const url =
                                 className="btn btn-review px-4 py-1.5 text-sm"
                                 onClick={() => setSelectedRequest({ ...req, type: "withdrawal" })}
                               >
-                                Review (HR)
+                                Review
                               </button>
                             </td>
                           </tr>
@@ -2111,178 +1515,7 @@ const url =
               })()}
             </div>
 
-            {/* Resigned & Clearance (HR only) */}
-            {/* <div className="exf-team-panel mt-8 border-t pt-6">
-              <h2 className="exf-panel-title mb-3">
-                Resigned Employees & Clearance Status ({resignedClearance.length})
-              </h2>
-              {resignedClearance.length === 0 ? (
-                <div className="text-center py-10 text-gray-500 text-sm bg-gray-50 rounded-lg border border-gray-200">
-                  No resigned employees in the organization
-                </div>
-              ) : (
-                <div className="overflow-x-auto rounded-lg border border-gray-200 shadow-sm">
-                  <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Emp ID</th>
-                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Final LWD</th>
-                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Prop. KT</th>
-                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Prop. Assets</th>
-                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Final KT</th>
-                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Final Assets</th>
-                        <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Status</th>
-                        <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Action</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-100 bg-white">
-                      {resignedClearance.map((req) => (
-                        <tr key={req.id} className="hover:bg-gray-50 transition-colors">
-                          <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">{req.employee_id}</td>
-                          <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
-                            {req.final_lwd ? new Date(req.final_lwd).toLocaleDateString() : "—"}
-                          </td>
-                          <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
-                            {req.kt_proposed_date ? new Date(req.kt_proposed_date).toLocaleDateString() : "—"}
-                          </td>
-                          <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
-                            {req.assets_proposed_date ? new Date(req.assets_proposed_date).toLocaleDateString() : "—"}
-                          </td>
-                          <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
-                            {req.kt_planned_date ? new Date(req.kt_planned_date).toLocaleDateString() : "—"}
-                          </td>
-                          <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
-                            {req.assets_return_planned_date ? new Date(req.assets_return_planned_date).toLocaleDateString() : "—"}
-                          </td>
-                          <td className="px-4 py-3 whitespace-nowrap text-center text-sm">
-                            <span
-                              className={`inline-block px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                                req.kt_completed && req.assets_returned
-                                  ? "bg-green-100 text-green-800"
-                                  : "bg-amber-100 text-amber-800"
-                              }`}
-                            >
-                              {req.kt_completed && req.assets_returned ? "Cleared" : "Pending"}
-                            </span>
-                          </td>
-                          <td className="px-4 py-3 whitespace-nowrap text-center">
-                            <button
-                              className="btn btn-review px-4 py-1.5 text-xs"
-                              onClick={() => setSelectedRequest({ ...req, type: "clearance" })}
-                            >
-                              Review
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </div> */}
-
-            {/* <div className="exf-team-panel mt-8 border-t border-gray-200 pt-6">
-  <h2 className="exf-panel-title mb-4">
-    Resigned Employees & Clearance Status ({resignedClearance.length})
-  </h2>
-
-  {resignedClearance.length === 0 ? (
-    <div className="exf-empty-state">
-      No resigned employees requiring clearance in the organization
-    </div>
-  ) : (
-    <div className="exf-table-wrapper">
-      <table className="exf-data-table">
-        <thead>
-          <tr>
-            <th>Emp ID</th>
-            <th>Final LWD</th>
-            <th>Proposed KT</th>
-            <th>Proposed Assets</th>
-            <th>Final KT</th>
-            <th>Final Assets</th>
-            <th className="text-center">Clearance Status</th>
-            <th className="text-center">Action</th>
-          </tr>
-        </thead>
-
-        <tbody>
-          {resignedClearance.map((req) => (
-            <tr key={req.id} className="exf-table-row">
-              <td className="exf-table-cell font-medium text-gray-900">
-                {req.employee_id}
-              </td>
-              <td className="exf-table-cell whitespace-nowrap text-gray-600">
-                {req.final_lwd
-                  ? new Date(req.final_lwd).toLocaleDateString("en-GB", {
-                      day: "2-digit",
-                      month: "short",
-                      year: "numeric",
-                    })
-                  : "—"}
-              </td>
-              <td className="exf-table-cell whitespace-nowrap text-gray-600">
-                {req.kt_proposed_date
-                  ? new Date(req.kt_proposed_date).toLocaleDateString("en-GB", {
-                      day: "2-digit",
-                      month: "short",
-                      year: "numeric",
-                    })
-                  : "—"}
-              </td>
-              <td className="exf-table-cell whitespace-nowrap text-gray-600">
-                {req.assets_proposed_date
-                  ? new Date(req.assets_proposed_date).toLocaleDateString("en-GB", {
-                      day: "2-digit",
-                      month: "short",
-                      year: "numeric",
-                    })
-                  : "—"}
-              </td>
-              <td className="exf-table-cell whitespace-nowrap text-gray-600">
-                {req.kt_planned_date
-                  ? new Date(req.kt_planned_date).toLocaleDateString("en-GB", {
-                      day: "2-digit",
-                      month: "short",
-                      year: "numeric",
-                    })
-                  : "—"}
-              </td>
-              <td className="exf-table-cell whitespace-nowrap text-gray-600">
-                {req.assets_return_planned_date
-                  ? new Date(req.assets_return_planned_date).toLocaleDateString("en-GB", {
-                      day: "2-digit",
-                      month: "short",
-                      year: "numeric",
-                    })
-                  : "—"}
-              </td>
-              <td className="exf-table-cell text-center">
-                <span
-                  className={`exf-badge ${
-                    req.kt_completed && req.assets_returned
-                      ? "exf-badge-success"
-                      : "exf-badge-pending"
-                  }`}
-                >
-                  {req.kt_completed && req.assets_returned ? "Cleared" : "Pending"}
-                </span>
-              </td>
-              <td className="exf-table-cell text-center">
-                <button
-                  className="exf-btn exf-btn-primary exf-btn-sm"
-                  onClick={() => setSelectedRequest({ ...req, type: "clearance" })}
-                >
-                  Review
-                </button>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  )}
-</div> */}
+          
 <div className="exf-team-panel mt-8 border-t border-gray-200 pt-6">
   <h2 className="exf-panel-title mb-4">
     Resigned Employees & Clearance Status ({resignedClearance.length})
@@ -2810,6 +2043,28 @@ const url =
               >
                 <p>{alertModal.message}</p>
               </Modal>
+        
+        {/* Clearance Modal for Employees */}
+        <ClearanceModal
+          isOpen={showClearanceModal}
+          onClose={() => setShowClearanceModal(false)}
+          ktPlans={ktPlans}
+          assets={assets}
+          onAddKT={handleAddKt}
+          onAddAsset={handleAddAsset}
+          onFinalize={handleFinalizeClearance}
+          loading={loading}
+          exitCompleted={exitCompleted}
+          newKtForm={newKtForm}
+          setNewKtForm={setNewKtForm}
+          newAssetForm={newAssetForm}
+          setNewAssetForm={setNewAssetForm}
+          isHr={isHr || isAdmin}
+          viewFile={viewFile}
+          startEditKt={startEditKt}
+          
+  downloadFile={downloadFile}
+        />
       </div>
     </>
   );

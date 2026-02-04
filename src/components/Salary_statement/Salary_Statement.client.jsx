@@ -237,11 +237,20 @@ const Salary_Statement = () => {
         const columnName = headers?.[colIndex];
 
         if (columnName === "Employee ID") {
-          const empIdPattern = /^STS\d{3}$/;
-          if (!empIdPattern.test(String(cell))) {
-            isInvalid = true;
-          }
-        }
+  const value = String(cell ?? "")
+    .trim()
+    .replace(/\s+/g, ""); // remove hidden spaces
+
+  // ACCEPT: STS-000017
+  const empIdPattern = /^STS-\d{6}$/;
+
+  if (!empIdPattern.test(value)) {
+    isInvalid = true;
+  } else {
+    row[colIndex] = value; // normalize cleaned ID
+  }
+}
+
 
         if (
           ["Employee Name", "Department", "Designation"].includes(columnName)

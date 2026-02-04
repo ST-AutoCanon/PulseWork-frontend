@@ -301,10 +301,16 @@ const OvertimeDetails = () => {
       const sDate = parseYMD(startDate);
       const eDate = parseYMD(endDate);
       const inRange = processedData.filter((row) => {
-        const dt = parseYMD(row.work_date);
-        if (!dt || !sDate || !eDate) return false;
-        return dt >= sDate && dt <= eDate;
-      });
+  const dt = parseYMD(row.work_date);
+  if (!dt || !sDate || !eDate) return false;
+  if (dt < sDate || dt > eDate) return false;
+
+  // ─── Only keep rows that actually have overtime ───
+  const extra = Number(row.extra_hours || 0);
+  return extra > 0;
+});
+
+setData(inRange);
 
       setData(inRange);
 
@@ -337,24 +343,33 @@ const OvertimeDetails = () => {
     }
   }, [tab, user, hydrated, orgId, employeeId]);
 
-  const filtered = useMemo(() => {
-    const q = (search || "").toLowerCase();
-    return data.filter((r) => {
-      if (onlyOverDefault) {
-        const defaultHrs = parseFloat(r.defaultWorkingHours || defaultHoursMap[r.employee_id] || 0) || 0;
-        const total = parseFloat(r.total_hours_worked) || 0;
-        if (!(total > defaultHrs)) return false;
-      }
+const filtered = useMemo(() => {
+  const q = (search || "").trim().toLowerCase();
 
-      if (!q) return true;
-      return (
-        (r.employee_id || "").toLowerCase().includes(q) ||
-        (r.employee_name || "").toLowerCase().includes(q) ||
-        (r.work_date || "").includes(q)
-      );
-    });
-  }, [data, search, onlyOverDefault, defaultHoursMap]);
+  if (!q) {
+    // when search is empty → show all (already filtered by extra > 0 in fetchData)
+    return data;
+  }
 
+  return data.filter((r) => {
+    const extra = Number(r.extra_hours || 0);
+    if (extra <= 0) return false; // keep this if you want strict OT-only
+
+    const id = (r.employee_id || "").toLowerCase();
+    const name = (r.employee_name || "").toLowerCase();
+    const date = (r.work_date || "").toLowerCase(); // 2025-02-03 format
+
+    return (
+      id.includes(q) ||
+      name.includes(q) ||
+      date.includes(q) ||
+      // bonus: allow searching partial date like "02-03" or "feb"
+      date.replace(/-/g, "").includes(q.replace(/-/g, "")) ||
+      // allow searching by month name if someone types it
+      new Date(r.work_date).toLocaleString("default", { month: "long" }).toLowerCase().includes(q)
+    );
+  });
+}, [data, search]);
   const rowKey = (item) => `${item.employee_id}-${item.work_date}`;
 
   const getRowStatus = (item) => {
@@ -619,12 +634,12 @@ const OvertimeDetails = () => {
           onChange={(e) => setSearch(e.target.value)}
         />
         <label style={{ display: "inline-flex", alignItems: "center", gap: "6px", marginLeft: "12px" }}>
-          <input
+          {/* <input
             type="checkbox"
             checked={onlyOverDefault}
             onChange={(e) => setOnlyOverDefault(e.target.checked)}
-          />
-          <span style={{ fontSize: "13px" }}>Only &gt; Default Hrs</span>
+          /> */}
+          {/* <span style={{ fontSize: "13px" }}>Only &gt; Default Hrs</span> */}
         </label>
         <div className="ot-bulk-actions">
           <button
@@ -723,11 +738,11 @@ const OvertimeDetails = () => {
                                 <small style={{ color: '#666', fontSize: '12px', marginLeft: 6 }} title="Total extra hours worked">
                                    {rawExtra.toFixed(2)}
                                 </small>
-                                {row.exceeded && (
+                                {/* {row.exceeded && (
                                   <span style={{ color: "#c0392b", fontWeight: 700, fontSize: "12px", marginLeft: 8 }} title={`Raw extra exceeds max (${row.maxOvertimeHours})`}>
                                     Exc'ds by {exceededBy.toFixed(2)}
                                   </span>
-                                )}
+                                )} */}
                               </>
                             );
                           })()}

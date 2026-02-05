@@ -1195,352 +1195,203 @@ const Reimbursement = () => {
   };
 
   const tryExtractYearMonthFromPathLocal = tryExtractYearMonthFromPath;
-  // Replace your current handleOpenAttachments with this improved version
-  // Replace your current handleOpenAttachments with this improved version
-  const handleOpenAttachments = async (files, claim) => {
+  // ----- REPLACE handleOpenAttachments WITH THIS -----
+  const handleOpenAttachments = async (files = [], claim = {}) => {
     try {
+      // ensure orgId resolved before attempting server lookups
+      if (!orgId && !orgResolveTried) await resolveOrgIdOnce();
+
       const absBase =
         (backendBase && String(backendBase).trim().replace(/\/$/, "")) ||
         "http://localhost:5001";
+      const hdrs = buildHeaders();
 
-      const log = (...args) => {
-        if (typeof console !== "undefined" && console.info)
-          console.info("[attachments]", ...args);
-      };
-
-      const tryFetchBlob = async (url, extraHeaders = {}) => {
+      const tryFetchBlob = async (url) => {
         try {
-          log("tryFetchBlob ->", url);
           const resp = await axios.get(url, {
             withCredentials: true,
-            headers: { ...buildHeaders(), ...extraHeaders },
+            headers: hdrs,
             responseType: "blob",
           });
-
-          const status = resp.status;
-          const ct = resp.headers ? resp.headers["content-type"] : "unknown";
-          const blob = resp.data;
-          const size = blob && typeof blob.size === "number" ? blob.size : null;
-
-          log("fetch result", { url, status, contentType: ct, size });
-
-          // treat only 2xx + non-empty blob as success
-          if (status >= 200 && status < 300 && size && size > 0) {
-            return { ok: true, blob, contentType: ct, status };
+          if (
+            resp.status >= 200 &&
+            resp.status < 300 &&
+            resp.data &&
+            resp.data.size > 0
+          ) {
+            return {
+              ok: true,
+              blob: resp.data,
+              contentType: resp.headers["content-type"] || null,
+            };
           }
-          return { ok: false, status, contentType: ct, size, resp };
+          return { ok: false, status: resp.status };
         } catch (err) {
-          const status = err?.response?.status || null;
-          const ct = err?.response?.headers?.["content-type"] || null;
-          log("fetch error", { url, status, message: err?.message });
-          return { ok: false, status, err };
+          return { ok: false, err, status: err?.response?.status || null };
         }
       };
 
-      // Normalize incoming files param to candidate list
+      // Normalize incoming files param -> array of candidate objects
       let candidateFiles = Array.isArray(files) ? files.slice() : [];
 
-      // 1) Try claim attachments endpoint (canonical)
+      // If no candidate files provided, fetch canonical attachments list for the claim
       if ((!candidateFiles || candidateFiles.length === 0) && claim?.id) {
         try {
-          const url = `${absBase}/reimbursement/${encodeURIComponent(
-            claim.id,
-          )}/attachments`;
-          log("fetching attachments-by-claim:", url);
+          const url = `${absBase}/reimbursement/${encodeURIComponent(claim.id)}/attachments`;
           const resp = await axios.get(url, {
             withCredentials: true,
-            headers: buildHeaders(),
+            headers: hdrs,
           });
+          // server may return either array or { attachments: [...] }
           const list = Array.isArray(resp.data)
             ? resp.data
             : Array.isArray(resp.data?.attachments)
               ? resp.data.attachments
-              : resp.data?.data || [];
+              : [];
           candidateFiles = Array.isArray(list) ? list : [];
-          log("attachments-by-claim returned", claim.id, candidateFiles.length);
-        } catch (err) {
-          log(
-            "attachments-by-claim failed:",
-            err?.response?.data || err?.message || err,
+        } catch (e) {
+          // ignore; will show "No attachments" below if nothing resolved
+          console.warn(
+            "Could not fetch attachments-by-claim:",
+            e?.message || e,
           );
         }
       }
 
-      // 2) fallback: claim.attachments or lines[].payload.attachments
-      if ((!candidateFiles || candidateFiles.length === 0) && claim) {
-        if (Array.isArray(claim.attachments) && claim.attachments.length) {
-          candidateFiles = claim.attachments.slice();
-        } else if (Array.isArray(claim.lines) && claim.lines.length) {
-          const fromLines = claim.lines
-            .map(
-              (l) =>
-                (l?.payload || {}).attachments ||
-                (l?.payload || {}).line_attachments ||
-                [],
-            )
-            .flat()
-            .filter(Boolean)
-            .map((it) => (typeof it === "string" ? { file_name: it } : it));
-          if (fromLines.length) candidateFiles = fromLines;
-        }
-      }
-
-      // 3) fallback: line_attachments_map (team view)
-      if (
-        (!candidateFiles || candidateFiles.length === 0) &&
-        claim?.line_attachments_map
-      ) {
-        try {
-          const maps = Object.values(claim.line_attachments_map).flat();
-          if (maps && maps.length) candidateFiles = maps;
-        } catch (e) {}
-      }
-
       if (!candidateFiles || candidateFiles.length === 0) {
-        showAlert("No attachments available.");
+        showAlert("No attachments available for this claim.");
         return;
       }
 
-      // Helper: try legacy URL /reimbursement/{year}/{month}/{emp}/{filename}
-      const tryLegacyByParts = async (year, month, empId, filename) => {
-        if (!year || !month || !empId || !filename) return { ok: false };
-        const legacyUrl = `${absBase}/reimbursement/${encodeURIComponent(
-          year,
-        )}/${encodeURIComponent(month)}/${encodeURIComponent(
-          empId,
-        )}/${encodeURIComponent(filename)}`;
-        return await tryFetchBlob(legacyUrl);
-      };
-
-      // attempt resolution for a single candidate
-      const resolveCandidate = async (fileOrAtt) => {
-        const filename =
+      // Resolve a single candidate by filename (order: direct url -> serve endpoint -> meta endpoint)
+      const resolveByFilename = async (fileOrAtt) => {
+        const filename = (
           fileOrAtt.file_name ||
           fileOrAtt.filename ||
-          fileOrAtt.fileName ||
           fileOrAtt.name ||
-          "";
-        const attEmp =
-          fileOrAtt.employee_id ||
-          fileOrAtt.emp_id ||
-          fileOrAtt.employeeId ||
-          claim?.employee_id ||
-          claim?.employeeId ||
-          null;
-        log("resolveCandidate", filename, attEmp);
+          ""
+        )
+          .toString()
+          .trim();
+        if (!filename) return null;
 
-        // 1) absolute URL already present?
+        // 1) If server already gave a direct URL, prefer it
         const providedUrl =
-          fileOrAtt.url || fileOrAtt.file_url || fileOrAtt.filePath || null;
-        if (providedUrl && /^https?:\/\//i.test(String(providedUrl))) {
+          fileOrAtt.download_url || fileOrAtt.url || fileOrAtt.file_url || null;
+        if (providedUrl && /^https?:\/\//i.test(providedUrl)) {
           const r = await tryFetchBlob(providedUrl);
           if (r.ok)
             return {
-              name: filename || providedUrl,
+              name: filename,
               url: URL.createObjectURL(r.blob),
               contentType: r.contentType,
             };
         }
 
-        // 2) canonical serve endpoint
-        if (claim?.id && filename) {
-          const serveUrl = `${absBase}/reimbursement/attachment/serve?claimId=${encodeURIComponent(
-            claim.id,
-          )}&filename=${encodeURIComponent(filename)}`;
-          const rserve = await tryFetchBlob(serveUrl);
-          if (rserve.ok)
-            return {
-              name: filename,
-              url: URL.createObjectURL(rserve.blob),
-              contentType: rserve.contentType,
-            };
-        }
-
-        // 3) if DB row provided file_path and it contains '/reimbursement/' (request via backend)
-        if (fileOrAtt.file_path) {
-          const fp = String(fileOrAtt.file_path || "");
-          if (/\/?reimbursement\//i.test(fp)) {
-            const candidatePath = fp.startsWith("/")
-              ? `${absBase}${fp}`
-              : `${absBase}/${fp}`;
-            const r3 = await tryFetchBlob(candidatePath);
-            if (r3.ok)
-              return {
-                name: filename || candidatePath.split("/").pop(),
-                url: URL.createObjectURL(r3.blob),
-                contentType: r3.contentType,
-              };
-          }
-        }
-
-        // 4) legacy naive url using filename prefix YYYY-MM
-        if (filename) {
-          const m = String(filename).match(/^(\d{4})-(\d{2})-/);
-          const year = m ? m[1] : null;
-          const month = m ? m[2] : null;
-          const empForPath =
-            attEmp || claim?.employee_id || claim?.employeeId || null;
-          if (year && month && empForPath) {
-            const r4 = await tryLegacyByParts(
-              year,
-              month,
-              empForPath,
-              filename,
-            );
-            if (r4.ok)
-              return {
-                name: filename,
-                url: URL.createObjectURL(r4.blob),
-                contentType: r4.contentType,
-              };
-          }
-        }
-
-        // 5) try derive year/month from file_path or claim dates
-        if (fileOrAtt.file_path) {
-          const fp = String(fileOrAtt.file_path || "").replace(/\\/g, "/");
-          const pMatch = fp.match(
-            /\/reimbursement\/(\d{4})\/(\d{2})\/([^/]+)\/([^/]+)$/,
-          );
-          if (pMatch) {
-            const r = await tryLegacyByParts(
-              pMatch[1],
-              pMatch[2],
-              pMatch[3],
-              fileOrAtt.file_name || pMatch[4],
-            );
+        // 2) Try canonical serve endpoint by claimId + filename (server should accept x-org-id header)
+        if (claim?.id) {
+          try {
+            const serveUrl = `${absBase}/reimbursement/attachment/serve?claimId=${encodeURIComponent(claim.id)}&filename=${encodeURIComponent(filename)}`;
+            const r = await tryFetchBlob(serveUrl);
             if (r.ok)
               return {
-                name: fileOrAtt.file_name || pMatch[4],
+                name: filename,
                 url: URL.createObjectURL(r.blob),
                 contentType: r.contentType,
               };
+          } catch (e) {
+            /* continue to meta lookup */
           }
         }
 
-        const dateCandidates = [
-          claim?.created_at || claim?.createdAt || claim?.date || null,
-          (Array.isArray(claim?.lines) && claim.lines[0]?.payload?.date) ||
-            null,
-          (Array.isArray(claim?.lines) && claim.lines[0]?.date) || null,
-        ].filter(Boolean);
-
-        if (dateCandidates.length && filename) {
-          for (const dRaw of dateCandidates) {
-            const d = tryParseDate(dRaw);
-            if (!d) continue;
-            const year = String(d.getFullYear());
-            const month = String(d.getMonth() + 1).padStart(2, "0");
-            const empForPath =
-              attEmp || claim?.employee_id || claim?.employeeId || null;
-            if (year && month && empForPath) {
-              const r = await tryLegacyByParts(
-                year,
-                month,
-                empForPath,
-                filename,
-              );
-              if (r.ok)
-                return {
-                  name: filename,
-                  url: URL.createObjectURL(r.blob),
-                  contentType: r.contentType,
-                };
-            }
+        // 3) Try canonical serve endpoint by orgId + filename + optional employeeId
+        if (orgId) {
+          try {
+            const empQ =
+              fileOrAtt.employee_id ||
+              fileOrAtt.employeeId ||
+              claim?.employee_id
+                ? `&employeeId=${encodeURIComponent(fileOrAtt.employee_id || fileOrAtt.employeeId || claim?.employee_id)}`
+                : "";
+            const serveUrl2 = `${absBase}/reimbursement/attachment/serve?orgId=${encodeURIComponent(orgId)}&filename=${encodeURIComponent(filename)}${empQ}`;
+            const r2 = await tryFetchBlob(serveUrl2);
+            if (r2.ok)
+              return {
+                name: filename,
+                url: URL.createObjectURL(r2.blob),
+                contentType: r2.contentType,
+              };
+          } catch (e) {
+            /* continue to meta lookup */
           }
         }
 
-        // 6) metadata endpoint as final attempt
-        try {
-          const metaUrl = `${absBase}/reimbursement/attachment/meta?claimId=${encodeURIComponent(
-            claim?.id || "",
-          )}&filename=${encodeURIComponent(filename)}`;
-          log("meta lookup", metaUrl);
-          const metaResp = await axios.get(metaUrl, {
-            withCredentials: true,
-            headers: buildHeaders(),
-          });
-          const metas = Array.isArray(metaResp.data?.attachments)
-            ? metaResp.data.attachments
-            : [];
-          if (metas.length) {
-            const meta = metas[0];
-            if (meta.url && /^https?:\/\//i.test(meta.url)) {
-              const rM = await tryFetchBlob(meta.url);
-              if (rM.ok)
-                return {
-                  name: meta.file_name || filename,
-                  url: URL.createObjectURL(rM.blob),
-                  contentType: rM.contentType,
-                };
-            }
-            if (meta.file_path) {
-              const candidatePath = meta.file_path.startsWith("/")
-                ? `${absBase}${meta.file_path}`
-                : `${absBase}/${meta.file_path}`;
-              const rM2 = await tryFetchBlob(candidatePath);
-              if (rM2.ok)
-                return {
-                  name: meta.file_name || filename,
-                  url: URL.createObjectURL(rM2.blob),
-                  contentType: rM2.contentType,
-                };
-            }
-            const metaEmp = meta.employee_id || meta.emp_id || meta.employeeId;
-            if (metaEmp && meta.file_name) {
-              const mm = String(meta.file_name).match(/^(\d{4})-(\d{2})-/);
-              if (mm) {
-                const cand = `${absBase}/reimbursement/${mm[1]}/${
-                  mm[2]
-                }/${encodeURIComponent(metaEmp)}/${encodeURIComponent(
-                  meta.file_name,
-                )}`;
-                const rM3 = await tryFetchBlob(cand);
-                if (rM3.ok)
-                  return {
-                    name: meta.file_name,
-                    url: URL.createObjectURL(rM3.blob),
-                    contentType: rM3.contentType,
-                  };
+        // 4) Meta lookup: server returns metadata (including potentially download_url)
+        if (orgId) {
+          try {
+            const empQ =
+              fileOrAtt.employee_id ||
+              fileOrAtt.employeeId ||
+              claim?.employee_id
+                ? `&employeeId=${encodeURIComponent(fileOrAtt.employee_id || fileOrAtt.employeeId || claim?.employee_id)}`
+                : "";
+            const metaUrl = `${absBase}/reimbursement/attachment/meta?orgId=${encodeURIComponent(orgId)}&filename=${encodeURIComponent(filename)}${claim?.id ? `&claimId=${encodeURIComponent(claim.id)}` : ""}${empQ}`;
+            const metaResp = await axios.get(metaUrl, {
+              withCredentials: true,
+              headers: hdrs,
+            });
+            const metas = Array.isArray(metaResp.data?.attachments)
+              ? metaResp.data.attachments
+              : [];
+            if (metas.length) {
+              // prefer download_url from meta if present
+              for (const meta of metas) {
+                if (
+                  meta.download_url &&
+                  /^https?:\/\//i.test(meta.download_url)
+                ) {
+                  const r = await tryFetchBlob(meta.download_url);
+                  if (r.ok)
+                    return {
+                      name: meta.file_name || filename,
+                      url: URL.createObjectURL(r.blob),
+                      contentType: r.contentType,
+                    };
+                }
               }
             }
+          } catch (e) {
+            console.warn("meta lookup failed:", e?.message || e);
           }
-        } catch (metaErr) {
-          log("meta lookup failed", filename, metaErr?.message || metaErr);
         }
 
-        // nothing worked
-        log("all attempts failed for", filename);
+        // Nothing found (we intentionally do not try legacy file_path parsing or year/month fallbacks)
         return null;
       };
 
-      // Resolve all candidates
-      const resolves = await Promise.all(
-        candidateFiles.map((c) => resolveCandidate(c)),
+      // Resolve all candidates (parallel)
+      const resolved = await Promise.all(
+        candidateFiles.map((c) => resolveByFilename(c)),
       );
-      const goodFiles = (resolves || []).filter(Boolean);
+      const filesResolved = (resolved || []).filter(Boolean);
 
-      log(
-        "goodFiles count:",
-        goodFiles.length,
-        goodFiles.map((g) => ({ name: g.name })),
-      );
-
-      if (goodFiles.length === 0) {
-        showAlert("No attachments could be retrieved (file not found).");
+      if (!filesResolved.length) {
+        showAlert(
+          "No attachments could be retrieved (file not found or not accessible).",
+        );
         return;
       }
 
-      // ensure we set state and open modal
-      setSelectedFiles(goodFiles);
-      setSelectedClaim(claim);
-      setIsModalOpen(true);
-      log("attachments modal opened with files:", goodFiles.length);
-    } catch (error) {
-      console.error("Error fetching attachments:", error);
-      showAlert("No attachments found for this screen.");
+      // Map for UI and open modal
+      setAttachmentViewerFiles(filesResolved);
+      setAttachmentViewerTitle(`${claim.claim_type || "Claim"} Bills`);
+      setIsAttachmentsOpen(true);
+    } catch (err) {
+      console.error("handleOpenAttachments error", err);
+      showAlert("Could not load attachments. Please try again.");
     }
   };
+  // ----- end handleOpenAttachments -----
 
   const parseInvoicesFromClaim = (claim) => {
     let invs =
@@ -1743,10 +1594,9 @@ const Reimbursement = () => {
       const currentAttachmentsArr = Array.isArray(currentAttachmentsRaw)
         ? currentAttachmentsRaw
         : [currentAttachmentsRaw];
-
       for (const item of currentAttachmentsArr) {
         if (item instanceof File) continue;
-        const name =
+        const fileName =
           typeof item === "string"
             ? item
             : item?.file_name ||
@@ -1754,11 +1604,11 @@ const Reimbursement = () => {
               item?.name ||
               item?.fileName ||
               "";
-        const fileName = String(name || "").trim();
         if (!fileName) continue;
         existingAttachmentsObjects.push({
-          file_name: fileName,
-          file_path: null,
+          file_name: String(fileName).trim(),
+          file_path: null, // we resolve by filename + orgId on server
+          org_id: orgId || null, // include orgId to help server match by organization
         });
       }
 
@@ -1767,16 +1617,16 @@ const Reimbursement = () => {
         const list = Array.isArray(r.attachments) ? r.attachments : [];
         for (const it of list) {
           if (it instanceof File) continue;
-          const name =
+          const fileName =
             typeof it === "string"
               ? it
               : it?.file_name || it?.filename || it?.name || it?.fileName || "";
-          const fileName = String(name || "").trim();
           if (!fileName) continue;
           existingAttachmentsObjects.push({
-            file_name: fileName,
+            file_name: String(fileName).trim(),
             file_path: null,
             line_index: Number(i),
+            org_id: orgId || null,
           });
         }
       }

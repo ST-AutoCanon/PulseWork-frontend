@@ -1,3 +1,5 @@
+
+
 "use client";
 
 import React, { useEffect, useState } from "react";
@@ -6,6 +8,7 @@ import "./EmployeeLogin.css";
 import { Eye } from "lucide-react";
 import axios from "axios";
 import { useAuth } from "../../context/AuthProvider.client";
+import SetWorkHoursModal from "../../components/EmployeeLogin/SetWorkHoursModal";
 
 const EmployeeCardWithHover = ({ employeePunches, meIdFromAuth }) => {
   const [hovered, setHovered] = useState(false);
@@ -298,6 +301,7 @@ const EmployeeLogin = () => {
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
   const [dateError, setDateError] = useState(null);
+  const [showWorkHoursModal, setShowWorkHoursModal] = useState(false);
 
   const orgId =
     user?.orgId ??
@@ -640,7 +644,33 @@ const EmployeeLogin = () => {
 
   return (
     <div className="employee-login">
-      <h2 className="heading">Employee Punch Records</h2>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          marginBottom: "20px",
+        }}
+      >
+        <h2 className="heading">Employee Punch Records</h2>
+
+        <button
+          onClick={() => setShowWorkHoursModal(true)}
+          style={{
+            padding: "10px 20px",
+            backgroundColor: "#79c42b",
+            color: "white",
+            border: "none",
+            borderRadius: "6px",
+            fontSize: "15px",
+            fontWeight: "500",
+            cursor: "pointer",
+            boxShadow: "0 2px 6px rgba(0,0,0,0.1)",
+          }}
+        >
+          Set Work Hours
+        </button>
+      </div>
 
       <div className="tab-buttons">
         <button
@@ -699,6 +729,7 @@ const EmployeeLogin = () => {
               max={new Date().toISOString().split("T")[0]}
             />
           </div>
+
           <button
             onClick={handleDownload}
             disabled={loading || dateError || !fromDate || !toDate || !orgId}
@@ -767,6 +798,12 @@ const EmployeeLogin = () => {
             />
           ))
       ) : null}
+
+      {/* This is the modal that opens when you click the button */}
+      <SetWorkHoursModal
+        isOpen={showWorkHoursModal}
+        onClose={() => setShowWorkHoursModal(false)}
+      />
     </div>
   );
 };

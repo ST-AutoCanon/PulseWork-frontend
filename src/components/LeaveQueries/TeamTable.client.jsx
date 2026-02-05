@@ -1,7 +1,16 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
-import { parseLocalDate, calculateDays } from "./leaveUtils.client";
+import React, { useState, useEffect, useCallback } from "react";
+import Modal from "../Modal/Modal.client";
+import { MdOutlineRemoveRedEye, MdOutlineAttachFile } from "react-icons/md";
+import {
+  parseLocalDate,
+  calculateDays,
+  normalizeLeaveTypes,
+} from "./leaveUtils.client";
+import { useAuth } from "../../context/AuthProvider.client";
+
+const API_BASE = process.env.NEXT_PUBLIC_BACKEND_URL || "";
 
 export default function TeamTable({
   leaveRequests,
@@ -15,6 +24,8 @@ export default function TeamTable({
   lopModal,
   setLopModal,
 }) {
+  const { user } = useAuth();
+
   if (!canViewTeam) return null;
 
   const sortedLeaves = (leaveRequests.team || []).sort(
@@ -43,66 +54,339 @@ export default function TeamTable({
     setLocalInputs((prev) => ({ ...prev, ...statusUpdates }));
   }, [statusUpdates]);
 
-  const setLocalComment = (leaveId, comments) => {
-    setLocalInputs((prev) => ({
-      ...prev,
-      [leaveId]: { ...(prev[leaveId] || {}), comments },
-    }));
-  };
+  // -------------------------
+  // Attachment helpers (same UX as Admin)
+  // -------------------------
+  const [attachmentsModal, setAttachmentsModal] = useState({
+    isVisible: false,
+    title: "",
+    files: [],
+  });
+  const [attachmentsMap, setAttachmentsMap] = useState({});
 
-  const parseRequestStartDate = (request) => {
-    const d = request?.start_date ?? request?.startDate ?? null;
-    if (!d) return null;
-    const parsed = new Date(d);
-    if (isNaN(parsed.getTime())) return null;
-    parsed.setHours(0, 0, 0, 0);
-    return parsed;
-  };
+  const buildHeaders = useCallback(() => {
+    const h = { "Content-Type": "application/json" };
+    if (user?.employeeId || user?.id) {
+      h["x-employee-id"] = user.employeeId || user.id;
+    }
+    if (user?.orgId || user?.raw?.org_id || user?.org_id) {
+      h["x-org-id"] =
+        user.orgId || user.raw?.org_id || user.org_id || user.organization_id;
+    }
+    return h;
+  }, [user]);
 
-  const findPolicyForRequest = (request) => {
-    const reqDate = parseRequestStartDate(request);
-    if (!reqDate) return null;
+  const extractAttachments = (query) => {
+    if (!query) return [];
 
-    if (Array.isArray(policies) && policies.length > 0) {
-      for (const p of policies) {
+    const candidates = [
+      query.attachments,
+      query.leave_attachments,
+      query.files,
+      query.attachments_list,
+      query.files_list,
+      query.attachment_list,
+      query.attachmentsData,
+      query.data && query.data.attachments,
+      query.data,
+      query.payload,
+    ];
+
+    for (let cand of candidates) {
+      if (!cand) continue;
+
+      if (Array.isArray(cand) && cand.length > 0) return cand;
+
+      if (typeof cand === "object" && cand !== null) {
+        if (Array.isArray(cand.data) && cand.data.length > 0) return cand.data;
+        if (Array.isArray(cand.attachments) && cand.attachments.length > 0)
+          return cand.attachments;
+        if (Array.isArray(cand.rows) && cand.rows.length > 0) return cand.rows;
+        if (Array.isArray(cand.list) && cand.list.length > 0) return cand.list;
+      }
+
+      if (typeof cand === "string") {
         try {
-          const s = new Date(p.year_start);
-          const e = new Date(p.year_end);
-          s.setHours(0, 0, 0, 0);
-          e.setHours(0, 0, 0, 0);
-          if (s <= reqDate && reqDate <= e) return p;
-        } catch {}
+          const parsed = JSON.parse(cand);
+          if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+          if (parsed && Array.isArray(parsed.data) && parsed.data.length > 0)
+            return parsed.data;
+        } catch (e) {}
       }
     }
 
-    if (activePolicy?.year_start && activePolicy?.year_end) {
+    const possibleSingle =
+      query.file_name ||
+      query.file_path ||
+      query.file_url ||
+      query.fileUrl ||
+      query.filename;
+    if (possibleSingle) {
+      return [
+        {
+          id: query.id || null,
+          file_name:
+            query.file_name ||
+            query.filename ||
+            query.name ||
+            `attachment-${query.id || "1"}`,
+          file_path: query.file_path || query.file_url || query.url || null,
+          mime_type: query.mime_type || query.type || "",
+          size: query.size || null,
+          created_at: query.created_at || null,
+        },
+      ];
+    }
+
+    return [];
+  };
+
+  const normalizeAttachment = (raw) => {
+    if (!raw) return null;
+    if (typeof raw === "string") {
+      return {
+        id: null,
+        file_name: raw.split("/").pop(),
+        file_path: raw,
+        mime_type: "",
+        size: null,
+        created_at: null,
+        url: raw,
+      };
+    }
+
+    return {
+      id:
+        raw.id || raw.file_id || raw.attachment_id || raw.attachmentId || null,
+      file_name:
+        raw.file_name ||
+        raw.filename ||
+        raw.name ||
+        raw.fileName ||
+        (raw.file_path ? String(raw.file_path).split("/").pop() : "attachment"),
+      file_path:
+        raw.file_path ||
+        raw.path ||
+        raw.url ||
+        raw.file_url ||
+        raw.filePath ||
+        null,
+      mime_type: raw.mime_type || raw.type || raw.contentType || "",
+      size: raw.size || raw.file_size || raw.length || null,
+      created_at: raw.created_at || raw.createdAt || raw.uploaded_at || null,
+      url: raw.url || raw.file_url || null,
+    };
+  };
+
+  const normalizeList = (rawList) => {
+    if (!Array.isArray(rawList)) return [];
+    return rawList.map((r) => normalizeAttachment(r)).filter(Boolean);
+  };
+
+  const getNormalizedPreviewList = (query) => {
+    const raw = extractAttachments(query);
+    return normalizeList(raw);
+  };
+
+  const openAttachments = async (query, providedAttachments = null) => {
+    if (!query) return;
+    const lid = String(query.leave_id || query.id || query.leaveId || "");
+
+    let normalized =
+      Array.isArray(providedAttachments) && providedAttachments.length > 0
+        ? normalizeList(providedAttachments)
+        : [];
+
+    if ((!normalized || normalized.length === 0) && attachmentsMap[lid]) {
+      normalized = attachmentsMap[lid];
+    }
+
+    if (!normalized || normalized.length === 0) {
+      const raw = extractAttachments(query);
+      if (Array.isArray(raw) && raw.length > 0) {
+        normalized = normalizeList(raw);
+      }
+    }
+
+    if (!normalized || normalized.length === 0) {
+      const candidates = [
+        `${API_BASE}/admin/leave/${query.leave_id}/attachments`,
+        `${API_BASE}/leave/${query.leave_id}/attachments`,
+        `${API_BASE}/api/leave/${query.leave_id}/attachments`,
+        `${API_BASE}/api/admin/leave/${query.leave_id}/attachments`,
+        `${API_BASE}/employee/leave/${query.leave_id}/attachments`,
+      ].filter(Boolean);
+
+      for (const url of candidates) {
+        try {
+          const res = await fetch(url, {
+            credentials: "include",
+            headers: buildHeaders(),
+          });
+          if (!res.ok) continue;
+          const json = await res.json().catch(() => null);
+          const raw = json?.data || json?.attachments || json || [];
+          if (Array.isArray(raw) && raw.length > 0) {
+            normalized = normalizeList(raw);
+            break;
+          }
+        } catch (err) {
+          // ignore
+        }
+      }
+    }
+
+    if (!normalized || normalized.length === 0) {
+      setAttachmentsModal({
+        isVisible: true,
+        title: `Attachments — ${query.name || query.employee_id || query.leave_id}`,
+        files: [],
+      });
+      return;
+    }
+
+    setAttachmentsMap((prev) => ({ ...prev, [lid]: normalized }));
+    setAttachmentsModal({
+      isVisible: true,
+      title: `Attachments — ${query.name || query.employee_id || query.leave_id}`,
+      files: normalized,
+    });
+  };
+
+  // closeAttachments helper (fixed: was missing previously)
+  const closeAttachments = useCallback(() => {
+    setAttachmentsModal({ isVisible: false, title: "", files: [] });
+  }, []);
+
+  const openFileInNewTab = async (file) => {
+    if (!file) return;
+
+    const attachmentId = file.id || file.attachment_id || null;
+    let url = "";
+    if (attachmentId) {
+      const base = API_BASE.replace(/\/$/, "");
+      url = `${base}/attachments/${encodeURIComponent(attachmentId)}`;
+    } else {
+      url = file.url || file.file_url || file.file_path || "";
+      if (!/^https?:\/\//i.test(url) && API_BASE) {
+        url = `${API_BASE.replace(/\/$/, "")}/${String(url).replace(/^\//, "")}`;
+      }
+    }
+
+    if (!url) {
+      alert("No URL available for this file.");
+      return;
+    }
+
+    // Open a new blank window synchronously (avoids popup blocker)
+    const newWin = window.open("", "_blank", "noopener,noreferrer");
+
+    // If newWin exists, write a minimal loading screen to reduce the about:blank flash
+    if (newWin && newWin.document) {
       try {
-        const s = new Date(activePolicy.year_start);
-        const e = new Date(activePolicy.year_end);
-        s.setHours(0, 0, 0, 0);
-        e.setHours(0, 0, 0, 0);
-        if (s <= reqDate && reqDate <= e) return activePolicy;
-      } catch {}
+        const title = "Opening attachment…";
+        const html = `
+         <!doctype html>
+         <html>
+           <head>
+             <title>${title}</title>
+             <meta name="viewport" content="width=device-width,initial-scale=1" />
+             <style>
+               body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;color:#333}
+               .loader{display:flex;flex-direction:column;align-items:center;gap:12px}
+               .spinner{width:48px;height:48px;border-radius:50%;border:5px solid rgba(0,0,0,0.08);border-top-color:rgba(0,0,0,0.5);animation:spin 1s linear infinite}
+               @keyframes spin{to{transform:rotate(360deg)}}
+               .msg{font-size:14px}
+             </style>
+           </head>
+           <body>
+             <div class="loader">
+               <div class="spinner" aria-hidden="true"></div>
+               <div class="msg">Loading attachment…</div>
+             </div>
+           </body>
+         </html>
+       `;
+        newWin.document.open();
+        newWin.document.write(html);
+        newWin.document.close();
+      } catch (e) {
+        // writing might fail in strict cross-origin scenarios; ignore
+      }
     }
-    return null;
-  };
 
-  const normalizeBoolean = (v) => {
-    if (v === true || v === false) return v;
-    if (typeof v === "string") {
-      const t = v.trim().toLowerCase();
-      return ["true", "1", "yes", "on"].includes(t);
+    try {
+      const res = await fetch(url, {
+        method: "GET",
+        credentials: "include",
+        headers: buildHeaders(),
+      });
+
+      if (!res.ok) {
+        let json = null;
+        try {
+          json = await res.json();
+        } catch (e) {}
+        const serverMsg =
+          (json && (json.message || json.error)) ||
+          `Failed to fetch file (HTTP ${res.status})`;
+        if (newWin)
+          try {
+            newWin.close();
+          } catch (_) {}
+        alert(serverMsg);
+        return;
+      }
+
+      const blob = await res.blob();
+      const objectUrl = URL.createObjectURL(blob);
+
+      if (newWin) {
+        try {
+          newWin.location.href = objectUrl;
+        } catch (e) {
+          // fallback: write an <iframe> inside the loading page and set src there
+          try {
+            newWin.document.body.innerHTML = `<iframe src="${objectUrl}" style="border:0;width:100vw;height:100vh"></iframe>`;
+          } catch (_) {
+            const a = document.createElement("a");
+            a.href = objectUrl;
+            a.target = "_blank";
+            a.rel = "noopener noreferrer";
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            try {
+              newWin.close();
+            } catch (_) {}
+          }
+        }
+      } else {
+        // popup blocked: anchor fallback (may still be blocked but it's best-effort)
+        const a = document.createElement("a");
+        a.href = objectUrl;
+        a.target = "_blank";
+        a.rel = "noopener noreferrer";
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+      }
+
+      // revoke after a reasonable delay
+      setTimeout(() => {
+        try {
+          URL.revokeObjectURL(objectUrl);
+        } catch (e) {}
+      }, 60 * 1000);
+    } catch (err) {
+      console.error("[openFileInNewTab] error:", err);
+      try {
+        if (newWin) newWin.close();
+      } catch (_) {}
+      alert(
+        "Could not open file. Network error or server refused access. Check console.",
+      );
     }
-    return !!v;
-  };
-
-  const normalizeIsDefaulted = (payload) => {
-    if (!payload) return false;
-    if (Object.prototype.hasOwnProperty.call(payload, "is_defaulted"))
-      return normalizeBoolean(payload.is_defaulted);
-    if (Object.prototype.hasOwnProperty.call(payload, "isDefaulted"))
-      return normalizeBoolean(payload.isDefaulted);
-    return false;
   };
 
   const getRemainingForLeave = async (leave) => {
@@ -138,10 +422,43 @@ export default function TeamTable({
       return;
     }
 
-    let isDefaultedFlag = normalizeIsDefaulted(rawPayload);
+    let isDefaultedFlag = false;
+    if (rawPayload) {
+      if (Object.prototype.hasOwnProperty.call(rawPayload, "is_defaulted"))
+        isDefaultedFlag = !!rawPayload.is_defaulted;
+      else if (Object.prototype.hasOwnProperty.call(rawPayload, "isDefaulted"))
+        isDefaultedFlag = !!rawPayload.isDefaulted;
+    }
 
     if (!isDefaultedFlag) {
-      const policy = findPolicyForRequest(leave);
+      const policy = (function findPolicyForRequest(request) {
+        const d = request?.start_date ?? request?.startDate ?? null;
+        if (!d) return null;
+        const reqDate = new Date(d);
+        reqDate.setHours(0, 0, 0, 0);
+        if (Array.isArray(policies) && policies.length > 0) {
+          for (const p of policies) {
+            try {
+              const s = new Date(p.year_start);
+              const e = new Date(p.year_end);
+              s.setHours(0, 0, 0, 0);
+              e.setHours(0, 0, 0, 0);
+              if (s <= reqDate && reqDate <= e) return p;
+            } catch {}
+          }
+        }
+        if (activePolicy?.year_start && activePolicy?.year_end) {
+          try {
+            const s = new Date(activePolicy.year_start);
+            const e = new Date(activePolicy.year_end);
+            s.setHours(0, 0, 0, 0);
+            e.setHours(0, 0, 0, 0);
+            if (s <= reqDate && reqDate <= e) return activePolicy;
+          } catch {}
+        }
+        return null;
+      })(leave);
+
       if (!policy) isDefaultedFlag = true;
     }
 
@@ -439,6 +756,7 @@ export default function TeamTable({
               <th>Days</th>
               <th>Status</th>
               <th>Comments</th>
+              <th>Attachment</th>
               <th>Action</th>
             </tr>
           </thead>
@@ -454,6 +772,41 @@ export default function TeamTable({
                 leave.H_F_day,
               );
 
+              const previewList = getNormalizedPreviewList(leave);
+              const hasEmbeddedAttachments =
+                previewList && previewList.length > 0;
+              const hasPossibleServerAttachments = Boolean(leave.leave_id);
+              const hasAttachments =
+                hasEmbeddedAttachments || hasPossibleServerAttachments;
+
+              let attachmentCell = null;
+              if (hasAttachments) {
+                const count = hasEmbeddedAttachments
+                  ? previewList.length
+                  : leave.attachment_count || leave.attachments_count || "";
+                attachmentCell = (
+                  <div>
+                    <button
+                      className="attachments-btn"
+                      onClick={() =>
+                        openAttachments(
+                          leave,
+                          hasEmbeddedAttachments ? previewList : null,
+                        )
+                      }
+                      title="View attachments"
+                    >
+                      <MdOutlineRemoveRedEye className="eye-icon" />
+                      <span>View {count ? `(${count})` : ""}</span>
+                    </button>
+                  </div>
+                );
+              } else {
+                attachmentCell = (
+                  <div className="no-attachments">Not Attached</div>
+                );
+              }
+
               return (
                 <tr
                   key={leave.leave_id}
@@ -461,9 +814,7 @@ export default function TeamTable({
                 >
                   <td>
                     {leave.name ||
-                      `${leave.first_name || ""} ${
-                        leave.last_name || ""
-                      }`.trim()}
+                      `${leave.first_name || ""} ${leave.last_name || ""}`.trim()}
                   </td>
                   <td>{leave.employee_id}</td>
                   <td>{leave.leave_type}</td>
@@ -488,9 +839,7 @@ export default function TeamTable({
                         }));
                         handleStatusChange?.(leave.leave_id, "status", val);
                       }}
-                      className={`status-dropdown ${getStatusClass(
-                        currentStatus,
-                      )}`}
+                      className={`status-dropdown ${getStatusClass(currentStatus)}`}
                       disabled={isAlreadyUpdated(leave)}
                     >
                       <option value="pending">Pending</option>
@@ -508,7 +857,13 @@ export default function TeamTable({
                         value={local.comments ?? update.comments ?? ""}
                         onChange={(e) => {
                           const v = e.target.value;
-                          setLocalComment(leave.leave_id, v);
+                          setLocalInputs((prev) => ({
+                            ...prev,
+                            [leave.leave_id]: {
+                              ...prev[leave.leave_id],
+                              comments: v,
+                            },
+                          }));
                           handleStatusChange?.(leave.leave_id, "comments", v);
                         }}
                         disabled={isAlreadyUpdated(leave)}
@@ -516,6 +871,9 @@ export default function TeamTable({
                       />
                     )}
                   </td>
+
+                  <td>{attachmentCell}</td>
+
                   <td>
                     <button
                       onClick={() => handleUpdateClick(leave)}
@@ -523,9 +881,7 @@ export default function TeamTable({
                         isAlreadyUpdated(leave) ||
                         (!local.status && !local.comments)
                       }
-                      className={`update-button ${
-                        isAlreadyUpdated(leave) ? "disabled-button" : ""
-                      }`}
+                      className={`update-button ${isAlreadyUpdated(leave) ? "disabled-button" : ""}`}
                     >
                       {isAlreadyUpdated(leave) ? "Updated" : "Update"}
                     </button>
@@ -551,6 +907,12 @@ export default function TeamTable({
           const name =
             leave.name ||
             `${leave.first_name || ""} ${leave.last_name || ""}`.trim();
+
+          const previewList = getNormalizedPreviewList(leave);
+          const hasEmbeddedAttachments = previewList && previewList.length > 0;
+          const hasPossibleServerAttachments = Boolean(leave.leave_id);
+          const hasAttachments =
+            hasEmbeddedAttachments || hasPossibleServerAttachments;
 
           return (
             <details key={leave.leave_id} className="compact-item">
@@ -580,6 +942,30 @@ export default function TeamTable({
                     <strong>Reason:</strong> {leave.reason}
                   </div>
                 )}
+
+                <div style={{ marginTop: 8 }}>
+                  <strong>Attachments:</strong>{" "}
+                  {hasAttachments ? (
+                    <button
+                      onClick={() =>
+                        openAttachments(
+                          leave,
+                          hasEmbeddedAttachments ? previewList : null,
+                        )
+                      }
+                      style={{ marginLeft: 8 }}
+                    >
+                      <MdOutlineAttachFile
+                        style={{ verticalAlign: "middle" }}
+                      />{" "}
+                      View
+                    </button>
+                  ) : (
+                    <span style={{ color: "#999", marginLeft: 8 }}>
+                      Not Attached
+                    </span>
+                  )}
+                </div>
 
                 <div className="compact-form-section">
                   <label>
@@ -622,7 +1008,13 @@ export default function TeamTable({
                       value={local.comments ?? update.comments ?? ""}
                       onChange={(e) => {
                         const v = e.target.value;
-                        setLocalComment(leave.leave_id, v);
+                        setLocalInputs((prev) => ({
+                          ...prev,
+                          [leave.leave_id]: {
+                            ...prev[leave.leave_id],
+                            comments: v,
+                          },
+                        }));
                         handleStatusChange?.(leave.leave_id, "comments", v);
                       }}
                       disabled={isAlreadyUpdated(leave)}
@@ -651,6 +1043,90 @@ export default function TeamTable({
           );
         })}
       </div>
+
+      {/* Attachments modal — shows file names; clicking name opens file in new tab */}
+      <Modal
+        isVisible={attachmentsModal.isVisible}
+        onClose={closeAttachments}
+        buttons={[{ label: "Close", onClick: closeAttachments }]}
+      >
+        <div className="attachments-modal-content">
+          <h4>{attachmentsModal.title}</h4>
+
+          {attachmentsModal.files.length === 0 && <p>No attachments found.</p>}
+
+          <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
+            {attachmentsModal.files.map((f, idx) => {
+              const urlCandidate = f.url || f.file_path || f.file_url || "";
+              const safeName = f.file_name || `attachment-${idx + 1}`;
+              return (
+                <li
+                  key={f.id || idx}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    padding: "8px 6px",
+                    borderBottom: "1px solid #eee",
+                  }}
+                >
+                  <div
+                    style={{ display: "flex", alignItems: "center", gap: 8 }}
+                  >
+                    <MdOutlineAttachFile />
+                    <button
+                      type="button"
+                      onClick={() => openFileInNewTab(f)}
+                      style={{
+                        background: "none",
+                        border: "none",
+                        padding: 0,
+                        textDecoration: "underline",
+                        color: "#0070f3",
+                        cursor: "pointer",
+                        fontSize: 14,
+                        textAlign: "left",
+                      }}
+                    >
+                      {safeName}
+                    </button>
+                    <span
+                      style={{ color: "#666", marginLeft: 8, fontSize: 12 }}
+                    >
+                      {f.mime_type ? `(${f.mime_type})` : null}
+                    </span>
+                  </div>
+
+                  <div
+                    style={{ display: "flex", alignItems: "center", gap: 12 }}
+                  >
+                    {urlCandidate ? (
+                      <button
+                        type="button"
+                        onClick={() => openFileInNewTab(f)}
+                        className="attachment-link-button"
+                        style={{
+                          background: "transparent",
+                          border: "1px solid #ddd",
+                          padding: "4px 8px",
+                          borderRadius: 4,
+                          cursor: "pointer",
+                        }}
+                      >
+                        Open
+                      </button>
+                    ) : (
+                      <span style={{ color: "#999", fontSize: 12 }}>
+                        No URL
+                      </span>
+                    )}
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      </Modal>
     </>
   );
 }

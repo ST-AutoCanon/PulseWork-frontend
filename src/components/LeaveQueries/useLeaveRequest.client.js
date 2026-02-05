@@ -1393,7 +1393,6 @@ export default function useLeaveRequest() {
     closeAlert,
     showConfirm,
     closeConfirm,
-
     setFormData,
     setEditingId,
     setAlertModal,

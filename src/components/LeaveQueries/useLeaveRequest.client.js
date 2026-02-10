@@ -1,4 +1,3 @@
-// useLeaveRequest.client.js
 "use client";
 
 import { useState, useEffect } from "react";
@@ -71,7 +70,7 @@ export default function useLeaveRequest() {
   const [policies, setPolicies] = useState([]);
   const [activePolicy, setActivePolicy] = useState(null);
   const [leaveRequests, setLeaveRequests] = useState({ self: [], team: [] });
-  const [leaveTypes, setLeaveTypes] = useState([]); // dynamic types from DB OR derived from activePolicy
+  const [leaveTypes, setLeaveTypes] = useState([]);
 
   // user profile (from separate table) - contains gender, dob etc.
   const [userProfile, setUserProfile] = useState(null);

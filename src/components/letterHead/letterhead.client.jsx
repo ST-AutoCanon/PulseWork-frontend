@@ -62,7 +62,7 @@ async function replaceUploadUrlsInHtml(
   html = "",
   apiKey,
   backendBase,
-  orgId = null
+  orgId = null,
 ) {
   if (!html || typeof html !== "string") return html;
 
@@ -82,11 +82,11 @@ async function replaceUploadUrlsInHtml(
         candidate,
         apiKey,
         backendBase,
-        orgId
+        orgId,
       );
       if (blob) replacements[m] = blob;
       else replacements[m] = candidate;
-    })
+    }),
   );
 
   let out = html;
@@ -135,7 +135,7 @@ const LetterHead = () => {
   const API_KEY = process.env.NEXT_PUBLIC_API_KEY;
   const BACKEND_URL = (process.env.NEXT_PUBLIC_BACKEND_URL || "").replace(
     /\/$/,
-    ""
+    "",
   );
   const meId = user?.employeeId;
   const orgId = user?.orgId ?? user?.org_id ?? null;
@@ -252,7 +252,7 @@ const LetterHead = () => {
         if (orgId) {
           const savedResp = await axios.get(
             `${BACKEND_URL}/api/orgs/${orgId}/templates`,
-            { withCredentials: true, headers }
+            { withCredentials: true, headers },
           );
           saved = Array.isArray(savedResp.data)
             ? savedResp.data
@@ -268,7 +268,7 @@ const LetterHead = () => {
         console.error("Error fetching data:", error);
         showAlert(
           "Failed to fetch data: " +
-            (error?.response?.data?.error || error.message || "unknown")
+            (error?.response?.data?.error || error.message || "unknown"),
         );
       } finally {
         setLoading(false);
@@ -381,7 +381,7 @@ const LetterHead = () => {
       const parser = new DOMParser();
       const doc = parser.parseFromString(
         `<div id="tmp">${html}</div>`,
-        "text/html"
+        "text/html",
       );
       const container = doc.getElementById("tmp");
       const children = Array.from(container.children);
@@ -522,7 +522,7 @@ const LetterHead = () => {
 
   const applySavedTemplate = async (templateId) => {
     const template = savedTemplates.find(
-      (t) => String(t.id) === String(templateId)
+      (t) => String(t.id) === String(templateId),
     );
     if (!template) {
       revokeIfBlob(headerBlobRef.current);
@@ -598,7 +598,7 @@ const LetterHead = () => {
               normalized,
               API_KEY,
               BACKEND_URL,
-              orgId
+              orgId,
             );
             if (blob) return blob;
             return normalized;
@@ -647,20 +647,20 @@ const LetterHead = () => {
           template?.meta?.sealUrl,
           template?.meta?.uploads && template?.meta?.uploads.qr,
           template?.meta?.uploads && template?.meta?.uploads.seal,
-        ].filter(Boolean)
+        ].filter(Boolean),
       );
 
       const sanitizeCandidates = (arr) =>
         arr.filter((c) => c && !excludeSet.has(c));
 
       let headerBlob = await pickAndFetch(
-        sanitizeCandidates(explicitHeaderCandidates)
+        sanitizeCandidates(explicitHeaderCandidates),
       );
       let footerBlob = await pickAndFetch(
-        sanitizeCandidates(explicitFooterCandidates)
+        sanitizeCandidates(explicitFooterCandidates),
       );
       let watermarkBlob = await pickAndFetch(
-        sanitizeCandidates(explicitWatermarkCandidates)
+        sanitizeCandidates(explicitWatermarkCandidates),
       );
 
       const htmlToScan = template.html || template.content || "";
@@ -688,7 +688,7 @@ const LetterHead = () => {
         } catch (e) {}
 
         const found = Array.from(foundSet).filter(
-          (f) => f && !excludeSet.has(f)
+          (f) => f && !excludeSet.has(f),
         );
         if (!headerBlob && found.length) {
           headerBlob = await pickAndFetch([
@@ -704,7 +704,7 @@ const LetterHead = () => {
         }
         if (!watermarkBlob && found.length) {
           const candid = found.find(
-            (u) => u !== headerBlob && u !== footerBlob
+            (u) => u !== headerBlob && u !== footerBlob,
           );
           if (candid)
             watermarkBlob = await pickAndFetch([
@@ -740,13 +740,13 @@ const LetterHead = () => {
       if (watermarkBlob) {
         if (headerBlob && headerBlob === watermarkBlob) {
           console.warn(
-            "applySavedTemplate: clearing header because it matched watermark"
+            "applySavedTemplate: clearing header because it matched watermark",
           );
           headerBlob = null;
         }
         if (footerBlob && footerBlob === watermarkBlob) {
           console.warn(
-            "applySavedTemplate: clearing footer because it matched watermark"
+            "applySavedTemplate: clearing footer because it matched watermark",
           );
           footerBlob = null;
         }
@@ -799,7 +799,7 @@ const LetterHead = () => {
           contentHtml,
           API_KEY,
           BACKEND_URL,
-          orgId
+          orgId,
         );
       }
 
@@ -810,13 +810,13 @@ const LetterHead = () => {
       const wrappedHeaderHtml = headerHtml
         ? `<div class="template-header">${headerHtml}</div>`
         : headerBlobRef.current
-        ? `<div class="template-header"><img src="${headerBlobRef.current}" alt="Header" style="max-width:100%;height:auto;" /></div>`
-        : "";
+          ? `<div class="template-header"><img src="${headerBlobRef.current}" alt="Header" style="max-width:100%;height:auto;" /></div>`
+          : "";
       const wrappedFooterHtml = footerHtml
         ? `<div class="template-footer">${footerHtml}</div>`
         : footerBlobRef.current
-        ? `<div class="template-footer"><img src="${footerBlobRef.current}" alt="Footer" style="max-width:100%;height:auto;" /></div>`
-        : "";
+          ? `<div class="template-footer"><img src="${footerBlobRef.current}" alt="Footer" style="max-width:100%;height:auto;" /></div>`
+          : "";
 
       if (bodyHtml !== undefined) {
         finalBodyHtml = `${wrappedHeaderHtml}${
@@ -844,7 +844,7 @@ const LetterHead = () => {
     } catch (err) {
       console.error("applySavedTemplate error:", err);
       showAlert(
-        "Failed to apply saved template: " + (err?.message || "unknown")
+        "Failed to apply saved template: " + (err?.message || "unknown"),
       );
     }
   };
@@ -865,7 +865,7 @@ const LetterHead = () => {
     try {
       const response = await axios.get(
         `${BACKEND_URL}/api/letterheads/download/${filename}`,
-        { withCredentials: true, headers, responseType: "blob" }
+        { withCredentials: true, headers, responseType: "blob" },
       );
       const blob = new Blob([response.data], { type: "application/pdf" });
       const url = window.URL.createObjectURL(blob);
@@ -1110,7 +1110,7 @@ const LetterHead = () => {
           gstin_number,
           cin_number,
           address,
-          true
+          true,
         );
         pdfFile = new File([pdfBlob], `letterhead-${Date.now()}.pdf`, {
           type: "application/pdf",
@@ -1140,12 +1140,12 @@ const LetterHead = () => {
     formDataToSend.append("address", address || "");
     formDataToSend.append(
       "date",
-      date ? new Date(date).toISOString().split("T")[0] : ""
+      date ? new Date(date).toISOString().split("T")[0] : "",
     );
     formDataToSend.append("signature", signature || "");
     formDataToSend.append(
       "employee_name",
-      letter_type === "Relieving Letter" ? employee_name : ""
+      letter_type === "Relieving Letter" ? employee_name : "",
     );
     formDataToSend.append(
       "position",
@@ -1155,21 +1155,23 @@ const LetterHead = () => {
         "Bank Details Request Letter",
       ].includes(letter_type)
         ? position
-        : ""
+        : "",
     );
     formDataToSend.append(
       "annual_salary",
-      letter_type === "Offer Letter" ? annual_salary : ""
+      letter_type === "Offer Letter" ? annual_salary : "",
     );
     formDataToSend.append(
       "effective_date",
-      effective_date ? new Date(effective_date).toISOString().split("T")[0] : ""
+      effective_date
+        ? new Date(effective_date).toISOString().split("T")[0]
+        : "",
     );
     formDataToSend.append(
       "date_of_appointment",
       date_of_appointment
         ? new Date(date_of_appointment).toISOString().split("T")[0]
-        : ""
+        : "",
     );
     formDataToSend.append("company_name", company_name || "");
     formDataToSend.append("company_address", company_address || "");
@@ -1180,7 +1182,7 @@ const LetterHead = () => {
       "place",
       ["Bank Details", "Bank Details Request Letter"].includes(letter_type)
         ? place
-        : ""
+        : "",
     );
     formDataToSend.append("letterhead_file", pdfFile);
 
@@ -1193,7 +1195,7 @@ const LetterHead = () => {
           {
             withCredentials: true,
             headers: { ...headers, "Content-Type": "multipart/form-data" },
-          }
+          },
         );
         showAlert("Letterhead updated successfully!");
         setIsEditing(false);
@@ -1205,13 +1207,13 @@ const LetterHead = () => {
           {
             withCredentials: true,
             headers: { ...headers, "Content-Type": "multipart/form-data" },
-          }
+          },
         );
         showAlert("Letterhead saved successfully!");
       }
       const updatedResponse = await axios.get(
         `${BACKEND_URL}/api/letterheads/list`,
-        { withCredentials: true, headers }
+        { withCredentials: true, headers },
       );
       setLetterheads(updatedResponse.data.data || []);
       setShowPopup(false);
@@ -1257,10 +1259,10 @@ const LetterHead = () => {
         "Error:",
         isEditing ? "updating" : "saving",
         "letterhead:",
-        error
+        error,
       );
       showAlert(
-        `Failed to ${isEditing ? "update" : "save"} letterhead: ${errorMessage}`
+        `Failed to ${isEditing ? "update" : "save"} letterhead: ${errorMessage}`,
       );
     }
   };
@@ -1276,7 +1278,7 @@ const LetterHead = () => {
     }));
 
     const selectedTemplateItem = templates.find(
-      (template) => template.letter_type === selectedType
+      (template) => template.letter_type === selectedType,
     );
 
     const newBodyHtml = selectedTemplateItem
@@ -1437,7 +1439,7 @@ const LetterHead = () => {
           formData.company_name,
           formData.gstin_number,
           formData.cin_number,
-          formData.address
+          formData.address,
         );
         setFormData((prev) => ({
           ...prev,
@@ -1482,7 +1484,7 @@ const LetterHead = () => {
           formData.gstin_number,
           formData.cin_number,
           formData.address,
-          true
+          true,
         );
         const pdfUri = URL.createObjectURL(pdfBlob);
         setPdfUrl(pdfUri);
@@ -1657,7 +1659,7 @@ const LetterHead = () => {
                         onClick={() =>
                           handleViewDetails(
                             letterhead,
-                            "Bank Details Request Letter"
+                            "Bank Details Request Letter",
                           )
                         }
                         aria-label="View bank details request letter"
@@ -1805,10 +1807,11 @@ const LetterHead = () => {
 
                         <button
                           onClick={() => {
+                            console.log("Build Template clicked");
                             window.dispatchEvent(
                               new CustomEvent("app:navigate", {
                                 detail: { path: "/TemplateBuilder" },
-                              })
+                              }),
                             );
                           }}
                           className="letterhead-open-popup-btn"
@@ -1864,7 +1867,7 @@ const LetterHead = () => {
                               if (field.updateContent)
                                 updateContentWithFormData(
                                   field.name,
-                                  e.target.value
+                                  e.target.value,
                                 );
                             }}
                             className="letterhead-input-field"
@@ -1899,7 +1902,7 @@ const LetterHead = () => {
                             if (field.updateContent)
                               updateContentWithFormData(
                                 field.name,
-                                e.target.value
+                                e.target.value,
                               );
                           }}
                           className="letterhead-input-field"
@@ -2014,7 +2017,7 @@ const LetterHead = () => {
                           : "auto";
                         wm.style.transform = "translate(-50%, -50%)";
                         wm.style.opacity = String(
-                          watermarkPropsState.opacity ?? 0.12
+                          watermarkPropsState.opacity ?? 0.12,
                         );
                         wm.style.pointerEvents = "none";
                         wm.style.zIndex = "9999";
@@ -2025,7 +2028,7 @@ const LetterHead = () => {
                       } catch (e) {
                         console.warn(
                           "Failed to inject watermark into clone:",
-                          e
+                          e,
                         );
                       }
                     }
@@ -2044,7 +2047,7 @@ const LetterHead = () => {
                       formData.gstin_number,
                       formData.cin_number,
                       formData.address,
-                      true
+                      true,
                     );
 
                     try {
@@ -2061,12 +2064,12 @@ const LetterHead = () => {
                   } catch (error) {
                     console.error(
                       "Error generating PDF preview (clone):",
-                      error
+                      error,
                     );
                     showAlert(
                       `Failed to generate PDF preview: ${
                         error?.message || error
-                      }`
+                      }`,
                     );
                   } finally {
                     setIsGenerating(false);
@@ -2117,7 +2120,7 @@ const LetterHead = () => {
                           : "auto";
                         wm.style.transform = "translate(-50%, -50%)";
                         wm.style.opacity = String(
-                          watermarkPropsState.opacity ?? 0.12
+                          watermarkPropsState.opacity ?? 0.12,
                         );
                         wm.style.pointerEvents = "none";
                         wm.style.zIndex = "9999";
@@ -2128,7 +2131,7 @@ const LetterHead = () => {
                       } catch (e) {
                         console.warn(
                           "Failed to inject watermark into clone for generate:",
-                          e
+                          e,
                         );
                       }
                     }
@@ -2146,7 +2149,7 @@ const LetterHead = () => {
                       formData.company_name,
                       formData.gstin_number,
                       formData.cin_number,
-                      formData.address
+                      formData.address,
                     );
 
                     try {
@@ -2160,7 +2163,7 @@ const LetterHead = () => {
                   } catch (error) {
                     console.error("Error generating PDF (clone):", error);
                     showAlert(
-                      `Failed to generate PDF: ${error?.message || error}`
+                      `Failed to generate PDF: ${error?.message || error}`,
                     );
                   } finally {
                     setIsGenerating(false);
@@ -2182,8 +2185,8 @@ const LetterHead = () => {
                     ? "Updating..."
                     : "Saving..."
                   : isEditing
-                  ? "Update"
-                  : "Save"}
+                    ? "Update"
+                    : "Save"}
               </button>
             </div>
           </div>

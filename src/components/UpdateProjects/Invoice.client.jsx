@@ -38,7 +38,7 @@ async function fetchProtectedImageAsBlobUrl(src, apiKey) {
     console.warn(
       "fetchProtectedImageAsBlobUrl failed",
       src,
-      err && err.message
+      err && err.message,
     );
     return src;
   }
@@ -48,7 +48,7 @@ const Invoice = ({ onBack, project }) => {
   const { user } = useAuth();
   const BACKEND_URL = (process.env.NEXT_PUBLIC_BACKEND_URL || "").replace(
     /\/$/,
-    ""
+    "",
   );
   const API_KEY = process.env.NEXT_PUBLIC_API_KEY;
   const orgId = user?.orgId ?? user?.org_id ?? null;
@@ -87,7 +87,7 @@ const Invoice = ({ onBack, project }) => {
   b) Second Payment: 25%
   c) Third Payment: 30%
   d) Final Payment: 30%
-2) Taxes & Duties: IGST will be applicable as per prevailing tax laws.`
+2) Taxes & Duties: IGST will be applicable as per prevailing tax laws.`,
   );
 
   const [invoiceDate, setInvoiceDate] = useState("");
@@ -138,7 +138,7 @@ const Invoice = ({ onBack, project }) => {
           method: "GET",
           credentials: "include",
           headers: buildHeaders(),
-        }
+        },
       );
       if (!response.ok) {
         throw new Error("Error fetching invoices");
@@ -230,7 +230,7 @@ const Invoice = ({ onBack, project }) => {
         } catch (err) {
           replacements[m] = m;
         }
-      })
+      }),
     );
 
     let out = html;
@@ -366,8 +366,8 @@ const Invoice = ({ onBack, project }) => {
           typeof gm.opacity === "number"
             ? gm.opacity
             : meta && meta.watermarkPlacement && meta.watermarkPlacement.opacity
-            ? meta.watermarkPlacement.opacity
-            : 0.12,
+              ? meta.watermarkPlacement.opacity
+              : 0.12,
       };
     } else if (meta && meta.watermarkPlacement) {
       const wp = meta.watermarkPlacement;
@@ -533,7 +533,7 @@ const Invoice = ({ onBack, project }) => {
                   quantity: Number(r.quantity || r.qty || 1),
                   rate: Number(r.rate || r.unitPrice || 0),
                   total: Number(
-                    r.total || Number(r.quantity || 1) * Number(r.rate || 0)
+                    r.total || Number(r.quantity || 1) * Number(r.rate || 0),
                   ),
                 };
               } else {
@@ -662,7 +662,7 @@ const Invoice = ({ onBack, project }) => {
         (item, idx) =>
           `Line ${idx + 1}: ${item.description} (Qty: ${item.quantity}, Rate: ${
             item.rate
-          })`
+          })`,
       )
       .join("; ");
 
@@ -711,7 +711,7 @@ const Invoice = ({ onBack, project }) => {
 
       if (editingInvoiceId) {
         setInvoiceList((prev) =>
-          prev.map((inv) => (inv.id === editingInvoiceId ? savedInvoice : inv))
+          prev.map((inv) => (inv.id === editingInvoiceId ? savedInvoice : inv)),
         );
       } else {
         setInvoiceList((prev) => [...prev, savedInvoice]);
@@ -724,7 +724,7 @@ const Invoice = ({ onBack, project }) => {
       showAlert(
         editingInvoiceId
           ? "Invoice updated successfully."
-          : "Invoice created successfully."
+          : "Invoice created successfully.",
       );
     } catch (error) {
       console.error(error);
@@ -738,12 +738,12 @@ const Invoice = ({ onBack, project }) => {
     setInvoiceDate(
       invoice.invoiceDate
         ? new Date(invoice.invoiceDate).toISOString().split("T")[0]
-        : ""
+        : "",
     );
     setInvoiceNo(invoice.invoiceNo || "");
     setReferenceId(invoice.referenceId || "");
     setReferenceDate(
-      invoice.referenceDate ? invoice.referenceDate.split("T")[0] : ""
+      invoice.referenceDate ? invoice.referenceDate.split("T")[0] : "",
     );
 
     if (invoice.lineItems) {
@@ -759,7 +759,7 @@ const Invoice = ({ onBack, project }) => {
       setLineItems(
         parsedItems.length
           ? parsedItems
-          : [{ description: "", quantity: 1, rate: 0, total: 0 }]
+          : [{ description: "", quantity: 1, rate: 0, total: 0 }],
       );
     } else {
       setLineItems([{ description: "", quantity: 1, rate: 0, total: 0 }]);
@@ -945,7 +945,7 @@ const Invoice = ({ onBack, project }) => {
           credentials: "include",
           headers: buildHeaders(),
           body: JSON.stringify(updatedInvoice),
-        }
+        },
       );
 
       if (!response.ok) {
@@ -955,7 +955,7 @@ const Invoice = ({ onBack, project }) => {
       const updatedRecord = await response.json();
 
       setInvoiceList((prevList) =>
-        prevList.map((inv) => (inv.id === invoice.id ? updatedRecord : inv))
+        prevList.map((inv) => (inv.id === invoice.id ? updatedRecord : inv)),
       );
 
       setInvoiceUpdates((prev) => {
@@ -1097,7 +1097,7 @@ const Invoice = ({ onBack, project }) => {
                         handleDropdownChange(
                           inv.id,
                           "gstPayment",
-                          e.target.value
+                          e.target.value,
                         )
                       }
                     >
@@ -1119,7 +1119,7 @@ const Invoice = ({ onBack, project }) => {
                           handleDropdownChange(
                             inv.id,
                             "milestoneId",
-                            e.target.value
+                            e.target.value,
                           )
                         }
                       >
@@ -1275,7 +1275,34 @@ const Invoice = ({ onBack, project }) => {
               {templatesLoading ? (
                 <div className="templates-loading">Loading templates…</div>
               ) : savedTemplates.length === 0 ? (
-                <div className="templates-empty">No saved templates found.</div>
+                <div className="templates-empty">
+                  <div>No saved templates found for this organisation.</div>
+
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "center",
+                      gap: 8,
+                      marginTop: 12,
+                      alignItems: "center",
+                    }}
+                  >
+                    <button
+                      className="modeBtn letterhead-open-popup-btn"
+                      onClick={() => {
+                        setShowTemplatesModal(false);
+
+                        window.dispatchEvent(
+                          new CustomEvent("app:navigate", {
+                            detail: { path: "/TemplateBuilder" },
+                          }),
+                        );
+                      }}
+                    >
+                      Build Template
+                    </button>
+                  </div>
+                </div>
               ) : (
                 <div className="templates-grid">
                   {savedTemplates.map((tpl) => (
@@ -1401,7 +1428,7 @@ const Invoice = ({ onBack, project }) => {
                               handleLineItemChange(
                                 index,
                                 "description",
-                                e.target.value
+                                e.target.value,
                               )
                             }
                           />
@@ -1415,7 +1442,7 @@ const Invoice = ({ onBack, project }) => {
                               handleLineItemChange(
                                 index,
                                 "quantity",
-                                e.target.value
+                                e.target.value,
                               )
                             }
                           />
@@ -1429,7 +1456,7 @@ const Invoice = ({ onBack, project }) => {
                               handleLineItemChange(
                                 index,
                                 "rate",
-                                e.target.value
+                                e.target.value,
                               )
                             }
                           />

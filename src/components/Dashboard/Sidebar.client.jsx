@@ -126,6 +126,37 @@ const Sidebar = ({ setActiveContent }) => {
     }));
 
   useEffect(() => {
+    const onAppNavigate = (e) => {
+      try {
+        const path = e?.detail?.path;
+        if (!path) return;
+
+        const resolver = pathToComponent[path];
+        if (resolver) {
+          const role = user?.role ?? "Employee";
+          const content = resolver.length > 0 ? resolver(role) : resolver();
+          setActiveItem(path);
+          setActiveNav(path);
+          setActiveContent(content);
+          setShowMobileMenu(false);
+          return;
+        }
+
+        console.warn("Sidebar: no resolver for path:", path);
+        if (typeof window !== "undefined") window.location.href = path;
+      } catch (err) {
+        console.error("app:navigate handler error:", err);
+      }
+    };
+
+    window.addEventListener("app:navigate", onAppNavigate, { passive: true });
+
+    return () => {
+      window.removeEventListener("app:navigate", onAppNavigate);
+    };
+  }, [pathToComponent, user, setActiveContent]);
+
+  useEffect(() => {
     if (
       !hydrated ||
       !user ||

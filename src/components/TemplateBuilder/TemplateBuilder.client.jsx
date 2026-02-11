@@ -2151,15 +2151,7 @@ export default function TemplateBuilder() {
       />
 
       {(mode === "upload" || mode === "view") && (
-        <div
-          style={{
-            marginLeft: 50,
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            gap: 8,
-          }}
-        >
+        <main className={styles.editorPanel}>
           {mode === "upload" && (
             <FieldPropertiesPanel
               selectedFieldId={selectedFieldId}
@@ -2181,7 +2173,14 @@ export default function TemplateBuilder() {
             </div>
           )}
 
-          <div style={{ display: "flex", justifyContent: "center" }}>
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "center",
+              flex: 1,
+              minHeight: 0,
+            }}
+          >
             <A4Preview
               headerUrl={
                 mode === "view" ? viewingTemplate?.headerUrl : previewHeaderUrl
@@ -2219,12 +2218,12 @@ export default function TemplateBuilder() {
                     : bodyBoxes
                   : bodyBoxes
               }
-              width={700}
+              width={794}
               headerHeightPct={HEADER_HEIGHT_PCT}
               footerHeightPct={FOOTER_HEIGHT_PCT}
             />
           </div>
-        </div>
+        </main>
       )}
 
       <EditorPanel
@@ -2283,6 +2282,7 @@ export default function TemplateBuilder() {
         }}
         headerHeightPct={HEADER_HEIGHT_PCT}
         footerHeightPct={FOOTER_HEIGHT_PCT}
+        editorCanvasWidth={420}
       />
       {saveModalOpen && (
         <div className={styles.modalOverlay} role="dialog" aria-modal="true">

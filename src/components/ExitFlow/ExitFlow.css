@@ -1,11 +1,9 @@
 
-.exf-resignation-wrapper {
-  margin: 2.5rem 0;
-  padding: 2.5rem;
+.exf-resignation-wrapper-1 {
+  margin: 2.5rem ;
+  
   background: white;
   border-radius: 16px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
-  border: 1px solid #e5e7eb;
 }
 
 /* ── Initial Apply Area ── */
@@ -48,13 +46,12 @@
   to   { opacity: 1; transform: translateY(0); }
 }
 
-.exf-resignation-form-header {
+.exf-resignation-form-header-1 {
   display: flex;
   justify-content: space-between;
   align-items: center;
   margin-bottom: 2rem;
   padding-bottom: 1.25rem;
-  border-bottom: 1px solid #e5e7eb;
 }
 
 .exf-resignation-form-title {
@@ -86,74 +83,49 @@
   max-width: 780px;
   margin: 0 auto;
 }
-
-.exf-form-grid {
+/* 2-column compact grid */
+.exf-form-grid-1 {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 1.8rem 2.4rem;
+  grid-template-columns: 1fr 1fr;   /* two fields in a row */
+  gap: 1rem 1.2rem;
+  max-width: 520px;
+  margin: 0 auto;
 }
 
+/* Full width groups */
 .exf-form-group--full {
   grid-column: 1 / -1;
 }
 
-.exf-form-label {
-  font-weight: 600;
-  font-size: 0.98rem;
-  color: #374151;
-  margin-bottom: 0.6rem;
-  display: block;
-}
-
-.exf-form-label--required::after {
-  content: " *";
-  color: #ef4444;
-  font-weight: bold;
-}
-
-.exf-form-input,
-.exf-form-select {
-  width: 100%;
-  padding: 0.85rem 1.2rem;
-  border: 1px solid #d1d5db;
-  border-radius: 8px;
-  font-size: 1rem;
-  transition: all 0.2s ease;
-  background: #ffffff;
-}
-
-.exf-form-input:focus,
-.exf-form-select:focus {
-  border-color: #7ac142;
-  box-shadow: 0 0 0 3px rgba(122, 193, 66, 0.15);
-  outline: none;
-}
-
-.exf-form-textarea {
-  width: 100%;
-  padding: 0.85rem 1.2rem;
-  border: 1px solid #d1d5db;
-  border-radius: 8px;
-  font-size: 1rem;
-  min-height: 110px;
-  resize: vertical;
-  background: #ffffff;
-}
-
-.exf-form-textarea:focus {
-  border-color: #7ac142;
-  box-shadow: 0 0 0 3px rgba(122, 193, 66, 0.15);
-  outline: none;
-}
-
-/* Action Buttons */
-.exf-resignation-actions {
+/* Field */
+.exf-form-group {
   display: flex;
-  justify-content: flex-end;
-  gap: 1.25rem;
-  margin-top: 2.8rem;
-  padding-top: 1.6rem;
-  border-top: 1px solid #e5e7eb;
+  flex-direction: column;
+}
+
+/* Inputs */
+.exf-form-input,
+.exf-form-select,
+.exf-form-textarea {
+  padding: 0.55rem 0.7rem;
+  font-size: 0.9rem;
+  border-radius: 8px;
+  border: 1px solid #d1d5db;
+  background: #fafafa;
+}
+
+/* Textarea */
+.exf-form-textarea {
+  resize: none;
+  min-height: 90px;
+}
+
+/* Labels */
+.exf-form-label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #374151;
+  margin-bottom: 0.25rem;
 }
 
 .exf-btn {
@@ -1867,10 +1839,7 @@
 
 .exf-tabs {
   display: flex;
-  border-bottom: 2px solid rgba(229, 231, 235, 0.6);
   gap: 0.5rem;
-  background: rgba(255, 255, 255, 0.5);
-  padding: 0.5rem;
   border-radius: 12px;
   backdrop-filter: blur(10px);
 }
@@ -1918,7 +1887,7 @@
 }
 
 .exf-self-view {
-  padding: 2.5rem;
+  align-items: center;
 }
 
 
@@ -3069,4 +3038,9 @@
   cursor: not-allowed;
   box-shadow: none;
   transform: none;
+}
+/* Add this to your CSS or Tailwind config */
+.group:has(input:checked) {
+  background-color: #eff6ff; /* blue-50 */
+  border-color: #bfdbfe;     /* blue-200 */
 }

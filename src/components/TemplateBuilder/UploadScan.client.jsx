@@ -99,6 +99,23 @@ export default function UploadScan({
   }, [bodyBoxes]);
 
   useEffect(() => {
+    if (bodyTypeProp !== undefined && bodyTypeProp !== null) {
+      setLocalBodyType(bodyTypeProp);
+      setTemplateBoxes(null);
+
+      const newPreset = (PRESET_FIELDS && PRESET_FIELDS[bodyTypeProp]) || [];
+      const newBoxes = fieldsToBoxes(newPreset || []);
+      if (typeof setBodyBoxes === "function") {
+        try {
+          setBodyBoxes(newBoxes);
+        } catch (e) {
+          console.warn("setBodyBoxes threw during body type change", e);
+        }
+      }
+    }
+  }, [bodyTypeProp, setBodyBoxes]);
+
+  useEffect(() => {
     if (headerFile) {
       const u = URL.createObjectURL(headerFile);
       setHeaderUrl(u);
@@ -582,15 +599,7 @@ export default function UploadScan({
     const fileRef = React.createRef();
 
     return (
-      <div
-        style={{
-          border: "1px solid #eef2f6",
-          padding: 8,
-          borderRadius: 8,
-          marginBottom: 8,
-          background: "#fff",
-        }}
-      >
+      <div>
         <div style={{ fontSize: 13, marginBottom: 6, fontWeight: 600 }}>
           Field properties
         </div>
@@ -1233,7 +1242,7 @@ export default function UploadScan({
   );
 
   const previewBlock = (
-    <div style={{ width: (Number(a4PreviewWidth) || 360) + "px" }}>
+    <main className={`${styles.uploadEditorPanel}`}>
       <FieldPropertiesPanel
         selectedFieldId={selectedFieldId}
         bodyBoxes={previewBoxes}
@@ -1265,7 +1274,7 @@ export default function UploadScan({
           footerHeightPct={10}
         />
       </div>
-    </div>
+    </main>
   );
 
   return (

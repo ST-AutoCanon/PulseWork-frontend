@@ -29,6 +29,7 @@ export default function EditorPanel(props) {
     showEditor = false,
     headerHeightPct = 10,
     footerHeightPct = 10,
+    editorCanvasWidth = 794,
   } = props;
 
   const {
@@ -53,7 +54,7 @@ export default function EditorPanel(props) {
   const showA4Preview =
     (mode === "basic" || mode === "scratch") && !shouldMountDedicatedEditor;
 
-  const CANVAS_WIDTH = 794;
+  const CANVAS_WIDTH = editorCanvasWidth || 794;
   const A4_RATIO = 297 / 210;
   const canvasHeightPx = Math.round(CANVAS_WIDTH * A4_RATIO);
 
@@ -85,6 +86,7 @@ export default function EditorPanel(props) {
             selectedBoxId={selectedFieldId}
             headerHeightPct={headerHeightPct}
             footerHeightPct={footerHeightPct}
+            width={CANVAS_WIDTH}
           />
         )}
 
@@ -126,6 +128,7 @@ export default function EditorPanel(props) {
                       templateId: generated.id || generated.name,
                     })
                   }
+                  canvasWidthPx={CANVAS_WIDTH}
                 />
               ) : (
                 <CustomTemplateEditor
@@ -159,7 +162,7 @@ export default function EditorPanel(props) {
                   })()}
                   initialBoxesAreBodyRelative={true}
                   onSave={handleCustomSave}
-                  canvasWidthPx={794}
+                  canvasWidthPx={CANVAS_WIDTH}
                   watermarkUrl={previewUrls?.previewWatermarkUrl}
                   watermarkProps={watermarkProps}
                   watermarkEditable={watermarkEnabled || showEditor}

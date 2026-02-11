@@ -1,14 +1,22 @@
 .container {
   display: flex;
   padding: 10px;
-  font-family: Inter, "Segoe UI", Roboto, system-ui, -apple-system,
-    "Helvetica Neue", Arial;
+  gap: 12px;
+  font-family:
+    Inter,
+    "Segoe UI",
+    Roboto,
+    system-ui,
+    -apple-system,
+    "Helvetica Neue",
+    Arial;
 }
 
 .leftPanel {
-  width: 222px;
-  background: #ffffff;
-  max-height: 1400px;
+  width: 280px;
+  min-width: 280px;
+  background-color: #fff;
+  flex: 0 0 280px;
   border-radius: 12px;
   box-shadow: 0 8px 30px rgba(2, 6, 23, 0.06);
   padding: 16px;
@@ -16,6 +24,7 @@
   flex-direction: column;
   gap: 12px;
   overflow-y: auto;
+  scrollbar-gutter: stable;
 }
 
 .heading {
@@ -176,8 +185,9 @@
   flex: 1;
   min-height: 600px;
   display: flex;
-  align-items: center;
-  justify-content: center;
+  align-items: flex-start;
+  justify-content: flex-start;
+  box-sizing: border-box;
 }
 
 .placeholder {
@@ -210,7 +220,10 @@
   border: 1px solid rgba(15, 23, 36, 0.06);
   cursor: pointer;
   user-select: none;
-  transition: background 120ms ease, transform 120ms ease, box-shadow 120ms ease;
+  transition:
+    background 120ms ease,
+    transform 120ms ease,
+    box-shadow 120ms ease;
   white-space: nowrap;
   min-height: 28px;
 }

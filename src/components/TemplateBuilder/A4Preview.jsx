@@ -755,7 +755,6 @@ export default function A4Preview({
                           overflow: "auto",
                         }}
                       >
-                        {/* simple table render kept small */}
                         <table
                           style={{
                             width: "100%",

@@ -281,8 +281,9 @@ const CustomTemplateEditor = forwardRef(function CustomTemplateEditor(
             candidateTop = yNum + bodyTopPct;
           }
 
-          const clampedTop = clampToArea(candidateTop, hNum, nb.area);
-          nb.yPct = `${clampedTop}%`;
+          // Don't clamp during initialization - only shift positions
+          // Clamping will happen during drag/resize and render will skip it for body
+          nb.yPct = `${candidateTop}%`;
         } catch (e) {}
         return nb;
       });
@@ -312,7 +313,12 @@ const CustomTemplateEditor = forwardRef(function CustomTemplateEditor(
 
     function recompute() {
       const rect = el.getBoundingClientRect();
-      const available = Math.max(320, rect.width - 24);
+      // compute horizontal paddings so removing/changing CSS padding doesn't
+      // break the available width calc (was hard-coded as 24 before)
+      const style = window.getComputedStyle(el);
+      const padLeft = parseFloat(style.paddingLeft || "0") || 0;
+      const padRight = parseFloat(style.paddingRight || "0") || 0;
+      const available = Math.max(320, rect.width - padLeft - padRight - 0);
       const w = Math.min(canvasWidthPx, Math.floor(available));
       const h = Math.round(w * A4_RATIO);
       setCanvasWidthActual((prev) => (prev !== w ? w : prev));
@@ -1150,15 +1156,7 @@ const CustomTemplateEditor = forwardRef(function CustomTemplateEditor(
 
   return (
     <div className={styles["cte-root"]}>
-      <div
-        style={{
-          marginLeft: 12,
-          display: "flex",
-          width: "100%",
-          justifyContent: "center",
-          padding: 0,
-        }}
-      >
+      <div>
         <FieldPropertiesPanel
           selectedFieldId={selectedId}
           boxes={boxes}
@@ -1253,7 +1251,12 @@ const CustomTemplateEditor = forwardRef(function CustomTemplateEditor(
 
               const declaredArea = b.area || areaFromTopPct(rawYnum, rawHnum);
 
-              const normalizedY = clampToArea(rawYnum, rawHnum, declaredArea);
+              // Don't clamp body boxes during render - only when user drags/resizes
+              // This prevents compression of preset fields
+              const normalizedY =
+                declaredArea === "body"
+                  ? rawYnum
+                  : clampToArea(rawYnum, rawHnum, declaredArea);
 
               const renderYPct = `${normalizedY}%`;
 

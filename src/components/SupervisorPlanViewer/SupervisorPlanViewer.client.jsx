@@ -987,16 +987,13 @@ const SupervisorPlanViewer = () => {
                                 )}
                               </div>
                               <div className="supervisor-plan-task-meta">
-                                {effectiveReviewStatus !== "pending" && (
-                                  <span className="supervisor-plan-status-icon">
-                                    {effectiveReviewStatus === "approved" &&
-                                      "Approved"}
-                                    {effectiveReviewStatus === "struck" &&
-                                      "Updated"}
-                                    {effectiveReviewStatus ===
-                                      "suspended_review" && "Suspended"}
-                                  </span>
-                                )}
+                               {effectiveReviewStatus !== "pending" && (
+  <span className="supervisor-plan-status-icon">
+    {effectiveReviewStatus === "approved" && "✅"}
+    {effectiveReviewStatus === "struck" && "📝"}
+    {effectiveReviewStatus === "suspended_review" && "⛔"}
+  </span>
+)}
                                 <span
                                   className={taskDateStyle.className}
                                   title={taskDateStyle.tooltip}

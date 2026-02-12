@@ -5,12 +5,13 @@ import "./WeeklyTaskPlanner.css";
 import Modal from "../Modal/Modal.client";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { MdMic, MdMicNone } from "react-icons/md";
-
+// At the top of the component, add:
 const WeeklyTaskPlanner = ({
   userRole = "employee",
   employeeId,
   userContext,
 }) => {
+  const dropdownRefs = useRef({});
   if (!userContext) {
     return (
       <div className="weekly-planner-container">
@@ -18,7 +19,6 @@ const WeeklyTaskPlanner = ({
       </div>
     );
   }
-
   const authRequest = async (config) => {
     return axios({
       ...config,
@@ -33,22 +33,17 @@ const WeeklyTaskPlanner = ({
       },
     });
   };
-
   const [weekOffset, setWeekOffset] = useState(0);
-
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const dayOfWeek = today.getDay();
   const offsetToMonday = (dayOfWeek + 6) % 7;
   const startOfCurrentWeek = new Date(today);
   startOfCurrentWeek.setDate(today.getDate() - offsetToMonday);
-
   const startDate = new Date(startOfCurrentWeek);
   startDate.setDate(startOfCurrentWeek.getDate() + weekOffset * 7);
-
   const endDate = new Date(startDate);
   endDate.setDate(startDate.getDate() + 6);
-
   const formatDateRange = (start, end) => {
     const startDay = start.getDate();
     const startMonth = start.toLocaleString("default", { month: "short" });
@@ -57,9 +52,7 @@ const WeeklyTaskPlanner = ({
     const year = start.getFullYear();
     return `${startDay} ${startMonth} - ${endDay} ${endMonth} ${year}`;
   };
-
   const dateRange = formatDateRange(startDate, endDate);
-
   const getISOWeekNumber = (date) => {
     const d = new Date(date);
     d.setHours(0, 0, 0, 0);
@@ -68,9 +61,7 @@ const WeeklyTaskPlanner = ({
     const weekNo = Math.ceil(((d - yearStart) / 86400000 + 1) / 7);
     return `${d.getFullYear()}-${String(weekNo).padStart(2, "0")}`;
   };
-
   const weekId = getISOWeekNumber(startDate);
-
   const weekDates = [];
   for (let i = 0; i < 7; i++) {
     const d = new Date(startDate);
@@ -129,17 +120,37 @@ const WeeklyTaskPlanner = ({
   });
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
   const tooltipRef = useRef(null);
-
   const [isListening, setIsListening] = useState(false);
   const [assignListeningIndex, setAssignListeningIndex] = useState(null);
   const recognitionRef = useRef(null);
-
+useEffect(() => {
+  const handleClickOutside = (event) => {
+    // Check every dropdown
+    Object.entries(dropdownRefs.current).forEach(([idx, ref]) => {
+      if (ref && !ref.contains(event.target)) {
+        // Close this specific dropdown if click was outside
+        setDropdownOpen((prev) => ({
+          ...prev,
+          [Number(idx)]: false,
+        }));
+      }
+    });
+  };
+  // Only listen when at least one dropdown is open
+  if (Object.values(dropdownOpen).some(isOpen => isOpen)) {
+    document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("touchstart", handleClickOutside);
+  }
+  return () => {
+    document.removeEventListener("mousedown", handleClickOutside);
+    document.removeEventListener("touchstart", handleClickOutside);
+  };
+}, [dropdownOpen]); // Re-run when dropdownOpen changes
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth <= 768);
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
   }, []);
-
   useEffect(() => {
     const handleClickOutside = (e) => {
       if (
@@ -163,7 +174,6 @@ const WeeklyTaskPlanner = ({
       document.removeEventListener("touchstart", handleClickOutside);
     };
   }, [mobileTooltip.isVisible, isMobile]);
-
   const handleTooltipClick = (e, content, dotId) => {
     e.preventDefault();
     e.stopPropagation();
@@ -180,17 +190,14 @@ const WeeklyTaskPlanner = ({
       dotId: prev.dotId === dotId ? null : dotId,
     }));
   };
-
   const showAlert = (message, title = "") => {
     setAlertModal({ isVisible: true, title, message });
   };
   const closeAlert = () =>
     setAlertModal({ isVisible: false, title: "", message: "" });
-
   const toggleDropdown = (index) => {
     setDropdownOpen((prev) => ({ ...prev, [index]: !prev[index] }));
   };
-
   const withRetry = async (fn, retries = 3, delay = 1000) => {
     for (let i = 0; i < retries; i++) {
       try {
@@ -201,7 +208,6 @@ const WeeklyTaskPlanner = ({
       }
     }
   };
-
   const formatDateIST = (date) => {
     const istOffset = 5.5 * 60 * 60 * 1000;
     const istDate = new Date(date.getTime() + istOffset);
@@ -210,34 +216,24 @@ const WeeklyTaskPlanner = ({
     const day = String(istDate.getUTCDate()).padStart(2, "0");
     return `${year}-${month}-${day}`;
   };
-
   const effectiveFreezeDays = freezeDays;
-
   const isTaskEditable = (taskDate) => {
     if (!taskDate) return false;
-
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-
     const task = new Date(taskDate);
     task.setHours(0, 0, 0, 0);
-
     const diffDays = (today - task) / (1000 * 3600 * 24);
-
     if (diffDays < 0) return true;
-
     if (diffDays === 0) return true;
-
     return diffDays <= effectiveFreezeDays;
   };
-
   const getTaskDateStyle = (dateStr) => {
     const [day, month] = dateStr.split(" ");
     const year = startDate.getFullYear();
     const monthIndex = new Date(`${month} 1, ${year}`).getMonth();
     const taskDate = new Date(year, monthIndex, parseInt(day));
     taskDate.setHours(0, 0, 0, 0);
-
     const isApprovedLeave = approvedLeaves.some((leave) => {
       const start = new Date(leave.start_date);
       const end = new Date(leave.end_date);
@@ -245,12 +241,10 @@ const WeeklyTaskPlanner = ({
       end.setHours(0, 0, 0, 0);
       return taskDate >= start && taskDate <= end;
     });
-
     const isSunday = taskDate.getDay() === 0;
     const isHoliday = holidays.some(
       (h) => new Date(h).toDateString() === taskDate.toDateString()
     );
-
     if (isApprovedLeave)
       return {
         className: "week-task-day-date week-task-day-date-leave",
@@ -271,7 +265,6 @@ const WeeklyTaskPlanner = ({
       tooltip: dateStr,
     };
   };
-
   const startListening = () => {
     if (!("webkitSpeechRecognition" in window)) {
       showAlert("Speech Recognition is not supported in this browser.");
@@ -283,7 +276,6 @@ const WeeklyTaskPlanner = ({
     recognitionRef.current.lang = "en-IN";
     recognitionRef.current.continuous = false;
     recognitionRef.current.interimResults = false;
-
     recognitionRef.current.onstart = () => setIsListening(true);
     recognitionRef.current.onresult = (event) => {
       const transcript = event.results[0][0].transcript;
@@ -294,15 +286,12 @@ const WeeklyTaskPlanner = ({
     };
     recognitionRef.current.onerror = () => setIsListening(false);
     recognitionRef.current.onend = () => setIsListening(false);
-
     recognitionRef.current.start();
   };
-
   const stopListening = () => {
     if (recognitionRef.current) recognitionRef.current.stop();
     setIsListening(false);
   };
-
   const startAssignListening = (index) => {
     if (!("webkitSpeechRecognition" in window)) {
       showAlert("Speech Recognition is not supported in this browser.");
@@ -314,7 +303,6 @@ const WeeklyTaskPlanner = ({
     recognitionRef.current.lang = "en-IN";
     recognitionRef.current.continuous = false;
     recognitionRef.current.interimResults = false;
-
     recognitionRef.current.onstart = () => setAssignListeningIndex(index);
     recognitionRef.current.onresult = (event) => {
       const transcript = event.results[0][0].transcript;
@@ -328,15 +316,12 @@ const WeeklyTaskPlanner = ({
     };
     recognitionRef.current.onerror = () => setAssignListeningIndex(null);
     recognitionRef.current.onend = () => setAssignListeningIndex(null);
-
     recognitionRef.current.start();
   };
-
   const stopAssignListening = () => {
     if (recognitionRef.current) recognitionRef.current.stop();
     setAssignListeningIndex(null);
   };
-
   const fetchData = async () => {
     if (!employeeId) {
       showAlert("Employee ID is required to fetch data.");
@@ -352,16 +337,12 @@ const WeeklyTaskPlanner = ({
       const cfg = await withRetry(() =>
         authRequest({ method: "GET", url: "/api/config" })
       );
-
       const configObj = cfg.data?.data ?? {};
-
       const freezeValue = configObj.freeze_days_employee ?? 0;
       let finalDays = Number(freezeValue);
       if (isNaN(finalDays) || finalDays < 0) finalDays = 0;
-
       setFreezeDays(finalDays);
       setOrgFreezeDays(userContext.orgId ? finalDays : 0);
-
       const hol = await withRetry(() =>
         authRequest({
           method: "GET",
@@ -372,7 +353,6 @@ const WeeklyTaskPlanner = ({
         ? hol.data.holidays.map((h) => h.date)
         : [];
       setHolidays(holidayList.length > 0 ? holidayList : ["2025-12-25"]);
-
       const lv = await withRetry(() =>
         authRequest({ method: "GET", url: `/employee/leave/${employeeId}` })
       );
@@ -380,7 +360,6 @@ const WeeklyTaskPlanner = ({
         ? lv.data.data.filter((l) => l.status === "Approved")
         : [];
       setApprovedLeaves(approved);
-
       const proj = await withRetry(() =>
         authRequest({
           method: "GET",
@@ -391,7 +370,6 @@ const WeeklyTaskPlanner = ({
       const projMap = {};
       (proj.data.projects || []).forEach((p) => (projMap[p.id] = p.project));
       setProjects(projMap);
-
       const tsk = await withRetry(() =>
         authRequest({
           method: "GET",
@@ -399,13 +377,11 @@ const WeeklyTaskPlanner = ({
         })
       );
       const tasks = Array.isArray(tsk.data) ? tsk.data : [];
-
       if (tasks.length === 0) {
         setNoTasks(true);
         setTasksData(weekDates.map((d) => ({ date: d, tasks: [] })));
         return;
       }
-
       const filtered = tasks.filter((t) => t.week_id === weekId);
       const grouped = weekDates.map((date) => ({
         date,
@@ -432,47 +408,46 @@ const WeeklyTaskPlanner = ({
       setLoadingLeaves(false);
     }
   };
-
   useEffect(() => {
     if (process.env.NEXT_PUBLIC_BACKEND_URL) fetchData();
     else showAlert("Backend URL not configured.");
   }, [employeeId, weekId, weekOffset, userContext]);
-
   const handlePreviousWeek = () => {
     setWeekOffset((prev) => Math.max(prev - 1, -3));
   };
   const handleNextWeek = () => {
     setWeekOffset((prev) => Math.min(prev + 1, 3));
   };
-
   const toggleExpand = (date) => {
     setExpandedDates((prev) => ({ ...prev, [date]: !prev[date] }));
   };
+ const handleEditClick = (task) => {
+  // Remove this block if you want all roles to edit employee status
+  // if (userRole !== "employee") return;
 
-  const handleEditClick = (task) => {
-    if (!isTaskEditable(task.task_date)) {
-      showAlert(
-        `Cannot edit: Task is before the ${effectiveFreezeDays}-day editable period.`
-      );
-      return;
-    }
-    if (task.sup_review_status === "suspended_review") {
-      showAlert("This task is suspended and cannot be updated.");
-      return;
-    }
-    if (editingTask === task.task_id) {
-      setEditingTask(null);
-      setFormData({ taskName: "", status: "", comment: "" });
-    } else {
-      setEditingTask(task.task_id);
-      setFormData({
-        taskName: task.task_name,
-        status: task.emp_status,
-        comment: task.emp_comment || "",
-      });
-    }
-  };
+  console.log("Edit clicked for task:", task.task_id);
 
+  if (!isTaskEditable(task.task_date)) {
+    showAlert(`Cannot edit: Task is before the ${effectiveFreezeDays}-day editable period.`);
+    return;
+  }
+  if (task.sup_review_status === "suspended_review") {
+    showAlert("This task is suspended and cannot be updated.");
+    return;
+  }
+
+  if (editingTask === task.task_id) {
+    setEditingTask(null);
+    setFormData({ taskName: "", status: "", comment: "" });
+  } else {
+    setEditingTask(task.task_id);
+    setFormData({
+      taskName: task.task_name,
+      status: task.emp_status || "not started",
+      comment: task.emp_comment || "",
+    });
+  }
+};
   const handleSupStatusEditClick = (task) => {
     if (userRole !== "supervisor") return;
     if (!isTaskEditable(task.task_date)) {
@@ -496,7 +471,6 @@ const WeeklyTaskPlanner = ({
       });
     }
   };
-
   const handleSave = async (taskId) => {
     const task = tasksData
       .flatMap((d) => d.tasks)
@@ -553,12 +527,10 @@ const WeeklyTaskPlanner = ({
       setFormData({ taskName: "", status: "", comment: "" });
     }
   };
-
   const handleCancelEdit = () => {
     setEditingTask(null);
     setFormData({ taskName: "", status: "", comment: "" });
   };
-
   const handleSupStatusSave = async (taskId) => {
     if (userRole !== "supervisor") return;
     const task = tasksData
@@ -588,7 +560,6 @@ const WeeklyTaskPlanner = ({
         star_rating: task.star_rating,
         replacement_task: task.replacement_task,
       };
-
       if (supFormData.supStatus === "re-work") {
         const taskDate = new Date(task.task_date);
         const nextDay = new Date(taskDate);
@@ -664,7 +635,6 @@ const WeeklyTaskPlanner = ({
         });
         showAlert("Supervisor status updated successfully!");
       }
-
       setTasksData((prev) =>
         prev.map((day) => ({
           ...day,
@@ -686,12 +656,10 @@ const WeeklyTaskPlanner = ({
       setSupFormData({ supStatus: "", supComment: "" });
     }
   };
-
   const handleSupStatusCancel = () => {
     setEditingSupStatus(null);
     setSupFormData({ supStatus: "", supComment: "" });
   };
-
   const handleEnterReview = () => {
     if (userRole === "supervisor") setSupReviewMode(true);
   };
@@ -700,7 +668,6 @@ const WeeklyTaskPlanner = ({
     setStrikeTaskId(null);
     setEditingSupStatus(null);
   };
-
   const handleApprove = async (taskId) => {
     if (userRole !== "supervisor") return;
     const task = tasksData
@@ -735,7 +702,6 @@ const WeeklyTaskPlanner = ({
       showAlert(`Failed to approve task: ${err.message}`);
     }
   };
-
   const handleSuspendReview = async (taskId) => {
     if (userRole !== "supervisor") return;
     const task = tasksData
@@ -768,7 +734,6 @@ const WeeklyTaskPlanner = ({
       showAlert(`Failed to suspend task: ${err.message}`);
     }
   };
-
   const handleStrike = async (taskId, dayDate) => {
     if (userRole !== "supervisor") return;
     const task = tasksData
@@ -811,7 +776,6 @@ const WeeklyTaskPlanner = ({
       showAlert(`Failed to strike task: ${err.message}`);
     }
   };
-
   const handleReplacementChange = (field, value) => {
     setReplacementData((prev) => ({
       ...prev,
@@ -819,7 +783,6 @@ const WeeklyTaskPlanner = ({
       ...(field === "projectId" ? { projectName: projects[value] || "" } : {}),
     }));
   };
-
   const handleAddReplacement = async () => {
     if (userRole !== "supervisor") return;
     if (!replacementData.projectId || !replacementData.taskName) {
@@ -852,7 +815,6 @@ const WeeklyTaskPlanner = ({
         url: `/api/week_tasks/${strikeTaskId}`,
         data: updated,
       });
-
       const [day, month] = replacementData.date.split(" ");
       const monthIdx =
         new Date(`${month} 1, ${startDate.getFullYear()}`).getMonth() + 1;
@@ -905,7 +867,6 @@ const WeeklyTaskPlanner = ({
       showAlert(`Failed to add replacement task: ${err.message}`);
     }
   };
-
   const handleAssignClick = () => {
     setShowAssignForm(true);
     setAssignTasks([
@@ -918,14 +879,12 @@ const WeeklyTaskPlanner = ({
     ]);
     setDropdownOpen({});
   };
-
   const handleAddTask = () => {
     setAssignTasks((prev) => [
       ...prev,
       { dates: [], projectId: "", projectName: "", taskName: "" },
     ]);
   };
-
   const handleRemoveTask = (idx) => {
     if (assignTasks.length <= 1) return;
     setAssignTasks((prev) => prev.filter((_, i) => i !== idx));
@@ -935,7 +894,6 @@ const WeeklyTaskPlanner = ({
       return n;
     });
   };
-
   const handleAssignChange = (idx, field, value) => {
     setAssignTasks((prev) =>
       prev.map((t, i) => {
@@ -950,7 +908,6 @@ const WeeklyTaskPlanner = ({
       })
     );
   };
-
   const handleProjectSelect = (idx) => (e) => {
     const id = e.target.value;
     setAssignTasks((prev) =>
@@ -967,16 +924,13 @@ const WeeklyTaskPlanner = ({
       showAlert("Fill at least one task with dates, project & name.");
       return;
     }
-
     const newTasksAdded = [];
-
     try {
       for (const task of valid) {
         setProjects((prev) => ({
           ...prev,
           [task.projectId]: task.projectName,
         }));
-
         for (const date of task.dates) {
           const [day, month] = date.split(" ");
           const monthIdx = new Date(
@@ -988,7 +942,6 @@ const WeeklyTaskPlanner = ({
             parseInt(day)
           );
           const isoDate = formatDateIST(taskDate);
-
           const newTaskBase = {
             week_id: weekId,
             task_date: isoDate,
@@ -1004,22 +957,18 @@ const WeeklyTaskPlanner = ({
             star_rating: null,
             replacement_task: null,
           };
-
           const resp = await authRequest({
             method: "POST",
             url: "/api/week_tasks",
             data: newTaskBase,
           });
-
           const fullNewTask = {
             ...newTaskBase,
             task_id: resp.data.taskId,
           };
-
           newTasksAdded.push({ task: fullNewTask, date });
         }
       }
-
       setTasksData((prev) => {
         const copy = prev.map((day) => ({ ...day, tasks: [...day.tasks] }));
         newTasksAdded.forEach(({ task, date }) => {
@@ -1030,7 +979,6 @@ const WeeklyTaskPlanner = ({
         });
         return copy;
       });
-
       setNoTasks(false);
       showAlert("Tasks assigned successfully!");
       setShowAssignForm(false);
@@ -1045,7 +993,6 @@ const WeeklyTaskPlanner = ({
     setAssignTasks([]);
     setDropdownOpen({});
   };
-
   const statusColors = {
     completed: "#28a745",
     "add on": "#17a2b8",
@@ -1072,7 +1019,6 @@ const WeeklyTaskPlanner = ({
     struck: "✗",
     suspended_review: "⛔",
   };
-
   return (
     <div className="week-task-weekly-task-planner">
       <div className="week-task-planner-header">
@@ -1094,13 +1040,11 @@ const WeeklyTaskPlanner = ({
             >
               <ChevronLeft size={20} />
             </button>
-
             <div className="week-task-nav-dots">
               <span className="week-task-dot"></span>
               <span className="week-task-dot"></span>
               <span className="week-task-dot"></span>
             </div>
-
             <button
               onClick={handleNextWeek}
               className="week-task-nav-button-task"
@@ -1115,7 +1059,6 @@ const WeeklyTaskPlanner = ({
             </button>
           </div>
         </h2>
-
         <div className="week-task-header-buttons">
           <button
             className="week-task-assign-task-button"
@@ -1125,7 +1068,6 @@ const WeeklyTaskPlanner = ({
           </button>
         </div>
       </div>
-
       {(loading || loadingHolidays || loadingLeaves) && (
         <div>Loading data…</div>
       )}
@@ -1142,7 +1084,6 @@ const WeeklyTaskPlanner = ({
           No tasks available in this Week {weekId}: {dateRange}.
         </div>
       )}
-
       {mobileTooltip.isVisible && (
         <div
           ref={tooltipRef}
@@ -1157,7 +1098,6 @@ const WeeklyTaskPlanner = ({
           {mobileTooltip.content}
         </div>
       )}
-
       {showAssignForm && (
         <div className="week-task-assign-form-modal">
           <div className="week-task-assign-form-empdriven">
@@ -1170,7 +1110,6 @@ const WeeklyTaskPlanner = ({
                 ×
               </button>
             </div>
-
             <div className="week-task-tasks-form-container">
               {assignTasks.map((task, idx) => (
                 <div key={idx} className="week-task-task-form-row">
@@ -1184,54 +1123,49 @@ const WeeklyTaskPlanner = ({
                       ×
                     </button>
                   </div>
-
                   <div className="week-task-form-grid">
                     <div className="week-task-form-group-task">
                       <label>Dates</label>
-                      <div className="week-task-multi-select-dropdown">
-                        <div
-                          className="week-task-dropdown-header-task"
-                          onClick={() => toggleDropdown(idx)}
-                        >
-                          {task.dates.length > 0
-                            ? task.dates.join(", ")
-                            : "-- Select Dates --"}
-                          <span className="arrow">
-                            {dropdownOpen[idx] ? "▲" : "▼"}
-                          </span>
-                        </div>
-                        {dropdownOpen[idx] && (
-                          <div className="week-task-dropdown-list">
-                            {weekDates.map((d) => {
-                              const style = getTaskDateStyle(d);
-                              return (
-                                <label
-                                  key={d}
-                                  className="week-task-checkbox-label"
-                                >
-                                  <input
-                                    type="checkbox"
-                                    checked={task.dates.includes(d)}
-                                    onChange={() =>
-                                      handleAssignChange(idx, "dates", d)
-                                    }
-                                  />
-                                  {d}
-                                  {style.tooltip !== d && (
-                                    <span
-                                      className={`week-task-date-status ${style.className}`}
-                                    >
-                                      {style.tooltip}
-                                    </span>
-                                  )}
-                                </label>
-                              );
-                            })}
-                          </div>
-                        )}
-                      </div>
+  <div
+  className="week-task-multi-select-dropdown"
+  ref={(el) => { dropdownRefs.current[idx] = el; }}
+>
+  <div
+    className="week-task-dropdown-header-task"
+    onClick={() => toggleDropdown(idx)}
+  >
+    {task.dates.length > 0
+      ? task.dates.join(", ")
+      : "-- Select Dates --"}
+    <span className="arrow">{dropdownOpen[idx] ? "▲" : "▼"}</span>
+  </div>
+  {dropdownOpen[idx] && (
+    <div className="week-task-dropdown-list">
+      {weekDates.map((d) => {
+        const style = getTaskDateStyle(d);
+        return (
+          <label
+            key={d}
+            className="week-task-checkbox-label"
+          >
+            <input
+              type="checkbox"
+              checked={task.dates.includes(d)}
+              onChange={() => handleAssignChange(idx, "dates", d)}
+            />
+            {d}
+            {style.tooltip !== d && (
+              <span className={`week-task-date-status ${style.className}`}>
+                {style.tooltip}
+              </span>
+            )}
+          </label>
+        );
+      })}
+    </div>
+  )}
+</div>
                     </div>
-
                     <div className="week-task-form-group-task">
                       <label>Project</label>
                       <select
@@ -1246,7 +1180,6 @@ const WeeklyTaskPlanner = ({
                         ))}
                       </select>
                     </div>
-
                     <div className="week-task-form-group-task">
                       <label>Task</label>
                       <div className="week-task-comment-mic-wrapper">
@@ -1293,7 +1226,6 @@ const WeeklyTaskPlanner = ({
                   </div>
                 </div>
               ))}
-
               <button
                 onClick={handleAddTask}
                 className="week-task-add-task-button"
@@ -1301,7 +1233,6 @@ const WeeklyTaskPlanner = ({
                 + Add Another Task
               </button>
             </div>
-
             <div className="week-task-form-actions">
               <button
                 onClick={handleAssignCancel}
@@ -1319,7 +1250,6 @@ const WeeklyTaskPlanner = ({
           </div>
         </div>
       )}
-
       {userRole === "supervisor" && strikeTaskId && (
         <div className="week-task-replacement-modal">
           <div className="week-task-replacement-form">
@@ -1332,7 +1262,6 @@ const WeeklyTaskPlanner = ({
                 ×
               </button>
             </div>
-
             <div className="week-task-form-grid">
               <div className="week-task-form-group-task">
                 <label>Project</label>
@@ -1350,7 +1279,6 @@ const WeeklyTaskPlanner = ({
                   ))}
                 </select>
               </div>
-
               <div className="week-task-form-group-task">
                 <label>Task Name</label>
                 <input
@@ -1363,7 +1291,6 @@ const WeeklyTaskPlanner = ({
                 />
               </div>
             </div>
-
             <div className="week-task-form-actions">
               <button
                 onClick={handleAddReplacement}
@@ -1381,7 +1308,6 @@ const WeeklyTaskPlanner = ({
           </div>
         </div>
       )}
-
       {!loading &&
         !error &&
         !noTasks &&
@@ -1389,7 +1315,6 @@ const WeeklyTaskPlanner = ({
           const isExpanded = expandedDates[day.date] || false;
           const visible = isExpanded ? day.tasks : day.tasks.slice(0, 3);
           const dateStyle = getTaskDateStyle(day.date);
-
           return (
             <div key={day.date} className="week-task-day-card">
               <div className="week-task-day-left-column">
@@ -1406,7 +1331,6 @@ const WeeklyTaskPlanner = ({
                 >
                   {day.date}
                 </span>
-
                 <div className="week-task-projects-column">
                   {visible.map((task, idx) => (
                     <div
@@ -1434,7 +1358,6 @@ const WeeklyTaskPlanner = ({
                       >
                         {task.project_id}
                       </div>
-
                       <div
                         className="week-task-task-id-circle"
                         title={isMobile ? "" : `Task ID: ${task.task_id}`}
@@ -1460,7 +1383,6 @@ const WeeklyTaskPlanner = ({
                   ))}
                 </div>
               </div>
-
               <div className="week-task-tasks-section">
                 <div className="week-task-tasks-header">
                   <div className="week-task-header-task">Tasks</div>
@@ -1471,14 +1393,12 @@ const WeeklyTaskPlanner = ({
                     Supervisor Feedback
                   </div>
                 </div>
-
                 <div className="week-task-tasks-list">
                   {visible.map((task) => {
                     const editable = isTaskEditable(task.task_date);
                     const frozen =
                       task.sup_review_status === "suspended_review";
                     const canEdit = editable && !frozen;
-
                     return (
                       <div
                         key={`${task.task_id}-${day.date}`}
@@ -1524,7 +1444,6 @@ const WeeklyTaskPlanner = ({
                               )}
                             </>
                           )}
-
                           {userRole === "supervisor" &&
                             supReviewMode &&
                             task.sup_review_status === "pending" && (
@@ -1583,13 +1502,11 @@ const WeeklyTaskPlanner = ({
                               </div>
                             )}
                         </div>
-
                         <div
                           className="week-task-update-section"
                           style={{ opacity: canEdit ? 1 : 0.5 }}
                         >
-                          {editingTask === task.task_id &&
-                            userRole === "employee" && (
+                          {editingTask === task.task_id && (
                               <div className="week-task-edit-popup">
                                 <div className="week-task-checkbox-group">
                                   {["completed", "not started", "working"].map(
@@ -1734,7 +1651,6 @@ const WeeklyTaskPlanner = ({
                             </div>
                           </div>
                         </div>
-
                         <div
                           className="week-task-supervisor-section"
                           style={{ opacity: canEdit ? 1 : 0.5 }}
@@ -1867,7 +1783,6 @@ const WeeklyTaskPlanner = ({
                     );
                   })}
                 </div>
-
                 {day.tasks.length > 3 && (
                   <svg
                     className="week-task-expand-icon-task"
@@ -1890,7 +1805,6 @@ const WeeklyTaskPlanner = ({
             </div>
           );
         })}
-
       <Modal
         isVisible={alertModal.isVisible}
         onClose={closeAlert}
@@ -1901,5 +1815,4 @@ const WeeklyTaskPlanner = ({
     </div>
   );
 };
-
 export default WeeklyTaskPlanner;

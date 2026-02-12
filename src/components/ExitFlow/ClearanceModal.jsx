@@ -1,7 +1,12 @@
 
 
-import React, { useState } from "react";
 import "./ClearanceModal.css";
+import axios from "axios";
+import { useAuth } from "../../context/AuthProvider.client";
+const API_KEY = process.env.NEXT_PUBLIC_API_KEY;
+const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
+import React, { useState, useEffect, useMemo } from "react";
+import Modal from "../Modal/Modal.client";
 
 export default function ClearanceModal({
   isOpen,
@@ -20,18 +25,43 @@ export default function ClearanceModal({
   isHr = false,
   viewFile,
   downloadFile,
+  onRefresh,
+  
 }) {
-  const [activeTab, setActiveTab] = useState("kt");
-  const [showKTModal, setShowKTModal] = useState(false); // shared for add & edit
-  const [showAddAssetModal, setShowAddAssetModal] = useState(false);
+  const [alertModal, setAlertModal] = useState({
+  isVisible: false,
+  title: "",
+  message: "",
+});
 
-  // Local state for editing KT (fully managed inside modal)
+const showAlert = (message, title = "") => {
+  setAlertModal({ isVisible: true, title, message });
+};
+
+const closeAlert = () => {
+  setAlertModal({ isVisible: false, title: "", message: "" });
+};
+
+  const [activeTab, setActiveTab] = useState("kt");
+  const [showKTModal, setShowKTModal] = useState(false);
+  const [showAddAssetModal, setShowAddAssetModal] = useState(false);
+  const { user } = useAuth();
+
+
+  const headers = useMemo(() => {
+    return {
+      "x-api-key": API_KEY ?? "",
+      ...(user?.employeeId ? { "x-employee-id": user.employeeId } : {}),
+      ...(user?.orgId ? { "x-org-id": user.orgId } : {}),
+    };
+  }, [API_KEY, user?.employeeId, user?.orgId]);
+const [isUpdating, setIsUpdating] = useState(false);
   const [editingKt, setEditingKt] = useState(null);
   const [editKtForm, setEditKtForm] = useState({
     topic: "",
     description: "",
-    documents: [], // only NEW files
-    filesToDelete: [], // existing files marked for removal
+    documents: [],
+    filesToDelete: [],
     status: "pending",
     completedDate: "",
   });
@@ -44,7 +74,7 @@ export default function ClearanceModal({
     setEditKtForm({
       topic: kt.title || "",
       description: kt.description || "",
-      documents: [], // new uploads only
+      documents: [],
       filesToDelete: [],
       status: kt.status || "pending",
       completedDate: kt.actual_completed_date || kt.planned_date || "",
@@ -55,7 +85,7 @@ export default function ClearanceModal({
   // ── Handle Add KT ──────────────────────────────────────────────────
   const handleAddKt = async () => {
     if (!newKtForm.topic.trim() || !newKtForm.description.trim()) {
-      alert("Topic and description are required");
+      showAlert("Topic and description are required");
       return;
     }
     await onAddKT();
@@ -67,45 +97,69 @@ export default function ClearanceModal({
       completedDate: "",
     });
     setShowKTModal(false);
+    if (onRefresh) onRefresh();
   };
 
   // ── Handle Update KT ───────────────────────────────────────────────
   const handleUpdateKt = async () => {
     if (!editKtForm.topic.trim() || !editKtForm.description.trim()) {
-      alert("Topic and description are required");
+      showAlert("Topic and description are required");
       return;
     }
-
-    // Simulate update (replace with real API call to parent or here)
-    console.log("Updating KT ID:", editingKt.id, editKtForm);
-
-    // In real app → call parent update function or axios.put here
-    // Example:
-    // await onUpdateKT(editingKt.id, editKtForm);
-
-    alert("KT Plan updated successfully! (simulated)");
-
-    // Reset
-    setEditingKt(null);
-    setEditKtForm({
-      topic: "",
-      description: "",
-      documents: [],
-      filesToDelete: [],
-      status: "pending",
-      completedDate: "",
-    });
-    setShowKTModal(false);
+    try {
+      if (!editingKt?.id) {
+        throw new Error("No KT ID available");
+      }
+      const exitIdValue =
+        editingKt.exit_id ||
+        editingKt.exit_request_id ||
+        editingKt.exitId ||
+        editingKt.exit_request ||
+        "";
+      const formData = new FormData();
+      formData.append("exitId", exitIdValue);
+      formData.append("title", editKtForm.topic);
+      formData.append("description", editKtForm.description);
+      formData.append("status", editKtForm.status);
+      formData.append("completedDate", editKtForm.completedDate || "");
+      editKtForm.documents.forEach((file) => formData.append("files", file));
+      formData.append("filesToDelete", JSON.stringify(editKtForm.filesToDelete || []));
+      const url = `${BACKEND_URL}/api/clearance/item/${editingKt.id}`;
+      console.log("=== ATTEMPTING KT UPDATE ===");
+      console.log("URL:", url);
+      console.log("exitId sent:", exitIdValue);
+      console.log("FormData entries:");
+      for (const [key, val] of formData.entries()) {
+        console.log(`  ${key} →`, val instanceof Blob ? `File (${val.name || "unnamed"})` : val);
+      }
+      console.log("Headers:", headers);
+      const response = await axios.put(url, formData, {
+        withCredentials: true,
+        headers,
+      });
+      showAlert("KT Plan updated successfully!");
+      if (onRefresh) onRefresh();
+      setEditingKt(null);
+      setShowKTModal(false);
+    } catch (err) {
+      console.error("KT update failed:", {
+        message: err.message,
+        status: err.response?.status,
+        responseData: err.response?.data,
+      });
+      showAlert("Update failed: " + (err.response?.data?.error || err.message));
+    }
   };
 
   // ── Handle Add Asset ───────────────────────────────────────────────
   const handleAddAsset = async () => {
     if (!newAssetForm.name.trim() || !newAssetForm.returnDate) {
-      return alert("Asset name and return date are required");
+      return showAlert("Asset name and return date are required");
     }
     await onAddAsset();
     setNewAssetForm({ name: "", returnDate: "" });
     setShowAddAssetModal(false);
+    if (onRefresh) onRefresh();
   };
 
   const getStatusColor = (status) => {
@@ -169,15 +223,41 @@ export default function ClearanceModal({
                         <div key={kt.id} className="exf-clearance-item-card">
                           <div className="exf-clearance-item-header">
                             <h4 className="exf-clearance-item-title">{kt.title}</h4>
-                            <span className={`exf-clearance-item-status-badge ${getStatusColor(kt.status)}`}>
+                            {/* <span className={`exf-clearance-item-status-badge ${getStatusColor(kt.status)}`}>
                               {kt.status || "Pending"}
-                            </span>
+                            </span> */}
                           </div>
 
                           <p className="exf-clearance-item-description">{kt.description}</p>
 
+                          {/* NEW: Approval Status Checkboxes (visible to everyone) */}
+                          <div className="exf-approvals mt-3 flex flex-col gap-2 text-sm">
+                            <label className="flex items-center gap-2">
+                              <input
+                                type="checkbox"
+                                checked={!!kt.supervisor_approved}
+                                disabled={true} // read-only
+                                className="h-4 w-4 text-green-600 cursor-not-allowed"
+                              />
+                              <span className={kt.supervisor_approved ? "text-green-700 font-medium" : "text-gray-600"}>
+                                Supervisor Approved
+                              </span>
+                            </label>
+                            <label className="flex items-center gap-2">
+                              <input
+                                type="checkbox"
+                                checked={!!kt.hr_approved}
+                                disabled={true} // read-only
+                                className="h-4 w-4 text-green-600 cursor-not-allowed"
+                              />
+                              <span className={kt.hr_approved ? "text-green-700 font-medium" : "text-gray-600"}>
+                                HR/Admin Approved
+                              </span>
+                            </label>
+                          </div>
+
                           {kt.attached_files?.length > 0 && (
-                            <div className="exf-clearance-files-section">
+                            <div className="exf-clearance-files-section mt-3">
                               <label className="exf-clearance-files-label">
                                 📄 Files ({kt.attached_files.length})
                               </label>
@@ -208,9 +288,8 @@ export default function ClearanceModal({
                             </div>
                           )}
 
-                          {/* Only Edit button — Delete removed as requested */}
                           {!exitCompleted && !isHr && (
-                            <div className="exf-clearance-actions">
+                            <div className="exf-clearance-actions mt-3">
                               <button
                                 className="exf-clearance-edit-btn"
                                 onClick={() => startEditKt(kt)}
@@ -246,13 +325,40 @@ export default function ClearanceModal({
                         <div key={asset.id} className="exf-clearance-item-card">
                           <div className="exf-clearance-item-header">
                             <h4 className="exf-clearance-item-title">{asset.title}</h4>
-                            <span className={`exf-clearance-item-status-badge ${getStatusColor(asset.status)}`}>
+                            {/* <span className={`exf-clearance-item-status-badge ${getStatusColor(asset.status)}`}>
                               {asset.status || "Pending"}
-                            </span>
+                            </span> */}
                           </div>
                           <p className="exf-clearance-item-description">
                             Return Date: {new Date(asset.planned_date).toLocaleDateString()}
                           </p>
+
+                          {/* NEW: Approval Status Checkboxes for Assets */}
+                          <div className="exf-approvals mt-3 flex flex-col gap-2 text-sm">
+                            <label className="flex items-center gap-2">
+                              <input
+                                type="checkbox"
+                                checked={!!asset.supervisor_approved}
+                                disabled={true}
+                                className="h-4 w-4 text-green-600 cursor-not-allowed"
+                              />
+                              <span className={asset.supervisor_approved ? "text-green-700 font-medium" : "text-gray-600"}>
+                                Supervisor Approved
+                              </span>
+                            </label>
+                            <label className="flex items-center gap-2">
+                              <input
+                                type="checkbox"
+                                checked={!!asset.hr_approved}
+                                disabled={true}
+                                className="h-4 w-4 text-green-600 cursor-not-allowed"
+                              />
+                              <span className={asset.hr_approved ? "text-green-700 font-medium" : "text-gray-600"}>
+                                HR/Admin Approved
+                              </span>
+                            </label>
+                          </div>
+
                         </div>
                       ))}
                     </div>
@@ -281,8 +387,6 @@ export default function ClearanceModal({
                 + Add {activeTab === "kt" ? "KT Plan" : "Asset"}
               </button>
             )}
-
-           
 
             <button className="exf-clearance-close-btn" onClick={onClose} disabled={loading}>
               Close
@@ -316,7 +420,7 @@ export default function ClearanceModal({
             <div className="exf-clearance-modal-body">
               {/* Topic */}
               <div className="exf-form-group">
-                <label className="exf-form-label required">Topic *</label>
+                <label className="exf-form-label required">Topic </label>
                 <input
                   type="text"
                   className="exf-form-input"
@@ -332,7 +436,7 @@ export default function ClearanceModal({
 
               {/* Description */}
               <div className="exf-form-group">
-                <label className="exf-form-label required">Description *</label>
+                <label className="exf-form-label required">Description </label>
                 <textarea
                   className="exf-form-textarea"
                   rows={5}
@@ -473,17 +577,13 @@ export default function ClearanceModal({
               >
                 Cancel
               </button>
-              <button
-                className="exf-clearance-add-btn"
-                onClick={editingKt ? handleUpdateKt : handleAddKt}
-                disabled={loading}
-              >
-                {loading
-                  ? "Saving..."
-                  : editingKt
-                  ? "Update KT Plan"
-                  : "Add KT Plan"}
-              </button>
+             <button
+  className="exf-clearance-add-btn"
+  onClick={editingKt ? handleUpdateKt : handleAddKt}
+>
+  {editingKt ? "Update KT Plan" : "Add KT Plan"}
+</button>
+
             </div>
           </div>
         </div>
@@ -545,13 +645,24 @@ export default function ClearanceModal({
               <button className="exf-clearance-close-btn" onClick={() => setShowAddAssetModal(false)}>
                 Cancel
               </button>
-              <button className="exf-clearance-add-btn" onClick={handleAddAsset} disabled={loading}>
-                {loading ? "Adding..." : "Add Asset"}
-              </button>
+             <button className="exf-clearance-add-btn" onClick={handleAddAsset}>
+  Add Asset
+</button>
+
             </div>
+          
+
           </div>
+          
         </div>
       )}
+       <Modal
+      isVisible={alertModal.isVisible}
+      onClose={closeAlert}
+      buttons={[{ label: "OK", onClick: closeAlert }]}
+    >
+      <p>{alertModal.message}</p>
+    </Modal>
     </>
   );
 }

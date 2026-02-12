@@ -11,6 +11,8 @@ import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { useAuth } from "../../context/AuthProvider.client";
 
+
+
 const COOLDOWN_PERIOD = 10000;
 
 const FacePunch = () => {
@@ -29,6 +31,32 @@ const FacePunch = () => {
 
   const API_KEY = process.env.NEXT_PUBLIC_API_KEY;
   const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
+
+  function normalizeDescriptor(desc) {
+  if (!desc) return null;
+
+  // Already correct
+  if (desc instanceof Float32Array) {
+    return desc;
+  }
+
+  // From DB string: "[0.12, 0.33, ...]"
+  if (typeof desc === "string") {
+    return new Float32Array(JSON.parse(desc));
+  }
+
+  // From plain array
+  if (Array.isArray(desc)) {
+    return new Float32Array(desc);
+  }
+
+  // From object {0:...,1:...}
+  if (typeof desc === "object") {
+    return new Float32Array(Object.values(desc));
+  }
+
+  return null;
+}
 
   const dashboardData =
     typeof window !== "undefined"
@@ -86,27 +114,44 @@ const FacePunch = () => {
     if (!user) return;
 
     const loadFaceData = async () => {
-      try {
-        const res = await axios.get(
-          `${BACKEND_URL}/face-punch/face-data`,
-          { headers, withCredentials: true }
-        );
+  try {
+    const res = await axios.get(
+      `${BACKEND_URL}/face-punch/face-data`,
+      { headers, withCredentials: true }
+    );
 
-        const labeledDescriptors = res.data.faces.map((emp) => {
-          const descriptors = emp.descriptors.map(
-            (d) => new Float32Array(d)
-          );
-          return new faceapi.LabeledFaceDescriptors(
-            emp.employee_id,
-            descriptors
-          );
-        });
+    const desc128 = [];
+    const desc512 = [];
 
-        setFaceMatcher(new faceapi.FaceMatcher(labeledDescriptors, 0.45));
-      } catch {
-        toast.error("Failed to load face data");
-      }
-    };
+    res.data.faces.forEach((emp) => {
+      const d128 = [];
+      const d512 = [];
+
+      emp.descriptors.forEach((d) => {
+        const n = normalizeDescriptor(d);
+        if (!n) return;
+
+        if (n.length === 128) d128.push(n);
+        if (n.length === 512) d512.push(n);
+      });
+
+      if (d128.length)
+        desc128.push(new faceapi.LabeledFaceDescriptors(emp.employee_id, d128));
+
+      if (d512.length)
+        desc512.push(new faceapi.LabeledFaceDescriptors(emp.employee_id, d512));
+    });
+
+    setFaceMatcher({
+      matcher128: desc128.length ? new faceapi.FaceMatcher(desc128, 0.45) : null,
+      matcher512: desc512.length ? new faceapi.FaceMatcher(desc512, 0.45) : null,
+    });
+
+  } catch {
+    toast.error("Failed to load face data");
+  }
+};
+
 
     loadFaceData();
   }, [user]);
@@ -174,13 +219,22 @@ const FacePunch = () => {
             return;
           }
 
-          const match = faceMatcher.findBestMatch(detection.descriptor);
+let match = null;
 
-          if (match.label === "unknown") {
-            toast.warn("Face not recognized", { autoClose: 2000 });
-            return;
-          }
+if (detection.descriptor.length === 128 && faceMatcher.matcher128) {
+  match = faceMatcher.matcher128.findBestMatch(detection.descriptor);
+}
 
+if (detection.descriptor.length === 512 && faceMatcher.matcher512) {
+  match = faceMatcher.matcher512.findBestMatch(detection.descriptor);
+}
+
+if (!match || match.label === "unknown") {
+  toast.warn("Face not recognized", { autoClose: 2000 });
+  return;
+}
+
+         
           await punch({
             descriptor: detection.descriptor,
             employeeId: match.label,

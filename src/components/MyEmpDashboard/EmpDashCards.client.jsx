@@ -13,6 +13,24 @@ import {
 } from "react-icons/fa";
 import { useAuth } from "../../context/AuthProvider.client";
 
+
+const normalizeDescriptor = (desc) => {
+  if (!desc) return null;
+
+  if (Array.isArray(desc) && desc.length === 128) {
+    return new Float32Array(desc);
+  }
+
+  if (typeof desc === "object") {
+    const arr = Object.values(desc).map(Number);
+    if (arr.length === 128) {
+      return new Float32Array(arr);
+    }
+  }
+
+  return null;
+};
+
 const parseServerTimestampToLocalString = (ts) => {
   if (!ts && ts !== 0) return "NA";
   const s = String(ts).trim();
@@ -237,20 +255,22 @@ export default function EmpDashCards() {
       );
 
       const descriptors = resp?.data?.descriptors ?? resp?.data?.data?.descriptors ?? [];
+for (const desc of descriptors) {
+  const normalized = normalizeDescriptor(desc);
+  if (!normalized) continue;
 
-      for (const desc of descriptors) {
-        const parsed = desc;
+  const distance = faceapi.euclideanDistance(
+    detection.descriptor,
+    normalized
+  );
 
-        if (!parsed || parsed.length === 0) continue;
+  console.log("face distance:", distance);
 
-        const distance = faceapi.euclideanDistance(
-          detection.descriptor,
-          new Float32Array(parsed)
-        );
-        if (distance < 0.4) {
-          return { success: true };
-        }
-      }
+  if (distance < 0.4) {
+    return { success: true };
+  }
+}
+
 
       return { success: false, error: "Face not matched" };
     } catch (err) {

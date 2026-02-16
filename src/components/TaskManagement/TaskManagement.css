@@ -12,7 +12,157 @@
   display: flex;
   gap: 10px;
 }
+/* ── Assign Task Modal - Version 2 (different class names) ── */
+.assign-modal-v2 {
+  max-width: 520px;
+  width: 92%;
+  background: #ffffff;
+  border-radius: 8px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  overflow: hidden;
+}
 
+.assign-modal-v2-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 24px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.assign-modal-v2-title h3 {
+  margin: 0;
+  font-size: 1.4rem;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.assign-modal-v2-close {
+  background: none;
+  border: none;
+  font-size: 1.6rem;
+  color: #6b7280;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: color 0.2s;
+}
+
+.assign-modal-v2-close:hover {
+  color: #dc2626;
+}
+
+.assign-modal-v2-form {
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.assign-modal-v2-row {
+  display: flex;
+  gap: 20px;
+}
+
+.assign-modal-v2-group {
+  flex: 1;
+}
+
+.assign-modal-v2-group.full {
+  width: 100%;
+}
+
+.assign-modal-v2-group.half {
+  width: 48%;
+}
+
+.assign-modal-v2-group label {
+  display: block;
+  margin-bottom: 6px;
+  font-weight: 500;
+  color: #374151;
+  font-size: 0.95rem;
+}
+
+.assign-modal-v2-group input,
+.assign-modal-v2-group textarea,
+.assign-modal-v2-group select,
+.assign-modal-v2-datepicker {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 0.95rem;
+  color: #374151;
+  background: white;
+}
+
+.assign-modal-v2-datepicker {
+  cursor: pointer;
+}
+
+.assign-modal-v2-group input:focus,
+.assign-modal-v2-group textarea:focus,
+.assign-modal-v2-group select:focus,
+.assign-modal-v2-datepicker:focus {
+  outline: none;
+  border-color: #28a745;
+  box-shadow: 0 0 0 3px rgba(40, 167, 69, 0.15);
+}
+
+.assign-modal-v2-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 12px;
+}
+
+.assign-modal-v2-submit {
+  padding: 10px 24px;
+  background: #28a745;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.95rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.assign-modal-v2-submit:hover {
+  background: #218838;
+  transform: translateY(-1px);
+}
+
+.assign-modal-v2-submit:disabled {
+  background: #9ca3af;
+  cursor: not-allowed;
+}
+
+/* Mobile adjustments */
+@media (max-width: 640px) {
+  .assign-modal-v2 {
+    width: 95%;
+    margin: 10px;
+  }
+
+  .assign-modal-v2-row {
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .assign-modal-v2-group.half {
+    width: 100%;
+  }
+}
+
+/* Fix calendar visibility */
+.react-datepicker-popper {
+  z-index: 10001 !important;
+}
+
+#root-portal {
+  z-index: 10001 !important;
+}
 .task-section-btn {
   background-color: #f3f4f6;
   color: #374151;

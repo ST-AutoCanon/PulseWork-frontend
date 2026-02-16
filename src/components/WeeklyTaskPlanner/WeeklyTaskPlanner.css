@@ -11,6 +11,24 @@
   position: relative;          /* ← This is critical for absolute positioning inside */
   min-height: 40px;            /* give it some space */
 }
+.week-task-header-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.week-task-title {
+  font-size: 20px;
+  font-weight: 600;
+  color: #1f2933;
+  margin: 0;
+}
+
+.week-task-week-navigation {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
 
 .week-task-edit-popup {
   position: absolute;

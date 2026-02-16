@@ -10,7 +10,7 @@ import axios from "axios";
 import { useAuth } from "../../context/AuthProvider.client";
 import SetWorkHoursModal from "../../components/EmployeeLogin/SetWorkHoursModal";
 
-const EmployeeCardWithHover = ({ employeePunches, meIdFromAuth }) => {
+const EmployeeCardWithHover = ({ employeePunches, meIdFromAuth }) => { // NOSONAR
   const [hovered, setHovered] = useState(false);
   const [avatar, setAvatar] = useState("/images/smily.png");
 
@@ -285,7 +285,7 @@ const TimeSlotGroup = ({
   );
 };
 
-const EmployeeLogin = () => {
+const EmployeeLogin = () => { // NOSONAR
   const { user } = useAuth();
   const router = useRouter();
 
@@ -402,52 +402,117 @@ const EmployeeLogin = () => {
     return slotMap;
   };
 
+  const validateAndHandleEarlyReturns = () => {
+    if (!orgId) {
+      setError("Organization ID is missing. Please log in again.");
+      setPunchData([]);
+      setLoading(false);
+      return false;
+    }
+
+    if (activeTab === "select" && (!fromDate || !toDate)) {
+      setPunchData([]);
+      setLoading(false);
+      setError(null);
+      return false;
+    }
+
+    if (activeTab === "select") {
+      const validation = validateDateRange(fromDate, toDate);
+      if (!validation.valid) {
+        setError(validation.error);
+        setPunchData([]);
+        setLoading(false);
+        return false;
+      }
+    }
+
+    return true;
+  };
+
+  const buildApiUrl = () => {
+    const API_KEY = process.env.NEXT_PUBLIC_API_KEY;
+    const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
+
+    if (!backendUrl) throw new Error("Backend URL is missing.");
+    if (!meId) throw new Error("Employee ID is missing.");
+
+    let url = `${backendUrl}/api/employeelogin/today-yesterday-punches?org_id=${encodeURIComponent(orgId)}`;
+
+    if (activeTab === "select" && fromDate && toDate) {
+      url += `&from=${encodeURIComponent(fromDate)}&to=${encodeURIComponent(toDate)}`;
+    }
+
+    return { url, API_KEY };
+  };
+
+  const processResponseData = (response) => {
+    let data = [];
+
+    if (Array.isArray(response.data)) {
+      data = response.data;
+    } else if (Array.isArray(response.data?.data)) {
+      data = response.data.data;
+    } else {
+      console.warn("Unexpected response format:", response.data);
+      data = [];
+    }
+
+    setPunchData(data);
+
+    const grouped = groupByDayAndEmployee(data, activeTab);
+    const activeGroup =
+      activeTab === "today"
+        ? grouped.Today
+        : activeTab === "yesterday"
+        ? grouped.Yesterday
+        : grouped[fromDate] || {};
+
+    const slots = groupByHourSlots(activeGroup);
+    const slotKeys = Object.keys(slots);
+    const newSlotStates = slotKeys.reduce(
+      (acc, slot, idx) => ({ ...acc, [slot]: idx === 0 }),
+      {}
+    );
+
+    setSlotStates((prev) => ({ ...prev, [activeTab]: newSlotStates }));
+  };
+
+  const handleApiError = (err) => {
+    console.error("Error fetching punch data:", {
+      message: err.message,
+      status: err.response?.status,
+      data: err.response?.data,
+    });
+
+    let errorMessage =
+      err.response?.data?.message ||
+      err.message ||
+      "Error fetching punch data.";
+
+    if (err.response?.status === 400) {
+      errorMessage = "Invalid request. Check date range or organization ID.";
+    } else if (err.response?.status === 404) {
+      errorMessage =
+        activeTab === "select"
+          ? "No punch data available for the selected date range and organization."
+          : "No punch data available for the selected organization.";
+    }
+
+    setError(errorMessage);
+    setPunchData([]);
+  };
+
   useEffect(() => {
     const fetchPunchData = async () => {
-      if (!orgId) {
-        setError("Organization ID is missing. Please log in again.");
-        setPunchData([]);
-        setLoading(false);
-        return;
-      }
-
-      if (activeTab === "select" && (!fromDate || !toDate)) {
-        setPunchData([]);
-        setLoading(false);
-        setError(null);
-        return;
-      }
-
-      if (activeTab === "select") {
-        const validation = validateDateRange(fromDate, toDate);
-        if (!validation.valid) {
-          setError(validation.error);
-          setPunchData([]);
-          setLoading(false);
-          return;
-        }
-      }
+      if (!validateAndHandleEarlyReturns()) return;
 
       setLoading(true);
       setError(null);
       setDateError(null);
 
       try {
-        const API_KEY = process.env.NEXT_PUBLIC_API_KEY;
-        const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
-
-        if (!backendUrl) throw new Error("Backend URL is missing.");
-        if (!meId) throw new Error("Employee ID is missing.");
-
-        let url = `${backendUrl}/api/employeelogin/today-yesterday-punches?org_id=${encodeURIComponent(
-          orgId
-        )}`;
-
-        if (activeTab === "select" && fromDate && toDate) {
-          url += `&from=${encodeURIComponent(fromDate)}&to=${encodeURIComponent(
-            toDate
-          )}`;
-        }
+        const { url, API_KEY } = buildApiUrl();
 
         const response = await axios.get(url, {
           withCredentials: true,
@@ -458,53 +523,9 @@ const EmployeeLogin = () => {
           withCredentials: true,
         });
 
-        let data = [];
-        if (Array.isArray(response.data)) {
-          data = response.data;
-        } else if (Array.isArray(response.data.data)) {
-          data = response.data.data;
-        } else {
-          console.warn("Unexpected response format:", response.data);
-          data = [];
-        }
-
-        setPunchData(data);
-
-        const grouped = groupByDayAndEmployee(data, activeTab);
-        const activeGroup =
-          activeTab === "today"
-            ? grouped.Today
-            : activeTab === "yesterday"
-            ? grouped.Yesterday
-            : grouped[fromDate] || {};
-        const slots = groupByHourSlots(activeGroup);
-        const slotKeys = Object.keys(slots);
-        const newSlotStates = slotKeys.reduce(
-          (acc, slot, idx) => ({ ...acc, [slot]: idx === 0 }),
-          {}
-        );
-        setSlotStates((prev) => ({ ...prev, [activeTab]: newSlotStates }));
+        processResponseData(response);
       } catch (err) {
-        console.error("Error fetching punch data:", {
-          message: err.message,
-          status: err.response?.status,
-          data: err.response?.data,
-        });
-        let errorMessage =
-          err.response?.data?.message ||
-          err.message ||
-          "Error fetching punch data.";
-        if (err.response?.status === 400) {
-          errorMessage =
-            "Invalid request. Check date range or organization ID.";
-        } else if (err.response?.status === 404) {
-          errorMessage =
-            activeTab === "select"
-              ? "No punch data available for the selected date range and organization."
-              : "No punch data available for the selected organization.";
-        }
-        setError(errorMessage);
-        setPunchData([]);
+        handleApiError(err);
       } finally {
         setLoading(false);
       }

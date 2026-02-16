@@ -632,10 +632,10 @@ const TaskManagement = () => {
                                 <div className="task-employee-name">
                                   {task.user.name}
                                 </div>
-                                <div className="task-employee-id">
+                                {/* <div className="task-employee-id">
                                   EMP-ID: {task.employeeId}
                                 </div>
-                                <div className="task-id-chip">{task.id}</div>
+                                <div className="task-id-chip">{task.id}</div> */}
                               </div>
                               <div
                                 className="task-progress-wrapper"
@@ -726,7 +726,7 @@ const TaskManagement = () => {
                 >
                   <div className="task-details-header">
                     <div className="task-details-title">
-                      <div className="task-pill">{selectedTask.id}</div>
+                      {/* <div className="task-pill">{selectedTask.id}</div> */}
                       <h3>{selectedTask.title}</h3>
                     </div>
                     <button
@@ -788,7 +788,28 @@ const TaskManagement = () => {
                           onClick={startEditingProgress}
                           title="Edit Progress"
                         >
-                          Edit
+                          <svg
+                            width="20"
+                            height="20"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            xmlns="http://www.w3.org/2000/svg"
+                          >
+                            <path
+                              d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"
+                              stroke="#6b7280"
+                              strokeWidth="2"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            />
+                            <path
+                              d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"
+                              stroke="#6b7280"
+                              strokeWidth="2"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            />
+                          </svg>
                         </button>
                       )}
                     </div>
@@ -1051,7 +1072,7 @@ const TaskManagement = () => {
               </div>
             )}
 
-            {showAssignForm && (
+            {/* {showAssignForm && (
               <div className="task-details-backdrop" onClick={closeAssignForm}>
                 <div
                   className="task-details assign-task-modal"
@@ -1174,7 +1195,164 @@ const TaskManagement = () => {
                   </form>
                 </div>
               </div>
-            )}
+            )} */}
+            {showAssignForm && (
+  <div className="task-details-backdrop" onClick={closeAssignForm}>
+    <div
+      className="task-details assign-modal-v2"
+      onClick={(e) => e.stopPropagation()}
+    >
+      <div className="assign-modal-v2-header">
+        <div className="assign-modal-v2-title">
+          <h3>Assign New Task</h3>
+        </div>
+        <button
+          className="assign-modal-v2-close"
+          onClick={closeAssignForm}
+          aria-label="Close"
+        >
+          X
+        </button>
+      </div>
+
+      <div className="assign-modal-v2-form">
+        <div className="assign-modal-v2-row">
+          <div className="assign-modal-v2-group full">
+            <label htmlFor="title-v2">Task Name</label>
+            <input
+              type="text"
+              id="title-v2"
+              name="title"
+              value={formData.title}
+              onChange={handleFormChange}
+              placeholder="Enter task name"
+              required
+            />
+          </div>
+        </div>
+
+        <div className="assign-modal-v2-row">
+          <div className="assign-modal-v2-group full">
+            <label htmlFor="description-v2">Task Description</label>
+            <textarea
+              id="description-v2"
+              name="description"
+              value={formData.description}
+              onChange={handleFormChange}
+              placeholder="Enter task description (use - for bullet points)"
+              rows="4"
+              required
+            />
+          </div>
+        </div>
+
+        <div className="assign-modal-v2-row">
+          <div className="assign-modal-v2-group full">
+            <label htmlFor="employeeId-v2">Assigned To</label>
+            <select
+              id="employeeId-v2"
+              name="employeeId"
+              value={formData.employeeId}
+              onChange={handleFormChange}
+              required
+              disabled={loadingEmployees}
+            >
+              <option value="">
+                {loadingEmployees
+                  ? "Loading employees..."
+                  : "Select Employee"}
+              </option>
+              {employees.map((emp) => (
+                <option key={emp.employee_id} value={emp.employee_id}>
+                  {emp.employee_name} ({emp.employee_id})
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        <div className="assign-modal-v2-row">
+          <div className="assign-modal-v2-group half">
+            <label htmlFor="startDate-v2">Start Date</label>
+            <DatePicker
+              selected={formData.startDate}
+              onChange={(date) => handleDateChange(date, "startDate")}
+              dateFormat="dd-MM-yyyy"
+              placeholderText="DD-MM-YYYY"
+              className="assign-modal-v2-datepicker"
+              minDate={new Date()}
+              showMonthDropdown
+              showYearDropdown
+              dropdownMode="select"
+              portalId="root-portal"
+              required
+            />
+          </div>
+
+          <div className="assign-modal-v2-group half">
+            <label htmlFor="endDate-v2">End Date</label>
+            <DatePicker
+              selected={formData.endDate}
+              onChange={(date) => handleDateChange(date, "endDate")}
+              dateFormat="dd-MM-yyyy"
+              placeholderText="DD-MM-YYYY"
+              className="assign-modal-v2-datepicker"
+              minDate={formData.startDate || new Date()}
+              showMonthDropdown
+              showYearDropdown
+              dropdownMode="select"
+              portalId="root-portal"
+              required
+            />
+          </div>
+        </div>
+
+        <div className="assign-modal-v2-row">
+          <div className="assign-modal-v2-group half">
+            <label htmlFor="status-v2">Status</label>
+            <select
+              id="status-v2"
+              name="status"
+              value={formData.status}
+              onChange={handleFormChange}
+              required
+            >
+              <option value="Yet to Start">Yet to Start</option>
+              <option value="In Progress">In Progress</option>
+              <option value="On-Hold">On-Hold</option>
+              <option value="Completed">Completed</option>
+            </select>
+          </div>
+
+          <div className="assign-modal-v2-group half">
+            <label htmlFor="percentage-v2">Progress (%)</label>
+            <input
+              type="number"
+              id="percentage-v2"
+              name="percentage"
+              value={formData.percentage}
+              onChange={handleFormChange}
+              min="0"
+              max="100"
+              placeholder="0-100"
+              required
+            />
+          </div>
+        </div>
+
+        <div className="assign-modal-v2-actions">
+          <button
+            className="assign-modal-v2-submit"
+            onClick={handleFormSubmit}
+            disabled={loadingEmployees || loadingTasks}
+          >
+            Assign Task
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+)}
           </div>
         </>
       )}

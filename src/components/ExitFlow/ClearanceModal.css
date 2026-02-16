@@ -394,7 +394,7 @@
 .exf-form-input,
 .exf-form-select,
 .exf-form-textarea {
-  width: 100%;
+  width: 90%;
   padding: 0.75rem 1rem;
   border: 1px solid #d1d5db;
   border-radius: 6px;

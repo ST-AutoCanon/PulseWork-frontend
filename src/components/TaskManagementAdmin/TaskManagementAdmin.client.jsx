@@ -634,12 +634,12 @@ const TaskManagementAdmin = () => {
                                 <div className="task-admin-employee-name">
                                   {task.user.name}
                                 </div>
-                                <div className="task-admin-employee-id">
+                                {/* <div className="task-admin-employee-id">
                                   EMP-ID: {task.employeeId}
                                 </div>
                                 <div className="task-admin-id-chip">
                                   {task.id}
-                                </div>
+                                </div> */}
                               </div>
                               <div
                                 className="task-admin-progress-wrapper"
@@ -739,7 +739,7 @@ const TaskManagementAdmin = () => {
                 >
                   <div className="task-admin-details-header">
                     <div className="task-admin-details-title">
-                      <div className="task-admin-pill">{selectedTask.id}</div>
+                      {/* <div className="task-admin-pill">{selectedTask.id}</div> */}
                       <h3>{selectedTask.title}</h3>
                     </div>
                     <button
@@ -962,7 +962,7 @@ const TaskManagementAdmin = () => {
                                     </div>
                                     <div className="task-admin-message-meta">
                                       <span>{displayDate(msg.time)}</span>
-                                      <span>{msg.senderName}</span>
+                                      {/* <span>{msg.senderName}</span> */}
                                     </div>
                                   </div>
                                 ))}

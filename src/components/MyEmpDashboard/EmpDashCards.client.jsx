@@ -220,58 +220,91 @@ export default function EmpDashCards() {
     }
   };
 
+  const setupCamera = async () => {
+    const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+    if (videoRef.current) {
+      videoRef.current.srcObject = stream;
+    }
+    await new Promise((r) => setTimeout(r, 1500));
+    return stream;
+  };
+
+  const detectFace = async () => {
+    for (let i = 0; i < 10; i++) {
+      const detection = await faceapi
+        .detectSingleFace(
+          videoRef.current,
+          new faceapi.TinyFaceDetectorOptions()
+        )
+        .withFaceLandmarks()
+        .withFaceDescriptor();
+      if (detection) return detection;
+      await new Promise((r) => setTimeout(r, 800));
+    }
+    return null;
+  };
+
+  const fetchDescriptors = async () => {
+    const headers = {};
+    if (API_KEY) headers["x-api-key"] = API_KEY;
+    if (employeeId) headers["x-employee-id"] = employeeId;
+
+    const resp = await axios.get(
+      `${BACKEND_URL}/api/face-data/${encodeURIComponent(employeeId)}`,
+      { withCredentials: true, headers }
+    );
+
+    return resp?.data?.descriptors ?? resp?.data?.data?.descriptors ?? [];
+  };
+
+  const matchFace = (detectionDescriptor, descriptors) => {
+    for (const desc of descriptors) {
+      const normalized = normalizeDescriptor(desc);
+      if (!normalized) continue;
+
+      const distance = faceapi.euclideanDistance(
+        detectionDescriptor,
+        normalized
+      );
+
+      console.log("face distance:", distance);
+
+      if (distance < 0.4) {
+        return true;
+      }
+    }
+    return false;
+  };
+
+  const cleanupCamera = (stream) => {
+    try {
+      if (videoRef.current?.srcObject) {
+        const s = videoRef.current.srcObject;
+        if (s.getTracks) {
+          s.getTracks().forEach((t) => t.stop());
+        }
+        videoRef.current.srcObject = null;
+      } else if (stream) {
+        stream.getTracks().forEach((t) => t.stop());
+      }
+    } catch (e) {
+      console.warn("Error stopping camera stream:", e);
+    }
+  };
+
   const verifyFace = async () => {
     setShowCamera(true);
     let stream = null;
     try {
-      stream = await navigator.mediaDevices.getUserMedia({ video: true });
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-      }
-
-      await new Promise((r) => setTimeout(r, 1500));
-
-      let detection = null;
-      for (let i = 0; i < 10 && !detection; i++) {
-        detection = await faceapi
-          .detectSingleFace(
-            videoRef.current,
-            new faceapi.TinyFaceDetectorOptions()
-          )
-          .withFaceLandmarks()
-          .withFaceDescriptor();
-        if (!detection) await new Promise((r) => setTimeout(r, 800));
-      }
-
+      stream = await setupCamera();
+      const detection = await detectFace();
       if (!detection) return { success: false, error: "Face not detected" };
 
-      const headers = {};
-      if (API_KEY) headers["x-api-key"] = API_KEY;
-      if (employeeId) headers["x-employee-id"] = employeeId;
-
-      const resp = await axios.get(
-        `${BACKEND_URL}/api/face-data/${encodeURIComponent(employeeId)}`,
-        { withCredentials: true, headers }
-      );
-
-      const descriptors = resp?.data?.descriptors ?? resp?.data?.data?.descriptors ?? [];
-for (const desc of descriptors) {
-  const normalized = normalizeDescriptor(desc);
-  if (!normalized) continue;
-
-  const distance = faceapi.euclideanDistance(
-    detection.descriptor,
-    normalized
-  );
-
-  console.log("face distance:", distance);
-
-  if (distance < 0.4) {
-    return { success: true };
-  }
-}
-
-
+      const descriptors = await fetchDescriptors();
+      const isMatched = matchFace(detection.descriptor, descriptors);
+      if (isMatched) {
+        return { success: true };
+      }
       return { success: false, error: "Face not matched" };
     } catch (err) {
       console.error("verifyFace error:", err);
@@ -280,19 +313,7 @@ for (const desc of descriptors) {
         error: err?.message || "Face verification error",
       };
     } finally {
-      try {
-        if (videoRef.current?.srcObject) {
-          const s = videoRef.current.srcObject;
-          if (s.getTracks) {
-            s.getTracks().forEach((t) => t.stop());
-          }
-          videoRef.current.srcObject = null;
-        } else if (stream) {
-          stream.getTracks().forEach((t) => t.stop());
-        }
-      } catch (e) {
-        console.warn("Error stopping camera stream:", e);
-      }
+      cleanupCamera(stream);
       setShowCamera(false);
     }
   };

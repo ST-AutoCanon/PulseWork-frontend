@@ -109,52 +109,132 @@ const FacePunch = () => {
     };
   }, [user]);
 
+  const processEmployeeDescriptors = (emp) => {
+    const d128 = [];
+    const d512 = [];
+
+    emp.descriptors.forEach((d) => {
+      const n = normalizeDescriptor(d);
+      if (!n) return;
+
+      if (n.length === 128) d128.push(n);
+      if (n.length === 512) d512.push(n);
+    });
+
+    return { d128, d512 };
+  };
+
   /* ---------------- LOAD ADMIN FACE DATA ---------------- */
   useEffect(() => {
     if (!user) return;
 
     const loadFaceData = async () => {
-  try {
-    const res = await axios.get(
-      `${BACKEND_URL}/face-punch/face-data`,
-      { headers, withCredentials: true }
-    );
+      try {
+        const res = await axios.get(
+          `${BACKEND_URL}/face-punch/face-data`,
+          { headers, withCredentials: true }
+        );
 
-    const desc128 = [];
-    const desc512 = [];
+        const desc128 = [];
+        const desc512 = [];
 
-    res.data.faces.forEach((emp) => {
-      const d128 = [];
-      const d512 = [];
+        res.data.faces.forEach((emp) => {
+          const { d128, d512 } = processEmployeeDescriptors(emp);
 
-      emp.descriptors.forEach((d) => {
-        const n = normalizeDescriptor(d);
-        if (!n) return;
+          if (d128.length)
+            desc128.push(new faceapi.LabeledFaceDescriptors(emp.employee_id, d128));
 
-        if (n.length === 128) d128.push(n);
-        if (n.length === 512) d512.push(n);
-      });
+          if (d512.length)
+            desc512.push(new faceapi.LabeledFaceDescriptors(emp.employee_id, d512));
+        });
 
-      if (d128.length)
-        desc128.push(new faceapi.LabeledFaceDescriptors(emp.employee_id, d128));
+        setFaceMatcher({
+          matcher128: desc128.length ? new faceapi.FaceMatcher(desc128, 0.45) : null,
+          matcher512: desc512.length ? new faceapi.FaceMatcher(desc512, 0.45) : null,
+        });
 
-      if (d512.length)
-        desc512.push(new faceapi.LabeledFaceDescriptors(emp.employee_id, d512));
-    });
-
-    setFaceMatcher({
-      matcher128: desc128.length ? new faceapi.FaceMatcher(desc128, 0.45) : null,
-      matcher512: desc512.length ? new faceapi.FaceMatcher(desc512, 0.45) : null,
-    });
-
-  } catch {
-    toast.error("Failed to load face data");
-  }
-};
-
+      } catch {
+        toast.error("Failed to load face data");
+      }
+    };
 
     loadFaceData();
   }, [user]);
+
+  const performDetection = async () => {
+    const detections = await faceapi
+      .detectAllFaces(
+        videoRef.current,
+        new faceapi.TinyFaceDetectorOptions()
+      )
+      .withFaceLandmarks()
+      .withFaceDescriptors();
+
+    if (canvasRef.current) {
+      const canvas = canvasRef.current;
+      const displaySize = {
+        width: videoRef.current.videoWidth,
+        height: videoRef.current.videoHeight,
+      };
+      faceapi.matchDimensions(canvas, displaySize);
+      const resized = faceapi.resizeResults(detections, displaySize);
+      canvas.getContext("2d").clearRect(0, 0, canvas.width, canvas.height);
+      faceapi.draw.drawDetections(canvas, resized);
+    }
+
+    return detections;
+  };
+
+  const validateDetection = (detection) => {
+    const score = detection.detection.score;
+    const box = detection.detection.box;
+    const faceArea = box.width * box.height;
+    const frameArea = videoRef.current.videoWidth * videoRef.current.videoHeight;
+    const faceCoverage = faceArea / frameArea;
+
+    if (score < 0.85) {
+      toast.warn("Face not clear. Please face the camera properly.", {
+        autoClose: 2000,
+      });
+      return false;
+    }
+
+    if (faceCoverage < 0.06) {
+      toast.warn("Come closer to the camera.", { autoClose: 2000 });
+      return false;
+    }
+
+    return true;
+  };
+
+  const findMatch = (detection) => {
+    let match = null;
+
+    if (detection.descriptor.length === 128 && faceMatcher.matcher128) {
+      match = faceMatcher.matcher128.findBestMatch(detection.descriptor);
+    }
+
+    if (detection.descriptor.length === 512 && faceMatcher.matcher512) {
+      match = faceMatcher.matcher512.findBestMatch(detection.descriptor);
+    }
+
+    if (!match || match.label === "unknown") {
+      toast.warn("Face not recognized", { autoClose: 2000 });
+      return null;
+    }
+
+    return match;
+  };
+
+  const handlePunch = async (match, detection) => {
+    await punch({
+      descriptor: detection.descriptor,
+      employeeId: match.label,
+    });
+
+    setLastPunchTime(Date.now());
+    setCooldownRemaining(COOLDOWN_PERIOD / 1000);
+  };
 
   /* ---------------- Detection Loop ---------------- */
   useEffect(() => {
@@ -176,72 +256,14 @@ const FacePunch = () => {
       try {
         setIsProcessing(true);
 
-        const detections = await faceapi
-          .detectAllFaces(
-            videoRef.current,
-            new faceapi.TinyFaceDetectorOptions()
-          )
-          .withFaceLandmarks()
-          .withFaceDescriptors();
+        const detections = await performDetection();
 
-        if (canvasRef.current) {
-          const canvas = canvasRef.current;
-          const displaySize = {
-            width: videoRef.current.videoWidth,
-            height: videoRef.current.videoHeight,
-          };
-          faceapi.matchDimensions(canvas, displaySize);
-          const resized = faceapi.resizeResults(detections, displaySize);
-          canvas.getContext("2d").clearRect(0, 0, canvas.width, canvas.height);
-          faceapi.draw.drawDetections(canvas, resized);
-        }
-
-        /* 🔒 VALIDATIONS (FROM CRA) */
         if (detections.length === 1) {
           const detection = detections[0];
-          const score = detection.detection.score;
-          const box = detection.detection.box;
-
-          const faceArea = box.width * box.height;
-          const frameArea =
-            videoRef.current.videoWidth * videoRef.current.videoHeight;
-          const faceCoverage = faceArea / frameArea;
-
-          if (score < 0.85) {
-            toast.warn("Face not clear. Please face the camera properly.", {
-              autoClose: 2000,
-            });
-            return;
-          }
-
-          if (faceCoverage < 0.06) {
-            toast.warn("Come closer to the camera.", { autoClose: 2000 });
-            return;
-          }
-
-let match = null;
-
-if (detection.descriptor.length === 128 && faceMatcher.matcher128) {
-  match = faceMatcher.matcher128.findBestMatch(detection.descriptor);
-}
-
-if (detection.descriptor.length === 512 && faceMatcher.matcher512) {
-  match = faceMatcher.matcher512.findBestMatch(detection.descriptor);
-}
-
-if (!match || match.label === "unknown") {
-  toast.warn("Face not recognized", { autoClose: 2000 });
-  return;
-}
-
-         
-          await punch({
-            descriptor: detection.descriptor,
-            employeeId: match.label,
-          });
-
-          setLastPunchTime(Date.now());
-          setCooldownRemaining(COOLDOWN_PERIOD / 1000);
+          if (!validateDetection(detection)) return;
+          const match = findMatch(detection);
+          if (!match) return;
+          await handlePunch(match, detection);
         } else if (detections.length > 1) {
           toast.warn(
             "Multiple faces detected. Only one person should be visible.",

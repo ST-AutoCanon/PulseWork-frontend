@@ -40,6 +40,8 @@ import GeneratePayslip from "../generate_payslip/GeneratePayslip.client";
 import OvertimeDetails from "../Compensation/OvertimeDetails";
 import OvertimeSupervisor from "../Compensation/overtimeSupervisor";
 import ExitFlow from "../ExitFlow/ExitFlow.client";
+
+
 const Sidebar = ({ setActiveContent }) => {
   const { user, hydrated } = useAuth();
   const [menuItems, setMenuItems] = useState([]);
@@ -58,6 +60,17 @@ const Sidebar = ({ setActiveContent }) => {
   const [loadingSubordinates, setLoadingSubordinates] = useState(true);
 
   const cancelRef = useRef(false);
+const DROPDOWN_PATHS = {
+  "/compensation": "compensation",
+  "/TaskManagement": "task",
+  "/Salary_Statement": "salary",
+};
+
+const toggleDropdown = (type) => {
+  setShowCompensationDropdown(type === "compensation");
+  setShowTaskDropdown(type === "task");
+  setShowSalaryDropdown(type === "salary");
+};
 
   const defaultMenuItems = useMemo(
     () => ({
@@ -297,6 +310,78 @@ const Sidebar = ({ setActiveContent }) => {
       console.warn("No content to display for path:", item.path);
     }
   };
+
+//   const handleMenuClick = (item, subOption = null) => {
+//   const role = user?.role ?? "Employee";
+//   const { path } = item;
+
+//   setActiveItem(path);
+//   setActiveSubItem(subOption || "");
+
+//   const dropdownType = DROPDOWN_PATHS[path];
+
+//   // Only toggle dropdown
+//   if (dropdownType && !subOption) {
+//     toggleDropdown(dropdownType);
+//     return;
+//   }
+
+//   setShowMobileMenu(false);
+
+//   let content = null;
+
+//   // Compensation
+//   if (path === "/compensation" && subOption) {
+//     const compensationMap = {
+//       create: [<CreateCompensation />, "/compensation/create"],
+//       assign: [<AssignCompensation />, "/compensation/assign"],
+//       breakup: [<SalaryBreakupMain />, "/compensation/breakup"],
+//       details: [<SalaryDetails />, "/compensation/details"],
+//     };
+
+//     const result = compensationMap[subOption];
+//     if (result) {
+//       content = result[0];
+//       setActiveNav(result[1]);
+//     }
+
+//     toggleDropdown("compensation");
+//   }
+
+//   // Task Management
+//   else if (path === "/TaskManagement") {
+//     content = pathToComponent["/TaskManagement"](role, subOption);
+//     setActiveNav(`/TaskManagement/${subOption || "employee"}`);
+//     toggleDropdown("task");
+//   }
+
+//   // Salary Statement
+//   else if (path === "/Salary_Statement" && subOption) {
+//     content =
+//       subOption === "statement"
+//         ? <Salary_Statement />
+//         : <GeneratePayslip />;
+
+//     setActiveNav(`/Salary_Statement/${subOption}`);
+//     toggleDropdown("salary");
+//   }
+
+//   // Default
+//   else {
+//     const resolver = pathToComponent[path];
+//     if (resolver) {
+//       content = resolver.length > 0
+//         ? resolver(role)
+//         : resolver();
+//     }
+//     toggleDropdown(null);
+//   }
+
+//   if (content) {
+//     setActiveNav(path);
+//     setActiveContent(content);
+//   }
+// };
 
   useEffect(() => {
     if (!hydrated) return;

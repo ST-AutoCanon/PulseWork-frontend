@@ -574,37 +574,10 @@
   background-color: #e8f5e9 !important;
 }
 
-.supervisor-plan-employee-list ul ul {
-  padding-left: 20px;
-  margin-left: 8px;
-}
-
-@media (max-width: 768px) {
-  .supervisor-plan-employee-list .supervisor-plan-employee-item {
-    padding: 10px 16px;
-    border-radius: 20px;
-    background-color: #f5f5f5;
-    border: 1px solid #ddd;
-    min-width: 100px;
-    text-align: center;
-  }
-
-  .supervisor-plan-employee-list
-    .supervisor-plan-employee-item.supervisor-plan-active {
-    background-color: #28a745 !important;
-    color: #fff !important;
-    border-color: #28a745;
-  }
-
-  .supervisor-plan-employee-list
-    .supervisor-plan-employee-item:hover:not(.supervisor-plan-active) {
-    background-color: #e8e8e8 !important;
-  }
-}
 .supervisor-admin-mic-button {
   right: 8px;
   border: none;
-  font-size: 18px;
+background: transparent !important;           /* No grey background */  font-size: 18px;
   color: #28a745;
   cursor: pointer;
   border-radius: 50%;
@@ -641,6 +614,33 @@
   }
 }
 
+.supervisor-plan-employee-list ul ul {
+  padding-left: 20px;
+  margin-left: 8px;
+}
+
+@media (max-width: 768px) {
+  .supervisor-plan-employee-list .supervisor-plan-employee-item {
+    padding: 10px 16px;
+    border-radius: 20px;
+    background-color: #f5f5f5;
+    border: 1px solid #ddd;
+    min-width: 100px;
+    text-align: center;
+  }
+
+  .supervisor-plan-employee-list
+    .supervisor-plan-employee-item.supervisor-plan-active {
+    background-color: #28a745 !important;
+    color: #fff !important;
+    border-color: #28a745;
+  }
+
+  .supervisor-plan-employee-list
+    .supervisor-plan-employee-item:hover:not(.supervisor-plan-active) {
+    background-color: #e8e8e8 !important;
+  }
+}
 @media (max-width: 768px) {
   .supervisor-admin-mic-button {
     min-height: 48px;

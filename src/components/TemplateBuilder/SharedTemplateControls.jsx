@@ -17,6 +17,7 @@ export default function SharedTemplateControls({
   showEditor = false,
   onSetActiveArea,
   activeArea = "header",
+  showInsertControls = true,
 }) {
   const fileInputRef = externalFileInputRef || useRef(null);
 
@@ -106,27 +107,6 @@ export default function SharedTemplateControls({
 
   return (
     <div className={styles?.sharedControls || stylesLocal.controls}>
-      <div style={{ marginBottom: 12 }}>
-        <div style={{ fontSize: 13, marginBottom: 6 }}>Insert into</div>
-        <div style={{ display: "flex", gap: 8 }}>
-          {["header", "footer"].map((a) => {
-            const isActive = String(localActive || "header") === a;
-
-            return (
-              <button
-                key={a}
-                onClick={() => handleSetActiveArea(a)}
-                type="button"
-                aria-pressed={isActive}
-                style={{ ...baseBtnStyle, ...(isActive ? activeBtnStyle : {}) }}
-              >
-                {a[0].toUpperCase() + a.slice(1)}
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
       <div
         style={{ marginTop: 12, borderTop: "1px solid #f1f5f9", paddingTop: 8 }}
       >

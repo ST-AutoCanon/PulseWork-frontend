@@ -1,0 +1,5 @@
+<svg width="400" height="300" xmlns="http://www.w3.org/2000/svg">
+  <rect width="400" height="300" fill="#fff" stroke="#ddd"/>
+  <rect x="40" y="15" width="320" height="50" fill="none" stroke="#111" stroke-width="3"/>
+  <rect x="0" y="270" width="400" height="30" fill="#f3f4f6"/>
+</svg>

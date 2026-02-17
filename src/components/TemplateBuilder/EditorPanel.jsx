@@ -1,3 +1,5 @@
+"use client";
+
 import React, { useEffect } from "react";
 import A4Preview from "./A4Preview";
 import TemplateEditor from "./TemplateEditor";
@@ -51,8 +53,11 @@ export default function EditorPanel(props) {
   const shouldMountDedicatedEditor =
     (mode === "basic" && generated && !viewingTemplate) || mode === "scratch";
 
+  const hasBodyBoxes = Array.isArray(bodyBoxes) && bodyBoxes.length > 0;
   const showA4Preview =
-    (mode === "basic" || mode === "scratch") && !shouldMountDedicatedEditor;
+    !shouldMountDedicatedEditor &&
+    (mode === "scratch" ||
+      (mode === "basic" && (Boolean(generated) || hasBodyBoxes)));
 
   const CANVAS_WIDTH = editorCanvasWidth || 794;
   const A4_RATIO = 297 / 210;
@@ -117,7 +122,8 @@ export default function EditorPanel(props) {
               {generated.html && generated.html.trim() ? (
                 <BasicTemplateEditor
                   ref={basicEditorRef}
-                  key={generated.id || generated.file || Math.random()}
+                  key={generated.id || generated.file || "generated"}
+                  onBoxesChange={setBodyBoxes}
                   initialHtml={generated.html}
                   initialJson={generated.grapesJson}
                   initialFields={PRESET_FIELDS[bodyType] || null}
@@ -129,11 +135,25 @@ export default function EditorPanel(props) {
                     })
                   }
                   canvasWidthPx={CANVAS_WIDTH}
+                  watermarkUrl={previewUrls?.previewWatermarkUrl}
+                  watermarkProps={watermarkProps}
+                  watermarkEditable={watermarkEnabled || showEditor}
+                  onWatermarkChange={handleWatermarkChange}
+                  initialHeaderHeightPx={headerPx}
+                  initialFooterHeightPx={footerPx}
+                  onUploadImage={extras?.onUploadImage}
+                  selectedFieldId={selectedFieldId}
+                  onSelectField={(fid) =>
+                    setSelectedFieldId && setSelectedFieldId(fid)
+                  }
+                  onUpdateFieldStyle={(fid, styleDelta) => {}}
+                  onUpdateFieldContent={(fid, content) => {}}
                 />
               ) : (
                 <CustomTemplateEditor
                   ref={basicEditorRef}
-                  key={generated.id || generated.name || Math.random()}
+                  key={generated.id || generated.name || "generated"}
+                  onBoxesChange={setBodyBoxes}
                   background={generated.thumbnail || generated.imageUrl || null}
                   initialBoxes={(function () {
                     try {
@@ -167,8 +187,8 @@ export default function EditorPanel(props) {
                   watermarkProps={watermarkProps}
                   watermarkEditable={watermarkEnabled || showEditor}
                   onWatermarkChange={handleWatermarkChange}
-                  headerHeightPct={headerHeightPct} // <-- forwarded
-                  footerHeightPct={footerHeightPct} // <-- forwarded
+                  headerHeightPct={headerHeightPct}
+                  footerHeightPct={footerHeightPct}
                 />
               )}
             </div>
@@ -196,16 +216,11 @@ export default function EditorPanel(props) {
           </div>
         )}
 
-        {!generated && mode === "basic" && (
-          <div className={styles.placeholder}>
-            Choose a template from the left to open it here.
-          </div>
-        )}
-
         {mode === "scratch" && (
           <CustomTemplateEditor
             ref={scratchEditorRef}
-            key={"scratch-" + Date.now()}
+            key={`scratch-${bodyType}`}
+            onBoxesChange={setBodyBoxes}
             background={null}
             initialBoxes={fieldsToBoxes(PRESET_FIELDS[bodyType] || [])}
             initialBoxesAreBodyRelative={true}

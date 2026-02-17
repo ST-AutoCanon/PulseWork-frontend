@@ -343,6 +343,32 @@
   cursor: text;
 }
 
+.bte-watermark {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  z-index: 12;
+  pointer-events: none;
+}
+.bte-watermark.editable {
+  pointer-events: auto;
+}
+.bte-watermark img {
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+.bte-watermark .bte-wm-resize {
+  position: absolute;
+  right: 6px;
+  bottom: 6px;
+  width: 14px;
+  height: 14px;
+  background: #fff;
+  border: 1px solid #c8ccd6;
+  cursor: se-resize;
+  z-index: 30;
+}
+
 @media (max-width: 980px) {
   .props-bar {
     flex-direction: column;

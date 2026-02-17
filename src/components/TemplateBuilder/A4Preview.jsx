@@ -1,4 +1,3 @@
-// A4Preview.client.jsx — drop-in replacement
 "use client";
 
 import React, {
@@ -21,16 +20,14 @@ export default function A4Preview({
   bodyBoxes = [],
   onBoxesChange = null,
   onSelectBox = null,
-  width = 420,
+  width = 794,
   selectedBoxId = null,
   pageStyle = { background: "transparent" },
 
-  // backward-compatible names
   previewHeaderUrl,
   previewFooterUrl,
   previewWatermarkUrl,
 
-  // IMPORTANT: explicitly control how much % of the page header/footer occupy
   headerHeightPct = 10,
   footerHeightPct = 10,
 }) {
@@ -39,7 +36,7 @@ export default function A4Preview({
   const resolvedWatermarkProp = watermarkUrl ?? previewWatermarkUrl ?? null;
 
   const a4Ratio = 297 / 210;
-  const w = Number(width) || 420;
+  const w = Number(width) || 794;
   const h = Math.round(w * a4Ratio);
 
   const previewRef = useRef(null);
@@ -61,7 +58,6 @@ export default function A4Preview({
     return s;
   };
 
-  // local watermark state mirrors props but we emit only when changed
   const defaultWm = {
     xPct: (watermarkProps && watermarkProps.xPct) || "50%",
     yPct: (watermarkProps && watermarkProps.yPct) || "50%",
@@ -84,7 +80,6 @@ export default function A4Preview({
           ? watermarkProps.opacity
           : cur.opacity,
     }));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     watermarkProps?.xPct,
     watermarkProps?.yPct,
@@ -111,7 +106,6 @@ export default function A4Preview({
     [onWatermarkChange],
   );
 
-  // watermark drag/resize (local); only emit when values changed
   const watermarkDragState = useRef(null);
   const watermarkResizeState = useRef(null);
 
@@ -273,7 +267,6 @@ export default function A4Preview({
     window.removeEventListener("touchend", watermarkStopResize);
   }
 
-  // box drag/resize handlers (defensive: only call onBoxesChange if function provided)
   const boxDragState = useRef(null);
   const boxResizeState = useRef(null);
 
@@ -453,7 +446,6 @@ export default function A4Preview({
       stopBoxDrag();
       stopBoxResize();
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const watermarkStyle = useMemo(() => {
@@ -495,7 +487,6 @@ export default function A4Preview({
   const resolvedFooter = resolveImgSrc(resolvedFooterProp);
   const resolvedWatermark = resolveImgSrc(resolvedWatermarkProp);
 
-  // IMPORTANT: set grid-template-rows dynamically using header/footer percentages
   const headerPct = Number(String(headerHeightPct).replace("%", "")) || 10;
   const footerPct = Number(String(footerHeightPct).replace("%", "")) || 10;
   const bodyPct = Math.max(2, 100 - headerPct - footerPct);

@@ -148,8 +148,8 @@
 .compensation-popup {
   background-color: white;
   border-radius: 8px;
-  width: 70%;
-  max-width: 1000px;
+  width: 100%;
+  max-width: 1350px;
   max-height: 80vh;
   overflow-y: auto;
   overflow-x: hidden;
@@ -326,7 +326,7 @@
   font-size: 14px;
   box-sizing: border-box;
   height: 34px;
-  margin-top: 40px;
+  margin-top: 0;
 }
 .compensation-number-input-hour {
   border: 1px solid #ced4da;
@@ -543,7 +543,9 @@ compensation-select-incentives {
   cursor: pointer;
   font-size: 14px;
   font-weight: 500;
-  transition: background-color 0.3s ease, transform 0.2s ease;
+  transition:
+    background-color 0.3s ease,
+    transform 0.2s ease;
   margin-top: 10px;
   display: inline-flex;
   align-items: center;
@@ -568,7 +570,9 @@ compensation-select-incentives {
   cursor: pointer;
   font-size: 13px;
   font-weight: 500;
-  transition: background-color 0.3s ease, transform 0.2s ease;
+  transition:
+    background-color 0.3s ease,
+    transform 0.2s ease;
   margin-left: 10px;
   display: inline-flex;
   align-items: center;

@@ -587,8 +587,22 @@ export default function useLeaveRequest() {
         }
       }
 
-      setLeaveRequests({ self: selfRequests, team: teamRequests });
-      return { self: selfRequests, team: teamRequests };
+      // -----------------------
+      // Filter out current user's own requests from teamRequests
+      // -----------------------
+      const normalizeEmployeeId = (r) =>
+        String(
+          r?.employee_id ?? r?.employeeId ?? r?.emp_id ?? r?.id ?? "",
+        ).trim();
+
+      const ownIdStr = String(employeeId ?? "").trim();
+
+      const filteredTeamRequests = Array.isArray(teamRequests)
+        ? teamRequests.filter((r) => normalizeEmployeeId(r) !== ownIdStr)
+        : [];
+
+      setLeaveRequests({ self: selfRequests, team: filteredTeamRequests });
+      return { self: selfRequests, team: filteredTeamRequests };
     } catch (err) {
       console.error("fetchLeaveRequests error:", err);
       setLeaveRequests({ self: [], team: [] });
@@ -1119,11 +1133,7 @@ export default function useLeaveRequest() {
 
       // Candidate endpoints to try (order matters)
       const candidates = [
-        `${BACKEND}/employee/leave/${leaveId}/attachments`,
-        `${BACKEND}/leave/${leaveId}/attachments`,
-        `${BACKEND}/employee/leave/${leaveId}/attachment`,
-        `${BACKEND}/employee/leave/attachments?leaveId=${leaveId}`,
-        `${BACKEND}/attachments/leave/${leaveId}`,
+        `${BACKEND}/api/employee/leave/${leaveId}/attachments`,
       ];
 
       let lastErr = null;

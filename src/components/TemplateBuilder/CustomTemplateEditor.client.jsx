@@ -1,8 +1,10 @@
 "use client";
 
 import React, {
+  useCallback,
   useEffect,
   useLayoutEffect,
+  useMemo,
   useRef,
   useState,
   forwardRef,
@@ -177,6 +179,7 @@ const CustomTemplateEditor = forwardRef(function CustomTemplateEditor(
     watermarkProps = null,
     watermarkEditable = false,
     onWatermarkChange = null,
+    onBoxesChange = null,
   },
   ref,
 ) {
@@ -220,6 +223,16 @@ const CustomTemplateEditor = forwardRef(function CustomTemplateEditor(
   );
 
   useEffect(() => {
+    try {
+      if (typeof onBoxesChange === "function") {
+        onBoxesChange((boxes || []).map((b) => ({ ...b })));
+      }
+    } catch (e) {
+      console.warn("onBoxesChange callback threw", e);
+    }
+  }, [boxes, onBoxesChange]);
+
+  useEffect(() => {
     if (background) {
       setPageBackground(background);
     }
@@ -251,7 +264,6 @@ const CustomTemplateEditor = forwardRef(function CustomTemplateEditor(
 
   useEffect(() => {
     if (!Array.isArray(initialBoxes) || initialBoxes.length === 0) {
-      setBoxes([]);
       return;
     }
 
@@ -281,8 +293,6 @@ const CustomTemplateEditor = forwardRef(function CustomTemplateEditor(
             candidateTop = yNum + bodyTopPct;
           }
 
-          // Don't clamp during initialization - only shift positions
-          // Clamping will happen during drag/resize and render will skip it for body
           nb.yPct = `${candidateTop}%`;
         } catch (e) {}
         return nb;
@@ -290,7 +300,13 @@ const CustomTemplateEditor = forwardRef(function CustomTemplateEditor(
     }
 
     const normalized = shiftBoxesToBody(initialBoxes || []);
-    setBoxes(normalized);
+
+    setBoxes((prev) => {
+      if (Array.isArray(prev) && prev.length > 0) {
+        return prev;
+      }
+      return normalized;
+    });
 
     return () => {
       createdUrlsRef.current.forEach((u) => {
@@ -313,8 +329,7 @@ const CustomTemplateEditor = forwardRef(function CustomTemplateEditor(
 
     function recompute() {
       const rect = el.getBoundingClientRect();
-      // compute horizontal paddings so removing/changing CSS padding doesn't
-      // break the available width calc (was hard-coded as 24 before)
+
       const style = window.getComputedStyle(el);
       const padLeft = parseFloat(style.paddingLeft || "0") || 0;
       const padRight = parseFloat(style.paddingRight || "0") || 0;
@@ -1020,6 +1035,13 @@ const CustomTemplateEditor = forwardRef(function CustomTemplateEditor(
     setPageBackground(nextPageStyle.background || pageBackground);
   }
 
+  useEffect(() => {
+    return () => {
+      wmDragRef.current = null;
+      wmResizeRef.current = null;
+    };
+  }, []);
+
   useImperativeHandle(ref, () => ({
     addText: () => addBox("text"),
     addField: () => addBox("placeholder"),
@@ -1073,54 +1095,186 @@ const CustomTemplateEditor = forwardRef(function CustomTemplateEditor(
   }));
 
   const wmDragRef = useRef(null);
+  const wmResizeRef = useRef(null);
+  const pendingWmRef = useRef(null);
+  const prevWmRef = useRef(JSON.stringify(localWatermark));
+  const watermarkElRef = useRef(null);
 
-  function onWatermarkMouseDown(e) {
-    if (!watermarkEditable) return;
-    e.stopPropagation();
-    wmDragRef.current = {
-      startX: e.clientX,
-      startY: e.clientY,
-      rect: innerCanvasRef.current.getBoundingClientRect(),
-      initial: { ...(localWatermark || {}) },
-    };
-    window.addEventListener("mousemove", onWatermarkMouseMove);
-    window.addEventListener("mouseup", onWatermarkMouseUp);
-  }
-
-  function onWatermarkMouseMove(e) {
-    if (!wmDragRef.current) return;
-    const info = wmDragRef.current;
-    const dx = e.clientX - info.startX;
-    const dy = e.clientY - info.startY;
-    const rect = info.rect;
-    if (!rect) return;
-    const dxPct = (dx / rect.width) * 100;
-    const dyPct = (dy / rect.height) * 100;
-    try {
-      const cur = { ...(info.initial || {}) };
-      const xNum = Number(String(cur.xPct || "50%").replace("%", "")) || 50;
-      const yNum = Number(String(cur.yPct || "50%").replace("%", "")) || 50;
-      const newX = Math.min(Math.max(0, xNum + dxPct), 100);
-      const newY = Math.min(Math.max(0, yNum + dyPct), 100);
-      const next = { ...cur, xPct: `${newX}%`, yPct: `${newY}%` };
+  const emitWatermarkIfChanged = useCallback(
+    (next) => {
+      const sNext = JSON.stringify(next);
+      if (sNext === prevWmRef.current) return;
+      prevWmRef.current = sNext;
       setLocalWatermark(next);
       if (typeof onWatermarkChange === "function") {
         try {
           onWatermarkChange(next);
-        } catch (err) {
-          console.warn("onWatermarkChange threw", err);
+        } catch (e) {
+          console.warn("onWatermarkChange threw", e);
         }
       }
-    } catch (err) {}
+    },
+    [onWatermarkChange],
+  );
+
+  function watermarkOnDrag(ev) {
+    if (!wmDragRef.current) return;
+    const info = wmDragRef.current;
+    const dx = ev.clientX - info.startX;
+    const dy = ev.clientY - info.startY;
+    const rect = info.rect;
+    const dxPct = (dx / rect.width) * 100;
+    const dyPct = (dy / rect.height) * 100;
+    const cur = { ...(info.initial || {}) };
+    const xNum = Number(String(cur.xPct || "50%").replace("%", "")) || 50;
+    const yNum = Number(String(cur.yPct || "50%").replace("%", "")) || 50;
+    const newX = Math.min(Math.max(0, xNum + dxPct), 100);
+    const newY = Math.min(Math.max(0, yNum + dyPct), 100);
+    pendingWmRef.current = { ...cur, xPct: `${newX}%`, yPct: `${newY}%` };
+    if (watermarkElRef.current) {
+      const dxPx = (dxPct / 100) * rect.width;
+      const dyPx = (dyPct / 100) * rect.height;
+      watermarkElRef.current.style.transform = `translate(${dxPx}px, ${dyPx}px)`;
+    }
   }
 
-  function onWatermarkMouseUp() {
+  function watermarkStopDrag() {
     wmDragRef.current = null;
-    window.removeEventListener("mousemove", onWatermarkMouseMove);
-    window.removeEventListener("mouseup", onWatermarkMouseUp);
+    if (watermarkElRef.current) {
+      watermarkElRef.current.style.transform = "";
+    }
+    if (pendingWmRef.current) {
+      emitWatermarkIfChanged(pendingWmRef.current);
+      pendingWmRef.current = null;
+    }
+    window.removeEventListener("mousemove", watermarkOnDrag);
+    window.removeEventListener("mouseup", watermarkStopDrag);
+    window.removeEventListener("touchmove", watermarkOnDrag);
+    window.removeEventListener("touchend", watermarkStopDrag);
   }
 
-  function watermarkStyle() {
+  function watermarkOnResize(ev) {
+    if (!wmResizeRef.current) return;
+    const state = wmResizeRef.current;
+    const dx = ev.clientX - state.startX;
+    const dy = ev.clientY - state.startY;
+    let newLeft = state.startLeft;
+    let newTop = state.startTop;
+    let newW = state.startW;
+    let newH = state.startH;
+    if (state.corner === "se") {
+      newW = state.startW + dx;
+      newH = state.startH + dy;
+    } else if (state.corner === "ne") {
+      newW = state.startW + dx;
+      newH = state.startH - dy;
+      newTop = state.startTop + dy;
+    } else if (state.corner === "sw") {
+      newW = state.startW - dx;
+      newH = state.startH + dy;
+      newLeft = state.startLeft + dx;
+    } else if (state.corner === "nw") {
+      newW = state.startW - dx;
+      newH = state.startH - dy;
+      newLeft = state.startLeft + dx;
+      newTop = state.startTop + dy;
+    }
+    const minPx = 20;
+    newW = Math.max(minPx, newW);
+    newH = Math.max(minPx, newH);
+    if (newLeft < 0) {
+      newW += newLeft;
+      newLeft = 0;
+    }
+    if (newTop < 0) {
+      newH += newTop;
+      newTop = 0;
+    }
+    newW = Math.min(newW, state.rect.width - newLeft);
+    newH = Math.min(newH, state.rect.height - newTop);
+    const centerXpx = newLeft + newW / 2;
+    const centerYpx = newTop + newH / 2;
+    pendingWmRef.current = {
+      ...state.initial,
+      xPct: `${(centerXpx / state.rect.width) * 100}%`,
+      yPct: `${(centerYpx / state.rect.height) * 100}%`,
+      wPct: `${(newW / state.rect.width) * 100}%`,
+      hPct: `${(newH / state.rect.height) * 100}%`,
+    };
+    if (watermarkElRef.current) {
+      const scale = newW / state.startW;
+      watermarkElRef.current.style.transform = `translate(${newLeft - state.startLeft}px, ${newTop - state.startTop}px) scale(${scale})`;
+    }
+  }
+
+  function watermarkStopResize() {
+    wmResizeRef.current = null;
+    if (watermarkElRef.current) {
+      watermarkElRef.current.style.transform = "";
+    }
+    if (pendingWmRef.current) {
+      emitWatermarkIfChanged(pendingWmRef.current);
+      pendingWmRef.current = null;
+    }
+    window.removeEventListener("mousemove", watermarkOnResize);
+    window.removeEventListener("mouseup", watermarkStopResize);
+    window.removeEventListener("touchmove", watermarkOnResize);
+    window.removeEventListener("touchend", watermarkStopResize);
+  }
+
+  function onWatermarkMouseDown(e) {
+    if (!watermarkEditable) return;
+    if (e.target?.dataset?.resize) return;
+    e.stopPropagation();
+    const rect = innerCanvasRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    wmDragRef.current = {
+      startX: e.clientX,
+      startY: e.clientY,
+      rect,
+      initial: { ...(localWatermark || {}) },
+    };
+    pendingWmRef.current = null;
+    window.addEventListener("mousemove", watermarkOnDrag);
+    window.addEventListener("mouseup", watermarkStopDrag);
+    window.addEventListener("touchmove", watermarkOnDrag, { passive: false });
+    window.addEventListener("touchend", watermarkStopDrag);
+  }
+
+  function startWatermarkResize(e, corner) {
+    if (!watermarkEditable) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const rect = innerCanvasRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    const localWm = localWatermark || {};
+    const xNum = Number(String(localWm.xPct || "50%").replace("%", "")) || 50;
+    const yNum = Number(String(localWm.yPct || "50%").replace("%", "")) || 50;
+    const wNum = Number(String(localWm.wPct || "60%").replace("%", "")) || 60;
+    const hNum = Number(String(localWm.hPct || "60%").replace("%", "")) || 60;
+    const leftPx = ((xNum - wNum / 2) / 100) * rect.width;
+    const topPx = ((yNum - hNum / 2) / 100) * rect.height;
+    const wPx = (wNum / 100) * rect.width;
+    const hPx = (hNum / 100) * rect.height;
+    wmResizeRef.current = {
+      corner,
+      startX: e.clientX,
+      startY: e.clientY,
+      startLeft: leftPx,
+      startTop: topPx,
+      startW: wPx,
+      startH: hPx,
+      rect,
+      initial: { ...localWm },
+    };
+    pendingWmRef.current = null;
+    window.addEventListener("mousemove", watermarkOnResize);
+    window.addEventListener("mouseup", watermarkStopResize);
+    window.addEventListener("touchmove", watermarkOnResize, { passive: false });
+    window.addEventListener("touchend", watermarkStopResize);
+  }
+
+  const watermarkStyle = useMemo(() => {
     if (!localWatermark) return { display: "none" };
     const xNum =
       Number(String(localWatermark.xPct || "50%").replace("%", "")) || 50;
@@ -1151,8 +1305,14 @@ const CustomTemplateEditor = forwardRef(function CustomTemplateEditor(
       userSelect: "none",
       touchAction: "none",
       objectFit: "contain",
+      zIndex: 55,
     };
-  }
+  }, [
+    localWatermark,
+    canvasWidthActual,
+    canvasHeightActual,
+    watermarkEditable,
+  ]);
 
   return (
     <div className={styles["cte-root"]}>
@@ -1224,13 +1384,102 @@ const CustomTemplateEditor = forwardRef(function CustomTemplateEditor(
             />
 
             {localWatermarkUrl && (
-              <img
-                src={localWatermarkUrl}
-                alt="watermark"
-                draggable={false}
+              <div
+                style={watermarkStyle}
                 onMouseDown={onWatermarkMouseDown}
-                style={watermarkStyle()}
-              />
+                role={watermarkEditable ? "button" : undefined}
+                aria-label="Watermark"
+              >
+                <img
+                  src={localWatermarkUrl}
+                  alt="watermark"
+                  draggable={false}
+                  style={{
+                    width: "100%",
+                    height: "100%",
+                    objectFit: "contain",
+                    pointerEvents: "none",
+                    display: "block",
+                    userSelect: "none",
+                  }}
+                />
+                {watermarkEditable && (
+                  <>
+                    <div
+                      data-resize="nw"
+                      onMouseDown={(e) => startWatermarkResize(e, "nw")}
+                      style={{
+                        position: "absolute",
+                        left: -6,
+                        top: -6,
+                        width: 12,
+                        height: 12,
+                        background: "#fff",
+                        border: "1px solid #0f1724",
+                        borderRadius: 2,
+                        zIndex: 60,
+                        touchAction: "none",
+                        cursor: "nwse-resize",
+                      }}
+                      title="Resize (NW)"
+                    />
+                    <div
+                      data-resize="ne"
+                      onMouseDown={(e) => startWatermarkResize(e, "ne")}
+                      style={{
+                        position: "absolute",
+                        right: -6,
+                        top: -6,
+                        width: 12,
+                        height: 12,
+                        background: "#fff",
+                        border: "1px solid #0f1724",
+                        borderRadius: 2,
+                        zIndex: 60,
+                        touchAction: "none",
+                        cursor: "nesw-resize",
+                      }}
+                      title="Resize (NE)"
+                    />
+                    <div
+                      data-resize="se"
+                      onMouseDown={(e) => startWatermarkResize(e, "se")}
+                      style={{
+                        position: "absolute",
+                        right: -6,
+                        bottom: -6,
+                        width: 12,
+                        height: 12,
+                        background: "#fff",
+                        border: "1px solid #0f1724",
+                        borderRadius: 2,
+                        zIndex: 60,
+                        touchAction: "none",
+                        cursor: "nwse-resize",
+                      }}
+                      title="Resize (SE)"
+                    />
+                    <div
+                      data-resize="sw"
+                      onMouseDown={(e) => startWatermarkResize(e, "sw")}
+                      style={{
+                        position: "absolute",
+                        left: -6,
+                        bottom: -6,
+                        width: 12,
+                        height: 12,
+                        background: "#fff",
+                        border: "1px solid #0f1724",
+                        borderRadius: 2,
+                        zIndex: 60,
+                        touchAction: "none",
+                        cursor: "nesw-resize",
+                      }}
+                      title="Resize (SW)"
+                    />
+                  </>
+                )}
+              </div>
             )}
 
             {boxes.map((b) => {
@@ -1251,8 +1500,6 @@ const CustomTemplateEditor = forwardRef(function CustomTemplateEditor(
 
               const declaredArea = b.area || areaFromTopPct(rawYnum, rawHnum);
 
-              // Don't clamp body boxes during render - only when user drags/resizes
-              // This prevents compression of preset fields
               const normalizedY =
                 declaredArea === "body"
                   ? rawYnum

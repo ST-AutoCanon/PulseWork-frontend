@@ -418,7 +418,7 @@ export default function TemplateBuilder() {
   const fileInputFieldRef = useRef(null);
   const basicEditorRef = useRef(null);
   const scratchEditorRef = useRef(null);
-  const [activeArea, setActiveArea] = useState("body");
+  const [activeArea, setActiveArea] = useState("header");
 
   const [bodyBoxes, setBodyBoxes] = useState(() =>
     (fieldsToBoxes(PRESET_FIELDS["letter"] || []) || []).map((b) => ({
@@ -621,6 +621,20 @@ export default function TemplateBuilder() {
     if (qrUrl || sealUrl) applyImageOverrides({ qr: qrUrl, seal: sealUrl });
   }, [qrUrl, sealUrl]);
 
+  useEffect(() => {
+    if (!watermarkFile) {
+      setPreviewWatermarkUrl(null);
+      return;
+    }
+    const u = URL.createObjectURL(watermarkFile);
+    setPreviewWatermarkUrl(u);
+    return () => {
+      try {
+        URL.revokeObjectURL(u);
+      } catch (e) {}
+    };
+  }, [watermarkFile]);
+
   const lastTapRef = useRef({ id: null, time: 0 });
   const singleTapTimerRef = useRef(null);
   const DOUBLE_TAP_MS = 350;
@@ -672,8 +686,14 @@ export default function TemplateBuilder() {
       if (!mRes.ok) throw new Error(`manifest not found (${mRes.status})`);
       const manifest = await mRes.json();
 
+      const entries = Array.isArray(manifest)
+        ? manifest
+        : Array.isArray(manifest.templates)
+          ? manifest.templates
+          : [];
+
       const loaded = await Promise.all(
-        manifest.map(async (entry) => {
+        entries.map(async (entry) => {
           const fileUrl = `${localBase}/${entry.file}`;
           let html = "";
           try {
@@ -686,6 +706,7 @@ export default function TemplateBuilder() {
               err,
             );
           }
+
           let thumbnail = null;
           if (entry.thumbnail) {
             try {
@@ -1634,19 +1655,32 @@ export default function TemplateBuilder() {
     return null;
   }
 
+  function ensureEditorAreaSynced() {
+    const r = getActiveEditorRef();
+    if (r?.current?.setActiveArea) {
+      try {
+        r.current.setActiveArea(activeArea);
+      } catch (e) {}
+    }
+  }
+
   function actionAddText() {
+    ensureEditorAreaSynced();
     const r = getActiveEditorRef();
     if (r?.current?.addText) r.current.addText();
   }
   function actionAddField() {
+    ensureEditorAreaSynced();
     const r = getActiveEditorRef();
     if (r?.current?.addField) r.current.addField();
   }
   function actionAddLogo() {
+    ensureEditorAreaSynced();
     const r = getActiveEditorRef();
     if (r?.current?.addLogo) r.current.addLogo();
   }
   function actionAddTable() {
+    ensureEditorAreaSynced();
     const r = getActiveEditorRef();
     if (r?.current?.addTable) r.current.addTable();
   }
@@ -1655,6 +1689,7 @@ export default function TemplateBuilder() {
     if (r?.current?.togglePreview) r.current.togglePreview();
   }
   function actionDeleteSelected() {
+    ensureEditorAreaSynced();
     const r = getActiveEditorRef();
     if (r?.current?.deleteSelected) r.current.deleteSelected();
   }
@@ -1930,8 +1965,47 @@ export default function TemplateBuilder() {
     sealUrl,
     setActiveArea: (area) => {
       const r = getActiveEditorRef();
-      if (r?.current?.setActiveArea) r.current.setActiveArea(area);
+      try {
+        if (r?.current?.getBoxes && typeof setBodyBoxes === "function") {
+          const currentBoxes = r.current.getBoxes() || [];
+          setBodyBoxes((prev) => {
+            const prevIds = (prev || []).map((b) => String(b.id));
+            const curIds = (currentBoxes || []).map((b) => String(b.id));
+            const same =
+              prevIds.length === curIds.length &&
+              prevIds.every((id, i) => id === curIds[i]);
+            return same ? prev : (currentBoxes || []).map((b) => ({ ...b }));
+          });
+        }
+      } catch (e) {
+        console.warn("Failed to persist editor boxes before switching area", e);
+      }
+
+      try {
+        if (r?.current?.setActiveArea) r.current.setActiveArea(area);
+      } catch (e) {
+        console.warn("editor.setActiveArea threw", e);
+      }
+
+      setActiveArea(area);
     },
+
+    onBoxesChange: (nextBoxes) => {
+      if (!Array.isArray(nextBoxes)) return;
+      try {
+        setBodyBoxes((prev) => {
+          const prevIds = (prev || []).map((b) => String(b.id));
+          const nextIds = (nextBoxes || []).map((b) => String(b.id));
+          const same =
+            prevIds.length === nextIds.length &&
+            prevIds.every((id, i) => id === nextIds[i]);
+          return same ? prev : (nextBoxes || []).map((b) => ({ ...b }));
+        });
+      } catch (e) {
+        console.warn("onBoxesChange handler failed", e);
+      }
+    },
+
     activeArea,
   };
 
@@ -2282,7 +2356,7 @@ export default function TemplateBuilder() {
         }}
         headerHeightPct={HEADER_HEIGHT_PCT}
         footerHeightPct={FOOTER_HEIGHT_PCT}
-        editorCanvasWidth={420}
+        editorCanvasWidth={794}
       />
       {saveModalOpen && (
         <div className={styles.modalOverlay} role="dialog" aria-modal="true">

@@ -2,9 +2,9 @@
 
 import React, { useEffect, useRef, useState } from "react";
 
-export default function TemplateEditor({ boxes = [], onChange, width = 420 }) {
+export default function TemplateEditor({ boxes = [], onChange, width = 794 }) {
   const a4Ratio = 297 / 210;
-  const w = Number(width) || 420;
+  const w = Number(width) || 794;
   const h = Math.round(w * a4Ratio);
 
   const [localBoxes, setLocalBoxes] = useState([]);
@@ -85,11 +85,11 @@ export default function TemplateEditor({ boxes = [], onChange, width = 420 }) {
 
     newLeft = Math.max(
       0,
-      Math.min(newLeft, Math.max(0, rect.width - (boxW || 0)))
+      Math.min(newLeft, Math.max(0, rect.width - (boxW || 0))),
     );
     newTop = Math.max(
       0,
-      Math.min(newTop, Math.max(0, rect.height - (boxH || 0)))
+      Math.min(newTop, Math.max(0, rect.height - (boxH || 0))),
     );
 
     setLocalBoxes((prev) =>
@@ -100,8 +100,8 @@ export default function TemplateEditor({ boxes = [], onChange, width = 420 }) {
               xPct: pxToPct(newLeft, rect.width),
               yPct: pxToPct(newTop, rect.height),
             }
-          : b
-      )
+          : b,
+      ),
     );
   }
 
@@ -121,7 +121,7 @@ export default function TemplateEditor({ boxes = [], onChange, width = 420 }) {
       const next = prev.map((b) =>
         b.id === boxId
           ? { ...b, style: { ...(b.style || {}), [prop]: value } }
-          : b
+          : b,
       );
       if (typeof onChange === "function")
         onChange(JSON.parse(JSON.stringify(next)));
@@ -235,8 +235,8 @@ export default function TemplateEditor({ boxes = [], onChange, width = 420 }) {
           textAlign === "center"
             ? "center"
             : textAlign === "right"
-            ? "flex-end"
-            : "flex-start";
+              ? "flex-end"
+              : "flex-start";
 
         return (
           <div
@@ -426,7 +426,7 @@ export default function TemplateEditor({ boxes = [], onChange, width = 420 }) {
                       window.confirm(
                         `Remove field "${
                           box.label || box.fieldName || box.id
-                        }"?`
+                        }"?`,
                       )
                     ) {
                       removeBox(box.id);

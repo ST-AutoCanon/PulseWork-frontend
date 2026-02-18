@@ -346,35 +346,69 @@ const SupervisorPlanViewer = () => {
     fetchTasks();
   }, [supervisorId, apiHeaders]);
 
-  useEffect(() => {
-    if (!supervisorId || !selectedEmployee) return;
-    const fetchProjects = async () => {
-      setLoadingProjects(true);
-      try {
-        const response = await axios.get(
-          `${process.env.NEXT_PUBLIC_BACKEND_URL}/projects/employeeProjects`,
-          {
-            params: { employeeId: selectedEmployee },
-            withCredentials: true,
-            headers: { "x-api-key": process.env.NEXT_PUBLIC_API_KEY || "" },
-            timeout: 10000,
-          }
-        );
-        const newProjects = {};
-        (response.data.projects || []).forEach((project) => {
-          newProjects[project.id] = project.project;
-        });
-        setProjects(newProjects);
-        setError(null);
-      } catch {
-        setProjects({});
-      } finally {
-        setLoadingProjects(false);
-      }
-    };
-    fetchProjects();
-  }, [supervisorId, selectedEmployee]);
+  // useEffect(() => {
+  //   if (!supervisorId || !selectedEmployee) return;
+  //   const fetchProjects = async () => {
+  //     setLoadingProjects(true);
+  //     try {
+  //       const response = await axios.get(
+  //         `${process.env.NEXT_PUBLIC_BACKEND_URL}/projects/employeeProjects`,
+  //         {
+  //           params: { employeeId: selectedEmployee },
+  //           withCredentials: true,
+  //           headers: { "x-api-key": process.env.NEXT_PUBLIC_API_KEY || "" },
+  //           timeout: 10000,
+  //         }
+  //       );
+  //       const newProjects = {};
+  //       (response.data.projects || []).forEach((project) => {
+  //         newProjects[project.id] = project.project;
+  //       });
+  //       setProjects(newProjects);
+  //       setError(null);
+  //     } catch {
+  //       setProjects({});
+  //     } finally {
+  //       setLoadingProjects(false);
+  //     }
+  //   };
+  //   fetchProjects();
+  // }, [supervisorId, selectedEmployee]);
+useEffect(() => {
+  if (!supervisorId || !selectedEmployee || !apiHeaders) return;
 
+  const fetchProjects = async () => {
+    setLoadingProjects(true);
+    try {
+      const response = await axios.get(
+        `${process.env.NEXT_PUBLIC_BACKEND_URL}/projects/employeeProjects`,
+        {
+          params: { employeeId: selectedEmployee },
+          withCredentials: true,
+          headers: apiHeaders,               // ← important change: use full headers
+          timeout: 10000,
+        }
+      );
+
+      const newProjects = {};
+      (response.data.projects || []).forEach((project) => {
+        newProjects[project.id] = project.project;
+      });
+
+      setProjects(newProjects);
+      setError(null);
+    } catch (err) {
+      console.error("Projects fetch failed:", err);
+      setProjects({});
+      // Optional: show user-visible error
+      // setError("Failed to load projects for this employee.");
+    } finally {
+      setLoadingProjects(false);
+    }
+  };
+
+  fetchProjects();
+}, [supervisorId, selectedEmployee, apiHeaders]);   // ← add apiHeaders to deps
   const weekIds = useMemo(() => {
     const unique = [...new Set(tasks.map((t) => t.week_id))];
     return unique.sort();

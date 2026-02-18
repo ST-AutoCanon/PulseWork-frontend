@@ -526,6 +526,9 @@ const TaskManagement = () => {
           messages: [],
         },
       ]);
+      await new Promise(resolve => setTimeout(resolve, 700));  // 500–1200 ms usually enough
+
+    await fetchTasks();
       setAlertModal({ isVisible: true, message: "Task assigned successfully" });
       closeAssignForm();
     } catch (e) {

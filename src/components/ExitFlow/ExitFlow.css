@@ -5,7 +5,50 @@
   background: white;
   border-radius: 16px;
 }
+/* Review Modal - Better button alignment */
+.exf-modal-content .modal-footer {
+  display: flex;
+  justify-content: flex-end;          /* push everything to the right */
+  align-items: center;                /* vertical center */
+  gap: 12px;                          /* consistent spacing between buttons */
+  flex-wrap: wrap;                    /* prevent overflow on small screens */
+  padding: 16px 24px;
+  border-top: 1px solid #e5e7eb;      /* subtle separator */
+  background: #f9fafb;                /* light bg for contrast */
+}
 
+.exf-modal-content .action-buttons {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.exf-modal-content .btn {
+  min-width: 120px;                   /* prevent tiny buttons */
+  padding: 10px 20px;
+  font-weight: 500;
+  border-radius: 6px;
+  transition: all 0.2s;
+}
+
+.exf-modal-content .btn-success,
+.exf-modal-content .btn-danger {
+  flex: 0 1 auto;                     /* grow/shrink naturally */
+}
+
+/* Optional: make "as Supervisor" text smaller but keep button readable */
+.exf-modal-content .btn-success,
+.exf-modal-content .btn-danger {
+  white-space: nowrap;                /* prevent text wrapping inside button */
+}
+
+/* If warning message is pushing things out of alignment */
+.exf-modal-content .warning-message {
+  margin-right: auto;                 /* push warning to left, buttons stay right */
+  flex: 1 1 100%;
+  text-align: left;
+}
 /* ── Initial Apply Area ── */
 .exf-resignation-apply-area {
   text-align: center;

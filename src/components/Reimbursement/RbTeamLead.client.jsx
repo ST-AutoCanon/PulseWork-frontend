@@ -732,175 +732,48 @@ const RbTeamLead = () => {
         return;
       }
 
-      const serverBase =
-        (backendBase && String(backendBase).trim()) || "http://localhost:5001";
-      const absBase = serverBase.replace(/\/$/, "");
-
-      const tryFetchBlob = async (url) => {
-        try {
-          const resp = await axios.get(url, {
-            withCredentials: true,
-            headers: buildHeaders(),
-            responseType: "blob",
-          });
-          return {
-            ok: true,
-            blob: resp.data,
-            contentType: resp.headers["content-type"],
-          };
-        } catch (err) {
-          return { ok: false, status: err?.response?.status || null, err };
-        }
-      };
-
+      const authToken = localStorage.getItem("token");
       const fetchedFiles = await Promise.all(
-        (files || []).map(async (file) => {
-          const filename =
-            file.filename || file.file_name || file.fileName || "";
-          console.info("Attempting fetch for attachment", {
-            claimId: claim?.id,
-            filename,
-            file,
-            claimEmployee: claim?.employee_id,
-          });
-
-          // 0) Try canonical serve endpoint first (preferred)
-          if (claim?.id && filename) {
-            try {
-              const serveUrl = `${absBase}/reimbursement/attachment/serve?claimId=${encodeURIComponent(
-                claim.id,
-              )}&filename=${encodeURIComponent(filename)}`;
-              const served = await tryFetchBlob(serveUrl);
-              if (served.ok)
-                return {
-                  name: filename,
-                  url: URL.createObjectURL(served.blob),
-                };
-            } catch (e) {
-              console.debug("serve endpoint attempt failed", e);
-            }
-          }
-
-          // 1) Try naive legacy path if year/month parseable and claim employee available
-          const match = String(filename).match(/^(\d{4})-(\d{2})-/);
-          const year = match ? match[1] : null;
-          const month = match ? match[2] : null;
-          const empIdFromClaim =
-            claim?.employee_id || claim?.employeeId || claim?.empId;
-
-          if (year && month && empIdFromClaim) {
-            const cand = `${absBase}/reimbursement/${encodeURIComponent(
-              year,
-            )}/${encodeURIComponent(month)}/${encodeURIComponent(
-              empIdFromClaim,
-            )}/${encodeURIComponent(filename)}`;
-            const result = await tryFetchBlob(cand);
-            if (result.ok)
-              return { name: filename, url: URL.createObjectURL(result.blob) };
-          }
-
-          // 2) Query metadata endpoint (if available) and try server-provided options
+        files.map(async (file) => {
           try {
-            const metaUrl = `${absBase}/reimbursement/attachment/meta?claimId=${encodeURIComponent(
-              claim?.id || "",
-            )}&filename=${encodeURIComponent(filename)}`;
-            const metaResp = await axios.get(metaUrl, {
+            if (!file?.filename && !file?.file_name) return null;
+            const filename = file.filename || file.file_name;
+            const match = filename.match(/^(\d{4})-(\d{2})-\d{2}/);
+            if (!match) return null;
+            const year = match[1];
+            const month = match[2];
+            const empId = claim.employee_id;
+            const fileUrl = `${process.env.NEXT_PUBLIC_BACKEND_URL}/reimbursement/${orgId}/${year}/${month}/${empId}/${filename}`;
+
+            const response = await axios.get(fileUrl, {
               withCredentials: true,
-              headers: buildHeaders(),
+              headers: {
+                "x-employee-id": String(empId),
+                Authorization: authToken ? `Bearer ${authToken}` : undefined,
+              },
+              responseType: "blob",
             });
-            const attachmentsMeta = Array.isArray(metaResp.data?.attachments)
-              ? metaResp.data.attachments
-              : [];
 
-            if (attachmentsMeta.length) {
-              const att = attachmentsMeta[0];
-
-              // 2a) If DB row provides a fully-qualified URL, try it
-              if (att.url && /^https?:\/\//i.test(att.url)) {
-                const r = await tryFetchBlob(att.url);
-                if (r.ok)
-                  return { name: filename, url: URL.createObjectURL(r.blob) };
-              }
-
-              // 2b) If DB row has file_path pointing into your project (absolute or relative),
-              // attempt to derive a backend URL by locating the 'reimbursement/...' substring.
-              if (att.file_path) {
-                try {
-                  const p = String(att.file_path);
-                  const idx = p.toLowerCase().indexOf("reimbursement");
-                  if (idx !== -1) {
-                    // normalize backslashes -> forward slashes for URL
-                    const rel = p.slice(idx).replace(/\\/g, "/");
-                    const candidatePath = `${absBase}/${rel.replace(
-                      /^\/+/,
-                      "",
-                    )}`;
-                    const r2 = await tryFetchBlob(candidatePath);
-                    if (r2.ok)
-                      return {
-                        name: filename,
-                        url: URL.createObjectURL(r2.blob),
-                      };
-                  }
-                } catch (e) {
-                  console.debug("file_path -> candidate URL attempt failed", e);
-                }
-              }
-
-              // 2c) If metadata includes employee_id + file_name, try reconstructed path
-              const attEmp = att.employee_id || att.emp_id || att.employeeId;
-              const attName =
-                att.file_name || att.filename || att.fileName || filename;
-              if (attEmp && attName) {
-                const m2 = String(attName).match(/^(\d{4})-(\d{2})-/);
-                if (m2) {
-                  const c = `${absBase}/reimbursement/${m2[1]}/${
-                    m2[2]
-                  }/${encodeURIComponent(attEmp)}/${encodeURIComponent(
-                    attName,
-                  )}`;
-                  const r3 = await tryFetchBlob(c);
-                  if (r3.ok)
-                    return { name: attName, url: URL.createObjectURL(r3.blob) };
-                }
-              }
-
-              // 2d) As a last resort, try serving using the claimId + filename again (in case meta changed server-side)
-              if (claim?.id && filename) {
-                try {
-                  const serveAgain = `${absBase}/reimbursement/attachment/serve?claimId=${encodeURIComponent(
-                    claim.id,
-                  )}&filename=${encodeURIComponent(filename)}`;
-                  const s2 = await tryFetchBlob(serveAgain);
-                  if (s2.ok)
-                    return {
-                      name: filename,
-                      url: URL.createObjectURL(s2.blob),
-                    };
-                } catch {}
-              }
-            }
-          } catch (metaErr) {
-            // metadata endpoint might not exist — that's OK, continue to other fallbacks
-            console.debug(
-              "Attachment metadata lookup failed or missing",
-              metaErr?.response?.data || metaErr?.message || metaErr,
+            return {
+              name: filename,
+              url: URL.createObjectURL(
+                new Blob([response.data], {
+                  type: response.headers["content-type"],
+                }),
+              ),
+            };
+          } catch (err) {
+            console.warn(
+              "attachment fetch failed for",
+              file,
+              err?.message || err,
             );
+            return null;
           }
-
-          // 3) Nothing worked for this file
-          console.warn("All attempts failed for", filename);
-          return null;
         }),
       );
 
-      const goodFiles = (fetchedFiles || []).filter(Boolean);
-      if (goodFiles.length === 0) {
-        showAlert("No attachments could be retrieved (file not found).");
-        return;
-      }
-
-      setSelectedFiles(goodFiles);
+      setSelectedFiles(fetchedFiles.filter(Boolean));
       setSelectedClaim(claim);
       setIsModalOpen(true);
     } catch (error) {
@@ -1059,10 +932,106 @@ const RbTeamLead = () => {
       setParticipantsSaving(false);
     }
   };
-  const handleDownloadPDF = (claim) => {
-    showAlert(
-      "Download not implemented in this patch — implement server-side file endpoint.",
-    );
+  function sanitizeFileName(name = "") {
+    // remove control chars, / \ ? % * : | " < > and replace spaces with _
+    // keep it to a reasonable length
+    return String(name)
+      .normalize("NFKD") // normalize unicode
+      .replace(/[\u0000-\u001F<>:"/\\|?*]+/g, "") // remove illegal chars
+      .trim()
+      .replace(/\s+/g, "_")
+      .slice(0, 100);
+  }
+
+  // -- improved handleDownload --
+  const handleDownload = async (claim) => {
+    try {
+      const url =
+        (backendBase ? `${backendBase}` : "") + `/download/${claim.id}`;
+      const headers = buildHeaders();
+
+      console.log("Download URL:", url);
+      console.log("Request Headers:", headers);
+
+      if (authToken) headers.Authorization = `Bearer ${authToken}`;
+
+      const response = await axios.get(url, {
+        withCredentials: true,
+        headers,
+        responseType: "blob",
+      });
+
+      // check HTTP status if available
+      if (response.status && response.status !== 200) {
+        throw new Error(`Download failed: HTTP ${response.status}`);
+      }
+
+      // derive filename
+      let filename = "";
+      const empName = claim.employee_name || claim.employeeName || claim.name;
+      if (empName) {
+        const base = sanitizeFileName(empName) || `Reimbursement_${claim.id}`;
+        filename = `${base}_Reimbursement_${claim.id}.pdf`;
+      }
+
+      // fallback to content-disposition header
+      if (!filename) {
+        const cd = response.headers && response.headers["content-disposition"];
+        if (cd) {
+          const filenameRegex = /filename[^;=\n]*=(['"]?)([^;\n]*)\1/;
+          const matches = filenameRegex.exec(cd);
+          if (matches && matches[2]) {
+            // remove wrapping quotes and URL-decode if needed
+            filename = decodeURIComponent(matches[2].replace(/["']/g, ""));
+          }
+        }
+      }
+
+      if (!filename) {
+        filename = `Reimbursement_${claim.id}.pdf`;
+      }
+      if (!filename.toLowerCase().endsWith(".pdf")) filename += ".pdf";
+
+      // create blob and download
+      const blob = new Blob([response.data], { type: "application/pdf" });
+
+      // IE / Edge fallback
+      if (window.navigator && window.navigator.msSaveOrOpenBlob) {
+        window.navigator.msSaveOrOpenBlob(blob, filename);
+        return;
+      }
+
+      const urlObj = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = urlObj;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(urlObj);
+
+      console.log("Download started for", filename);
+    } catch (error) {
+      // show full error for debugging
+      console.error("Error downloading reimbursement PDF:", error);
+
+      // if server returned an error blob, try to read it as text to see server message
+      try {
+        if (error?.response?.data && error.response.data instanceof Blob) {
+          const reader = new FileReader();
+          reader.onload = function () {
+            console.error("Server error text:", reader.result);
+          };
+          reader.readAsText(error.response.data);
+        }
+      } catch (rErr) {
+        console.error("Failed to read error blob:", rErr);
+      }
+
+      alert(
+        "There was an issue downloading the file. Check console for details.",
+      );
+    }
   };
   const updateStatus = async (claimId) => {
     try {
@@ -1380,7 +1349,7 @@ const RbTeamLead = () => {
                           })}
                       </span>
                     </div>
-                    <div className="toggle-btn">
+                    <div className="rbtoggle-btn">
                       {expandedRows[employee.employee_id] ? (
                         <FaChevronUp className="drop-icon" />
                       ) : (
@@ -1742,7 +1711,7 @@ const RbTeamLead = () => {
                                       <FiDownload
                                         size={24}
                                         className="download-btn"
-                                        onClick={() => handleDownloadPDF(rb)}
+                                        onClick={() => handleDownload(rb)}
                                         title="Download PDF"
                                       />
                                     </td>

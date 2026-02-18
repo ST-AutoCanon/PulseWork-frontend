@@ -314,6 +314,17 @@ td:hover {
 
   position: relative;
 }
+.rbtoggle-btn {
+  padding: 8px 20px;
+  background-color: #79c42b;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 15px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
 
 .invoice-cell[title]:hover::after,
 .rb-sub-table .invoice-cell[title]:hover::after {

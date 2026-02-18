@@ -1180,6 +1180,7 @@ export default function Admin({ openPolicyId = null }) {
         `${API_BASE}/api/leave/${query.leave_id}/attachments`,
         `${API_BASE}/api/admin/leave/${query.leave_id}/attachments`,
         `${API_BASE}/employee/leave/${query.leave_id}/attachments`,
+        `${API_BASE}/api/employee/leave/${query.leave_id}/attachments`,
       ].filter(Boolean);
 
       for (const url of candidates) {
@@ -1273,30 +1274,15 @@ export default function Admin({ openPolicyId = null }) {
       const blob = new Blob([arrayBuffer], { type: mime });
       const objectUrl = URL.createObjectURL(blob);
 
-      // Preferred: open a blank window and set its location to the blob URL.
-      // This avoids replacing the current tab and normally renders inline when possible.
-      let opened = false;
-      try {
-        const newWin = window.open("", "_blank", "noopener,noreferrer");
-        if (newWin) {
-          newWin.location.href = objectUrl;
-          opened = true;
-        }
-      } catch (e) {
-        opened = false;
-      }
-
-      // Fallback: create anchor WITHOUT download attribute so browser opens inline if it can.
-      if (!opened) {
-        const a = document.createElement("a");
-        a.href = objectUrl;
-        a.target = "_blank";
-        a.rel = "noopener noreferrer";
-        // do NOT set a.download — that forces a download
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-      }
+      // Use anchor to open in new tab (more reliable for blob URLs)
+      const a = document.createElement("a");
+      a.href = objectUrl;
+      a.target = "_blank";
+      a.rel = "noopener noreferrer";
+      // do NOT set a.download — that forces a download
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
 
       // revoke after some time (give user time to view)
       setTimeout(

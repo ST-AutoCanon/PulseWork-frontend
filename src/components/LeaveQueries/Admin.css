@@ -457,3 +457,196 @@
     transform 0.1s ease,
     box-shadow 0.3s ease;
 }
+
+/* ---------------------------
+   Common modal styles (shared)
+   --------------------------- */
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1200;
+  padding: 20px;
+  transition: opacity 180ms ease;
+}
+
+.modal {
+  background: #fff;
+  border-radius: 10px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+  max-width: 920px;
+  width: 100%;
+  max-height: 90vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  transform-origin: center;
+}
+
+/* content wrapper (scrollable) */
+.modal-content {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  overflow: hidden;
+}
+
+/* Header (title + close) */
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px;
+  border-bottom: 1px solid #eee;
+  background: #fafafa;
+}
+
+.modal-header h4,
+.modal-header .modal-title {
+  margin: 0;
+  font-size: 1.05rem;
+  color: #222;
+  font-weight: 600;
+}
+
+/* Close button */
+.modal-close-btn {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-size: 18px;
+  line-height: 1;
+  padding: 6px;
+  border-radius: 6px;
+  color: #666;
+}
+.modal-close-btn:hover {
+  background: rgba(0, 0, 0, 0.04);
+  color: #111;
+}
+
+/* Body: scrollable area for large content like attachments */
+.modal-body {
+  padding: 12px 18px;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  max-height: calc(90vh - 180px); /* leave room for header/footer */
+  background: #fff;
+}
+
+/* Footer: actions (Close, Confirm, etc) */
+.modal-footer {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 12px 18px;
+  border-top: 1px solid #eee;
+  background: #fafafa;
+}
+
+/* Buttons container (for multiple buttons passed as props) */
+.modal-buttons {
+  display: flex;
+  gap: 8px;
+}
+
+/* Primary / secondary modal button styles */
+.modal-footer .btn {
+  padding: 8px 14px;
+  border-radius: 6px;
+  border: none;
+  font-size: 14px;
+  cursor: pointer;
+}
+.modal-footer .btn-primary {
+  background-color: #00468c;
+  color: #fff;
+}
+.modal-footer .btn-secondary {
+  background: #fff;
+  color: #222;
+  border: 1px solid #ddd;
+}
+
+/* Small responsive adjustments */
+@media (max-width: 640px) {
+  .modal {
+    max-width: 98%;
+    border-radius: 8px;
+  }
+  .modal-body {
+    padding: 10px;
+    max-height: calc(90vh - 160px);
+  }
+  .modal-header,
+  .modal-footer {
+    padding: 10px;
+  }
+}
+
+/* ---------------------------
+   Make attachment modal use common styles
+   (keeps special attachment rules but within modal body)
+   --------------------------- */
+
+/* previous attachment-specific block — now inside modal body */
+.attachments-modal-content,
+.attachments-modal-content * {
+  box-sizing: border-box;
+}
+
+.attachments-modal-content {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 6px 0;
+}
+
+/* each attachment row */
+.attachment-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 6px;
+  background: #fff;
+  border: 1px solid #f2f2f2;
+}
+
+/* left meta (icon + name + mime) */
+.attachment-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0; /* allow truncation if narrow */
+}
+.attachment-meta .file-name {
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* actions for each attachment (Open / Download) */
+.attachment-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-shrink: 0;
+}
+.attachment-link-button,
+.attachment-actions button {
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: 1px solid #ddd;
+  background: #fff;
+  cursor: pointer;
+  font-size: 13px;
+}

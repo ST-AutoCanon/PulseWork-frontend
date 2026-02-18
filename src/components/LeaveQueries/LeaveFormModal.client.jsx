@@ -34,6 +34,19 @@ export default function LeaveFormModal({
   const formatIso = (d) =>
     d instanceof Date ? d.toISOString().split("T")[0] : String(d);
 
+  // compute one month ago ISO date (allow past dates up to 1 month back)
+  const oneMonthAgoIso = useMemo(() => {
+    try {
+      const d = new Date();
+      // Move back one month — preserves day where possible
+      d.setMonth(d.getMonth() - 1);
+      d.setHours(0, 0, 0, 0);
+      return formatIso(d);
+    } catch {
+      return todayIso;
+    }
+  }, [todayIso]);
+
   const findSettingInPolicyOrDefault = (typeKey) => {
     if (!typeKey) return null;
     const keyLower = String(typeKey || "").toLowerCase();
@@ -162,7 +175,20 @@ export default function LeaveFormModal({
   const selectedOpt = leaveTypeOptions.find(
     (o) => String(o.type) === String(formData.leavetype),
   );
-  const effectiveMinStart = editingId ? todayIso : minStartAllowed || todayIso;
+
+  // effectiveMinStart logic:
+  // - If editing: allow dates up to 1 month back (oneMonthAgoIso)
+  // - If not editing and advanceNoticeDays > 0: respect minStartAllowed (likely future date)
+  // - Otherwise (no notice): allow dates up to 1 month back (oneMonthAgoIso)
+  const effectiveMinStart = (() => {
+    if (editingId) return oneMonthAgoIso;
+    if (advanceNoticeDays > 0) {
+      // keep the notice-enforced future minimum
+      return minStartAllowed || todayIso;
+    }
+    // no notice -> allow past dates up to one month ago
+    return oneMonthAgoIso;
+  })();
 
   // Attachment logic
   const requestedDays = calcRequestedDays();
@@ -337,7 +363,8 @@ export default function LeaveFormModal({
                 >
                   This leave requires <strong>{advanceNoticeDays}</strong>{" "}
                   day(s) advance. Earliest allowed start:{" "}
-                  <strong>{effectiveMinStart}</strong>.
+                  <strong>{computeMinStartForNotice(advanceNoticeDays)}</strong>
+                  .
                 </div>
               )}
             </div>

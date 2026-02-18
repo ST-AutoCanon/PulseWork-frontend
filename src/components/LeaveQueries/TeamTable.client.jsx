@@ -253,139 +253,26 @@ export default function TeamTable({
     });
   };
 
-  // closeAttachments helper (fixed: was missing previously)
   const closeAttachments = useCallback(() => {
     setAttachmentsModal({ isVisible: false, title: "", files: [] });
   }, []);
 
   const openFileInNewTab = async (file) => {
-    if (!file) return;
-
-    const attachmentId = file.id || file.attachment_id || null;
-    let url = "";
-    if (attachmentId) {
-      const base = API_BASE.replace(/\/$/, "");
-      url = `${base}/attachments/${encodeURIComponent(attachmentId)}`;
-    } else {
-      url = file.url || file.file_url || file.file_path || "";
-      if (!/^https?:\/\//i.test(url) && API_BASE) {
-        url = `${API_BASE.replace(/\/$/, "")}/${String(url).replace(/^\//, "")}`;
-      }
-    }
-
-    if (!url) {
-      alert("No URL available for this file.");
-      return;
-    }
-
-    // Open a new blank window synchronously (avoids popup blocker)
-    const newWin = window.open("", "_blank", "noopener,noreferrer");
-
-    // If newWin exists, write a minimal loading screen to reduce the about:blank flash
-    if (newWin && newWin.document) {
-      try {
-        const title = "Opening attachment…";
-        const html = `
-         <!doctype html>
-         <html>
-           <head>
-             <title>${title}</title>
-             <meta name="viewport" content="width=device-width,initial-scale=1" />
-             <style>
-               body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;color:#333}
-               .loader{display:flex;flex-direction:column;align-items:center;gap:12px}
-               .spinner{width:48px;height:48px;border-radius:50%;border:5px solid rgba(0,0,0,0.08);border-top-color:rgba(0,0,0,0.5);animation:spin 1s linear infinite}
-               @keyframes spin{to{transform:rotate(360deg)}}
-               .msg{font-size:14px}
-             </style>
-           </head>
-           <body>
-             <div class="loader">
-               <div class="spinner" aria-hidden="true"></div>
-               <div class="msg">Loading attachment…</div>
-             </div>
-           </body>
-         </html>
-       `;
-        newWin.document.open();
-        newWin.document.write(html);
-        newWin.document.close();
-      } catch (e) {
-        // writing might fail in strict cross-origin scenarios; ignore
-      }
-    }
-
     try {
-      const res = await fetch(url, {
-        method: "GET",
-        credentials: "include",
-        headers: buildHeaders(),
-      });
-
-      if (!res.ok) {
-        let json = null;
-        try {
-          json = await res.json();
-        } catch (e) {}
-        const serverMsg =
-          (json && (json.message || json.error)) ||
-          `Failed to fetch file (HTTP ${res.status})`;
-        if (newWin)
-          try {
-            newWin.close();
-          } catch (_) {}
-        alert(serverMsg);
+      const url = file?.url || file?.file_path || "";
+      if (!url) {
+        console.error("Invalid file URL");
         return;
       }
 
-      const blob = await res.blob();
-      const objectUrl = URL.createObjectURL(blob);
+      const resolvedUrl = url.startsWith("/")
+        ? `${API_BASE.replace(/\/$/, "")}${url}`
+        : url;
 
-      if (newWin) {
-        try {
-          newWin.location.href = objectUrl;
-        } catch (e) {
-          // fallback: write an <iframe> inside the loading page and set src there
-          try {
-            newWin.document.body.innerHTML = `<iframe src="${objectUrl}" style="border:0;width:100vw;height:100vh"></iframe>`;
-          } catch (_) {
-            const a = document.createElement("a");
-            a.href = objectUrl;
-            a.target = "_blank";
-            a.rel = "noopener noreferrer";
-            document.body.appendChild(a);
-            a.click();
-            a.remove();
-            try {
-              newWin.close();
-            } catch (_) {}
-          }
-        }
-      } else {
-        // popup blocked: anchor fallback (may still be blocked but it's best-effort)
-        const a = document.createElement("a");
-        a.href = objectUrl;
-        a.target = "_blank";
-        a.rel = "noopener noreferrer";
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-      }
-
-      // revoke after a reasonable delay
-      setTimeout(() => {
-        try {
-          URL.revokeObjectURL(objectUrl);
-        } catch (e) {}
-      }, 60 * 1000);
+      // Open the resolved URL directly
+      window.open(resolvedUrl, "_blank", "noopener,noreferrer");
     } catch (err) {
-      console.error("[openFileInNewTab] error:", err);
-      try {
-        if (newWin) newWin.close();
-      } catch (_) {}
-      alert(
-        "Could not open file. Network error or server refused access. Check console.",
-      );
+      console.error("Failed to open file in new tab:", err);
     }
   };
 
@@ -746,7 +633,6 @@ export default function TeamTable({
         <table className="leave-requests">
           <thead>
             <tr>
-              <th>Emp Name</th>
               <th>Emp ID</th>
               <th>Leave Type</th>
               <th>Half/Full</th>
@@ -812,10 +698,6 @@ export default function TeamTable({
                   key={leave.leave_id}
                   className={isAlreadyUpdated(leave) ? "row-updated" : ""}
                 >
-                  <td>
-                    {leave.name ||
-                      `${leave.first_name || ""} ${leave.last_name || ""}`.trim()}
-                  </td>
                   <td>{leave.employee_id}</td>
                   <td>{leave.leave_type}</td>
                   <td>{leave.H_F_day}</td>
@@ -918,13 +800,13 @@ export default function TeamTable({
             <details key={leave.leave_id} className="compact-item">
               <summary className="compact-summary">
                 <div className="compact-main">
-                  <strong>{name}</strong>
                   <span className="compact-dates">
                     {parseLocalDate(leave.start_date)} →{" "}
                     {parseLocalDate(leave.end_date)}
                   </span>
                   <div style={{ fontSize: "0.9em", color: "#555" }}>
-                    {leave.leave_type} • {days} {days === 1 ? "day" : "days"}
+                    {name} • {leave.leave_type} • {days}{" "}
+                    {days === 1 ? "day" : "days"}
                   </div>
                 </div>
                 {renderStatusBadge(currentStatus)}
@@ -1044,8 +926,7 @@ export default function TeamTable({
         })}
       </div>
 
-      {/* Attachments modal — shows file names; clicking name opens file in new tab */}
-      <Modal
+      {/* <Modal
         isVisible={attachmentsModal.isVisible}
         onClose={closeAttachments}
         buttons={[{ label: "Close", onClick: closeAttachments }]}
@@ -1125,6 +1006,66 @@ export default function TeamTable({
               );
             })}
           </ul>
+        </div>
+      </Modal> */}
+      <Modal
+        isVisible={attachmentsModal.isVisible}
+        onClose={closeAttachments}
+        buttons={[{ label: "Close", onClick: closeAttachments }]}
+      >
+        <div className="professional-attachments-modal">
+          <h4 className="modal-title">
+            {attachmentsModal.title || "Attachments"}
+          </h4>
+
+          {attachmentsModal.files.length === 0 ? (
+            <div className="no-files">
+              <p>No attachments found for this leave request.</p>
+            </div>
+          ) : (
+            <div className="attachments-list">
+              {attachmentsModal.files.map((f, idx) => {
+                const safeName = f.file_name || `Attachment ${idx + 1}`;
+                const urlCandidate = f.url || f.file_path || f.file_url || "";
+                const fileSize = f.size
+                  ? `${(f.size / 1024).toFixed(1)} KB`
+                  : null;
+
+                return (
+                  <div key={f.id || idx} className="attachment-row">
+                    <div className="attachment-left">
+                      <MdOutlineAttachFile className="file-icon" />
+                      <div className="attachment-details">
+                        <button
+                          className="file-name-btn"
+                          onClick={() => openFileInNewTab(f)}
+                        >
+                          {safeName}
+                        </button>
+                        <div className="attachment-meta">
+                          {f.mime_type && <span>{f.mime_type}</span>}
+                          {fileSize && <span>{fileSize}</span>}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="attachment-right">
+                      {urlCandidate ? (
+                        <button
+                          className="open-btn"
+                          onClick={() => openFileInNewTab(f)}
+                        >
+                          Open
+                        </button>
+                      ) : (
+                        <span className="no-url">No preview available</span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       </Modal>
     </>

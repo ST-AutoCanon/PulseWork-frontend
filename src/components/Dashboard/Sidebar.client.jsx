@@ -40,7 +40,7 @@ import GeneratePayslip from "../generate_payslip/GeneratePayslip.client";
 import OvertimeDetails from "../Compensation/OvertimeDetails";
 import OvertimeSupervisor from "../Compensation/overtimeSupervisor";
 import ExitFlow from "../ExitFlow/ExitFlow.client";
-
+import TaskManagementHr from "../TaskManagementHr/TaskManagementHr.jsx";
 
 const Sidebar = ({ setActiveContent }) => {
   const { user, hydrated } = useAuth();
@@ -124,7 +124,9 @@ const toggleDropdown = (type) => {
       "/ExitFlow": () => <ExitFlow />,
       "/TaskManagement": (role, sub) => {
         if (sub === "admin" && role === "Admin") return <TaskManagementAdmin />;
-        if (sub === "team") return <TaskManagement />;
+if (role === "HR" && sub === "hr") {           // ← new condition
+        return <TaskManagementHr />;
+      }        if (sub === "team") return <TaskManagement />;
         return <TaskManagementEmployee />;
       },
     }),
@@ -522,7 +524,7 @@ const toggleDropdown = (type) => {
               </ul>
             )}
 
-            {item.path === "/TaskManagement" && showTaskDropdown && (
+            {/* {item.path === "/TaskManagement" && showTaskDropdown && (
               <ul className="desktop-submenu">
                 {user?.role === "Admin" && (
                   <li
@@ -565,7 +567,70 @@ const toggleDropdown = (type) => {
                   </li>
                 )}
               </ul>
-            )}
+            )} */}
+            {item.path === "/TaskManagement" && showTaskDropdown && (
+  <ul className="desktop-submenu">
+
+    {/* 1. Admin Task Management – only visible to Admin */}
+    {user?.role === "Admin" && (
+      <li
+        className={activeSubItem === "admin" ? "active" : ""}
+        onClick={(e) => {
+          e.stopPropagation();
+          handleMenuClick(item, "admin");
+        }}
+      >
+        <MdIcons.MdOutlineAdminPanelSettings size={20} />
+        <span>Admin Task Management</span>
+      </li>
+    )}
+
+    {/* 2. Tasks-HR – visible only to HR */}
+    {user?.role === "HR" && (
+      <li
+        className={activeSubItem === "hr" ? "active" : ""}
+        onClick={(e) => {
+          e.stopPropagation();
+          handleMenuClick(item, "hr");
+        }}
+      >
+        <MdIcons.MdOutlineAdminPanelSettings size={20} />
+        <span>Tasks-HR</span>
+      </li>
+    )}
+
+    {/* 3. My Team Tasks – visible if user has subordinates (including HR) */}
+    {!loadingSubordinates && hasSubordinates && (
+      <li
+        className={activeSubItem === "team" ? "active" : ""}
+        onClick={(e) => {
+          e.stopPropagation();
+          handleMenuClick(item, "team");
+        }}
+      >
+        <MdIcons.MdPeopleAlt size={20} />
+        <span>My Team Tasks</span>
+      </li>
+    )}
+
+    {/* 4. My Tasks – visible to everyone except pure Admin */}
+    {user?.role !== "Admin" && (
+      <li
+        className={
+          activeSubItem === "employee" || !activeSubItem ? "active" : ""
+        }
+        onClick={(e) => {
+          e.stopPropagation();
+          handleMenuClick(item, "employee");
+        }}
+      >
+        <MdIcons.MdPerson size={20} />
+        <span>My Tasks</span>
+      </li>
+    )}
+
+  </ul>
+)}
 
             {item.path === "/Salary_Statement" && showSalaryDropdown && (
               <ul className="desktop-submenu">

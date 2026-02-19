@@ -1,0 +1,472 @@
+/* TaskManagementHr.css - exact visual copy of TaskManagementAdmin.css with prefix changed */
+
+.task-hr-board-container {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding: 20px;
+  max-width: 1400px;
+  margin: 0 auto;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+.task-hr-sections {
+  display: flex;
+  gap: 10px;
+}
+
+.task-hr-section-btn {
+  background-color: #f3f4f6;
+  color: #374151;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 6px;
+  margin-right: 10px;
+  cursor: pointer;
+  font-size: 0.95rem;
+  font-weight: 500;
+  transition: all 0.3s ease;
+}
+
+.task-hr-section-btn:hover {
+  background-color: #e5e7eb;
+}
+
+.task-hr-section-btn.task-hr-active {
+  background-color: #28a745;
+  color: #ffffff;
+  font-weight: 600;
+}
+
+.task-hr-board-subheader {
+  display: flex;
+  justify-content: flex-end;
+  padding: 10px 0;
+}
+
+.task-hr-error-message {
+  color: #dc2626;
+  text-align: center;
+  padding: 12px;
+  background-color: #fee2e2;
+  border-radius: 8px;
+  font-size: 0.95rem;
+}
+
+.task-hr-loading-message {
+  text-align: center;
+  color: #6b7280;
+  font-size: 0.95rem;
+  padding: 12px;
+}
+
+.task-hr-no-tasks {
+  text-align: center;
+  color: #6b7280;
+  font-size: 0.9rem;
+  padding: 20px 0;
+}
+
+.task-hr-board {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 20px;
+  min-height: 600px;
+}
+
+.task-hr-column {
+  display: flex;
+  flex-direction: column;
+  background-color: #f9fafb;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.task-hr-column-header {
+  color: white;
+  padding: 12px 16px;
+  font-weight: 600;
+  font-size: 1.1rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.task-hr-list {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  min-height: 0;
+}
+
+.task-hr-card {
+  min-height: 160px;
+  background-color: #ffffff;
+  padding: 12px;
+  border-radius: 8px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.task-hr-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.task-hr-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 10px;
+}
+
+.task-hr-title-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1;
+}
+
+.task-hr-title {
+  font-size: 1rem;
+  color: #1f2937;
+  overflow: hidden;
+}
+
+.task-hr-progress-wrapper {
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+}
+
+.task-hr-progress-ring {
+  width: 100%;
+  height: 100%;
+}
+
+.task-hr-circle-bg {
+  stroke: #e5e7eb;
+  stroke-width: 3;
+  fill: none;
+}
+
+.task-hr-circle {
+  stroke-width: 3;
+  fill: none;
+  stroke-linecap: round;
+}
+
+.task-hr-percentage {
+  font-size: 10px;
+  fill: #111827;
+}
+
+.task-hr-dates {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.85rem;
+  margin-bottom: 10px;
+}
+
+.task-hr-date-group {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.task-hr-date-label {
+  font-size: 0.75rem;
+  color: #6b7280;
+  font-weight: 500;
+  text-transform: uppercase;
+}
+
+.task-hr-date-pill {
+  min-width: -10px;
+  border-radius: 12px;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.task-hr-start,
+.task-hr-end {
+  padding: 4px 10px;
+  font-size: 0.75rem;
+}
+
+.task-hr-arrow {
+  color: #6b7280;
+  font-size: 0.9rem;
+}
+
+.task-hr-footer {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+}
+
+.task-hr-spacer {
+  flex: 1;
+}
+
+.task-hr-msg-wrap {
+  display: flex;
+  align-items: center;
+}
+
+.task-hr-message-icon {
+  font-size: 1.2rem;
+  color: #6b7280;
+  transition: color 0.2s ease;
+}
+
+.task-hr-message-icon:hover {
+  color: #28a745;
+}
+
+.task-hr-details-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.task-hr-details {
+  background-color: #ffffff;
+  border-radius: 8px;
+  width: 90%;
+  max-width: 600px;
+  max-height: 80vh;
+  overflow-y: auto;
+  padding: 20px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.task-hr-details-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  border-bottom: 1px solid #e5e7eb;
+  padding-bottom: 12px;
+}
+
+.task-hr-details-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.task-hr-close-btn {
+  background: none;
+  border: none;
+  font-size: 1.3rem;
+  cursor: pointer;
+  color: #6b7280;
+  transition: color 0.2s ease;
+}
+
+.task-hr-close-btn:hover {
+  color: #dc2626;
+}
+
+.task-hr-details-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.task-hr-meta-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.task-hr-status-line {
+  font-size: 0.95rem;
+  display: flex;
+  align-items: center;
+}
+
+.task-hr-label {
+  color: #6b7280;
+  margin-right: 8px;
+  font-weight: 500;
+}
+
+.task-hr-value {
+  font-weight: 500;
+  color: #1f2937;
+}
+
+.task-hr-dates-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.85rem;
+}
+
+.task-hr-description {
+  margin-top: 16px;
+}
+
+.task-hr-description h4 {
+  font-weight: 600;
+  color: #1f2937;
+  margin-bottom: 8px;
+}
+
+.task-hr-description p {
+  font-size: 0.9rem;
+  color: #4b5563;
+  line-height: 1.5;
+}
+
+.task-hr-tabs {
+  margin-top: 20px;
+}
+
+.task-hr-tab-header {
+  display: flex;
+  border-bottom: 2px solid #e5e7eb;
+  margin-bottom: 12px;
+}
+
+.task-hr-tab-btn {
+  flex: 1;
+  padding: 10px;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: #6b7280;
+  transition: color 0.2s ease, border-bottom-color 0.2s ease;
+}
+
+.task-hr-tab-btn.task-hr-active {
+  border-bottom-color: #28a745;
+  color: #28a745;
+  font-weight: 600;
+}
+
+.task-hr-tab-btn:hover {
+  color: #28a745;
+}
+
+.task-hr-tab-content {
+  padding: 12px 0;
+}
+
+.task-hr-progress-tab,
+.task-hr-clarification-tab {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.task-hr-messages {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: 300px;
+  overflow-y: auto;
+  padding-right: 8px;
+}
+
+.task-hr-message {
+  padding: 10px;
+  border-radius: 6px;
+  max-width: 70%;
+}
+
+.task-hr-message.task-hr-sent {
+  background-color: #e3f2fd;
+  align-self: flex-end;
+}
+
+.task-hr-message.task-hr-received {
+  background-color: #f3f4f6;
+  align-self: flex-start;
+}
+
+.task-hr-message-content {
+  font-size: 0.9rem;
+  color: #1f2937;
+}
+
+.task-hr-message-meta {
+  font-size: 0.75rem;
+  color: #6b7280;
+  margin-top: 4px;
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.task-hr-message-meta span:first-child {
+  order: 2;
+}
+
+.task-hr-message-meta span:last-child {
+  order: 1;
+}
+
+.task-hr-employee-name {
+  font-size: 0.85rem;
+  color: #6b7280;
+  font-weight: 400;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.task-hr-employee-id {
+  font-size: 0.75rem;
+  color: #9ca3af;
+  font-weight: 400;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 1024px) {
+  .task-hr-board {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 640px) {
+  .task-hr-board {
+    grid-template-columns: 1fr;
+  }
+  .task-hr-details {
+    width: 95%;
+    padding: 15px;
+  }
+  .task-hr-tab-header {
+    flex-direction: column;
+  }
+  .task-hr-tab-btn {
+    width: 100%;
+    text-align: center;
+  }
+}

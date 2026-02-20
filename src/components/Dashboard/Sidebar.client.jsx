@@ -60,17 +60,17 @@ const Sidebar = ({ setActiveContent }) => {
   const [loadingSubordinates, setLoadingSubordinates] = useState(true);
 
   const cancelRef = useRef(false);
-const DROPDOWN_PATHS = {
-  "/compensation": "compensation",
-  "/TaskManagement": "task",
-  "/Salary_Statement": "salary",
-};
+  const DROPDOWN_PATHS = {
+    "/compensation": "compensation",
+    "/TaskManagement": "task",
+    "/Salary_Statement": "salary",
+  };
 
-const toggleDropdown = (type) => {
-  setShowCompensationDropdown(type === "compensation");
-  setShowTaskDropdown(type === "task");
-  setShowSalaryDropdown(type === "salary");
-};
+  const toggleDropdown = (type) => {
+    setShowCompensationDropdown(type === "compensation");
+    setShowTaskDropdown(type === "task");
+    setShowSalaryDropdown(type === "salary");
+  };
 
   const defaultMenuItems = useMemo(
     () => ({
@@ -110,6 +110,7 @@ const toggleDropdown = (type) => {
       "/reimbursement": (role) => {
         if (role === "Admin") return <RbAdmin />;
         if (role === "Manager") return <RbTeamLead />;
+        if (role === "HR") return <RbAdmin />;
         return <Reimbursement />;
       },
       "/employeeQueries": () => <AdminQuery />,
@@ -124,9 +125,11 @@ const toggleDropdown = (type) => {
       "/ExitFlow": () => <ExitFlow />,
       "/TaskManagement": (role, sub) => {
         if (sub === "admin" && role === "Admin") return <TaskManagementAdmin />;
-if (role === "HR" && sub === "hr") {           // ← new condition
-        return <TaskManagementHr />;
-      }        if (sub === "team") return <TaskManagement />;
+        if (role === "HR" && sub === "hr") {
+          // ← new condition
+          return <TaskManagementHr />;
+        }
+        if (sub === "team") return <TaskManagement />;
         return <TaskManagementEmployee />;
       },
     }),
@@ -313,77 +316,77 @@ if (role === "HR" && sub === "hr") {           // ← new condition
     }
   };
 
-//   const handleMenuClick = (item, subOption = null) => {
-//   const role = user?.role ?? "Employee";
-//   const { path } = item;
+  //   const handleMenuClick = (item, subOption = null) => {
+  //   const role = user?.role ?? "Employee";
+  //   const { path } = item;
 
-//   setActiveItem(path);
-//   setActiveSubItem(subOption || "");
+  //   setActiveItem(path);
+  //   setActiveSubItem(subOption || "");
 
-//   const dropdownType = DROPDOWN_PATHS[path];
+  //   const dropdownType = DROPDOWN_PATHS[path];
 
-//   // Only toggle dropdown
-//   if (dropdownType && !subOption) {
-//     toggleDropdown(dropdownType);
-//     return;
-//   }
+  //   // Only toggle dropdown
+  //   if (dropdownType && !subOption) {
+  //     toggleDropdown(dropdownType);
+  //     return;
+  //   }
 
-//   setShowMobileMenu(false);
+  //   setShowMobileMenu(false);
 
-//   let content = null;
+  //   let content = null;
 
-//   // Compensation
-//   if (path === "/compensation" && subOption) {
-//     const compensationMap = {
-//       create: [<CreateCompensation />, "/compensation/create"],
-//       assign: [<AssignCompensation />, "/compensation/assign"],
-//       breakup: [<SalaryBreakupMain />, "/compensation/breakup"],
-//       details: [<SalaryDetails />, "/compensation/details"],
-//     };
+  //   // Compensation
+  //   if (path === "/compensation" && subOption) {
+  //     const compensationMap = {
+  //       create: [<CreateCompensation />, "/compensation/create"],
+  //       assign: [<AssignCompensation />, "/compensation/assign"],
+  //       breakup: [<SalaryBreakupMain />, "/compensation/breakup"],
+  //       details: [<SalaryDetails />, "/compensation/details"],
+  //     };
 
-//     const result = compensationMap[subOption];
-//     if (result) {
-//       content = result[0];
-//       setActiveNav(result[1]);
-//     }
+  //     const result = compensationMap[subOption];
+  //     if (result) {
+  //       content = result[0];
+  //       setActiveNav(result[1]);
+  //     }
 
-//     toggleDropdown("compensation");
-//   }
+  //     toggleDropdown("compensation");
+  //   }
 
-//   // Task Management
-//   else if (path === "/TaskManagement") {
-//     content = pathToComponent["/TaskManagement"](role, subOption);
-//     setActiveNav(`/TaskManagement/${subOption || "employee"}`);
-//     toggleDropdown("task");
-//   }
+  //   // Task Management
+  //   else if (path === "/TaskManagement") {
+  //     content = pathToComponent["/TaskManagement"](role, subOption);
+  //     setActiveNav(`/TaskManagement/${subOption || "employee"}`);
+  //     toggleDropdown("task");
+  //   }
 
-//   // Salary Statement
-//   else if (path === "/Salary_Statement" && subOption) {
-//     content =
-//       subOption === "statement"
-//         ? <Salary_Statement />
-//         : <GeneratePayslip />;
+  //   // Salary Statement
+  //   else if (path === "/Salary_Statement" && subOption) {
+  //     content =
+  //       subOption === "statement"
+  //         ? <Salary_Statement />
+  //         : <GeneratePayslip />;
 
-//     setActiveNav(`/Salary_Statement/${subOption}`);
-//     toggleDropdown("salary");
-//   }
+  //     setActiveNav(`/Salary_Statement/${subOption}`);
+  //     toggleDropdown("salary");
+  //   }
 
-//   // Default
-//   else {
-//     const resolver = pathToComponent[path];
-//     if (resolver) {
-//       content = resolver.length > 0
-//         ? resolver(role)
-//         : resolver();
-//     }
-//     toggleDropdown(null);
-//   }
+  //   // Default
+  //   else {
+  //     const resolver = pathToComponent[path];
+  //     if (resolver) {
+  //       content = resolver.length > 0
+  //         ? resolver(role)
+  //         : resolver();
+  //     }
+  //     toggleDropdown(null);
+  //   }
 
-//   if (content) {
-//     setActiveNav(path);
-//     setActiveContent(content);
-//   }
-// };
+  //   if (content) {
+  //     setActiveNav(path);
+  //     setActiveContent(content);
+  //   }
+  // };
 
   useEffect(() => {
     if (!hydrated) return;
@@ -569,68 +572,68 @@ if (role === "HR" && sub === "hr") {           // ← new condition
               </ul>
             )} */}
             {item.path === "/TaskManagement" && showTaskDropdown && (
-  <ul className="desktop-submenu">
+              <ul className="desktop-submenu">
+                {/* 1. Admin Task Management – only visible to Admin */}
+                {user?.role === "Admin" && (
+                  <li
+                    className={activeSubItem === "admin" ? "active" : ""}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleMenuClick(item, "admin");
+                    }}
+                  >
+                    <MdIcons.MdOutlineAdminPanelSettings size={20} />
+                    <span>Admin Task Management</span>
+                  </li>
+                )}
 
-    {/* 1. Admin Task Management – only visible to Admin */}
-    {user?.role === "Admin" && (
-      <li
-        className={activeSubItem === "admin" ? "active" : ""}
-        onClick={(e) => {
-          e.stopPropagation();
-          handleMenuClick(item, "admin");
-        }}
-      >
-        <MdIcons.MdOutlineAdminPanelSettings size={20} />
-        <span>Admin Task Management</span>
-      </li>
-    )}
+                {/* 2. Tasks-HR – visible only to HR */}
+                {user?.role === "HR" && (
+                  <li
+                    className={activeSubItem === "hr" ? "active" : ""}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleMenuClick(item, "hr");
+                    }}
+                  >
+                    <MdIcons.MdOutlineAdminPanelSettings size={20} />
+                    <span>Tasks-HR</span>
+                  </li>
+                )}
 
-    {/* 2. Tasks-HR – visible only to HR */}
-    {user?.role === "HR" && (
-      <li
-        className={activeSubItem === "hr" ? "active" : ""}
-        onClick={(e) => {
-          e.stopPropagation();
-          handleMenuClick(item, "hr");
-        }}
-      >
-        <MdIcons.MdOutlineAdminPanelSettings size={20} />
-        <span>Tasks-HR</span>
-      </li>
-    )}
+                {/* 3. My Team Tasks – visible if user has subordinates (including HR) */}
+                {!loadingSubordinates && hasSubordinates && (
+                  <li
+                    className={activeSubItem === "team" ? "active" : ""}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleMenuClick(item, "team");
+                    }}
+                  >
+                    <MdIcons.MdPeopleAlt size={20} />
+                    <span>My Team Tasks</span>
+                  </li>
+                )}
 
-    {/* 3. My Team Tasks – visible if user has subordinates (including HR) */}
-    {!loadingSubordinates && hasSubordinates && (
-      <li
-        className={activeSubItem === "team" ? "active" : ""}
-        onClick={(e) => {
-          e.stopPropagation();
-          handleMenuClick(item, "team");
-        }}
-      >
-        <MdIcons.MdPeopleAlt size={20} />
-        <span>My Team Tasks</span>
-      </li>
-    )}
-
-    {/* 4. My Tasks – visible to everyone except pure Admin */}
-    {user?.role !== "Admin" && (
-      <li
-        className={
-          activeSubItem === "employee" || !activeSubItem ? "active" : ""
-        }
-        onClick={(e) => {
-          e.stopPropagation();
-          handleMenuClick(item, "employee");
-        }}
-      >
-        <MdIcons.MdPerson size={20} />
-        <span>My Tasks</span>
-      </li>
-    )}
-
-  </ul>
-)}
+                {/* 4. My Tasks – visible to everyone except pure Admin */}
+                {user?.role !== "Admin" && (
+                  <li
+                    className={
+                      activeSubItem === "employee" || !activeSubItem
+                        ? "active"
+                        : ""
+                    }
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleMenuClick(item, "employee");
+                    }}
+                  >
+                    <MdIcons.MdPerson size={20} />
+                    <span>My Tasks</span>
+                  </li>
+                )}
+              </ul>
+            )}
 
             {item.path === "/Salary_Statement" && showSalaryDropdown && (
               <ul className="desktop-submenu">

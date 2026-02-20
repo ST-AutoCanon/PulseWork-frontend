@@ -5,50 +5,7 @@
   background: white;
   border-radius: 16px;
 }
-/* Review Modal - Better button alignment */
-.exf-modal-content .modal-footer {
-  display: flex;
-  justify-content: flex-end;          /* push everything to the right */
-  align-items: center;                /* vertical center */
-  gap: 12px;                          /* consistent spacing between buttons */
-  flex-wrap: wrap;                    /* prevent overflow on small screens */
-  padding: 16px 24px;
-  border-top: 1px solid #e5e7eb;      /* subtle separator */
-  background: #f9fafb;                /* light bg for contrast */
-}
 
-.exf-modal-content .action-buttons {
-  display: flex;
-  gap: 12px;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-}
-
-.exf-modal-content .btn {
-  min-width: 120px;                   /* prevent tiny buttons */
-  padding: 10px 20px;
-  font-weight: 500;
-  border-radius: 6px;
-  transition: all 0.2s;
-}
-
-.exf-modal-content .btn-success,
-.exf-modal-content .btn-danger {
-  flex: 0 1 auto;                     /* grow/shrink naturally */
-}
-
-/* Optional: make "as Supervisor" text smaller but keep button readable */
-.exf-modal-content .btn-success,
-.exf-modal-content .btn-danger {
-  white-space: nowrap;                /* prevent text wrapping inside button */
-}
-
-/* If warning message is pushing things out of alignment */
-.exf-modal-content .warning-message {
-  margin-right: auto;                 /* push warning to left, buttons stay right */
-  flex: 1 1 100%;
-  text-align: left;
-}
 /* ── Initial Apply Area ── */
 .exf-resignation-apply-area {
   text-align: center;
@@ -3876,4 +3833,106 @@
     bottom: 100%;
     border-color: transparent transparent #1f2937 transparent;
   }
+}
+
+/* ==========================================================================
+   Pagination Controls
+   ========================================================================== */
+
+/* Container for Prev / Page info / Next */
+.pagination-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 1.5rem;          /* mt-6 equivalent */
+  padding: 0.75rem 1rem;
+  background: #f9fafb;         /* very light gray background */
+  border-radius: 10px;
+  border: 1px solid #e5e7eb;
+  font-size: 0.95rem;
+  color: #374151;
+}
+
+/* Buttons (Prev / Next) */
+.pagination-controls button {
+  padding: 0.5rem 1rem;
+  font-weight: 500;
+  color: #374151;
+  background: white;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-width: 80px;
+}
+
+.pagination-controls button:hover:not(:disabled) {
+  background: #f3f4f6;
+  border-color: #9ca3af;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+}
+
+.pagination-controls button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background: #f3f4f6;
+  color: #9ca3af;
+}
+
+/* Page info text (Page X of Y) */
+.pagination-controls span {
+  font-weight: 500;
+  color: #4b5563;
+}
+
+/* Optional: centered version when only one button is active */
+.pagination-controls.centered {
+  justify-content: center;
+  gap: 2rem;
+}
+
+/* Responsive - stack on very small screens */
+@media (max-width: 480px) {
+  .pagination-controls {
+    flex-direction: column;
+    gap: 0.75rem;
+    padding: 1rem;
+  }
+  
+  .pagination-controls button {
+    width: 100%;
+    min-width: unset;
+  }
+}
+
+/* Optional: make it more prominent / match your green theme */
+.pagination-controls button.active-page,
+.pagination-controls button:hover:not(:disabled) {
+  background: #7ac142;
+  color: white;
+  border-color: #68a236;
+}
+
+/* If you later add numbered page buttons (1 2 3 ...), style them like this: */
+.pagination-numbers {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.pagination-numbers button {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  font-size: 0.9rem;
+}
+
+.pagination-numbers button.current {
+  background: #7ac142;
+  color: white;
+  font-weight: 600;
+  border: none;
 }

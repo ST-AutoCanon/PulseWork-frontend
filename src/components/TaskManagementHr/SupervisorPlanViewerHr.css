@@ -1,5 +1,3 @@
-/* SupervisorPlanViewerHr.css — read-only, identical layout to Admin */
-
 .supervisor-plan-hr-wrapper {
   display: flex;
   min-height: 100vh;
@@ -44,25 +42,25 @@
   cursor: not-allowed;
 }
 
-.supervisor-plan-hr-search-bar {
+.supervisor-plan-hr-search-input {
   width: 100%;
   padding: 8px;
   margin-bottom: 10px;
   border: 1px solid #ccc;
   border-radius: 6px;
-  font-size: 10px;
+  font-size: 13px;
   box-sizing: border-box;
   background-color: #fff;
   transition: border-color 0.2s ease;
 }
 
-.supervisor-plan-hr-search-bar:focus {
+.supervisor-plan-hr-search-input:focus {
   outline: none;
   border-color: #28a745;
   box-shadow: 0 0 4px rgba(40, 167, 69, 0.3);
 }
 
-.supervisor-plan-hr-search-bar::placeholder {
+.supervisor-plan-hr-search-input::placeholder {
   color: #888;
 }
 
@@ -145,6 +143,13 @@
   max-width: 100%;
 }
 
+.supervisor-plan-hr-task-details h3 {
+  margin-bottom: 20px;
+  color: #333;
+  font-size: 18px;
+  font-weight: 600;
+}
+
 .supervisor-plan-hr-week-navigation {
   display: flex;
   align-items: center;
@@ -188,7 +193,6 @@
   display: flex;
   flex-direction: column;
   gap: 15px;
-  padding: 10px;
   overflow-y: auto;
   overflow-x: hidden;
   max-height: calc(100vh - 100px);
@@ -211,41 +215,12 @@
   border-radius: 4px;
 }
 
-.supervisor-plan-hr-day-group {
-  background: #f9f9f9;
-  border-radius: 8px;
-  padding: 10px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-.supervisor-plan-hr-day-group > .supervisor-plan-hr-task-card {
-  margin-bottom: 15px;
-}
-
-.supervisor-plan-hr-day-group > .supervisor-plan-hr-task-card:last-child {
-  margin-bottom: 0;
-}
-
-.supervisor-plan-hr-day-header {
-  font-weight: bold;
-  font-size: 14px;
-  margin-bottom: 10px;
-  padding-bottom: 5px;
-  border-bottom: 1px solid #ddd;
-}
-
-.supervisor-plan-hr-no-tasks {
-  color: #999;
-  font-style: italic;
-  margin: 5px 0;
-  font-size: 13px;
-}
-
 .supervisor-plan-hr-task-card {
   background-color: #fff;
   border-radius: 10px;
   padding: 15px;
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08);
+  transition: transform 0.2s;
   max-width: 100%;
 }
 
@@ -282,26 +257,6 @@
   font-size: 12px;
   color: #888;
   white-space: nowrap;
-  padding: 2px 5px;
-  border-radius: 4px;
-  margin-right: 8px;
-}
-
-.supervisor-plan-hr-task-date.holiday {
-  background-color: #ff9800;
-  color: white;
-  padding: 2px 6px;
-}
-
-.supervisor-plan-hr-task-date.leave {
-  background: #ffeb3b;
-  padding: 2px 6px;
-}
-
-.supervisor-plan-hr-task-date.sunday {
-  background: #2196f3;
-  color: white;
-  padding: 2px 6px;
 }
 
 .supervisor-plan-hr-status-icon {
@@ -321,8 +276,7 @@
   max-width: 100%;
 }
 
-.supervisor-plan-hr-project-circle-wrapper,
-.supervisor-plan-hr-status-dot-wrapper {
+.supervisor-plan-hr-project-circle-wrapper {
   position: relative;
 }
 
@@ -337,6 +291,10 @@
   border-radius: 50%;
   font-size: 10px;
   font-weight: 500;
+}
+
+.supervisor-plan-hr-status-dot-wrapper {
+  position: relative;
 }
 
 .supervisor-plan-hr-status-dot {
@@ -362,42 +320,91 @@
   pointer-events: none;
 }
 
-.supervisor-plan-hr-project-circle-wrapper:hover .supervisor-plan-hr-tooltip,
+.supervisor-plan-hr-project-circle-wrapper:hover
+  .supervisor-plan-hr-tooltip,
 .supervisor-plan-hr-status-dot-wrapper:hover .supervisor-plan-hr-tooltip {
   visibility: visible;
 }
 
-/* Read-only review info section */
-.supervisor-plan-hr-review-info {
-  margin-top: 12px;
-  font-size: 13px;
-  line-height: 1.5;
-  color: #333;
-}
-
-.supervisor-plan-hr-review-info p {
-  margin: 4px 0;
-}
-
-/* Freeze Days Modal */
-.supervisor-plan-hr-modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background-color: rgba(0, 0, 0, 0.5);
-  z-index: 999;
+.supervisor-plan-hr-star-rating {
   display: flex;
-  align-items: center;
-  justify-content: center;
+  gap: 3px;
+  margin-top: 4px;
+}
+
+.supervisor-plan-hr-star {
+  font-size: 14px;
+  color: #ccc;
+  cursor: pointer;
+}
+
+.supervisor-plan-hr-star.filled {
+  color: #ffc107;
+}
+
+.supervisor-plan-hr-edit-section {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 8px;
+  margin-top: 10px;
+  max-width: 100%;
+  transition: opacity 0.8s ease;
+}
+
+.supervisor-plan-hr-edit-section label {
+  display: flex;
+  flex-direction: column;
+  font-size: 12px;
+}
+
+.supervisor-plan-hr-edit-section select,
+.supervisor-plan-hr-edit-section input {
+  padding: 5px 8px;
+  margin-top: 4px;
+  font-size: 12px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  max-width: 100%;
+  word-break: break-word;
+  white-space: normal;
+}
+
+.supervisor-plan-hr-edit-section .supervisor-plan-hr-star-rating {
+  justify-content: flex-start;
+}
+
+.supervisor-plan-hr-update-task-button {
+  padding: 5px 12px;
+  background-color: #28a745;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 12px;
+  align-self: end;
+  justify-self: end;
+  max-width: 80px;
+}
+
+.supervisor-plan-hr-update-task-button:hover {
+  background-color: #218838;
+}
+
+.supervisor-plan-hr-error-message {
+  color: red;
+  padding: 10px;
 }
 
 .supervisor-plan-hr-modal {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
   background-color: white;
   padding: 20px;
   border-radius: 8px;
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+  z-index: 1000;
   max-width: 400px;
   width: 90%;
 }
@@ -484,7 +491,16 @@
   cursor: not-allowed;
 }
 
-/* Responsive */
+.supervisor-plan-hr-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  z-index: 999;
+}
+
 @media (max-width: 768px) {
   .supervisor-plan-hr-config-button {
     padding: 6px 12px;
@@ -496,11 +512,109 @@
   .supervisor-plan-hr-employee-list {
     width: 120px;
   }
-  .supervisor-plan-hr-search-bar {
+  .supervisor-plan-hr-search-input {
     font-size: 12px;
     padding: 6px;
   }
   .supervisor-plan-hr-modal {
     max-width: 300px;
   }
+  .supervisor-plan-hr-config-input-group input {
+    max-width: 100%;
+  }
+}
+
+.supervisor-plan-hr-task-date {
+  display: inline-block;
+  margin: 0 8px;
+  color: #333;
+}
+.supervisor-plan-hr-task-date.holiday {
+  background-color: #ff9800;
+  color: white;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.supervisor-plan-hr-task-date {
+  display: inline-block;
+  margin: 0 8px;
+  color: #333;
+}
+.supervisor-plan-hr-task-date.holiday {
+  background-color: #ff9800;
+  color: white;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+.supervisor-plan-hr-search-bar {
+  padding: 8px;
+  margin-bottom: 10px;
+  border-radius: 4px;
+  border: 1px solid #ccc;
+  font-size: 11px;
+}
+.supervisor-plan-hr-tasks-container {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding: 10px;
+  overflow-y: auto;
+}
+
+.supervisor-plan-hr-day-group {
+  background: #f9f9f9;
+  border-radius: 8px;
+  padding: 10px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.supervisor-plan-hr-day-header {
+  font-weight: bold;
+  font-size: 14px;
+  margin-bottom: 10px;
+  padding-bottom: 5px;
+  border-bottom: 1px solid #ddd;
+}
+
+.supervisor-plan-hr-no-tasks {
+  color: #999;
+  font-style: italic;
+  margin: 5px 0;
+  font-size: 13px;
+}
+
+.supervisor-plan-hr-day-group > .supervisor-plan-hr-task-card {
+  margin-bottom: 15px;
+}
+.supervisor-plan-hr-day-group > .supervisor-plan-hr-task-card:last-child {
+  margin-bottom: 0;
+}
+
+.supervisor-plan-hr-task-card {
+  background: #fff;
+  border-radius: 6px;
+  padding: 10px;
+  border: 1px solid #eee;
+}
+
+.supervisor-plan-hr-task-date {
+  font-size: 12px;
+  padding: 2px 5px;
+  border-radius: 4px;
+  margin-right: 8px;
+}
+.supervisor-plan-hr-task-date-leave {
+  background: #ffeb3b;
+}
+.supervisor-plan-hr-task-date-holiday {
+  background: #ff9800;
+  color: white;
+}
+.supervisor-plan-hr-task-date-sunday {
+  background: #2196f3;
+  color: white;
+}
+.supervisor-plan-hr-task-date-regular {
+  background: transparent;
 }

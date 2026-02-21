@@ -27,6 +27,7 @@ const ProjectForm = ({ onClose, projectData, onSuccess, onProjectAdded }) => {
     editable,
     formData,
     handleSubmit,
+    isSubmitting,
     prevStep,
     nextStep,
     alertModal,
@@ -84,8 +85,8 @@ const ProjectForm = ({ onClose, projectData, onSuccess, onProjectAdded }) => {
                 index < currentIndex
                   ? "completed"
                   : index === currentIndex
-                  ? "active"
-                  : ""
+                    ? "active"
+                    : ""
               }`}
             ></div>
             {stepName}
@@ -130,8 +131,18 @@ const ProjectForm = ({ onClose, projectData, onSuccess, onProjectAdded }) => {
             Next
           </button>
         ) : projectRole === "Employee" ? null : (
-          <button className="pj-next-btn" onClick={handleSubmit}>
-            {projectData ? "Update" : "Submit"}
+          <button
+            className="pj-next-btn"
+            onClick={handleSubmit}
+            disabled={isSubmitting}
+          >
+            {isSubmitting
+              ? projectData
+                ? "Updating..."
+                : "Submitting..."
+              : projectData
+                ? "Update"
+                : "Submit"}
           </button>
         )}
       </div>

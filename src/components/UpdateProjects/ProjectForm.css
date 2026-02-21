@@ -860,3 +860,16 @@ input[type="checkbox"]:checked::after {
   vertical-align: middle;
   accent-color: #79c42b;
 }
+
+.remove-milestone-btn {
+  background: transparent;
+  border: none;
+  color: red;
+  font-size: 18px;
+  cursor: pointer;
+  font-weight: bold;
+}
+
+.remove-milestone-btn:hover {
+  transform: scale(1.1);
+}

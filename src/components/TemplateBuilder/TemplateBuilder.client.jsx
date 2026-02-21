@@ -578,6 +578,27 @@ export default function TemplateBuilder() {
     return true;
   }
 
+  function handlePreviewA4() {
+    const r = getActiveEditorRef();
+    if (!r?.current) return;
+
+    if (r.current.togglePreview) {
+      r.current.togglePreview();
+      return;
+    }
+
+    if (r.current.getBoxes) {
+      const boxes = r.current.getBoxes() || [];
+      setBodyBoxes(boxes.map((b) => ({ ...b })));
+    }
+  }
+
+  function openSavePrompt() {
+    const stamp = new Date().toLocaleString();
+    setSaveName(`Template ${stamp}`);
+    setSaveModalOpen(true);
+  }
+
   useEffect(() => {
     try {
       const preset = PRESET_FIELDS[bodyType] || [];
@@ -2222,6 +2243,8 @@ export default function TemplateBuilder() {
           openSavedTemplate,
           handleUploadSaved,
         }}
+        onPreviewA4={handlePreviewA4}
+        onSaveTemplate={openSavePrompt}
       />
 
       {(mode === "upload" || mode === "view") && (

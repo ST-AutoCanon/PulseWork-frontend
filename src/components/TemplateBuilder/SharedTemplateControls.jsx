@@ -18,6 +18,8 @@ export default function SharedTemplateControls({
   onSetActiveArea,
   activeArea = "header",
   showInsertControls = true,
+  onPreviewA4,
+  onSaveTemplate,
 }) {
   const fileInputRef = externalFileInputRef || useRef(null);
 
@@ -246,6 +248,51 @@ export default function SharedTemplateControls({
             </button>
           ))}
         </div>
+      </div>
+      {/* ===== Footer Controls ===== */}
+      <div
+        style={{
+          paddingTop: 12,
+          borderTop: "1px solid #e2e8f0",
+          display: "flex",
+          width: "100%",
+          justifyContent: "space-between",
+          flexWrap: "wrap",
+        }}
+      >
+        <button
+          type="button"
+          onClick={() => onPreviewA4 && onPreviewA4()}
+          style={{
+            padding: "10px 16px",
+            borderRadius: 10,
+            border: "linear-gradient(180deg, #77dd0d, #9ef04a)",
+            background: "white",
+            color: "black",
+            fontWeight: 600,
+            cursor: "pointer",
+            transition: "all 0.2s ease",
+          }}
+        >
+          Preview on A4
+        </button>
+
+        <button
+          type="button"
+          onClick={() => onSaveTemplate && onSaveTemplate()}
+          style={{
+            padding: "10px 18px",
+            borderRadius: 10,
+            border: "none",
+            background: "linear-gradient(180deg, #77dd0d, #9ef04a)",
+            color: "black",
+            fontWeight: 600,
+            cursor: "pointer",
+            transition: "all 0.2s ease",
+          }}
+        >
+          Save as Template
+        </button>
       </div>
     </div>
   );

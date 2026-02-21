@@ -7,6 +7,7 @@ import { useAuth } from "../../context/AuthProvider.client";
 const StepThree = ({
   formData,
   addMilestone,
+  removeMilestone,
   handleMilestoneChange,
   stsOwners,
   editable,
@@ -38,6 +39,7 @@ const StepThree = ({
               <th>Current Status</th>
               <th>Dependency</th>
               <th>Responsible By</th>
+              <th>Action</th>
             </tr>
           </thead>
           <tbody>
@@ -128,6 +130,17 @@ const StepThree = ({
                       </option>
                     ))}
                   </select>
+                </td>
+                <td>
+                  {isEditable && (
+                    <button
+                      type="button"
+                      className="remove-milestone-btn"
+                      onClick={() => removeMilestone(index)}
+                    >
+                      ✕
+                    </button>
+                  )}
                 </td>
               </tr>
             ))}

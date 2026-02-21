@@ -1578,7 +1578,7 @@ const CustomTemplateEditor = forwardRef(function CustomTemplateEditor(
                     mode === "preview" || isEditing || disableDragForCell
                   }
                   cancel={
-                    '.table-edit, .table-cell, [data-no-drag], [contenteditable="true"], input, textarea, select'
+                    '.table-edit, .table-cell, [contenteditable="true"], input, textarea, select'
                   }
                   className={`${styles["cte-box"]} ${
                     isSelected ? styles.selected : ""

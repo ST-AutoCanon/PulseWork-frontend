@@ -22,6 +22,7 @@ export default function useProjectForm({
   const department = (dashboardData.department || "").toLowerCase();
   const employeeId = user?.employeeId ?? user?.id ?? null;
   const orgId = user?.orgId ?? user?.raw?.org_id ?? null;
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const rolePermissions = {
     Admin: {
@@ -178,7 +179,7 @@ export default function useProjectForm({
               employeeId.toLowerCase().includes(lowerSearch) ||
               deptName.toLowerCase().includes(lowerSearch)
             );
-          })
+          }),
         );
       }
     } else if (filterType === "dept") {
@@ -186,19 +187,19 @@ export default function useProjectForm({
         ...new Set(
           allEmployees
             .filter(
-              (emp) => emp.department_name && emp.department_name.trim() !== ""
+              (emp) => emp.department_name && emp.department_name.trim() !== "",
             )
-            .map((emp) => emp.department_name.trim())
+            .map((emp) => emp.department_name.trim()),
         ),
       ];
       setFilteredEmployees(
-        uniqueDepts.map((dept) => ({ name: dept, type: "department" }))
+        uniqueDepts.map((dept) => ({ name: dept, type: "department" })),
       );
     }
   }, [searchQuery, filterType, allEmployees]);
 
   const stsOwners = allEmployees.filter(
-    (emp) => emp.role === "Admin" || emp.role === "Manager"
+    (emp) => emp.role === "Admin" || emp.role === "Manager",
   );
 
   const handleFileUpload = (e) => {
@@ -216,12 +217,12 @@ export default function useProjectForm({
   const handleDepartmentDoubleClick = (departmentName) => {
     if (!allEmployees || allEmployees.length === 0) return;
     const departmentEmployees = allEmployees.filter(
-      (emp) => emp.department_name === departmentName
+      (emp) => emp.department_name === departmentName,
     );
     setSelectedEmployees((prev) => {
       const existingIds = new Set(prev.map((emp) => emp.employee_id));
       const newEmployees = departmentEmployees.filter(
-        (emp) => !existingIds.has(emp.employee_id)
+        (emp) => !existingIds.has(emp.employee_id),
       );
       return [...prev, ...newEmployees];
     });
@@ -263,8 +264,8 @@ export default function useProjectForm({
     if (projectData?.employee_list?.length > 0 && allEmployees.length > 0) {
       setSelectedEmployees(
         allEmployees.filter((emp) =>
-          projectData.employee_list.includes(emp.employee_id)
-        )
+          projectData.employee_list.includes(emp.employee_id),
+        ),
       );
     }
   }, [allEmployees, projectData]);
@@ -281,7 +282,7 @@ export default function useProjectForm({
             "x-api-key": process.env.NEXT_PUBLIC_API_KEY,
             ...(orgId ? { "x-org-id": orgId } : {}),
           },
-        }
+        },
       )
         .then((response) => response.json())
         .then((data) => {
@@ -298,18 +299,18 @@ export default function useProjectForm({
               Array.isArray(data.project.attachment_url)
                 ? data.project.attachment_url
                 : data.project.attachment_url
-                ? [data.project.attachment_url]
-                : []
+                  ? [data.project.attachment_url]
+                  : [],
             );
             setSelectedEmployees(
               allEmployees.filter((emp) =>
-                (data.project.employee_list || []).includes(emp.employee_id)
-              )
+                (data.project.employee_list || []).includes(emp.employee_id),
+              ),
             );
           }
         })
         .catch((error) =>
-          console.error("Error fetching project details:", error)
+          console.error("Error fetching project details:", error),
         );
     }
   }, [projectData, allEmployees]);
@@ -343,15 +344,15 @@ export default function useProjectForm({
 
       let projectAmount =
         parseFloat(
-          name === "project_amount" ? value : prevData.project_amount
+          name === "project_amount" ? value : prevData.project_amount,
         ) || 0;
       let tdsPercentage =
         parseFloat(
-          name === "tds_percentage" ? value : prevData.tds_percentage
+          name === "tds_percentage" ? value : prevData.tds_percentage,
         ) || 0;
       let gstPercentage =
         parseFloat(
-          name === "gst_percentage" ? value : prevData.gst_percentage
+          name === "gst_percentage" ? value : prevData.gst_percentage,
         ) || 0;
 
       let tdsAmount = (tdsPercentage / 100) * projectAmount;
@@ -369,7 +370,7 @@ export default function useProjectForm({
             ...fd,
             m_actual_percentage: mActualPercentage,
           };
-        }
+        },
       );
 
       newData = {
@@ -517,7 +518,7 @@ export default function useProjectForm({
           ).toFixed(2);
 
           return updatedDetail;
-        }
+        },
       );
 
       setFormData((prev) => ({
@@ -554,6 +555,24 @@ export default function useProjectForm({
       milestones: [...(prev.milestones || []), newMilestone],
       financialDetails: [...(prev.financialDetails || []), newFinancialEntry],
     }));
+  };
+
+  const removeMilestone = (indexToRemove) => {
+    setFormData((prev) => {
+      const updatedMilestones = prev.milestones.filter(
+        (_, index) => index !== indexToRemove,
+      );
+
+      const updatedFinancialDetails = prev.financialDetails.filter(
+        (_, index) => index !== indexToRemove,
+      );
+
+      return {
+        ...prev,
+        milestones: updatedMilestones,
+        financialDetails: updatedFinancialDetails,
+      };
+    });
   };
 
   useEffect(() => {
@@ -601,7 +620,7 @@ export default function useProjectForm({
 
   const handleRemoveEmployee = (employeeId) => {
     setSelectedEmployees((prev) =>
-      prev.filter((emp) => emp.employee_id !== employeeId)
+      prev.filter((emp) => emp.employee_id !== employeeId),
     );
   };
 
@@ -640,7 +659,7 @@ export default function useProjectForm({
             "x-api-key": process.env.NEXT_PUBLIC_API_KEY,
             ...(orgId ? { "x-org-id": orgId } : {}),
           },
-        }
+        },
       );
       if (!response.ok) throw new Error("Failed to fetch attachments");
       const blob = await response.blob();
@@ -668,7 +687,7 @@ export default function useProjectForm({
             "x-api-key": process.env.NEXT_PUBLIC_API_KEY,
             ...(orgId ? { "x-org-id": orgId } : {}),
           },
-        }
+        },
       );
 
       if (!response.ok) throw new Error("Failed to fetch the file.");
@@ -705,7 +724,7 @@ export default function useProjectForm({
         (state) => ({
           code: state.isoCode,
           name: state.name,
-        })
+        }),
       );
       setStates(stateList);
     } else {
@@ -955,15 +974,20 @@ export default function useProjectForm({
   const handleSubmit = async (e) => {
     if (e && e.preventDefault) e.preventDefault();
 
+    if (isSubmitting) return; // 🔒 prevent double click
+
     const validationError = validateForm();
     if (validationError) {
       showAlert(validationError, "Validation Error");
       return;
     }
 
+    setIsSubmitting(true); // 🔒 lock button
+
     const url = projectData
       ? `${process.env.NEXT_PUBLIC_BACKEND_URL}/projects/${projectData.id}`
       : `${process.env.NEXT_PUBLIC_BACKEND_URL}/projects`;
+
     const method = projectData ? "PUT" : "POST";
     const submissionData = new FormData();
 
@@ -978,7 +1002,8 @@ export default function useProjectForm({
         submissionData.append(key, value);
       }
     }
-    if (newAttachments && newAttachments.length > 0) {
+
+    if (newAttachments?.length > 0) {
       newAttachments.forEach((file) => {
         submissionData.append("attachment_url", file);
       });
@@ -999,10 +1024,11 @@ export default function useProjectForm({
         const text = await response.text().catch(() => null);
         throw new Error(text || "Failed to save project");
       }
+
       if (onProjectAdded) onProjectAdded();
+      if (onSuccess) onSuccess();
 
       showAlert("Project saved successfully!", "Success");
-      if (onSuccess) onSuccess();
 
       setTimeout(() => {
         onClose();
@@ -1011,8 +1037,10 @@ export default function useProjectForm({
       console.error("Error:", error);
       showAlert(
         error.message || "An error occurred while saving the project.",
-        "Error"
+        "Error",
       );
+    } finally {
+      setIsSubmitting(false); // 🔓 unlock button (success or error)
     }
   };
 
@@ -1055,6 +1083,7 @@ export default function useProjectForm({
     stepThree: {
       formData,
       addMilestone,
+      removeMilestone,
       handleMilestoneChange,
       stsOwners,
       getStatusBgColor,
@@ -1097,6 +1126,7 @@ export default function useProjectForm({
     formData,
     setFormData,
     handleSubmit,
+    isSubmitting,
     prevStep,
     nextStep,
     alertModal,

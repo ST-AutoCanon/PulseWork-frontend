@@ -80,6 +80,7 @@ const Invoice = ({ onBack, project }) => {
   const [appliedTemplateHtml, setAppliedTemplateHtml] = useState(null);
   const [appliedWatermarkUrl, setAppliedWatermarkUrl] = useState(null);
   const [appliedWatermarkProps, setAppliedWatermarkProps] = useState(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [terms, setTerms] = useState(
     `1) Payment Terms:
@@ -652,10 +653,14 @@ const Invoice = ({ onBack, project }) => {
   };
 
   const handleSubmit = async () => {
+    if (isSubmitting) return; // 🔒 prevent double click
+
     if (!BACKEND_URL) {
       showAlert("Backend not configured");
       return;
     }
+
+    setIsSubmitting(true); // 🔒 lock button
 
     const combinedDescription = lineItems
       .map(
@@ -687,6 +692,7 @@ const Invoice = ({ onBack, project }) => {
 
     try {
       let response;
+
       if (editingInvoiceId) {
         response = await fetch(`${BACKEND_URL}/invoice/${editingInvoiceId}`, {
           method: "PUT",
@@ -721,6 +727,7 @@ const Invoice = ({ onBack, project }) => {
       setShowInvoiceForm(false);
       resetFormFields();
       setEditingInvoiceId(null);
+
       showAlert(
         editingInvoiceId
           ? "Invoice updated successfully."
@@ -729,6 +736,8 @@ const Invoice = ({ onBack, project }) => {
     } catch (error) {
       console.error(error);
       showAlert("Failed to save invoice.");
+    } finally {
+      setIsSubmitting(false); // 🔓 always unlock
     }
   };
 
@@ -1553,11 +1562,24 @@ const Invoice = ({ onBack, project }) => {
               </div>
 
               <div className="invoice-buttons">
-                <button className="cancel-btn" onClick={handleCancelForm}>
+                <button
+                  className="cancel-btn"
+                  onClick={handleCancelForm}
+                  disabled={isSubmitting}
+                >
                   Cancel
                 </button>
-                <button className="submit-btn" onClick={handleSubmit}>
-                  Submit
+
+                <button
+                  className="submit-btn"
+                  onClick={handleSubmit}
+                  disabled={isSubmitting}
+                >
+                  {isSubmitting
+                    ? editingInvoiceId
+                      ? "Updating..."
+                      : "Submitting..."
+                    : "Submit"}
                 </button>
               </div>
             </div>

@@ -71,22 +71,22 @@
 
 .actions {
   display: flex;
-  gap: 10px;
+  justify-content: space-between;
   align-items: center;
 }
 
 .previewBtn {
-  padding: 8px 12px;
+  padding: 10px 16px;
   border-radius: 8px;
-  border: 1px solid #e6e9eb;
+  border: linear-gradient(180deg, #77dd0d, #9ef04a);
   background: transparent;
   cursor: pointer;
 }
 
 .saveBtn {
-  padding: 8px 12px;
+  padding: 10px 16px;
   border-radius: 8px;
-  border: none;
+  border: linear-gradient(180deg, #77dd0d, #9ef04a);
   background: linear-gradient(180deg, #77dd0d, #9ef04a);
   cursor: pointer;
   font-weight: 700;

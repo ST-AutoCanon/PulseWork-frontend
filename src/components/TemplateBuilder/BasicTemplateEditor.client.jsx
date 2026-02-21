@@ -112,6 +112,8 @@ const BasicTemplateEditor = forwardRef(function BasicTemplateEditor(
     },
   });
 
+  const delegatedClickRef = useRef(null);
+
   useEffect(() => {
     setLocalWatermark((s) => ({
       ...s,
@@ -171,6 +173,12 @@ const BasicTemplateEditor = forwardRef(function BasicTemplateEditor(
   useEffect(() => {
     const el = innerRef.current;
     if (!el) return;
+    const existingPage = el.querySelector(".page") || el;
+    if (existingPage && delegatedClickRef.current) {
+      try {
+        existingPage.removeEventListener("click", delegatedClickRef.current);
+      } catch (e) {}
+    }
     el.innerHTML = "";
 
     function normalizePage(pageEl) {
@@ -412,8 +420,21 @@ const BasicTemplateEditor = forwardRef(function BasicTemplateEditor(
     const el = innerRef.current;
     if (!el) return;
     const page = el.querySelector(".page") || el;
-    page.onclick = null;
 
+    // remove previous delegated handler if present (clean up)
+    try {
+      if (delegatedClickRef.current) {
+        page.removeEventListener("click", delegatedClickRef.current);
+      }
+    } catch (e) {}
+
+    // ensure body-area has data-field so discovery/selection works reliably
+    const bodyEl = page.querySelector(".body-area");
+    if (bodyEl && !bodyEl.getAttribute("data-field")) {
+      bodyEl.setAttribute("data-field", "body");
+    }
+
+    // add classes / contentEditable & other per-field initialization
     Array.from(page.querySelectorAll("[data-field]")).forEach((f) => {
       f.classList.add("bte-content-editable");
       const tag = f.tagName.toLowerCase();
@@ -460,38 +481,53 @@ const BasicTemplateEditor = forwardRef(function BasicTemplateEditor(
       }
     });
 
-    page.addEventListener(
-      "click",
-      function delegated(ev) {
-        const df = ev.target.closest("[data-field]");
-        if (!df) {
-          if (typeof onSelectField === "function") onSelectField(null);
-          return;
-        }
-        if (mode === "preview") return;
+    // delegated click: keep a stable reference so we can remove it later
+    const delegated = function delegatedHandler(ev) {
+      const df = ev.target.closest("[data-field]");
+      // If click is outside any data-field we let it bubble normally
+      if (!df) {
+        if (typeof onSelectField === "function") onSelectField(null);
+        return;
+      }
+
+      // If in preview mode, ignore (do not block other handlers)
+      if (mode === "preview") return;
+
+      // We only prevent default/stopPropagation when we actively handle selection/focus,
+      // otherwise we must not block outer UI (important).
+      const dtype = df.getAttribute("data-bte-type");
+      if (dtype === "text" && df.contentEditable) {
+        // handle selection and focus
+        try {
+          selectField(df.getAttribute("data-field"), df, true);
+        } catch (e) {}
+        try {
+          df.focus();
+          const sel = window.getSelection();
+          sel.removeAllRanges();
+          const range = document.createRange();
+          range.selectNodeContents(df);
+          range.collapse(false);
+          sel.addRange(range);
+        } catch (err) {}
         ev.stopPropagation();
         ev.preventDefault();
+      } else if (dtype === "image" && df.style.pointerEvents !== "none") {
+        // select image field (click should also not bubble)
+        try {
+          selectField(df.getAttribute("data-field"), df, true);
+        } catch (e) {}
+        ev.stopPropagation();
+        ev.preventDefault();
+      } else {
+        // For other types, we do not stop propagation so other UI can respond
+        if (typeof onSelectField === "function") onSelectField(null);
+        // intentionally do NOT call preventDefault/stopPropagation here
+      }
+    };
 
-        const dtype = df.getAttribute("data-bte-type");
-        if (dtype === "text" && df.contentEditable) {
-          selectField(df.getAttribute("data-field"), df, true);
-          try {
-            df.focus();
-            const sel = window.getSelection();
-            sel.removeAllRanges();
-            const range = document.createRange();
-            range.selectNodeContents(df);
-            range.collapse(false);
-            sel.addRange(range);
-          } catch (err) {}
-        } else if (dtype === "image" && df.style.pointerEvents !== "none") {
-          selectField(df.getAttribute("data-field"), df, true);
-        } else {
-          if (typeof onSelectField === "function") onSelectField(null);
-        }
-      },
-      { once: false },
-    );
+    delegatedClickRef.current = delegated;
+    page.addEventListener("click", delegated);
   }
 
   function openFilePickerForLogo() {
@@ -1002,7 +1038,7 @@ const BasicTemplateEditor = forwardRef(function BasicTemplateEditor(
                 minHeight: canvasHeightPx,
                 background: "#fff",
                 position: "relative",
-                overflow: "hidden",
+                overflow: "visible",
               }}
             />
           </div>

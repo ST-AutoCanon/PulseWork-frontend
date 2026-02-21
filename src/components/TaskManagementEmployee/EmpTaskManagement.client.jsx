@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useMemo, useState, useEffect, useRef } from "react";
@@ -64,17 +65,19 @@ const EmpTaskManagement = () => {
 
   const [isListening, setIsListening] = useState(false);
   const recognitionRef = useRef(null);
-const isTaskEditable = (startDateStr) => {
-  if (!startDateStr) return false;
 
-  const today = new Date();
-  today.setHours(0, 0, 0, 0); // start of today
+  const isTaskEditable = (startDateStr) => {
+    if (!startDateStr) return false;
 
-  const start = new Date(startDateStr);
-  start.setHours(0, 0, 0, 0);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // start of today
 
-  return today >= start;
-};
+    const start = new Date(startDateStr);
+    start.setHours(0, 0, 0, 0);
+
+    return today >= start;
+  };
+
   useEffect(() => {
     const SpeechRecognition =
       window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -613,416 +616,409 @@ const isTaskEditable = (startDateStr) => {
               );
             })}
 
-            
             {selectedTask && (
-  <div className="emp-task-details-backdrop" onClick={closeDetails}>
-    <div
-      className="emp-task-details"
-      onClick={(e) => e.stopPropagation()}
-    >
-      <div className="emp-task-details-header">
-        <div className="emp-task-details-title">
-          <div className="emp-task-pill">{selectedTask.id}</div>
-          <h3>{selectedTask.title}</h3>
-        </div>
-        <button
-          className="emp-task-close-btn"
-          onClick={closeDetails}
-          aria-label="Close"
-        >
-          ✕
-        </button>
-      </div>
-
-      <div className="emp-task-details-meta">
-        <div className="emp-task-meta-row">
-          <div className="emp-task-status-line">
-            <span className="emp-task-label">Status:</span>
-            <span className="emp-task-value">{selectedTask.status}</span>
-          </div>
-
-          <div className="emp-task-progress-wrapper">
-            <svg viewBox="0 0 36 36" className="emp-task-progress-ring">
-              <path
-                className="emp-task-circle-bg"
-                d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                stroke="#e5e7eb"
-                strokeWidth="3"
-                fill="none"
-              />
-              <path
-                className="emp-task-circle"
-                strokeDasharray="100"
-                strokeDashoffset={100 - selectedTask.progress}
-                d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                stroke={
-                  selectedTask.status !== "Completed" &&
-                  new Date(selectedTask.endDate) < currentDate
-                    ? "#ef4444"
-                    : getProgressColor(selectedTask.progress)
-                }
-                strokeWidth="3"
-                fill="none"
-                strokeLinecap="round"
-              />
-              <text
-                x="18"
-                y="20.35"
-                className="emp-task-percentage"
-                textAnchor="middle"
-                fill="#111827"
-                fontSize="10px"
-              >
-                {selectedTask.progress}%
-              </text>
-            </svg>
-          </div>
-
-          {/* Edit button only shown if task is editable */}
-          {activeTab === "Progress" &&
-            !editingProgress &&
-            isTaskEditable(selectedTask.startDate) && (
-              <button
-                className="emp-task-edit-progress-btn"
-                onClick={startEditingProgress}
-                title="Edit Progress"
-              >
-                <svg
-                  width="20"
-                  height="20"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  xmlns="http://www.w3.org/2000/svg"
+              <div className="emp-task-details-backdrop" onClick={closeDetails}>
+                <div
+                  className="emp-task-details"
+                  onClick={(e) => e.stopPropagation()}
                 >
-                  <path
-                    d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"
-                    stroke="#6b7280"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                  <path
-                    d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"
-                    stroke="#6b7280"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
-              </button>
+                  <div className="emp-task-details-header">
+                    <div className="emp-task-details-title">
+                      <div className="emp-task-pill">{selectedTask.id}</div>
+                      <h3>{selectedTask.title}</h3>
+                    </div>
+                    <button
+                      className="emp-task-close-btn"
+                      onClick={closeDetails}
+                      aria-label="Close"
+                    >
+                      ✕
+                    </button>
+                  </div>
+
+                  <div className="emp-task-details-meta">
+                    <div className="emp-task-meta-row">
+                      <div className="emp-task-status-line">
+                        <span className="emp-task-label">Status:</span>
+                        <span className="emp-task-value">{selectedTask.status}</span>
+                      </div>
+
+                      <div className="emp-task-progress-wrapper">
+                        <svg viewBox="0 0 36 36" className="emp-task-progress-ring">
+                          <path
+                            className="emp-task-circle-bg"
+                            d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                            stroke="#e5e7eb"
+                            strokeWidth="3"
+                            fill="none"
+                          />
+                          <path
+                            className="emp-task-circle"
+                            strokeDasharray="100"
+                            strokeDashoffset={100 - selectedTask.progress}
+                            d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                            stroke={
+                              selectedTask.status !== "Completed" &&
+                              new Date(selectedTask.endDate) < currentDate
+                                ? "#ef4444"
+                                : getProgressColor(selectedTask.progress)
+                            }
+                            strokeWidth="3"
+                            fill="none"
+                            strokeLinecap="round"
+                          />
+                          <text
+                            x="18"
+                            y="20.35"
+                            className="emp-task-percentage"
+                            textAnchor="middle"
+                            fill="#111827"
+                            fontSize="10px"
+                          >
+                            {selectedTask.progress}%
+                          </text>
+                        </svg>
+                      </div>
+
+                      {/* Edit button - now visible in both tabs */}
+                      {!editingProgress && isTaskEditable(selectedTask.startDate) && (
+                        <button
+                          className="emp-task-edit-progress-btn"
+                          onClick={startEditingProgress}
+                          title="Edit Progress"
+                        >
+                          <svg
+                            width="20"
+                            height="20"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            xmlns="http://www.w3.org/2000/svg"
+                          >
+                            <path
+                              d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"
+                              stroke="#6b7280"
+                              strokeWidth="2"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            />
+                            <path
+                              d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"
+                              stroke="#6b7280"
+                              strokeWidth="2"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            />
+                          </svg>
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Progress editing section */}
+                    {editingProgress && isTaskEditable(selectedTask.startDate) ? (
+                      <div className="emp-task-progress-editor">
+                        <div className="emp-task-slider-container">
+                          <label htmlFor="progress-slider">Progress</label>
+                          <input
+                            id="progress-slider"
+                            type="range"
+                            min="0"
+                            max="100"
+                            value={tempProgress}
+                            onChange={handleSliderChange}
+                            className="emp-task-progress-slider"
+                          />
+                          <span className="emp-task-slider-value">{tempProgress}%</span>
+                        </div>
+
+                        <div className="emp-task-status-container">
+                          <label htmlFor="status-select">Status</label>
+                          <select
+                            id="status-select"
+                            value={tempStatus}
+                            onChange={handleStatusChange}
+                            className="emp-task-status-select"
+                          >
+                            {dropdownColumns.map((col) => (
+                              <option key={col.key} value={col.key}>
+                                {col.title}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+
+                        <div className="emp-task-editor-actions">
+                          <button
+                            onClick={saveProgress}
+                            className="emp-task-save-btn"
+                          >
+                            Update Progress
+                          </button>
+                          <button
+                            onClick={cancelEditing}
+                            className="emp-task-cancel-btn"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    ) : editingProgress && !isTaskEditable(selectedTask.startDate) ? (
+                      <p style={{ color: "#dc3545", margin: "12px 0" }}>
+                        Editing is not allowed — task starts on {displayDate(selectedTask.startDate)}
+                      </p>
+                    ) : null}
+
+                    <div className="emp-task-dates-row">
+                      <span className="emp-task-date-pill emp-task-start">
+                        Start: {displayDate(selectedTask.startDate)}
+                      </span>
+                      <span className="emp-task-arrow">→</span>
+                      <span
+                        className={`emp-task-date-pill emp-task-end ${
+                          selectedTask.status !== "Completed" &&
+                          new Date(selectedTask.endDate) < currentDate
+                            ? "emp-task-overdue"
+                            : ""
+                        }`}
+                      >
+                        End: {displayDate(selectedTask.endDate)}
+                      </span>
+                    </div>
+
+                    <div className="emp-task-description">
+                      <h4>Description</h4>
+                      <p>
+                        {selectedTask.description
+                          .split("\n")
+                          .map((line, idx) => (
+                            <span key={idx}>
+                              {line.startsWith("- ") ? `• ${line.slice(2)}` : line}
+                              <br />
+                            </span>
+                          ))}
+                      </p>
+                    </div>
+
+                    {/* Not editable message */}
+                    {!isTaskEditable(selectedTask.startDate) && (
+                      <div
+                        style={{
+                          backgroundColor: "#fff3cd",
+                          color: "#856404",
+                          padding: "12px",
+                          borderRadius: "6px",
+                          margin: "16px 0",
+                          fontSize: "0.95rem",
+                          textAlign: "center",
+                        }}
+                      >
+                        <strong>Task not yet active</strong><br />
+                        You can view details, but editing and commenting will be available starting from{" "}
+                        <strong>{displayDate(selectedTask.startDate)}</strong>.
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="emp-task-tabs">
+                    <div className="emp-task-tab-header">
+                      <button
+                        className={`emp-task-tab-btn ${
+                          activeTab === "Progress" ? "emp-task-active" : ""
+                        }`}
+                        onClick={() => setActiveTab("Progress")}
+                      >
+                        Progress
+                      </button>
+                      <button
+                        className={`emp-task-tab-btn ${
+                          activeTab === "Clarification" ? "emp-task-active" : ""
+                        }`}
+                        onClick={() => setActiveTab("Clarification")}
+                      >
+                        Clarification
+                      </button>
+                    </div>
+
+                    <div className="emp-task-tab-content">
+                      {activeTab === "Progress" && (
+                        <div className="emp-task-progress-tab">
+                          <h4>Progress Updates</h4>
+                          {loadingMessages ? (
+                            <p className="emp-task-loading-message">
+                              Loading progress messages...
+                            </p>
+                          ) : selectedTask.messages.filter(
+                              (msg) => msg.type === "Progress"
+                            ).length > 0 ? (
+                            <div className="emp-task-messages">
+                              {selectedTask.messages
+                                .filter((msg) => msg.type === "Progress")
+                                .map((msg, idx) => (
+                                  <div
+                                    key={idx}
+                                    className={`emp-task-message ${
+                                      msg.senderName === "You"
+                                        ? "emp-task-sent"
+                                        : "emp-task-received"
+                                    }`}
+                                  >
+                                    <div className="emp-task-message-content">
+                                      {msg.text}
+                                    </div>
+                                    <div className="emp-task-message-meta">
+                                      <span>{displayDate(msg.time)}</span>
+                                    </div>
+                                  </div>
+                                ))}
+                            </div>
+                          ) : (
+                            <p className="emp-task-no-msg">No progress updates yet.</p>
+                          )}
+
+                          <form
+                            className="emp-task-chat-input"
+                            onSubmit={handleAddMessage}
+                          >
+                            <div className="emp-task-mic-input-wrapper">
+                              <input
+                                type="text"
+                                placeholder={
+                                  isListening
+                                    ? "Listening... speak now"
+                                    : isTaskEditable(selectedTask.startDate)
+                                    ? "Type a progress comment…"
+                                    : "Task not started — comments disabled"
+                                }
+                                value={messageText}
+                                onChange={(e) => setMessageText(e.target.value)}
+                                disabled={
+                                  loadingMessages ||
+                                  !isTaskEditable(selectedTask.startDate)
+                                }
+                              />
+                              <button
+                                type="button"
+                                className={`emp-task-mic-button ${
+                                  isListening ? "listening" : ""
+                                }`}
+                                onClick={toggleMic}
+                                disabled={!isTaskEditable(selectedTask.startDate)}
+                                title={
+                                  isListening
+                                    ? "Stop listening"
+                                    : isTaskEditable(selectedTask.startDate)
+                                    ? "Speak"
+                                    : "Not available yet"
+                                }
+                              >
+                                <i className="fa-solid fa-microphone"></i>
+                              </button>
+                            </div>
+                            <button
+                              type="submit"
+                              disabled={
+                                loadingMessages ||
+                                !messageText.trim() ||
+                                !isTaskEditable(selectedTask.startDate)
+                              }
+                            >
+                              Send
+                            </button>
+                          </form>
+                        </div>
+                      )}
+
+                      {activeTab === "Clarification" && (
+                        <div className="emp-task-clarification-tab">
+                          <h4>Clarification</h4>
+                          {loadingMessages ? (
+                            <p className="emp-task-loading-message">
+                              Loading clarification messages...
+                            </p>
+                          ) : selectedTask.messages.filter(
+                              (msg) => msg.type === "Clarification"
+                            ).length > 0 ? (
+                            <div className="emp-task-messages">
+                              {selectedTask.messages
+                                .filter((msg) => msg.type === "Clarification")
+                                .map((msg, idx) => (
+                                  <div
+                                    key={idx}
+                                    className={`emp-task-message ${
+                                      msg.senderName === "You"
+                                        ? "emp-task-sent"
+                                        : "emp-task-received"
+                                    }`}
+                                  >
+                                    <div className="emp-task-message-content">
+                                      {msg.text}
+                                    </div>
+                                    <div className="emp-task-message-meta">
+                                      <span>{displayDate(msg.time)}</span>
+                                    </div>
+                                  </div>
+                                ))}
+                            </div>
+                          ) : (
+                            <p className="emp-task-no-msg">No clarifications yet.</p>
+                          )}
+
+                          <form
+                            className="emp-task-chat-input"
+                            onSubmit={handleAddMessage}
+                          >
+                            <div className="emp-task-mic-input-wrapper">
+                              <input
+                                type="text"
+                                placeholder={
+                                  isListening
+                                    ? "Listening... speak now"
+                                    : isTaskEditable(selectedTask.startDate)
+                                    ? "Type a clarification message…"
+                                    : "Task not started — comments disabled"
+                                }
+                                value={messageText}
+                                onChange={(e) => setMessageText(e.target.value)}
+                                disabled={
+                                  loadingMessages ||
+                                  !isTaskEditable(selectedTask.startDate)
+                                }
+                              />
+                              <button
+                                type="button"
+                                className={`emp-task-mic-button ${
+                                  isListening ? "listening" : ""
+                                }`}
+                                onClick={toggleMic}
+                                disabled={!isTaskEditable(selectedTask.startDate)}
+                                title={
+                                  isListening
+                                    ? "Stop listening"
+                                    : isTaskEditable(selectedTask.startDate)
+                                    ? "Speak"
+                                    : "Not available yet"
+                                }
+                              >
+                                <i className="fa-solid fa-microphone"></i>
+                              </button>
+                            </div>
+                            <button
+                              type="submit"
+                              disabled={
+                                loadingMessages ||
+                                !messageText.trim() ||
+                                !isTaskEditable(selectedTask.startDate)
+                              }
+                            >
+                              Send
+                            </button>
+                          </form>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
             )}
-        </div>
-
-        {/* Progress editing section - only shown if editable */}
-        {editingProgress && isTaskEditable(selectedTask.startDate) ? (
-          <div className="emp-task-progress-editor">
-            <div className="emp-task-slider-container">
-              <label htmlFor="progress-slider">Progress</label>
-              <input
-                id="progress-slider"
-                type="range"
-                min="0"
-                max="100"
-                value={tempProgress}
-                onChange={handleSliderChange}
-                className="emp-task-progress-slider"
-              />
-              <span className="emp-task-slider-value">{tempProgress}%</span>
-            </div>
-
-            <div className="emp-task-status-container">
-              <label htmlFor="status-select">Status</label>
-              <select
-                id="status-select"
-                value={tempStatus}
-                onChange={handleStatusChange}
-                className="emp-task-status-select"
-              >
-                {dropdownColumns.map((col) => (
-                  <option key={col.key} value={col.key}>
-                    {col.title}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="emp-task-editor-actions">
-              <button
-                onClick={saveProgress}
-                className="emp-task-save-btn"
-              >
-                Update Progress
-              </button>
-              <button
-                onClick={cancelEditing}
-                className="emp-task-cancel-btn"
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        ) : editingProgress && !isTaskEditable(selectedTask.startDate) ? (
-          // If somehow editing was started before check (edge case)
-          <p style={{ color: "#dc3545", margin: "12px 0" }}>
-            Editing is not allowed — task starts on {displayDate(selectedTask.startDate)}
-          </p>
-        ) : null}
-
-        <div className="emp-task-dates-row">
-          <span className="emp-task-date-pill emp-task-start">
-            Start: {displayDate(selectedTask.startDate)}
-          </span>
-          <span className="emp-task-arrow">→</span>
-          <span
-            className={`emp-task-date-pill emp-task-end ${
-              selectedTask.status !== "Completed" &&
-              new Date(selectedTask.endDate) < currentDate
-                ? "emp-task-overdue"
-                : ""
-            }`}
-          >
-            End: {displayDate(selectedTask.endDate)}
-          </span>
-        </div>
-
-        <div className="emp-task-description">
-          <h4>Description</h4>
-          <p>
-            {selectedTask.description
-              .split("\n")
-              .map((line, idx) => (
-                <span key={idx}>
-                  {line.startsWith("- ") ? `• ${line.slice(2)}` : line}
-                  <br />
-                </span>
-              ))}
-          </p>
-        </div>
-
-        {/* Not editable message - shown prominently if task hasn't started */}
-        {!isTaskEditable(selectedTask.startDate) && (
-          <div
-            style={{
-              backgroundColor: "#fff3cd",
-              color: "#856404",
-              padding: "12px",
-              borderRadius: "6px",
-              margin: "16px 0",
-              fontSize: "0.95rem",
-              textAlign: "center",
-            }}
-          >
-            <strong>Task not yet active</strong><br />
-            You can view details, but editing and commenting will be available starting from{" "}
-            <strong>{displayDate(selectedTask.startDate)}</strong>.
-          </div>
-        )}
-      </div>
-
-      <div className="emp-task-tabs">
-        <div className="emp-task-tab-header">
-          <button
-            className={`emp-task-tab-btn ${
-              activeTab === "Progress" ? "emp-task-active" : ""
-            }`}
-            onClick={() => setActiveTab("Progress")}
-          >
-            Progress
-          </button>
-          <button
-            className={`emp-task-tab-btn ${
-              activeTab === "Clarification" ? "emp-task-active" : ""
-            }`}
-            onClick={() => setActiveTab("Clarification")}
-          >
-            Clarification
-          </button>
-        </div>
-
-        <div className="emp-task-tab-content">
-          {activeTab === "Progress" && (
-            <div className="emp-task-progress-tab">
-              <h4>Progress Updates</h4>
-              {loadingMessages ? (
-                <p className="emp-task-loading-message">
-                  Loading progress messages...
-                </p>
-              ) : selectedTask.messages.filter(
-                  (msg) => msg.type === "Progress"
-                ).length > 0 ? (
-                <div className="emp-task-messages">
-                  {selectedTask.messages
-                    .filter((msg) => msg.type === "Progress")
-                    .map((msg, idx) => (
-                      <div
-                        key={idx}
-                        className={`emp-task-message ${
-                          msg.senderName === "You"
-                            ? "emp-task-sent"
-                            : "emp-task-received"
-                        }`}
-                      >
-                        <div className="emp-task-message-content">
-                          {msg.text}
-                        </div>
-                        <div className="emp-task-message-meta">
-                          <span>{displayDate(msg.time)}</span>
-                          <span>{msg.senderName}</span>
-                        </div>
-                      </div>
-                    ))}
-                </div>
-              ) : (
-                <p className="emp-task-no-msg">No progress updates yet.</p>
-              )}
-
-              {/* Chat input - disabled if task not started */}
-              <form
-                className="emp-task-chat-input"
-                onSubmit={handleAddMessage}
-              >
-                <div className="emp-task-mic-input-wrapper">
-                  <input
-                    type="text"
-                    placeholder={
-                      isListening
-                        ? "Listening... speak now"
-                        : isTaskEditable(selectedTask.startDate)
-                        ? "Type a progress comment…"
-                        : "Task not started — comments disabled"
-                    }
-                    value={messageText}
-                    onChange={(e) => setMessageText(e.target.value)}
-                    disabled={
-                      loadingMessages ||
-                      !isTaskEditable(selectedTask.startDate)
-                    }
-                  />
-                  <button
-                    type="button"
-                    className={`emp-task-mic-button ${
-                      isListening ? "listening" : ""
-                    }`}
-                    onClick={toggleMic}
-                    disabled={!isTaskEditable(selectedTask.startDate)}
-                    title={
-                      isListening
-                        ? "Stop listening"
-                        : isTaskEditable(selectedTask.startDate)
-                        ? "Speak"
-                        : "Not available yet"
-                    }
-                  >
-                    <i className="fa-solid fa-microphone"></i>
-                  </button>
-                </div>
-                <button
-                  type="submit"
-                  disabled={
-                    loadingMessages ||
-                    !messageText.trim() ||
-                    !isTaskEditable(selectedTask.startDate)
-                  }
-                >
-                  Send
-                </button>
-              </form>
-            </div>
-          )}
-
-          {activeTab === "Clarification" && (
-            <div className="emp-task-clarification-tab">
-              <h4>Clarification</h4>
-              {loadingMessages ? (
-                <p className="emp-task-loading-message">
-                  Loading clarification messages...
-                </p>
-              ) : selectedTask.messages.filter(
-                  (msg) => msg.type === "Clarification"
-                ).length > 0 ? (
-                <div className="emp-task-messages">
-                  {selectedTask.messages
-                    .filter((msg) => msg.type === "Clarification")
-                    .map((msg, idx) => (
-                      <div
-                        key={idx}
-                        className={`emp-task-message ${
-                          msg.senderName === "You"
-                            ? "emp-task-sent"
-                            : "emp-task-received"
-                        }`}
-                      >
-                        <div className="emp-task-message-content">
-                          {msg.text}
-                        </div>
-                        <div className="emp-task-message-meta">
-                          <span>{displayDate(msg.time)}</span>
-                          <span>{msg.senderName}</span>
-                        </div>
-                      </div>
-                    ))}
-                </div>
-              ) : (
-                <p className="emp-task-no-msg">No clarifications yet.</p>
-              )}
-
-              <form
-                className="emp-task-chat-input"
-                onSubmit={handleAddMessage}
-              >
-                <div className="emp-task-mic-input-wrapper">
-                  <input
-                    type="text"
-                    placeholder={
-                      isListening
-                        ? "Listening... speak now"
-                        : isTaskEditable(selectedTask.startDate)
-                        ? "Type a clarification message…"
-                        : "Task not started — comments disabled"
-                    }
-                    value={messageText}
-                    onChange={(e) => setMessageText(e.target.value)}
-                    disabled={
-                      loadingMessages ||
-                      !isTaskEditable(selectedTask.startDate)
-                    }
-                  />
-                  <button
-                    type="button"
-                    className={`emp-task-mic-button ${
-                      isListening ? "listening" : ""
-                    }`}
-                    onClick={toggleMic}
-                    disabled={!isTaskEditable(selectedTask.startDate)}
-                    title={
-                      isListening
-                        ? "Stop listening"
-                        : isTaskEditable(selectedTask.startDate)
-                        ? "Speak"
-                        : "Not available yet"
-                    }
-                  >
-                    <i className="fa-solid fa-microphone"></i>
-                  </button>
-                </div>
-                <button
-                  type="submit"
-                  disabled={
-                    loadingMessages ||
-                    !messageText.trim() ||
-                    !isTaskEditable(selectedTask.startDate)
-                  }
-                >
-                  Send
-                </button>
-              </form>
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  </div>
-)}
           </div>
 
           <Modal

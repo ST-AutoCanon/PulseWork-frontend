@@ -1,5 +1,4 @@
 
-
 import "./ClearanceModal.css";
 import axios from "axios";
 import { useAuth } from "../../context/AuthProvider.client";
@@ -7,6 +6,12 @@ const API_KEY = process.env.NEXT_PUBLIC_API_KEY;
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
 import React, { useState, useEffect, useMemo } from "react";
 import Modal from "../Modal/Modal.client";
+
+// ── Safe date parser - prevents +5:30 IST shift (one day back issue) ──
+const cleanDateForInput = (rawDate) => {
+  if (!rawDate) return "";
+  return String(rawDate).split("T")[0];
+};
 
 export default function ClearanceModal({
   isOpen,
@@ -26,28 +31,26 @@ export default function ClearanceModal({
   viewFile,
   downloadFile,
   onRefresh,
-  
 }) {
   const [alertModal, setAlertModal] = useState({
-  isVisible: false,
-  title: "",
-  message: "",
-});
-
-const showAlert = (message, title = "") => {
-  setAlertModal({ isVisible: true, title, message });
-};
-
-const closeAlert = () => {
-  setAlertModal({ isVisible: false, title: "", message: "" });
-};
-
+    isVisible: false,
+    title: "",
+    message: "",
+  });
+  const showAlert = (message, title = "") => {
+    setAlertModal({ isVisible: true, title, message });
+  };
+  const closeAlert = () => {
+    setAlertModal({ isVisible: false, title: "", message: "" });
+  };
   const [activeTab, setActiveTab] = useState("kt");
   const [showKTModal, setShowKTModal] = useState(false);
   const [showAddAssetModal, setShowAddAssetModal] = useState(false);
+
+  // ── Added: loading state for adding asset to show "Saving…" and prevent double-clicks ──
+  const [isSavingAsset, setIsSavingAsset] = useState(false);
+
   const { user } = useAuth();
-
-
   const headers = useMemo(() => {
     return {
       "x-api-key": API_KEY ?? "",
@@ -55,7 +58,7 @@ const closeAlert = () => {
       ...(user?.orgId ? { "x-org-id": user.orgId } : {}),
     };
   }, [API_KEY, user?.employeeId, user?.orgId]);
-const [isUpdating, setIsUpdating] = useState(false);
+  const [isUpdating, setIsUpdating] = useState(false);
   const [editingKt, setEditingKt] = useState(null);
   const [editKtForm, setEditKtForm] = useState({
     topic: "",
@@ -65,11 +68,17 @@ const [isUpdating, setIsUpdating] = useState(false);
     status: "pending",
     completedDate: "",
   });
-
   if (!isOpen) return null;
 
   // ── Start editing a KT plan ────────────────────────────────────────
   const startEditKt = (kt) => {
+    const cleanCompletedDate = cleanDateForInput(
+      kt.actual_completed_date || kt.planned_date || ""
+    );
+
+    console.log("[startEditKt] Raw backend date:", kt.actual_completed_date);
+    console.log("[startEditKt] Cleaned for input:", cleanCompletedDate);
+
     setEditingKt(kt);
     setEditKtForm({
       topic: kt.title || "",
@@ -77,7 +86,7 @@ const [isUpdating, setIsUpdating] = useState(false);
       documents: [],
       filesToDelete: [],
       status: kt.status || "pending",
-      completedDate: kt.actual_completed_date || kt.planned_date || "",
+      completedDate: cleanCompletedDate,
     });
     setShowKTModal(true);
   };
@@ -130,7 +139,7 @@ const [isUpdating, setIsUpdating] = useState(false);
       console.log("exitId sent:", exitIdValue);
       console.log("FormData entries:");
       for (const [key, val] of formData.entries()) {
-        console.log(`  ${key} →`, val instanceof Blob ? `File (${val.name || "unnamed"})` : val);
+        console.log(` ${key} →`, val instanceof Blob ? `File (${val.name || "unnamed"})` : val);
       }
       console.log("Headers:", headers);
       const response = await axios.put(url, formData, {
@@ -156,10 +165,20 @@ const [isUpdating, setIsUpdating] = useState(false);
     if (!newAssetForm.name.trim() || !newAssetForm.returnDate) {
       return showAlert("Asset name and return date are required");
     }
-    await onAddAsset();
-    setNewAssetForm({ name: "", returnDate: "" });
-    setShowAddAssetModal(false);
-    if (onRefresh) onRefresh();
+
+    setIsSavingAsset(true);
+
+    try {
+      await onAddAsset();
+      setNewAssetForm({ name: "", returnDate: "" });
+      setShowAddAssetModal(false);
+      if (onRefresh) onRefresh();
+    } catch (err) {
+      console.error("Error adding asset:", err);
+      showAlert("Failed to add asset. Please try again.");
+    } finally {
+      setIsSavingAsset(false);
+    }
   };
 
   const getStatusColor = (status) => {
@@ -183,7 +202,6 @@ const [isUpdating, setIsUpdating] = useState(false);
               ×
             </button>
           </div>
-
           {/* Tabs */}
           <div className="exf-clearance-tabs-wrapper">
             <div className="exf-clearance-tabs">
@@ -201,7 +219,6 @@ const [isUpdating, setIsUpdating] = useState(false);
               </button>
             </div>
           </div>
-
           {/* Body */}
           <div className="exf-clearance-modal-body">
             {exitCompleted ? (
@@ -216,27 +233,28 @@ const [isUpdating, setIsUpdating] = useState(false);
                   <h3 style={{ margin: "0 0 1rem 0", color: "#111827" }}>
                     Knowledge Transfer Plans
                   </h3>
-
                   {ktPlans?.length > 0 ? (
                     <div className="exf-clearance-items-list">
                       {ktPlans.map((kt) => (
                         <div key={kt.id} className="exf-clearance-item-card">
                           <div className="exf-clearance-item-header">
                             <h4 className="exf-clearance-item-title">{kt.title}</h4>
-                            {/* <span className={`exf-clearance-item-status-badge ${getStatusColor(kt.status)}`}>
-                              {kt.status || "Pending"}
-                            </span> */}
                           </div>
-
                           <p className="exf-clearance-item-description">{kt.description}</p>
-
-                          {/* NEW: Approval Status Checkboxes (visible to everyone) */}
+                          {/* Show cleaned dates */}
+                          <p style={{ marginTop: "0.5rem", fontSize: "0.9rem", color: "#4b5563" }}>
+                            {kt.actual_completed_date
+                              ? `Completed: ${cleanDateForInput(kt.actual_completed_date)}`
+                              : kt.planned_date
+                              ? `Planned: ${cleanDateForInput(kt.planned_date)}`
+                              : ""}
+                          </p>
                           <div className="exf-approvals mt-3 flex flex-col gap-2 text-sm">
                             <label className="flex items-center gap-2">
                               <input
                                 type="checkbox"
                                 checked={!!kt.supervisor_approved}
-                                disabled={true} // read-only
+                                disabled={true}
                                 className="h-4 w-4 text-green-600 cursor-not-allowed"
                               />
                               <span className={kt.supervisor_approved ? "text-green-700 font-medium" : "text-gray-600"}>
@@ -247,7 +265,7 @@ const [isUpdating, setIsUpdating] = useState(false);
                               <input
                                 type="checkbox"
                                 checked={!!kt.hr_approved}
-                                disabled={true} // read-only
+                                disabled={true}
                                 className="h-4 w-4 text-green-600 cursor-not-allowed"
                               />
                               <span className={kt.hr_approved ? "text-green-700 font-medium" : "text-gray-600"}>
@@ -255,7 +273,6 @@ const [isUpdating, setIsUpdating] = useState(false);
                               </span>
                             </label>
                           </div>
-
                           {kt.attached_files?.length > 0 && (
                             <div className="exf-clearance-files-section mt-3">
                               <label className="exf-clearance-files-label">
@@ -287,7 +304,6 @@ const [isUpdating, setIsUpdating] = useState(false);
                               </div>
                             </div>
                           )}
-
                           {!exitCompleted && !isHr && (
                             <div className="exf-clearance-actions mt-3">
                               <button
@@ -318,22 +334,16 @@ const [isUpdating, setIsUpdating] = useState(false);
                   <h3 style={{ margin: "0 0 1rem 0", color: "#111827" }}>
                     Assets to Return
                   </h3>
-
                   {assets?.length > 0 ? (
                     <div className="exf-clearance-items-list">
                       {assets.map((asset) => (
                         <div key={asset.id} className="exf-clearance-item-card">
                           <div className="exf-clearance-item-header">
                             <h4 className="exf-clearance-item-title">{asset.title}</h4>
-                            {/* <span className={`exf-clearance-item-status-badge ${getStatusColor(asset.status)}`}>
-                              {asset.status || "Pending"}
-                            </span> */}
                           </div>
                           <p className="exf-clearance-item-description">
-                            Return Date: {new Date(asset.planned_date).toLocaleDateString()}
+                            Return Date: {cleanDateForInput(asset.planned_date) || "—"}
                           </p>
-
-                          {/* NEW: Approval Status Checkboxes for Assets */}
                           <div className="exf-approvals mt-3 flex flex-col gap-2 text-sm">
                             <label className="flex items-center gap-2">
                               <input
@@ -358,7 +368,6 @@ const [isUpdating, setIsUpdating] = useState(false);
                               </span>
                             </label>
                           </div>
-
                         </div>
                       ))}
                     </div>
@@ -375,7 +384,6 @@ const [isUpdating, setIsUpdating] = useState(false);
               </div>
             )}
           </div>
-
           {/* Footer */}
           <div className="exf-clearance-modal-footer">
             {!exitCompleted && (
@@ -387,7 +395,6 @@ const [isUpdating, setIsUpdating] = useState(false);
                 + Add {activeTab === "kt" ? "KT Plan" : "Asset"}
               </button>
             )}
-
             <button className="exf-clearance-close-btn" onClick={onClose} disabled={loading}>
               Close
             </button>
@@ -416,7 +423,6 @@ const [isUpdating, setIsUpdating] = useState(false);
                 ×
               </button>
             </div>
-
             <div className="exf-clearance-modal-body">
               {/* Topic */}
               <div className="exf-form-group">
@@ -433,7 +439,6 @@ const [isUpdating, setIsUpdating] = useState(false);
                   placeholder="e.g. CRM Dashboard Training"
                 />
               </div>
-
               {/* Description */}
               <div className="exf-form-group">
                 <label className="exf-form-label required">Description </label>
@@ -449,7 +454,6 @@ const [isUpdating, setIsUpdating] = useState(false);
                   placeholder="Detailed notes about what needs to be handed over..."
                 />
               </div>
-
               {/* Upload Documents */}
               <div className="exf-form-group">
                 <label className="exf-form-label">Upload Documents (multiple allowed)</label>
@@ -468,7 +472,6 @@ const [isUpdating, setIsUpdating] = useState(false);
                   className="exf-file-input"
                 />
               </div>
-
               {/* New Files Preview */}
               {(editingKt ? editKtForm.documents : newKtForm.documents).length > 0 && (
                 <div className="exf-form-group">
@@ -499,7 +502,6 @@ const [isUpdating, setIsUpdating] = useState(false);
                   </div>
                 </div>
               )}
-
               {/* Existing Files (Edit mode only) */}
               {editingKt && ktPlans.find(k => k.id === editingKt.id)?.attached_files?.length > 0 && (
                 <div className="exf-form-group">
@@ -531,7 +533,6 @@ const [isUpdating, setIsUpdating] = useState(false);
                   </div>
                 </div>
               )}
-
               {/* Status & Completed Date */}
               <div className="exf-form-row">
                 <div className="exf-form-group half">
@@ -546,11 +547,10 @@ const [isUpdating, setIsUpdating] = useState(false);
                     }
                   >
                     <option value="pending">Pending</option>
-                    <option value="in-progress">In Progress</option>
+                    <option value="in_progress">In Progress</option>
                     <option value="completed">Completed</option>
                   </select>
                 </div>
-
                 <div className="exf-form-group half">
                   <label className="exf-form-label">Completed Date</label>
                   <input
@@ -566,7 +566,6 @@ const [isUpdating, setIsUpdating] = useState(false);
                 </div>
               </div>
             </div>
-
             <div className="exf-clearance-modal-footer">
               <button
                 className="exf-clearance-close-btn"
@@ -577,13 +576,12 @@ const [isUpdating, setIsUpdating] = useState(false);
               >
                 Cancel
               </button>
-             <button
-  className="exf-clearance-add-btn"
-  onClick={editingKt ? handleUpdateKt : handleAddKt}
->
-  {editingKt ? "Update KT Plan" : "Add KT Plan"}
-</button>
-
+              <button
+                className="exf-clearance-add-btn"
+                onClick={editingKt ? handleUpdateKt : handleAddKt}
+              >
+                {editingKt ? "Update KT Plan" : "Add KT Plan"}
+              </button>
             </div>
           </div>
         </div>
@@ -591,7 +589,9 @@ const [isUpdating, setIsUpdating] = useState(false);
 
       {/* Add Asset Modal */}
       {showAddAssetModal && (
-        <div className="exf-clearance-modal-backdrop" onClick={() => setShowAddAssetModal(false)}>
+        <div className="exf-clearance-modal-backdrop" onClick={() => {
+          if (!isSavingAsset) setShowAddAssetModal(false);
+        }}>
           <div
             className="exf-clearance-modal-content"
             style={{ maxWidth: "500px" }}
@@ -599,11 +599,16 @@ const [isUpdating, setIsUpdating] = useState(false);
           >
             <div className="exf-clearance-modal-header">
               <h2 className="exf-clearance-modal-title">Add Asset</h2>
-              <button className="exf-clearance-modal-close" onClick={() => setShowAddAssetModal(false)}>
+              <button 
+                className="exf-clearance-modal-close" 
+                onClick={() => {
+                  if (!isSavingAsset) setShowAddAssetModal(false);
+                }}
+                disabled={isSavingAsset}
+              >
                 ×
               </button>
             </div>
-
             <div className="exf-clearance-modal-body">
               <div style={{ marginBottom: "1rem" }}>
                 <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "600" }}>
@@ -620,9 +625,9 @@ const [isUpdating, setIsUpdating] = useState(false);
                     borderRadius: "6px",
                   }}
                   placeholder="e.g., Laptop, Phone"
+                  disabled={isSavingAsset}
                 />
               </div>
-
               <div style={{ marginBottom: "1rem" }}>
                 <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "600" }}>
                   Return Date *
@@ -637,32 +642,39 @@ const [isUpdating, setIsUpdating] = useState(false);
                     border: "1px solid #d1d5db",
                     borderRadius: "6px",
                   }}
+                  disabled={isSavingAsset}
                 />
               </div>
             </div>
-
             <div className="exf-clearance-modal-footer">
-              <button className="exf-clearance-close-btn" onClick={() => setShowAddAssetModal(false)}>
+              <button 
+                className="exf-clearance-close-btn" 
+                onClick={() => {
+                  if (!isSavingAsset) setShowAddAssetModal(false);
+                }}
+                disabled={isSavingAsset}
+              >
                 Cancel
               </button>
-             <button className="exf-clearance-add-btn" onClick={handleAddAsset}>
-  Add Asset
-</button>
-
+              <button
+                className="exf-clearance-add-btn"
+                onClick={handleAddAsset}
+                disabled={isSavingAsset}
+              >
+                {isSavingAsset ? "Saving..." : "Add Asset"}
+              </button>
             </div>
-          
-
           </div>
-          
         </div>
       )}
-       <Modal
-      isVisible={alertModal.isVisible}
-      onClose={closeAlert}
-      buttons={[{ label: "OK", onClick: closeAlert }]}
-    >
-      <p>{alertModal.message}</p>
-    </Modal>
+
+      <Modal
+        isVisible={alertModal.isVisible}
+        onClose={closeAlert}
+        buttons={[{ label: "OK", onClick: closeAlert }]}
+      >
+        <p>{alertModal.message}</p>
+      </Modal>
     </>
   );
 }

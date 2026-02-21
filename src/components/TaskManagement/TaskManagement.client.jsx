@@ -949,7 +949,7 @@ const TaskManagement = () => {
                                     </div>
                                     <div className="task-message-meta">
                                       <span>{displayDate(msg.time)}</span>
-                                      <span>{msg.senderName}</span>
+                                      {/* <span>{msg.senderName}</span> */}
                                     </div>
                                   </div>
                                 ))}
@@ -1024,7 +1024,7 @@ const TaskManagement = () => {
                                     </div>
                                     <div className="task-message-meta">
                                       <span>{displayDate(msg.time)}</span>
-                                      <span>{msg.senderName}</span>
+                                      {/* <span>{msg.senderName}</span> */}
                                     </div>
                                   </div>
                                 ))}

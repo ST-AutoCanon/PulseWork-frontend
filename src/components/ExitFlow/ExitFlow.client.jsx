@@ -85,43 +85,39 @@ export default function ExitFlow() {
   });
   const [exitCompleted, setExitCompleted] = useState(false);
   const [showClearanceModal, setShowClearanceModal] = useState(false);
-
-  // ── Pagination states ────────────────────────────────────────────
-  const ITEMS_PER_PAGE = 10;
-  const [pageAllMain, setPageAllMain] = useState(1);
-  const [pageTeamMain, setPageTeamMain] = useState(1);
-  const [pagePendingNormal, setPagePendingNormal] = useState(1);
-  const [pagePendingWithdraw, setPagePendingWithdraw] = useState(1);
-  const [pageAllPendingNormal, setPageAllPendingNormal] = useState(1);
-  const [pageAllPendingWithdraw, setPageAllPendingWithdraw] = useState(1);
-  // ────────────────────────────────────────────────────────────────
-
   useEffect(() => {
     if (isAdmin && activeTab !== "all") {
       setActiveTab("all");
     }
   }, [isAdmin, activeTab]);
-  useEffect(() => {
-    if (!employeeId || !orgId) {
-      setErrorMessage("Session incomplete. Please login again.");
+// Keep your existing useEffect for initial load (but without fetchAllTeamRequests)
+useEffect(() => {
+  if (!employeeId || !orgId) {
+    setErrorMessage("Session incomplete. Please login again.");
+    setLoading(false);
+    return;
+  }
+  const init = async () => {
+    setLoading(true);
+    setErrorMessage("");
+    try {
+      await fetchSelfRequest();
+      // await fetchAllTeamRequests(); ← REMOVED HERE
+      await fetchTeamMembers();
+    } catch (err) {
+      setErrorMessage("Failed to load exit information.");
+    } finally {
       setLoading(false);
-      return;
     }
-    const init = async () => {
-      setLoading(true);
-      setErrorMessage("");
-      try {
-        await fetchSelfRequest();
-        await fetchAllTeamRequests();
-        await fetchTeamMembers();
-      } catch (err) {
-        setErrorMessage("Failed to load exit information.");
-      } finally {
-        setLoading(false);
-      }
-    };
-    init();
-  }, [employeeId, orgId]);
+  };
+  init();
+}, [employeeId, orgId]);
+// NEW: Fetch team/all requests when relevant tab is active
+useEffect(() => {
+  if (activeTab === "team" || activeTab === "all") {
+    fetchAllTeamRequests();
+  }
+}, [activeTab, employeeId, orgId]); // dependencies: re-run when tab or auth changes
   const fetchSelfRequest = async () => {
     try {
       const res = await axios.get(`${BACKEND_URL}/api/exit/my-active`, {
@@ -206,90 +202,119 @@ export default function ExitFlow() {
     }
   };
   const fetchAllTeamRequests = async () => {
-    try {
-      const url =
-        role === "hr" || role === "admin" || isAdmin
-          ? `${BACKEND_URL}/api/exit/all`
-          : `${BACKEND_URL}/api/exit/my-team/all`;
-      console.log("[TEAM REQUESTS] Fetching from:", url);
-      console.log("[TEAM REQUESTS] Current role:", role);
-      const res = await axios.get(url, {
-        headers: {
-          "x-api-key": API_KEY,
-          "x-employee-id": employeeId,
-          "x-org-id": orgId,
-        },
-        withCredentials: true,
-      });
-      const requests = res.data?.data || res.data || [];
-      console.log("[TEAM REQUESTS] Raw response:", res.data);
-      console.log("[TEAM REQUESTS] Total count:", requests.length);
-      console.log("[TEAM REQUESTS] All statuses:", requests.map(r => ({ id: r.id, emp_id: r.employee_id, supervisor_status: r.supervisor_status, hr_status: r.hr_status, withdrawal_supervisor_status: r.withdrawal_supervisor_status, withdrawal_hr_status: r.withdrawal_hr_status })));
-      setAllTeamRequests(requests);
-      // Filter pending data based on role
-      const effectiveRole = role?.toLowerCase() === "manager" ? "supervisor" : role?.toLowerCase();
-      let filteredPendingNormal = [];
-      let filteredPendingWithdraw = [];
-      if (effectiveRole === "supervisor") {
-        filteredPendingNormal = requests.filter(r => r.supervisor_status === "PENDING" && !r.withdrawal_requested_at);
-        filteredPendingWithdraw = requests.filter(r => r.withdrawal_requested_at && r.withdrawal_supervisor_status === "PENDING");
-      } else if (effectiveRole === "hr" || effectiveRole === "admin") {
-        filteredPendingNormal = requests.filter(r => r.hr_status === "PENDING" && !r.withdrawal_requested_at);
-        filteredPendingWithdraw = requests.filter(r => r.withdrawal_requested_at && r.withdrawal_hr_status === "PENDING");
-      }
-      console.log("[TEAM REQUESTS] Effective role:", effectiveRole);
-      console.log("[TEAM REQUESTS] Filtered pending normal:", filteredPendingNormal.length, "items");
-      console.log("[TEAM REQUESTS] Filtered pending withdraw:", filteredPendingWithdraw.length, "items");
-      if (filteredPendingNormal.length > 0) {
-        console.log("[TEAM REQUESTS] First pending normal:", filteredPendingNormal[0]);
-      }
-      setPendingData({
-        normal: filteredPendingNormal,
-        withdraw: filteredPendingWithdraw,
-      });
-      setResignedClearance(requests.filter(r => r.final_outcome === "RESIGNED"));
-    } catch (err) {
-      console.error("[TEAM REQUESTS FETCH ERROR]", err.response?.data || err.message);
+  try {
+    let url;
+    if (activeTab === "all") {
+      url = `${BACKEND_URL}/api/exit/all`;
+    } else if (activeTab === "team") {
+      url = `${BACKEND_URL}/api/exit/my-team/all`;
+    } else {
+      return; // not a team/all tab → skip
     }
-  };
+    const res = await axios.get(url, {
+      headers: {
+        "x-api-key": API_KEY,
+        "x-employee-id": employeeId,
+        "x-org-id": orgId,
+      },
+      withCredentials: true,
+    });
+    const requests = res.data?.data || res.data || [];
+    console.log("[TEAM REQUESTS] Raw response:", res.data);
+    console.log("[TEAM REQUESTS] Total count:", requests.length);
+    console.log("[TEAM REQUESTS] All statuses:", requests.map(r => ({ id: r.id, emp_id: r.employee_id, supervisor_status: r.supervisor_status, hr_status: r.hr_status, withdrawal_supervisor_status: r.withdrawal_supervisor_status, withdrawal_hr_status: r.withdrawal_hr_status })));
+    setAllTeamRequests(requests);
+    // Filter pending data based on role
+     // Filter pending data based on role
+    const effectiveRole = role?.toLowerCase() === "manager" ? "supervisor" : role?.toLowerCase();
+    let filteredPendingNormal = [];
+    let filteredPendingWithdraw = [];
+
+    // Show normal resignations that are not finally closed and not in withdrawal
+    filteredPendingNormal = requests.filter(r =>
+      !r.final_outcome &&                          // not rejected / resigned / withdrawn
+      !r.withdrawal_requested_at &&                // normal flow only
+      !["APPROVED", "REJECTED"].includes(r.supervisor_status || "") &&
+      !["APPROVED", "REJECTED"].includes(r.hr_status || "")
+    );
+
+    // Show withdrawals that are not finally resolved
+    filteredPendingWithdraw = requests.filter(r =>
+      r.withdrawal_requested_at &&
+      !["APPROVED", "REJECTED"].includes(r.withdrawal_supervisor_status || "") &&
+      !["APPROVED", "REJECTED"].includes(r.withdrawal_hr_status || "")
+    );
+
+    console.log("[TEAM REQUESTS] Effective role:", effectiveRole);
+    console.log("[TEAM REQUESTS] Filtered pending normal:", filteredPendingNormal.length, "items");
+    console.log("[TEAM REQUESTS] Filtered pending withdraw:", filteredPendingWithdraw.length, "items");
+    console.log("[TEAM REQUESTS] Effective role:", effectiveRole);
+    console.log("[TEAM REQUESTS] Filtered pending normal:", filteredPendingNormal.length, "items");
+    console.log("[TEAM REQUESTS] Filtered pending withdraw:", filteredPendingWithdraw.length, "items");
+    if (filteredPendingNormal.length > 0) {
+      console.log("[TEAM REQUESTS] First pending normal:", filteredPendingNormal[0]);
+    }
+    setPendingData({
+      normal: filteredPendingNormal,
+      withdraw: filteredPendingWithdraw,
+    });
+    setResignedClearance(requests.filter(r => r.final_outcome === "RESIGNED"));
+  } catch (err) {
+    console.error("[TEAM REQUESTS FETCH ERROR]", err.response?.data || err.message);
+  }
+};
+  // const fetchAllTeamRequests = async () => {
+  // try {
+  // const url =
+  // role === "hr" || role === "admin" || isAdmin
+  // ? `${BACKEND_URL}/api/exit/all`
+  // : `${BACKEND_URL}/api/exit/my-team/all`;
+  // console.log("[TEAM REQUESTS] Fetching from:", url);
+  // console.log("[TEAM REQUESTS] Current role:", role);
+  // const res = await axios.get(url, {
+  // headers: {
+  // "x-api-key": API_KEY,
+  // "x-employee-id": employeeId,
+  // "x-org-id": orgId,
+  // },
+  // withCredentials: true,
+  // });
+  // const requests = res.data?.data || res.data || [];
+  // console.log("[TEAM REQUESTS] Raw response:", res.data);
+  // console.log("[TEAM REQUESTS] Total count:", requests.length);
+  // console.log("[TEAM REQUESTS] All statuses:", requests.map(r => ({ id: r.id, emp_id: r.employee_id, supervisor_status: r.supervisor_status, hr_status: r.hr_status, withdrawal_supervisor_status: r.withdrawal_supervisor_status, withdrawal_hr_status: r.withdrawal_hr_status })));
+  // setAllTeamRequests(requests);
+  // // Filter pending data based on role
+  // const effectiveRole = role?.toLowerCase() === "manager" ? "supervisor" : role?.toLowerCase();
+  // let filteredPendingNormal = [];
+  // let filteredPendingWithdraw = [];
+  // if (effectiveRole === "supervisor") {
+  // filteredPendingNormal = requests.filter(r => r.supervisor_status === "PENDING" && !r.withdrawal_requested_at);
+  // filteredPendingWithdraw = requests.filter(r => r.withdrawal_requested_at && r.withdrawal_supervisor_status === "PENDING");
+  // } else if (effectiveRole === "hr" || effectiveRole === "admin") {
+  // filteredPendingNormal = requests.filter(r => r.hr_status === "PENDING" && !r.withdrawal_requested_at);
+  // filteredPendingWithdraw = requests.filter(r => r.withdrawal_requested_at && r.withdrawal_hr_status === "PENDING");
+  // }
+  // console.log("[TEAM REQUESTS] Effective role:", effectiveRole);
+  // console.log("[TEAM REQUESTS] Filtered pending normal:", filteredPendingNormal.length, "items");
+  // console.log("[TEAM REQUESTS] Filtered pending withdraw:", filteredPendingWithdraw.length, "items");
+  // if (filteredPendingNormal.length > 0) {
+  // console.log("[TEAM REQUESTS] First pending normal:", filteredPendingNormal[0]);
+  // }
+  // setPendingData({
+  // normal: filteredPendingNormal,
+  // withdraw: filteredPendingWithdraw,
+  // });
+  // setResignedClearance(requests.filter(r => r.final_outcome === "RESIGNED"));
+  // } catch (err) {
+  // console.error("[TEAM REQUESTS FETCH ERROR]", err.response?.data || err.message);
+  // }
+  // };
   useEffect(() => {
     if (selectedRequest?.type === "clearance" && selectedRequest?.id) {
       fetchClearanceItems(selectedRequest.id);
     }
   }, [selectedRequest]);
-
-  // ── Pagination helpers ───────────────────────────────────────────
-  const getPaginatedItems = (items, page) => {
-    const start = (page - 1) * ITEMS_PER_PAGE;
-    return items.slice(start, start + ITEMS_PER_PAGE);
-  };
-
- const PaginationControls = ({ currentPage, totalItems, setPage }) => {
-  const totalPages = Math.ceil(totalItems / ITEMS_PER_PAGE);
-  if (totalPages <= 1) return null;
-
-  return (
-    <div className="pagination-controls">           {/* ← added class */}
-      <button
-        onClick={() => setPage(p => Math.max(1, p - 1))}
-        disabled={currentPage === 1}
-      >
-        Previous
-      </button>
-
-      <span>Page {currentPage} of {totalPages}</span>
-
-      <button
-        onClick={() => setPage(p => p + 1)}
-        disabled={currentPage >= totalPages}
-      >
-        Next
-      </button>
-    </div>
-  );
-};
-  // ────────────────────────────────────────────────────────────────
-
   const handleAddKt = async () => {
     console.log("[handleAddKt] START");
     if (!newKtForm.topic.trim() || !newKtForm.description.trim()) {
@@ -487,7 +512,7 @@ export default function ExitFlow() {
       if (activeTab === "all") {
         approvalAs = "hr";
       } else if (activeTab === "team" && role === "hr") {
-      
+     
         approvalAs = "supervisor";
       } else if (["supervisor", "manager"].includes(role)) {
         approvalAs = "supervisor";
@@ -858,6 +883,9 @@ const handleReviewAction = async (reviewType, action) => {
 // methodPayload = { ...payload, status: action };
 // } else {
 // throw new Error(`Unauthorized role for withdrawal review`);
+// }
+// } else {
+// throw new Error(`Unknown review type: ${reviewType}`);
 // }
 // } else {
 // throw new Error(`Unknown review type: ${reviewType}`);
@@ -1337,157 +1365,150 @@ const handleReviewAction = async (reviewType, action) => {
                         No exit or withdrawal requests submitted by your team members yet.
                       </div>
                     ) : (
-                      <>
-                        <div className="exf-table-container">
-                          <table className="exf-table">
-                            <thead>
-                              <tr>
-                                <th>Emp ID</th>
-                                <th>Name</th>
-                                <th>Reason</th>
-                                <th>Date</th>
-                                <th>Supervisor</th>
-                                <th>HR</th>
-                                <th>Status</th>
-                                <th className="text-center">Action</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {getPaginatedItems(allTeamRequests, pageTeamMain).map((req) => {
-                                const isWithdrawal = !!req.withdrawal_requested_at;
-                                const isFullyWithdrawn =
-                                  isWithdrawal &&
-                                  req.withdrawal_supervisor_status === "APPROVED" &&
-                                  req.withdrawal_hr_status === "APPROVED";
-                                return (
-                                  <tr
-                                    key={req.id}
-                                    className={isFullyWithdrawn ? "exf-row-frozen opacity-65 bg-gray-50" : ""}
-                                  >
-                                    <td className="font-medium">{req.employee_id}</td>
-                                    <td>{req.employee_name || "—"}</td>
-                                    <td className="max-w-xs">
-                                      <div className="reason-tooltip-wrapper">
-                                        <span className="reason-truncated">
-                                          {isWithdrawal ? (
-                                            req.withdrawal_reason || "—"
-                                          ) : (
-                                            <>
-                                              {req.reason}
-                                              {req.reason === "Other" && req.other_reason && ` (${req.other_reason})`}
-                                            </>
-                                          )}
-                                        </span>
-                                        <div className="reason-tooltip">
-                                          {isWithdrawal ? (
-                                            <>
-                                              <strong>Withdrawal Reason:</strong><br />
-                                              {req.withdrawal_reason || "Not specified"}
-                                              {req.comment && (
-                                                <>
-                                                  <br /><br />
-                                                  <strong>Comment:</strong><br />
-                                                  {req.comment}
-                                                </>
-                                              )}
-                                            </>
-                                          ) : (
-                                            <>
-                                              <strong>Resignation Reason:</strong><br />
-                                              {req.reason || "Not specified"}
-                                              {req.reason === "Other" && req.other_reason && (
-                                                <>
-                                                  <br />
-                                                  <strong>Other Details:</strong> {req.other_reason}
-                                                </>
-                                              )}
-                                              {req.comment && (
-                                                <>
-                                                  <br /><br />
-                                                  <strong>Employee Comment:</strong><br />
-                                                  {req.comment}
-                                                </>
-                                              )}
-                                            </>
-                                          )}
-                                        </div>
+                      <div className="exf-table-container">
+                        <table className="exf-table">
+                          <thead>
+                            <tr>
+                              <th>Emp ID</th>
+                              <th>Name</th>
+                              <th>Reason</th>
+                              <th>Date</th>
+                              <th>Supervisor</th>
+                              <th>HR</th>
+                              <th>Status</th>
+                              <th className="text-center">Action</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {allTeamRequests.map((req) => {
+                              const isWithdrawal = !!req.withdrawal_requested_at;
+                              const isFullyWithdrawn =
+                                isWithdrawal &&
+                                req.withdrawal_supervisor_status === "APPROVED" &&
+                                req.withdrawal_hr_status === "APPROVED";
+                              return (
+                                <tr
+                                  key={req.id}
+                                  className={isFullyWithdrawn ? "exf-row-frozen opacity-65 bg-gray-50" : ""}
+                                >
+                                  <td className="font-medium">{req.employee_id}</td>
+                                  <td>{req.employee_name || "—"}</td>
+                                  <td className="max-w-xs">
+                                    <div className="reason-tooltip-wrapper">
+                                      <span className="reason-truncated">
+                                        {isWithdrawal ? (
+                                          req.withdrawal_reason || "—"
+                                        ) : (
+                                          <>
+                                            {req.reason}
+                                            {req.reason === "Other" && req.other_reason && ` (${req.other_reason})`}
+                                          </>
+                                        )}
+                                      </span>
+                                      <div className="reason-tooltip">
+                                        {isWithdrawal ? (
+                                          <>
+                                            <strong>Withdrawal Reason:</strong><br />
+                                            {req.withdrawal_reason || "Not specified"}
+                                            {req.comment && (
+                                              <>
+                                                <br /><br />
+                                                <strong>Comment:</strong><br />
+                                                {req.comment}
+                                              </>
+                                            )}
+                                          </>
+                                        ) : (
+                                          <>
+                                            <strong>Resignation Reason:</strong><br />
+                                            {req.reason || "Not specified"}
+                                            {req.reason === "Other" && req.other_reason && (
+                                              <>
+                                                <br />
+                                                <strong>Other Details:</strong> {req.other_reason}
+                                              </>
+                                            )}
+                                            {req.comment && (
+                                              <>
+                                                <br /><br />
+                                                <strong>Employee Comment:</strong><br />
+                                                {req.comment}
+                                              </>
+                                            )}
+                                          </>
+                                        )}
                                       </div>
-                                    </td>
-                                    <td>
+                                    </div>
+                                  </td>
+                                  <td>
+                                    {isWithdrawal
+                                      ? req.withdrawal_requested_at
+                                        ? new Date(req.withdrawal_requested_at).toLocaleDateString("en-GB")
+                                        : "—"
+                                      : req.proposed_lwd
+                                        ? new Date(req.proposed_lwd).toLocaleDateString("en-GB")
+                                        : "—"}
+                                  </td>
+                                  <td>
+                                    <span
+                                      className={`exf-badge exf-badge-${
+                                        (isWithdrawal
+                                          ? req.withdrawal_supervisor_status
+                                          : req.supervisor_status
+                                        )?.toLowerCase() ?? "pending"
+                                      }`}
+                                    >
                                       {isWithdrawal
-                                        ? req.withdrawal_requested_at
-                                          ? new Date(req.withdrawal_requested_at).toLocaleDateString("en-GB")
-                                          : "—"
-                                        : req.proposed_lwd
-                                          ? new Date(req.proposed_lwd).toLocaleDateString("en-GB")
-                                          : "—"}
-                                    </td>
-                                    <td>
-                                      <span
-                                        className={`exf-badge exf-badge-${
-                                          (isWithdrawal
-                                            ? req.withdrawal_supervisor_status
-                                            : req.supervisor_status
-                                          )?.toLowerCase() ?? "pending"
-                                        }`}
-                                      >
-                                        {isWithdrawal
-                                          ? req.withdrawal_supervisor_status || "Pending"
-                                          : req.supervisor_status || "Pending"}
-                                      </span>
-                                    </td>
-                                    <td>
-                                      <span
-                                        className={`exf-badge exf-badge-${
-                                          (isWithdrawal
-                                            ? req.withdrawal_hr_status
-                                            : req.hr_status
-                                          )?.toLowerCase() ?? "pending"
-                                        }`}
-                                      >
-                                        {isWithdrawal
-                                          ? req.withdrawal_hr_status || "Pending"
-                                          : req.hr_status || "Pending"}
-                                      </span>
-                                    </td>
-                                    <td>
-                                      {isFullyWithdrawn
-                                        ? "Withdrawn ✓"
-                                        : isWithdrawal
+                                        ? req.withdrawal_supervisor_status || "Pending"
+                                        : req.supervisor_status || "Pending"}
+                                    </span>
+                                  </td>
+                                  <td>
+                                    <span
+                                      className={`exf-badge exf-badge-${
+                                        (isWithdrawal
+                                          ? req.withdrawal_hr_status
+                                          : req.hr_status
+                                        )?.toLowerCase() ?? "pending"
+                                      }`}
+                                    >
+                                      {isWithdrawal
+                                        ? req.withdrawal_hr_status || "Pending"
+                                        : req.hr_status || "Pending"}
+                                    </span>
+                                  </td>
+                                  <td>
+                                    {isFullyWithdrawn
+                                      ? "Withdrawn ✓"
+                                      : isWithdrawal
                                         ? "Withdrawal Requested"
                                         : req.final_outcome || "Active"}
-                                    </td>
-                                    <td className="text-center">
-                                      {isFullyWithdrawn ? (
-                                        <span className="text-green-600 font-medium">Approved</span>
-                                      ) : (
-                                        <button
-                                          className="exf-btn-review"
-                                          onClick={() =>
-                                            setSelectedRequest({
-                                              ...req,
-                                              type: isWithdrawal ? "withdrawal" :
-                                                   req.final_outcome === "RESIGNED" ? "clearance" : "normal"
-                                            })
-                                          }
-                                          disabled={loading}
-                                        >
-                                          Review
-                                        </button>
-                                      )}
-                                    </td>
-                                  </tr>
-                                );
-                              })}
-                            </tbody>
-                          </table>
-                        </div>
-                        <PaginationControls
-                          currentPage={pageTeamMain}
-                          totalItems={allTeamRequests.length}
-                          setPage={setPageTeamMain}
-                        />
-                      </>
+                                  </td>
+                                  <td className="text-center">
+                                    {isFullyWithdrawn ? (
+                                      <span className="text-green-600 font-medium">Approved</span>
+                                    ) : (
+                                      <button
+                                        className="exf-btn-review"
+                                        onClick={() =>
+                                          setSelectedRequest({
+                                            ...req,
+                                            type: isWithdrawal ? "withdrawal" :
+                                                 req.final_outcome === "RESIGNED" ? "clearance" : "normal"
+                                          })
+                                        }
+                                        disabled={loading}
+                                      >
+                                        Review
+                                      </button>
+                                    )}
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
                     )}
                   </div>
                   <div className="exf-team-panel">
@@ -1497,126 +1518,42 @@ const handleReviewAction = async (reviewType, action) => {
                         No pending resignation requests
                       </div>
                     ) : (
-                      <>
-                        <div className="exf-table-container">
-                          <table className="exf-table">
-                            <thead>
-                              <tr>
-                                <th>Emp ID</th>
-                                <th>Reason</th>
-                                <th>Proposed LWD</th>
-                                <th>Applied On</th>
-                                <th className="text-center">Action</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {getPaginatedItems(pendingData.normal, pagePendingNormal).map((req) => {
-                                const isWithdrawal = !!req.withdrawal_requested_at;
-                                const isFullyWithdrawn =
-                                  isWithdrawal &&
-                                  req.withdrawal_supervisor_status === "APPROVED" &&
-                                  req.withdrawal_hr_status === "APPROVED";
-                                return (
-                                  <tr key={req.id}>
-                                    <td className="font-medium">{req.employee_id}</td>
-                                    <td className="max-w-xs">
-                                      <div className="reason-tooltip-wrapper">
-                                        <span className="reason-truncated">
-                                          {req.reason}
-                                          {req.reason === "Other" && req.other_reason && ` (${req.other_reason})`}
-                                        </span>
-                                        <div className="reason-tooltip">
-                                          <strong>Reason:</strong><br />
-                                          {req.reason || "Not specified"}
-                                          {req.reason === "Other" && req.other_reason && (
-                                            <>
-                                              <br />
-                                              <strong>Other:</strong> {req.other_reason}
-                                            </>
-                                          )}
-                                          {req.comment && (
-                                            <>
-                                              <br /><br />
-                                              <strong>Comment:</strong><br />
-                                              {req.comment}
-                                            </>
-                                          )}
-                                        </div>
-                                      </div>
-                                    </td>
-                                    <td>
-                                      {req.proposed_lwd
-                                        ? new Date(req.proposed_lwd).toLocaleDateString()
-                                        : "—"}
-                                    </td>
-                                    <td>{new Date(req.applied_at).toLocaleDateString()}</td>
-                                    <td className="text-center">
-                                      {isFullyWithdrawn ? (
-                                        <span className="text-green-600 font-medium">Completed</span>
-                                      ) : (
-                                        <button
-                                          className="exf-btn-review"
-                                          onClick={() =>
-                                            setSelectedRequest({
-                                              ...req,
-                                              type: isWithdrawal
-                                                ? "withdrawal"
-                                                : req.final_outcome === "RESIGNED"
-                                                ? "clearance"
-                                                : "normal",
-                                            })
-                                          }
-                                          disabled={loading}
-                                        >
-                                          Review
-                                        </button>
-                                      )}
-                                    </td>
-                                  </tr>
-                                );
-                              })}
-                            </tbody>
-                          </table>
-                        </div>
-                        <PaginationControls
-                          currentPage={pagePendingNormal}
-                          totalItems={pendingData.normal.length}
-                          setPage={setPagePendingNormal}
-                        />
-                      </>
-                    )}
-                  </div>
-                  <div className="exf-team-panel">
-                    <h2 className="exf-panel-title mb-4">Pending Withdrawal Requests </h2>
-                    {pendingData.withdraw.length === 0 ? (
-                      <div className="exf-empty-state">
-                        No pending withdrawal requests
-                      </div>
-                    ) : (
-                      <>
-                        <div className="exf-table-container">
-                          <table className="exf-table">
-                            <thead>
-                              <tr>
-                                <th>Emp ID</th>
-                                <th>Reason</th>
-                                <th>Requested On</th>
-                                <th>Supervisor</th>
-                                <th className="text-center">Action</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {getPaginatedItems(pendingData.withdraw, pagePendingWithdraw).map((req) => (
+                      <div className="exf-table-container">
+                        <table className="exf-table">
+                          <thead>
+                            <tr>
+                              <th>Emp ID</th>
+                              <th>Reason</th>
+                              <th>Proposed LWD</th>
+                              <th>Applied On</th>
+                              <th className="text-center">Action</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {pendingData.normal.map((req) => {
+                              const isWithdrawal = !!req.withdrawal_requested_at;
+                              const isFullyWithdrawn =
+                                isWithdrawal &&
+                                req.withdrawal_supervisor_status === "APPROVED" &&
+                                req.withdrawal_hr_status === "APPROVED";
+                              return (
                                 <tr key={req.id}>
                                   <td className="font-medium">{req.employee_id}</td>
                                   <td className="max-w-xs">
                                     <div className="reason-tooltip-wrapper">
                                       <span className="reason-truncated">
-                                        {req.withdrawal_reason || "—"}
+                                        {req.reason}
+                                        {req.reason === "Other" && req.other_reason && ` (${req.other_reason})`}
                                       </span>
                                       <div className="reason-tooltip">
-                                        <strong>Withdrawal Reason:</strong><br />
-                                        {req.withdrawal_reason || "Not specified"}
+                                        <strong>Reason:</strong><br />
+                                        {req.reason || "Not specified"}
+                                        {req.reason === "Other" && req.other_reason && (
+                                          <>
+                                            <br />
+                                            <strong>Other:</strong> {req.other_reason}
+                                          </>
+                                        )}
                                         {req.comment && (
                                           <>
                                             <br /><br />
@@ -1628,34 +1565,104 @@ const handleReviewAction = async (reviewType, action) => {
                                     </div>
                                   </td>
                                   <td>
-                                    {req.withdrawal_requested_at
-                                      ? new Date(req.withdrawal_requested_at).toLocaleDateString('en-GB')
+                                    {req.proposed_lwd
+                                      ? new Date(req.proposed_lwd).toLocaleDateString()
                                       : "—"}
                                   </td>
-                                  <td>
-                                    <span className={`exf-badge exf-badge-${(req.withdrawal_supervisor_status || "pending").toLowerCase()}`}>
-                                      {req.withdrawal_supervisor_status || "Pending"}
-                                    </span>
-                                  </td>
+                                  <td>{new Date(req.applied_at).toLocaleDateString()}</td>
                                   <td className="text-center">
-                                    <button
-                                      className="exf-btn-review"
-                                      onClick={() => setSelectedRequest({ ...req, type: "withdrawal" })}
-                                    >
-                                      Review
-                                    </button>
+                                    {isFullyWithdrawn ? (
+                                      <span className="text-green-600 font-medium">Completed</span>
+                                    ) : (
+                                      <button
+                                        className="exf-btn-review"
+                                        onClick={() =>
+                                          setSelectedRequest({
+                                            ...req,
+                                            type: isWithdrawal
+                                              ? "withdrawal"
+                                              : req.final_outcome === "RESIGNED"
+                                              ? "clearance"
+                                              : "normal",
+                                          })
+                                        }
+                                        disabled={loading}
+                                      >
+                                        Review
+                                      </button>
+                                    )}
                                   </td>
                                 </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        </div>
-                        <PaginationControls
-                          currentPage={pagePendingWithdraw}
-                          totalItems={pendingData.withdraw.length}
-                          setPage={setPagePendingWithdraw}
-                        />
-                      </>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+                  <div className="exf-team-panel">
+                    <h2 className="exf-panel-title mb-4">Pending Withdrawal Requests </h2>
+                    {pendingData.withdraw.length === 0 ? (
+                      <div className="exf-empty-state">
+                        No pending withdrawal requests
+                      </div>
+                    ) : (
+                      <div className="exf-table-container">
+                        <table className="exf-table">
+                          <thead>
+                            <tr>
+                              <th>Emp ID</th>
+                              <th>Reason</th>
+                              <th>Requested On</th>
+                              <th>Supervisor</th>
+                              <th className="text-center">Action</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {pendingData.withdraw.map((req) => (
+                              <tr key={req.id}>
+                                <td className="font-medium">{req.employee_id}</td>
+                                <td className="max-w-xs">
+                                  <div className="reason-tooltip-wrapper">
+                                    <span className="reason-truncated">
+                                      {req.withdrawal_reason || "—"}
+                                    </span>
+                                    <div className="reason-tooltip">
+                                      <strong>Withdrawal Reason:</strong><br />
+                                      {req.withdrawal_reason || "Not specified"}
+                                      {req.comment && (
+                                        <>
+                                          <br /><br />
+                                          <strong>Comment:</strong><br />
+                                          {req.comment}
+                                        </>
+                                      )}
+                                    </div>
+                                  </div>
+                                </td>
+                                <td>
+                                  {req.withdrawal_requested_at
+                                    ? new Date(req.withdrawal_requested_at).toLocaleDateString('en-GB')
+                                    : "—"}
+                                </td>
+                                <td>
+                                  <span className={`exf-badge exf-badge-${(req.withdrawal_supervisor_status || "pending").toLowerCase()}`}>
+                                    {req.withdrawal_supervisor_status || "Pending"}
+                                  </span>
+                                </td>
+                                <td className="text-center">
+                                  <button
+                                    className="exf-btn-review"
+                                    onClick={() => setSelectedRequest({ ...req, type: "withdrawal" })}
+                                  >
+                                    Review
+                                  </button>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
                     )}
                   </div>
                 </>
@@ -1673,171 +1680,164 @@ const handleReviewAction = async (reviewType, action) => {
                     No exit or withdrawal requests found across the organization.
                   </div>
                 ) : (
-                  <>
-                    <div className="exf-table-container overflow-x-auto">
-                      <table className="exf-table min-w-full">
-                        <thead>
-                          <tr>
-                            <th>Emp ID</th>
-                            <th>Name</th>
-                            <th>Reason</th>
-                            <th>Date</th>
-                            <th>Supervisor</th>
-                            <th>HR</th>
-                            <th>Outcome</th>
-                            <th className="text-center">Action</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {getPaginatedItems(allTeamRequests, pageAllMain).map((req) => {
-                            const isWithdrawal = !!req.withdrawal_requested_at;
-                            const isFullyWithdrawn =
-                              isWithdrawal &&
-                              req.withdrawal_supervisor_status === "APPROVED" &&
-                              req.withdrawal_hr_status === "APPROVED";
-                            return (
-                              <tr
-                                key={req.id}
-                                className={
-                                  isFullyWithdrawn
-                                    ? "exf-row-frozen opacity-65 bg-gray-50"
-                                    : !isWithdrawal && req.supervisor_status === "PENDING"
-                                    ? "bg-yellow-50/40"
-                                    : ""
-                                }
-                              >
-                                <td className="font-medium">{req.employee_id}</td>
-                                <td>{req.employee_name || "—"}</td>
-                                <td className="max-w-xs">
-                                  <div className="reason-tooltip-wrapper">
-                                    <span className="reason-truncated">
-                                      {isWithdrawal ? (
-                                        req.withdrawal_reason || "—"
-                                      ) : (
-                                        <>
-                                          {req.reason}
-                                          {req.reason === "Other" && req.other_reason && ` (${req.other_reason})`}
-                                        </>
-                                      )}
-                                    </span>
-                                    <div className="reason-tooltip">
-                                      {isWithdrawal ? (
-                                        <>
-                                          <strong>Withdrawal Reason:</strong><br />
-                                          {req.withdrawal_reason || "Not specified"}
-                                          {req.comment && (
-                                            <>
-                                              <br /><br />
-                                              <strong>Comment:</strong><br />
-                                              {req.comment}
-                                            </>
-                                          )}
-                                        </>
-                                      ) : (
-                                        <>
-                                          <strong>Resignation Reason:</strong><br />
-                                          {req.reason || "Not specified"}
-                                          {req.reason === "Other" && req.other_reason && (
-                                            <>
-                                              <br />
-                                              <strong>Other Details:</strong> {req.other_reason}
-                                            </>
-                                          )}
-                                          {req.comment && (
-                                            <>
-                                              <br /><br />
-                                              <strong>Employee Comment:</strong><br />
-                                              {req.comment}
-                                            </>
-                                          )}
-                                        </>
-                                      )}
-                                    </div>
+                  <div className="exf-table-container overflow-x-auto">
+                    <table className="exf-table min-w-full">
+                      <thead>
+                        <tr>
+                          <th>Emp ID</th>
+                          <th>Name</th>
+                          <th>Reason</th>
+                          <th>Date</th>
+                          <th>Supervisor</th>
+                          <th>HR</th>
+                          <th>Outcome</th>
+                          <th className="text-center">Action</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {allTeamRequests.map((req) => {
+                          const isWithdrawal = !!req.withdrawal_requested_at;
+                          const isFullyWithdrawn =
+                            isWithdrawal &&
+                            req.withdrawal_supervisor_status === "APPROVED" &&
+                            req.withdrawal_hr_status === "APPROVED";
+                          return (
+                            <tr
+                              key={req.id}
+                              className={
+                                isFullyWithdrawn
+                                  ? "exf-row-frozen opacity-65 bg-gray-50"
+                                  : !isWithdrawal && req.supervisor_status === "PENDING"
+                                  ? "bg-yellow-50/40"
+                                  : ""
+                              }
+                            >
+                              <td className="font-medium">{req.employee_id}</td>
+                              <td>{req.employee_name || "—"}</td>
+                              <td className="max-w-xs">
+                                <div className="reason-tooltip-wrapper">
+                                  <span className="reason-truncated">
+                                    {isWithdrawal ? (
+                                      req.withdrawal_reason || "—"
+                                    ) : (
+                                      <>
+                                        {req.reason}
+                                        {req.reason === "Other" && req.other_reason && ` (${req.other_reason})`}
+                                      </>
+                                    )}
+                                  </span>
+                                  <div className="reason-tooltip">
+                                    {isWithdrawal ? (
+                                      <>
+                                        <strong>Withdrawal Reason:</strong><br />
+                                        {req.withdrawal_reason || "Not specified"}
+                                        {req.comment && (
+                                          <>
+                                            <br /><br />
+                                            <strong>Comment:</strong><br />
+                                            {req.comment}
+                                          </>
+                                        )}
+                                      </>
+                                    ) : (
+                                      <>
+                                        <strong>Resignation Reason:</strong><br />
+                                        {req.reason || "Not specified"}
+                                        {req.reason === "Other" && req.other_reason && (
+                                          <>
+                                            <br />
+                                            <strong>Other Details:</strong> {req.other_reason}
+                                          </>
+                                        )}
+                                        {req.comment && (
+                                          <>
+                                            <br /><br />
+                                            <strong>Employee Comment:</strong><br />
+                                            {req.comment}
+                                          </>
+                                        )}
+                                      </>
+                                    )}
                                   </div>
-                                </td>
-                                <td>
+                                </div>
+                              </td>
+                              <td>
+                                {isWithdrawal
+                                  ? req.withdrawal_requested_at
+                                    ? new Date(req.withdrawal_requested_at).toLocaleDateString("en-GB")
+                                    : "—"
+                                  : req.proposed_lwd
+                                    ? new Date(req.proposed_lwd).toLocaleDateString("en-GB")
+                                    : "—"}
+                              </td>
+                              <td>
+                                <span
+                                  className={`exf-badge exf-badge-${
+                                    (isWithdrawal
+                                      ? req.withdrawal_supervisor_status
+                                      : req.supervisor_status
+                                    )?.toLowerCase() ?? "pending"
+                                  }`}
+                                >
                                   {isWithdrawal
-                                    ? req.withdrawal_requested_at
-                                      ? new Date(req.withdrawal_requested_at).toLocaleDateString("en-GB")
-                                      : "—"
-                                    : req.proposed_lwd
-                                      ? new Date(req.proposed_lwd).toLocaleDateString("en-GB")
-                                      : "—"}
-                                </td>
-                                <td>
-                                  <span
-                                    className={`exf-badge exf-badge-${
-                                      (isWithdrawal
-                                        ? req.withdrawal_supervisor_status
-                                        : req.supervisor_status
-                                      )?.toLowerCase() ?? "pending"
-                                    }`}
-                                  >
-                                    {isWithdrawal
-                                      ? req.withdrawal_supervisor_status || "Pending"
-                                      : req.supervisor_status || "Pending"}
+                                    ? req.withdrawal_supervisor_status || "Pending"
+                                    : req.supervisor_status || "Pending"}
+                                </span>
+                              </td>
+                              <td>
+                                <span
+                                  className={`exf-badge exf-badge-${
+                                    (isWithdrawal
+                                      ? req.withdrawal_hr_status
+                                      : req.hr_status
+                                    )?.toLowerCase() ?? "pending"
+                                  }`}
+                                >
+                                  {isWithdrawal
+                                    ? req.withdrawal_hr_status || "Pending"
+                                    : req.hr_status || "Pending"}
+                                </span>
+                              </td>
+                              <td>
+                                {isFullyWithdrawn
+                                  ? "Withdrawn ✓"
+                                  : isWithdrawal
+                                  ? req.withdrawal_supervisor_status === "REJECTED"
+                                    ? "Withdrawal Rejected"
+                                    : "Withdrawal Requested"
+                                  : req.final_outcome || "Active"}
+                              </td>
+                              <td className="text-center">
+                                {isFullyWithdrawn ? (
+                                  <span className="text-green-600 font-medium">Completed</span>
+                                ) : !isWithdrawal && req.supervisor_status === "PENDING" && !isAdmin ? (
+                                  <span className="text-yellow-600 text-sm font-medium">
+                                    Awaiting Supervisor
                                   </span>
-                                </td>
-                                <td>
-                                  <span
-                                    className={`exf-badge exf-badge-${
-                                      (isWithdrawal
-                                        ? req.withdrawal_hr_status
-                                        : req.hr_status
-                                      )?.toLowerCase() ?? "pending"
-                                    }`}
+                                ) : (
+                                  <button
+                                    className="exf-btn exf-btn-primary exf-btn-sm"
+                                    onClick={() =>
+                                      setSelectedRequest({
+                                        ...req,
+                                        type: isWithdrawal
+                                          ? "withdrawal"
+                                          : req.final_outcome === "RESIGNED"
+                                          ? "clearance"
+                                          : "normal",
+                                      })
+                                    }
                                   >
-                                    {isWithdrawal
-                                      ? req.withdrawal_hr_status || "Pending"
-                                      : req.hr_status || "Pending"}
-                                  </span>
-                                </td>
-                                <td>
-                                  {isFullyWithdrawn
-                                    ? "Withdrawn ✓"
-                                    : isWithdrawal
-                                    ? req.withdrawal_supervisor_status === "REJECTED"
-                                      ? "Withdrawal Rejected"
-                                      : "Withdrawal Requested"
-                                    : req.final_outcome || "Active"}
-                                </td>
-                                <td className="text-center">
-                                  {isFullyWithdrawn ? (
-                                    <span className="text-green-600 font-medium">Completed</span>
-                                  ) : !isWithdrawal && req.supervisor_status === "PENDING" && !isAdmin ? (
-                                    <span className="text-yellow-600 text-sm font-medium">
-                                      Awaiting Supervisor
-                                    </span>
-                                  ) : (
-                                    <button
-                                      className="exf-btn exf-btn-primary exf-btn-sm"
-                                      onClick={() =>
-                                        setSelectedRequest({
-                                          ...req,
-                                          type: isWithdrawal
-                                            ? "withdrawal"
-                                            : req.final_outcome === "RESIGNED"
-                                            ? "clearance"
-                                            : "normal",
-                                        })
-                                      }
-                                    >
-                                      Review
-                                    </button>
-                                  )}
-                                </td>
-                              </tr>
-                            );
-                          })}
-                        </tbody>
-                      </table>
-                    </div>
-                    <PaginationControls
-                      currentPage={pageAllMain}
-                      totalItems={allTeamRequests.length}
-                      setPage={setPageAllMain}
-                    />
-                  </>
+                                    Review
+                                  </button>
+                                )}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
                 )}
               </div>
               <div className="exf-team-panel mt-8">
@@ -1847,89 +1847,82 @@ const handleReviewAction = async (reviewType, action) => {
                     No pending resignation requests in the organization
                   </div>
                 ) : (
-                  <>
-                    <div className="exf-table-container">
-                      <table className="exf-table">
-                        <thead>
-                          <tr>
-                            <th>Emp ID</th>
-                            <th>Reason</th>
-                            <th>Proposed LWD</th>
-                            <th>Applied On</th>
-                            <th className="text-center">Status / Action</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {getPaginatedItems(pendingData.normal, pageAllPendingNormal).map((req) => {
-                            const isPendingSupervisor = req.supervisor_status === "PENDING";
-                            const canReview = isAdmin || !isPendingSupervisor;
-                            return (
-                              <tr key={req.id}>
-                                <td className="font-medium">{req.employee_id}</td>
-                                <td className="max-w-xs">
-                                  <div className="reason-tooltip-wrapper">
-                                    <span className="reason-truncated">
-                                      {req.reason}
-                                      {req.reason === "Other" && req.other_reason && ` (${req.other_reason})`}
-                                    </span>
-                                    <div className="reason-tooltip">
-                                      <strong>Reason:</strong><br />
-                                      {req.reason || "Not specified"}
-                                      {req.reason === "Other" && req.other_reason && (
-                                        <>
-                                          <br />
-                                          <strong>Other:</strong> {req.other_reason}
-                                        </>
-                                      )}
-                                      {req.comment && (
-                                        <>
-                                          <br /><br />
-                                          <strong>Comment:</strong><br />
-                                          {req.comment}
-                                        </>
-                                      )}
-                                    </div>
+                  <div className="exf-table-container">
+                    <table className="exf-table">
+                      <thead>
+                        <tr>
+                          <th>Emp ID</th>
+                          <th>Reason</th>
+                          <th>Proposed LWD</th>
+                          <th>Applied On</th>
+                          <th className="text-center">Status / Action</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {pendingData.normal.map((req) => {
+                          const isPendingSupervisor = req.supervisor_status === "PENDING";
+                          const canReview = isAdmin || !isPendingSupervisor;
+                          return (
+                            <tr key={req.id}>
+                              <td className="font-medium">{req.employee_id}</td>
+                              <td className="max-w-xs">
+                                <div className="reason-tooltip-wrapper">
+                                  <span className="reason-truncated">
+                                    {req.reason}
+                                    {req.reason === "Other" && req.other_reason && ` (${req.other_reason})`}
+                                  </span>
+                                  <div className="reason-tooltip">
+                                    <strong>Reason:</strong><br />
+                                    {req.reason || "Not specified"}
+                                    {req.reason === "Other" && req.other_reason && (
+                                      <>
+                                        <br />
+                                        <strong>Other:</strong> {req.other_reason}
+                                      </>
+                                    )}
+                                    {req.comment && (
+                                      <>
+                                        <br /><br />
+                                        <strong>Comment:</strong><br />
+                                        {req.comment}
+                                      </>
+                                    )}
                                   </div>
-                                </td>
-                                <td>
-                                  {req.proposed_lwd
-                                    ? new Date(req.proposed_lwd).toLocaleDateString()
-                                    : "—"}
-                                </td>
-                                <td>{new Date(req.applied_at).toLocaleDateString()}</td>
-                                <td className="text-center">
-                                  {isPendingSupervisor && !isAdmin ? (
-                                    <span className="text-yellow-600 text-sm font-medium flex items-center justify-center gap-1">
-                                      <span className="inline-block w-2 h-2 bg-yellow-500 rounded-full"></span>
-                                      Awaiting Supervisor
-                                    </span>
-                                  ) : (
-                                    <button
-                                      className="exf-btn-review"
-                                      onClick={() =>
-                                        setSelectedRequest({
-                                          ...req,
-                                          type: req.final_outcome === "RESIGNED" ? "clearance" : "normal",
-                                        })
-                                      }
-                                      disabled={loading}
-                                    >
-                                      Review
-                                    </button>
-                                  )}
-                                </td>
-                              </tr>
-                            );
-                          })}
-                        </tbody>
-                      </table>
-                    </div>
-                    <PaginationControls
-                      currentPage={pageAllPendingNormal}
-                      totalItems={pendingData.normal.length}
-                      setPage={setPageAllPendingNormal}
-                    />
-                  </>
+                                </div>
+                              </td>
+                              <td>
+                                {req.proposed_lwd
+                                  ? new Date(req.proposed_lwd).toLocaleDateString()
+                                  : "—"}
+                              </td>
+                              <td>{new Date(req.applied_at).toLocaleDateString()}</td>
+                              <td className="text-center">
+                                {isPendingSupervisor && !isAdmin ? (
+                                  <span className="text-yellow-600 text-sm font-medium flex items-center justify-center gap-1">
+                                    <span className="inline-block w-2 h-2 bg-yellow-500 rounded-full"></span>
+                                    Awaiting Supervisor
+                                  </span>
+                                ) : (
+                                  <button
+                                    className="exf-btn-review"
+                                    onClick={() =>
+                                      setSelectedRequest({
+                                        ...req,
+                                        type: req.final_outcome === "RESIGNED" ? "clearance" : "normal",
+                                      })
+                                    }
+                                    disabled={loading}
+                                  >
+                                    Review
+                                  </button>
+                                )}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
                 )}
               </div>
               <div className="exf-team-panel mt-8 border-t pt-6">
@@ -1962,74 +1955,67 @@ const handleReviewAction = async (reviewType, action) => {
                     );
                   }
                   return (
-                    <>
-                      <div className="overflow-x-auto rounded-lg border border-gray-200 shadow-sm">
-                        <table className="min-w-full divide-y divide-gray-200">
-                          <thead className="bg-gray-50">
-                            <tr>
-                              <th className="px-5 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Emp ID</th>
-                              <th className="px-5 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Name</th>
-                              <th className="px-5 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Withdrawal Reason</th>
-                              <th className="px-5 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Requested On</th>
-                              <th className="px-5 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Supervisor</th>
-                              <th className="px-5 py-3 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Action</th>
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-gray-100 bg-white">
-                            {getPaginatedItems(hrPendingWithdrawals, pageAllPendingWithdraw).map((req) => (
-                              <tr
-                                key={req.id}
-                                className={req.withdrawal_supervisor_status === "PENDING" ? "bg-yellow-50/30" : ""}
-                              >
-                                <td className="px-5 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{req.employee_id}</td>
-                                <td className="px-5 py-4 whitespace-nowrap text-sm text-gray-700">{req.employee_name || "—"}</td>
-                                <td className="px-5 py-4 text-sm text-gray-700 max-w-xs">
-                                  <div className="reason-tooltip-wrapper">
-                                    <span className="reason-truncated">
-                                      {req.withdrawal_reason || "—"}
-                                    </span>
-                                    <div className="reason-tooltip">
-                                      <strong>Withdrawal Reason:</strong><br />
-                                      {req.withdrawal_reason || "Not specified"}
-                                      {req.comment && (
-                                        <>
-                                          <br /><br />
-                                          <strong>Comment:</strong><br />
-                                          {req.comment}
-                                        </>
-                                      )}
-                                    </div>
+                    <div className="overflow-x-auto rounded-lg border border-gray-200 shadow-sm">
+                      <table className="min-w-full divide-y divide-gray-200">
+                        <thead className="bg-gray-50">
+                          <tr>
+                            <th className="px-5 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Emp ID</th>
+                            <th className="px-5 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Name</th>
+                            <th className="px-5 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Withdrawal Reason</th>
+                            <th className="px-5 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Requested On</th>
+                            <th className="px-5 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Supervisor</th>
+                            <th className="px-5 py-3 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Action</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-100 bg-white">
+                          {hrPendingWithdrawals.map((req) => (
+                            <tr
+                              key={req.id}
+                              className={req.withdrawal_supervisor_status === "PENDING" ? "bg-yellow-50/30" : ""}
+                            >
+                              <td className="px-5 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{req.employee_id}</td>
+                              <td className="px-5 py-4 whitespace-nowrap text-sm text-gray-700">{req.employee_name || "—"}</td>
+                              <td className="px-5 py-4 text-sm text-gray-700 max-w-xs">
+                                <div className="reason-tooltip-wrapper">
+                                  <span className="reason-truncated">
+                                    {req.withdrawal_reason || "—"}
+                                  </span>
+                                  <div className="reason-tooltip">
+                                    <strong>Withdrawal Reason:</strong><br />
+                                    {req.withdrawal_reason || "Not specified"}
+                                    {req.comment && (
+                                      <>
+                                        <br /><br />
+                                        <strong>Comment:</strong><br />
+                                        {req.comment}
+                                      </>
+                                    )}
                                   </div>
-                                </td>
-                                <td className="px-5 py-4 whitespace-nowrap text-sm text-gray-500">
-                                  {req.withdrawal_requested_at
-                                    ? new Date(req.withdrawal_requested_at).toLocaleDateString("en-GB")
-                                    : "—"}
-                                </td>
-                                <td className="px-5 py-4 whitespace-nowrap text-sm text-gray-600">
-                                  {req.withdrawal_supervisor_status === "PENDING"
-                                    ? <span className="text-yellow-600 font-medium">Awaiting Supervisor</span>
-                                    : req.withdrawal_supervisor_status || "—"}
-                                </td>
-                                <td className="px-5 py-4 whitespace-nowrap text-center">
-                                  <button
-                                    className="exf-btn-review px-4 py-1.5 text-sm"
-                                    onClick={() => setSelectedRequest({ ...req, type: "withdrawal" })}
-                                  >
-                                    Review
-                                  </button>
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                      <PaginationControls
-                        currentPage={pageAllPendingWithdraw}
-                        totalItems={hrPendingWithdrawals.length}
-                        setPage={setPageAllPendingWithdraw}
-                      />
-                    </>
+                                </div>
+                              </td>
+                              <td className="px-5 py-4 whitespace-nowrap text-sm text-gray-500">
+                                {req.withdrawal_requested_at
+                                  ? new Date(req.withdrawal_requested_at).toLocaleDateString("en-GB")
+                                  : "—"}
+                              </td>
+                              <td className="px-5 py-4 whitespace-nowrap text-sm text-gray-600">
+                                {req.withdrawal_supervisor_status === "PENDING"
+                                  ? <span className="text-yellow-600 font-medium">Awaiting Supervisor</span>
+                                  : req.withdrawal_supervisor_status || "—"}
+                              </td>
+                              <td className="px-5 py-4 whitespace-nowrap text-center">
+                                <button
+                                  className="exf-btn-review px-4 py-1.5 text-sm"
+                                  onClick={() => setSelectedRequest({ ...req, type: "withdrawal" })}
+                                >
+                                  Review
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
                   );
                 })()}
               </div>
@@ -2372,7 +2358,7 @@ const handleReviewAction = async (reviewType, action) => {
                           }
                         >
                           {activeTab === "team"
-                            ? "Approve (as Supervisor)"
+                            ? "Approve "
                             : (role === "hr" || role === "admin" || isAdmin)
                               ? "Final Approve"
                               : "Approve"}
@@ -2382,7 +2368,7 @@ const handleReviewAction = async (reviewType, action) => {
                           onClick={() => handleReviewAction("normal", "REJECTED")}
                           disabled={loading}
                         >
-                          {activeTab === "team" ? "Reject (as Supervisor)" : "Reject"}
+                          {activeTab === "team" ? "Reject " : "Reject"}
                         </button>
                       </>
                     )}
@@ -2395,14 +2381,14 @@ const handleReviewAction = async (reviewType, action) => {
                       onClick={() => handleReviewAction("withdrawal", "APPROVED")}
                       disabled={loading}
                     >
-                      {activeTab === "team" ? "Approve Withdrawal (as Supervisor)" : "Approve Withdrawal"}
+                      {activeTab === "team" ? "Approve Withdrawal " : "Approve Withdrawal"}
                     </button>
                     <button
                       className="btn btn-danger"
                       onClick={() => handleReviewAction("withdrawal", "REJECTED")}
                       disabled={loading}
                     >
-                      {activeTab === "team" ? "Reject Withdrawal (as Supervisor)" : "Reject Withdrawal"}
+                      {activeTab === "team" ? "Reject Withdrawal " : "Reject Withdrawal"}
                     </button>
                   </div>
                 )}

@@ -26,6 +26,8 @@ export default function SidebarPanel(props) {
     actions = {},
     uploadProps = {},
     extra = {},
+    onPreviewA4,
+    onSaveTemplate,
   } = props;
 
   function Thumb({ t }) {
@@ -507,6 +509,8 @@ export default function SidebarPanel(props) {
           onSetActiveArea={uploadProps.setActiveArea}
           activeArea={uploadProps.activeArea}
           showInsertControls={mode === "basic"}
+          onPreviewA4={onPreviewA4}
+          onSaveTemplate={onSaveTemplate}
         />
       )}
 

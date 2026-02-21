@@ -543,9 +543,7 @@ compensation-select-incentives {
   cursor: pointer;
   font-size: 14px;
   font-weight: 500;
-  transition:
-    background-color 0.3s ease,
-    transform 0.2s ease;
+  transition: background-color 0.3s ease, transform 0.2s ease;
   margin-top: 10px;
   display: inline-flex;
   align-items: center;
@@ -570,9 +568,7 @@ compensation-select-incentives {
   cursor: pointer;
   font-size: 13px;
   font-weight: 500;
-  transition:
-    background-color 0.3s ease,
-    transform 0.2s ease;
+  transition: background-color 0.3s ease, transform 0.2s ease;
   margin-left: 10px;
   display: inline-flex;
   align-items: center;
@@ -865,4 +861,34 @@ compensation-select-incentives {
     opacity: 1;
     transform: translateY(0);
   }
+}
+
+
+
+
+
+
+
+
+
+/* Prevent layout shift when switching percentage ↔ amount */
+.compensation-form-group {
+  min-height: 90px;                    /* adjust based on your tallest variant */
+  align-items: flex-start;             /* important */
+}
+
+.compensation-input-group {
+  min-height: 70px;                    /* reserve space for 2 lines */
+  align-items: flex-start !important;
+}
+
+.percentage-row,
+.amount-row {
+  min-height: 34px;
+}
+
+/* Make sure notes don't collapse the container */
+.remaining-note {
+  min-height: 20px;
+  line-height: 1.4;
 }

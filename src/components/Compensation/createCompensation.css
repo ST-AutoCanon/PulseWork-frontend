@@ -878,7 +878,7 @@ compensation-select-incentives {
 }
 
 .compensation-input-group {
-  min-height: 70px;                    /* reserve space for 2 lines */
+                      /* reserve space for 2 lines */
   align-items: flex-start !important;
 }
 

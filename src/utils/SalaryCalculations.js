@@ -1,3 +1,4 @@
+
 export const getCurrentYearMonth = () => {
   const year = new Date().getFullYear();
   const month = String(new Date().getMonth() + 1).padStart(2, "0");
@@ -32,7 +33,7 @@ export const parseApplicableMonth = (monthStr) => {
     "December",
   ];
   const monthIndex = monthNames.findIndex(
-    (name) => name.toLowerCase() === monthStr.toLowerCase(),
+    (name) => name.toLowerCase() === monthStr.toLowerCase()
   );
   if (monthIndex !== -1) {
     return new Date(new Date().getFullYear(), monthIndex);
@@ -67,10 +68,10 @@ export const getPayrollFilter = () => {
   const targetMonthStr = targetMonth.toString().padStart(2, "0");
 
   const windowStart = new Date(
-    Date.UTC(targetYear, targetMonth - 1, cutoffDate),
+    Date.UTC(targetYear, targetMonth - 1, cutoffDate)
   );
   const windowEnd = new Date(
-    Date.UTC(currentYear, currentMonth - 1, cutoffDate),
+    Date.UTC(currentYear, currentMonth - 1, cutoffDate)
   );
 
   return { targetMonthStr, targetYear, windowStart, windowEnd };
@@ -100,7 +101,7 @@ export const calculateSalaryDetails = (
   bonusRecords = [],
   advances = [],
   employeeIncentiveData = {},
-  employeeLopData = {},
+  employeeLopData = {}
 ) => {
   const safeOvertimeRecords = Array.isArray(overtimeRecords)
     ? overtimeRecords
@@ -115,7 +116,7 @@ export const calculateSalaryDetails = (
 
   if (!ctc || ctc <= 0 || isNaN(parseFloat(ctc))) {
     console.warn(
-      `Invalid or missing CTC (${ctc}) for employee ${employeeId}. Using default CTC of 0.`,
+      `Invalid or missing CTC (${ctc}) for employee ${employeeId}. Using default CTC of 0.`
     );
     ctc = 0;
   }
@@ -147,7 +148,7 @@ export const calculateSalaryDetails = (
 
   if (!planData || typeof planData !== "object") {
     console.warn(
-      `Invalid or missing planData for employee ${employeeId}. Using default values.`,
+      `Invalid or missing planData for employee ${employeeId}. Using default values.`
     );
     planData = {};
   }
@@ -168,7 +169,7 @@ export const calculateSalaryDetails = (
   } else {
     basicSalary = monthlyCtc ? monthlyCtc * 0.4 : 0;
     console.warn(
-      `Using default basicSalary (40% of CTC) for employee ${employeeId}`,
+      `Using default basicSalary (40% of CTC) for employee ${employeeId}`
     );
   }
 
@@ -209,22 +210,22 @@ export const calculateSalaryDetails = (
 
   // Other Allowances - Fixed is monthly
   // Other Allowances - Calculate as percentage of CTC when specified
-  if (
-    planData.isOtherAllowance &&
-    planData.otherAllowanceType === "percentage" &&
-    planData.otherAllowance &&
-    !isNaN(parseFloat(planData.otherAllowance))
-  ) {
-    // Calculate as percentage of monthly CTC (user's specified percentage)
-    otherAllowances = monthlyCtc * (parseFloat(planData.otherAllowance) / 100);
-  } else if (
-    planData.otherAllowanceAmount &&
-    !isNaN(parseFloat(planData.otherAllowanceAmount))
-  ) {
-    otherAllowances = parseFloat(planData.otherAllowanceAmount); // Monthly
-  } else {
-    otherAllowances = 0;
-  }
+if (
+  planData.isOtherAllowance &&
+  planData.otherAllowanceType === "percentage" &&
+  planData.otherAllowance &&
+  !isNaN(parseFloat(planData.otherAllowance))
+) {
+  // Calculate as percentage of monthly CTC (user's specified percentage)
+  otherAllowances = monthlyCtc * (parseFloat(planData.otherAllowance) / 100);
+} else if (
+  planData.otherAllowanceAmount &&
+  !isNaN(parseFloat(planData.otherAllowanceAmount))
+) {
+  otherAllowances = parseFloat(planData.otherAllowanceAmount); // Monthly
+} else {
+  otherAllowances = 0;
+}
 
   const { targetMonthStr, targetYear, windowStart, windowEnd } =
     getPayrollFilter();
@@ -235,7 +236,7 @@ export const calculateSalaryDetails = (
     const isInWindow = updatedDate >= windowStart && updatedDate < windowEnd;
     const monthStr = String(otDate ? otDate.getMonth() + 1 : 0).padStart(
       2,
-      "0",
+      "0"
     );
     const isValid =
       ot.employee_id === employeeId &&
@@ -260,7 +261,7 @@ export const calculateSalaryDetails = (
       } else {
         rate = 500;
         console.warn(
-          `No valid rate or overtimePayAmount for employee ${employeeId}; using default rate=₹${rate}/hour`,
+          `No valid rate or overtimePayAmount for employee ${employeeId}; using default rate=₹${rate}/hour`
         );
       }
     }
@@ -327,23 +328,29 @@ export const calculateSalaryDetails = (
 
   const empId = String(employeeId).toUpperCase();
   const matchedKey = Object.keys(employeeIncentiveData).find(
-    (key) => String(key).toUpperCase() === empId,
+    (key) => String(key).toUpperCase() === empId
   );
 
   if (matchedKey && employeeIncentiveData[matchedKey]) {
     const incData = employeeIncentiveData[matchedKey];
     const currentYm = getCurrentYearMonth();
     const currentMonthIncentives = (incData.incentives || []).filter(
-      (inc) => inc.applicable_month === currentYm,
+      (inc) => inc.applicable_month === currentYm
     );
     incentivePay = currentMonthIncentives.reduce(
       (sum, inc) => sum + parseFloat(inc.value || 0),
-      0,
+      0
     );
   }
 
   grossSalary =
-    basicSalary + hra + ltaAllowance + overtimePay + bonusPay + incentivePay;
+  basicSalary +
+  hra +
+  ltaAllowance +
+  overtimePay +
+  bonusPay +
+  incentivePay;
+
 
   const pfBase =
     planData.pfCalculationBase === "gross" ? grossSalary : basicSalary;
@@ -464,7 +471,7 @@ export const calculateSalaryDetails = (
   } else {
     gratuity = basicSalary * 0;
     console.warn(
-      `Using default gratuity (4.81% of basicSalary) for employee ${employeeId}`,
+      `Using default gratuity (4.81% of basicSalary) for employee ${employeeId}`
     );
   }
 
@@ -489,7 +496,7 @@ export const calculateSalaryDetails = (
       professionalTax = 0;
       planData.professionalTaxText = "Not Set";
       console.warn(
-        `No Professional Tax value set for employee ${employeeId}; using 0`,
+        `No Professional Tax value set for employee ${employeeId}; using 0`
       );
     }
   } else {
@@ -554,42 +561,58 @@ export const calculateSalaryDetails = (
 
   // ✅ FORCE OTHER ALLOWANCE AS BALANCING COMPONENT
 
-  const fixedDeductions =
-    employeePF + employerPF + esic + insurance + gratuity + professionalTax;
+const fixedDeductions =
+  employeePF +
+  employerPF +
+  esic +
+  insurance +
+  gratuity +
+  professionalTax;
 
-  // Monthly CTC should equal full cost
-  otherAllowances = monthlyCtc - (grossSalary + fixedDeductions);
+// Monthly CTC should equal full cost
+otherAllowances =
+  monthlyCtc -
+  (grossSalary + fixedDeductions);
 
-  // Prevent negative
-  if (otherAllowances < 0) {
-    otherAllowances = 0;
-  }
+// Prevent negative
+if (otherAllowances < 0) {
+  otherAllowances = 0;
+}
 
-  // Now add Other back to gross
-  grossSalary += otherAllowances;
+// Now add Other back to gross
+grossSalary += otherAllowances;
+
 
   lopDeduction = parseFloat(
-    employeeLopData[employeeId]?.currentMonth?.value || 0,
+    employeeLopData[employeeId]?.currentMonth?.value || 0
   );
 
   // ONLY employee-side deductions are subtracted for net salary (take-home pay)
   // Employer PF and Gratuity are employer costs — they are NOT deducted from employee's pay
-  let employeeDeductions = 0;
-  if (planData.pfEmployeeIncludeInCtc !== false) {
-    employeeDeductions += employeePF;
-  }
-  if (planData.esicEmployeeIncludeInCtc !== false) {
-    employeeDeductions += esic;
-  }
-  if (planData.insuranceEmployeeIncludeInCtc !== false) {
-    employeeDeductions += insurance;
-  }
-  if (planData.professionalTaxIncludeInCtc !== false) {
-    employeeDeductions += professionalTax;
-  }
+let employeeDeductions = 0;
 
-  const netSalary =
-    grossSalary - employeeDeductions - tds - advanceRecovery - lopDeduction;
+if (planData.pfEmployeeIncludeInCtc === true) {
+  employeeDeductions += employeePF;
+}
+
+if (planData.esicEmployeeIncludeInCtc === true) {
+  employeeDeductions += esic;
+}
+
+if (planData.insuranceEmployeeIncludeInCtc === true) {
+  employeeDeductions += insurance;
+}
+
+if (planData.professionalTaxIncludeInCtc === true) {
+  employeeDeductions += professionalTax;
+}
+
+// Always deduct these
+employeeDeductions += tds;
+employeeDeductions += advanceRecovery;
+employeeDeductions += lopDeduction;
+
+const netSalary = grossSalary - employeeDeductions;
 
   const salaryDetails = {
     basicSalary: basicSalary,
@@ -624,7 +647,7 @@ export const calculateTotals = (
   bonusRecords,
   advances,
   incentivesData,
-  employeeLopData,
+  employeeLopData
 ) => {
   if (!Array.isArray(employees)) {
     console.error("Invalid employees array in calculateTotals");
@@ -653,7 +676,7 @@ export const calculateTotals = (
         bonusRecords,
         advances,
         incentivesData,
-        employeeLopData,
+        employeeLopData
       );
       if (!salaryDetails) {
         console.warn(`No salary details for employee ${emp.employee_id}`);
@@ -687,7 +710,7 @@ export const calculateTotals = (
       totalInsurance: 0,
       totalIncentives: 0,
       totalLopDeduction: 0,
-    },
+    }
   );
 };
 

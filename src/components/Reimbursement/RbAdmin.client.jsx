@@ -37,8 +37,6 @@ const RbAdmin = () => {
   const [paymentStatusUpdates, setPaymentStatusUpdates] = useState({});
   const [comments, setComments] = useState({});
   const [statusFilter, setStatusFilter] = useState("pending");
-
-  // derive employee data from auth user instead of localStorage
   const employeeData = (user && (user.raw || user.dashboard)) || {};
   const employeeId = user?.employeeId || employeeData?.employeeId || null;
   const rawUserRole = user?.role || user?.raw?.role || "";
@@ -71,10 +69,8 @@ const RbAdmin = () => {
   const apiKey =
     process.env.NEXT_PUBLIC_API_KEY || process.env.REACT_APP_API_KEY || "";
 
-  // take token only from auth provider
   const authToken = user?.raw?.token || user?.token || user?.authToken || "";
 
-  // orgId state & resolve flags
   const [orgId, setOrgId] = useState(
     user?.orgId ||
       user?.raw?.org_id ||
@@ -201,12 +197,12 @@ const RbAdmin = () => {
     if (actorId) h["x-employee-id"] = String(actorId);
 
     if (orgId) h["x-org-id"] = String(orgId);
-    if (departmentId) h["x-department-id"] = String(departmentId);
+    if (departmentId && !isHR) h["x-department-id"] = String(departmentId);
 
     if (authToken) h["Authorization"] = `Bearer ${authToken}`;
 
     return h;
-  }, [user, apiKey, authToken, orgId, employeeData]);
+  }, [user, apiKey, authToken, orgId, employeeData, departmentId, isHR]);
 
   // resolve org id from backend profile endpoints (only when needed)
   const resolveOrgIdOnce = useCallback(async () => {
@@ -508,51 +504,127 @@ const RbAdmin = () => {
         showAlert("No attachments available.");
         return;
       }
-      const authToken = localStorage.getItem("token");
+
+      // Use your buildHeaders() so HR gets x-org-id / Authorization / x-api-key etc.
+      const baseHeaders = buildHeaders();
+
       const fetchedFiles = await Promise.all(
-        files.map(async (file) => {
-          const candidateFilename =
-            file.filename || file.file_name || file.name;
-          if (!candidateFilename) return null;
-          const match = candidateFilename.match(/^(\d{4})-(\d{2})-(\d{2})/);
-          if (!match) {
-            const match2 = candidateFilename.match(
-              /^(\d{4})[-_](\d{2})[-_](\d{2})/,
-            );
-            if (!match2) return null;
-            match = match2;
-          }
-          const year = match[1];
-          const month = match[2];
-          const empId = claim.employee_id;
-          const fileUrl = `${process.env.NEXT_PUBLIC_BACKEND_URL}/reimbursement/${orgId}/${year}/${month}/${empId}/${candidateFilename}`;
+        (files || []).map(async (file) => {
           try {
-            const response = await axios.get(fileUrl, {
+            // support multiple attachment shapes
+            const candidateFilename =
+              file.filename ||
+              file.file_name ||
+              file.name ||
+              file.fileName ||
+              null;
+
+            // If the server already provided a direct URL, use it (no extra headers)
+            if (file.file_path && typeof file.file_path === "string") {
+              const urlFromServer = file.file_path;
+              // if file_path looks like a full URL use it directly
+              if (/^https?:\/\//i.test(urlFromServer)) {
+                return {
+                  name: candidateFilename || urlFromServer.split("/").pop(),
+                  url: urlFromServer,
+                };
+              }
+              // otherwise try to build full URL from backend + file_path
+              const fileUrl = `${backendBase || process.env.NEXT_PUBLIC_BACKEND_URL || ""}${urlFromServer}`;
+              const resp = await axios.get(fileUrl, {
+                withCredentials: true,
+                headers: baseHeaders,
+                responseType: "blob",
+              });
+              return {
+                name:
+                  candidateFilename || fileUrl.split("/").pop() || "attachment",
+                url: URL.createObjectURL(
+                  new Blob([resp.data], { type: resp.headers["content-type"] }),
+                ),
+              };
+            }
+
+            if (!candidateFilename) return null;
+
+            // Try to extract year/month from filename (some filenames are prefixed with yyyy-mm-dd)
+            let match = candidateFilename.match(/^(\d{4})-(\d{2})-(\d{2})/);
+            if (!match) {
+              const match2 = candidateFilename.match(
+                /^(\d{4})[-_](\d{2})[-_](\d{2})/,
+              );
+              if (!match2) {
+                // fallback: try search by claim date or just return "not found" for this file
+                console.debug(
+                  "filename does not contain date prefix, attempting fallback URL",
+                  candidateFilename,
+                );
+                // Fallback: attempt path using claim.created_at or claim.date if available
+                const fallbackYear =
+                  (claim?.created_at &&
+                    new Date(claim.created_at).getFullYear()) ||
+                  (claim?.date && new Date(claim.date).getFullYear());
+                const fallbackMonth =
+                  (claim?.created_at &&
+                    String(new Date(claim.created_at).getMonth() + 1).padStart(
+                      2,
+                      "0",
+                    )) ||
+                  (claim?.date &&
+                    String(new Date(claim.date).getMonth() + 1).padStart(
+                      2,
+                      "0",
+                    ));
+                if (fallbackYear && fallbackMonth) {
+                  match = [
+                    null,
+                    String(fallbackYear),
+                    String(fallbackMonth),
+                    "01",
+                  ];
+                } else return null;
+              } else {
+                match = match2;
+              }
+            }
+
+            const year = match[1];
+            const month = match[2];
+            const empId = claim.employee_id || claim.employeeId || claim.empId;
+            if (!empId) {
+              console.warn(
+                "handleOpenAttachments: missing employee id for claim",
+                claim,
+              );
+              return null;
+            }
+
+            // Construct file URL using same convention your backend uses
+            const fileUrl = `${backendBase || process.env.NEXT_PUBLIC_BACKEND_URL}/reimbursement/${orgId}/${year}/${month}/${empId}/${candidateFilename}`;
+
+            const resp = await axios.get(fileUrl, {
               withCredentials: true,
-              headers: {
-                "x-employee-id": String(empId),
-                Authorization: authToken ? `Bearer ${authToken}` : undefined,
-              },
+              headers: baseHeaders, // includes x-org-id, Authorization, x-employee-id, x-api-key (if available)
               responseType: "blob",
             });
+
             return {
               name: candidateFilename,
               url: URL.createObjectURL(
-                new Blob([response.data], {
-                  type: response.headers["content-type"],
-                }),
+                new Blob([resp.data], { type: resp.headers["content-type"] }),
               ),
             };
-          } catch (err) {
+          } catch (errInner) {
             console.warn(
               "attachment fetch failed for",
               file,
-              err?.message || err,
+              errInner?.response?.status || errInner?.message || errInner,
             );
             return null;
           }
         }),
       );
+
       setSelectedFiles((fetchedFiles || []).filter(Boolean));
       setSelectedClaim(claim);
       setIsModalOpen(true);
@@ -1410,13 +1482,52 @@ const RbAdmin = () => {
                                         lineInvs.length
                                           ? lineInvs.join(", ")
                                           : claimInvDisplay;
+                                      // --- START REPLACEMENT: improved line-level attachments fallback ---
                                       const lineAttachMap =
                                         claim.line_attachments_map || {};
-                                      const attachmentsForThis =
+
+                                      // First try line-specific attachments (existing behaviour)
+                                      let attachmentsForThis =
                                         (line &&
                                           (lineAttachMap[String(line.id)] ||
                                             lineAttachMap[line.id])) ||
                                         [];
+
+                                      // Fallback: if none found at line level, use claim-level attachments (helps HR)
+                                      if (
+                                        (!attachmentsForThis ||
+                                          attachmentsForThis.length === 0) &&
+                                        attachments &&
+                                        attachments[claim.id] &&
+                                        attachments[claim.id].length
+                                      ) {
+                                        // try to match attachments by filename containing line id, otherwise use all claim attachments
+                                        const lineIdStr =
+                                          line &&
+                                          line.id !== undefined &&
+                                          line.id !== null
+                                            ? String(line.id)
+                                            : "";
+                                        const matched = lineIdStr
+                                          ? (
+                                              attachments[claim.id] || []
+                                            ).filter((a) => {
+                                              const fname = String(
+                                                a.file_name ||
+                                                  a.filename ||
+                                                  a.name ||
+                                                  a.fileName ||
+                                                  "",
+                                              );
+                                              return fname.includes(lineIdStr);
+                                            })
+                                          : [];
+                                        attachmentsForThis = matched.length
+                                          ? matched
+                                          : attachments[claim.id];
+                                      }
+                                      // --- END REPLACEMENT ---
+
                                       const amount = line
                                         ? line.total_amount ||
                                           payload.total_amount ||

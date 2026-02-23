@@ -34,11 +34,9 @@ export default function LeaveFormModal({
   const formatIso = (d) =>
     d instanceof Date ? d.toISOString().split("T")[0] : String(d);
 
-  // compute one month ago ISO date (allow past dates up to 1 month back)
   const oneMonthAgoIso = useMemo(() => {
     try {
       const d = new Date();
-      // Move back one month — preserves day where possible
       d.setMonth(d.getMonth() - 1);
       d.setHours(0, 0, 0, 0);
       return formatIso(d);
@@ -176,17 +174,11 @@ export default function LeaveFormModal({
     (o) => String(o.type) === String(formData.leavetype),
   );
 
-  // effectiveMinStart logic:
-  // - If editing: allow dates up to 1 month back (oneMonthAgoIso)
-  // - If not editing and advanceNoticeDays > 0: respect minStartAllowed (likely future date)
-  // - Otherwise (no notice): allow dates up to 1 month back (oneMonthAgoIso)
   const effectiveMinStart = (() => {
     if (editingId) return oneMonthAgoIso;
     if (advanceNoticeDays > 0) {
-      // keep the notice-enforced future minimum
       return minStartAllowed || todayIso;
     }
-    // no notice -> allow past dates up to one month ago
     return oneMonthAgoIso;
   })();
 
@@ -209,38 +201,54 @@ export default function LeaveFormModal({
     return `${(kb / 1024).toFixed(2)} MB`;
   };
 
-  // Keep formData.attachments metadata in sync with attachments (hook-level real File objects)
+  // --------- IMPORTANT FIX ----------
+  // Preserve server-side attachments when editing.
+  // Only clear formData.attachments automatically when NOT editing and there are no hook-level attachments.
   useEffect(() => {
     try {
       if (!Array.isArray(attachments) || attachments.length === 0) {
-        // if there are no hook attachments, preserve existing formData.attachments if it contains server-side attachments
-        // but if formData.attachments are all client-side empty metadata we clear them
         const meta = Array.isArray(formData.attachments)
           ? formData.attachments
           : [];
+
+        // detect if metadata items are purely local placeholders (no server reference)
         const allLocalNoFile =
           meta.length > 0 &&
-          meta.every((m) => !m.serverId && !m.fileUrl && !m.remote);
+          meta.every(
+            (m) =>
+              !m.serverId &&
+              !m.fileUrl &&
+              !m.remote &&
+              !m.file_path &&
+              !m.url &&
+              !m.id,
+          );
+
+        // If we're editing, preserve whatever attachments metadata is present (server-side files).
+        // Only clear metadata automatically if we're *not* editing and there's nothing useful.
         if (meta.length === 0 || allLocalNoFile) {
-          setFormData((prev) => ({ ...prev, attachments: [] }));
+          if (!editingId) {
+            setFormData((prev) => ({ ...prev, attachments: [] }));
+          } else {
+            // editingId present: keep meta as-is (so server attachments remain visible)
+          }
         }
         return;
       }
-      // Build metadata array from real File objects (no file references inside JSON)
+
+      // If real File objects are provided via hook-level attachments, build simple metadata
       const meta = attachments.map((f) => ({
         name: f.name,
         size: f.size,
         type: f.type,
-        // do NOT include the File object itself in formData metadata (keeps JSON clean)
-        // we intentionally do not put file: f here
         uploaded: false,
       }));
       setFormData((prev) => ({ ...prev, attachments: meta }));
     } catch (err) {
-      // swallow
+      // swallow errors; do not clear existing attachments on error
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [attachments]);
+  }, [attachments, editingId, JSON.stringify(formData.attachments || [])]);
 
   // When file input changes, store *real* File objects into hook-level attachments
   const handleFilesChange = (e) => {
@@ -266,7 +274,6 @@ export default function LeaveFormModal({
 
     // metadata update handled by useEffect above
 
-    // clear native input to allow same-file selection again
     try {
       e.target.value = "";
     } catch {}
@@ -274,33 +281,47 @@ export default function LeaveFormModal({
 
   // Remove by index (index is relative to displayed list; we keep attachments & metadata aligned)
   const removeAttachment = (idx) => {
-    // If we have hook-level File objects, remove from that first
     const hookArr = Array.isArray(attachments) ? attachments.slice() : null;
     if (hookArr && hookArr.length > 0) {
       if (idx >= 0 && idx < hookArr.length) {
         hookArr.splice(idx, 1);
         setAttachments(hookArr);
       }
-    } else {
-      // fall back to metadata-only removal (possible when showing previously uploaded files)
-      const metaArr = Array.isArray(formData.attachments)
-        ? formData.attachments.slice()
-        : [];
-      if (idx >= 0 && idx < metaArr.length) {
-        metaArr.splice(idx, 1);
-        setFormData({ ...formData, attachments: metaArr });
-      }
+      return;
+    }
+
+    // fallback to metadata-only removal (possible when showing previously uploaded files)
+    const metaArr = Array.isArray(formData.attachments)
+      ? formData.attachments.slice()
+      : [];
+    if (idx >= 0 && idx < metaArr.length) {
+      // remove from metadata; backend should accept the metadata change when updating the leave
+      metaArr.splice(idx, 1);
+      setFormData({ ...formData, attachments: metaArr });
     }
   };
+  const hasAnyAttachment = () => {
+    const hookCount = Array.isArray(attachments) ? attachments.length : 0;
+    const metaCount = Array.isArray(formData.attachments)
+      ? formData.attachments.length
+      : 0;
 
+    return hookCount > 0 || metaCount > 0;
+  };
   return (
     <div className="leave-modal">
       <div className="leave-modal-content">
         <form
           className="leave-form"
           onSubmit={(e) => {
-            // leave submission handled by hook's handleSubmit
-            // pass event through so default prevention happens upstream
+            if (showAttachmentOption && !hasAnyAttachment()) {
+              e.preventDefault();
+              showAlert?.(
+                "Supporting document is mandatory for this leave type.",
+              );
+              return;
+            }
+
             handleSubmit?.(e);
           }}
         >
@@ -426,11 +447,6 @@ export default function LeaveFormModal({
                   accept="image/*,application/pdf"
                 />
 
-                <div>
-                  Attach medical certificate or other supporting files if
-                  available. (Images or PDF only)
-                </div>
-
                 {/* Prefer hook-level attachments for display; fallback to formData.attachments */}
                 {Array.isArray(attachments) && attachments.length > 0 ? (
                   <ul className="leave-form-attachments">
@@ -454,14 +470,15 @@ export default function LeaveFormModal({
                   formData.attachments.length > 0 ? (
                   <ul className="leave-form-attachments">
                     {formData.attachments.map((f, idx) => (
-                      <li key={`${f.name}-${idx}`}>
+                      <li key={`${f.name || f.file_name || idx}-${idx}`}>
                         <span>
-                          {f.name} — {formatSize(f.size)}
+                          {f.name || f.file_name || f.fileName} —{" "}
+                          {formatSize(f.size)}
                         </span>
                         <button
                           type="button"
                           onClick={() => removeAttachment(idx)}
-                          aria-label={`Remove ${f.name}`}
+                          aria-label={`Remove ${f.name || f.file_name}`}
                         >
                           Remove
                         </button>

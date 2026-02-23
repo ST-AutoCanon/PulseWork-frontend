@@ -1,6 +1,7 @@
+// File: SelfTable.client.jsx
 "use client";
 
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useRef, useEffect } from "react";
 import { parseLocalDate } from "./leaveUtils.client";
 import {
   MdOutlineEdit,
@@ -8,6 +9,7 @@ import {
   MdOutlineAttachFile,
   MdOutlineRemoveRedEye,
   MdOpenInNew,
+  MdOutlineAttachFile as MdAttachFileIcon,
 } from "react-icons/md";
 import Modal from "../Modal/Modal.client";
 import axios from "axios";
@@ -32,12 +34,41 @@ export default function SelfTable({ leaveRequests, onEdit, onCancel }) {
     return <span className={`leave-status-label ${classes}`}>{status}</span>;
   };
 
+  // preview state
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewAttachment, setPreviewAttachment] = useState(null);
   const [previewList, setPreviewList] = useState([]);
 
   // cache for resolved blobs/preview objects per leave id
   const [attachmentsMap, setAttachmentsMap] = useState({});
+
+  // attachmentsMapRef — keep a ref to attachmentsMap so we can revoke blob: URLs on unmount
+  const attachmentsMapRef = useRef({});
+  useEffect(() => {
+    attachmentsMapRef.current = attachmentsMap;
+  }, [attachmentsMap]);
+
+  useEffect(() => {
+    return () => {
+      // revoke any blob: URLs cached in attachmentsMap when component unmounts
+      try {
+        Object.values(attachmentsMapRef.current || {})
+          .flat()
+          .forEach((p) => {
+            if (
+              p &&
+              p.url &&
+              typeof p.url === "string" &&
+              p.url.startsWith("blob:")
+            ) {
+              try {
+                URL.revokeObjectURL(p.url);
+              } catch (e) {}
+            }
+          });
+      } catch (e) {}
+    };
+  }, []);
 
   // backend config + headers builder
   const backendBase =
@@ -101,8 +132,8 @@ export default function SelfTable({ leaveRequests, onEdit, onCancel }) {
     return null;
   }, []);
 
+  // open single preview (try cache -> direct url -> fetch)
   const onPreviewClick = (attachment, leave) => {
-    // If cached resolved preview exists, open from cache
     const lid = String(leave?.id || leave?.leave_id || leave?.leaveId || "");
     const cache = attachmentsMap[lid] || [];
     const found = cache.find(
@@ -117,7 +148,6 @@ export default function SelfTable({ leaveRequests, onEdit, onCancel }) {
       return;
     }
 
-    // otherwise try quick direct URL or fall back to fetching/resolving
     const url = buildAttachmentUrl(attachment, leave);
     const mime = (attachment.mime_type || "").toLowerCase();
     if (url && (mime.startsWith("image/") || mime === "application/pdf")) {
@@ -129,7 +159,8 @@ export default function SelfTable({ leaveRequests, onEdit, onCancel }) {
       setPreviewOpen(true);
       return;
     }
-    // fallback: fetch + resolve and cache
+
+    // fallback to full resolver (will fetch blob, cache and preview)
     handleOpenLeaveAttachments([attachment], leave, { openDirect: true });
   };
 
@@ -231,6 +262,7 @@ export default function SelfTable({ leaveRequests, onEdit, onCancel }) {
       const leaveIdKey = String(
         leave?.id || leave?.leave_id || leave?.leaveId || "",
       );
+
       // 1) if cached, use it immediately
       if (attachmentsMap[leaveIdKey] && attachmentsMap[leaveIdKey].length > 0) {
         const cached = attachmentsMap[leaveIdKey];
@@ -255,10 +287,40 @@ export default function SelfTable({ leaveRequests, onEdit, onCancel }) {
       if (!candidateFiles || candidateFiles.length === 0) {
         try {
           const url = `${backendBase.replace(/\/$/, "")}/employee/leave/${encodeURIComponent(leaveIdKey)}/attachments`;
-          const resp = await axios.get(url, {
-            withCredentials: true,
-            headers: buildHeaders(),
-          });
+          // REPLACE with this: try several candidate metadata endpoints (admin/employee/api style)
+          const candidateMetaUrls = [
+            `${absBase}/employee/leave/${encodeURIComponent(leaveIdKey)}/attachments`,
+            `${absBase}/leave/${encodeURIComponent(leaveIdKey)}/attachments`,
+            `${absBase}/admin/leave/${encodeURIComponent(leaveIdKey)}/attachments`,
+            `${absBase}/api/leave/${encodeURIComponent(leaveIdKey)}/attachments`,
+            `${absBase}/api/admin/leave/${encodeURIComponent(leaveIdKey)}/attachments`,
+          ];
+
+          let metaList = [];
+          for (const metaUrl of candidateMetaUrls) {
+            try {
+              const resp = await axios.get(metaUrl, {
+                withCredentials: true,
+                headers: buildHeaders(),
+              });
+              // server may return [ ] or { data: [...] } or { attachments: [...] }
+              const list = Array.isArray(resp.data)
+                ? resp.data
+                : Array.isArray(resp.data?.data)
+                  ? resp.data.data
+                  : Array.isArray(resp.data?.attachments)
+                    ? resp.data.attachments
+                    : [];
+              if (Array.isArray(list) && list.length > 0) {
+                metaList = list;
+                break;
+              }
+            } catch (err) {
+              // ignore and try next
+            }
+          }
+          candidateFiles =
+            candidateFiles.length > 0 ? candidateFiles : metaList;
           const list = Array.isArray(resp.data)
             ? resp.data
             : Array.isArray(resp.data?.data)
@@ -663,7 +725,7 @@ export default function SelfTable({ leaveRequests, onEdit, onCancel }) {
         })}
       </div>
 
-      {/* Preview Modal */}
+      {/* Preview Modal — two-column large viewer */}
       <Modal
         title={
           previewAttachment
@@ -684,104 +746,257 @@ export default function SelfTable({ leaveRequests, onEdit, onCancel }) {
             : []),
         ]}
       >
-        <div style={{ minWidth: 320, minHeight: 160 }}>
-          {previewAttachment ? (
-            <>
-              {previewAttachment.mime_type &&
-                previewAttachment.mime_type.startsWith("image/") && (
-                  <img
-                    src={previewAttachment.url}
-                    alt={previewAttachment.file_name || previewAttachment.name}
-                    style={{
-                      maxWidth: "100%",
-                      maxHeight: "70vh",
-                      display: "block",
-                      margin: "0 auto",
-                    }}
-                  />
-                )}
+        <div className="attachments-modal-large">
+          <h4 className="modal-title" style={{ marginBottom: 12 }}>
+            {/* optional title space */}
+          </h4>
 
-              {previewAttachment.mime_type === "application/pdf" && (
-                <iframe
-                  src={previewAttachment.url}
-                  title={previewAttachment.file_name || "pdf"}
-                  style={{ width: "100%", height: "70vh", border: "none" }}
-                />
-              )}
-
-              {(!previewAttachment.mime_type ||
-                (!previewAttachment.mime_type.startsWith("image/") &&
-                  previewAttachment.mime_type !== "application/pdf")) && (
-                <div style={{ padding: 12 }}>
-                  <p>
-                    <strong>
-                      {previewAttachment.file_name || previewAttachment.name}
-                    </strong>
-                  </p>
-                  <p>
-                    <button
-                      onClick={() =>
-                        previewAttachment.url &&
-                        openUrlInNewTab(previewAttachment.url)
-                      }
-                    >
-                      <MdOutlineRemoveRedEye /> Open / Download
-                    </button>
-                  </p>
-                </div>
-              )}
-
-              {previewList && previewList.length > 1 && (
-                <div
-                  style={{
-                    marginTop: 12,
-                    display: "flex",
-                    gap: 8,
-                    overflowX: "auto",
-                  }}
+          <div className="attachments-grid">
+            {/* Left: list of files */}
+            <div className="attachments-list-column">
+              {(!previewList || previewList.length === 0) &&
+              previewAttachment ? (
+                <ul
+                  className="attachments-list"
+                  style={{ listStyle: "none", padding: 0, margin: 0 }}
                 >
-                  {previewList.map((p) => (
+                  <li
+                    className="attachment-row"
+                    style={{
+                      padding: "8px 0",
+                      borderBottom: "1px solid #f3f3f3",
+                    }}
+                  >
                     <button
-                      key={p.id || p.file_name}
-                      onClick={() => setPreviewAttachment(p)}
+                      className="attachment-name-btn"
+                      onClick={() => {
+                        setPreviewAttachment(previewAttachment);
+                      }}
                       style={{
-                        border:
-                          previewAttachment &&
-                          (p.id === previewAttachment.id ||
-                            p.url === previewAttachment.url)
-                            ? "2px solid #0070f3"
-                            : "1px solid #ddd",
-                        padding: 4,
-                        background: "#fff",
+                        background: "none",
+                        border: "none",
+                        padding: 0,
+                        textDecoration: "underline",
+                        cursor: "pointer",
                       }}
                     >
-                      {p.mime_type && p.mime_type.startsWith("image/") ? (
-                        <img
-                          src={p.url}
-                          alt={p.file_name}
-                          style={{ width: 80, height: 60, objectFit: "cover" }}
-                        />
-                      ) : (
+                      {previewAttachment.file_name || previewAttachment.name}
+                    </button>
+                  </li>
+                </ul>
+              ) : previewList && previewList.length > 0 ? (
+                <ul
+                  className="attachments-list"
+                  style={{ listStyle: "none", padding: 0, margin: 0 }}
+                >
+                  {previewList.map((f, idx) => {
+                    const safeName =
+                      f.file_name || f.filename || `Attachment ${idx + 1}`;
+                    return (
+                      <li
+                        key={f.id || idx}
+                        className="attachment-row"
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          alignItems: "center",
+                          padding: 8,
+                          borderBottom: "1px solid #f3f3f3",
+                        }}
+                      >
                         <div
                           style={{
-                            width: 80,
-                            height: 60,
                             display: "flex",
                             alignItems: "center",
-                            justifyContent: "center",
+                            gap: 8,
                           }}
                         >
-                          <MdOutlineAttachFile size={20} />
+                          <button
+                            className="attachment-name-btn"
+                            onClick={() => setPreviewAttachment(f)}
+                            style={{
+                              background: "none",
+                              border: "none",
+                              padding: 0,
+                              textAlign: "left",
+                              cursor: "pointer",
+                              color:
+                                previewAttachment &&
+                                (f.id === previewAttachment.id ||
+                                  f.url === previewAttachment.url)
+                                  ? "#0070f3"
+                                  : undefined,
+                            }}
+                          >
+                            {safeName}
+                          </button>
                         </div>
-                      )}
-                    </button>
-                  ))}
+
+                        <div className="attachment-actions">
+                          <button
+                            onClick={() => {
+                              if (f.url) openUrlInNewTab(f.url);
+                              else if (
+                                previewAttachment &&
+                                previewAttachment.url
+                              )
+                                openUrlInNewTab(previewAttachment.url);
+                              else alert("No URL to open");
+                            }}
+                            style={{
+                              background: "none",
+                              border: "1px solid #ddd",
+                              padding: "6px 10px",
+                              cursor: "pointer",
+                              borderRadius: 4,
+                            }}
+                          >
+                            Open
+                          </button>
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ul>
+              ) : (
+                <div style={{ padding: 12, color: "#666" }}>
+                  No attachments available.
                 </div>
               )}
-            </>
-          ) : (
-            <div>No attachment selected</div>
-          )}
+            </div>
+
+            {/* Right: large preview */}
+            <div
+              className="attachments-preview-column"
+              style={{
+                flex: 1,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                paddingLeft: 12,
+                maxHeight: "82vh",
+                overflow: "auto",
+              }}
+            >
+              {previewAttachment ? (
+                <>
+                  {/* image preview */}
+                  {previewAttachment.mime_type &&
+                    previewAttachment.mime_type.startsWith("image/") && (
+                      <img
+                        src={previewAttachment.url}
+                        alt={
+                          previewAttachment.file_name || previewAttachment.name
+                        }
+                        style={{
+                          maxWidth: "100%",
+                          maxHeight: "80vh",
+                          objectFit: "contain",
+                          display: "block",
+                        }}
+                      />
+                    )}
+
+                  {/* pdf preview */}
+                  {previewAttachment.mime_type === "application/pdf" && (
+                    <iframe
+                      src={previewAttachment.url}
+                      title={previewAttachment.file_name || "pdf"}
+                      style={{ width: "100%", height: "80vh", border: "none" }}
+                    />
+                  )}
+
+                  {/* other files */}
+                  {(!previewAttachment.mime_type ||
+                    (!previewAttachment.mime_type.startsWith("image/") &&
+                      previewAttachment.mime_type !== "application/pdf")) && (
+                    <div style={{ padding: 16, textAlign: "center" }}>
+                      <p style={{ marginBottom: 12 }}>
+                        <strong>
+                          {previewAttachment.file_name ||
+                            previewAttachment.name}
+                        </strong>
+                      </p>
+                      <div>
+                        <button
+                          onClick={() =>
+                            previewAttachment.url &&
+                            openUrlInNewTab(previewAttachment.url)
+                          }
+                          style={{
+                            background: "none",
+                            border: "1px solid #ddd",
+                            padding: "8px 12px",
+                            cursor: "pointer",
+                            borderRadius: 4,
+                          }}
+                        >
+                          Open / Download
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* thumbnail strip if multiple */}
+                  {previewList && previewList.length > 1 && (
+                    <div
+                      style={{
+                        marginTop: 12,
+                        display: "flex",
+                        gap: 8,
+                        overflowX: "auto",
+                      }}
+                    >
+                      {previewList.map((p) => (
+                        <button
+                          key={p.id || p.file_name}
+                          onClick={() => setPreviewAttachment(p)}
+                          style={{
+                            border:
+                              previewAttachment &&
+                              (p.id === previewAttachment.id ||
+                                p.url === previewAttachment.url)
+                                ? "2px solid #0070f3"
+                                : "1px solid #ddd",
+                            padding: 4,
+                            background: "#fff",
+                          }}
+                        >
+                          {p.mime_type && p.mime_type.startsWith("image/") ? (
+                            <img
+                              src={p.url}
+                              alt={p.file_name}
+                              style={{
+                                width: 80,
+                                height: 60,
+                                objectFit: "cover",
+                              }}
+                            />
+                          ) : (
+                            <div
+                              style={{
+                                width: 80,
+                                height: 60,
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                              }}
+                            >
+                              <MdAttachFileIcon size={20} />
+                            </div>
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div className="preview-placeholder">
+                  Select a file to preview
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       </Modal>
     </>

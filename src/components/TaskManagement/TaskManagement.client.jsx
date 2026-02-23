@@ -157,7 +157,7 @@ const TaskManagement = () => {
       "x-api-key": process.env.NEXT_PUBLIC_API_KEY || "",
       ...(userContext?.orgId && { "x-org-id": userContext.orgId }),
     }),
-    [userContext]
+    [userContext],
   );
 
   useEffect(() => {
@@ -167,7 +167,7 @@ const TaskManagement = () => {
       try {
         const res = await axios.get(
           `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/supervisor/employees`,
-          { withCredentials: true, headers: getHeaders() }
+          { withCredentials: true, headers: getHeaders() },
         );
         setEmployees(res.data.employees || []);
         setError(null);
@@ -181,36 +181,88 @@ const TaskManagement = () => {
     fetch();
   }, [userContext, getHeaders]);
 
+  // const fetchTasks = useCallback(async () => {
+  //   if (!userContext || employees.length === 0) return;
+  //   setLoadingTasks(true);
+  //   try {
+  //     const res = await axios.get(
+  //       `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/tasks`,
+  //       { withCredentials: true, headers: getHeaders() }
+  //     );
+  //     const validEmpIds = new Set(employees.map((e) => e.employee_id));
+  //     const formatted = (res.data || [])
+  //       .filter((t) => validEmpIds.has(t.employee_id))
+  //       .map((t) => {
+  //         const emp = employees.find((e) => e.employee_id === t.employee_id);
+  //         const prog = Number(t.percentage ?? 0);
+  //         const safeProg = isNaN(prog) ? 0 : Math.min(Math.max(prog, 0), 100);
+  //         return {
+  //           id: `Task-${t.task_id}`,
+  //           dbId: t.task_id,
+  //           title: t.task_title,
+  //           description: t.description,
+  //           status: t.status,
+  //           startDate: formatDate(t.start_date),
+  //           endDate: formatDate(t.due_date),
+  //           employeeId: t.employee_id,
+  //           user: { name: emp?.employee_name || "Unknown", profile: "" },
+  //           progress: safeProg,
+  //           messages: [],
+  //         };
+  //       });
+  //     setTasks(formatted);
+  //     setError(null);
+  //   } catch (e) {
+  //     setError(e.response?.data?.error || e.message || "Failed to load tasks");
+  //     setTasks([]);
+  //   } finally {
+  //     setLoadingTasks(false);
+  //   }
+  // }, [userContext, employees, getHeaders]);
+
   const fetchTasks = useCallback(async () => {
     if (!userContext || employees.length === 0) return;
     setLoadingTasks(true);
     try {
       const res = await axios.get(
         `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/tasks`,
-        { withCredentials: true, headers: getHeaders() }
+        { withCredentials: true, headers: getHeaders() },
       );
+
       const validEmpIds = new Set(employees.map((e) => e.employee_id));
-      const formatted = (res.data || [])
-        .filter((t) => validEmpIds.has(t.employee_id))
-        .map((t) => {
-          const emp = employees.find((e) => e.employee_id === t.employee_id);
-          const prog = Number(t.percentage ?? 0);
-          const safeProg = isNaN(prog) ? 0 : Math.min(Math.max(prog, 0), 100);
-          return {
-            id: `Task-${t.task_id}`,
-            dbId: t.task_id,
-            title: t.task_title,
-            description: t.description,
-            status: t.status,
-            startDate: formatDate(t.start_date),
-            endDate: formatDate(t.due_date),
-            employeeId: t.employee_id,
-            user: { name: emp?.employee_name || "Unknown", profile: "" },
-            progress: safeProg,
-            messages: [],
-          };
-        });
-      setTasks(formatted);
+
+      setTasks((currentTasks) => {
+        // Create lookup of existing tasks by dbId → to preserve messages
+        const taskMap = new Map(currentTasks.map((t) => [t.dbId, t]));
+
+        const serverTasks = (res.data || [])
+          .filter((t) => validEmpIds.has(t.employee_id))
+          .map((t) => {
+            const emp = employees.find((e) => e.employee_id === t.employee_id);
+            const prog = Number(t.percentage ?? 0);
+            const safeProg = isNaN(prog) ? 0 : Math.min(Math.max(prog, 0), 100);
+
+            const existing = taskMap.get(t.task_id);
+
+            return {
+              id: `Task-${t.task_id}`,
+              dbId: t.task_id,
+              title: t.task_title,
+              description: t.description,
+              status: t.status,
+              startDate: formatDate(t.start_date),
+              endDate: formatDate(t.due_date),
+              employeeId: t.employee_id,
+              user: { name: emp?.employee_name || "Unknown", profile: "" },
+              progress: safeProg,
+              // Preserve messages if we already have them
+              messages: existing?.messages || [],
+            };
+          });
+
+        return serverTasks;
+      });
+
       setError(null);
     } catch (e) {
       setError(e.response?.data?.error || e.message || "Failed to load tasks");
@@ -219,7 +271,6 @@ const TaskManagement = () => {
       setLoadingTasks(false);
     }
   }, [userContext, employees, getHeaders]);
-
   useEffect(() => {
     fetchTasks();
   }, [fetchTasks]);
@@ -228,11 +279,11 @@ const TaskManagement = () => {
     (sender) => {
       if (sender === "Supervisor") return "You";
       const emp = employees.find(
-        (e) => String(e.employee_id) === String(sender)
+        (e) => String(e.employee_id) === String(sender),
       );
       return emp ? emp.employee_name : "Unknown";
     },
-    [employees]
+    [employees],
   );
 
   const fetchMessages = useCallback(
@@ -251,7 +302,7 @@ const TaskManagement = () => {
             withCredentials: true,
             headers: getHeaders(),
             signal: controller.signal,
-          }
+          },
         );
         let all = [];
         if (res.data.success) {
@@ -271,19 +322,19 @@ const TaskManagement = () => {
           ].sort((a, b) => new Date(a.time) - new Date(b.time));
         }
         setTasks((prev) =>
-          prev.map((t) => (t.dbId === taskDbId ? { ...t, messages: all } : t))
+          prev.map((t) => (t.dbId === taskDbId ? { ...t, messages: all } : t)),
         );
       } catch (e) {
         if (e.name !== "CanceledError") {
           setTasks((prev) =>
-            prev.map((t) => (t.dbId === taskDbId ? { ...t, messages: [] } : t))
+            prev.map((t) => (t.dbId === taskDbId ? { ...t, messages: [] } : t)),
           );
         }
       } finally {
         setLoadingMessages(false);
       }
     },
-    [getHeaders, getSenderName]
+    [getHeaders, getSenderName],
   );
 
   useEffect(() => {
@@ -308,12 +359,12 @@ const TaskManagement = () => {
       { key: "On-Hold", title: "On-Hold", color: "#9d174d" },
       { key: "Completed", title: "Completed", color: "#065f46" },
     ],
-    []
+    [],
   );
 
   const selectedTask = useMemo(
     () => tasks.find((t) => t.id === selectedTaskId) || null,
-    [tasks, selectedTaskId]
+    [tasks, selectedTaskId],
   );
 
   const currentDate = new Date();
@@ -352,9 +403,14 @@ const TaskManagement = () => {
       setTasks((prev) =>
         prev.map((t) =>
           t.id === selectedTask.id
-            ? { ...t, status: tempStatus, progress: tempProgress }
-            : t
-        )
+            ? {
+                ...t,
+                status: tempStatus,
+                progress: tempProgress,
+                messages: t.messages || [],
+              }
+            : t,
+        ),
       );
       await axios.put(
         `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/employee-tasks/update/${taskId}`,
@@ -363,7 +419,7 @@ const TaskManagement = () => {
           percentage: tempProgress,
           progress_percentage: tempProgress,
         },
-        { withCredentials: true, headers: getHeaders() }
+        { withCredentials: true, headers: getHeaders() },
       );
       await fetchTasks();
       setAlertModal({ isVisible: true, message: "Task updated successfully" });
@@ -377,8 +433,8 @@ const TaskManagement = () => {
                 status: selectedTask.status,
                 progress: selectedTask.progress,
               }
-            : t
-        )
+            : t,
+        ),
       );
     } finally {
       setEditingProgress(false);
@@ -412,18 +468,18 @@ const TaskManagement = () => {
               ...t,
               messages: [...t.messages, newMsg].sort(
                 (a, b) =>
-                  new Date(a.time).getTime() - new Date(b.time).getTime()
+                  new Date(a.time).getTime() - new Date(b.time).getTime(),
               ),
             }
-          : t
-      )
+          : t,
+      ),
     );
 
     try {
       await axios.post(
         `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/messages`,
         { taskId, sender: "Supervisor", type: activeTab, text },
-        { withCredentials: true, headers: getHeaders() }
+        { withCredentials: true, headers: getHeaders() },
       );
 
       setMessageText("");
@@ -432,7 +488,7 @@ const TaskManagement = () => {
       fetchMessages(taskId);
     } catch (e) {
       setError(
-        e.response?.data?.error || e.message || "Failed to send message"
+        e.response?.data?.error || e.message || "Failed to send message",
       );
       setTasks((prev) =>
         prev.map((t) =>
@@ -441,8 +497,8 @@ const TaskManagement = () => {
                 ...t,
                 messages: t.messages.filter((m) => m.time !== newMsg.time),
               }
-            : t
-        )
+            : t,
+        ),
       );
     }
   };
@@ -501,7 +557,7 @@ const TaskManagement = () => {
       const postRes = await axios.post(
         `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/tasks`,
         payload,
-        { withCredentials: true, headers: getHeaders() }
+        { withCredentials: true, headers: getHeaders() },
       );
       const createdTaskId = postRes.data.task_id;
       const newId =
@@ -526,9 +582,9 @@ const TaskManagement = () => {
           messages: [],
         },
       ]);
-      await new Promise(resolve => setTimeout(resolve, 700));  // 500–1200 ms usually enough
+      await new Promise((resolve) => setTimeout(resolve, 700)); // 500–1200 ms usually enough
 
-    await fetchTasks();
+      await fetchTasks();
       setAlertModal({ isVisible: true, message: "Task assigned successfully" });
       closeAssignForm();
     } catch (e) {
@@ -926,7 +982,7 @@ const TaskManagement = () => {
                           {loadingMessages ? (
                             <p className="task-loading-message">Loading…</p>
                           ) : selectedTask.messages.filter(
-                              (m) => m.type === "Progress"
+                              (m) => m.type === "Progress",
                             ).length === 0 ? (
                             <p className="task-no-msg">
                               No progress updates yet.
@@ -1001,7 +1057,7 @@ const TaskManagement = () => {
                           {loadingMessages ? (
                             <p className="task-loading-message">Loading…</p>
                           ) : selectedTask.messages.filter(
-                              (m) => m.type === "Clarification"
+                              (m) => m.type === "Clarification",
                             ).length === 0 ? (
                             <p className="task-no-msg">
                               No clarifications yet.
@@ -1200,162 +1256,167 @@ const TaskManagement = () => {
               </div>
             )} */}
             {showAssignForm && (
-  <div className="task-details-backdrop" onClick={closeAssignForm}>
-    <div
-      className="task-details assign-modal-v2"
-      onClick={(e) => e.stopPropagation()}
-    >
-      <div className="assign-modal-v2-header">
-        <div className="assign-modal-v2-title">
-          <h3>Assign New Task</h3>
-        </div>
-        <button
-          className="assign-modal-v2-close"
-          onClick={closeAssignForm}
-          aria-label="Close"
-        >
-          X
-        </button>
-      </div>
+              <div className="task-details-backdrop" onClick={closeAssignForm}>
+                <div
+                  className="task-details assign-modal-v2"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <div className="assign-modal-v2-header">
+                    <div className="assign-modal-v2-title">
+                      <h3>Assign New Task</h3>
+                    </div>
+                    <button
+                      className="assign-modal-v2-close"
+                      onClick={closeAssignForm}
+                      aria-label="Close"
+                    >
+                      X
+                    </button>
+                  </div>
 
-      <div className="assign-modal-v2-form">
-        <div className="assign-modal-v2-row">
-          <div className="assign-modal-v2-group full">
-            <label htmlFor="title-v2">Task Name</label>
-            <input
-              type="text"
-              id="title-v2"
-              name="title"
-              value={formData.title}
-              onChange={handleFormChange}
-              placeholder="Enter task name"
-              required
-            />
-          </div>
-        </div>
+                  <div className="assign-modal-v2-form">
+                    <div className="assign-modal-v2-row">
+                      <div className="assign-modal-v2-group full">
+                        <label htmlFor="title-v2">Task Name</label>
+                        <input
+                          type="text"
+                          id="title-v2"
+                          name="title"
+                          value={formData.title}
+                          onChange={handleFormChange}
+                          placeholder="Enter task name"
+                          required
+                        />
+                      </div>
+                    </div>
 
-        <div className="assign-modal-v2-row">
-          <div className="assign-modal-v2-group full">
-            <label htmlFor="description-v2">Task Description</label>
-            <textarea
-              id="description-v2"
-              name="description"
-              value={formData.description}
-              onChange={handleFormChange}
-              placeholder="Enter task description (use - for bullet points)"
-              rows="4"
-              required
-            />
-          </div>
-        </div>
+                    <div className="assign-modal-v2-row">
+                      <div className="assign-modal-v2-group full">
+                        <label htmlFor="description-v2">Task Description</label>
+                        <textarea
+                          id="description-v2"
+                          name="description"
+                          value={formData.description}
+                          onChange={handleFormChange}
+                          placeholder="Enter task description (use - for bullet points)"
+                          rows="4"
+                          required
+                        />
+                      </div>
+                    </div>
 
-        <div className="assign-modal-v2-row">
-          <div className="assign-modal-v2-group full">
-            <label htmlFor="employeeId-v2">Assigned To</label>
-            <select
-              id="employeeId-v2"
-              name="employeeId"
-              value={formData.employeeId}
-              onChange={handleFormChange}
-              required
-              disabled={loadingEmployees}
-            >
-              <option value="">
-                {loadingEmployees
-                  ? "Loading employees..."
-                  : "Select Employee"}
-              </option>
-              {employees.map((emp) => (
-                <option key={emp.employee_id} value={emp.employee_id}>
-                  {emp.employee_name} ({emp.employee_id})
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
+                    <div className="assign-modal-v2-row">
+                      <div className="assign-modal-v2-group full">
+                        <label htmlFor="employeeId-v2">Assigned To</label>
+                        <select
+                          id="employeeId-v2"
+                          name="employeeId"
+                          value={formData.employeeId}
+                          onChange={handleFormChange}
+                          required
+                          disabled={loadingEmployees}
+                        >
+                          <option value="">
+                            {loadingEmployees
+                              ? "Loading employees..."
+                              : "Select Employee"}
+                          </option>
+                          {employees.map((emp) => (
+                            <option
+                              key={emp.employee_id}
+                              value={emp.employee_id}
+                            >
+                              {emp.employee_name} ({emp.employee_id})
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
 
-        <div className="assign-modal-v2-row">
-          <div className="assign-modal-v2-group half">
-            <label htmlFor="startDate-v2">Start Date</label>
-            <DatePicker
-              selected={formData.startDate}
-              onChange={(date) => handleDateChange(date, "startDate")}
-              dateFormat="dd-MM-yyyy"
-              placeholderText="DD-MM-YYYY"
-              className="assign-modal-v2-datepicker"
-              minDate={new Date()}
-              showMonthDropdown
-              showYearDropdown
-              dropdownMode="select"
-              portalId="root-portal"
-              required
-            />
-          </div>
+                    <div className="assign-modal-v2-row">
+                      <div className="assign-modal-v2-group half">
+                        <label htmlFor="startDate-v2">Start Date</label>
+                        <DatePicker
+                          selected={formData.startDate}
+                          onChange={(date) =>
+                            handleDateChange(date, "startDate")
+                          }
+                          dateFormat="dd-MM-yyyy"
+                          placeholderText="DD-MM-YYYY"
+                          className="assign-modal-v2-datepicker"
+                          minDate={new Date()}
+                          showMonthDropdown
+                          showYearDropdown
+                          dropdownMode="select"
+                          portalId="root-portal"
+                          required
+                        />
+                      </div>
 
-          <div className="assign-modal-v2-group half">
-            <label htmlFor="endDate-v2">End Date</label>
-            <DatePicker
-              selected={formData.endDate}
-              onChange={(date) => handleDateChange(date, "endDate")}
-              dateFormat="dd-MM-yyyy"
-              placeholderText="DD-MM-YYYY"
-              className="assign-modal-v2-datepicker"
-              minDate={formData.startDate || new Date()}
-              showMonthDropdown
-              showYearDropdown
-              dropdownMode="select"
-              portalId="root-portal"
-              required
-            />
-          </div>
-        </div>
+                      <div className="assign-modal-v2-group half">
+                        <label htmlFor="endDate-v2">End Date</label>
+                        <DatePicker
+                          selected={formData.endDate}
+                          onChange={(date) => handleDateChange(date, "endDate")}
+                          dateFormat="dd-MM-yyyy"
+                          placeholderText="DD-MM-YYYY"
+                          className="assign-modal-v2-datepicker"
+                          minDate={formData.startDate || new Date()}
+                          showMonthDropdown
+                          showYearDropdown
+                          dropdownMode="select"
+                          portalId="root-portal"
+                          required
+                        />
+                      </div>
+                    </div>
 
-        <div className="assign-modal-v2-row">
-          <div className="assign-modal-v2-group half">
-            <label htmlFor="status-v2">Status</label>
-            <select
-              id="status-v2"
-              name="status"
-              value={formData.status}
-              onChange={handleFormChange}
-              required
-            >
-              <option value="Yet to Start">Yet to Start</option>
-              <option value="In Progress">In Progress</option>
-              <option value="On-Hold">On-Hold</option>
-              <option value="Completed">Completed</option>
-            </select>
-          </div>
+                    <div className="assign-modal-v2-row">
+                      <div className="assign-modal-v2-group half">
+                        <label htmlFor="status-v2">Status</label>
+                        <select
+                          id="status-v2"
+                          name="status"
+                          value={formData.status}
+                          onChange={handleFormChange}
+                          required
+                        >
+                          <option value="Yet to Start">Yet to Start</option>
+                          <option value="In Progress">In Progress</option>
+                          <option value="On-Hold">On-Hold</option>
+                          <option value="Completed">Completed</option>
+                        </select>
+                      </div>
 
-          <div className="assign-modal-v2-group half">
-            <label htmlFor="percentage-v2">Progress (%)</label>
-            <input
-              type="number"
-              id="percentage-v2"
-              name="percentage"
-              value={formData.percentage}
-              onChange={handleFormChange}
-              min="0"
-              max="100"
-              placeholder="0-100"
-              required
-            />
-          </div>
-        </div>
+                      <div className="assign-modal-v2-group half">
+                        <label htmlFor="percentage-v2">Progress (%)</label>
+                        <input
+                          type="number"
+                          id="percentage-v2"
+                          name="percentage"
+                          value={formData.percentage}
+                          onChange={handleFormChange}
+                          min="0"
+                          max="100"
+                          placeholder="0-100"
+                          required
+                        />
+                      </div>
+                    </div>
 
-        <div className="assign-modal-v2-actions">
-          <button
-            className="assign-modal-v2-submit"
-            onClick={handleFormSubmit}
-            disabled={loadingEmployees || loadingTasks}
-          >
-            Assign Task
-          </button>
-        </div>
-      </div>
-    </div>
-  </div>
-)}
+                    <div className="assign-modal-v2-actions">
+                      <button
+                        className="assign-modal-v2-submit"
+                        onClick={handleFormSubmit}
+                        disabled={loadingEmployees || loadingTasks}
+                      >
+                        Assign Task
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </>
       )}

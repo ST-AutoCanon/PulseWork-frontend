@@ -1,4 +1,4 @@
-// PolicyModal.client.js
+// PolicyModal.client.jsx
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
@@ -12,7 +12,7 @@ import {
 import Modal from "../Modal/Modal.client";
 import { useAuth } from "../../context/AuthProvider.client";
 
-const API_BASE = process.env.NEXT_PUBLIC_BACKEND_URL;
+const API_BASE = process.env.NEXT_PUBLIC_BACKEND_URL || "";
 
 const BUILT_IN = [
   { key: "casual", label: "Casual Leave" },
@@ -59,7 +59,7 @@ function normalizeLeaveTypes(raw = []) {
     return {
       key: normalizeKey(key),
       label: label || prettyFromKey(key),
-      gender: t.gender ?? t.gender_name ?? "All", // <<< GENDER: capture gender if present
+      gender: t.gender ?? t.gender_name ?? "All",
       min_age: t.min_age ?? t.minAge ?? null,
       max_age: t.max_age ?? t.maxAge ?? null,
       is_active:
@@ -74,6 +74,7 @@ export default function PolicyModal({
   onClose,
   onSaved,
   openPolicyId = null,
+  showAlert: parentShowAlert = null, // <-- new prop: parent-provided alert callback
 }) {
   const { user } = useAuth();
   const employeeId = user?.employeeId ?? null;
@@ -90,8 +91,8 @@ export default function PolicyModal({
   };
 
   const [policies, setPolicies] = useState([]);
-  const [leaveTypes, setLeaveTypes] = useState([]); // fetched & normalized: { key, label, gender, ... }
-  const [alert, setAlert] = useState(null);
+  const [leaveTypes, setLeaveTypes] = useState([]);
+  const [alert, setAlert] = useState(null); // internal fallback message
   const [policyAlerts, setPolicyAlerts] = useState([]);
   const [confirmDelete, setConfirmDelete] = useState({
     isVisible: false,
@@ -123,7 +124,19 @@ export default function PolicyModal({
 
   const autoOpenedRef = useRef(null);
 
-  const showAlert = (msg) => setAlert(msg);
+  // notify: use parent's showAlert when available, otherwise use internal setAlert
+  const notify = (msg) => {
+    if (typeof parentShowAlert === "function") {
+      try {
+        parentShowAlert(msg);
+      } catch (err) {
+        console.error("PolicyModal: parent showAlert threw:", err);
+        setAlert(msg);
+      }
+    } else {
+      setAlert(String(msg || ""));
+    }
+  };
   const clearAlert = () => setAlert(null);
 
   const daysUntil = (dateStr) => {
@@ -135,7 +148,8 @@ export default function PolicyModal({
     return Math.ceil((d - today) / (1000 * 60 * 60 * 24));
   };
 
-  const computePolicyAlerts = (policyList = []) => {
+  // SINGLE computePolicyAlerts definition (no duplicates)
+  function computePolicyAlerts(policyList = []) {
     if (!Array.isArray(policyList)) return [];
     return policyList
       .map((p) => {
@@ -154,7 +168,7 @@ export default function PolicyModal({
           return sevOrder[a.severity] - sevOrder[b.severity];
         return a.daysLeft - b.daysLeft;
       });
-  };
+  }
 
   useEffect(() => {
     setPolicyAlerts(computePolicyAlerts(policies));
@@ -184,7 +198,7 @@ export default function PolicyModal({
         } catch (_) {
           pJson = null;
         }
-        // handle different response shapes:
+
         let list = [];
         if (pRes.ok) {
           if (Array.isArray(pJson?.data)) list = pJson.data;
@@ -200,7 +214,7 @@ export default function PolicyModal({
           setLoadError("Could not load policies.");
         }
 
-        // --- FETCH LEAVE TYPES (try /types) ---
+        // --- FETCH LEAVE TYPES ---
         try {
           const typesUrl = `${API_BASE}/types`;
           let tRes = await fetch(typesUrl, {
@@ -226,8 +240,7 @@ export default function PolicyModal({
               : Array.isArray(tJson)
                 ? tJson
                 : [];
-            const normalized = normalizeLeaveTypes(arr);
-            setLeaveTypes(normalized);
+            setLeaveTypes(normalizeLeaveTypes(arr));
           } else {
             setLeaveTypes([]);
           }
@@ -249,6 +262,7 @@ export default function PolicyModal({
     autoOpenedRef.current = null;
 
     return () => aborter.abort();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, employeeId, orgId, onSaved]);
 
   useEffect(() => {
@@ -260,6 +274,7 @@ export default function PolicyModal({
       onEdit(found);
       autoOpenedRef.current = String(openPolicyId);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [policies, openPolicyId, isOpen]);
 
   function resetForm() {
@@ -304,18 +319,18 @@ export default function PolicyModal({
       config: { ...f.config, [key]: { ...f.config[key], ...patch } },
     }));
 
-  // Add a blank extra row — admin must pick a leave type from dropdown
+  // Add a blank extra row
   const addExtra = () => {
     updateForm({
       extras: [
         ...form.extras,
         {
           id: Date.now() + Math.random(),
-          typeKey: "", // leaveTypes key
+          typeKey: "",
           value: "",
           carryForward: "",
           advanceNoticeDays: "",
-          gender: "All", // <<< GENDER default
+          gender: "All",
         },
       ],
     });
@@ -357,7 +372,7 @@ export default function PolicyModal({
             value: ls.value ?? "",
             carryForward: ls.carry_forward ?? "",
             advanceNoticeDays: ls.advance_notice_days ?? "",
-            gender: ls.gender ?? found.gender ?? "All", // <<< GENDER preserved from saved policy or from leaveTypes
+            gender: ls.gender ?? found.gender ?? "All",
           };
         } else {
           const missingKey = String(ls.type || "custom").trim();
@@ -421,7 +436,7 @@ export default function PolicyModal({
     const { id, period, yearStart, yearEnd, config, extras } = form;
 
     if (hasOverlappingPolicy(yearStart, yearEnd, id)) {
-      showAlert(
+      notify(
         id
           ? "Another policy already uses this date range. Choose different dates or edit the existing policy."
           : "A policy already exists for this start/end date (or overlaps). Please pick different dates or edit the existing policy.",
@@ -431,7 +446,7 @@ export default function PolicyModal({
 
     for (const ex of extras) {
       if (!ex.typeKey || ex.typeKey.trim() === "") {
-        showAlert("Please select a leave type for every added leave.");
+        notify("Please select a leave type for every added leave.");
         return;
       }
     }
@@ -452,7 +467,6 @@ export default function PolicyModal({
       ...extras.map(
         ({ typeKey, value, carryForward, advanceNoticeDays, gender }) => {
           const typeString = String(typeKey || "Custom");
-          // determine gender: prefer explicit selection, else fall back to leaveTypes metadata, else 'All'
           const resolvedGender =
             gender ||
             (leaveTypes || []).find((t) => t.key === typeKey)?.gender ||
@@ -463,7 +477,7 @@ export default function PolicyModal({
             value: Number(value) || 0,
             carry_forward: Number(carryForward) || 0,
             advance_notice_days: Number(advanceNoticeDays || 0),
-            gender: resolvedGender, // <<< GENDER included in payload
+            gender: resolvedGender,
           };
         },
       ),
@@ -478,6 +492,7 @@ export default function PolicyModal({
     const url = id
       ? `${API_BASE}/api/leave-policies/${id}`
       : `${API_BASE}/api/leave-policies`;
+
     try {
       const res = await fetch(url, {
         method: id ? "PUT" : "POST",
@@ -492,14 +507,16 @@ export default function PolicyModal({
       } catch (_) {
         resJson = null;
       }
+
       if (!res.ok) {
         const serverMsg =
           (resJson && (resJson.message || resJson.error)) ||
           `Save failed ${res.status}`;
-        throw new Error(serverMsg);
+        notify(serverMsg);
+        return;
       }
 
-      // refetch policies (force fresh)
+      // refetch policies so UI updates
       const freshUrl = `${API_BASE}/api/leave-policies?_=${Date.now()}`;
       const fresh = await fetch(freshUrl, {
         credentials: "include",
@@ -520,18 +537,26 @@ export default function PolicyModal({
         setLoadError("Could not load policies.");
       }
 
-      if (id) {
-        try {
-          localStorage.removeItem(`policyIgnored:${id}`);
-          localStorage.removeItem(`policyExtended:${id}`);
-        } catch (_) {}
-      }
+      const successMsg =
+        (resJson && (resJson.message || "Saved successfully")) ||
+        "Saved successfully";
+      notify(successMsg);
 
-      if (typeof onSaved === "function") onSaved();
-      onClose();
+      // delay closing a little so user sees the message
+      const DELAY_MS = 1200;
+      setTimeout(() => {
+        try {
+          if (id) {
+            localStorage.removeItem(`policyIgnored:${id}`);
+            localStorage.removeItem(`policyExtended:${id}`);
+          }
+        } catch (_) {}
+        if (typeof onSaved === "function") onSaved();
+        onClose();
+      }, DELAY_MS);
     } catch (err) {
       console.error("Failed to save policy:", err);
-      showAlert("Failed to save policy.");
+      notify("Failed to save policy.");
     }
   };
 
@@ -592,7 +617,7 @@ export default function PolicyModal({
     } catch (err) {
       console.error("Failed to delete:", err);
       setConfirmDelete((s) => ({ ...s, loading: false }));
-      showAlert("Failed to delete policy.");
+      notify("Failed to delete policy.");
     }
   };
 
@@ -609,13 +634,13 @@ export default function PolicyModal({
       const key = `policyIgnored:${policy.id}`;
       const ts = new Date().toISOString();
       localStorage.setItem(key, ts);
-      showAlert(
+      notify(
         "Alert ignored — if the policy ends and no changes are made, it will be auto-extended up to 3 months.",
       );
       if (daysUntil(policy.year_end) < 0) {
-        extendPolicyIfNeeded(policy, ts).catch((err) => {
-          console.error("Auto-extend failed:", err);
-        });
+        extendPolicyIfNeeded(policy, ts).catch((err) =>
+          console.error("Auto-extend failed:", err),
+        );
       }
     } catch (err) {
       console.error("Failed to record ignore:", err);
@@ -668,9 +693,8 @@ export default function PolicyModal({
         body: JSON.stringify(payload),
       });
 
-      if (!res.ok) {
+      if (!res.ok)
         throw new Error(`Extend API failed with status ${res.status}`);
-      }
 
       localStorage.setItem(extendedKey, newEndISO);
 
@@ -692,8 +716,7 @@ export default function PolicyModal({
       }
 
       if (typeof onSaved === "function") onSaved();
-
-      showAlert(
+      notify(
         `Policy automatically extended to ${newEnd.toLocaleDateString()} (grace extension).`,
       );
       return true;
@@ -738,7 +761,10 @@ export default function PolicyModal({
             <div className="policy-alert info">No policies found yet.</div>
           ) : null}
 
-          {alert && <div className="policy-alert">{alert}</div>}
+          {/* Render internal alert only if parent didn't provide showAlert */}
+          {!parentShowAlert && alert && (
+            <div className="policy-alert">{alert}</div>
+          )}
 
           {policyAlerts.length > 0 && (
             <div
@@ -749,11 +775,7 @@ export default function PolicyModal({
               {policyAlerts.map((a) => (
                 <div
                   key={a.id}
-                  className={`policy-alert-item ${
-                    a.severity === "critical"
-                      ? "alert-critical"
-                      : "alert-warning"
-                  }`}
+                  className={`policy-alert-item ${a.severity === "critical" ? "alert-critical" : "alert-warning"}`}
                 >
                   <div className="alert-left">
                     <div className="alert-title">
@@ -927,12 +949,10 @@ export default function PolicyModal({
                   gender,
                 }) => (
                   <div key={id} className="leave-type-row extra-row">
-                    {/* Dropdown of leaveTypes (from DB) — NO free text */}
                     <select
                       value={typeKey || ""}
                       onChange={(e) => {
                         const v = e.target.value;
-                        // if the selected leave type has a default gender, set it
                         const found = (leaveTypes || []).find(
                           (t) => t.key === v,
                         );
@@ -952,7 +972,6 @@ export default function PolicyModal({
                       ))}
                     </select>
 
-                    {/* Gender selector for this extra leave */}
                     <select
                       value={gender || "All"}
                       onChange={(e) =>

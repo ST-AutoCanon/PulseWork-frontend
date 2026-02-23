@@ -257,22 +257,101 @@ export default function TeamTable({
     setAttachmentsModal({ isVisible: false, title: "", files: [] });
   }, []);
 
+  // Replace the existing openFileInNewTab in TeamTable with this:
   const openFileInNewTab = async (file) => {
+    if (!file) return;
+
+    // try to build attachment URL (if server expects attachment id)
+    const attachmentId = file.id || file.attachment_id || file.file_id || null;
+    let url = "";
+    if (attachmentId) {
+      const base = API_BASE.replace(/\/$/, "");
+      url = `${base}/attachments/${encodeURIComponent(attachmentId)}`;
+    } else {
+      url = file.url || file.file_url || file.file_path || "";
+      if (!/^https?:\/\//i.test(url) && API_BASE) {
+        url = `${API_BASE.replace(/\/$/, "")}/${String(url).replace(/^\//, "")}`;
+      }
+    }
+
+    if (!url) {
+      console.error("[openFileInNewTab] no url for file", file);
+      return;
+    }
+
     try {
-      const url = file?.url || file?.file_path || "";
-      if (!url) {
-        console.error("Invalid file URL");
+      // Quick HEAD check: if direct public URL works, open it (no headers needed)
+      try {
+        const headRes = await fetch(url, {
+          method: "HEAD",
+          credentials: "include",
+        });
+        if (headRes.ok) {
+          window.open(url, "_blank", "noopener,noreferrer");
+          return;
+        }
+        // else fall through to fetch with headers
+      } catch (e) {
+        // HEAD might fail due to CORS or server not supporting HEAD — try GET below
+      }
+
+      // Fetch the file while sending tenant headers / cookies
+      const res = await fetch(url, {
+        method: "GET",
+        credentials: "include",
+        headers: buildHeaders(),
+      });
+
+      if (!res.ok) {
+        let json = null;
+        try {
+          json = await res.json();
+        } catch (e) {}
+        const serverMsg =
+          (json && (json.message || json.error)) ||
+          `Failed to fetch file (HTTP ${res.status})`;
+        console.warn(
+          "[openFileInNewTab] server responded non-ok",
+          res.status,
+          serverMsg,
+        );
+        // user visible feedback
+        alert(serverMsg);
         return;
       }
 
-      const resolvedUrl = url.startsWith("/")
-        ? `${API_BASE.replace(/\/$/, "")}${url}`
-        : url;
+      // create a blob and open in new tab (works for PDFs/images inline)
+      const arrayBuffer = await res.arrayBuffer();
+      const serverContentType = res.headers.get("Content-Type") || "";
+      const knownMime =
+        file.mime_type ||
+        file.mime ||
+        serverContentType ||
+        "application/octet-stream";
+      const blob = new Blob([arrayBuffer], { type: knownMime });
+      const objectUrl = URL.createObjectURL(blob);
 
-      // Open the resolved URL directly
-      window.open(resolvedUrl, "_blank", "noopener,noreferrer");
+      // Use anchor click (more reliable for blob URLs)
+      const a = document.createElement("a");
+      a.href = objectUrl;
+      a.target = "_blank";
+      a.rel = "noopener noreferrer";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+
+      // revoke after a short delay
+      setTimeout(
+        () => {
+          try {
+            URL.revokeObjectURL(objectUrl);
+          } catch (e) {}
+        },
+        2 * 60 * 1000,
+      ); // 2 minutes
     } catch (err) {
-      console.error("Failed to open file in new tab:", err);
+      console.error("[openFileInNewTab] error:", err);
+      alert("Could not open attachment. See console for details.");
     }
   };
 
@@ -633,6 +712,7 @@ export default function TeamTable({
         <table className="leave-requests">
           <thead>
             <tr>
+              <th>Emp Name</th>
               <th>Emp ID</th>
               <th>Leave Type</th>
               <th>Half/Full</th>
@@ -657,6 +737,11 @@ export default function TeamTable({
                 leave.end_date,
                 leave.H_F_day,
               );
+
+              // compute display name (used in both compact + desktop)
+              const name =
+                leave.name ||
+                `${leave.first_name || ""} ${leave.last_name || ""}`.trim();
 
               const previewList = getNormalizedPreviewList(leave);
               const hasEmbeddedAttachments =
@@ -698,6 +783,13 @@ export default function TeamTable({
                   key={leave.leave_id}
                   className={isAlreadyUpdated(leave) ? "row-updated" : ""}
                 >
+                  <td
+                    className="employee-name"
+                    data-full={name}
+                    title={name} /* native fallback for accessibility & touch */
+                  >
+                    <span className="truncate">{name}</span>
+                  </td>{" "}
                   <td>{leave.employee_id}</td>
                   <td>{leave.leave_type}</td>
                   <td>{leave.H_F_day}</td>
@@ -753,9 +845,7 @@ export default function TeamTable({
                       />
                     )}
                   </td>
-
                   <td>{attachmentCell}</td>
-
                   <td>
                     <button
                       onClick={() => handleUpdateClick(leave)}
@@ -775,6 +865,7 @@ export default function TeamTable({
         </table>
       </div>
 
+      {/* compact/mobile view unchanged (keeps using `name` variable there) */}
       <div className="self-compact-list">
         {sortedLeaves.map((leave) => {
           const local = localInputs[leave.leave_id] || {};
@@ -926,88 +1017,6 @@ export default function TeamTable({
         })}
       </div>
 
-      {/* <Modal
-        isVisible={attachmentsModal.isVisible}
-        onClose={closeAttachments}
-        buttons={[{ label: "Close", onClick: closeAttachments }]}
-      >
-        <div className="attachments-modal-content">
-          <h4>{attachmentsModal.title}</h4>
-
-          {attachmentsModal.files.length === 0 && <p>No attachments found.</p>}
-
-          <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
-            {attachmentsModal.files.map((f, idx) => {
-              const urlCandidate = f.url || f.file_path || f.file_url || "";
-              const safeName = f.file_name || `attachment-${idx + 1}`;
-              return (
-                <li
-                  key={f.id || idx}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    padding: "8px 6px",
-                    borderBottom: "1px solid #eee",
-                  }}
-                >
-                  <div
-                    style={{ display: "flex", alignItems: "center", gap: 8 }}
-                  >
-                    <MdOutlineAttachFile />
-                    <button
-                      type="button"
-                      onClick={() => openFileInNewTab(f)}
-                      style={{
-                        background: "none",
-                        border: "none",
-                        padding: 0,
-                        textDecoration: "underline",
-                        color: "#0070f3",
-                        cursor: "pointer",
-                        fontSize: 14,
-                        textAlign: "left",
-                      }}
-                    >
-                      {safeName}
-                    </button>
-                    <span
-                      style={{ color: "#666", marginLeft: 8, fontSize: 12 }}
-                    >
-                      {f.mime_type ? `(${f.mime_type})` : null}
-                    </span>
-                  </div>
-
-                  <div
-                    style={{ display: "flex", alignItems: "center", gap: 12 }}
-                  >
-                    {urlCandidate ? (
-                      <button
-                        type="button"
-                        onClick={() => openFileInNewTab(f)}
-                        className="attachment-link-button"
-                        style={{
-                          background: "transparent",
-                          border: "1px solid #ddd",
-                          padding: "4px 8px",
-                          borderRadius: 4,
-                          cursor: "pointer",
-                        }}
-                      >
-                        Open
-                      </button>
-                    ) : (
-                      <span style={{ color: "#999", fontSize: 12 }}>
-                        No URL
-                      </span>
-                    )}
-                  </div>
-                </li>
-              );
-            })}
-          </ul>
-        </div>
-      </Modal> */}
       <Modal
         isVisible={attachmentsModal.isVisible}
         onClose={closeAttachments}

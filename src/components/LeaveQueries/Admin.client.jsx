@@ -1324,6 +1324,7 @@ export default function Admin({ openPolicyId = null }) {
           fetchLeaveQueries();
           setShowPolicyModal(false);
         }}
+        showAlert={(msg) => showAlert(msg)} // pass Admin's showAlert into modal
         existingPolicies={policies}
         openPolicyId={openPolicyId}
       />

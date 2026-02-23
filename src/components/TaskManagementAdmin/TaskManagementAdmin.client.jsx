@@ -39,7 +39,7 @@ const formatDate = (date) => {
   if (isNaN(d.getTime())) return "";
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(
     2,
-    "0"
+    "0",
   )}-${String(d.getDate()).padStart(2, "0")}`;
 };
 
@@ -101,7 +101,7 @@ const TaskManagementAdmin = () => {
       "x-org-id": userContext?.orgId ?? "",
       "x-api-key": process.env.NEXT_PUBLIC_API_KEY || "",
     }),
-    [userContext]
+    [userContext],
   );
 
   const getSenderName = useCallback(
@@ -109,11 +109,11 @@ const TaskManagementAdmin = () => {
       if (!senderId) return "Unknown";
       if (String(senderId) === String(userContext?.employeeId)) return "You";
       const emp = employees.find(
-        (e) => String(e.employee_id) === String(senderId)
+        (e) => String(e.employee_id) === String(senderId),
       );
       return emp?.employee_name || "Unknown";
     },
-    [userContext?.employeeId, employees]
+    [userContext?.employeeId, employees],
   );
 
   useEffect(() => {
@@ -123,7 +123,7 @@ const TaskManagementAdmin = () => {
       try {
         const res = await axios.get(
           `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/weekly_task_supervisor/employees/all`,
-          { withCredentials: true, headers: getHeaders() }
+          { withCredentials: true, headers: getHeaders() },
         );
         setEmployees(res.data.employees || []);
         setError(null);
@@ -206,7 +206,7 @@ const TaskManagementAdmin = () => {
     try {
       const res = await axios.get(
         `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/tasks`,
-        { withCredentials: true, headers: getHeaders() }
+        { withCredentials: true, headers: getHeaders() },
       );
 
       const validEmpIds = new Set(employees.map((e) => e.employee_id));
@@ -251,7 +251,7 @@ const TaskManagementAdmin = () => {
       try {
         const res = await axios.get(
           `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/messages/${taskId}`,
-          { withCredentials: true, headers: getHeaders() }
+          { withCredentials: true, headers: getHeaders() },
         );
 
         if (res.data.success) {
@@ -269,22 +269,22 @@ const TaskManagementAdmin = () => {
               type: "Clarification",
             })),
           ].sort(
-            (a, b) => new Date(a.time).getTime() - new Date(b.time).getTime()
+            (a, b) => new Date(a.time).getTime() - new Date(b.time).getTime(),
           );
 
           setTasks((prev) =>
-            prev.map((t) => (t.dbId === taskId ? { ...t, messages: all } : t))
+            prev.map((t) => (t.dbId === taskId ? { ...t, messages: all } : t)),
           );
         }
       } catch (e) {
         setTasks((prev) =>
-          prev.map((t) => (t.dbId === taskId ? { ...t, messages: [] } : t))
+          prev.map((t) => (t.dbId === taskId ? { ...t, messages: [] } : t)),
         );
       } finally {
         setLoadingMessages(false);
       }
     },
-    [getHeaders, getSenderName]
+    [getHeaders, getSenderName],
   );
 
   useEffect(() => {
@@ -302,12 +302,12 @@ const TaskManagementAdmin = () => {
       { key: "On-Hold", title: "On-Hold", color: "#9d174d" },
       { key: "Completed", title: "Completed", color: "#065f46" },
     ],
-    []
+    [],
   );
 
   const selectedTask = useMemo(
     () => tasks.find((t) => t.id === selectedTaskId) || null,
-    [tasks, selectedTaskId]
+    [tasks, selectedTaskId],
   );
 
   const currentDate = new Date();
@@ -347,14 +347,14 @@ const TaskManagementAdmin = () => {
         prev.map((t) =>
           t.id === selectedTask.id
             ? { ...t, status: tempStatus, progress: tempProgress }
-            : t
-        )
+            : t,
+        ),
       );
 
       await axios.put(
         `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/employee-tasks/update/${taskId}`,
         { status: tempStatus, percentage: tempProgress },
-        { withCredentials: true, headers: getHeaders() }
+        { withCredentials: true, headers: getHeaders() },
       );
 
       await fetchTasks();
@@ -369,8 +369,8 @@ const TaskManagementAdmin = () => {
                 status: selectedTask.status,
                 progress: selectedTask.progress,
               }
-            : t
-        )
+            : t,
+        ),
       );
     } finally {
       setEditingProgress(false);
@@ -404,18 +404,18 @@ const TaskManagementAdmin = () => {
               ...t,
               messages: [...t.messages, newMsg].sort(
                 (a, b) =>
-                  new Date(a.time).getTime() - new Date(b.time).getTime()
+                  new Date(a.time).getTime() - new Date(b.time).getTime(),
               ),
             }
-          : t
-      )
+          : t,
+      ),
     );
 
     try {
       await axios.post(
         `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/messages`,
         { taskId, sender: userContext.employeeId, type: activeTab, text },
-        { withCredentials: true, headers: getHeaders() }
+        { withCredentials: true, headers: getHeaders() },
       );
       setMessageText("");
       finalTranscriptRef.current = "";
@@ -423,7 +423,7 @@ const TaskManagementAdmin = () => {
       await fetchMessagesForTask(taskId);
     } catch (e) {
       setError(
-        e.response?.data?.error || e.message || "Failed to send message"
+        e.response?.data?.error || e.message || "Failed to send message",
       );
       setTasks((prev) =>
         prev.map((t) =>
@@ -432,8 +432,8 @@ const TaskManagementAdmin = () => {
                 ...t,
                 messages: t.messages.filter((m) => m.time !== newMsg.time),
               }
-            : t
-        )
+            : t,
+        ),
       );
     }
   };
@@ -500,7 +500,7 @@ const TaskManagementAdmin = () => {
       const postRes = await axios.post(
         `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/tasks`,
         payload,
-        { withCredentials: true, headers: getHeaders() }
+        { withCredentials: true, headers: getHeaders() },
       );
 
       const createdTaskId = postRes.data.taskId || postRes.data.task_id;
@@ -942,7 +942,7 @@ const TaskManagementAdmin = () => {
                               Loading...
                             </p>
                           ) : selectedTask.messages.filter(
-                              (m) => m.type === "Progress"
+                              (m) => m.type === "Progress",
                             ).length > 0 ? (
                             <div className="task-admin-messages">
                               {selectedTask.messages
@@ -1021,7 +1021,7 @@ const TaskManagementAdmin = () => {
                               Loading...
                             </p>
                           ) : selectedTask.messages.filter(
-                              (m) => m.type === "Clarification"
+                              (m) => m.type === "Clarification",
                             ).length > 0 ? (
                             <div className="task-admin-messages">
                               {selectedTask.messages
@@ -1041,7 +1041,7 @@ const TaskManagementAdmin = () => {
                                     </div>
                                     <div className="task-admin-message-meta">
                                       <span>{displayDate(msg.time)}</span>
-                                      <span>{msg.senderName}</span>
+                                      {/* <span>{msg.senderName}</span> */}
                                     </div>
                                   </div>
                                 ))}

@@ -48,6 +48,7 @@ export default function useLeaveRequest() {
     h_f_day: "Full Day",
     startDate: "",
     endDate: "",
+    attachments: [],
   });
   const [editingId, setEditingId] = useState(null);
 
@@ -65,6 +66,7 @@ export default function useLeaveRequest() {
   const [filters, setFilters] = useState({ from_date: "", to_date: "" });
   const [teamSearch, setTeamSearch] = useState("");
   const [teamStatus, setTeamStatus] = useState("");
+  // hook-level attachments hold real File objects (new uploads)
   const [attachments, setAttachments] = useState([]);
   const [balances, setBalances] = useState([]);
   const [policies, setPolicies] = useState([]);
@@ -341,8 +343,6 @@ export default function useLeaveRequest() {
       `${BACKEND}/api/employee/${employeeId}`,
       `${BACKEND}/api/employees/${employeeId}`,
       `${BACKEND}/api/profile/${employeeId}`,
-      `${BACKEND}/api/employee/profile/${employeeId}`,
-      `${BACKEND}/api/employee-profile/${employeeId}`,
     ];
     for (const url of candidates) {
       try {
@@ -425,6 +425,68 @@ export default function useLeaveRequest() {
   }
 
   /**
+   * Normalize attachment metadata objects from server into UI-friendly shape.
+   * Accepts many shapes returned by different endpoints and normalizes into:
+   * { id, name/file_name, size, mime_type, file_path, url, created_at, _raw }
+   */
+  const normalizeServerAttachments = (arr = []) => {
+    if (!Array.isArray(arr)) return [];
+    return arr.map((a) => {
+      const id = a.id || a.attachment_id || a.attachmentId || null;
+      const file_name =
+        a.file_name || a.name || a.filename || a.fileName || null;
+      const size = a.size || a.file_size || a.length || null;
+      const mime_type = a.mime_type || a.mimetype || a.type || null;
+      const file_path = a.file_path || a.path || a.filePath || null;
+      const url = a.url || a.file_url || a.fileUrl || null;
+      const created_at = a.created_at || a.createdAt || null;
+      return {
+        id,
+        file_name,
+        name: file_name,
+        size,
+        mime_type,
+        file_path,
+        url,
+        created_at,
+        _raw: a,
+      };
+    });
+  };
+
+  /**
+   * fetch attachments metadata for a leave id from server (tries both mounts)
+   */
+  const fetchAttachmentsMetadataForLeave = async (leaveId) => {
+    if (!leaveId) return [];
+    const candidates = [
+      `${BACKEND}/employee/leave/${encodeURIComponent(leaveId)}/attachments`,
+      `${BACKEND}/api/employee/leave/${encodeURIComponent(leaveId)}/attachments`,
+    ];
+    for (const url of candidates) {
+      try {
+        const res = await fetch(url, { credentials: "include", headers });
+        if (!res.ok) {
+          if (res.status === 404) continue;
+          // try to parse fallback; if parsing fails continue
+        }
+        const json = await res.json().catch(() => null);
+        const list =
+          json?.data ||
+          json?.attachments ||
+          json?.message?.data ||
+          (Array.isArray(json) ? json : null) ||
+          null;
+        if (Array.isArray(list) && list.length)
+          return normalizeServerAttachments(list);
+      } catch (e) {
+        // ignore and try next candidate
+      }
+    }
+    return [];
+  };
+
+  /**
    * fetchLeaveTypes:
    * - If there is an activePolicy (policy object with leave_settings), derive the leave types from that policy (so employee UI shows only used types).
    * - Otherwise fall back to calling /types (or other endpoints) to fetch global/system types.
@@ -478,9 +540,7 @@ export default function useLeaveRequest() {
 
       // older APIs might be at /api/leave/types or /api/leave-types etc — fallback already handled elsewhere
       if (res.status === 404) {
-        const fallback = `${BACKEND}/types${
-          params.toString() ? `?${params.toString()}` : ""
-        }`;
+        const fallback = `${BACKEND}/types${params.toString() ? `?${params.toString()}` : ""}`;
 
         console.warn("fetchLeaveTypes: primary 404, trying fallback", fallback);
         res = await fetch(fallback, {
@@ -615,7 +675,6 @@ export default function useLeaveRequest() {
     try {
       const res = await fetch(
         `${BACKEND}/api/leave-policies/employee/${employeeId}/leave-balance`,
-
         { credentials: "include", headers },
       );
       if (!res.ok) throw new Error("Failed to load leave balance");
@@ -761,8 +820,11 @@ export default function useLeaveRequest() {
       h_f_day: "Full Day",
       startDate: "",
       endDate: "",
+      attachments: [],
     });
     setEditingId(null);
+    // clear any client-side File objects
+    setAttachments([]);
   };
 
   const openForm = () => {
@@ -790,15 +852,70 @@ export default function useLeaveRequest() {
     });
   };
 
-  const handleEdit = (request) => {
+  /**
+   * IMPORTANT: When editing, populate formData.attachments with server-side metadata (if available)
+   * and clear client-side attachments array (so UI shows the server attachments).
+   */
+  const handleEdit = async (request) => {
+    // set basic form fields
     setFormData({
-      reason: request.reason,
-      leavetype: request.leave_type,
-      h_f_day: request.H_F_day || "Full Day",
+      reason: request.reason || request.comments || "",
+      leavetype: request.leave_type || request.type || request.leavetype || "",
+      h_f_day: request.H_F_day || request.h_f_day || "Full Day",
       startDate: parseLocalDate(request.start_date),
       endDate: parseLocalDate(request.end_date),
+      attachments: [], // will fill below
     });
+
+    // mark editing id
     setEditingId(request.id || request.leave_id || null);
+
+    // clear client-side attachments (we want the UI to show server metadata)
+    setAttachments([]);
+
+    // first: if the request already contains attachments metadata, use that
+    if (Array.isArray(request.attachments) && request.attachments.length > 0) {
+      const normalized = normalizeServerAttachments(request.attachments);
+      setFormData((prev) => ({ ...prev, attachments: normalized }));
+      setFormVisible(true);
+      return;
+    }
+
+    // some APIs return attachments under different keys (e.g., files, attachments_meta); try those
+    const altCandidates = [
+      request.files,
+      request.attachments_meta,
+      request.attachements,
+      request.docs,
+      request.files_list,
+    ];
+    for (const c of altCandidates) {
+      if (Array.isArray(c) && c.length > 0) {
+        setFormData((prev) => ({
+          ...prev,
+          attachments: normalizeServerAttachments(c),
+        }));
+        setFormVisible(true);
+        return;
+      }
+    }
+
+    // fallback: try to fetch attachments metadata from server endpoints
+    try {
+      const id = request.id || request.leave_id || request.leaveId;
+      if (id) {
+        const fetched = await fetchAttachmentsMetadataForLeave(id);
+        if (fetched && fetched.length > 0) {
+          setFormData((prev) => ({ ...prev, attachments: fetched }));
+          setFormVisible(true);
+          return;
+        }
+      }
+    } catch (err) {
+      console.warn("handleEdit: failed to fetch attachments metadata:", err);
+    }
+
+    // finally show the modal even if no attachments found
     setFormVisible(true);
   };
 

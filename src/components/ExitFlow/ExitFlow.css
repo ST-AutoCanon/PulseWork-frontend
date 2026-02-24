@@ -3375,9 +3375,7 @@
     grid-template-columns: 1fr;
   }
 
-  .exf-tabs {
-    flex-wrap: wrap;
-  }
+  
 
   .exf-tab {
     padding: 0.7rem 1.25rem;
@@ -3937,3 +3935,719 @@
   border: none;
 }
 
+/* ────────────────────────────────────────────────
+   MOBILE-FIRST IMPROVEMENTS – TABLES → CARDS
+   ──────────────────────────────────────────────── */
+
+@media (max-width: 1023px) {
+
+  /* ── Make container friendlier on mobile ── */
+  .exf-container {
+    padding: 1rem 0.75rem;
+  }
+
+  /* ── Hide table headers on small screens ── */
+  .exf-table thead,
+  .exf-table-container table thead {
+    display: none;
+  }
+
+  /* ── Turn each table ROW into a CARD ── */
+  .exf-table tbody tr,
+  .exf-team-view table tbody tr,
+  .exf-table-container tbody tr {
+    display: block;
+    margin-bottom: 1.25rem;
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.06);
+    overflow: hidden;
+  }
+
+  .exf-table tbody tr:hover,
+  .exf-team-view table tbody tr:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 14px rgba(0,0,0,0.1);
+  }
+
+  /* Each cell becomes a labeled row inside the card */
+  .exf-table td,
+  .exf-team-view table td,
+  .exf-table-container td {
+    display: block;
+    text-align: left;
+    position: relative;
+    padding: 0.9rem 1.1rem;
+    border: none;
+    border-bottom: 1px solid #f1f5f9;
+    font-size: 0.94rem;
+  }
+
+  .exf-table td:last-child,
+  .exf-team-view table td:last-child {
+    border-bottom: none;
+  }
+
+  /* Fake label using ::before */
+  .exf-table td::before,
+  .exf-team-view table td::before {
+    content: attr(data-label);
+    position: absolute;
+    left: 1.1rem;
+    width: 45%;
+    font-weight: 600;
+    color: #4b5563;
+    text-align: left;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* Make action column (usually last) centered & bigger touch target */
+  .exf-table td:last-child,
+  .exf-team-view td.text-center {
+    text-align: center;
+    padding: 1.1rem;
+  }
+
+  .exf-btn-review,
+  .exf-btn.exf-btn-review,
+  button[class*="exf-btn-review"] {
+    min-width: 110px;
+    padding: 0.7rem 1.3rem;
+    font-size: 0.96rem;
+    border-radius: 8px;
+  }
+
+  /* ── Status badges better on mobile ── */
+  .exf-badge,
+  .badge {
+    font-size: 0.82rem;
+    padding: 0.4rem 0.9rem;
+    min-width: 90px;
+  }
+
+  /* ── Prevent horizontal overflow in reason/comment cells ── */
+  .reason-truncated,
+  .reason-tooltip-wrapper,
+  .exf-comment-box,
+  .reason-content,
+  .comment-content {
+    white-space: normal !important;
+    word-break: break-word;
+    overflow-wrap: break-word;
+    max-width: 100%;
+  }
+
+  /* ── Modals & big content ── */
+  .exf-modal-content {
+    width: 96vw;
+    max-width: 96vw;
+    margin: 1rem auto;
+    border-radius: 16px;
+  }
+
+  .modal-body,
+  .exf-modal-body,
+  .exf-kt-modal-body {
+    padding: 1.25rem;
+  }
+
+  .exf-modal-footer,
+  .exf-kt-modal-footer,
+  .modal-footer {
+    flex-direction: column;
+    gap: 0.8rem;
+    padding: 1.25rem;
+  }
+
+  .btn,
+  .exf-btn,
+  .exf-kt-btn {
+    width: 100%;
+    justify-content: center;
+    padding: 0.85rem;
+    font-size: 1rem;
+  }
+
+  /* ── Clearance cards (KT & Assets) also card-like on mobile ── */
+  .clearance-card,
+  .exf-card {
+    margin-bottom: 1.25rem;
+  }
+
+  .cards-grid {
+    display: block;
+  }
+
+  /* ── Improve spacing in status / outcome boxes ── */
+  .exf-status-grid,
+  .exf-status-item {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+
+  .exf-outcome-box {
+    padding: 2rem 1.25rem;
+  }
+
+  .exf-outcome-title {
+    font-size: 1.6rem;
+  }
+
+  /* ── Tabs become scrollable horizontally if too many ── */
+  .exf-tabs {
+    overflow-x: auto;
+    white-space: nowrap;
+    padding-bottom: 0.5rem;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .exf-tab {
+    flex-shrink: 0;
+  }
+}
+
+/* ── Extra small screens (< 380px) ──────────────────────── */
+@media (max-width: 380px) {
+  .exf-table td::before {
+    width: 38%;
+  }
+
+  .exf-btn-review,
+  .btn {
+    font-size: 0.94rem;
+    padding: 0.75rem 1.1rem;
+  }
+
+  .exf-modal-title,
+  .modal-title {
+    font-size: 1.35rem;
+  }
+}
+/* ────────────────────────────────────────────────
+   BETTER MODAL FOOTER ALIGNMENT – especially mobile
+   ──────────────────────────────────────────────── */
+
+.modal-footer,
+.exf-modal-footer,
+.exf-kt-modal-footer,
+.exf-resignation-actions,
+.action-buttons,
+.exf-resign-actions {
+  /* Force reliable flex behavior */
+  display: flex !important;
+  flex-wrap: wrap !important;           /* ← very important on small screens */
+  justify-content: flex-end !important;
+  align-items: center !important;
+  gap: 0.75rem !important;              /* consistent spacing */
+  padding: 1rem 1.25rem !important;
+  background: #f9fafb;
+  border-top: 1px solid #e5e7eb;
+  border-radius: 0 0 16px 16px;
+}
+
+/* On very narrow screens: stack buttons vertically + full width */
+@media (max-width: 640px) {
+  .modal-footer,
+  .exf-modal-footer,
+  .exf-kt-modal-footer,
+  .exf-resignation-actions,
+  .action-buttons,
+  .exf-resign-actions {
+    flex-direction: column !important;
+    align-items: stretch !important;     /* make children full width */
+    gap: 0.9rem !important;
+    padding: 1.25rem !important;
+  }
+
+  /* Make every button full-width on small screens */
+  .modal-footer .btn,
+  .exf-modal-footer .btn,
+  .exf-modal-footer .exf-btn,
+  .exf-kt-modal-footer .exf-kt-btn,
+  .action-buttons button,
+  .exf-resignation-actions button {
+    width: 100% !important;
+    justify-content: center !important;
+    padding: 0.9rem 1.4rem !important;
+    font-size: 1rem !important;
+    min-height: 48px;                     /* better touch target */
+  }
+
+  /* Optional: bigger touch targets for cancel/secondary buttons */
+  .btn-secondary,
+  .exf-btn--secondary,
+  .exf-kt-btn--cancel {
+    background: #e5e7eb !important;
+    color: #374151 !important;
+  }
+}
+
+/* Desktop / tablet – keep side-by-side but prevent squishing */
+@media (min-width: 641px) {
+  .modal-footer,
+  .exf-modal-footer,
+  .action-buttons {
+    flex-wrap: nowrap !important;
+    gap: 1rem !important;
+  }
+
+  /* Prevent buttons from becoming too small */
+  .modal-footer .btn,
+  .action-buttons button {
+    min-width: 120px !important;
+    padding: 0.8rem 1.5rem !important;
+  }
+}
+
+/* Extra safety: never let buttons shrink too much */
+.btn,
+.exf-btn,
+.exf-kt-btn {
+  flex-shrink: 0 !important;
+  white-space: nowrap !important;
+}
+
+/* ==========================================================================
+   PURE CSS MOBILE IMPROVEMENTS – NO JS CHANGES NEEDED
+   Targeted: Apply Resignation button/form + Pending tables
+   ========================================================================== */
+
+@media (max-width: 1023px) {
+
+  /* ── General spacing & container breathing room ── */
+  .exf-container {
+    padding: 1rem 0.8rem;
+  }
+
+  .exf-resignation-wrapper-1,
+  .exf-resignation-apply-area,
+  .exf-team-panel {
+    margin: 1.25rem 0.5rem;
+    padding: 1.25rem 1rem;
+    border-radius: 12px;
+  }
+
+  /* ── Apply for Resignation button ── */
+  .exf-resignation-apply-btn,
+  .exf-btn.exf-btn--primary.exf-resignation-apply-btn {
+    display: block !important;
+    width: 100% !important;
+    max-width: none !important;
+    padding: 1.1rem 1.5rem !important;
+    font-size: 1.08rem !important;
+    font-weight: 600 !important;
+    min-height: 54px;
+    border-radius: 10px;
+    text-align: center;
+    box-sizing: border-box;
+  }
+
+  /* ── Resignation form – stack everything vertically ── */
+  .exf-resignation-form-container {
+    padding: 1rem 0.8rem;
+  }
+
+  .exf-form-grid-1 {
+    display: block !important;           /* kill grid */
+    column-count: 1 !important;
+  }
+
+  .exf-form-group,
+  .exf-form-group--full,
+  .exf-form-group.exf-form-group--full {
+    width: 100% !important;
+    margin-bottom: 1.4rem !important;
+  }
+
+  .exf-form-label {
+    display: block;
+    margin-bottom: 0.6rem;
+    font-size: 0.98rem;
+  }
+
+  .exf-form-input,
+  .exf-form-select,
+  .exf-form-textarea,
+  .exf-divider {
+    width: 100% !important;
+    padding: 0.9rem 1rem !important;
+    font-size: 1rem !important;
+    border-radius: 8px;
+    box-sizing: border-box;
+    min-height: 48px;
+  }
+
+  .exf-resignation-actions {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 1rem !important;
+    margin-top: 2rem !important;
+    padding-top: 1.25rem !important;
+  }
+
+  .exf-resignation-actions .btn,
+  .exf-resignation-actions button {
+    width: 100% !important;
+    padding: 1rem 1.4rem !important;
+    font-size: 1.05rem !important;
+    min-height: 52px;
+    border-radius: 10px;
+    box-sizing: border-box;
+  }
+
+  /* ── Pending tables → become vertical readable cards ── */
+  .exf-team-panel .exf-table-container {
+    overflow-x: hidden !important;
+  }
+
+  .exf-team-panel table thead {
+    display: none !important;
+  }
+
+  .exf-team-panel table tbody tr {
+    display: block !important;
+    margin: 1.25rem 0.6rem !important;
+    padding: 1.2rem !important;
+    background: white !important;
+    border: 1px solid #e2e8f0 !important;
+    border-radius: 12px !important;
+    box-shadow: 0 3px 8px rgba(0,0,0,0.07) !important;
+  }
+
+  .exf-team-panel table td {
+    display: flex !important;
+    align-items: flex-start !important;
+    padding: 0.8rem 0 !important;
+    border: none !important;
+    border-bottom: 1px solid #f1f5f9 !important;
+    font-size: 0.97rem !important;
+    line-height: 1.45;
+  }
+
+  .exf-team-panel table td:last-child {
+    border-bottom: none !important;
+    padding: 1.2rem 0 0.5rem !important;
+    justify-content: center !important;
+  }
+
+  /* Label – Value style using ::before */
+  .exf-team-panel table td:not(:last-child)::before {
+    content: attr(data-label);
+    font-weight: 600;
+    color: #4b5563;
+    margin-right: 1rem;
+    flex: 0 0 46%;
+    min-width: 110px;
+    text-align: left;
+  }
+
+  /* Action / Review button styling */
+  .exf-team-panel .exf-btn-review,
+  .exf-team-panel button[class*="exf-btn-review"] {
+    display: block !important;
+    width: 100% !important;
+    max-width: 240px !important;
+    margin: 0 auto !important;
+    padding: 0.9rem 1.5rem !important;
+    font-size: 1rem !important;
+    min-height: 50px;
+    border-radius: 10px;
+    text-align: center;
+    box-sizing: border-box;
+  }
+
+  /* Prevent text from being cut off */
+  .reason-tooltip-wrapper,
+  .reason-truncated,
+  .max-w-xs,
+  td .reason-tooltip-wrapper {
+    white-space: normal !important;
+    word-break: break-word !important;
+    overflow-wrap: break-word !important;
+    flex: 1 !important;
+    line-height: 1.5;
+  }
+}
+
+/* ── Very small phones ─────────────────────────────────────── */
+@media (max-width: 380px) {
+  .exf-team-panel table td::before {
+    flex: 0 0 44%;
+    min-width: 100px;
+  }
+
+  .exf-resignation-actions .btn {
+    font-size: 1rem;
+    padding: 0.95rem !important;
+  }
+
+  .exf-resignation-apply-btn {
+    font-size: 1.05rem !important;
+  }
+}
+/* ==========================================================================
+   TARGETED MOBILE FIXES – Apply Resignation button + Tabs position
+   No JS changes – pure CSS
+   ========================================================================== */
+.resign-apply-btn-gradient {
+  display: block;
+  width: 100%;
+  max-width: 420px;
+  margin: 2rem auto;
+  padding: 1.15rem 2.5rem;
+  font-size: 1.15rem;
+  font-weight: 600;
+  color: white;
+  background: #6fa924;
+  border: none;
+  border-radius: 12px;
+  box-shadow: 0 6px 16px rgba(16, 185, 129, 0.3);
+  cursor: pointer;
+  transition: all 0.25s ease;
+  text-align: center;
+}
+
+.resign-apply-btn-gradient:hover:not(:disabled) {
+  transform: translateY(-2px) scale(1.02);
+  box-shadow: 0 10px 24px rgba(16, 185, 129, 0.45);
+}
+
+.resign-apply-btn-gradient:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+@media (max-width: 640px) {
+  .resign-apply-btn-gradient {
+    max-width: 100%;
+    padding: 1.2rem 2rem;
+    font-size: 1.1rem;
+  }
+}
+/* ── Fix: Apply Resignation button alignment & positioning ── */
+@media (max-width: 1023px) {
+
+  /* Make sure the wrapper takes full width and centers content */
+  .exf-resignation-wrapper-1,
+  .exf-resignation-apply-area {
+    width: 100% !important;
+    margin: 1.5rem auto !important;
+    padding: 1.5rem 1rem !important;
+    text-align: center !important;
+    box-sizing: border-box;
+  }
+
+  /* Force the Apply button to be centered + full width */
+  .exf-resignation-apply-btn,
+  .exf-btn.exf-btn--primary.exf-resignation-apply-btn {
+    display: inline-block !important;
+    width: 100% !important;
+    max-width: 360px !important;          /* optional: cap width on larger phones */
+    margin: 1.5rem auto 1rem auto !important;
+    padding: 1.1rem 2rem !important;
+    font-size: 1.08rem !important;
+    min-height: 54px;
+    border-radius: 10px;
+    text-align: center !important;
+    box-sizing: border-box;
+  }
+
+  /* Prevent any float/right alignment leakage */
+  .exf-resignation-apply-area,
+  .exf-resignation-apply-btn {
+    float: none !important;
+    text-align: center !important;
+  }
+
+  /* ── Fix: Tabs touching top bar / overlapping header ── */
+  .exf-tabs-wrapper {
+    margin-top: 1rem !important;           /* ← adds breathing room from top bar */
+    padding-top: 0.5rem !important;
+    background: transparent !important;    /* prevent visual overlap */
+  }
+
+  .exf-tabs {
+    justify-content: center !important;    /* center tabs if needed */
+    padding: 0.5rem 0 !important;
+    margin: 0 !important;
+    border-top: none !important;
+  }
+
+  .exf-tab {
+    padding: 0.8rem 1.2rem !important;
+    font-size: 0.95rem !important;
+    min-width: 100px;
+  }
+
+  /* Extra top padding on very small screens */
+  @media (max-width: 480px) {
+    .exf-tabs-wrapper {
+      margin-top: 1.25rem !important;
+    }
+
+    .exf-main-content.mt-6 {
+      margin-top: 1.5rem !important;      /* extra space below tabs */
+    }
+  }
+}/* ==========================================================================
+   FORCE-CENTER APPLY RESIGNATION BUTTON – override everything
+   ========================================================================== */
+
+@media (max-width: 1023px) {
+
+  /* Reset and force center on the wrapper */
+  .exf-resignation-wrapper-1,
+  .exf-resignation-apply-area {
+    text-align: center !important;
+    display: block !important;
+    width: 100% !important;
+    margin-left: auto !important;
+    margin-right: auto !important;
+    padding: 1.5rem 1rem !important;
+    float: none !important;
+    clear: both !important;
+  }
+
+  /* Target the button very aggressively */
+  .exf-resignation-apply-btn,
+  .exf-btn.exf-btn--primary.exf-resignation-apply-btn,
+  button.exf-btn.exf-btn--primary.exf-resignation-apply-btn {
+    display: block !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 1.5rem auto !important;
+    padding: 1.1rem 1.5rem !important;
+    font-size: 1.1rem !important;
+    min-height: 56px !important;
+    border-radius: 10px !important;
+    text-align: center !important;
+    box-sizing: border-box !important;
+
+    /* Kill any right-alignment tricks */
+    float: none !important;
+    margin-left: auto !important;
+    margin-right: auto !important;
+    left: auto !important;
+    right: auto !important;
+    transform: none !important;
+    justify-content: center !important;
+    align-self: center !important;
+  }
+
+  /* If it's inside a flex container – force center */
+  .exf-resignation-apply-area:has(button),
+  .exf-resignation-wrapper-1:has(button) {
+    display: flex !important;
+    justify-content: center !important;
+    align-items: center !important;
+    flex-direction: column !important;
+  }
+
+  /* Extra insurance: direct child button centering */
+  .exf-resignation-apply-area > button,
+  .exf-resignation-wrapper-1 > button,
+  .exf-resignation-apply-area .exf-btn {
+    margin: 1.5rem auto !important;
+  }
+}
+
+/* Even stronger on tiny screens */
+@media (max-width: 480px) {
+  .exf-resignation-apply-btn,
+  button.exf-btn.exf-resignation-apply-btn {
+    width: 94% !important;
+    margin: 1.8rem auto !important;
+    font-size: 1.05rem !important;
+
+    .exf-btn exf-btn--primary exf-resignation-apply-btn
+    {
+      width: 94% ;
+      align-items: left;
+      
+    }
+  }
+}
+/* ────────────────────────────────────────────────
+   APPLY RESIGNATION BUTTON – CENTERED & RESPONSIVE
+   ──────────────────────────────────────────────── */
+
+/* Wrapper – full width, centered content */
+.exf-resignation-wrapper-1,
+.exf-resignation-apply-area {
+ 
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
+  text-align: center;
+}
+
+/* The button itself – forced centered + full-width on mobile */
+.exf-resignation-apply-btn,
+.exf-btn.exf-btn--primary.exf-resignation-apply-btn {
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  width: 100% !important;
+  max-width: 420px !important;     /* ← cap on tablets/desktop */
+  margin: 2rem auto 1.5rem auto !important;
+  padding: 1.15rem 2.5rem !important;
+  font-size: 1.15rem !important;
+  font-weight: 600 !important;
+  min-height: 58px !important;     /* better touch target */
+  border-radius: 12px !important;
+  background: #7ac142 !important;
+  color: white !important;
+  box-shadow: 0 6px 16px rgba(122, 193, 66, 0.3) !important;
+  transition: all 0.25s ease !important;
+  cursor: pointer !important;
+}
+
+/* Hover & focus states */
+.exf-resignation-apply-btn:hover:not(:disabled),
+.exf-btn.exf-btn--primary.exf-resignation-apply-btn:hover:not(:disabled) {
+  background: #68a236 !important;
+  transform: translateY(-2px) !important;
+  box-shadow: 0 10px 24px rgba(122, 193, 66, 0.4) !important;
+}
+
+.exf-resignation-apply-btn:focus {
+  outline: none !important;
+  box-shadow: 0 0 0 4px rgba(122, 193, 66, 0.4) !important;
+}
+
+.exf-resignation-apply-btn:disabled {
+  opacity: 0.65 !important;
+  cursor: not-allowed !important;
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+/* ── Mobile-first fixes ── */
+@media (max-width: 640px) {
+  .exf-resignation-apply-area {
+    padding: 2rem 1rem;
+    margin: 1.5rem 0.5rem;
+  }
+
+  .exf-resignation-apply-btn,
+  .exf-btn.exf-btn--primary.exf-resignation-apply-btn {
+    max-width: 100% !important;
+    padding: 1.2rem 2rem !important;
+    font-size: 1.1rem !important;
+    min-height: 56px !important;
+    margin: 1.8rem auto !important;
+  }
+}
+
+/* ── Very small screens (< 380px) ── */
+@media (max-width: 380px) {
+  .exf-resignation-apply-btn {
+    font-size: 1.05rem !important;
+    padding: 1.1rem 1.8rem !important;
+  }
+}

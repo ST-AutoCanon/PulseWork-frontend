@@ -39,7 +39,7 @@ const formatDate = (date) => {
   if (isNaN(d.getTime())) return "";
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(
     2,
-    "0",
+    "0"
   )}-${String(d.getDate()).padStart(2, "0")}`;
 };
 
@@ -101,7 +101,7 @@ const TaskManagementAdmin = () => {
       "x-org-id": userContext?.orgId ?? "",
       "x-api-key": process.env.NEXT_PUBLIC_API_KEY || "",
     }),
-    [userContext],
+    [userContext]
   );
 
   const getSenderName = useCallback(
@@ -109,11 +109,11 @@ const TaskManagementAdmin = () => {
       if (!senderId) return "Unknown";
       if (String(senderId) === String(userContext?.employeeId)) return "You";
       const emp = employees.find(
-        (e) => String(e.employee_id) === String(senderId),
+        (e) => String(e.employee_id) === String(senderId)
       );
       return emp?.employee_name || "Unknown";
     },
-    [userContext?.employeeId, employees],
+    [userContext?.employeeId, employees]
   );
 
   useEffect(() => {
@@ -123,7 +123,7 @@ const TaskManagementAdmin = () => {
       try {
         const res = await axios.get(
           `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/weekly_task_supervisor/employees/all`,
-          { withCredentials: true, headers: getHeaders() },
+          { withCredentials: true, headers: getHeaders() }
         );
         setEmployees(res.data.employees || []);
         setError(null);
@@ -200,46 +200,107 @@ const TaskManagementAdmin = () => {
     }
   };
 
-  const fetchTasks = async () => {
-    if (!userContext || employees.length === 0) return;
-    setLoadingTasks(true);
-    try {
-      const res = await axios.get(
-        `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/tasks`,
-        { withCredentials: true, headers: getHeaders() },
+  // const fetchTasks = async () => {
+  //   if (!userContext || employees.length === 0) return;
+  //   setLoadingTasks(true);
+  //   try {
+  //     const res = await axios.get(
+  //       `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/tasks`,
+  //       { withCredentials: true, headers: getHeaders() }
+  //     );
+
+  //     const validEmpIds = new Set(employees.map((e) => e.employee_id));
+  //     const formatted = (res.data || [])
+  //       .filter((t) => validEmpIds.has(t.employee_id))
+  //       .map((t) => {
+  //         const emp = employees.find((e) => e.employee_id === t.employee_id);
+  //         const prog = Math.min(Math.max(Number(t.percentage ?? 0), 0), 100);
+
+  //         return {
+  //           id: `Task-${t.task_id}`,
+  //           dbId: t.task_id,
+  //           title: t.task_title,
+  //           description: t.description,
+  //           status: t.status,
+  //           startDate: formatDate(t.start_date),
+  //           endDate: formatDate(t.due_date),
+  //           employeeId: t.employee_id,
+  //           user: { name: emp?.employee_name || "Unknown", profile: "" },
+  //           progress: prog,
+  //           messages: [],
+  //         };
+  //       });
+  //     setTasks(formatted);
+  //     setError(null);
+  //   } catch (e) {
+  //     setError(e.response?.data?.error || e.message || "Failed to load tasks");
+  //     setTasks([]);
+  //   } finally {
+  //     setLoadingTasks(false);
+  //   }
+  // };
+
+  const fetchTasks = useCallback(async () => {
+  if (!userContext || employees.length === 0) return;
+  setLoadingTasks(true);
+
+  try {
+    const res = await axios.get(
+      `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/tasks`,
+      { withCredentials: true, headers: getHeaders() }
+    );
+
+    const validEmpIds = new Set(employees.map((e) => e.employee_id));
+
+    setTasks((currentTasks) => {
+      // Create a lookup: dbId → current task object (to preserve messages, etc.)
+      const currentTaskMap = new Map(
+        currentTasks.map((t) => [t.dbId, t])
       );
 
-      const validEmpIds = new Set(employees.map((e) => e.employee_id));
-      const formatted = (res.data || [])
+      // Build updated tasks by merging server data with existing client data
+      const mergedTasks = (res.data || [])
         .filter((t) => validEmpIds.has(t.employee_id))
-        .map((t) => {
-          const emp = employees.find((e) => e.employee_id === t.employee_id);
-          const prog = Math.min(Math.max(Number(t.percentage ?? 0), 0), 100);
+        .map((serverTask) => {
+          const emp = employees.find((e) => e.employee_id === serverTask.employee_id);
+          const prog = Number(serverTask.percentage ?? 0);
+          const safeProg = isNaN(prog) ? 0 : Math.min(Math.max(prog, 0), 100);
+
+          // Get existing client-side task (if any)
+          const existing = currentTaskMap.get(serverTask.task_id);
 
           return {
-            id: `Task-${t.task_id}`,
-            dbId: t.task_id,
-            title: t.task_title,
-            description: t.description,
-            status: t.status,
-            startDate: formatDate(t.start_date),
-            endDate: formatDate(t.due_date),
-            employeeId: t.employee_id,
-            user: { name: emp?.employee_name || "Unknown", profile: "" },
-            progress: prog,
-            messages: [],
+            // Prefer existing client data, fall back to server
+            id: existing?.id || `Task-${serverTask.task_id}`,
+            dbId: serverTask.task_id,
+            title: serverTask.task_title,
+            description: serverTask.description,
+            status: serverTask.status,
+            startDate: formatDate(serverTask.start_date),
+            endDate: formatDate(serverTask.due_date),
+            employeeId: serverTask.employee_id,
+            user: existing?.user || { name: emp?.employee_name || "Unknown", profile: "" },
+            progress: safeProg,
+
+            // MOST IMPORTANT: always keep client-side messages if they exist
+            messages: existing?.messages || [],
           };
         });
-      setTasks(formatted);
-      setError(null);
-    } catch (e) {
-      setError(e.response?.data?.error || e.message || "Failed to load tasks");
-      setTasks([]);
-    } finally {
-      setLoadingTasks(false);
-    }
-  };
 
+      // Optional: keep any local-only tasks that server didn't return (if needed)
+      // For now we assume server is source of truth → only return merged server tasks
+      return mergedTasks;
+    });
+
+    setError(null);
+  } catch (e) {
+    setError(e.response?.data?.error || e.message || "Failed to load tasks");
+    // Do NOT clear tasks on error → keep previous state + messages
+    // setTasks([]);  ← remove or comment this line
+  } finally {
+    setLoadingTasks(false);
+  }
+}, [userContext, employees, getHeaders]);
   useEffect(() => {
     fetchTasks();
   }, [userContext, employees.length, getHeaders]);
@@ -251,7 +312,7 @@ const TaskManagementAdmin = () => {
       try {
         const res = await axios.get(
           `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/messages/${taskId}`,
-          { withCredentials: true, headers: getHeaders() },
+          { withCredentials: true, headers: getHeaders() }
         );
 
         if (res.data.success) {
@@ -269,22 +330,22 @@ const TaskManagementAdmin = () => {
               type: "Clarification",
             })),
           ].sort(
-            (a, b) => new Date(a.time).getTime() - new Date(b.time).getTime(),
+            (a, b) => new Date(a.time).getTime() - new Date(b.time).getTime()
           );
 
           setTasks((prev) =>
-            prev.map((t) => (t.dbId === taskId ? { ...t, messages: all } : t)),
+            prev.map((t) => (t.dbId === taskId ? { ...t, messages: all } : t))
           );
         }
       } catch (e) {
         setTasks((prev) =>
-          prev.map((t) => (t.dbId === taskId ? { ...t, messages: [] } : t)),
+          prev.map((t) => (t.dbId === taskId ? { ...t, messages: [] } : t))
         );
       } finally {
         setLoadingMessages(false);
       }
     },
-    [getHeaders, getSenderName],
+    [getHeaders, getSenderName]
   );
 
   useEffect(() => {
@@ -302,12 +363,12 @@ const TaskManagementAdmin = () => {
       { key: "On-Hold", title: "On-Hold", color: "#9d174d" },
       { key: "Completed", title: "Completed", color: "#065f46" },
     ],
-    [],
+    []
   );
 
   const selectedTask = useMemo(
     () => tasks.find((t) => t.id === selectedTaskId) || null,
-    [tasks, selectedTaskId],
+    [tasks, selectedTaskId]
   );
 
   const currentDate = new Date();
@@ -347,14 +408,14 @@ const TaskManagementAdmin = () => {
         prev.map((t) =>
           t.id === selectedTask.id
             ? { ...t, status: tempStatus, progress: tempProgress }
-            : t,
-        ),
+            : t
+        )
       );
 
       await axios.put(
         `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/employee-tasks/update/${taskId}`,
         { status: tempStatus, percentage: tempProgress },
-        { withCredentials: true, headers: getHeaders() },
+        { withCredentials: true, headers: getHeaders() }
       );
 
       await fetchTasks();
@@ -369,8 +430,8 @@ const TaskManagementAdmin = () => {
                 status: selectedTask.status,
                 progress: selectedTask.progress,
               }
-            : t,
-        ),
+            : t
+        )
       );
     } finally {
       setEditingProgress(false);
@@ -404,18 +465,18 @@ const TaskManagementAdmin = () => {
               ...t,
               messages: [...t.messages, newMsg].sort(
                 (a, b) =>
-                  new Date(a.time).getTime() - new Date(b.time).getTime(),
+                  new Date(a.time).getTime() - new Date(b.time).getTime()
               ),
             }
-          : t,
-      ),
+          : t
+      )
     );
 
     try {
       await axios.post(
         `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/messages`,
         { taskId, sender: userContext.employeeId, type: activeTab, text },
-        { withCredentials: true, headers: getHeaders() },
+        { withCredentials: true, headers: getHeaders() }
       );
       setMessageText("");
       finalTranscriptRef.current = "";
@@ -423,7 +484,7 @@ const TaskManagementAdmin = () => {
       await fetchMessagesForTask(taskId);
     } catch (e) {
       setError(
-        e.response?.data?.error || e.message || "Failed to send message",
+        e.response?.data?.error || e.message || "Failed to send message"
       );
       setTasks((prev) =>
         prev.map((t) =>
@@ -432,8 +493,8 @@ const TaskManagementAdmin = () => {
                 ...t,
                 messages: t.messages.filter((m) => m.time !== newMsg.time),
               }
-            : t,
-        ),
+            : t
+        )
       );
     }
   };
@@ -500,7 +561,7 @@ const TaskManagementAdmin = () => {
       const postRes = await axios.post(
         `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/tasks`,
         payload,
-        { withCredentials: true, headers: getHeaders() },
+        { withCredentials: true, headers: getHeaders() }
       );
 
       const createdTaskId = postRes.data.taskId || postRes.data.task_id;
@@ -942,7 +1003,7 @@ const TaskManagementAdmin = () => {
                               Loading...
                             </p>
                           ) : selectedTask.messages.filter(
-                              (m) => m.type === "Progress",
+                              (m) => m.type === "Progress"
                             ).length > 0 ? (
                             <div className="task-admin-messages">
                               {selectedTask.messages
@@ -1021,7 +1082,7 @@ const TaskManagementAdmin = () => {
                               Loading...
                             </p>
                           ) : selectedTask.messages.filter(
-                              (m) => m.type === "Clarification",
+                              (m) => m.type === "Clarification"
                             ).length > 0 ? (
                             <div className="task-admin-messages">
                               {selectedTask.messages

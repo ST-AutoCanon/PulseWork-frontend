@@ -28,12 +28,7 @@
 }
 
 /* Remove conflicting duplicate & problematic rules */
-.sidebar {
-  /* REMOVE these lines completely: */
-  /* margin-top: 50px; */
-  /* margin-bottom: 10px; */
-  /* top: 0; bottom: 0; */   /* replaced by inset */
-}
+
 
 /* If you really need space at the top (e.g. for a fixed header of 50–60px), */
 /* use padding-top on .sidebar instead of margin-top, or use top: 60px; height: calc(100vh - 60px); */
@@ -337,8 +332,8 @@ margin-bottom: 0.35rem;     /* ← added spacing between items */
   width: 280px;
   max-width: 90%;
   height: 100%;
-  background: #000;
-  color: #fff;
+  background: #ffffff;          /* ← changed from #000 */
+  color: #111;
   overflow-y: auto;
   padding-bottom: 2rem;
 }
@@ -357,9 +352,7 @@ margin-bottom: 0.35rem;     /* ← added spacing between items */
   font-size: 28px;
 }
 
-.mobile-profile {
-  border-bottom: 1px solid #1e293b;
-}
+
 
 .mobile-sidebar .menu-list {
   padding: 0 0.5rem;

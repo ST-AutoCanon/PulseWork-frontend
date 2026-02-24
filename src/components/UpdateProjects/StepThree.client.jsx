@@ -1,8 +1,9 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import { getStatusBgColor } from "./utils.client";
 import { useAuth } from "../../context/AuthProvider.client";
+import Modal from "../Modal/Modal.client";
 
 const StepThree = ({
   formData,
@@ -18,6 +19,44 @@ const StepThree = ({
     typeof editable === "boolean"
       ? editable
       : !["Employee", "General"].includes(userRole);
+
+  const hasMilestoneData = (milestone) => {
+    return (
+      milestone.details?.trim() ||
+      milestone.start_date ||
+      milestone.end_date ||
+      milestone.status?.trim() ||
+      milestone.dependency?.trim() ||
+      milestone.assigned_to
+    );
+  };
+
+  const [deleteIndex, setDeleteIndex] = useState(null);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+
+  const handleDeleteClick = (index) => {
+    const milestone = formData.milestones[index];
+
+    if (hasMilestoneData(milestone)) {
+      setDeleteIndex(index);
+      setShowDeleteModal(true);
+    } else {
+      removeMilestone(index);
+    }
+  };
+
+  const confirmDelete = () => {
+    if (deleteIndex !== null) {
+      removeMilestone(deleteIndex);
+    }
+    setDeleteIndex(null);
+    setShowDeleteModal(false);
+  };
+
+  const cancelDelete = () => {
+    setDeleteIndex(null);
+    setShowDeleteModal(false);
+  };
 
   return (
     <div className="pj-step-three">
@@ -136,7 +175,7 @@ const StepThree = ({
                     <button
                       type="button"
                       className="remove-milestone-btn"
-                      onClick={() => removeMilestone(index)}
+                      onClick={() => handleDeleteClick(index)}
                     >
                       ✕
                     </button>
@@ -147,6 +186,26 @@ const StepThree = ({
           </tbody>
         </table>
       </div>
+      <Modal
+        title="Confirm Deletion"
+        isVisible={showDeleteModal}
+        onClose={cancelDelete}
+        customClass="delete-confirm-modal"
+        buttons={[
+          {
+            label: "Cancel",
+            className: "ac-modal-btn",
+            onClick: cancelDelete,
+          },
+          {
+            label: "Delete",
+            className: "ac-modal-btn danger-btn",
+            onClick: confirmDelete,
+          },
+        ]}
+      >
+        <p>This milestone contains data. Are you sure you want to delete it?</p>
+      </Modal>
     </div>
   );
 };

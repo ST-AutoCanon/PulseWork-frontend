@@ -1706,20 +1706,12 @@ const RbAdmin = () => {
 
       {isPaymentModalOpen && (
         <Modal
+          title={"Update Payment Status"}
           isVisible={isPaymentModalOpen}
           onClose={() => setIsPaymentModalOpen(false)}
           buttons={[]}
         >
           <div className="payment-modal-content">
-            <div className="payment-header">
-              <h3>Update Payment Status</h3>
-              <button
-                className="modal-cross-btn"
-                onClick={() => setIsPaymentModalOpen(false)}
-              >
-                ✖
-              </button>
-            </div>
             <div className="payment-options">
               <label>
                 <input
@@ -1753,6 +1745,12 @@ const RbAdmin = () => {
               </label>
             </div>
             <p>I'll make sure to process the payment today</p>
+            <button
+              className="modal-cross-btn"
+              onClick={() => setIsPaymentModalOpen(false)}
+            >
+              Cancel
+            </button>
             <button
               className="submit-payment-btn"
               onClick={async () => {

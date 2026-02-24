@@ -80,6 +80,11 @@
     margin-left: 0%;
   }
 
+  .EmpLeaveTracker123
+  {
+    display: none;
+  }
+
   .reg-popup-overlay {
     padding-top: 0px;
   }

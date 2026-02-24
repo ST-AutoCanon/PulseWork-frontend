@@ -6,7 +6,8 @@ import "./EmpLeaveTracker.css";
 import { useAuth } from "../../context/AuthProvider.client";
 
 export default function EmpLeaveTracker() {
-  const { user } = useAuth();
+  const { user, hydrated } = useAuth(); // ← only addition here
+
   const employeeIdFromUser =
     user?.employeeId ?? user?.employee_id ?? user?.id ?? null;
 
@@ -37,6 +38,12 @@ export default function EmpLeaveTracker() {
 
   useEffect(() => {
     let canceled = false;
+
+    // 🔥 Added safe guards (NO existing logic removed)
+    if (!hydrated) return;
+    if (!employeeIdFromUser) return;
+    if (!user?.orgId && !user?.org_id && !user?.organization_id) return;
+
     const fetchLeaveData = async () => {
       setLoading(true);
       setError(null);
@@ -103,7 +110,7 @@ export default function EmpLeaveTracker() {
     return () => {
       canceled = true;
     };
-  }, [employeeIdFromUser, API_KEY, BACKEND_URL]);
+  }, [hydrated, employeeIdFromUser, user?.orgId, API_KEY, BACKEND_URL]);
 
   const formatDate = (dateString) => {
     if (!dateString) return "N/A";

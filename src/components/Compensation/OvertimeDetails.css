@@ -9,6 +9,31 @@
 .ot-header {
   margin-bottom: 1.5rem;
 }
+/* Give Employee Name column more space */
+.ot-th:nth-child(4),          /* Employee Name header */
+.ot-td:nth-child(4) {         /* Employee Name cells */
+  width: 80px;               /* ← was probably ~140–160px by default */
+  min-width: 200px;
+  max-width: 260px;
+}
+
+/* Prevent text from overflowing */
+.ot-td:nth-child(4) {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Optional: Show full name on hover (very useful for long names) */
+.ot-td:nth-child(4):hover {
+  white-space: normal;
+  overflow: visible;
+  background: #f1f5f9;
+  z-index: 2;
+  position: relative;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  padding: 0.8rem 1rem !important;   /* keep consistent padding */
+}
 .ot-title {
   font-size: 1.8rem;
   font-weight: 600;

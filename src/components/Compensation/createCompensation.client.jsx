@@ -13,7 +13,7 @@ const DEFAULT_CTC = 100000;
 const CTC_BASED_FIELDS = [
   "basicSalary",
   "otherAllowance",
-  // direct CTC (clean name)
+  "ltaAllowance",// direct CTC (clean name)
   "incentives",
   "variablePay",
 ];
@@ -21,7 +21,7 @@ const CTC_BASED_FIELDS = [
 const BASIC_BASED_FIELDS = [
   "houseRentAllowance", // HRA – % of Basic
   "houseRentAllowancePercentage", // HRA – % of Basic
-  "ltaAllowance", // LTA – % of Basic
+   // LTA – % of Basic
   "ltaAllowancePercentage", // LTA – % of Basic
   "pfEmployee",
   "pfEmployeePercentage",

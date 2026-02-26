@@ -71,7 +71,7 @@ export default function EditorPanel(props) {
   );
 
   return (
-    <main className={styles.editorPanel}>
+    <main className={styles.editorPanel} key={`editor-root-${mode}`}>
       <div
         className={styles.editorContainer}
         data-testid="template-editor-container"
@@ -122,7 +122,7 @@ export default function EditorPanel(props) {
               {generated.html && generated.html.trim() ? (
                 <BasicTemplateEditor
                   ref={basicEditorRef}
-                  key={generated.id || generated.file || "generated"}
+                  key={`basic-${mode}-${generated?.id || generated?.file || "generated"}`}
                   onBoxesChange={setBodyBoxes}
                   initialHtml={generated.html}
                   initialJson={generated.grapesJson}
@@ -152,7 +152,7 @@ export default function EditorPanel(props) {
               ) : (
                 <CustomTemplateEditor
                   ref={basicEditorRef}
-                  key={generated.id || generated.name || "generated"}
+                  key={`basic-custom-${mode}-${generated?.id || generated?.name || "generated"}`}
                   onBoxesChange={setBodyBoxes}
                   background={generated.thumbnail || generated.imageUrl || null}
                   initialBoxes={(function () {
@@ -219,7 +219,7 @@ export default function EditorPanel(props) {
         {mode === "scratch" && (
           <CustomTemplateEditor
             ref={scratchEditorRef}
-            key={`scratch-${bodyType}`}
+            key={`scratch-${mode}-${bodyType}`}
             onBoxesChange={setBodyBoxes}
             background={null}
             initialBoxes={fieldsToBoxes(PRESET_FIELDS[bodyType] || [])}

@@ -270,17 +270,25 @@ export default function A4Preview({
   const boxDragState = useRef(null);
   const boxResizeState = useRef(null);
 
+  const isDraggingRef = useRef(false);
+  const dragThreshold = 3;
+
   function startBoxDrag(e, box) {
     if (!boxesEditable || !previewRef.current) return;
     if (e.target?.dataset?.resize) return;
+
     e.preventDefault();
     e.stopPropagation();
+
     if (typeof onSelectBox === "function") onSelectBox(box.id);
+
     const rect = previewRef.current.getBoundingClientRect();
     const clientX = e.clientX ?? (e.touches && e.touches[0].clientX);
     const clientY = e.clientY ?? (e.touches && e.touches[0].clientY);
+
     const startLeft = pctToPx(box.xPct, rect.width);
     const startTop = pctToPx(box.yPct, rect.height);
+
     boxDragState.current = {
       id: box.id,
       startLeft,
@@ -290,31 +298,49 @@ export default function A4Preview({
       rect,
       box,
     };
+
+    // 🔒 reset drag flag
+    isDraggingRef.current = false;
+
     window.addEventListener("mousemove", onBoxDrag);
     window.addEventListener("mouseup", stopBoxDrag);
     window.addEventListener("touchmove", onBoxDrag, { passive: false });
     window.addEventListener("touchend", stopBoxDrag);
   }
+
   function onBoxDrag(ev) {
     if (!boxDragState.current) return;
     if (ev.type === "touchmove") ev.preventDefault();
+
     const clientX = ev.clientX ?? (ev.touches && ev.touches[0].clientX);
     const clientY = ev.clientY ?? (ev.touches && ev.touches[0].clientY);
+
     const { startLeft, startTop, startX, startY, rect, id, box } =
       boxDragState.current;
+
     const dx = clientX - startX;
     const dy = clientY - startY;
+
+    // 🔒 detect real drag
+    if (Math.abs(dx) > dragThreshold || Math.abs(dy) > dragThreshold) {
+      isDraggingRef.current = true;
+    }
+
     let newLeft = startLeft + dx;
     let newTop = startTop + dy;
+
     const wPx = pctToPx(box.wPct || "10%", rect.width);
     const hPx = pctToPx(box.hPct || "6%", rect.height);
+
     newLeft = Math.max(0, Math.min(newLeft, rect.width - wPx));
     newTop = Math.max(0, Math.min(newTop, rect.height - hPx));
+
     const nextBox = {
       ...box,
       xPct: pxToPct(newLeft, rect.width),
       yPct: pxToPct(newTop, rect.height),
     };
+
     if (typeof onBoxesChange === "function") {
       try {
         onBoxesChange(
@@ -325,8 +351,10 @@ export default function A4Preview({
       }
     }
   }
+
   function stopBoxDrag() {
     boxDragState.current = null;
+
     window.removeEventListener("mousemove", onBoxDrag);
     window.removeEventListener("mouseup", stopBoxDrag);
     window.removeEventListener("touchmove", onBoxDrag);
@@ -445,6 +473,18 @@ export default function A4Preview({
       watermarkStopResize();
       stopBoxDrag();
       stopBoxResize();
+    };
+  }, []);
+
+  useEffect(() => {
+    const handleGlobalClick = () => {
+      isDraggingRef.current = false;
+    };
+
+    window.addEventListener("click", handleGlobalClick);
+
+    return () => {
+      window.removeEventListener("click", handleGlobalClick);
     };
   }, []);
 
@@ -671,15 +711,22 @@ export default function A4Preview({
                   <div
                     key={box.id || Math.random()}
                     style={boxWrapperStyle}
-                    onMouseDown={(e) => {
-                      if (typeof onSelectBox === "function")
+                    onClick={(e) => {
+                      if (isDraggingRef.current) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        return;
+                      }
+
+                      if (typeof onSelectBox === "function") {
                         onSelectBox(box.id);
+                      }
+                    }}
+                    onMouseDown={(e) => {
                       if (!boxesEditable) return;
                       startBoxDrag(e, box);
                     }}
                     onTouchStart={(e) => {
-                      if (typeof onSelectBox === "function")
-                        onSelectBox(box.id);
                       if (!boxesEditable) return;
                       startBoxDrag(e, box);
                     }}

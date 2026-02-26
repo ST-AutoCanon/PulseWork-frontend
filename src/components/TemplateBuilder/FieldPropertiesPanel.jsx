@@ -8,6 +8,7 @@ export default function FieldPropertiesPanel({
   setSelectedFieldId,
   updateSelectedFieldStyle,
   updateSelectedFieldContent,
+  updateSelectedFieldTable,
   pageStyle = { background: "transparent" },
   updatePageStyle = null,
   onUploadImage,
@@ -49,6 +50,55 @@ export default function FieldPropertiesPanel({
 
   const isTable = sel.type === "table";
   const isImage = sel.type === "image" || sel.type === "logo";
+  const tableData = sel.table?.data || [];
+  const rowCount = tableData.length;
+  const colCount = tableData[0]?.length || 0;
+
+  function addRow() {
+    if (!updateSelectedFieldTable) return;
+
+    const newRow = Array.from({ length: colCount || 1 }).map(() => "");
+
+    updateSelectedFieldTable({
+      ...sel.table,
+      data: [...tableData, newRow],
+      rows: rowCount + 1,
+    });
+  }
+
+  function removeRow() {
+    if (!updateSelectedFieldTable || rowCount <= 1) return;
+
+    updateSelectedFieldTable({
+      ...sel.table,
+      data: tableData.slice(0, -1),
+      rows: rowCount - 1,
+    });
+  }
+
+  function addCol() {
+    if (!updateSelectedFieldTable) return;
+
+    const newData = tableData.map((row) => [...row, ""]);
+
+    updateSelectedFieldTable({
+      ...sel.table,
+      data: newData,
+      cols: colCount + 1,
+    });
+  }
+
+  function removeCol() {
+    if (!updateSelectedFieldTable || colCount <= 1) return;
+
+    const newData = tableData.map((row) => row.slice(0, -1));
+
+    updateSelectedFieldTable({
+      ...sel.table,
+      data: newData,
+      cols: colCount - 1,
+    });
+  }
 
   function onColorChange(next) {
     if (!updateSelectedFieldStyle) return;
@@ -355,6 +405,32 @@ export default function FieldPropertiesPanel({
                 })
               }
             />
+
+            <button type="button" className={styles.smallBtn} onClick={addRow}>
+              + Row
+            </button>
+
+            <button
+              type="button"
+              className={styles.smallBtn}
+              onClick={removeRow}
+              disabled={rowCount <= 1}
+            >
+              - Row
+            </button>
+
+            <button type="button" className={styles.smallBtn} onClick={addCol}>
+              + Col
+            </button>
+
+            <button
+              type="button"
+              className={styles.smallBtn}
+              onClick={removeCol}
+              disabled={colCount <= 1}
+            >
+              - Col
+            </button>
           </div>
         </div>
       )}

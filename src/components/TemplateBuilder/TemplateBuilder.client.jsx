@@ -452,6 +452,82 @@ export default function TemplateBuilder() {
   const employeeId =
     user?.employeeId || user?.employee_id || user?.raw?.employee_id || null;
 
+  const [modalConfig, setModalConfig] = useState({
+    isVisible: false,
+    title: "",
+    content: null,
+    buttons: [],
+  });
+
+  const closeModal = useCallback(() => {
+    setModalConfig((prev) => ({ ...prev, isVisible: false }));
+  }, []);
+
+  const showError = useCallback(
+    (message, title = "Error") => {
+      setModalConfig({
+        isVisible: true,
+        title,
+        content: <div style={{ color: "#b91c1c" }}>{message}</div>,
+        buttons: [
+          {
+            label: "OK",
+            className: "ac-modal-btn primary",
+            onClick: closeModal,
+          },
+        ],
+      });
+    },
+    [closeModal],
+  );
+
+  const showSuccess = useCallback(
+    (message, title = "Success") => {
+      setModalConfig({
+        isVisible: true,
+        title,
+        content: <div style={{ color: "#065f46" }}>{message}</div>,
+        buttons: [
+          {
+            label: "OK",
+            className: "ac-modal-btn primary",
+            onClick: closeModal,
+          },
+        ],
+      });
+    },
+    [closeModal],
+  );
+
+  const showConfirm = useCallback(
+    (message, onConfirm, title = "Confirm Action") => {
+      setModalConfig({
+        isVisible: true,
+        title,
+        content: <div>{message}</div>,
+        buttons: [
+          {
+            label: "Cancel",
+            className: "ac-modal-btn",
+            onClick: closeModal,
+          },
+          {
+            label: "Confirm",
+            className: "ac-modal-btn danger",
+            onClick: async () => {
+              try {
+                await onConfirm?.();
+              } finally {
+                closeModal();
+              }
+            },
+          },
+        ],
+      });
+    },
+    [closeModal],
+  );
+
   useEffect(() => {
     if (mode === "view") {
       setShowSavedPane(true);
@@ -602,28 +678,17 @@ export default function TemplateBuilder() {
   useEffect(() => {
     try {
       const preset = PRESET_FIELDS[bodyType] || [];
-      const presetBoxes = fieldsToBoxes(
-        preset || [],
-        HEADER_HEIGHT_PCT + 1,
-      ).map((b) => ({
+      const presetBoxes = fieldsToBoxes(preset).map((b) => ({
         ...b,
         locked: false,
         style: { ...(b.style || {}) },
       }));
 
-      setBodyBoxes((prev) => {
-        if (showEditor) return prev || presetBoxes;
-
-        if (!prev || !prev.length) return presetBoxes;
-
-        if (idsEqual(prev, presetBoxes)) return prev;
-
-        return prev;
-      });
+      setBodyBoxes(presetBoxes);
     } catch (e) {
       console.warn("rebuilding boxes from bodyType failed", e);
     }
-  }, [bodyType, showEditor]);
+  }, [bodyType]);
 
   useEffect(() => {
     if (!bodyBoxes || bodyBoxes.length === 0) {
@@ -1510,11 +1575,30 @@ export default function TemplateBuilder() {
     }
   }, [viewingTemplate]);
 
+  useEffect(() => {
+    setSelectedFieldId(null);
+
+    setShowEditor(false);
+
+    setWatermarkEnabled(false);
+    setWatermarkFile(null);
+    setPreviewWatermarkUrl(null);
+
+    if (mode === "scratch" || mode === "upload") {
+      const preset = PRESET_FIELDS[bodyType] || [];
+      const freshBoxes = fieldsToBoxes(preset).map((b) => ({
+        ...b,
+        locked: false,
+      }));
+      setBodyBoxes(freshBoxes);
+    }
+  }, [mode]);
+
   async function handleCustomSave(payload) {
     const saveUrl = orgId ? `${BACKEND_URL}/api/orgs/${orgId}/templates` : null;
 
     if (!saveUrl) {
-      alert("No save URL (org missing).");
+      showError("Organization not found. Cannot save template.");
       return;
     }
 
@@ -1666,7 +1750,7 @@ export default function TemplateBuilder() {
       }
     } catch (err) {
       console.error("save failed", err);
-      alert("Save failed: " + (err.message || "error"));
+      showError("Save failed: " + (err.message || "error"));
     }
   }
 
@@ -1817,54 +1901,68 @@ export default function TemplateBuilder() {
       setShowEditor(true);
     } catch (err) {
       console.error("editSavedTemplate failed", err);
-      alert("Failed to open template for editing.");
+      showError("Failed to open template for editing.");
     }
   }
 
   async function deleteSavedTemplate(entry) {
     if (!entry || !orgId) return;
+
     const id = entry.id || entry._id || entry.template_id;
+
     if (!id) {
-      alert("Cannot delete: missing template id");
+      showError("Cannot delete: missing template id.");
       return;
     }
-    if (
-      !confirm(`Delete template "${entry.name || id}"? This cannot be undone.`)
-    )
-      return;
-    try {
-      const base = BACKEND_URL.replace(/\/$/, "");
-      const url = `${base}/api/orgs/${orgId}/templates/${id}`;
-      const res = await fetch(url, {
-        method: "DELETE",
-        credentials: "include",
-        headers: {
-          "x-api-key": API_KEY || "",
-          "x-employee-id": employeeId || "",
-        },
-      });
-      if (!res.ok) throw new Error(`Delete failed (${res.status})`);
-      setSavedTemplates((prev) =>
-        prev.filter((t) => String(t.id || t._id) !== String(id)),
-      );
-      if (
-        viewingTemplate &&
-        (String(viewingTemplate.id) === String(id) ||
-          viewingTemplate.name === entry.name)
-      ) {
-        setViewingTemplate(null);
-        setAppMode("upload");
-      }
-    } catch (err) {
-      console.error("deleteSavedTemplate failed", err);
-      alert("Failed to delete template: " + (err.message || "error"));
-    }
+
+    showConfirm(
+      `Delete template "${entry.name || id}"? This cannot be undone.`,
+      async () => {
+        try {
+          const base = BACKEND_URL.replace(/\/$/, "");
+          const url = `${base}/api/orgs/${orgId}/templates/${id}`;
+
+          const res = await fetch(url, {
+            method: "DELETE",
+            credentials: "include",
+            headers: {
+              "x-api-key": API_KEY || "",
+              "x-employee-id": employeeId || "",
+            },
+          });
+
+          if (!res.ok) {
+            throw new Error(`Delete failed (${res.status})`);
+          }
+
+          // Remove from list
+          setSavedTemplates((prev) =>
+            prev.filter((t) => String(t.id || t._id) !== String(id)),
+          );
+
+          // If currently viewing deleted template, reset state
+          if (
+            viewingTemplate &&
+            (String(viewingTemplate.id) === String(id) ||
+              viewingTemplate.name === entry.name)
+          ) {
+            setViewingTemplate(null);
+            setAppMode("upload");
+          }
+
+          showSuccess("Template deleted successfully.");
+        } catch (err) {
+          console.error("deleteSavedTemplate failed", err);
+          showError("Failed to delete template: " + (err.message || "error"));
+        }
+      },
+    );
   }
 
   async function confirmSaveFromEditor() {
     const r = getActiveEditorRef();
     if (!r || !r.current) {
-      alert("No editor available to save from.");
+      showError("No editor available to save from.");
       setSaveModalOpen(false);
       return;
     }
@@ -1880,7 +1978,7 @@ export default function TemplateBuilder() {
       }
     } catch (err) {
       console.error("getData/getHtml failed", err);
-      alert("Failed to read data from editor.");
+      showError("Failed to read data from editor.");
     } finally {
       setSaveModalOpen(false);
     }
@@ -2426,6 +2524,14 @@ export default function TemplateBuilder() {
           </p>
         </Modal>
       )}
+      <Modal
+        isVisible={modalConfig.isVisible}
+        title={modalConfig.title}
+        onClose={closeModal}
+        buttons={modalConfig.buttons}
+      >
+        {modalConfig.content}
+      </Modal>
       <input
         ref={fileInputFieldRef}
         type="file"

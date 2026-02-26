@@ -188,6 +188,8 @@ const CustomTemplateEditor = forwardRef(function CustomTemplateEditor(
   const innerCanvasRef = useRef(null);
   const createdUrlsRef = useRef([]);
 
+  const imageInputRef = useRef(null);
+  const [activeImageBoxId, setActiveImageBoxId] = useState(null);
   const [boxes, setBoxes] = useState([]);
   const [mode, setMode] = useState("select");
   const [selectedId, setSelectedId] = useState(null);
@@ -376,10 +378,7 @@ const CustomTemplateEditor = forwardRef(function CustomTemplateEditor(
   }
 
   function addBox(type = "text") {
-    if (activeArea === "body") {
-      console.warn(
-        "Adding new boxes into the document body is disabled. Select Header or Footer in the side panel to add elements.",
-      );
+    if (!["header", "body", "footer"].includes(activeArea)) {
       return null;
     }
 
@@ -647,23 +646,18 @@ const CustomTemplateEditor = forwardRef(function CustomTemplateEditor(
   }
 
   async function handleFileSelected(file) {
-    let targetId = pendingLogoTargetRef.current || selectedId;
+    const targetId = pendingLogoTargetRef.current;
 
     if (!targetId) {
-      const id = addBox("logo");
-      if (!id) {
-        pendingLogoTargetRef.current = null;
-        return;
-      }
-      targetId = id;
-      pendingLogoTargetRef.current = id;
+      pendingLogoTargetRef.current = null;
+      return; // do NOT create new box
     }
 
     try {
       if (onUploadImage && typeof onUploadImage === "function") {
         const url = await onUploadImage(file);
         if (url) {
-          updateBox(targetId, { content: url, type: "logo" });
+          updateBox(targetId, { content: url });
           pendingLogoTargetRef.current = null;
           return;
         }
@@ -672,10 +666,49 @@ const CustomTemplateEditor = forwardRef(function CustomTemplateEditor(
       console.warn("onUploadImage failed:", err);
     }
 
-    const obj = URL.createObjectURL(file);
-    createdUrlsRef.current.push(obj);
-    updateBox(targetId, { content: obj, type: "logo" });
+    const objUrl = URL.createObjectURL(file);
+    createdUrlsRef.current.push(objUrl);
+    updateBox(targetId, { content: objUrl });
     pendingLogoTargetRef.current = null;
+  }
+
+  function handleReplaceImage(file, box) {
+    if (!file || !box) return;
+
+    const applyUrl = (url) => {
+      setBoxes((prev) =>
+        prev.map((b) =>
+          String(b.id) === String(box.id) ? { ...b, content: url } : b,
+        ),
+      );
+    };
+
+    if (typeof onUploadImage === "function") {
+      try {
+        const result = onUploadImage(file, box);
+
+        // If async uploader
+        if (result && typeof result.then === "function") {
+          result.then((url) => {
+            if (url) applyUrl(url);
+          });
+          return;
+        }
+
+        // If sync uploader returning url
+        if (typeof result === "string") {
+          applyUrl(result);
+          return;
+        }
+      } catch (err) {
+        console.warn("onUploadImage failed", err);
+      }
+    }
+
+    // fallback
+    const localUrl = URL.createObjectURL(file);
+    createdUrlsRef.current.push(localUrl);
+    applyUrl(localUrl);
   }
 
   function updateTableCell(boxId, r, c, value) {
@@ -770,7 +803,7 @@ const CustomTemplateEditor = forwardRef(function CustomTemplateEditor(
     useEffect(() => {
       if (isEditing && contentRef.current) {
         try {
-          contentRef.current.textContent = box.content || "";
+          contentRef.current.innerHTML = box.content || "";
           contentRef.current.focus();
           const sel = window.getSelection();
           const range = document.createRange();
@@ -791,10 +824,12 @@ const CustomTemplateEditor = forwardRef(function CustomTemplateEditor(
           onBlur={() => {
             try {
               const final = contentRef.current
-                ? contentRef.current.textContent
+                ? contentRef.current.innerHTML
                 : box.content;
+
               updateBox(box.id, { content: final });
             } catch (err) {}
+
             setEditingId(null);
           }}
           onClick={(e) => {
@@ -810,46 +845,26 @@ const CustomTemplateEditor = forwardRef(function CustomTemplateEditor(
           role="textbox"
           aria-label={box.type === "text" ? "Text box" : "Placeholder box"}
         >
-          {!isEditing && (box.content || "")}
-        </div>
-      );
-    }
-
-    if (box.type === "logo" || box.type === "image") {
-      const src = box.content || "";
-      return (
-        <div
-          className={styles["logo-box-inner"]}
-          onDoubleClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            setSelectedId(box.id);
-            openFilePickerForLogo(box.id);
-          }}
-          onClick={(e) => {
-            e.stopPropagation();
-            setSelectedId(box.id);
-          }}
-        >
-          {src ? (
-            <img
-              data-no-drag="true"
-              src={src}
-              alt="logo"
-              draggable={false}
-              onDragStart={(e) => e.preventDefault()}
-              className={styles["logo-img"]}
-              style={{ width: "100%", height: "100%", objectFit: "contain" }}
-            />
-          ) : (
-            <div className={styles["logo-placeholder"]} data-no-drag="true">
-              <div>Logo (double-click or Upload)</div>
-            </div>
+          {!isEditing && (
+            <div dangerouslySetInnerHTML={{ __html: box.content || "" }} />
           )}
         </div>
       );
     }
 
+    if (box.type === "image" || box.type === "logo") {
+      return (
+        <img
+          src={box.content}
+          alt=""
+          style={{ width: "100%", height: "100%", objectFit: "contain" }}
+          onDoubleClick={(e) => {
+            e.stopPropagation();
+            openFilePickerForLogo(box.id);
+          }}
+        />
+      );
+    }
     if (box.type === "table") {
       const legacyHeaders = box.tableHeaders || box.headers || null;
       const legacyRows = box.tableRows || box.rows || null;
@@ -949,6 +964,25 @@ const CustomTemplateEditor = forwardRef(function CustomTemplateEditor(
                   {headersArr.map((h, idx) => (
                     <th
                       key={`h-${idx}`}
+                      contentEditable={mode !== "preview"}
+                      suppressContentEditableWarning
+                      onBlur={(e) => {
+                        const val = e.target.textContent || "";
+
+                        setBoxes((prev) =>
+                          prev.map((b) => {
+                            if (b.id !== box.id) return b;
+
+                            const table = { ...b.table };
+                            const data = table.data.map((r) => r.slice());
+
+                            data[0][idx] = val; // header is row 0
+                            table.data = data;
+
+                            return { ...b, table };
+                          }),
+                        );
+                      }}
                       style={{
                         padding: tableProps.cellPadding || 6,
                         textAlign: tableProps.textAlign || "left",
@@ -964,7 +998,7 @@ const CustomTemplateEditor = forwardRef(function CustomTemplateEditor(
                         whiteSpace: "pre-wrap",
                       }}
                     >
-                      {String(h ?? "").trim()}
+                      {String(h ?? "")}
                     </th>
                   ))}
                 </tr>
@@ -972,14 +1006,17 @@ const CustomTemplateEditor = forwardRef(function CustomTemplateEditor(
             )}
 
             <tbody>
-              {(bodyRows || []).map((row, rIdx) => (
-                <tr key={`r-${rIdx}`}>
-                  {(row || []).map((cell, cIdx) => {
-                    return (
+              {(bodyRows || []).map((row, rIdx) => {
+                const realRowIndex =
+                  headersArr && table.header ? rIdx + 1 : rIdx;
+
+                return (
+                  <tr key={`r-${realRowIndex}`}>
+                    {(row || []).map((cell, cIdx) => (
                       <TableCell
-                        key={`c-${rIdx}-${cIdx}`}
+                        key={`c-${realRowIndex}-${cIdx}`}
                         boxId={box.id}
-                        rIdx={rIdx}
+                        rIdx={realRowIndex}
                         cIdx={cIdx}
                         cellValue={cell}
                         isEditingCell={
@@ -997,10 +1034,10 @@ const CustomTemplateEditor = forwardRef(function CustomTemplateEditor(
                         setEditingCell={setEditingCell}
                         boxStyle={box.style || {}}
                       />
-                    );
-                  })}
-                </tr>
-              ))}
+                    ))}
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
@@ -1314,6 +1351,16 @@ const CustomTemplateEditor = forwardRef(function CustomTemplateEditor(
     watermarkEditable,
   ]);
 
+  function updateSelectedFieldTable(newTable) {
+    if (!selectedId) return;
+
+    setBoxes((prev) =>
+      prev.map((b) =>
+        String(b.id) === String(selectedId) ? { ...b, table: newTable } : b,
+      ),
+    );
+  }
+
   return (
     <div className={styles["cte-root"]}>
       <div>
@@ -1322,6 +1369,7 @@ const CustomTemplateEditor = forwardRef(function CustomTemplateEditor(
           boxes={boxes}
           setSelectedFieldId={setSelectedId}
           updateSelectedFieldStyle={(next) => updateSelectedFieldStyle(next)}
+          updateSelectedFieldTable={updateSelectedFieldTable}
           updateSelectedFieldContent={(next) =>
             updateSelectedFieldContent(next)
           }

@@ -11,52 +11,60 @@ const API_KEY = process.env.NEXT_PUBLIC_API_KEY;
 const DEFAULT_CTC = 100000;
 
 const CTC_BASED_FIELDS = [
-  "basicSalary",
-  "otherAllowance",
-  "ltaAllowance",// direct CTC (clean name)
-  "incentives",
-  "variablePay",
+  'basicSalary',
+  'otherAllowance',
+      'ltaAllowance',             // direct CTC (clean name)
+  'incentives',
+  'variablePay',
 ];
 
 const BASIC_BASED_FIELDS = [
-  "houseRentAllowance", // HRA – % of Basic
-  "houseRentAllowancePercentage", // HRA – % of Basic
-   // LTA – % of Basic
-  "ltaAllowancePercentage", // LTA – % of Basic
-  "pfEmployee",
-  "pfEmployeePercentage",
-  "pfEmployer",
-  "pfEmployerPercentage",
-  "gratuity",
-  "gratuityPercentage",
-  "esicEmployee",
-  "esicEmployeePercentage",
-  "statutoryBonus",
-  "statutoryBonusPercentage",
-  "insuranceEmployee",
-  "insuranceEmployeePercentage",
+  'houseRentAllowance',              // HRA – % of Basic
+  'houseRentAllowancePercentage',   // HRA – % of Basic
+                    // LTA – % of Basic
+  'ltaAllowancePercentage',         // LTA – % of Basic
+  'pfEmployee',
+  'pfEmployeePercentage',
+  'pfEmployer',
+  'pfEmployerPercentage',
+  'gratuity',
+  'gratuityPercentage',
+  'esicEmployee',
+  'esicEmployeePercentage',
+  'statutoryBonus',
+  'statutoryBonusPercentage',
+  'insuranceEmployee',
+  'insuranceEmployeePercentage',
 ];
 
-const GROSS_BASED_FIELDS = [];
+const GROSS_BASED_FIELDS = [
+ 
+];
 
-const FIXED_AMOUNT_FIELDS = ["professionalTax"];
+
+
+const FIXED_AMOUNT_FIELDS = [
+  'professionalTax',
+];
 
 const getEffectiveCtcPercentage = (fieldName, formData, ctc = DEFAULT_CTC) => {
-  let cleanField = fieldName.replace("Percentage", "");
+  let cleanField = fieldName.replace('Percentage', '');
 
   const rawPct = parseFloat(formData[fieldName]) || 0;
   if (rawPct <= 0) return 0;
 
   const basicPct = parseFloat(formData.basicSalary) || 0;
 
+ 
   const includeFieldMap = {
-    pfEmployee: "pfEmployeeIncludeInCtc",
-    pfEmployer: "pfEmployerIncludeInCtc",
-    esicEmployee: "esicEmployeeIncludeInCtc",
-    insuranceEmployee: "insuranceEmployeeIncludeInCtc",
-    gratuity: "gratuityIncludeInCtc",
-    variablePay: "variablePayIncludeInCtc", // ← critical for Variable Pay
-    statutoryBonus: "statutoryBonusIncludeInCtc", // ← critical for Statutory Bonus
+    pfEmployee: 'pfEmployeeIncludeInCtc',
+    pfEmployer: 'pfEmployerIncludeInCtc',
+    esicEmployee: 'esicEmployeeIncludeInCtc',
+    insuranceEmployee: 'insuranceEmployeeIncludeInCtc',
+    gratuity: 'gratuityIncludeInCtc',
+    variablePay: 'variablePayIncludeInCtc',              // ← critical for Variable Pay
+    statutoryBonus: 'statutoryBonusIncludeInCtc',        // ← critical for Statutory Bonus
+   
   };
 
   const includeKey = includeFieldMap[cleanField];
@@ -82,6 +90,7 @@ const getEffectiveCtcPercentage = (fieldName, formData, ctc = DEFAULT_CTC) => {
   return rawPct;
 };
 
+
 // Optional: helper to quickly know the calculation base of any field
 // function getCalculationBase(field) {
 //   if (CTC_BASED_FIELDS.includes(field))    return 'ctc';
@@ -92,56 +101,57 @@ const getEffectiveCtcPercentage = (fieldName, formData, ctc = DEFAULT_CTC) => {
 // }
 
 function getCalculationBase(field) {
-  const cleanField = field.replace("Percentage", "").replace("Amount", "");
+  const cleanField = field.replace('Percentage', '').replace('Amount', '');
 
   if (CTC_BASED_FIELDS.includes(cleanField)) {
-    return "ctc";
+    return 'ctc';
   }
   if (BASIC_BASED_FIELDS.includes(cleanField)) {
-    return "basic";
+    return 'basic';
   }
   if (GROSS_BASED_FIELDS.includes(cleanField)) {
-    return "gross";
+    return 'gross';
   }
   if (FIXED_AMOUNT_FIELDS.includes(cleanField)) {
-    return "fixed";
+    return 'fixed';
   }
 
   // Special cases / fallbacks
-  if (["variablePay", "statutoryBonus", "incentives"].includes(cleanField)) {
-    return "ctc"; // most common treatment
+  if (['variablePay', 'statutoryBonus', 'incentives'].includes(cleanField)) {
+    return 'ctc'; // most common treatment
   }
-  if (["professionalTax"].includes(cleanField)) {
-    return "ctc"; // or 'fixed' if always amount
+  if (['professionalTax'].includes(cleanField)) {
+    return 'ctc'; // or 'fixed' if always amount
   }
 
-  return "other";
+  return 'other';
 }
 
 const getBaseLabel = (fieldName, formData) => {
   const base = getCalculationBase(fieldName);
 
-  if (base === "basic") {
-    return "(based on Basic Salary)";
+  if (base === 'basic') {
+    return '(based on Basic Salary)';
   }
-  if (base === "ctc") {
-    return "(based on CTC)";
+  if (base === 'ctc') {
+    return '(based on CTC)';
   }
-  if (base === "gross") {
-    return "(based on Gross Salary)";
+  if (base === 'gross') {
+    return '(based on Gross Salary)';
   }
-  if (base === "fixed") {
-    return "(fixed amount)";
+  if (base === 'fixed') {
+    return '(fixed amount)';
   }
 
   // Special logic for percentage vs amount mode
-  const typeField = `${fieldName.replace("Percentage", "")}Type`;
-  if (formData[typeField] === "amount") {
-    return "(fixed amount)";
+  const typeField = `${fieldName.replace('Percentage', '')}Type`;
+  if (formData[typeField] === 'amount') {
+    return '(fixed amount)';
   }
 
-  return ""; // nothing shown for unknown cases
+  return ''; // nothing shown for unknown cases
 };
+
 
 const allowancePercentageFields = [
   {
@@ -345,6 +355,7 @@ const calculationDefaults = {
   insuranceEmployee: { percentage: "0", type: "percentage" },
   gratuity: { percentage: "4.81", type: "percentage" },
   tds: { percentage: "0", type: "percentage" },
+
 };
 
 const salaryFieldToFormDataMap = {
@@ -480,7 +491,7 @@ const formatFieldName = (key) => {
     professionalTax: "Professional Tax",
     otherAllowances: "Other Allowances",
     tds: "TDS",
-
+   
     insurance: "Insurance",
     grossSalary: "Gross Salary",
     netSalary: "Net Salary",
@@ -527,14 +538,14 @@ const validateTotalPercentage = (formData, ctc = DEFAULT_CTC) => {
             components.push({
               name: formatFieldName(field.replace("Percentage", "")),
               value: `₹${amountValue.toLocaleString(
-                "en-IN",
+                "en-IN"
               )} (${percentage.toFixed(2)}%)`,
               type: "amount",
             });
           }
         }
       }
-    },
+    }
   );
   const isValid = Math.abs(totalPercentage - 100) <= 0.01;
   return {
@@ -571,6 +582,7 @@ const CreateCompensation = () => {
   const [viewExecCompensation, setViewExecCompensation] = useState(null);
   const [errors, setErrors] = useState({});
   const [salaryPeriods, setSalaryPeriods] = useState([]);
+  const [isOtherAllowanceAutoFilled, setIsOtherAllowanceAutoFilled] = useState(false);
 
   const { user } = useAuth();
   const meId = user?.employeeId ?? user?.id ?? user?.employee_id ?? null;
@@ -586,160 +598,157 @@ const CreateCompensation = () => {
 
     return { ...base, ...opts };
   };
+ 
+//  const allocationInfo = useMemo(() => {
+//   let totalAllocated = 0;
+//   const components = [];
 
-  //  const allocationInfo = useMemo(() => {
-  //   let totalAllocated = 0;
-  //   const components = [];
+//   allowancePercentageFields.forEach(
+//     ({ field, enable, type, amountField, include }) => {
+//       const isEnabled = formData[enable];
+//       if (!isEnabled) return;
 
-  //   allowancePercentageFields.forEach(
-  //     ({ field, enable, type, amountField, include }) => {
-  //       const isEnabled = formData[enable];
-  //       if (!isEnabled) return;
+//       // For fields that have "Include in CTC?" checkbox, respect it
+//       let isIncludedInCtc = true;
+//       if (include) {
+//         isIncludedInCtc = formData[include] === true;
+//       }
 
-  //       // For fields that have "Include in CTC?" checkbox, respect it
-  //       let isIncludedInCtc = true;
-  //       if (include) {
-  //         isIncludedInCtc = formData[include] === true;
-  //       }
+//       // Skip if not included in CTC
+//       if (!isIncludedInCtc) return;
 
-  //       // Skip if not included in CTC
-  //       if (!isIncludedInCtc) return;
+//       if (formData[type] === "percentage") {
+//         const pctValue = parseFloat(formData[field]) || 0;
+//         if (pctValue > 0) {
+//           const effectivePct = getEffectiveCtcPercentage(field, formData);
+//           totalAllocated += effectivePct;
 
-  //       if (formData[type] === "percentage") {
-  //         const pctValue = parseFloat(formData[field]) || 0;
-  //         if (pctValue > 0) {
-  //           const effectivePct = getEffectiveCtcPercentage(field, formData);
-  //           totalAllocated += effectivePct;
+//           components.push({
+//             name: formatFieldName(field.replace("Percentage", "")),
+//             raw: pctValue,
+//             effective: effectivePct.toFixed(2),
+//             type: "percentage",
+//           });
+//         }
+//       } else if (formData[type] === "amount" && formData[amountField]) {
+//   const amt = parseFloat(formData[amountField]) || 0;
+//   if (amt > 0) {
+//     const ctc = parseFloat(ctcInput) || DEFAULT_CTC;
+//     const effectivePct = (amt * 12 / ctc) * 100;
+//     totalAllocated += effectivePct;
+//     components.push({
+//       name: formatFieldName(field.replace("Percentage", "")),
+//       raw: amt,
+//       effective: effectivePct.toFixed(2),
+//       type: "amount",
+//     });
+//   }
 
-  //           components.push({
-  //             name: formatFieldName(field.replace("Percentage", "")),
-  //             raw: pctValue,
-  //             effective: effectivePct.toFixed(2),
-  //             type: "percentage",
-  //           });
-  //         }
-  //       } else if (formData[type] === "amount" && formData[amountField]) {
-  //   const amt = parseFloat(formData[amountField]) || 0;
-  //   if (amt > 0) {
-  //     const ctc = parseFloat(ctcInput) || DEFAULT_CTC;
-  //     const effectivePct = (amt * 12 / ctc) * 100;
-  //     totalAllocated += effectivePct;
-  //     components.push({
-  //       name: formatFieldName(field.replace("Percentage", "")),
-  //       raw: amt,
-  //       effective: effectivePct.toFixed(2),
-  //       type: "amount",
-  //     });
-  //   }
+//       }
+//     }
+//   );
 
-  //       }
-  //     }
-  //   );
+//   const remaining = Math.max(0, 100 - totalAllocated);
+//   const exceeds = totalAllocated > 100 ? (totalAllocated - 100) : 0;
 
-  //   const remaining = Math.max(0, 100 - totalAllocated);
-  //   const exceeds = totalAllocated > 100 ? (totalAllocated - 100) : 0;
+//   return {
+//     totalAllocated: totalAllocated.toFixed(2),
+//     remaining: remaining.toFixed(2),
+//     exceeds: exceeds.toFixed(2),
+//     components,
+//     isValid: Math.abs(totalAllocated - 100) <= 0.5,
+//   };
+// }, [formData, ctcInput]);
 
-  //   return {
-  //     totalAllocated: totalAllocated.toFixed(2),
-  //     remaining: remaining.toFixed(2),
-  //     exceeds: exceeds.toFixed(2),
-  //     components,
-  //     isValid: Math.abs(totalAllocated - 100) <= 0.5,
-  //   };
-  // }, [formData, ctcInput]);
+const allocationInfo = useMemo(() => {
+  let totalAllocated = 0;
+  const components = [];
+  const ctc = parseFloat(ctcInput) || DEFAULT_CTC;
+  const validCtc = !isNaN(ctc) && ctc > 0 ? ctc : DEFAULT_CTC;
 
-  const allocationInfo = useMemo(() => {
-    let totalAllocated = 0;
-    const components = [];
-    const ctc = parseFloat(ctcInput) || DEFAULT_CTC;
-    const validCtc = !isNaN(ctc) && ctc > 0 ? ctc : DEFAULT_CTC;
+  allowancePercentageFields.forEach(
+    ({ field, enable, type, amountField, include }) => {
+      // 1. Is this component even enabled?
+      const isEnabled = formData[enable];
+      if (!isEnabled) return;
 
-    allowancePercentageFields.forEach(
-      ({ field, enable, type, amountField, include }) => {
-        // 1. Is this component even enabled?
-        const isEnabled = formData[enable];
-        if (!isEnabled) return;
+      // 2. Does it have "Include in CTC?" and is it checked?
+      let isIncludedInCtc = true;
+      if (include) {
+        isIncludedInCtc = formData[include] === true;
+      }
+      if (!isIncludedInCtc) return;
 
-        // 2. Does it have "Include in CTC?" and is it checked?
-        let isIncludedInCtc = true;
-        if (include) {
-          isIncludedInCtc = formData[include] === true;
-        }
-        if (!isIncludedInCtc) return;
+      // 3. Get value depending on whether it's percentage or fixed amount
+      if (formData[type] === "percentage") {
+        const pctValue = parseFloat(formData[field]) || 0;
+        if (pctValue <= 0) return;
 
-        // 3. Get value depending on whether it's percentage or fixed amount
-        if (formData[type] === "percentage") {
-          const pctValue = parseFloat(formData[field]) || 0;
-          if (pctValue <= 0) return;
+        // Use the smart function that knows CTC-based vs Basic-based etc.
+        const effectivePct = getEffectiveCtcPercentage(field, formData, validCtc);
 
-          // Use the smart function that knows CTC-based vs Basic-based etc.
-          const effectivePct = getEffectiveCtcPercentage(
-            field,
-            formData,
-            validCtc,
-          );
-
-          if (effectivePct > 0) {
-            totalAllocated += effectivePct;
-            components.push({
-              name: formatFieldName(field.replace("Percentage", "")),
-              raw: pctValue,
-              effective: effectivePct, // ← NO toFixed here
-              type: "percentage",
-              display: `${pctValue}% → ${effectivePct}% effective`,
-            });
-          }
-        } else if (formData[type] === "amount" && formData[amountField]) {
-          const amount = parseFloat(formData[amountField]) || 0;
-          if (amount <= 0) return;
-
-          // Special fields (Professional Tax, Insurance) are monthly amounts, not annual
-          const isMonthlyAmount =
-            field === "professionalTax" ||
-            field === "professionalTaxAmount" ||
-            field === "insuranceEmployeeAmount";
-
-          let effectivePct;
-          if (isMonthlyAmount) {
-            // Monthly amount → convert to annual CTC percentage
-            effectivePct = ((amount * 12) / validCtc) * 100;
-          } else {
-            // Fixed annual amount → convert to % of CTC
-            effectivePct = (amount / validCtc) * 100;
-          }
-
+        if (effectivePct > 0) {
           totalAllocated += effectivePct;
           components.push({
             name: formatFieldName(field.replace("Percentage", "")),
-            raw: amount,
-            effective: effectivePct, // ← NO toFixed here
-            type: "amount",
-            display: `₹${amount.toLocaleString("en-IN")}${isMonthlyAmount ? "/month" : ""} → ${effectivePct}%`,
+            raw: pctValue,
+            effective: effectivePct,           // ← NO toFixed here
+            type: "percentage",
+            display: `${pctValue}% → ${effectivePct}% effective`,
           });
         }
-      },
-    );
+      }
+      else if (formData[type] === "amount" && formData[amountField]) {
+        const amount = parseFloat(formData[amountField]) || 0;
+        if (amount <= 0) return;
 
-    // Final calculations — NO rounding here either
-    const remaining = 100 - totalAllocated;
-    const exceeds = totalAllocated > 100 ? totalAllocated - 100 : 0;
+        // Special fields (Professional Tax, Insurance) are monthly amounts, not annual
+        const isMonthlyAmount =
+          field === "professionalTax" ||
+          field === "professionalTaxAmount" ||
+          field === "insuranceEmployeeAmount";
 
-    // We keep full precision
-    return {
-      totalAllocated, // ← full precision number
-      remaining, // ← full precision
-      exceeds, // ← full precision
-      components,
-      isValid: Math.abs(totalAllocated - 100) <= 0.8,
-      isOver: exceeds > 0.5,
-      isUnder: remaining > 1.2,
-    };
-  }, [formData, ctcInput]);
-  useEffect(() => {
+        let effectivePct;
+        if (isMonthlyAmount) {
+          // Monthly amount → convert to annual CTC percentage
+          effectivePct = (amount * 12 / validCtc) * 100;
+        } else {
+          // Fixed annual amount → convert to % of CTC
+          effectivePct = (amount / validCtc) * 100;
+        }
+
+        totalAllocated += effectivePct;
+        components.push({
+          name: formatFieldName(field.replace("Percentage", "")),
+          raw: amount,
+          effective: effectivePct,           // ← NO toFixed here
+          type: "amount",
+          display: `₹${amount.toLocaleString("en-IN")}${isMonthlyAmount ? '/month' : ''} → ${effectivePct}%`,
+        });
+      }
+    }
+  );
+
+  // Final calculations — NO rounding here either
+  const remaining = 100 - totalAllocated;
+  const exceeds = totalAllocated > 100 ? (totalAllocated - 100) : 0;
+
+  // We keep full precision
+  return {
+    totalAllocated,           // ← full precision number
+    remaining,                // ← full precision
+    exceeds,                  // ← full precision
+    components,
+    isValid: Math.abs(totalAllocated - 100) <= 0.8,
+    isOver: exceeds > 0.5,
+    isUnder: remaining > 1.2,
+  };
+}, [formData, ctcInput]);
+useEffect(() => {
     if (!meId || !orgId) {
       console.warn("Skipping fetches – missing meId or orgId", { meId, orgId });
       showAlert(
-        "Loading user data... Please wait or refresh if this persists.",
+        "Loading user data... Please wait or refresh if this persists."
       );
       setSalaryPeriods([]);
       setCompensations([]);
@@ -854,164 +863,97 @@ const CreateCompensation = () => {
     },
   ];
 
-  useEffect(() => {
-    // Don't auto-fill if Other Allowance is disabled or in amount mode
-    if (
-      !formData.isOtherAllowance ||
-      formData.otherAllowanceType !== "percentage"
-    ) {
-      return;
+
+
+useEffect(() => {
+  // If Other Allowance is disabled or set to amount mode, clear auto-fill flag
+  if (
+    !formData.isOtherAllowance ||
+    formData.otherAllowanceType !== "percentage"
+  ) {
+    if (isOtherAllowanceAutoFilled) {
+      setIsOtherAllowanceAutoFilled(false);
     }
+    return;
+  }
 
-    // Don't auto-fill if CTC is not valid
-    if (!ctcInput || isNaN(parseFloat(ctcInput)) || parseFloat(ctcInput) <= 0) {
-      return;
-    }
+  // Calculate exact remaining percentage needed
+  let totalAllocated = 0;
+ 
+  // Use a default CTC for calculations (won't affect pure percentage fields)
+  const ctc = ctcInput ? parseFloat(ctcInput) : DEFAULT_CTC;
+ 
+  allowancePercentageFields.forEach(
+    ({ field, enable, type, amountField, include }) => {
+      // Skip Other Allowance - we'll calculate it last
+      if (field === "otherAllowance") return;
+     
+      const isEnabled = formData[enable];
+      if (!isEnabled) return;
 
-    // Calculate exact remaining amount needed to reach 100%
-    const ctc = parseFloat(ctcInput);
-    if (isNaN(ctc) || ctc <= 0) return;
-
-    // Calculate the exact remaining percentage needed
-    let totalAllocated = 0;
-
-    allowancePercentageFields.forEach(
-      ({ field, enable, type, amountField, include }) => {
-        // Skip Other Allowance - we'll calculate it last
-        if (field === "otherAllowance") return;
-
-        const isEnabled = formData[enable];
-        if (!isEnabled) return;
-
-        let isIncludedInCtc = true;
-        if (include) {
-          isIncludedInCtc = formData[include] === true;
-        }
-        if (!isIncludedInCtc) return;
-
-        if (formData[type] === "percentage") {
-          const pctValue = parseFloat(formData[field]) || 0;
-          if (pctValue > 0) {
-            const effectivePct = getEffectiveCtcPercentage(
-              field,
-              formData,
-              ctc,
-            );
-            totalAllocated += effectivePct;
-          }
-        } else if (formData[type] === "amount" && formData[amountField]) {
-          const amount = parseFloat(formData[amountField]) || 0;
-          if (amount > 0) {
-            const isMonthlyAmount =
-              field === "professionalTax" ||
-              field === "professionalTaxAmount" ||
-              field === "insuranceEmployeeAmount";
-
-            let effectivePct;
-            if (isMonthlyAmount) {
-              effectivePct = ((amount * 12) / ctc) * 100;
-            } else {
-              effectivePct = (amount / ctc) * 100;
-            }
-            totalAllocated += effectivePct;
-          }
-        }
-      },
-    );
-
-    // Calculate exact remaining percentage
-    const exactRemaining = 100 - totalAllocated;
-    const currentOtherAllowance = parseFloat(formData.otherAllowance) || 0;
-
-    // Only auto-fill when there's remaining percentage (> 0.5%) and Other Allowance is low (<= 1.0%)
-    const shouldAutoFill = exactRemaining > 0.5 && currentOtherAllowance <= 1.0;
-
-    if (!shouldAutoFill) {
-      return;
-    }
-
-    // Use exact remaining without rounding to avoid precision issues
-    const newOtherPct = Math.max(0, exactRemaining).toFixed(4);
-
-    setFormData((prev) => {
-      // Only update if different (prevents infinite loop)
-      if (prev.otherAllowance !== newOtherPct) {
-        return {
-          ...prev,
-          otherAllowance: newOtherPct,
-        };
+      let isIncludedInCtc = true;
+      if (include) {
+        isIncludedInCtc = formData[include] === true;
       }
-      return prev;
-    });
-  }, [
-    formData.isOtherAllowance,
-    formData.otherAllowanceType,
-    formData.otherAllowance,
-    ctcInput,
-    formData.basicSalary,
-    formData.houseRentAllowance,
-    formData.pfEmployeePercentage,
-    formData.pfEmployerPercentage,
-    formData.professionalTaxAmount,
-    formData.insuranceEmployeeAmount,
-    // Add all other percentage fields as dependencies
-    formData.ltaAllowance,
-    formData.gratuityPercentage,
-    formData.variablePay,
-    formData.statutoryBonusPercentage,
-    formData.incentives,
-  ]);
+      if (!isIncludedInCtc) return;
 
-  // const remainingPercentage = useMemo(() => {
-  //   let sum = 0;
-  //   const components = [];
-  //   const totalCTC = ctcInput ? parseFloat(ctcInput) : DEFAULT_CTC;
-  //   allowancePercentageFieldsInternal.forEach(
-  //     ({ field, enable, type, amountField, include }) => {
-  //       const isEnabled = formData[enable];
-  //       const isIncluded = include ? formData[include] : true;
-  //       const fieldType = formData[type] || "percentage";
-  //       const percentageValue = formData[field];
-  //       const amountValue = formData[amountField];
-  //       if (isEnabled && isIncluded) {
-  //         if (
-  //           fieldType === "percentage" &&
-  //           percentageValue !== undefined &&
-  //           percentageValue !== ""
-  //         ) {
-  //           const val = parseFloat(percentageValue);
-  //           if (!isNaN(val) && val >= 0) {
-  //             sum += val;
-  //             components.push({ field, value: val, type: "percentage" });
-  //           } else {
-  //           }
-  //         } else if (
-  //           fieldType === "amount" &&
-  //           amountValue !== undefined &&
-  //           amountValue !== ""
-  //         ) {
-  //           const amount = parseFloat(amountValue);
-  //           if (!isNaN(amount) && amount >= 0) {
-  //             const percentage = (amount / totalCTC) * 100;
-  //             sum += percentage;
-  //             components.push({
-  //               field: amountField,
-  //               value: amount,
-  //               percentage,
-  //               type: "amount",
-  //             });
-  //           } else {
-  //           }
-  //         } else {
-  //         }
-  //       } else {
-  //       }
-  //     }
-  //   );
-  //   const remaining = 100 - sum;
-  //   return remaining;
-  // }, [formData, ctcInput]);
-  // Returns what % of total CTC this component effectively represents
+      if (formData[type] === "percentage") {
+        const pctValue = parseFloat(formData[field]) || 0;
+        if (pctValue > 0) {
+          const effectivePct = getEffectiveCtcPercentage(field, formData, ctc);
+          totalAllocated += effectivePct;
+        }
+      } else if (formData[type] === "amount" && formData[amountField]) {
+        const amount = parseFloat(formData[amountField]) || 0;
+        if (amount > 0) {
+          const isMonthlyAmount =
+            field === "professionalTax" ||
+            field === "professionalTaxAmount" ||
+            field === "insuranceEmployeeAmount";
+         
+          let effectivePct;
+          if (isMonthlyAmount) {
+            effectivePct = (amount * 12 / ctc) * 100;
+          } else {
+            effectivePct = (amount / ctc) * 100;
+          }
+          totalAllocated += effectivePct;
+        }
+      }
+    }
+  );
+
+  // Calculate exact remaining percentage
+  const exactRemaining = 100 - totalAllocated;
+  // Always update other allowance to remaining value
+  const newOtherPct = Math.max(0, exactRemaining).toFixed(4);
+
+  setFormData((prev) => {
+    if (prev.otherAllowance !== newOtherPct) {
+      setIsOtherAllowanceAutoFilled(true);
+      return {
+        ...prev,
+        otherAllowance: newOtherPct,
+      };
+    }
+    return prev;
+  });
+
+  setFormData((prev) => {
+    // Only update if different (prevents infinite loop)
+    if (prev.otherAllowance !== newOtherPct) {
+      setIsOtherAllowanceAutoFilled(true);
+      return {
+        ...prev,
+        otherAllowance: newOtherPct,
+      };
+    }
+    return prev;
+  });
+}, [
+  formData,
+  ctcInput,
+]);
 
   const renderCategoryField = ({
     label,
@@ -1031,18 +973,16 @@ const CreateCompensation = () => {
       (formData[typeField] === "amount" && formData[amountField]
         ? convertAmountToPercentage(formData[amountField], totalCTC).toFixed(2)
         : "");
-
+   
     // Helper: effective remaining with tolerance for floating-point precision
     // Values less than 0.01 are treated as 0 (fully allocated)
-    const effectiveRemaining =
-      parseFloat(allocationInfo.remaining) < 0.01
-        ? 0
-        : parseFloat(allocationInfo.remaining);
-    const effectiveExceeds =
-      parseFloat(allocationInfo.exceeds) < 0.01
-        ? 0
-        : parseFloat(allocationInfo.exceeds);
-
+    const effectiveRemaining = parseFloat(allocationInfo.remaining) < 0.01
+      ? 0
+      : parseFloat(allocationInfo.remaining);
+    const effectiveExceeds = parseFloat(allocationInfo.exceeds) < 0.01
+      ? 0
+      : parseFloat(allocationInfo.exceeds);
+   
     return (
       <div key={field} className="compensation-form-group">
         <span className="compensation-label-text">
@@ -1090,89 +1030,66 @@ const CreateCompensation = () => {
                 <span>No</span>
               </label>
             </div>
-            {formData[field] &&
-              percentageField &&
-              (!amountField || !typeField) && (
-                <div className="compensation-input-group">
-                  <div
-                    className="percentage-row"
+            {formData[field] && percentageField && (!amountField || !typeField) && (
+              <div className="compensation-input-group">
+                <div className="percentage-row" style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+                  <input
+                    type="number"
+                    step="0.01"
+                    placeholder="xx.xx"
+                    value={formData[percentageField] || ""}
+                    onChange={(e) => handleInputChange(percentageField, e.target.value)}
+                    className="compensation-percentage-input"
+                    required={required}
+                  />
+                  <span style={{ fontWeight: 500 }}>%</span>
+
+                  <span style={{ color: '#555', fontSize: '0.92rem' }}>
+                    {(() => {
+                      const eff = getEffectiveCtcPercentage(percentageField, formData);
+                      if (eff < 0.1) return null;
+                      return `≈ ${eff.toFixed(1)}% of CTC`;
+                    })()}
+                  </span>
+
+                  <span style={{
+                    color: '#777',
+                    fontSize: '0.85rem',
+                    fontStyle: 'italic',
+                    marginLeft: '8px'
+                  }}>
+                    {getBaseLabel(percentageField, formData)}
+                  </span>
+
+                  <span
+                    className="remaining-note"
                     style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "12px",
-                      flexWrap: "wrap",
+                      marginLeft: 'auto',
+                      padding: '4px 8px',
+                      borderRadius: '4px',
+                      fontSize: '0.9rem',
+                      fontWeight: effectiveExceeds > 0 ? 'bold' : 'normal',
+                      color:
+                        effectiveExceeds > 0.3 ? '#d32f2f' :
+                        effectiveRemaining > 5 ? '#f57c00' :
+                        effectiveRemaining > 0.01 ? '#1976d2' :
+                        '#388e3c',
+                      backgroundColor:
+                        effectiveExceeds > 0.3 ? '#ffebee' :
+                        effectiveRemaining > 5 ? '#fff3e0' :
+                        effectiveRemaining > 0.01 ? '#e3f2fd' :
+                        '#e8f5e9',
                     }}
                   >
-                    <input
-                      type="number"
-                      step="0.01"
-                      placeholder="xx.xx"
-                      value={formData[percentageField] || ""}
-                      onChange={(e) =>
-                        handleInputChange(percentageField, e.target.value)
-                      }
-                      className="compensation-percentage-input"
-                      required={required}
-                    />
-                    <span style={{ fontWeight: 500 }}>%</span>
-
-                    <span style={{ color: "#555", fontSize: "0.92rem" }}>
-                      {(() => {
-                        const eff = getEffectiveCtcPercentage(
-                          percentageField,
-                          formData,
-                        );
-                        if (eff < 0.1) return null;
-                        return `≈ ${eff.toFixed(1)}% of CTC`;
-                      })()}
-                    </span>
-
-                    <span
-                      style={{
-                        color: "#777",
-                        fontSize: "0.85rem",
-                        fontStyle: "italic",
-                        marginLeft: "8px",
-                      }}
-                    >
-                      {getBaseLabel(percentageField, formData)}
-                    </span>
-
-                    <span
-                      className="remaining-note"
-                      style={{
-                        marginLeft: "auto",
-                        padding: "4px 8px",
-                        borderRadius: "4px",
-                        fontSize: "0.9rem",
-                        fontWeight: effectiveExceeds > 0 ? "bold" : "normal",
-                        color:
-                          effectiveExceeds > 0.3
-                            ? "#d32f2f"
-                            : effectiveRemaining > 5
-                              ? "#f57c00"
-                              : effectiveRemaining > 0.01
-                                ? "#1976d2"
-                                : "#388e3c",
-                        backgroundColor:
-                          effectiveExceeds > 0.3
-                            ? "#ffebee"
-                            : effectiveRemaining > 5
-                              ? "#fff3e0"
-                              : effectiveRemaining > 0.01
-                                ? "#e3f2fd"
-                                : "#e8f5e9",
-                      }}
-                    >
-                      {effectiveExceeds > 0.3
-                        ? `Exceeds by ${effectiveExceeds.toFixed(2)}% — Reduce some values`
-                        : effectiveRemaining > 0.01
-                          ? `Remaining: ${effectiveRemaining.toFixed(2)}%`
-                          : "100% allocated ✓"}
-                    </span>
-                  </div>
+                    {effectiveExceeds > 0.3
+                      ? `Exceeds by ${effectiveExceeds.toFixed(2)}% — Reduce some values`
+                      : effectiveRemaining > 0.01
+                        ? `Remaining: ${effectiveRemaining.toFixed(2)}%`
+                        : "100% allocated ✓"}
+                  </span>
                 </div>
-              )}
+              </div>
+            )}
             {formData[field] && percentageField && amountField && typeField && (
               <div className="compensation-input-group">
                 <select
@@ -1184,170 +1101,124 @@ const CreateCompensation = () => {
                   <option value="amount">Fixed Amount</option>
                 </select>
                 {formData[typeField] === "percentage" ? (
-                  <div
-                    className="percentage-row"
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "12px",
-                      flexWrap: "wrap",
-                    }}
-                  >
-                    <input
-                      type="number"
-                      step="0.01"
-                      placeholder="xx.xx"
-                      value={formData[percentageField] || ""}
-                      onChange={(e) =>
-                        handleInputChange(percentageField, e.target.value)
-                      }
-                      className="compensation-percentage-input"
-                      required={required}
-                    />
-                    <span style={{ fontWeight: 500 }}>%</span>
+  <div className="percentage-row" style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+    <input
+      type="number"
+      step="0.01"
+      placeholder="xx.xx"
+      value={formData[percentageField] || ""}
+      onChange={(e) => handleInputChange(percentageField, e.target.value)}
+      className="compensation-percentage-input"
+      required={required}
+    />
+    <span style={{ fontWeight: 500 }}>%</span>
 
-                    {/* Effective % of CTC */}
-                    <span style={{ color: "#555", fontSize: "0.92rem" }}>
-                      {(() => {
-                        const eff = getEffectiveCtcPercentage(
-                          percentageField,
-                          formData,
-                        );
-                        if (eff < 0.1) return null;
-                        return `≈ ${eff.toFixed(1)}% of CTC`;
-                      })()}
-                    </span>
-                    {/* ────────────── ADD THIS NEW PART ────────────── */}
-                    <span
-                      style={{
-                        color: "#777",
-                        fontSize: "0.85rem",
-                        fontStyle: "italic",
-                        marginLeft: "8px",
-                      }}
-                    >
-                      {getBaseLabel(percentageField, formData)}
-                    </span>
+    {/* Effective % of CTC */}
+    <span style={{ color: '#555', fontSize: '0.92rem' }}>
+      {(() => {
+        const eff = getEffectiveCtcPercentage(percentageField, formData);
+        if (eff < 0.1) return null;
+        return `≈ ${eff.toFixed(1)}% of CTC`;
+      })()}
+    </span>
+{/* ────────────── ADD THIS NEW PART ────────────── */}
+    <span style={{
+      color: '#777',
+      fontSize: '0.85rem',
+      fontStyle: 'italic',
+      marginLeft: '8px'
+    }}>
+      {getBaseLabel(percentageField, formData)}
+    </span>
 
-                    {/* Real-time remaining / exceeds warning – show on every field for visibility */}
-                    <span
-                      className="remaining-note"
-                      style={{
-                        marginLeft: "auto",
-                        padding: "4px 8px",
-                        borderRadius: "4px",
-                        fontSize: "0.9rem",
-                        fontWeight: effectiveExceeds > 0 ? "bold" : "normal",
-                        color:
-                          effectiveExceeds > 0.3
-                            ? "#d32f2f" // red for exceeds
-                            : effectiveRemaining > 5
-                              ? "#f57c00" // orange for large remaining
-                              : effectiveRemaining > 0.01
-                                ? "#1976d2" // blue for small remaining (but not zero)
-                                : "#388e3c", // green for perfect (0 or near 0)
-                        backgroundColor:
-                          effectiveExceeds > 0.3
-                            ? "#ffebee"
-                            : effectiveRemaining > 5
-                              ? "#fff3e0"
-                              : effectiveRemaining > 0.01
-                                ? "#e3f2fd"
-                                : "#e8f5e9",
-                      }}
-                    >
-                      {effectiveExceeds > 0.3
-                        ? `Exceeds by ${effectiveExceeds.toFixed(2)}% — Reduce some values`
-                        : effectiveRemaining > 0.01
-                          ? `Remaining: ${effectiveRemaining.toFixed(2)}%`
-                          : "100% allocated ✓"}
-                    </span>
-                  </div>
+    {/* Real-time remaining / exceeds warning – show on every field for visibility */}
+    <span
+      className="remaining-note"
+      style={{
+        marginLeft: 'auto',
+        padding: '4px 8px',
+        borderRadius: '4px',
+        fontSize: '0.9rem',
+        fontWeight: effectiveExceeds > 0 ? 'bold' : 'normal',
+        color:
+          effectiveExceeds > 0.3 ? '#d32f2f' :          // red for exceeds
+          effectiveRemaining > 5 ? '#f57c00' :         // orange for large remaining
+          effectiveRemaining > 0.01 ? '#1976d2' :       // blue for small remaining (but not zero)
+          '#388e3c',                                                  // green for perfect (0 or near 0)
+        backgroundColor:
+          effectiveExceeds > 0.3 ? '#ffebee' :
+          effectiveRemaining > 5 ? '#fff3e0' :
+          effectiveRemaining > 0.01 ? '#e3f2fd' :
+          '#e8f5e9',
+      }}
+    >
+      {effectiveExceeds > 0.3
+        ? `Exceeds by ${effectiveExceeds.toFixed(2)}% — Reduce some values`
+        : effectiveRemaining > 0.01
+          ? `Remaining: ${effectiveRemaining.toFixed(2)}%`
+          : "100% allocated ✓"}
+    </span>
+
+   
+   
+  </div>
                 ) : (
-                  <div
-                    style={{
-                      display: "flex",
-                      flexDirection: "column",
-                      gap: "8px",
-                    }}
-                  >
-                    <div
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "12px",
-                        flexWrap: "wrap",
-                      }}
-                    >
-                      <input
-                        type="number"
-                        placeholder="Annual Amount"
-                        value={formData[amountField] || ""}
-                        onChange={(e) =>
-                          handleInputChange(amountField, e.target.value)
-                        }
-                        className="compensation-number-input"
-                        required={required}
-                      />
+  <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+    <div style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
+      <input
+        type="number"
+        placeholder="Annual Amount"
+        value={formData[amountField] || ""}
+        onChange={(e) => handleInputChange(amountField, e.target.value)}
+        className="compensation-number-input"
+        required={required}
+      />
 
-                      {/* Accurate CTC % for fixed amount */}
-                      {(() => {
-                        const amt = parseFloat(formData[amountField]) || 0;
-                        if (amt <= 0) return null;
+      {/* Accurate CTC % for fixed amount */}
+      {(() => {
+        const amt = parseFloat(formData[amountField]) || 0;
+        if (amt <= 0) return null;
 
-                        const totalCtc = parseFloat(ctcInput) || DEFAULT_CTC;
-                        const annualPct = (amt / totalCtc) * 100;
-                        const monthlyAmt = amt / 12;
+        const totalCtc = parseFloat(ctcInput) || DEFAULT_CTC;
+        const annualPct = (amt / totalCtc) * 100;
+        const monthlyAmt = amt / 12;
 
-                        return (
-                          <span
-                            style={{
-                              color: "#555",
-                              fontSize: "0.92rem",
-                              whiteSpace: "nowrap",
-                            }}
-                          >
-                            ≈ {annualPct.toFixed(2)}% of CTC{" "}
-                          </span>
-                        );
+        return (
+          <span style={{ color: "#555", fontSize: "0.92rem", whiteSpace: "nowrap" }}>
+            ≈ {annualPct.toFixed(2)}% of CTC          </span>
+        );
 
-                        <span
-                          style={{
-                            color: "#777",
-                            fontSize: "0.85rem",
-                            fontStyle: "italic",
-                            marginLeft: "12px",
-                          }}
-                        >
-                          {getBaseLabel(amountField, formData)}
-                        </span>;
-                      })()}
-                    </div>
+        <span style={{
+        color: '#777',
+        fontSize: '0.85rem',
+        fontStyle: 'italic',
+        marginLeft: '12px'
+      }}>
+        {getBaseLabel(amountField, formData)}
+      </span>
+      })()}
+    </div>
 
-                    {/* Remaining/exceeds note */}
-                    {allowancePercentageFields.some(
-                      (f) => f.field === percentageField,
-                    ) && (
-                      <span
-                        className="remaining-note"
-                        style={{
-                          color:
-                            effectiveExceeds > 0.3
-                              ? "red"
-                              : effectiveRemaining > 1
-                                ? "orange"
-                                : "green",
-                        }}
-                      >
-                        {effectiveExceeds > 0.3
-                          ? `Exceeds by ${effectiveExceeds.toFixed(2)}%`
-                          : effectiveRemaining > 0.01
-                            ? `${effectiveRemaining.toFixed(2)}% remaining`
-                            : "100% allocated"}
-                      </span>
-                    )}
-                  </div>
-                )}
+    {/* Remaining/exceeds note */}
+    {allowancePercentageFields.some((f) => f.field === percentageField) && (
+      <span
+        className="remaining-note"
+        style={{
+          color:
+            effectiveExceeds > 0.3 ? "red" :
+            effectiveRemaining > 1 ? "orange" :
+            "green",
+        }}
+      >
+        {effectiveExceeds > 0.3
+          ? `Exceeds by ${effectiveExceeds.toFixed(2)}%`
+          : effectiveRemaining > 0.01
+            ? `${effectiveRemaining.toFixed(2)}% remaining`
+            : "100% allocated"}
+      </span>
+    )}
+  </div>
+)}
                 {includeCtcField && (
                   <div style={{ marginTop: "10px" }}>
                     <label className="compensation-checkbox-label">
@@ -1394,14 +1265,14 @@ const CreateCompensation = () => {
         response = await axios.put(
           `${BACKEND_URL}/api/compensations/update/${editingCompensationId}`,
           payload,
-          { withCredentials: true, headers: getHeaders() },
+          { withCredentials: true, headers: getHeaders() }
         );
         showAlert("Compensation updated successfully!");
       } else {
         response = await axios.post(
           `${BACKEND_URL}/api/compensations/add`,
           payload,
-          { withCredentials: true, headers: getHeaders() },
+          { withCredentials: true, headers: getHeaders() }
         );
         showAlert("Compensation created successfully!");
       }
@@ -1415,80 +1286,78 @@ const CreateCompensation = () => {
         error.response?.data?.message ||
         error.message;
       showAlert(
-        `Failed to ${isEditing ? "update" : "create"} compensation: ${msg}`,
+        `Failed to ${isEditing ? "update" : "create"} compensation: ${msg}`
       );
     }
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setErrors({});
+ const handleSubmit = async (e) => {
+  e.preventDefault();
+  setErrors({});
 
-    // Check if salary periods exist
-    if (salaryPeriods.length === 0) {
-      showAlert(
-        "Please add a salary calculation period first before creating a compensation plan.",
-      );
-      setIsSalaryPeriodModalOpen(true);
-      return;
-    }
+  // Check if salary periods exist
+  if (salaryPeriods.length === 0) {
+    showAlert(
+      "Please add a salary calculation period first before creating a compensation plan."
+    );
+    setIsSalaryPeriodModalOpen(true);
+    return;
+  }
 
-    // Check if plan name is provided
-    if (!formData.compensationPlanName.trim()) {
-      setErrors({ compensationPlanName: "Compensation Plan Name is required" });
-      showAlert("Compensation Plan Name is required and cannot be empty");
-      return;
-    }
+  // Check if plan name is provided
+  if (!formData.compensationPlanName.trim()) {
+    setErrors({ compensationPlanName: "Compensation Plan Name is required" });
+    showAlert("Compensation Plan Name is required and cannot be empty");
+    return;
+  }
 
-    // ────────────────────────────────────────────────
-    // Validation using allocationInfo (no remainingPercentage)
-    // ────────────────────────────────────────────────
+  // ────────────────────────────────────────────────
+  // Validation using allocationInfo (no remainingPercentage)
+  // ────────────────────────────────────────────────
 
-    // Case 1: Exceeds 100%
-    if (parseFloat(allocationInfo.exceeds) > 0.5) {
-      setErrors({
-        totalPercentage: `Total percentage exceeds 100% by ${allocationInfo.exceeds}%`,
-      });
-      showAlert(
-        `Total percentage exceeds 100% by ${allocationInfo.exceeds}%. Please reduce some component values.`,
-      );
-      return;
-    }
+  // Case 1: Exceeds 100%
+  if (parseFloat(allocationInfo.exceeds) > 0.5) {
+    setErrors({
+      totalPercentage: `Total percentage exceeds 100% by ${allocationInfo.exceeds}%`,
+    });
+    showAlert(
+      `Total percentage exceeds 100% by ${allocationInfo.exceeds}%. Please reduce some component values.`
+    );
+    return;
+  }
 
-    // Case 2: Still remaining (not fully allocated)
-    if (parseFloat(allocationInfo.remaining) > 1.0) {
-      const currentAllocated = (
-        100 - parseFloat(allocationInfo.remaining)
-      ).toFixed(2);
-      setErrors({
-        totalPercentage: `Total allocated is ${currentAllocated}%. Still ${allocationInfo.remaining}% remaining.`,
-      });
-      showAlert(
-        `Total allocated is ${currentAllocated}%. Still ${allocationInfo.remaining}% remaining. Please allocate the remaining percentage (e.g. in Other Allowance).`,
-      );
-      return;
-    }
+  // Case 2: Still remaining (not fully allocated)
+  if (parseFloat(allocationInfo.remaining) > 1.0) {
+    const currentAllocated = (100 - parseFloat(allocationInfo.remaining)).toFixed(2);
+    setErrors({
+      totalPercentage: `Total allocated is ${currentAllocated}%. Still ${allocationInfo.remaining}% remaining.`,
+    });
+    showAlert(
+      `Total allocated is ${currentAllocated}%. Still ${allocationInfo.remaining}% remaining. Please allocate the remaining percentage (e.g. in Other Allowance).`
+    );
+    return;
+  }
 
-    // If we reach here → allocation is valid (±0.5% tolerance)
+  // If we reach here → allocation is valid (±0.5% tolerance)
 
-    // Proceed with save / update
-    if (!isEditing) {
-      showConfirm(
-        "Do you want to save this compensation plan?",
-        "Confirm Save",
-        async () => {
-          try {
-            await performSave();
-            closeConfirm();
-          } catch (error) {
-            closeConfirm();
-          }
-        },
-      );
-    } else {
-      await performSave();
-    }
-  };
+  // Proceed with save / update
+  if (!isEditing) {
+    showConfirm(
+      "Do you want to save this compensation plan?",
+      "Confirm Save",
+      async () => {
+        try {
+          await performSave();
+          closeConfirm();
+        } catch (error) {
+          closeConfirm();
+        }
+      }
+    );
+  } else {
+    await performSave();
+  }
+};
   const showAlert = (message, title = "") => {
     setAlertModal({ isVisible: true, title, message });
   };
@@ -1497,7 +1366,7 @@ const CreateCompensation = () => {
     message,
     title = "Confirm",
     onConfirm,
-    onCancel = () => {},
+    onCancel = () => {}
   ) => {
     setConfirmModal({
       isVisible: true,
@@ -1532,6 +1401,7 @@ const CreateCompensation = () => {
     setCurrentStep(1);
     setFormData(defaultFormData);
     setErrors({});
+    setIsOtherAllowanceAutoFilled(false);
   };
 
   const handleCheckboxChange = (field, value) => {
@@ -1703,6 +1573,11 @@ const CreateCompensation = () => {
     const newFormData = { ...formData, [field]: value };
     const totalCTC = ctcInput ? parseFloat(ctcInput) : DEFAULT_CTC;
 
+    // Reset auto-fill flag when user manually changes other allowance
+    if (field === "otherAllowance") {
+      setIsOtherAllowanceAutoFilled(false);
+    }
+
     if (field.endsWith("Type")) {
       const baseField = field.replace("Type", "");
       const percentageField = baseField;
@@ -1726,7 +1601,7 @@ const CreateCompensation = () => {
           const percentage = convertAmountToPercentage(value, totalCTC);
           newFormData[percentageField] = percentage.toFixed(2);
         }
-      },
+      }
     );
     setFormData(newFormData);
 
@@ -1800,7 +1675,7 @@ const CreateCompensation = () => {
     try {
       const response = await axios.get(
         `${BACKEND_URL}/api/compensations/list?org_id=${orgId}`,
-        { withCredentials: true, headers: getHeaders(), withCredentials: true },
+        { withCredentials: true, headers: getHeaders(), withCredentials: true }
       );
 
       if (response.data.success) {
@@ -1836,7 +1711,7 @@ const CreateCompensation = () => {
         {
           headers,
           withCredentials: true,
-        },
+        }
       );
 
       setSalaryPeriods(response.data?.data || []);
@@ -1994,6 +1869,7 @@ const CreateCompensation = () => {
     setIsPopupOpen(true);
     setCurrentStep(1);
     setErrors({});
+    setIsOtherAllowanceAutoFilled(false);
   };
 
   const validateField = (name, value, fieldConfig, formData) => {
@@ -2026,7 +1902,7 @@ const CreateCompensation = () => {
           try {
             const workingDaysResponse = await axios.get(
               `${backendUrl}/api/compensations/working-days/${planId}`,
-              { withCredentials: true, headers },
+              { withCredentials: true, headers }
             );
             if (
               workingDaysResponse.data.success &&
@@ -2044,13 +1920,13 @@ const CreateCompensation = () => {
               };
             } else {
               console.warn(
-                `No working days found for plan ID ${planId}, using defaults`,
+                `No working days found for plan ID ${planId}, using defaults`
               );
             }
           } catch (error) {
             console.warn(
               `Failed to fetch working days for plan ID ${planId}:`,
-              error.response?.data?.error || error.message,
+              error.response?.data?.error || error.message
             );
           }
         }
@@ -2298,7 +2174,7 @@ const CreateCompensation = () => {
       } catch (error) {
         console.error("Error processing compensation details:", error);
         showAlert(
-          "Failed to display compensation details: Invalid data format",
+          "Failed to display compensation details: Invalid data format"
         );
       }
     } else {
@@ -2545,133 +2421,133 @@ const CreateCompensation = () => {
     return false;
   };
 
-  const getPlanValue = (calcField, formData) => {
-    const mapping = salaryFieldToFormDataMap[calcField];
-    if (!mapping) return { value: "-", basis: "N/A" };
+ 
+const getPlanValue = (calcField, formData) => {
+  const mapping = salaryFieldToFormDataMap[calcField];
+  if (!mapping) return { value: "-", basis: "N/A" };
 
-    const {
-      enable,
-      amount,
-      percentage,
-      type,
-      default: defaultConfig,
-    } = mapping;
+  const { enable, amount, percentage, type, default: defaultConfig } = mapping;
 
-    if (enable && !formData[enable])
-      return { value: "Not Applicable", basis: "N/A" };
+  if (enable && !formData[enable]) return { value: "Not Applicable", basis: "N/A" };
 
-    const currentType = formData[type] || defaultConfig?.type || "percentage";
-    const valueField = currentType === "percentage" ? percentage : amount;
-    const rawValue = formData[valueField];
+  const currentType = formData[type] || defaultConfig?.type || "percentage";
+  const valueField = currentType === "percentage" ? percentage : amount;
+  const rawValue = formData[valueField];
 
-    if (!rawValue || rawValue === "") return { value: "-", basis: "N/A" };
+  if (!rawValue || rawValue === "") return { value: "-", basis: "N/A" };
 
-    const parsed = parseFloat(rawValue);
-    let display = "";
-    let basisText = currentType === "amount" ? "Fixed Annual Amount" : "CTC";
+  const parsed = parseFloat(rawValue);
+  let display = "";
+  let basisText = currentType === "amount" ? "Fixed Annual Amount" : "CTC";
 
-    let effPct = 0;
+  let effPct = 0;
 
-    if (currentType === "percentage") {
-      effPct = getEffectiveCtcPercentage(valueField, formData);
-      display = `${parsed.toFixed(2)}%`;
-    } else {
-      const ctc = parseFloat(ctcInput) || DEFAULT_CTC;
-      effPct = ((rawValue * 12) / ctc) * 100; // ← MUST HAVE * 12 here too
-      display = `₹${rawValue.toLocaleString("en-IN")} ≈ ${effPct.toFixed(2)}% of CTC (Fixed Annual)`;
-    }
+  if (currentType === "percentage") {
+    effPct = getEffectiveCtcPercentage(valueField, formData);
+    display = `${parsed.toFixed(2)}%`;
+  } else {
+  const ctc = parseFloat(ctcInput) || DEFAULT_CTC;
+  effPct = (rawValue * 12 / ctc) * 100;   // ← MUST HAVE * 12 here too
+  display = `₹${rawValue.toLocaleString("en-IN")} ≈ ${effPct.toFixed(2)}% of CTC (Fixed Annual)`;
+}
 
-    if (effPct > 0.01) {
-      display += ` ≈ ${effPct.toFixed(2)}% of CTC`;
-    }
+  if (effPct > 0.01) {
+    display += ` ≈ ${effPct.toFixed(2)}% of CTC`;
+  }
 
-    // Basis override
-    if (BASIC_BASED_FIELDS.includes(calcField.replace(/Percentage$/, ""))) {
-      basisText = "Basic Salary";
-    }
-    if (calcField === "professionalTax") {
-      basisText = currentType === "amount" ? "Fixed Annual" : "CTC";
-    }
-    if (calcField === "insurance") {
-      basisText = currentType === "amount" ? "Fixed Annual" : "CTC";
-    }
+  // Basis override
+  if (BASIC_BASED_FIELDS.includes(calcField.replace(/Percentage$/, ''))) {
+    basisText = "Basic Salary";
+  }
+  if (calcField === "professionalTax") {
+    basisText = currentType === "amount" ? "Fixed Annual" : "CTC";
+  }
+  if (calcField === "insurance") {
+    basisText = currentType === "amount" ? "Fixed Annual" : "CTC";
+  }
 
-    return { value: display, basis: basisText };
-  };
+  return { value: display, basis: basisText };
+};
 
   const handleStepChange = (step) => {
     const newStep = Math.max(1, Math.min(step, categories.length));
     setCurrentStep(newStep);
   };
 
-  const handleCalculate = () => {
-    const annualCTC = parseFloat(ctcInput);
+const handleCalculate = () => {
+  const annualCTC = parseFloat(ctcInput);
 
-    if (!ctcInput || isNaN(annualCTC) || annualCTC <= 0) {
-      showAlert("Please enter a valid CTC amount");
-      return;
-    }
+  if (!ctcInput || isNaN(annualCTC) || annualCTC <= 0) {
+    showAlert("Please enter a valid CTC amount");
+    return;
+  }
 
-    const planDataCopy = { ...formData };
+  const planDataCopy = { ...formData };
 
-    const calculatedDetails = calculateSalaryDetails(
-      annualCTC,
-      planDataCopy,
-      "preview-employee",
-      [],
-      [],
-      [],
-    );
+  const calculatedDetails = calculateSalaryDetails(
+    annualCTC,
+    planDataCopy,
+    "preview-employee",
+    [],
+    [],
+    []
+  );
 
-    if (!calculatedDetails) {
-      showAlert("Failed to calculate salary details");
-      return;
-    }
+  if (!calculatedDetails) {
+    showAlert("Failed to calculate salary details");
+    return;
+  }
 
-    // ────────────────────────────────────────────────
-    // ACCURATE ALLOCATION CALCULATION
-    // ────────────────────────────────────────────────
+  // ────────────────────────────────────────────────
+  // ACCURATE ALLOCATION CALCULATION
+  // ────────────────────────────────────────────────
 
-    // ────────────────────────────────────────────────
-    // USE CALCULATED DETAILS DIRECTLY (100% MATCH WITH PREVIEW)
-    // ────────────────────────────────────────────────
+// ────────────────────────────────────────────────
+// USE CALCULATED DETAILS DIRECTLY (100% MATCH WITH PREVIEW)
+// ────────────────────────────────────────────────
 
-    let totalAnnualAllocated = 0;
+let totalAnnualAllocated = 0;
 
-    Object.keys(calculatedDetails).forEach((key) => {
-      const value = Number(calculatedDetails[key]) || 0;
+Object.keys(calculatedDetails).forEach((key) => {
+  const value = Number(calculatedDetails[key]) || 0;
 
-      // Skip summary fields
-      if (key === "netSalary" || key === "grossSalary" || key === "tds") return;
+  // Skip summary fields
+  if (
+    key === "netSalary" ||
+    key === "grossSalary" ||
+    key === "tds"
+  ) return;
 
-      // calculatedDetails values are monthly → convert to annual
-      totalAnnualAllocated += value * 12;
-    });
+  // calculatedDetails values are monthly → convert to annual
+  totalAnnualAllocated += value * 12;
+});
 
-    const roundedTotal =
-      Math.round((totalAnnualAllocated / annualCTC) * 100 * 100) / 100;
+const roundedTotal =
+  Math.round((totalAnnualAllocated / annualCTC) * 100 * 100) / 100;
 
-    let remainingPercentage = Math.round((100 - roundedTotal) * 100) / 100;
+let remainingPercentage =
+  Math.round((100 - roundedTotal) * 100) / 100;
 
-    if (Math.abs(remainingPercentage) < 0.01) {
-      remainingPercentage = 0;
-    }
+if (Math.abs(remainingPercentage) < 0.01) {
+  remainingPercentage = 0;
+}
 
-    if (roundedTotal > 100) {
-      showAlert("Total allocation exceeds 100%");
-    }
+if (roundedTotal > 100) {
+  showAlert("Total allocation exceeds 100%");
+}
 
-    console.log("Total %:", roundedTotal);
-    console.log("Remaining %:", remainingPercentage);
+console.log("Total %:", roundedTotal);
+console.log("Remaining %:", remainingPercentage);
 
-    // ────────────────────────────────────────────────
-    // UPDATE STATE
-    // ────────────────────────────────────────────────
+  // ────────────────────────────────────────────────
+  // UPDATE STATE
+  // ────────────────────────────────────────────────
 
-    setSalaryDetails({
-      ...calculatedDetails,
-    });
-  };
+  setSalaryDetails({
+    ...calculatedDetails,
+  });
+};
+
 
   const daysOfWeek = [
     "Sunday",
@@ -3052,7 +2928,7 @@ const CreateCompensation = () => {
                         onChange={(e) =>
                           handleInputChange(
                             "medicalCalculationBase",
-                            e.target.value,
+                            e.target.value
                           )
                         }
                         className="compensation-select"
@@ -3172,8 +3048,8 @@ const CreateCompensation = () => {
                       formData.overtimePayType === "hourly"
                         ? "Rate per Hour"
                         : formData.overtimePayType === "daily"
-                          ? "Rate per Day"
-                          : "Rate per Unit"
+                        ? "Rate per Day"
+                        : "Rate per Unit"
                     }
                     value={formData.overtimePayAmount}
                     onChange={(e) =>
@@ -3187,8 +3063,8 @@ const CreateCompensation = () => {
                       formData.overtimePayType === "hourly"
                         ? "Hours"
                         : formData.overtimePayType === "daily"
-                          ? "Days"
-                          : "Units"
+                        ? "Days"
+                        : "Units"
                     }
                     value={formData.overtimePayUnits}
                     onChange={(e) =>
@@ -3353,7 +3229,7 @@ const CreateCompensation = () => {
       <tbody>
         {fieldOrder
           .filter((key) =>
-            shouldDisplayField(key, compensationData[key], compensationData),
+            shouldDisplayField(key, compensationData[key], compensationData)
           )
           .map((key) => {
             const value = compensationData[key];
@@ -3394,7 +3270,7 @@ const CreateCompensation = () => {
                 ) {
                   const calculatedPercentage = convertAmountToPercentage(
                     value,
-                    totalCTC,
+                    totalCTC
                   ).toFixed(2);
                   displayValue += ` (${calculatedPercentage}%)`;
                 } else if (typeField && typeValue === "percentage") {
@@ -3518,7 +3394,7 @@ const CreateCompensation = () => {
                       </React.Fragment>
                     ) : (
                       renderCategoryField(field)
-                    ),
+                    )
                   )}
                 </div>
                 <div className="compensation-button-container">
@@ -3538,72 +3414,62 @@ const CreateCompensation = () => {
                     </button>
                   )}
                   {currentStep === categories.length && (
-                    <>
-                      <button
-                        className="compensation-preview-button"
-                        onClick={handlePreview}
-                        disabled={
-                          Number(allocationInfo.exceeds) > 0.3 ||
-                          !allocationInfo.isValid
-                        }
-                        style={{
-                          opacity:
-                            Number(allocationInfo.exceeds) > 0.3 ||
-                            !allocationInfo.isValid
-                              ? 0.6
-                              : 1,
-                        }}
-                      >
-                        Preview Compensation
-                      </button>
+  <>
+    {isOtherAllowanceAutoFilled && (
+      <div
+        style={{
+          marginBottom: '12px',
+          padding: '10px',
+          backgroundColor: '#fffbea',
+          borderLeft: '4px solid #ffc107',
+          borderRadius: '4px',
+          color: '#856404',
+          fontSize: '0.95rem',
+          textAlign: 'center',
+        }}
+      >
+        ℹ️ Remaining percentage has been automatically added to the Other Allowance field.
+      </div>
+    )}
 
-                      <button
-                        className="compensation-add-button"
-                        onClick={handleSubmit}
-                        disabled={
-                          Number(allocationInfo.exceeds) > 0.3 ||
-                          !allocationInfo.isValid
-                        }
-                        style={{
-                          opacity:
-                            Number(allocationInfo.exceeds) > 0.3 ||
-                            !allocationInfo.isValid
-                              ? 0.6
-                              : 1,
-                        }}
-                      >
-                        {isEditing
-                          ? "Update Compensation"
-                          : "Save Compensation"}
-                      </button>
+    <button
+      className="compensation-preview-button"
+      onClick={handlePreview}
+      disabled={Number(allocationInfo.exceeds) > 0.3 || !allocationInfo.isValid}
+      style={{ opacity: Number(allocationInfo.exceeds) > 0.3 || !allocationInfo.isValid ? 0.6 : 1 }}
+    >
+      Preview Compensation
+    </button>
 
-                      {/* Warning message below buttons */}
-                      {(Number(allocationInfo.exceeds) > 0.3 ||
-                        Number(allocationInfo.remaining) > 1) && (
-                        <div
-                          style={{
-                            marginTop: "12px",
-                            padding: "10px",
-                            backgroundColor:
-                              Number(allocationInfo.exceeds) > 0.3
-                                ? "#ffebee"
-                                : "#fff3e0",
-                            borderRadius: "6px",
-                            color:
-                              Number(allocationInfo.exceeds) > 0.3
-                                ? "#c62828"
-                                : "#f57c00",
-                            fontSize: "0.95rem",
-                            textAlign: "center",
-                          }}
-                        >
-                          {Number(allocationInfo.exceeds) > 0.3
-                            ? `Total exceeds 100% by ${allocationInfo.exceeds}% — Please adjust values`
-                            : `Still ${allocationInfo.remaining}% remaining — Fill in Other Allowance or adjust`}
-                        </div>
-                      )}
-                    </>
-                  )}
+    <button
+      className="compensation-add-button"
+      onClick={handleSubmit}
+      disabled={Number(allocationInfo.exceeds) > 0.3 || !allocationInfo.isValid}
+      style={{ opacity: Number(allocationInfo.exceeds) > 0.3 || !allocationInfo.isValid ? 0.6 : 1 }}
+    >
+      {isEditing ? "Update Compensation" : "Save Compensation"}
+    </button>
+
+    {/* Warning message below buttons */}
+    {(Number(allocationInfo.exceeds) > 0.3 || Number(allocationInfo.remaining) > 1) && (
+      <div
+        style={{
+          marginTop: '12px',
+          padding: '10px',
+          backgroundColor: Number(allocationInfo.exceeds) > 0.3 ? '#ffebee' : '#fff3e0',
+          borderRadius: '6px',
+          color: Number(allocationInfo.exceeds) > 0.3 ? '#c62828' : '#f57c00',
+          fontSize: '0.95rem',
+          textAlign: 'center',
+        }}
+      >
+        {Number(allocationInfo.exceeds) > 0.3
+          ? `Total exceeds 100% by ${allocationInfo.exceeds}% — Please adjust values`
+          : `Still ${allocationInfo.remaining}% remaining — Fill in Other Allowance or adjust`}
+      </div>
+    )}
+  </>
+)}
                 </div>
               </div>
             </div>
@@ -3801,9 +3667,9 @@ const CreateCompensation = () => {
                             displayValue = Object.entries(field.values).map(
                               ([day, status]) => (
                                 <div key={day}>{`${day}: ${formatStatus(
-                                  status,
+                                  status
                                 )}`}</div>
-                              ),
+                              )
                             );
                           } else if (field.label === "TDS Slabs") {
                             displayValue =
@@ -3828,46 +3694,37 @@ const CreateCompensation = () => {
                                     Type === "hourly"
                                       ? "hour"
                                       : Type === "daily"
-                                        ? "day"
-                                        : "unit"
+                                      ? "day"
+                                      : "unit"
                                   } (${Units} ${
                                     Type === "hourly"
                                       ? "hours"
                                       : Type === "daily"
-                                        ? "days"
-                                        : "units"
+                                      ? "days"
+                                      : "units"
                                   })`
                                 : "-";
                           } else {
-                            const typeValue = formData[field.typeField];
-                            let value =
-                              typeValue === "amount"
-                                ? formData[field.amountField]
-                                : formData[field.percentageField];
+  const typeValue = formData[field.typeField];
+  let value = typeValue === "amount" ? formData[field.amountField] : formData[field.percentageField];
 
-                            if (value !== "" && value !== undefined) {
-                              const numValue = parseFloat(value);
+  if (value !== "" && value !== undefined) {
+    const numValue = parseFloat(value);
 
-                              if (typeValue === "amount") {
-                                const annualContribution = Number(value) * 12;
-                                const calculatedPercentage = (
-                                  (annualContribution / totalCTC) *
-                                  100
-                                ).toFixed(2);
-                                displayValue = `₹${Number(value).toLocaleString("en-IN")} ≈ ${calculatedPercentage}% of CTC (Fixed Annual)`;
-                              } else {
-                                displayValue = `${numValue.toLocaleString(
-                                  "en-IN",
-                                  {
-                                    minimumFractionDigits: 2,
-                                    maximumFractionDigits: 2,
-                                  },
-                                )}%`;
-                              }
-                            } else {
-                              displayValue = "-";
-                            }
-                          }
+    if (typeValue === "amount") {
+  const annualContribution = Number(value) * 12;
+  const calculatedPercentage = (annualContribution / totalCTC * 100).toFixed(2);
+  displayValue = `₹${Number(value).toLocaleString("en-IN")} ≈ ${calculatedPercentage}% of CTC (Fixed Annual)`;
+} else {
+      displayValue = `${numValue.toLocaleString("en-IN", {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      })}%`;
+    }
+  } else {
+    displayValue = "-";
+  }
+}
                           return (
                             <tr key={idx}>
                               <td>{field.label}</td>
@@ -3879,72 +3736,56 @@ const CreateCompensation = () => {
                     </tbody>
                   </table>
                 </div>
-                {salaryDetails && (
-                  <div className="create-preview-right">
-                    <h3>Calculated Salary (Monthly)</h3>
-                    <table className="create-compensation-preview-table">
-                      <thead>
-                        <tr className="create-header-row">
-                          <th>Component</th>
-                          <th>Amount (₹)</th>
-                          <th>Plan Value</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {Object.entries(salaryDetails)
-                          .filter(
-                            ([key, value]) =>
-                              shouldDisplayField(key, value, formData) &&
-                              key !== "_enhancedPlanDescriptions",
-                          )
-                          .map(([key, value]) => {
-                            let planText = getPlanValue(key, formData).value;
+               {salaryDetails && (
+  <div className="create-preview-right">
+    <h3>Calculated Salary (Monthly)</h3>
+    <table className="create-compensation-preview-table">
+      <thead>
+        <tr className="create-header-row">
+          <th>Component</th>
+          <th>Amount (₹)</th>
+          <th>Plan Value</th>
+        </tr>
+      </thead>
+      <tbody>
+        {Object.entries(salaryDetails)
+          .filter(([key, value]) =>
+            shouldDisplayField(key, value, formData) && key !== "_enhancedPlanDescriptions"
+          )
+          .map(([key, value]) => {
+          let planText = getPlanValue(key, formData).value;
 
-                            // Only override with enhanced if it's percentage mode or Other Allowance
-                            // Only override for percentage-based or special cases – skip fixed amounts
-                            const isAmountMode =
-                              formData[`${key}Type`] === "amount" ||
-                              formData[`${key.replace("s", "")}Type`] ===
-                                "amount";
-                            if (
-                              salaryDetails._enhancedPlanDescriptions?.[key] &&
-                              !isAmountMode
-                            ) {
-                              planText =
-                                salaryDetails._enhancedPlanDescriptions[key];
-                            }
+// Only override with enhanced if it's percentage mode or Other Allowance
+// Only override for percentage-based or special cases – skip fixed amounts
+const isAmountMode = formData[`${key}Type`] === "amount" || formData[`${key.replace("s", "")}Type`] === "amount";
+if (salaryDetails._enhancedPlanDescriptions?.[key] && !isAmountMode) {
+  planText = salaryDetails._enhancedPlanDescriptions[key];
+}
 
-                            // Optional: make "Remaining ..." stand out
-                            if (
-                              key === "otherAllowances" &&
-                              planText.includes("Remaining")
-                            ) {
-                              planText = (
-                                <strong style={{ color: "#2e7d32" }}>
-                                  {planText}
-                                </strong>
-                              );
-                            }
+            // Optional: make "Remaining ..." stand out
+            if (key === "otherAllowances" && planText.includes("Remaining")) {
+              planText = <strong style={{ color: "#2e7d32" }}>{planText}</strong>;
+            }
 
-                            return (
-                              <tr key={key}>
-                                <td>{formatFieldName(key)}</td>
-                                <td>
-                                  {typeof value === "number"
-                                    ? value.toLocaleString("en-IN", {
-                                        minimumFractionDigits: 2,
-                                        maximumFractionDigits: 2,
-                                      })
-                                    : value}
-                                </td>
-                                <td>{planText}</td>
-                              </tr>
-                            );
-                          })}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
+            return (
+              <tr key={key}>
+                <td>{formatFieldName(key)}</td>
+                <td>
+                  {typeof value === "number"
+                    ? value.toLocaleString("en-IN", {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2,
+                      })
+                    : value}
+                </td>
+                <td>{planText}</td>
+              </tr>
+            );
+          })}
+      </tbody>
+    </table>
+  </div>
+)}
               </div>
             </div>
           </div>

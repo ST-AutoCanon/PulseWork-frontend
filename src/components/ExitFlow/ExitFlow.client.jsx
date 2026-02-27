@@ -1,4 +1,5 @@
 
+
 "use client";
 import React, { useState, useEffect } from "react";
 import axios from "axios";
@@ -60,6 +61,8 @@ export default function ExitFlow() {
   const roleLower = role?.toLowerCase() || "";
   const isAdmin = roleLower === "admin";
   const isHr = roleLower === "hr" || roleLower === "human resource" || roleLower === "hr admin";
+  // HR users who are not also admins should have extra checks before finalizing
+  const isHrOnly = isHr && !isAdmin;
   const isSupervisorLike = ["supervisor", "manager", "team lead"].includes(roleLower);
   const [newKtForm, setNewKtForm] = useState({
     topic: "",
@@ -225,17 +228,27 @@ useEffect(() => {
     console.log("[TEAM REQUESTS] All statuses:", requests.map(r => ({ id: r.id, emp_id: r.employee_id, supervisor_status: r.supervisor_status, hr_status: r.hr_status, withdrawal_supervisor_status: r.withdrawal_supervisor_status, withdrawal_hr_status: r.withdrawal_hr_status })));
     setAllTeamRequests(requests);
     // Filter pending data based on role
-     // Filter pending data based on role
     const effectiveRole = role?.toLowerCase() === "manager" ? "supervisor" : role?.toLowerCase();
     let filteredPendingNormal = [];
     let filteredPendingWithdraw = [];
-    // Show normal resignations that are not finally closed and not in withdrawal
-    filteredPendingNormal = requests.filter(r =>
-      !r.final_outcome && // not rejected / resigned / withdrawn
-      !r.withdrawal_requested_at && // normal flow only
-      !["APPROVED", "REJECTED"].includes(r.supervisor_status || "") &&
-      !["APPROVED", "REJECTED"].includes(r.hr_status || "")
-    );
+
+    if (isHr || isAdmin) {
+      // HR/Admin sees requests where HR still needs to act
+      filteredPendingNormal = requests.filter(r =>
+        !r.final_outcome &&
+        !r.withdrawal_requested_at &&
+        (r.hr_status === "PENDING" || !r.hr_status)
+      );
+    } else {
+      // Supervisor / others see only their own pending
+      filteredPendingNormal = requests.filter(r =>
+        !r.final_outcome &&
+        !r.withdrawal_requested_at &&
+        !["APPROVED", "REJECTED"].includes(r.supervisor_status || "") &&
+        !["APPROVED", "REJECTED"].includes(r.hr_status || "")
+      );
+    }
+
     // Show withdrawals that are not finally resolved
     filteredPendingWithdraw = requests.filter(r =>
       r.withdrawal_requested_at &&
@@ -509,7 +522,7 @@ useEffect(() => {
       if (activeTab === "all") {
         approvalAs = "hr";
       } else if (activeTab === "team" && role === "hr") {
-    
+   
         approvalAs = "supervisor";
       } else if (["supervisor", "manager"].includes(role)) {
         approvalAs = "supervisor";
@@ -1518,86 +1531,178 @@ const handleReviewAction = async (reviewType, action) => {
                         No pending resignation requests
                       </div>
                     ) : (
-                      <div className="exf-table-container">
-                        <table className="exf-table">
-                          <thead>
-                            <tr>
-                              <th>Emp ID</th>
-                              <th>Reason</th>
-                              <th>Proposed LWD</th>
-                              <th>Applied On</th>
-                              <th className="text-center">Action</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {pendingData.normal.map((req) => {
-                              const isWithdrawal = !!req.withdrawal_requested_at;
-                              const isFullyWithdrawn =
-                                isWithdrawal &&
-                                req.withdrawal_supervisor_status === "APPROVED" &&
-                                req.withdrawal_hr_status === "APPROVED";
-                              return (
-                                <tr key={req.id}>
-                                  <td className="font-medium">{req.employee_id}</td>
-                                  <td className="max-w-xs">
-                                    <div className="reason-tooltip-wrapper">
-                                      <span className="reason-truncated">
-                                        {req.reason}
-                                        {req.reason === "Other" && req.other_reason && ` (${req.other_reason})`}
-                                      </span>
-                                      <div className="reason-tooltip">
-                                        <strong>Reason:</strong><br />
-                                        {req.reason || "Not specified"}
-                                        {req.reason === "Other" && req.other_reason && (
-                                          <>
-                                            <br />
-                                            <strong>Other:</strong> {req.other_reason}
-                                          </>
-                                        )}
-                                        {req.comment && (
-                                          <>
-                                            <br /><br />
-                                            <strong>Comment:</strong><br />
-                                            {req.comment}
-                                          </>
-                                        )}
-                                      </div>
-                                    </div>
-                                  </td>
-                                  <td>
-                                    {req.proposed_lwd
-                                      ? new Date(req.proposed_lwd).toLocaleDateString()
-                                      : "—"}
-                                  </td>
-                                  <td>{new Date(req.applied_at).toLocaleDateString()}</td>
-                                  <td className="text-center">
-                                    {isFullyWithdrawn ? (
-                                      <span className="text-green-600 font-medium">Completed</span>
-                                    ) : (
-                                      <button
-                                        className="exf-btn-review"
-                                        onClick={() =>
-                                          setSelectedRequest({
-                                            ...req,
-                                            type: isWithdrawal
-                                              ? "withdrawal"
-                                              : req.final_outcome === "RESIGNED"
-                                              ? "clearance"
-                                              : "normal",
-                                          })
-                                        }
-                                        disabled={loading}
-                                      >
-                                        Review
-                                      </button>
-                                    )}
-                                  </td>
-                                </tr>
-                              );
-                            })}
-                          </tbody>
-                        </table>
-                      </div>
+                      <div className="exf-team-panel">
+  {pendingData.normal.length === 0 ? (
+    <div className="exf-empty-state">
+      No pending resignation requests
+    </div>
+  ) : (
+    <div className="exf-table-container">
+      <table className="exf-table">
+        <thead>
+          <tr>
+            <th>Emp ID</th>
+            <th>Name</th> {/* ← this was missing */}
+            <th>Reason</th>
+            <th>Proposed LWD</th>
+            <th>Applied On</th>
+            <th className="text-center">Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {pendingData.normal.map((req) => {
+            const isWithdrawal = !!req.withdrawal_requested_at;
+            const isFullyWithdrawn =
+              isWithdrawal &&
+              req.withdrawal_supervisor_status === "APPROVED" &&
+              req.withdrawal_hr_status === "APPROVED";
+            return (
+              <tr key={req.id}>
+                <td className="font-medium">{req.employee_id}</td>
+                <td>
+                  {req.employee_name || "—"} {/* ← render it here */}
+                </td>
+                <td className="max-w-xs">
+                  <div className="reason-tooltip-wrapper">
+                    <span className="reason-truncated">
+                      {req.reason}
+                      {req.reason === "Other" && req.other_reason && ` (${req.other_reason})`}
+                    </span>
+                    <div className="reason-tooltip">
+                      <strong>Reason:</strong><br />
+                      {req.reason || "Not specified"}
+                      {req.reason === "Other" && req.other_reason && (
+                        <>
+                          <br />
+                          <strong>Other:</strong> {req.other_reason}
+                        </>
+                      )}
+                      {req.comment && (
+                        <>
+                          <br /><br />
+                          <strong>Comment:</strong><br />
+                          {req.comment}
+                        </>
+                      )}
+                    </div>
+                  </div>
+                </td>
+                <td>
+                  {req.proposed_lwd
+                    ? new Date(req.proposed_lwd).toLocaleDateString()
+                    : "—"}
+                </td>
+                <td>{new Date(req.applied_at).toLocaleDateString()}</td>
+                <td className="text-center">
+                  {isFullyWithdrawn ? (
+                    <span className="text-green-600 font-medium">Completed</span>
+                  ) : (
+                    <button
+                      className="exf-btn-review"
+                      onClick={() =>
+                        setSelectedRequest({
+                          ...req,
+                          type: isWithdrawal
+                            ? "withdrawal"
+                            : req.final_outcome === "RESIGNED"
+                            ? "clearance"
+                            : "normal",
+                        })
+                      }
+                      disabled={loading}
+                    >
+                      Review
+                    </button>
+                  )}
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  )}
+</div>
+                      // <div className="exf-table-container">
+                      // <table className="exf-table">
+                      // <thead>
+                      // <tr>
+                      // <th>Emp ID</th>
+                      // <th>Reason</th>
+                      // <th>Proposed LWD</th>
+                      // <th>Applied On</th>
+                      // <th className="text-center">Action</th>
+                      // </tr>
+                      // </thead>
+                      // <tbody>
+                      // {pendingData.normal.map((req) => {
+                      // const isWithdrawal = !!req.withdrawal_requested_at;
+                      // const isFullyWithdrawn =
+                      // isWithdrawal &&
+                      // req.withdrawal_supervisor_status === "APPROVED" &&
+                      // req.withdrawal_hr_status === "APPROVED";
+                      // return (
+                      // <tr key={req.id}>
+                      // <td className="font-medium">{req.employee_id}</td>
+                      // <td className="max-w-xs">
+                      // <div className="reason-tooltip-wrapper">
+                      // <span className="reason-truncated">
+                      // {req.reason}
+                      // {req.reason === "Other" && req.other_reason && ` (${req.other_reason})`}
+                      // </span>
+                      // <div className="reason-tooltip">
+                      // <strong>Reason:</strong><br />
+                      // {req.reason || "Not specified"}
+                      // {req.reason === "Other" && req.other_reason && (
+                      // <>
+                      // <br />
+                      // <strong>Other:</strong> {req.other_reason}
+                      // </>
+                      // )}
+                      // {req.comment && (
+                      // <>
+                      // <br /><br />
+                      // <strong>Comment:</strong><br />
+                      // {req.comment}
+                      // </>
+                      // )}
+                      // </div>
+                      // </div>
+                      // </td>
+                      // <td>
+                      // {req.proposed_lwd
+                      // ? new Date(req.proposed_lwd).toLocaleDateString()
+                      // : "—"}
+                      // </td>
+                      // <td>{new Date(req.applied_at).toLocaleDateString()}</td>
+                      // <td className="text-center">
+                      // {isFullyWithdrawn ? (
+                      // <span className="text-green-600 font-medium">Completed</span>
+                      // ) : (
+                      // <button
+                      // className="exf-btn-review"
+                      // onClick={() =>
+                      // setSelectedRequest({
+                      // ...req,
+                      // type: isWithdrawal
+                      // ? "withdrawal"
+                      // : req.final_outcome === "RESIGNED"
+                      // ? "clearance"
+                      // : "normal",
+                      // })
+                      // }
+                      // disabled={loading}
+                      // >
+                      // Review
+                      // </button>
+                      // )}
+                      // </td>
+                      // </tr>
+                      // );
+                      // })}
+                      // </tbody>
+                      // </table>
+                      // </div>
                     )}
                   </div>
                   <div className="exf-team-panel">
@@ -2236,7 +2341,9 @@ const handleReviewAction = async (reviewType, action) => {
                                       type="checkbox"
                                       checked={kt.hr_approved || false}
                                       onChange={(e) => handleApproveItem(kt.id, e.target.checked, "KT")}
-                                      disabled={loading}
+                                      disabled={
+                                        loading || (isHrOnly && !kt.supervisor_approved)
+                                      }
                                     />
                                     <span>HR/Admin Approved</span>
                                   </label>
@@ -2278,7 +2385,9 @@ const handleReviewAction = async (reviewType, action) => {
                                       type="checkbox"
                                       checked={asset.hr_approved || false}
                                       onChange={(e) => handleApproveItem(asset.id, e.target.checked, "ASSET")}
-                                      disabled={loading}
+                                      disabled={
+                                        loading || (isHrOnly && !asset.supervisor_approved)
+                                      }
                                     />
                                     <span>HR/Admin Approved</span>
                                   </label>
@@ -2309,15 +2418,24 @@ const handleReviewAction = async (reviewType, action) => {
                             </p>
                           </div>
                         ) : (
-                          <button
-                            className={`finalize-btn ${loading || ktPlans.some(kt => !kt.hr_approved) || assets.some(a => !a.hr_approved) ? "disabled" : ""}`}
-                            onClick={handleFinalizeExit}
-                            disabled={loading || ktPlans.some(kt => !kt.hr_approved) || assets.some(a => !a.hr_approved)}
-                          >
-                            {loading ? "Finalizing..." : "Finalize Exit & Clearance"}
-                          </button>
-                        )}
-                      </div>
+                          (() => {
+                            // compute permission locally so logic is easier to reason about
+                            const requiresSupervisor = isHrOnly; // only enforce supervisor approvals for plain HR users
+                            const hasAllHrApproved = !ktPlans.some(kt => !kt.hr_approved) && !assets.some(a => !a.hr_approved);
+                            const hasAllSupervisorApproved = !requiresSupervisor ||
+                              (!ktPlans.some(kt => !kt.supervisor_approved) && !assets.some(a => !a.supervisor_approved));
+                            const canFinalize = !loading && hasAllHrApproved && hasAllSupervisorApproved;
+                            return (
+                              <button
+                                className={`finalize-btn ${canFinalize ? "" : "disabled"}`}
+                                onClick={handleFinalizeExit}
+                                disabled={!canFinalize}
+                              >
+                                {loading ? "Finalizing..." : "Finalize Exit & Clearance"}
+                              </button>
+                            );
+                          })()
+                        )}                      </div>
                     )}
                   </div>
                 )}
@@ -2607,4 +2725,3 @@ const handleReviewAction = async (reviewType, action) => {
     </>
   );
 }
-

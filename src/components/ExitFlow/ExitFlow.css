@@ -2365,13 +2365,16 @@
     width: 95%;
     margin: 1rem;
   }
+
   .exf-info-grid {
     grid-template-columns: 1fr;
   }
+
   .exf-modal-actions {
     flex-direction: column;
     gap: 0.75rem;
   }
+
   .exf-btn {
     width: 100%;
   }
@@ -4649,5 +4652,101 @@
   .exf-resignation-apply-btn {
     font-size: 1.05rem !important;
     padding: 1.1rem 1.8rem !important;
+  }
+}
+/* ────────────────────────────────────────────────
+   MOBILE-FIRST TABLE → CARD TRANSFORMATION
+   Improved labels in card view
+   ──────────────────────────────────────────────── */
+@media (max-width: 1023px) {
+
+  /* ── Each row becomes a card ── */
+  .exf-table tbody tr,
+  .exf-team-view table tbody tr,
+  .exf-table-container tbody tr,
+  .exf-clearance-table tbody tr {
+    display: block !important;
+    margin: 1.25rem 0.6rem !important;
+    padding: 1.4rem 1.2rem !important;
+    background: white !important;
+    border: 1px solid #e2e8f0 !important;
+    border-radius: 12px !important;
+    box-shadow: 0 3px 10px rgba(0,0,0,0.07) !important;
+  }
+
+  /* ── Each cell becomes a labeled row ── */
+  .exf-table td,
+  .exf-team-view table td,
+  .exf-table-container td,
+  .exf-clearance-table td {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    align-items: baseline !important;
+    padding: 0.85rem 0 !important;
+    border: none !important;
+    border-bottom: 1px solid #f1f5f9 !important;
+    font-size: 0.97rem !important;
+    line-height: 1.48 !important;
+    gap: 0.6rem !important;
+  }
+
+  .exf-table td:last-child,
+  .exf-team-view td:last-child,
+  .exf-table-container td:last-child,
+  .exf-clearance-table td:last-child {
+    border-bottom: none !important;
+    padding: 1.3rem 0 0.4rem !important;
+    justify-content: center !important;
+  }
+
+  /* ── IMPROVED LABEL STYLING INSIDE CARDS ── */
+  .exf-table td:not(:last-child)::before,
+  .exf-team-view table td:not(:last-child)::before,
+  .exf-table-container td:not(:last-child)::before,
+  .exf-clearance-table td:not(:last-child)::before {
+    content: attr(data-label);
+    font-weight: 700 !important;              /* bolder */
+    color: #1e293b !important;                /* darker, almost black */
+    font-size: 0.94rem !important;
+    letter-spacing: 0.3px !important;
+    text-transform: uppercase !important;     /* more professional look */
+    flex: 0 0 48% !important;                 /* slightly more space for label */
+    min-width: 115px !important;
+    padding-right: 0.5rem !important;
+    text-align: left !important;
+    line-height: 1.4 !important;
+  }
+
+  /* Value part – make sure it takes remaining space */
+  .exf-table td:not(:last-child) > *:not(.exf-btn),
+  .exf-team-view td:not(:last-child) > *:not(.exf-btn),
+  .exf-table-container td:not(:last-child) > *:not(.exf-btn) {
+    flex: 1 1 auto !important;
+    min-width: 0 !important;
+    color: #334155 !important;
+    font-weight: 500 !important;
+  }
+
+  /* Better wrapping for long values (reason, comments, etc.) */
+  .reason-tooltip-wrapper,
+  .reason-truncated,
+  .max-w-xs,
+  td .reason-tooltip-wrapper,
+  td .exf-comment-box,
+  td .reason-content,
+  td .comment-content {
+    white-space: normal !important;
+    word-break: break-word !important;
+    overflow-wrap: break-word !important;
+    line-height: 1.5 !important;
+  }
+
+  /* Action button in card view */
+  .exf-btn-review,
+  button[class*="exf-btn-review"] {
+    min-width: 130px !important;
+    padding: 0.8rem 1.4rem !important;
+    font-size: 0.98rem !important;
+    margin: 0.4rem auto 0.2rem auto !important;
   }
 }

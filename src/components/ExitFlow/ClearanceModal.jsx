@@ -611,9 +611,9 @@ export default function ClearanceModal({
             </div>
             <div className="exf-clearance-modal-body">
               <div style={{ marginBottom: "1rem" }}>
-                <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "600" }}>
-                  Asset Name *
-                </label>
+                <label className="exf-label">
+  Asset Name <span className="required-star">*</span>
+</label>
                 <input
                   type="text"
                   value={newAssetForm.name}
@@ -629,9 +629,9 @@ export default function ClearanceModal({
                 />
               </div>
               <div style={{ marginBottom: "1rem" }}>
-                <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "600" }}>
-                  Return Date *
-                </label>
+                <label className="exf-label">
+  Return Date <span className="required-star">*</span>
+</label>
                 <input
                   type="date"
                   value={newAssetForm.returnDate}

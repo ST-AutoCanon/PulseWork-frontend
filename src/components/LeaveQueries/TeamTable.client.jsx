@@ -60,7 +60,48 @@ export default function TeamTable({
     files: [],
   });
   const [attachmentsMap, setAttachmentsMap] = useState({});
+  const parseDateOnly = (isoDate) => {
+    if (!isoDate) return null;
+    const d = new Date(isoDate);
+    if (isNaN(d.getTime())) {
+      const parts = String(isoDate).split("-");
+      if (parts.length >= 3) {
+        const [y, m, day] = parts;
+        return new Date(Number(y), Number(m) - 1, Number(day));
+      }
+      return null;
+    }
+    return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  };
 
+  const calculateDaysExcludingSundays = (startDate, endDate, h_f_day) => {
+    const s = parseDateOnly(startDate);
+    const e = parseDateOnly(endDate);
+    if (!s || !e) return 0;
+    if (s > e) return 0;
+
+    // if half-day and single-day request -> 0.5 (unless that day is Sunday -> 0)
+    if (h_f_day && String(h_f_day).toLowerCase().includes("half")) {
+      if (
+        s.getFullYear() === e.getFullYear() &&
+        s.getMonth() === e.getMonth() &&
+        s.getDate() === e.getDate()
+      ) {
+        return s.getDay() === 0 ? 0 : 0.5;
+      }
+      // otherwise fall through to full-day counting for multi-day requests
+    }
+
+    let cur = new Date(s.getFullYear(), s.getMonth(), s.getDate());
+    const last = new Date(e.getFullYear(), e.getMonth(), e.getDate());
+    let count = 0;
+    while (cur <= last) {
+      // JS: 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+      if (cur.getDay() !== 0) count += 1;
+      cur.setDate(cur.getDate() + 1);
+    }
+    return count;
+  };
   const buildHeaders = useCallback(() => {
     const h = { "Content-Type": "application/json" };
     if (user?.employeeId || user?.id) {
@@ -411,8 +452,11 @@ export default function TeamTable({
       if (!policy) isDefaultedFlag = true;
     }
 
-    const days = calculateDays(leave.start_date, leave.end_date, leave.H_F_day);
-
+    const days = calculateDaysExcludingSundays(
+      leave.start_date,
+      leave.end_date,
+      leave.H_F_day,
+    );
     if (isDefaultedFlag) {
       const defaultedPayload = {
         ...rawPayload,
@@ -715,7 +759,7 @@ export default function TeamTable({
               const update = statusUpdates?.[leave.leave_id] || {};
               const currentStatus =
                 local.status ?? update.status ?? leave.status ?? "pending";
-              const days = calculateDays(
+              const days = calculateDaysExcludingSundays(
                 leave.start_date,
                 leave.end_date,
                 leave.H_F_day,
@@ -854,7 +898,7 @@ export default function TeamTable({
           const update = statusUpdates?.[leave.leave_id] || {};
           const currentStatus =
             local.status ?? update.status ?? leave.status ?? "pending";
-          const days = calculateDays(
+          const days = calculateDaysExcludingSundays(
             leave.start_date,
             leave.end_date,
             leave.H_F_day,

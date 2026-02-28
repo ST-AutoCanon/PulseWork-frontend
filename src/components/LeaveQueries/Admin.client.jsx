@@ -37,9 +37,23 @@ const calculateDays = (startDate, endDate) => {
   const s = parseDateOnly(startDate);
   const e = parseDateOnly(endDate);
   if (!s || !e) return 0;
-  const msPerDay = 24 * 60 * 60 * 1000;
-  const diffDays = Math.round((e - s) / msPerDay);
-  return diffDays >= 0 ? diffDays + 1 : 0;
+
+  // ensure we compare only dates (midnight)
+  let cur = new Date(s.getFullYear(), s.getMonth(), s.getDate());
+  const last = new Date(e.getFullYear(), e.getMonth(), e.getDate());
+  if (cur > last) return 0;
+
+  let count = 0;
+  while (cur <= last) {
+    // JS: 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+    const dow = cur.getDay();
+    if (dow !== 0) {
+      count += 1;
+    }
+    cur.setDate(cur.getDate() + 1);
+  }
+
+  return count;
 };
 
 const API_BASE = process.env.NEXT_PUBLIC_BACKEND_URL || "";

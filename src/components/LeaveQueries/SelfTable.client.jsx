@@ -1,4 +1,3 @@
-// File: SelfTable.client.jsx
 "use client";
 
 import React, { useState, useCallback, useRef, useEffect } from "react";
@@ -18,7 +17,7 @@ import { useAuth } from "../../context/AuthProvider.client";
 export default function SelfTable({ leaveRequests, onEdit, onCancel }) {
   const { user } = useAuth();
 
-  const sortedRequests = (leaveRequests?.self || []).sort((a, b) =>
+  const sortedRequests = [...(leaveRequests?.self || [])].sort((a, b) =>
     String(b.start_date).localeCompare(String(a.start_date)),
   );
 
@@ -34,15 +33,22 @@ export default function SelfTable({ leaveRequests, onEdit, onCancel }) {
     return <span className={`leave-status-label ${classes}`}>{status}</span>;
   };
 
-  // preview state
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewAttachment, setPreviewAttachment] = useState(null);
   const [previewList, setPreviewList] = useState([]);
-
-  // cache for resolved blobs/preview objects per leave id
+  const [alertOpen, setAlertOpen] = useState(false);
+  const [alertMessage, setAlertMessage] = useState("");
   const [attachmentsMap, setAttachmentsMap] = useState({});
 
-  // attachmentsMapRef — keep a ref to attachmentsMap so we can revoke blob: URLs on unmount
+  const showAlert = (message) => {
+    setAlertMessage(message);
+    setAlertOpen(true);
+  };
+
+  useEffect(() => {
+    setAttachmentsMap({});
+  }, [leaveRequests]);
+
   const attachmentsMapRef = useRef({});
   useEffect(() => {
     attachmentsMapRef.current = attachmentsMap;
@@ -50,7 +56,6 @@ export default function SelfTable({ leaveRequests, onEdit, onCancel }) {
 
   useEffect(() => {
     return () => {
-      // revoke any blob: URLs cached in attachmentsMap when component unmounts
       try {
         Object.values(attachmentsMapRef.current || {})
           .flat()
@@ -70,7 +75,6 @@ export default function SelfTable({ leaveRequests, onEdit, onCancel }) {
     };
   }, []);
 
-  // backend config + headers builder
   const backendBase =
     process.env.NEXT_PUBLIC_BACKEND_URL ||
     process.env.REACT_APP_BACKEND_URL ||
@@ -132,7 +136,6 @@ export default function SelfTable({ leaveRequests, onEdit, onCancel }) {
     return null;
   }, []);
 
-  // open single preview (try cache -> direct url -> fetch)
   const onPreviewClick = (attachment, leave) => {
     const lid = String(leave?.id || leave?.leave_id || leave?.leaveId || "");
     const cache = attachmentsMap[lid] || [];
@@ -160,7 +163,6 @@ export default function SelfTable({ leaveRequests, onEdit, onCancel }) {
       return;
     }
 
-    // fallback to full resolver (will fetch blob, cache and preview)
     handleOpenLeaveAttachments([attachment], leave, { openDirect: true });
   };
 
@@ -169,11 +171,6 @@ export default function SelfTable({ leaveRequests, onEdit, onCancel }) {
   };
 
   const closePreview = () => {
-    (previewList || []).forEach((p) => {
-      try {
-        if (p && p.url && p.url.startsWith("blob:")) URL.revokeObjectURL(p.url);
-      } catch {}
-    });
     setPreviewOpen(false);
     setPreviewAttachment(null);
     setPreviewList([]);
@@ -263,7 +260,10 @@ export default function SelfTable({ leaveRequests, onEdit, onCancel }) {
         leave?.id || leave?.leave_id || leave?.leaveId || "",
       );
 
-      // 1) if cached, use it immediately
+      const serverBase =
+        (backendBase && String(backendBase).trim()) || "http://localhost:5001";
+      const absBase = serverBase.replace(/\/$/, "");
+
       if (attachmentsMap[leaveIdKey] && attachmentsMap[leaveIdKey].length > 0) {
         const cached = attachmentsMap[leaveIdKey];
         if (opts.openInNewTab && cached[0]?.url) {
@@ -282,53 +282,25 @@ export default function SelfTable({ leaveRequests, onEdit, onCancel }) {
         return;
       }
 
-      // 2) if no files metadata passed, try to fetch metadata from server
       let candidateFiles = Array.isArray(files) ? files.slice() : [];
       if (!candidateFiles || candidateFiles.length === 0) {
         try {
-          const url = `${backendBase.replace(/\/$/, "")}/employee/leave/${encodeURIComponent(leaveIdKey)}/attachments`;
-          // REPLACE with this: try several candidate metadata endpoints (admin/employee/api style)
-          const candidateMetaUrls = [
-            `${absBase}/employee/leave/${encodeURIComponent(leaveIdKey)}/attachments`,
-            `${absBase}/leave/${encodeURIComponent(leaveIdKey)}/attachments`,
-            `${absBase}/admin/leave/${encodeURIComponent(leaveIdKey)}/attachments`,
-            `${absBase}/api/leave/${encodeURIComponent(leaveIdKey)}/attachments`,
-            `${absBase}/api/admin/leave/${encodeURIComponent(leaveIdKey)}/attachments`,
-          ];
+          const metaUrl = `${absBase}/employee/leave/${encodeURIComponent(
+            leaveIdKey,
+          )}/attachments`;
 
-          let metaList = [];
-          for (const metaUrl of candidateMetaUrls) {
-            try {
-              const resp = await axios.get(metaUrl, {
-                withCredentials: true,
-                headers: buildHeaders(),
-              });
-              // server may return [ ] or { data: [...] } or { attachments: [...] }
-              const list = Array.isArray(resp.data)
-                ? resp.data
-                : Array.isArray(resp.data?.data)
-                  ? resp.data.data
-                  : Array.isArray(resp.data?.attachments)
-                    ? resp.data.attachments
-                    : [];
-              if (Array.isArray(list) && list.length > 0) {
-                metaList = list;
-                break;
-              }
-            } catch (err) {
-              // ignore and try next
-            }
-          }
-          candidateFiles =
-            candidateFiles.length > 0 ? candidateFiles : metaList;
-          const list = Array.isArray(resp.data)
+          const resp = await axios.get(metaUrl, {
+            withCredentials: true,
+            headers: buildHeaders(),
+          });
+
+          candidateFiles = Array.isArray(resp.data)
             ? resp.data
             : Array.isArray(resp.data?.data)
               ? resp.data.data
               : Array.isArray(resp.data?.attachments)
                 ? resp.data.attachments
                 : [];
-          candidateFiles = Array.isArray(list) ? list : [];
         } catch (err) {
           console.warn(
             "Could not fetch leave attachments metadata:",
@@ -336,16 +308,10 @@ export default function SelfTable({ leaveRequests, onEdit, onCancel }) {
           );
         }
       }
-
       if (!candidateFiles || candidateFiles.length === 0) {
-        // nothing to show
-        alert?.("No attachments available.") || null;
+        showAlert("No attachments available.");
         return;
       }
-
-      const serverBase =
-        (backendBase && String(backendBase).trim()) || "http://localhost:5001";
-      const absBase = serverBase.replace(/\/$/, "");
 
       const tryFetchBlob = async (url, extraHeaders = {}) => {
         try {
@@ -380,7 +346,6 @@ export default function SelfTable({ leaveRequests, onEdit, onCancel }) {
             leave?.employee_id ||
             leave?.employeeId;
 
-          // 1) absolute URL in metadata
           const attUrl =
             fileOrAtt.url || fileOrAtt.file_url || fileOrAtt.filePath || null;
           if (attUrl && /^https?:\/\//i.test(String(attUrl))) {
@@ -394,7 +359,6 @@ export default function SelfTable({ leaveRequests, onEdit, onCancel }) {
               };
           }
 
-          // 2) serve by attachment id (/attachments/:id)
           if (attachId) {
             const serveUrl = `${absBase}/attachments/${encodeURIComponent(attachId)}${leave?.orgId ? `?orgId=${encodeURIComponent(leave.orgId)}` : ""}`;
             const r2 = await tryFetchBlob(serveUrl);
@@ -407,7 +371,6 @@ export default function SelfTable({ leaveRequests, onEdit, onCancel }) {
               };
           }
 
-          // 3) file_path
           if (fileOrAtt.file_path) {
             const fp = String(fileOrAtt.file_path);
             const candidatePath = fp.startsWith("/")
@@ -423,7 +386,6 @@ export default function SelfTable({ leaveRequests, onEdit, onCancel }) {
               };
           }
 
-          // 4) legacy path using filename date prefix
           if (filename) {
             const m = String(filename).match(/^(\d{4})-(\d{2})-/);
             const year = m ? m[1] : null;
@@ -443,7 +405,6 @@ export default function SelfTable({ leaveRequests, onEdit, onCancel }) {
             }
           }
 
-          // 5) last resort: ask metadata endpoint for canonical path (if available)
           try {
             const metaResp = await axios.get(
               `${absBase}/employee/leave/${encodeURIComponent(leaveIdKey)}/attachments`,
@@ -488,9 +449,7 @@ export default function SelfTable({ leaveRequests, onEdit, onCancel }) {
                 }
               }
             }
-          } catch (metaErr) {
-            // ignore
-          }
+          } catch (metaErr) {}
 
           console.warn(
             "All attempts failed for attachment:",
@@ -503,11 +462,10 @@ export default function SelfTable({ leaveRequests, onEdit, onCancel }) {
 
       const goodFiles = (resolved || []).filter(Boolean);
       if (goodFiles.length === 0) {
-        alert?.("No attachments could be retrieved (file not found).") || null;
+        showAlert("No attachments could be retrieved (file not found).");
         return;
       }
 
-      // cache resolved preview objects
       setAttachmentsMap((prev) => ({ ...prev, [leaveIdKey]: goodFiles }));
 
       if (opts.openInNewTab && goodFiles[0] && goodFiles[0].url) {
@@ -534,7 +492,7 @@ export default function SelfTable({ leaveRequests, onEdit, onCancel }) {
       setPreviewOpen(true);
     } catch (err) {
       console.error("Error opening leave attachments:", err);
-      alert?.("Failed to open attachments.") || null;
+      showAlert("Failed to open attachments.");
     }
   };
 
@@ -559,7 +517,6 @@ export default function SelfTable({ leaveRequests, onEdit, onCancel }) {
           </thead>
           <tbody>
             {sortedRequests.map((request) => {
-              // attachments list may come from request.attachments or from cache
               const reqAttachments = Array.isArray(request.attachments)
                 ? request.attachments
                 : [];
@@ -569,7 +526,10 @@ export default function SelfTable({ leaveRequests, onEdit, onCancel }) {
               const cached = attachmentsMap[lid] || [];
 
               return (
-                <tr key={request.id || request.leave_id}>
+                <tr
+                  key={`${request.id || request.leave_id}-${request.attachments?.length || 0}`}
+                >
+                  {" "}
                   <td>{request.leave_type}</td>
                   <td>{parseLocalDate(request.start_date)}</td>
                   <td>{parseLocalDate(request.end_date)}</td>
@@ -581,7 +541,6 @@ export default function SelfTable({ leaveRequests, onEdit, onCancel }) {
                   <td className="comment-col">
                     <div className="comment-preview">{request.comments}</div>
                   </td>
-
                   {/* Attachments column: eye icon button that opens modal and caches files */}
                   <td>
                     {(reqAttachments && reqAttachments.length > 0) ||
@@ -590,13 +549,7 @@ export default function SelfTable({ leaveRequests, onEdit, onCancel }) {
                         <button
                           className="attachments-btn"
                           onClick={() =>
-                            // prefer cached previews if present; else use request.attachments
-                            handleOpenLeaveAttachments(
-                              cached && cached.length > 0
-                                ? cached
-                                : reqAttachments,
-                              request,
-                            )
+                            handleOpenLeaveAttachments(reqAttachments, request)
                           }
                           title="View attachments"
                         >
@@ -612,7 +565,6 @@ export default function SelfTable({ leaveRequests, onEdit, onCancel }) {
                       <div className="no-attachments">Not Attached</div>
                     )}
                   </td>
-
                   <td>
                     <MdOutlineEdit
                       onClick={() =>
@@ -648,7 +600,7 @@ export default function SelfTable({ leaveRequests, onEdit, onCancel }) {
 
           return (
             <details
-              key={request.id || request.leave_id}
+              key={`${request.id || request.leave_id}-${request.attachments?.length || 0}`}
               className="compact-item"
             >
               <summary className="compact-summary">
@@ -684,12 +636,7 @@ export default function SelfTable({ leaveRequests, onEdit, onCancel }) {
                       <button
                         className="attachments-btn"
                         onClick={() =>
-                          handleOpenLeaveAttachments(
-                            cached && cached.length > 0
-                              ? cached
-                              : reqAttachments,
-                            request,
-                          )
+                          handleOpenLeaveAttachments(reqAttachments, request)
                         }
                       >
                         <MdOutlineRemoveRedEye className="eye-icon" /> View{" "}
@@ -724,6 +671,19 @@ export default function SelfTable({ leaveRequests, onEdit, onCancel }) {
           );
         })}
       </div>
+      <Modal
+        title="Notice"
+        isVisible={alertOpen}
+        onClose={() => setAlertOpen(false)}
+        buttons={[
+          {
+            label: "OK",
+            onClick: () => setAlertOpen(false),
+          },
+        ]}
+      >
+        <div style={{ padding: "10px 0" }}>{alertMessage}</div>
+      </Modal>
 
       {/* Preview Modal — two-column large viewer */}
       <Modal
@@ -841,7 +801,7 @@ export default function SelfTable({ leaveRequests, onEdit, onCancel }) {
                                 previewAttachment.url
                               )
                                 openUrlInNewTab(previewAttachment.url);
-                              else alert("No URL to open");
+                              else showAlert("No URL available to open.");
                             }}
                             style={{
                               background: "none",

@@ -66,7 +66,6 @@ export default function useLeaveRequest() {
   const [filters, setFilters] = useState({ from_date: "", to_date: "" });
   const [teamSearch, setTeamSearch] = useState("");
   const [teamStatus, setTeamStatus] = useState("");
-  // hook-level attachments hold real File objects (new uploads)
   const [attachments, setAttachments] = useState([]);
   const [balances, setBalances] = useState([]);
   const [policies, setPolicies] = useState([]);
@@ -74,7 +73,6 @@ export default function useLeaveRequest() {
   const [leaveRequests, setLeaveRequests] = useState({ self: [], team: [] });
   const [leaveTypes, setLeaveTypes] = useState([]);
 
-  // user profile (from separate table) - contains gender, dob etc.
   const [userProfile, setUserProfile] = useState(null);
 
   const now = new Date();
@@ -131,7 +129,6 @@ export default function useLeaveRequest() {
     return keywords.some((k) => c.includes(k));
   };
 
-  // compute age from DOB string (ISO or parseable)
   const computeAge = (dob) => {
     if (!dob) return null;
     try {
@@ -145,7 +142,6 @@ export default function useLeaveRequest() {
     }
   };
 
-  // check if user already has same-type leave in same month (self requests)
   const hasExistingSameMonthForType = (typeKey, startDateStr) => {
     try {
       const start = startDateStr ? new Date(startDateStr) : new Date();
@@ -336,53 +332,46 @@ export default function useLeaveRequest() {
     }
   };
 
-  // fetch user profile (gender/dob) from separate table(s). Try several likely endpoints.
   const fetchUserProfile = async () => {
     if (!employeeId) return null;
-    const candidates = [
-      `${BACKEND}/api/employee/${employeeId}`,
-      `${BACKEND}/api/employees/${employeeId}`,
-      `${BACKEND}/api/profile/${employeeId}`,
-    ];
-    for (const url of candidates) {
-      try {
-        const res = await fetch(url, { credentials: "include", headers });
-        if (!res.ok) continue;
-        const json = await res.json();
-        // try to find profile in json.data or json.message or top-level
-        const profile =
-          json?.data ||
-          json?.message ||
-          json ||
-          (json?.result && json.result[0]) ||
-          null;
-        if (profile) {
-          // normalize keys
-          const gender =
-            profile.gender ||
-            profile.sex ||
-            profile.Gender ||
-            profile.gender_name ||
-            null;
-          const dob =
-            profile.dob ||
-            profile.date_of_birth ||
-            profile.dateOfBirth ||
-            profile.DOB ||
-            null;
-          const normalized = { ...profile, gender, dob };
-          setUserProfile(normalized);
-          return normalized;
-        }
-      } catch (err) {
-        // ignore and try next
+
+    try {
+      const url = `${BACKEND}/employee/${employeeId}`;
+
+      const res = await fetch(url, {
+        credentials: "include",
+        headers,
+      });
+
+      if (!res.ok) {
+        console.warn("fetchUserProfile skipped — endpoint not available");
+        setUserProfile(null);
+        return null;
       }
+
+      const json = await res.json();
+      const profile = json?.data || json?.message || json || null;
+
+      if (!profile) {
+        setUserProfile(null);
+        return null;
+      }
+
+      const normalized = {
+        ...profile,
+        gender: profile.gender || profile.sex || null,
+        dob: profile.dob || profile.date_of_birth || null,
+      };
+
+      setUserProfile(normalized);
+      return normalized;
+    } catch (err) {
+      console.warn("fetchUserProfile failed safely:", err?.message);
+      setUserProfile(null);
+      return null;
     }
-    setUserProfile(null);
-    return null;
   };
 
-  // normalizeLeaveTypes helper (shared used locally)
   function normalizeLeaveTypes(raw = []) {
     const normalizeKey = (s = "") =>
       String(s)
@@ -424,11 +413,6 @@ export default function useLeaveRequest() {
     });
   }
 
-  /**
-   * Normalize attachment metadata objects from server into UI-friendly shape.
-   * Accepts many shapes returned by different endpoints and normalizes into:
-   * { id, name/file_name, size, mime_type, file_path, url, created_at, _raw }
-   */
   const normalizeServerAttachments = (arr = []) => {
     if (!Array.isArray(arr)) return [];
     return arr.map((a) => {
@@ -454,9 +438,6 @@ export default function useLeaveRequest() {
     });
   };
 
-  /**
-   * fetch attachments metadata for a leave id from server (tries both mounts)
-   */
   const fetchAttachmentsMetadataForLeave = async (leaveId) => {
     if (!leaveId) return [];
     const candidates = [
@@ -468,7 +449,6 @@ export default function useLeaveRequest() {
         const res = await fetch(url, { credentials: "include", headers });
         if (!res.ok) {
           if (res.status === 404) continue;
-          // try to parse fallback; if parsing fails continue
         }
         const json = await res.json().catch(() => null);
         const list =
@@ -479,21 +459,13 @@ export default function useLeaveRequest() {
           null;
         if (Array.isArray(list) && list.length)
           return normalizeServerAttachments(list);
-      } catch (e) {
-        // ignore and try next candidate
-      }
+      } catch (e) {}
     }
     return [];
   };
 
-  /**
-   * fetchLeaveTypes:
-   * - If there is an activePolicy (policy object with leave_settings), derive the leave types from that policy (so employee UI shows only used types).
-   * - Otherwise fall back to calling /types (or other endpoints) to fetch global/system types.
-   */
   const fetchLeaveTypes = async () => {
     try {
-      // 1) If we have an active policy with leave_settings, take types from there
       if (
         activePolicy &&
         Array.isArray(activePolicy.leave_settings) &&
@@ -517,7 +489,6 @@ export default function useLeaveRequest() {
         return normalized;
       }
 
-      // 2) fallback: call /types endpoint (try both namespaced and fallback)
       let url = `${BACKEND}/types`;
       const params = new URLSearchParams();
       const gender =
@@ -538,7 +509,6 @@ export default function useLeaveRequest() {
         cache: "no-store",
       });
 
-      // older APIs might be at /api/leave/types or /api/leave-types etc — fallback already handled elsewhere
       if (res.status === 404) {
         const fallback = `${BACKEND}/types${params.toString() ? `?${params.toString()}` : ""}`;
 
@@ -599,57 +569,65 @@ export default function useLeaveRequest() {
     try {
       if (!employeeId) return;
 
+      console.log("========== FETCH LEAVE REQUESTS START ==========");
+
       const selfUrl = `${BACKEND}/employee/leave/${employeeId}`;
       const selfParams = new URLSearchParams();
       if (filters.from_date) selfParams.append("from_date", filters.from_date);
       if (filters.to_date) selfParams.append("to_date", filters.to_date);
+
       const selfFinalUrl = selfParams.toString()
         ? `${selfUrl}?${selfParams}`
         : selfUrl;
+
+      console.log("SELF FETCH URL:", selfFinalUrl);
 
       const selfResponse = await fetch(selfFinalUrl, {
         credentials: "include",
         headers,
       });
+
       let selfRequests = [];
+
       if (selfResponse.ok) {
         const selfResult = await selfResponse.json();
+        console.log("RAW SELF RESPONSE:", selfResult);
+
         selfRequests =
           selfResult?.data ||
           selfResult?.message?.data ||
           extractArrayFromTeamResult(selfResult);
+      } else {
+        console.warn("SELF FETCH FAILED:", selfResponse.status);
       }
+
+      console.log("SELF REQUESTS BEFORE NORMALIZATION:", selfRequests);
+
+      (selfRequests || []).forEach((r) => {
+        console.log(
+          "RAW ROW:",
+          r.id || r.leave_id,
+          "ATTACHMENTS:",
+          r.attachments,
+        );
+      });
 
       let teamRequests = [];
       if (canViewTeam) {
         const teamUrl = `${BACKEND}/team-lead/${employeeId}`;
-        const teamParams = new URLSearchParams();
-        if (filters.from_date)
-          teamParams.append("from_date", filters.from_date);
-        if (filters.to_date) teamParams.append("to_date", filters.to_date);
-        if (teamSearch) teamParams.append("search", teamSearch);
-        if (teamStatus) teamParams.append("status", teamStatus);
-        const teamFinalUrl = teamParams.toString()
-          ? `${teamUrl}?${teamParams}`
-          : teamUrl;
-
-        const teamResponse = await fetch(teamFinalUrl, {
+        const teamResponse = await fetch(teamUrl, {
           credentials: "include",
           headers,
         });
+
         if (teamResponse.ok) {
           const teamResult = await teamResponse.json();
           teamRequests = extractArrayFromTeamResult(
             teamResult?.data ?? teamResult ?? teamResult?.message ?? {},
           );
-        } else {
-          console.warn("Team fetch returned non-ok", teamResponse.status);
         }
       }
 
-      // -----------------------
-      // Filter out current user's own requests from teamRequests
-      // -----------------------
       const normalizeEmployeeId = (r) =>
         String(
           r?.employee_id ?? r?.employeeId ?? r?.emp_id ?? r?.id ?? "",
@@ -661,7 +639,33 @@ export default function useLeaveRequest() {
         ? teamRequests.filter((r) => normalizeEmployeeId(r) !== ownIdStr)
         : [];
 
-      setLeaveRequests({ self: selfRequests, team: filteredTeamRequests });
+      const normalizedSelf = (selfRequests || []).map((r) => {
+        const normalized = {
+          ...r,
+          attachments: normalizeServerAttachments(r.attachments || []),
+        };
+
+        console.log(
+          "NORMALIZED ROW:",
+          normalized.id || normalized.leave_id,
+          "NORMALIZED ATTACHMENTS:",
+          normalized.attachments,
+        );
+
+        return normalized;
+      });
+
+      const normalizedTeam = (filteredTeamRequests || []).map((r) => ({
+        ...r,
+        attachments: normalizeServerAttachments(r.attachments || []),
+      }));
+
+      console.log("FINAL SELF STATE ABOUT TO SET:", normalizedSelf);
+
+      setLeaveRequests({ self: normalizedSelf, team: normalizedTeam });
+
+      console.log("========== FETCH LEAVE REQUESTS END ==========");
+
       return { self: selfRequests, team: filteredTeamRequests };
     } catch (err) {
       console.error("fetchLeaveRequests error:", err);
@@ -681,7 +685,6 @@ export default function useLeaveRequest() {
       const json = await res.json();
       let arr = json.data || [];
 
-      // augment with menstrual monthly grant if eligible and not used this month
       arr = augmentBalancesWithMenstrual(arr);
 
       setBalances(arr);
@@ -694,11 +697,9 @@ export default function useLeaveRequest() {
     }
   };
 
-  // augmentation for monthly menstrual 1-day entitlement (ephemeral client-side)
   const augmentBalancesWithMenstrual = (balanceArray = []) => {
     if (!Array.isArray(balanceArray)) return [];
     const copy = balanceArray.slice();
-    // find likely menstrual row
     const idx = copy.findIndex((b) =>
       canonicalTypeMatch(b.type || b.label || "", "menstrual", "menstr"),
     );
@@ -713,19 +714,15 @@ export default function useLeaveRequest() {
     const currentYear = new Date().getFullYear();
 
     if (!eligible) {
-      // ensure menstrual balances are not carried forward accidentally
       if (idx >= 0) {
         const existing = { ...copy[idx] };
-        // no carry forward for menstrual - ensure carry_forward property zeroed if present
         if ("carry_forward" in existing) existing.carry_forward = 0;
         copy[idx] = existing;
       }
       return copy;
     }
 
-    // If no menstrual row exists, add ephemeral row for this month with 1 day
     if (idx === -1) {
-      // only add if user has not already taken menstrual leave this month
       const usedThisMonth = hasExistingSameMonthForType("menstrual");
       if (!usedThisMonth) {
         copy.push({
@@ -740,15 +737,12 @@ export default function useLeaveRequest() {
           ephemeral: true,
         });
       } else {
-        // user already used menstrual this month => no ephemeral grant
       }
       return copy;
     }
 
-    // idx exists - modify existing row if necessary
     const original = { ...copy[idx] };
-    // determine whether backend already provided a monthly grant or not by checking flags
-    // We'll add 1 if user hasn't used in this month and backend did not already provide it.
+
     const usedThisMonth = hasExistingSameMonthForType(
       original.type || original.label || "menstrual",
     );
@@ -757,7 +751,6 @@ export default function useLeaveRequest() {
       original.ephemeral_year === currentYear;
 
     if (!usedThisMonth && !alreadyEphemeralForThisMonth) {
-      // add 1 to allowance & remaining (client-side only)
       const baseAllowance = Number(original.allowance ?? original.earned ?? 0);
       const baseUsed = Number(original.used ?? 0);
       const baseRemaining = Number(
@@ -768,11 +761,9 @@ export default function useLeaveRequest() {
       original.ephemeral = true;
       original.ephemeral_month = currentMonth;
       original.ephemeral_year = currentYear;
-      // ensure no carry forward
       original.carry_forward = 0;
       copy[idx] = original;
     } else {
-      // ensure carry_forward is zero (menstrual should lapse)
       original.carry_forward = 0;
       copy[idx] = original;
     }
@@ -793,7 +784,6 @@ export default function useLeaveRequest() {
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const json = await res.json();
       let arr = json.data || [];
-      // augment as above for menstrual
       arr = augmentBalancesWithMenstrual(arr);
       setLeaveBalancesCache((prev) => ({ ...prev, [employeeIdToLoad]: arr }));
       return arr;
@@ -823,7 +813,6 @@ export default function useLeaveRequest() {
       attachments: [],
     });
     setEditingId(null);
-    // clear any client-side File objects
     setAttachments([]);
   };
 
@@ -852,28 +841,20 @@ export default function useLeaveRequest() {
     });
   };
 
-  /**
-   * IMPORTANT: When editing, populate formData.attachments with server-side metadata (if available)
-   * and clear client-side attachments array (so UI shows the server attachments).
-   */
   const handleEdit = async (request) => {
-    // set basic form fields
     setFormData({
       reason: request.reason || request.comments || "",
       leavetype: request.leave_type || request.type || request.leavetype || "",
       h_f_day: request.H_F_day || request.h_f_day || "Full Day",
       startDate: parseLocalDate(request.start_date),
       endDate: parseLocalDate(request.end_date),
-      attachments: [], // will fill below
+      attachments: [],
     });
 
-    // mark editing id
     setEditingId(request.id || request.leave_id || null);
 
-    // clear client-side attachments (we want the UI to show server metadata)
     setAttachments([]);
 
-    // first: if the request already contains attachments metadata, use that
     if (Array.isArray(request.attachments) && request.attachments.length > 0) {
       const normalized = normalizeServerAttachments(request.attachments);
       setFormData((prev) => ({ ...prev, attachments: normalized }));
@@ -881,7 +862,6 @@ export default function useLeaveRequest() {
       return;
     }
 
-    // some APIs return attachments under different keys (e.g., files, attachments_meta); try those
     const altCandidates = [
       request.files,
       request.attachments_meta,
@@ -900,7 +880,6 @@ export default function useLeaveRequest() {
       }
     }
 
-    // fallback: try to fetch attachments metadata from server endpoints
     try {
       const id = request.id || request.leave_id || request.leaveId;
       if (id) {
@@ -915,7 +894,6 @@ export default function useLeaveRequest() {
       console.warn("handleEdit: failed to fetch attachments metadata:", err);
     }
 
-    // finally show the modal even if no attachments found
     setFormVisible(true);
   };
 
@@ -943,7 +921,6 @@ export default function useLeaveRequest() {
     );
   };
 
-  // MAIN submit with gender/age/menstrual rules
   const handleSubmit = async (e) => {
     e?.preventDefault?.();
     if (
@@ -989,7 +966,11 @@ export default function useLeaveRequest() {
       return;
     }
 
-    if (!userProfile) await fetchUserProfile();
+    if (!userProfile) {
+      try {
+        await fetchUserProfile();
+      } catch {}
+    }
 
     const personGender = (
       userProfile?.gender ||
@@ -1168,19 +1149,16 @@ export default function useLeaveRequest() {
       : `${BACKEND}/employee/leave`;
     const jsonMethod = editingId ? "PUT" : "POST";
 
-    // normalize attachments to actual File objects
     const normalizeFilesFromAttachments = (attachmentsArray = []) => {
       const fileObjs = [];
       for (const f of attachmentsArray) {
         if (!f) continue;
-        // if f is a File (from input), include
         try {
           if (typeof File !== "undefined" && f instanceof File) {
             fileObjs.push(f);
             continue;
           }
         } catch (e) {}
-        // common wrappers: { file: File }, { raw: File }, { blob: Blob }
         if (f.file && (f.file instanceof File || f.file?.name)) {
           fileObjs.push(f.file);
           continue;
@@ -1190,7 +1168,6 @@ export default function useLeaveRequest() {
           continue;
         }
         if (f.blob && (f.blob instanceof Blob || f.blob?.size)) {
-          // If blob has no name, give one
           const blob = f.blob;
           const name = f.name || f.fileName || `attachment-${Date.now()}.bin`;
           try {
@@ -1199,22 +1176,17 @@ export default function useLeaveRequest() {
             });
             fileObjs.push(file);
           } catch {
-            // If File constructor unavailable, still try append blob directly
             fileObjs.push(blob);
           }
           continue;
         }
-        // if object has name and size, try to treat as File-like
         if (f.name && f.size) {
-          // the browser cannot reconstruct a File from just metadata; skip
-          // but if it has a .file property we handled above
         }
       }
       return fileObjs;
     };
 
-    // try uploading attachments to one of these endpoints (two-step fallback)
-    const uploadAttachments = async (leaveId, files = []) => {
+    const uploadAttachments = async (leaveId, files = [], mode = "add") => {
       if (!leaveId) throw new Error("leaveId required for attachments");
       const fileObjs = normalizeFilesFromAttachments(files);
       if (!fileObjs.length) {
@@ -1228,7 +1200,6 @@ export default function useLeaveRequest() {
         form.append("attachments", f, fname);
       });
 
-      // Prepare headers but remove content-type
       const uploadHeaders = {};
       Object.keys(headers || {}).forEach((k) => {
         const v = headers[k];
@@ -1237,18 +1208,23 @@ export default function useLeaveRequest() {
         uploadHeaders[k] = v;
       });
 
-      // Try both non-/api and /api endpoints (covers different backend mounts)
-      const candidates = [
-        `${BACKEND}/employee/leave/${leaveId}/attachments`,
-        `${BACKEND}/api/employee/leave/${leaveId}/attachments`,
-      ];
+      const candidates =
+        mode === "replace"
+          ? [
+              `${BACKEND}/employee/leave/${leaveId}/attachments`,
+              `${BACKEND}/api/employee/leave/${leaveId}/attachments`,
+            ]
+          : [
+              `${BACKEND}/employee/leave/${leaveId}/attachments`,
+              `${BACKEND}/api/employee/leave/${leaveId}/attachments`,
+            ];
 
       let lastErr = null;
       for (const uploadUrl of candidates) {
         try {
           console.debug("[uploadAttachments] attempting upload to", uploadUrl);
           const res = await fetch(uploadUrl, {
-            method: "POST",
+            method: mode === "replace" ? "PUT" : "POST",
             credentials: "include",
             headers: uploadHeaders,
             body: form,
@@ -1260,7 +1236,7 @@ export default function useLeaveRequest() {
             if (res.status === 404) {
               console.warn("[uploadAttachments] 404 at", uploadUrl);
               lastErr = { status: 404, json };
-              continue; // try next candidate
+              continue;
             }
             return {
               ok: false,
@@ -1278,155 +1254,153 @@ export default function useLeaveRequest() {
       return { ok: false, error: "No upload endpoint worked", lastErr };
     };
 
-    // doSubmit: try single-step (FormData) if attachments exist & creating (POST)
     const doSubmit = async (data, submitUrl, submitMethod) => {
       try {
         const hasFiles = Array.isArray(attachments) && attachments.length > 0;
-        // If creating a new leave and files exist, prefer single-step FormData POST to /employee/leave
-        if (!editingId && hasFiles && submitMethod === "POST") {
-          // create FormData with all fields + attachments
-          const fileObjs = normalizeFilesFromAttachments(attachments);
+
+        if (editingId) {
           const form = new FormData();
-          // include all fields from data (primitives)
+
           Object.keys(data || {}).forEach((k) => {
             const v = data[k];
             if (v === undefined || v === null) return;
-            // FormData needs string values for non-File items
+
             if (typeof v === "object") {
-              try {
-                form.append(k, JSON.stringify(v));
-              } catch {
-                // skip non-serializable
-              }
+              form.append(k, JSON.stringify(v));
             } else {
               form.append(k, String(v));
             }
           });
-          // append files
-          fileObjs.forEach((f, i) => {
-            const fname = f.name || f.fileName || `attachment-${i}`;
-            form.append("attachments", f, fname);
-          });
 
-          // headers for multipart: clone but remove Content-Type
+          if (hasFiles) {
+            attachments.forEach((fileObj, i) => {
+              let file = fileObj;
+
+              if (!(fileObj instanceof File) && fileObj?.file instanceof File) {
+                file = fileObj.file;
+              }
+
+              if (file instanceof File) {
+                form.append("attachments", file, file.name);
+              }
+            });
+          }
+
           const uploadHeaders = {};
           Object.keys(headers || {}).forEach((k) => {
             const v = headers[k];
-            if (v === undefined || v === null || v === "") return;
+            if (!v) return;
             if (k.toLowerCase() === "content-type") return;
             uploadHeaders[k] = v;
           });
 
-          // prefer the non-/api endpoint for creation (router usually uses /employee/leave with multer)
-          const primaryCreateUrl = `${BACKEND}/employee/leave`;
-          const alternativeCreateUrl = `${BACKEND}/api/employee/leave`;
+          const response = await fetch(submitUrl, {
+            method: "PUT",
+            credentials: "include",
+            headers: uploadHeaders,
+            body: form,
+          });
 
-          // try primary first then alternative
-          const createCandidates = [primaryCreateUrl, alternativeCreateUrl];
+          const responseData = await response.json().catch(() => null);
 
-          for (const createUrl of createCandidates) {
-            try {
-              console.debug(
-                "[doSubmit] trying single-step create+upload to",
-                createUrl,
-              );
-              const res = await fetch(createUrl, {
-                method: "POST",
-                credentials: "include",
-                headers: uploadHeaders,
-                body: form,
-              });
-              const json = await res.json().catch(() => null);
-              if (res.ok) {
-                // success: server should already have saved attachments
-                // refresh lists
-                await fetchLeaveRequests();
-                await fetchLeaveBalance();
-                setAttachments([]); // clear client-side attachments
-                showAlert("Leave request submitted successfully!");
-                setFormVisible(false);
-                resetForm();
-                return;
-              } else {
-                // if 404, try next create candidate
-                if (res.status === 404) {
-                  console.warn(
-                    "[doSubmit] single-step create returned 404 at",
-                    createUrl,
-                  );
-                  continue;
-                }
-                // other error: show and return
-                showAlert(json?.message || "Failed to submit leave request.");
-                return;
-              }
-            } catch (err) {
-              console.warn(
-                "[doSubmit] network error during single-step create at",
-                createUrl,
-                err,
-              );
-              continue;
-            }
+          if (response.ok) {
+            showAlert("Leave request updated successfully!");
+            setFormVisible(false);
+            setEditingId(null);
+            resetForm();
+            setAttachments([]);
+
+            await fetchLeaveRequests();
+            await fetchLeaveBalance();
+          } else {
+            showAlert(
+              responseData?.message || "Failed to update leave request.",
+            );
           }
 
-          // if we reach here, single-step failed for all create URLs; fallback to two-step below
+          return;
         }
 
-        // ----- fallback: JSON submit (create or edit) -----
-        const jsonHeaders = {};
-        Object.keys(headers || {}).forEach((k) => {
-          const v = headers[k];
-          if (v === undefined || v === null || v === "") return;
-          jsonHeaders[k] = v;
-        });
+        if (!editingId && !hasFiles) {
+          const response = await fetch(submitUrl, {
+            method: "POST",
+            credentials: "include",
+            headers,
+            body: JSON.stringify(data),
+          });
 
-        // ensure we set content-type for JSON
-        jsonHeaders["Content-Type"] = "application/json";
+          const responseData = await response.json().catch(() => null);
 
-        console.debug(
-          "[doSubmit] doing JSON submit to",
-          submitUrl,
-          "method",
-          submitMethod,
-        );
-        const response = await fetch(submitUrl, {
-          method: submitMethod,
-          credentials: "include",
-          headers: jsonHeaders,
-          body: JSON.stringify(data),
-        });
-        const responseData = await response.json().catch(() => null);
-
-        if (response.ok) {
-          const createdId =
-            responseData?.data?.id || responseData?.id || data.leaveId || null;
-
-          if (hasFiles && createdId) {
-            const uploadRes = await uploadAttachments(createdId, attachments);
-            if (!uploadRes.ok) {
-              console.warn("Attachments upload returned error:", uploadRes);
-              showAlert(
-                "Leave submitted but attachment upload failed. Check console/server logs.",
-              );
-            } else {
-              console.debug("Attachments uploaded:", uploadRes.uploaded);
-            }
+          if (response.ok) {
+            showAlert("Leave request submitted successfully!");
+            setFormVisible(false);
+            resetForm();
+            await fetchLeaveRequests();
+            await fetchLeaveBalance();
+          } else {
+            showAlert(
+              responseData?.message || "Failed to submit leave request.",
+            );
           }
 
-          showAlert(
-            editingId
-              ? "Leave request updated successfully!"
-              : "Leave request submitted successfully!",
-          );
-          setFormVisible(false);
-          setEditingId(null);
-          resetForm();
-          setAttachments([]);
-          await fetchLeaveRequests();
-          await fetchLeaveBalance();
-        } else {
-          showAlert(responseData?.message || "Failed to submit leave request.");
+          return;
+        }
+
+        if (!editingId && hasFiles) {
+          const form = new FormData();
+
+          Object.keys(data || {}).forEach((k) => {
+            const v = data[k];
+            if (v === undefined || v === null) return;
+
+            if (typeof v === "object") {
+              form.append(k, JSON.stringify(v));
+            } else {
+              form.append(k, String(v));
+            }
+          });
+
+          attachments.forEach((fileObj, i) => {
+            let file = fileObj;
+
+            if (!(fileObj instanceof File) && fileObj?.file instanceof File) {
+              file = fileObj.file;
+            }
+
+            if (file instanceof File) {
+              form.append("attachments", file, file.name);
+            }
+          });
+
+          const uploadHeaders = {};
+          Object.keys(headers || {}).forEach((k) => {
+            const v = headers[k];
+            if (!v) return;
+            if (k.toLowerCase() === "content-type") return;
+            uploadHeaders[k] = v;
+          });
+
+          const response = await fetch(submitUrl, {
+            method: "POST",
+            credentials: "include",
+            headers: uploadHeaders,
+            body: form,
+          });
+
+          const responseData = await response.json().catch(() => null);
+
+          if (response.ok) {
+            showAlert("Leave request submitted successfully!");
+            setFormVisible(false);
+            resetForm();
+            setAttachments([]);
+            await fetchLeaveRequests();
+            await fetchLeaveBalance();
+          } else {
+            showAlert(
+              responseData?.message || "Failed to submit leave request.",
+            );
+          }
         }
       } catch (err) {
         console.error("Error in doSubmit:", err);
@@ -1434,7 +1408,6 @@ export default function useLeaveRequest() {
       }
     };
 
-    // Loss-of-pay flow and continue confirmation
     if (requestedDays > remaining && !activePolicy) {
       await doSubmit(requestData, jsonUrl, jsonMethod);
       return;
@@ -1453,32 +1426,32 @@ export default function useLeaveRequest() {
     await doSubmit(requestData, jsonUrl, jsonMethod);
   };
 
-  // initial load: fetch profile, leave types, policies, leave-requests and balances (in sequence)
   useEffect(() => {
+    if (!employeeId) return;
+
     (async () => {
       try {
-        await fetchUserProfile();
-      } catch (err) {
-        // ignore profile errors
-      }
-      try {
         await fetchPolicies();
-      } catch (err) {}
-      // fetch requests first (so augmentBalancesWithMenstrual can check usage this month)
+      } catch {}
+
       try {
         await fetchLeaveRequests();
-      } catch (err) {}
+      } catch {}
+
       try {
         await fetchLeaveTypes();
-      } catch (err) {}
+      } catch {}
+
       try {
         await fetchLeaveBalance();
-      } catch (err) {}
+      } catch {}
+
+      try {
+        await fetchUserProfile();
+      } catch {}
     })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [employeeId]);
 
-  // update activePolicy when policies change
   useEffect(() => {
     if (!Array.isArray(policies) || policies.length === 0) {
       setActivePolicy(null);
@@ -1505,7 +1478,6 @@ export default function useLeaveRequest() {
 
   useEffect(() => {
     if (employeeId) fetchLeaveRequests();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [employeeId, teamSearch, teamStatus, filters.from_date, filters.to_date]);
 
   return {

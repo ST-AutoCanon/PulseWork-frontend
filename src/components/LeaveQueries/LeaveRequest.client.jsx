@@ -1,4 +1,3 @@
-// LeaveRequest.client.js
 "use client";
 
 import React, { useMemo, useState } from "react";
@@ -38,12 +37,7 @@ export default function LeaveRequest() {
       ),
     );
 
-  // build leaveTypeOptions:
-  // prefer activePolicy.leave_settings (only types used in the active policy),
-  // then prefer dynamic hook.leaveTypes (from /types endpoint),
-  // then fallback to policy/default settings.
   const leaveTypeOptions = useMemo(() => {
-    // 1. If there's an active policy with leave_settings — use that ONLY
     if (
       hook.activePolicy &&
       Array.isArray(hook.activePolicy.leave_settings) &&
@@ -62,7 +56,6 @@ export default function LeaveRequest() {
         });
     }
 
-    // 2. Next try dynamic leaveTypes from hook (normalized objects)
     const fromHook = (hook.leaveTypes || []).map((t) => {
       const key = t.key || t.type || String(t).trim();
       const label = t.label || t.name || String(key).replace(/_/g, " ");
@@ -72,7 +65,6 @@ export default function LeaveRequest() {
     });
     if (fromHook && fromHook.length > 0) return fromHook;
 
-    // 3. Finally fallback to activePolicy settings (if any) or defaultLeaveSettings
     const settings =
       hook.activePolicy?.leave_settings?.length > 0
         ? hook.activePolicy.leave_settings

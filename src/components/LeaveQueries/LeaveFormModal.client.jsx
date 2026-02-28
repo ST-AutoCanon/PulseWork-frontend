@@ -21,7 +21,6 @@ export default function LeaveFormModal({
   defaultLeaveSettings,
   leaveTypes = [],
   userProfile = null,
-  // Option A: attachments state provided by hook
   attachments = [],
   setAttachments = () => {},
 }) {
@@ -30,7 +29,7 @@ export default function LeaveFormModal({
   const todayIso = useMemo(() => new Date().toISOString().split("T")[0], []);
   const [minStartAllowed, setMinStartAllowed] = useState(todayIso);
   const [advanceNoticeDays, setAdvanceNoticeDays] = useState(0);
-
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const formatIso = (d) =>
     d instanceof Date ? d.toISOString().split("T")[0] : String(d);
 
@@ -120,6 +119,12 @@ export default function LeaveFormModal({
     }
   };
 
+  const isSunday = (isoDate) => {
+    if (!isoDate) return false;
+    const d = new Date(isoDate);
+    return d.getDay() === 0;
+  };
+
   useEffect(() => {
     const selectedType = formData.leavetype || "";
     if (!selectedType) {
@@ -148,7 +153,6 @@ export default function LeaveFormModal({
         showAlert?.(msg);
       } catch (e) {}
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     formData.leavetype,
     activePolicy,
@@ -157,9 +161,20 @@ export default function LeaveFormModal({
   ]);
 
   const handleStartChange = (e) => {
-    handleInputChange(e);
     const chosen = e.target.value;
-    if (!chosen) return;
+
+    if (!chosen) {
+      handleInputChange(e);
+      return;
+    }
+
+    if (isSunday(chosen)) {
+      showAlert?.("Sunday cannot be selected as a leave start date.");
+      return;
+    }
+
+    handleInputChange(e);
+
     if (!editingId && advanceNoticeDays > 0) {
       const allowed = minStartAllowed;
       if (new Date(chosen) < new Date(allowed)) {
@@ -182,7 +197,6 @@ export default function LeaveFormModal({
     return oneMonthAgoIso;
   })();
 
-  // Attachment logic
   const requestedDays = calcRequestedDays();
   const selectedTypeStr = (formData.leavetype || "").toString().toLowerCase();
 
@@ -201,9 +215,6 @@ export default function LeaveFormModal({
     return `${(kb / 1024).toFixed(2)} MB`;
   };
 
-  // --------- IMPORTANT FIX ----------
-  // Preserve server-side attachments when editing.
-  // Only clear formData.attachments automatically when NOT editing and there are no hook-level attachments.
   useEffect(() => {
     try {
       if (!Array.isArray(attachments) || attachments.length === 0) {
@@ -211,7 +222,6 @@ export default function LeaveFormModal({
           ? formData.attachments
           : [];
 
-        // detect if metadata items are purely local placeholders (no server reference)
         const allLocalNoFile =
           meta.length > 0 &&
           meta.every(
@@ -224,19 +234,15 @@ export default function LeaveFormModal({
               !m.id,
           );
 
-        // If we're editing, preserve whatever attachments metadata is present (server-side files).
-        // Only clear metadata automatically if we're *not* editing and there's nothing useful.
         if (meta.length === 0 || allLocalNoFile) {
           if (!editingId) {
             setFormData((prev) => ({ ...prev, attachments: [] }));
           } else {
-            // editingId present: keep meta as-is (so server attachments remain visible)
           }
         }
         return;
       }
 
-      // If real File objects are provided via hook-level attachments, build simple metadata
       const meta = attachments.map((f) => ({
         name: f.name,
         size: f.size,
@@ -244,13 +250,9 @@ export default function LeaveFormModal({
         uploaded: false,
       }));
       setFormData((prev) => ({ ...prev, attachments: meta }));
-    } catch (err) {
-      // swallow errors; do not clear existing attachments on error
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    } catch (err) {}
   }, [attachments, editingId, JSON.stringify(formData.attachments || [])]);
 
-  // When file input changes, store *real* File objects into hook-level attachments
   const handleFilesChange = (e) => {
     const files = e.target.files;
     if (!files) return;
@@ -267,19 +269,15 @@ export default function LeaveFormModal({
       return;
     }
 
-    // Merge with existing File objects (hook)
     const existingHook = Array.isArray(attachments) ? attachments : [];
     const newHook = existingHook.concat(arrFiles);
     setAttachments(newHook);
-
-    // metadata update handled by useEffect above
 
     try {
       e.target.value = "";
     } catch {}
   };
 
-  // Remove by index (index is relative to displayed list; we keep attachments & metadata aligned)
   const removeAttachment = (idx) => {
     const hookArr = Array.isArray(attachments) ? attachments.slice() : null;
     if (hookArr && hookArr.length > 0) {
@@ -290,12 +288,10 @@ export default function LeaveFormModal({
       return;
     }
 
-    // fallback to metadata-only removal (possible when showing previously uploaded files)
     const metaArr = Array.isArray(formData.attachments)
       ? formData.attachments.slice()
       : [];
     if (idx >= 0 && idx < metaArr.length) {
-      // remove from metadata; backend should accept the metadata change when updating the leave
       metaArr.splice(idx, 1);
       setFormData({ ...formData, attachments: metaArr });
     }
@@ -313,16 +309,28 @@ export default function LeaveFormModal({
       <div className="leave-modal-content">
         <form
           className="leave-form"
-          onSubmit={(e) => {
+          onSubmit={async (e) => {
+            e.preventDefault();
+
+            if (isSubmitting) return;
+
             if (showAttachmentOption && !hasAnyAttachment()) {
-              e.preventDefault();
               showAlert?.(
                 "Supporting document is mandatory for this leave type.",
               );
               return;
             }
 
-            handleSubmit?.(e);
+            try {
+              if (isSunday(formData.startDate) || isSunday(formData.endDate)) {
+                showAlert?.("Leave cannot include Sunday.");
+                return;
+              }
+              setIsSubmitting(true);
+              await handleSubmit?.(e);
+            } finally {
+              setIsSubmitting(false);
+            }
           }}
         >
           <div className="leave-form-header">
@@ -397,7 +405,18 @@ export default function LeaveFormModal({
                 type="date"
                 name="endDate"
                 value={formData.endDate || ""}
-                onChange={handleInputChange}
+                onChange={(e) => {
+                  const chosen = e.target.value;
+
+                  if (isSunday(chosen)) {
+                    showAlert?.(
+                      "Sunday cannot be selected as a leave end date.",
+                    );
+                    return;
+                  }
+
+                  handleInputChange(e);
+                }}
                 min={formData.startDate || effectiveMinStart}
                 required
               />
@@ -521,8 +540,12 @@ export default function LeaveFormModal({
             <button type="button" className="leave-cancel" onClick={onClose}>
               Cancel
             </button>
-            <button type="submit" className="leave-save">
-              {editingId ? "Update" : "Submit"}
+            <button
+              type="submit"
+              className="leave-save"
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? "Processing..." : editingId ? "Update" : "Submit"}
             </button>
           </div>
         </form>

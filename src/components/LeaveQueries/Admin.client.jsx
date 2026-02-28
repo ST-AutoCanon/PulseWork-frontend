@@ -1,5 +1,3 @@
-// File: Admin.client.jsx
-
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
@@ -106,14 +104,12 @@ export default function Admin({ openPolicyId = null }) {
     error: "",
   });
 
-  // Attachment modal state
   const [attachmentsModal, setAttachmentsModal] = useState({
     isVisible: false,
     title: "",
     files: [],
   });
 
-  // cache mapping leaveId -> normalized attachments (pre-resolved)
   const [attachmentsMap, setAttachmentsMap] = useState({});
 
   const showAlert = (message, title = "") => {
@@ -232,11 +228,9 @@ export default function Admin({ openPolicyId = null }) {
   }, [policies]);
 
   useEffect(() => {
-    // initial data load
     fetchPolicies();
     fetchLeaveQueries();
     fetchLeaveTypes();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [statusFilter, fromDate, toDate, search, user?.employeeId, user?.orgId]);
 
   useEffect(() => {
@@ -255,7 +249,6 @@ export default function Admin({ openPolicyId = null }) {
       if (toDate) paramsObj.to_date = toDate;
 
       const params = new URLSearchParams(paramsObj).toString();
-      // leave routes are mounted at "/" so admin endpoint is /admin/leave (no /api prefix)
       const url = `${API_BASE}/admin/leave${params ? `?${params}` : ""}`;
 
       const res = await fetch(url, {
@@ -336,9 +329,7 @@ export default function Admin({ openPolicyId = null }) {
             profile.dob || profile.date_of_birth || profile.dateOfBirth || null;
           return { ...profile, gender, dob };
         }
-      } catch (err) {
-        // ignore
-      }
+      } catch (err) {}
     }
     return null;
   };
@@ -448,9 +439,7 @@ export default function Admin({ openPolicyId = null }) {
       try {
         const profile = await fetchEmployeeProfile(employeeId);
         data = augmentBalancesWithMenstrual(data, profile);
-      } catch (err) {
-        // ignore augmentation failures
-      }
+      } catch (err) {}
 
       setLeaveBalances((b) => ({ ...b, [employeeId]: data }));
       return data;
@@ -669,12 +658,10 @@ export default function Admin({ openPolicyId = null }) {
       const balances = await loadLeaveBalance(query.employee_id);
       const bal =
         balances.find((r) => {
-          // match robustly by type key/label and by DB leave types
           const t = (r.type || r.label || "").toString().toLowerCase();
           const qType = (query.leave_type || "").toString().toLowerCase();
           if (!t || !qType) return false;
           if (t === qType) return true;
-          // compare normalized leaveTypes loaded from /leave/types
           const matchByDb = (leaveTypes || []).some((lt) => {
             const ltKey = (lt.key || "").toString().toLowerCase();
             const ltLabel = (lt.label || "").toString().toLowerCase();
@@ -739,8 +726,6 @@ export default function Admin({ openPolicyId = null }) {
         return;
       }
 
-      // ... same LopModal flows as before (approveDeficit, setAllCompensated, setAllDeducted, applyFlexibleSplit)
-      // Reusing the implementation from your original file (kept unchanged)
       const approveDeficit = async () => {
         const preserved_leave_days = Number(remaining) || 0;
         const lopDaysVal = Number(days) || 0;
@@ -1026,9 +1011,6 @@ export default function Admin({ openPolicyId = null }) {
     }));
   };
 
-  // -------------------------
-  // Attachment helpers
-  // -------------------------
   const buildFileUrl = (filePath) => {
     if (!filePath) return "";
     if (/^https?:\/\//i.test(filePath)) return filePath;
@@ -1137,7 +1119,7 @@ export default function Admin({ openPolicyId = null }) {
       mime_type: raw.mime_type || raw.type || raw.contentType || "",
       size: raw.size || raw.file_size || raw.length || null,
       created_at: raw.created_at || raw.createdAt || raw.uploaded_at || null,
-      // keep any direct url the server provided
+
       url: raw.url || raw.file_url || null,
     };
   };
@@ -1156,7 +1138,6 @@ export default function Admin({ openPolicyId = null }) {
     if (!query) return;
     const lid = String(query.leave_id || query.id || query.leaveId || "");
 
-    // priority: providedAttachments -> cache -> extract from query -> fetch endpoints
     let normalized =
       Array.isArray(providedAttachments) && providedAttachments.length > 0
         ? normalizeList(providedAttachments)
@@ -1196,9 +1177,7 @@ export default function Admin({ openPolicyId = null }) {
             normalized = normalizeList(raw);
             break;
           }
-        } catch (err) {
-          // ignore
-        }
+        } catch (err) {}
       }
     }
 
@@ -1244,7 +1223,6 @@ export default function Admin({ openPolicyId = null }) {
     }
 
     try {
-      // fetch the file using tenant/employee headers
       const res = await fetch(url, {
         method: "GET",
         credentials: "include",
@@ -1263,28 +1241,22 @@ export default function Admin({ openPolicyId = null }) {
         return;
       }
 
-      // get blob and determine MIME
       const arrayBuffer = await res.arrayBuffer();
       const serverContentType = res.headers.get("Content-Type") || "";
       const knownMime = file.mime_type || file.mime || serverContentType || "";
-      // if we have a known mime (pdf,image), use it — browsers will render PDFs/images inline
       const mime = knownMime || "application/octet-stream";
 
-      // create a blob using the chosen mime (helps force inline rendering)
       const blob = new Blob([arrayBuffer], { type: mime });
       const objectUrl = URL.createObjectURL(blob);
 
-      // Use anchor to open in new tab (more reliable for blob URLs)
       const a = document.createElement("a");
       a.href = objectUrl;
       a.target = "_blank";
       a.rel = "noopener noreferrer";
-      // do NOT set a.download — that forces a download
       document.body.appendChild(a);
       a.click();
       a.remove();
 
-      // revoke after some time (give user time to view)
       setTimeout(
         () => {
           try {
@@ -1292,7 +1264,7 @@ export default function Admin({ openPolicyId = null }) {
           } catch (e) {}
         },
         2 * 60 * 1000,
-      ); // 2 minutes
+      );
     } catch (err) {
       console.error("[openFileInNewTab] error:", err);
       showAlert(
@@ -1301,9 +1273,6 @@ export default function Admin({ openPolicyId = null }) {
     }
   };
 
-  // -------------------------
-  // Render
-  // -------------------------
   return (
     <div className="admin-container">
       <div className="policy-header">
@@ -1324,7 +1293,7 @@ export default function Admin({ openPolicyId = null }) {
           fetchLeaveQueries();
           setShowPolicyModal(false);
         }}
-        showAlert={(msg) => showAlert(msg)} // pass Admin's showAlert into modal
+        showAlert={(msg) => showAlert(msg)}
         existingPolicies={policies}
         openPolicyId={openPolicyId}
       />
@@ -1475,12 +1444,8 @@ export default function Admin({ openPolicyId = null }) {
                     statusUpdates[query.leave_id]?.status &&
                     statusUpdates[query.leave_id]?.status !== query.status;
 
-                  // attachments quick preview (robust)
                   const previewList = getNormalizedPreviewList(query);
 
-                  // Primary change: show View button if either attachments are embedded
-                  // OR we have a leave_id (server may hold attachments separately).
-                  // This matches SelfTable behavior: let user try to fetch even if row doesn't include attachments.
                   const hasEmbeddedAttachments =
                     previewList && previewList.length > 0;
                   const hasPossibleServerAttachments = Boolean(query.leave_id);
@@ -1504,8 +1469,6 @@ export default function Admin({ openPolicyId = null }) {
                         <button
                           className="attachments-btn"
                           onClick={() =>
-                            // if we have embedded previewList, pass it so we avoid an extra fetch;
-                            // otherwise openAttachments will probe server endpoints.
                             openAttachments(
                               query,
                               hasEmbeddedAttachments ? previewList : null,
@@ -1530,7 +1493,6 @@ export default function Admin({ openPolicyId = null }) {
                       <div className="no-attachments">Not Attached</div>
                     );
                   }
-                  // --------------------------------------------------------
 
                   return (
                     <tr
@@ -1635,7 +1597,6 @@ export default function Admin({ openPolicyId = null }) {
 
           <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
             {attachmentsModal.files.map((f, idx) => {
-              // compute a usable URL (but we won't fetch blobs here; open in new tab)
               const urlCandidate =
                 f.url || f.file_path || f.file_url || f.url || "";
               const safeName = f.file_name || `attachment-${idx + 1}`;

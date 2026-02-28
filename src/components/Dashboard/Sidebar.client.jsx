@@ -55,7 +55,6 @@ const Sidebar = ({ setActiveContent }) => {
     useState(false);
   const [showTaskDropdown, setShowTaskDropdown] = useState(false);
   const [showSalaryDropdown, setShowSalaryDropdown] = useState(false);
-  const [showLeaveDropdown, setShowLeaveDropdown] = useState(false);
 
   const [hasSubordinates, setHasSubordinates] = useState(false);
   const [loadingSubordinates, setLoadingSubordinates] = useState(true);
@@ -65,14 +64,12 @@ const Sidebar = ({ setActiveContent }) => {
     "/compensation": "compensation",
     "/TaskManagement": "task",
     "/Salary_Statement": "salary",
-    "/leaveQueries": "leave",
   };
 
   const toggleDropdown = (type) => {
     setShowCompensationDropdown(type === "compensation");
     setShowTaskDropdown(type === "task");
     setShowSalaryDropdown(type === "salary");
-    setShowLeaveDropdown(type === "leave");
   };
 
   const defaultMenuItems = useMemo(
@@ -105,18 +102,10 @@ const Sidebar = ({ setActiveContent }) => {
       "/addDepartment": () => <AddDepartment />,
       "/updateProjects": () => <UpdateProject />,
       "/CreateOrganization": () => <CreateOrganization />,
-      "/leaveQueries": (role, sub) => {
-        // Allow explicit sub-option override (sub === 'admin' or 'employee')
-        if (sub === "admin") return <LeaveQueries />;
-        if (sub === "employee") return <LeaveRequest />;
-
-        // Default behavior:
-        // Admin -> LeaveQueries (admin view)
-        // Manager -> LeaveRequest (employee view)
-        // HR -> show admin view by default but dropdown allows switching (keeps compatibility)
+      "/leaveQueries": (role) => {
         if (role === "Admin") return <LeaveQueries />;
         if (role === "Manager") return <LeaveRequest />;
-        if (role === "HR") return <LeaveQueries />; // default for HR remains admin view; dropdown lets them pick employee too
+        if (role === "HR") return <LeaveQueries />;
         return <LeaveRequest />;
       },
       "/payrollSummary": () => <PayrollSummary />,
@@ -258,30 +247,21 @@ const Sidebar = ({ setActiveContent }) => {
     const hasDropdown =
       item.path === "/compensation" ||
       item.path === "/TaskManagement" ||
-      item.path === "/Salary_Statement" ||
-      item.path === "/leaveQueries";
+      item.path === "/Salary_Statement";
 
     if (hasDropdown && !subOption) {
       if (item.path === "/compensation") {
         setShowCompensationDropdown((prev) => !prev);
         setShowTaskDropdown(false);
         setShowSalaryDropdown(false);
-        setShowLeaveDropdown(false);
       } else if (item.path === "/TaskManagement") {
         setShowTaskDropdown((prev) => !prev);
         setShowCompensationDropdown(false);
         setShowSalaryDropdown(false);
-        setShowLeaveDropdown(false);
       } else if (item.path === "/Salary_Statement") {
         setShowSalaryDropdown((prev) => !prev);
         setShowCompensationDropdown(false);
         setShowTaskDropdown(false);
-        setShowLeaveDropdown(false);
-      } else if (item.path === "/leaveQueries") {
-        setShowLeaveDropdown((prev) => !prev);
-        setShowCompensationDropdown(false);
-        setShowTaskDropdown(false);
-        setShowSalaryDropdown(false);
       }
       return;
     }
@@ -319,11 +299,6 @@ const Sidebar = ({ setActiveContent }) => {
         subOption === "statement" ? <Salary_Statement /> : <GeneratePayslip />;
       setActiveNav(`/Salary_Statement/${subOption}`);
       setShowSalaryDropdown(true);
-    } else if (item.path === "/leaveQueries") {
-      // handle leave subOption explicitly (admin vs employee)
-      content = pathToComponent["/leaveQueries"](role, subOption);
-      setActiveNav(`/leaveQueries/${subOption || ""}`);
-      setShowLeaveDropdown(true);
     } else {
       const resolver = pathToComponent[item.path];
       console.log("Clicking item:", item.path, "Resolver exists:", !!resolver);
@@ -336,7 +311,6 @@ const Sidebar = ({ setActiveContent }) => {
       setShowCompensationDropdown(false);
       setShowTaskDropdown(false);
       setShowSalaryDropdown(false);
-      setShowLeaveDropdown(false);
     }
 
     if (content) {
@@ -417,8 +391,7 @@ const Sidebar = ({ setActiveContent }) => {
         const hasDropdown =
           item.path === "/compensation" ||
           item.path === "/TaskManagement" ||
-          item.path === "/Salary_Statement" ||
-          item.path === "/leaveQueries";
+          item.path === "/Salary_Statement";
 
         return (
           <li key={index} className="menu-item">
@@ -433,8 +406,7 @@ const Sidebar = ({ setActiveContent }) => {
                   {(item.path === "/compensation" &&
                     showCompensationDropdown) ||
                   (item.path === "/TaskManagement" && showTaskDropdown) ||
-                  (item.path === "/Salary_Statement" && showSalaryDropdown) ||
-                  (item.path === "/leaveQueries" && showLeaveDropdown) ? (
+                  (item.path === "/Salary_Statement" && showSalaryDropdown) ? (
                     <MdIcons.MdKeyboardArrowDown />
                   ) : (
                     <MdIcons.MdKeyboardArrowRight />
@@ -547,38 +519,6 @@ const Sidebar = ({ setActiveContent }) => {
                   >
                     <MdIcons.MdPerson size={20} />
                     <span>My Tasks</span>
-                  </li>
-                )}
-              </ul>
-            )}
-
-            {item.path === "/leaveQueries" && showLeaveDropdown && (
-              <ul className="desktop-submenu">
-                {/* My Leave Requests - VISIBLE TO NON-ADMINS ONLY */}
-                {user?.role !== "Admin" && (
-                  <li
-                    className={activeSubItem === "employee" ? "active" : ""}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleMenuClick(item, "employee");
-                    }}
-                  >
-                    <MdIcons.MdPerson size={20} />
-                    <span>My Leave Requests</span>
-                  </li>
-                )}
-
-                {/* Admin Leave Queries - visible to Admin and HR */}
-                {(user?.role === "Admin" || user?.role === "HR") && (
-                  <li
-                    className={activeSubItem === "admin" ? "active" : ""}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleMenuClick(item, "admin");
-                    }}
-                  >
-                    <MdIcons.MdOutlineAdminPanelSettings size={20} />
-                    <span>Admin Leave Queries</span>
                   </li>
                 )}
               </ul>

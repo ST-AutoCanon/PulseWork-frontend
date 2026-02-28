@@ -1,5 +1,3 @@
-// src/components/LeaveRequest/leaveUtils.client.js
-
 export const parseLocalDate = (dateStr) => {
   if (!dateStr) return "";
   if (typeof dateStr === "string" && dateStr.length === 10) return dateStr;
@@ -7,7 +5,6 @@ export const parseLocalDate = (dateStr) => {
   const d = new Date(dateStr);
   if (isNaN(d.getTime())) return "";
 
-  // normalize to local date (strip time part by adjusting timezone offset)
   d.setMinutes(d.getMinutes() + d.getTimezoneOffset());
   return d.toISOString().split("T")[0];
 };
@@ -47,7 +44,6 @@ export const calculateDays = (startDate, endDate, h_f_day = "") => {
 export const getAdvanceNoticeDays = (setting) => {
   if (!setting) return 0;
 
-  // allow a few shapes: { advance_notice_days }, { advanceNoticeDays }, { advance_notice }, { advanceNotice }
   const raw =
     setting?.advance_notice_days ??
     setting?.advanceNoticeDays ??
@@ -107,7 +103,6 @@ export const defaultLeaveSettings = [
     value: 0,
     carry_forward: 0,
     enabled: true,
-    // earned may have additional keys like working_days / earned_leaves
     advance_notice_days: 0,
   },
   {
@@ -127,7 +122,6 @@ export function normalizeLeaveTypes(arr = []) {
       const k = String(t).trim().toLowerCase();
       return { key: k, label: t, gender: "all" };
     }
-    // common shapes: { key, type, type_key, display_name, label, name, ... }
     const key = (
       t.key ||
       t.type ||

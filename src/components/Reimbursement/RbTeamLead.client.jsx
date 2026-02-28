@@ -360,9 +360,7 @@ const RbTeamLead = () => {
     if (!hydrated) return;
     fetchEmployees();
   }, [view, hydrated]);
-  // put this alongside your other helpers (formatDisplayDate / formatRange)
   const resolveDateDisplay = (payload = {}, claim = {}) => {
-    // helper to pick first present value from a list of keys
     const pick = (obj, keys = []) => {
       for (const k of keys) {
         if (
@@ -376,7 +374,6 @@ const RbTeamLead = () => {
       return null;
     };
 
-    // candidate single-date fields (line payload preferred)
     const singleDateKeys = [
       "date",
       "expense_date",
@@ -391,7 +388,6 @@ const RbTeamLead = () => {
       "submittedAt",
     ];
 
-    // candidate range fields (start / end)
     const startKeys = [
       "date_from",
       "from",
@@ -413,16 +409,13 @@ const RbTeamLead = () => {
       "toDate",
     ];
 
-    // 1) If payload has explicit range, prefer that
     const start = pick(payload, startKeys);
     const end = pick(payload, endKeys);
     if (start || end) return formatRange(start, end);
 
-    // 2) If payload has a single date-ish field, use it
     const single = pick(payload, singleDateKeys);
     if (single) return formatDisplayDate(single);
 
-    // 3) Fallback to claim-level dates (sometimes the line payload is empty)
     const claimStart = pick(claim, startKeys);
     const claimEnd = pick(claim, endKeys);
     if (claimStart || claimEnd) return formatRange(claimStart, claimEnd);
@@ -430,7 +423,6 @@ const RbTeamLead = () => {
     const claimSingle = pick(claim, singleDateKeys);
     if (claimSingle) return formatDisplayDate(claimSingle);
 
-    // 4) last resort: created_at / submitted_at / createdAt on rb
     const lastResort =
       claim.created_at ||
       claim.createdAt ||
@@ -933,17 +925,14 @@ const RbTeamLead = () => {
     }
   };
   function sanitizeFileName(name = "") {
-    // remove control chars, / \ ? % * : | " < > and replace spaces with _
-    // keep it to a reasonable length
     return String(name)
-      .normalize("NFKD") // normalize unicode
-      .replace(/[\u0000-\u001F<>:"/\\|?*]+/g, "") // remove illegal chars
+      .normalize("NFKD")
+      .replace(/[\u0000-\u001F<>:"/\\|?*]+/g, "")
       .trim()
       .replace(/\s+/g, "_")
       .slice(0, 100);
   }
 
-  // -- improved handleDownload --
   const handleDownload = async (claim) => {
     try {
       const url =
@@ -961,12 +950,10 @@ const RbTeamLead = () => {
         responseType: "blob",
       });
 
-      // check HTTP status if available
       if (response.status && response.status !== 200) {
         throw new Error(`Download failed: HTTP ${response.status}`);
       }
 
-      // derive filename
       let filename = "";
       const empName = claim.employee_name || claim.employeeName || claim.name;
       if (empName) {
@@ -974,14 +961,12 @@ const RbTeamLead = () => {
         filename = `${base}_Reimbursement_${claim.id}.pdf`;
       }
 
-      // fallback to content-disposition header
       if (!filename) {
         const cd = response.headers && response.headers["content-disposition"];
         if (cd) {
           const filenameRegex = /filename[^;=\n]*=(['"]?)([^;\n]*)\1/;
           const matches = filenameRegex.exec(cd);
           if (matches && matches[2]) {
-            // remove wrapping quotes and URL-decode if needed
             filename = decodeURIComponent(matches[2].replace(/["']/g, ""));
           }
         }
@@ -992,10 +977,8 @@ const RbTeamLead = () => {
       }
       if (!filename.toLowerCase().endsWith(".pdf")) filename += ".pdf";
 
-      // create blob and download
       const blob = new Blob([response.data], { type: "application/pdf" });
 
-      // IE / Edge fallback
       if (window.navigator && window.navigator.msSaveOrOpenBlob) {
         window.navigator.msSaveOrOpenBlob(blob, filename);
         return;
@@ -1012,10 +995,8 @@ const RbTeamLead = () => {
 
       console.log("Download started for", filename);
     } catch (error) {
-      // show full error for debugging
       console.error("Error downloading reimbursement PDF:", error);
 
-      // if server returned an error blob, try to read it as text to see server message
       try {
         if (error?.response?.data && error.response.data instanceof Blob) {
           const reader = new FileReader();
@@ -1045,25 +1026,28 @@ const RbTeamLead = () => {
         backendBase ? backendBase : ""
       }/reimbursement/${claimId}/status`;
 
-      // pick a reliable actor id for headers and approver_id
       const actor = getEmployeeIdFromContextOrCookie(user) || teamLeadId || "";
+      const currentClaim = employees
+        .flatMap((e) => e.claims)
+        .find((c) => String(c.id) === String(claimId));
 
-      // Build request body using fields server expects
+      const finalProject =
+        projectSelections[claimId] !== undefined
+          ? projectSelections[claimId]
+          : currentClaim?.project || "";
       const body = {
         status: newStatus,
         approver_comments: comments[claimId] || "",
         approver_id: actor || undefined,
-        project: projectSelections[claimId] || "",
+        project: finalProject,
       };
 
-      // Build headers and ensure x-employee-id / x-org-id present
       const headers = { ...buildHeaders(), "Content-Type": "application/json" };
       if (!headers["x-employee-id"] && actor)
         headers["x-employee-id"] = String(actor).trim();
       if (!headers["x-org-id"] && orgId)
         headers["x-org-id"] = String(orgId).trim();
 
-      // send primary request
       await axios.put(url, body, {
         withCredentials: true,
         headers,
@@ -1074,17 +1058,24 @@ const RbTeamLead = () => {
     } catch (err) {
       console.error("updateStatus failed:", err);
 
-      // Secondary fallback: minimal headers but ensure x-employee-id present
       try {
         const url = `${
           backendBase ? backendBase : ""
         }/reimbursement/${claimId}/status`;
+        const currentClaim = employees
+          .flatMap((e) => e.claims)
+          .find((c) => String(c.id) === String(claimId));
+
+        const finalProject =
+          projectSelections[claimId] !== undefined
+            ? projectSelections[claimId]
+            : currentClaim?.project || "";
         const body = {
           status: statusUpdates[claimId],
           approver_comments: comments[claimId] || "",
           approver_id:
             getEmployeeIdFromContextOrCookie(user) || teamLeadId || undefined,
-          project: projectSelections[claimId] || "",
+          project: finalProject,
         };
 
         const minimalHeaders = {};
@@ -1110,7 +1101,6 @@ const RbTeamLead = () => {
 
   const updatePaymentStatus = async (claimIdParam, paymentOptionParam) => {
     try {
-      // Accept explicit args, otherwise fallback to modal state
       const claimId =
         claimIdParam ||
         (selectedPaymentClaim &&
@@ -1134,7 +1124,6 @@ const RbTeamLead = () => {
         (backendBase ? `${backendBase}` : "") +
         `/reimbursement/${encodeURIComponent(claimId)}/payment`;
 
-      // build headers and ensure required headers present
       const headers = { ...buildHeaders(), "Content-Type": "application/json" };
       const actor = getEmployeeIdFromContextOrCookie(user) || teamLeadId;
       if (!headers["x-employee-id"] && actor)
@@ -1155,7 +1144,6 @@ const RbTeamLead = () => {
       );
 
       showAlert("Payment status updated.");
-      // reset modal state
       setIsPaymentModalOpen(false);
       setSelectedPaymentClaim(null);
       setSelectedPaymentOption("");
@@ -1163,7 +1151,6 @@ const RbTeamLead = () => {
     } catch (err) {
       console.error("updatePaymentStatus failed:", err);
       try {
-        // fallback minimal headers
         const url =
           (backendBase ? `${backendBase}` : "") +
           `/reimbursement/${encodeURIComponent(
@@ -1977,20 +1964,12 @@ const RbTeamLead = () => {
       )}
       {isPaymentModalOpen && (
         <Modal
+          title={"Update Payment Status"}
           isVisible={isPaymentModalOpen}
           onClose={() => setIsPaymentModalOpen(false)}
           buttons={[]}
         >
           <div className="payment-modal-content">
-            <div className="payment-header">
-              <h3>Update Payment Status</h3>
-              <button
-                className="modal-cross-btn"
-                onClick={() => setIsPaymentModalOpen(false)}
-              >
-                ✖
-              </button>
-            </div>
             <div className="payment-options">
               <label>
                 <input
@@ -2012,7 +1991,7 @@ const RbTeamLead = () => {
                 />{" "}
                 Payable
               </label>
-              <label style={{ marginLeft: "20px" }}>
+              <label>
                 <input
                   type="radio"
                   name="paymentOption"
@@ -2024,6 +2003,13 @@ const RbTeamLead = () => {
               </label>
             </div>
             <p>I'll make sure to process the payment today</p>
+
+            <button
+              className="modal-cross-btn"
+              onClick={() => setIsPaymentModalOpen(false)}
+            >
+              Cancel
+            </button>
             <button
               className="submit-payment-btn"
               onClick={() =>

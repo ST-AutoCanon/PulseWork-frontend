@@ -1,4 +1,3 @@
-// PolicyModal.client.jsx
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
@@ -19,7 +18,6 @@ const BUILT_IN = [
   { key: "earned", label: "Earned Leave" },
 ];
 
-// normalizeLeaveTypes helper
 function normalizeKey(s = "") {
   return String(s || "")
     .trim()
@@ -74,13 +72,12 @@ export default function PolicyModal({
   onClose,
   onSaved,
   openPolicyId = null,
-  showAlert: parentShowAlert = null, // <-- new prop: parent-provided alert callback
+  showAlert: parentShowAlert = null,
 }) {
   const { user } = useAuth();
   const employeeId = user?.employeeId ?? null;
   const orgId = user?.orgId ?? user?.org_id ?? null;
 
-  // build headers at time of request (so we never send stale/undefined values)
   const buildHeaders = () => {
     const h = { "Content-Type": "application/json" };
     const apiKey = process.env.NEXT_PUBLIC_API_KEY;
@@ -92,7 +89,7 @@ export default function PolicyModal({
 
   const [policies, setPolicies] = useState([]);
   const [leaveTypes, setLeaveTypes] = useState([]);
-  const [alert, setAlert] = useState(null); // internal fallback message
+  const [alert, setAlert] = useState(null);
   const [policyAlerts, setPolicyAlerts] = useState([]);
   const [confirmDelete, setConfirmDelete] = useState({
     isVisible: false,
@@ -124,7 +121,6 @@ export default function PolicyModal({
 
   const autoOpenedRef = useRef(null);
 
-  // notify: use parent's showAlert when available, otherwise use internal setAlert
   const notify = (msg) => {
     if (typeof parentShowAlert === "function") {
       try {
@@ -148,7 +144,6 @@ export default function PolicyModal({
     return Math.ceil((d - today) / (1000 * 60 * 60 * 24));
   };
 
-  // SINGLE computePolicyAlerts definition (no duplicates)
   function computePolicyAlerts(policyList = []) {
     if (!Array.isArray(policyList)) return [];
     return policyList
@@ -183,7 +178,6 @@ export default function PolicyModal({
       setLoadError(null);
       clearAlert();
       try {
-        // --- FETCH POLICIES (force fresh to avoid ETag cache) ---
         const headers = buildHeaders();
         const policyUrl = `${API_BASE}/api/leave-policies?_=${Date.now()}`;
         const pRes = await fetch(policyUrl, {
@@ -214,7 +208,6 @@ export default function PolicyModal({
           setLoadError("Could not load policies.");
         }
 
-        // --- FETCH LEAVE TYPES ---
         try {
           const typesUrl = `${API_BASE}/types`;
           let tRes = await fetch(typesUrl, {
@@ -262,7 +255,6 @@ export default function PolicyModal({
     autoOpenedRef.current = null;
 
     return () => aborter.abort();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, employeeId, orgId, onSaved]);
 
   useEffect(() => {
@@ -274,7 +266,6 @@ export default function PolicyModal({
       onEdit(found);
       autoOpenedRef.current = String(openPolicyId);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [policies, openPolicyId, isOpen]);
 
   function resetForm() {
@@ -319,7 +310,6 @@ export default function PolicyModal({
       config: { ...f.config, [key]: { ...f.config[key], ...patch } },
     }));
 
-  // Add a blank extra row
   const addExtra = () => {
     updateForm({
       extras: [
@@ -516,7 +506,6 @@ export default function PolicyModal({
         return;
       }
 
-      // refetch policies so UI updates
       const freshUrl = `${API_BASE}/api/leave-policies?_=${Date.now()}`;
       const fresh = await fetch(freshUrl, {
         credentials: "include",
@@ -542,7 +531,6 @@ export default function PolicyModal({
         "Saved successfully";
       notify(successMsg);
 
-      // delay closing a little so user sees the message
       const DELAY_MS = 1200;
       setTimeout(() => {
         try {

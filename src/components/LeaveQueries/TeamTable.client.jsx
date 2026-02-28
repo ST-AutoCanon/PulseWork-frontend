@@ -54,9 +54,6 @@ export default function TeamTable({
     setLocalInputs((prev) => ({ ...prev, ...statusUpdates }));
   }, [statusUpdates]);
 
-  // -------------------------
-  // Attachment helpers (same UX as Admin)
-  // -------------------------
   const [attachmentsModal, setAttachmentsModal] = useState({
     isVisible: false,
     title: "",
@@ -230,9 +227,7 @@ export default function TeamTable({
             normalized = normalizeList(raw);
             break;
           }
-        } catch (err) {
-          // ignore
-        }
+        } catch (err) {}
       }
     }
 
@@ -257,11 +252,9 @@ export default function TeamTable({
     setAttachmentsModal({ isVisible: false, title: "", files: [] });
   }, []);
 
-  // Replace the existing openFileInNewTab in TeamTable with this:
   const openFileInNewTab = async (file) => {
     if (!file) return;
 
-    // try to build attachment URL (if server expects attachment id)
     const attachmentId = file.id || file.attachment_id || file.file_id || null;
     let url = "";
     if (attachmentId) {
@@ -280,7 +273,6 @@ export default function TeamTable({
     }
 
     try {
-      // Quick HEAD check: if direct public URL works, open it (no headers needed)
       try {
         const headRes = await fetch(url, {
           method: "HEAD",
@@ -290,12 +282,8 @@ export default function TeamTable({
           window.open(url, "_blank", "noopener,noreferrer");
           return;
         }
-        // else fall through to fetch with headers
-      } catch (e) {
-        // HEAD might fail due to CORS or server not supporting HEAD — try GET below
-      }
+      } catch (e) {}
 
-      // Fetch the file while sending tenant headers / cookies
       const res = await fetch(url, {
         method: "GET",
         credentials: "include",
@@ -315,12 +303,10 @@ export default function TeamTable({
           res.status,
           serverMsg,
         );
-        // user visible feedback
         alert(serverMsg);
         return;
       }
 
-      // create a blob and open in new tab (works for PDFs/images inline)
       const arrayBuffer = await res.arrayBuffer();
       const serverContentType = res.headers.get("Content-Type") || "";
       const knownMime =
@@ -331,7 +317,6 @@ export default function TeamTable({
       const blob = new Blob([arrayBuffer], { type: knownMime });
       const objectUrl = URL.createObjectURL(blob);
 
-      // Use anchor click (more reliable for blob URLs)
       const a = document.createElement("a");
       a.href = objectUrl;
       a.target = "_blank";
@@ -339,8 +324,6 @@ export default function TeamTable({
       document.body.appendChild(a);
       a.click();
       a.remove();
-
-      // revoke after a short delay
       setTimeout(
         () => {
           try {
@@ -348,7 +331,7 @@ export default function TeamTable({
           } catch (e) {}
         },
         2 * 60 * 1000,
-      ); // 2 minutes
+      );
     } catch (err) {
       console.error("[openFileInNewTab] error:", err);
       alert("Could not open attachment. See console for details.");
@@ -738,7 +721,6 @@ export default function TeamTable({
                 leave.H_F_day,
               );
 
-              // compute display name (used in both compact + desktop)
               const name =
                 leave.name ||
                 `${leave.first_name || ""} ${leave.last_name || ""}`.trim();

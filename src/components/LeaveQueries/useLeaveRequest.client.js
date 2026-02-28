@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useAuth } from "../../context/AuthProvider.client";
 import {
   defaultLeaveSettings,
@@ -67,6 +67,7 @@ export default function useLeaveRequest() {
   const [teamSearch, setTeamSearch] = useState("");
   const [teamStatus, setTeamStatus] = useState("");
   const [attachments, setAttachments] = useState([]);
+  const originalAttachmentIdsRef = useRef([]);
   const [balances, setBalances] = useState([]);
   const [policies, setPolicies] = useState([]);
   const [activePolicy, setActivePolicy] = useState(null);
@@ -336,7 +337,7 @@ export default function useLeaveRequest() {
     if (!employeeId) return null;
 
     try {
-      const url = `${BACKEND}/employee/${employeeId}`;
+      const url = `${BACKEND}/full/${employeeId}`;
 
       const res = await fetch(url, {
         credentials: "include",
@@ -827,6 +828,8 @@ export default function useLeaveRequest() {
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
+
+    // optimistically set the value first (so UI updates)
     setFormData((prev) => {
       const next = { ...prev, [name]: value };
       if (
@@ -839,6 +842,57 @@ export default function useLeaveRequest() {
       }
       return next;
     });
+
+    // immediate gender-based validation when selecting leave type
+    if (name === "leavetype") {
+      (async () => {
+        // ensure we have profile data to check gender
+        let profile = userProfile;
+        if (!profile) {
+          try {
+            profile = await fetchUserProfile();
+          } catch (err) {
+            // silent fallback to whatever we have in `user`
+          }
+        }
+
+        const gender = (profile?.gender || user?.gender || user?.sex || "")
+          .toString()
+          .toLowerCase()
+          .trim();
+
+        // detect canonical leave types using existing helper
+        const isMenstrual = canonicalTypeMatch(value, "menstrual", "menstr");
+        const isMaternity = canonicalTypeMatch(value, "matern", "maternity");
+        const isPaternity = canonicalTypeMatch(value, "patern", "paternity");
+
+        // if gender is unknown we can't validate — notify user and clear selection
+        if (!gender) {
+          showAlert(
+            "Your profile gender is not set. Cannot validate selected leave type. Please update your profile.",
+          );
+          // clear the invalid selection
+          setFormData((prev) => ({ ...prev, leavetype: "" }));
+          return;
+        }
+
+        if (isPaternity && gender !== "male") {
+          showAlert("Paternity leave is available only for male employees.");
+          setFormData((prev) => ({ ...prev, leavetype: "" }));
+          return;
+        }
+
+        if ((isMaternity || isMenstrual) && gender !== "female") {
+          showAlert(
+            "Maternity / Menstrual leave is available only for female employees.",
+          );
+          setFormData((prev) => ({ ...prev, leavetype: "" }));
+          return;
+        }
+
+        // otherwise leave selection is fine — nothing more to do
+      })();
+    }
   };
 
   const handleEdit = async (request) => {
@@ -853,11 +907,19 @@ export default function useLeaveRequest() {
 
     setEditingId(request.id || request.leave_id || null);
 
+    // reset attachments state
     setAttachments([]);
+    originalAttachmentIdsRef.current = [];
 
     if (Array.isArray(request.attachments) && request.attachments.length > 0) {
       const normalized = normalizeServerAttachments(request.attachments);
+      // set both formData and attachments state
       setFormData((prev) => ({ ...prev, attachments: normalized }));
+      setAttachments(normalized);
+      // record original attachment ids so we can detect removals later
+      originalAttachmentIdsRef.current = normalized
+        .map((a) => a.id)
+        .filter(Boolean);
       setFormVisible(true);
       return;
     }
@@ -871,10 +933,15 @@ export default function useLeaveRequest() {
     ];
     for (const c of altCandidates) {
       if (Array.isArray(c) && c.length > 0) {
+        const normalized = normalizeServerAttachments(c);
         setFormData((prev) => ({
           ...prev,
-          attachments: normalizeServerAttachments(c),
+          attachments: normalized,
         }));
+        setAttachments(normalized);
+        originalAttachmentIdsRef.current = normalized
+          .map((a) => a.id)
+          .filter(Boolean);
         setFormVisible(true);
         return;
       }
@@ -886,6 +953,10 @@ export default function useLeaveRequest() {
         const fetched = await fetchAttachmentsMetadataForLeave(id);
         if (fetched && fetched.length > 0) {
           setFormData((prev) => ({ ...prev, attachments: fetched }));
+          setAttachments(fetched);
+          originalAttachmentIdsRef.current = fetched
+            .map((a) => a.id)
+            .filter(Boolean);
           setFormVisible(true);
           return;
         }
@@ -896,7 +967,6 @@ export default function useLeaveRequest() {
 
     setFormVisible(true);
   };
-
   const handleCancel = (id) => {
     showConfirm(
       "Are you sure you want to cancel this leave request?",
@@ -1148,7 +1218,17 @@ export default function useLeaveRequest() {
       ? `${BACKEND}/edit/${editingId}`
       : `${BACKEND}/employee/leave`;
     const jsonMethod = editingId ? "PUT" : "POST";
-
+    const removeAttachment = (attId) => {
+      setAttachments((prev) =>
+        (prev || []).filter((a) => (a.id || a.fileName || a.name) !== attId),
+      );
+      setFormData((prev) => ({
+        ...prev,
+        attachments: (prev.attachments || []).filter(
+          (a) => (a.id || a.fileName || a.name) !== attId,
+        ),
+      }));
+    };
     const normalizeFilesFromAttachments = (attachmentsArray = []) => {
       const fileObjs = [];
       for (const f of attachmentsArray) {
@@ -1253,12 +1333,84 @@ export default function useLeaveRequest() {
 
       return { ok: false, error: "No upload endpoint worked", lastErr };
     };
+    // tries to delete an attachment by id for a given leave id
+    const deleteAttachmentById = async (leaveId, attachmentId) => {
+      if (!leaveId || !attachmentId)
+        return { ok: false, error: "missing params" };
+      const candidates = [
+        `${BACKEND}/employee/leave/${encodeURIComponent(leaveId)}/attachments/${encodeURIComponent(attachmentId)}`,
+        `${BACKEND}/api/employee/leave/${encodeURIComponent(leaveId)}/attachments/${encodeURIComponent(attachmentId)}`,
+        // sometimes systems expose /attachments/{id} under leave — also try that:
+        `${BACKEND}/employee/leave/${encodeURIComponent(leaveId)}/attachments/${encodeURIComponent(attachmentId)}`,
+      ].filter(Boolean);
+
+      for (const url of candidates) {
+        try {
+          const res = await fetch(url, {
+            method: "DELETE",
+            credentials: "include",
+            headers,
+          });
+          if (res.ok) return { ok: true, status: res.status };
+          // if 404 try next candidate
+          if (res.status === 404) continue;
+          const json = await res.json().catch(() => null);
+          return {
+            ok: false,
+            status: res.status,
+            error: json || `HTTP ${res.status}`,
+          };
+        } catch (err) {
+          // try next candidate
+          console.warn("[deleteAttachmentById] error deleting", url, err);
+          continue;
+        }
+      }
+      return { ok: false, error: "no delete endpoint worked" };
+    };
 
     const doSubmit = async (data, submitUrl, submitMethod) => {
       try {
         const hasFiles = Array.isArray(attachments) && attachments.length > 0;
 
         if (editingId) {
+          // 1) delete attachments removed by user (compare originalAttachmentIdsRef vs attachments state)
+          try {
+            const origIds = Array.isArray(originalAttachmentIdsRef.current)
+              ? originalAttachmentIdsRef.current.slice()
+              : [];
+            const keepIds = (attachments || [])
+              .map((a) => a.id)
+              .filter(Boolean);
+            const removed = origIds.filter((id) => !keepIds.includes(id));
+
+            if (removed.length > 0) {
+              // attempt to delete each removed attachment (best-effort)
+              await Promise.all(
+                removed.map(async (attId) => {
+                  try {
+                    const delRes = await deleteAttachmentById(editingId, attId);
+                    if (!delRes.ok) {
+                      console.warn(
+                        "[doSubmit] failed to delete attachment",
+                        attId,
+                        delRes,
+                      );
+                    }
+                  } catch (e) {
+                    console.warn("[doSubmit] deleteAttachment error:", e);
+                  }
+                }),
+              );
+            }
+          } catch (err) {
+            console.warn(
+              "[doSubmit] error while deleting removed attachments:",
+              err,
+            );
+          }
+
+          // 2) now build the FormData and include any new files from attachments state
           const form = new FormData();
 
           Object.keys(data || {}).forEach((k) => {
@@ -1272,19 +1424,23 @@ export default function useLeaveRequest() {
             }
           });
 
-          if (hasFiles) {
-            attachments.forEach((fileObj, i) => {
-              let file = fileObj;
+          // append file objects for attachments that are actual File objects (new uploads)
+          const fileObjs = normalizeFilesFromAttachments(attachments || []);
+          fileObjs.forEach((f, i) => {
+            const fname = f.name || f.fileName || `attachment-${i}`;
+            try {
+              form.append("attachments", f, fname);
+            } catch {
+              // some environments may fail to append non-File blobs; ignore
+              form.append("attachments", f);
+            }
+          });
 
-              if (!(fileObj instanceof File) && fileObj?.file instanceof File) {
-                file = fileObj.file;
-              }
-
-              if (file instanceof File) {
-                form.append("attachments", file, file.name);
-              }
-            });
-          }
+          // Also include a JSON field of current attachment ids to keep (server may use this)
+          const keepIdsPayload = (attachments || [])
+            .map((a) => a.id)
+            .filter(Boolean);
+          form.append("keep_attachment_ids", JSON.stringify(keepIdsPayload));
 
           const uploadHeaders = {};
           Object.keys(headers || {}).forEach((k) => {
@@ -1309,6 +1465,7 @@ export default function useLeaveRequest() {
             setEditingId(null);
             resetForm();
             setAttachments([]);
+            originalAttachmentIdsRef.current = [];
 
             await fetchLeaveRequests();
             await fetchLeaveBalance();

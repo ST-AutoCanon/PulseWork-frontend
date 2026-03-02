@@ -143,6 +143,7 @@ export default function VennBalances({
     ? new Date(activePolicy.year_end).toLocaleDateString()
     : "-";
 
+  const hasOverflow = balances.length > vennVisibleCount;
   const visibleBalances = balances.slice(
     vennStartIndex,
     vennStartIndex + vennVisibleCount,
@@ -172,16 +173,19 @@ export default function VennBalances({
         </div>
       </div>
 
-      <div className="venn-grid-with-nav">
-        <div className="venn-nav-column">
-          <button
-            className="venn-nav-btn venn-prev"
-            onClick={prevVenn}
-            disabled={vennStartIndex <= 0}
-          >
-            ◀
-          </button>
-        </div>
+      <div className={`venn-grid-with-nav ${hasOverflow ? "" : "no-nav"}`}>
+        {hasOverflow && (
+          <div className="venn-nav-column">
+            <button
+              className="venn-nav-btn venn-prev"
+              onClick={prevVenn}
+              disabled={vennStartIndex <= 0}
+              aria-label="Previous balances"
+            >
+              ◀
+            </button>
+          </div>
+        )}
 
         <div
           className="venn-cards-container"
@@ -219,15 +223,18 @@ export default function VennBalances({
           })}
         </div>
 
-        <div className="venn-nav-column">
-          <button
-            className="venn-nav-btn venn-next"
-            onClick={nextVenn}
-            disabled={vennStartIndex + vennVisibleCount >= balances.length}
-          >
-            ▶
-          </button>
-        </div>
+        {hasOverflow && (
+          <div className="venn-nav-column">
+            <button
+              className="venn-nav-btn venn-next"
+              onClick={nextVenn}
+              disabled={vennStartIndex + vennVisibleCount >= balances.length}
+              aria-label="Next balances"
+            >
+              ▶
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

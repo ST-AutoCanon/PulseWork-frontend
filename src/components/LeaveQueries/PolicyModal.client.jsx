@@ -98,8 +98,12 @@ export default function PolicyModal({
     message: "Are you sure you want to delete this policy?",
   });
 
+  // existing loading for initial fetch
   const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState(null);
+
+  // NEW: saving state for submit button disable
+  const [saving, setSaving] = useState(false);
 
   const [form, setForm] = useState({
     id: null,
@@ -423,6 +427,10 @@ export default function PolicyModal({
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    // Prevent duplicate submissions while a save is in progress
+    if (saving) return;
+
     const { id, period, yearStart, yearEnd, config, extras } = form;
 
     if (hasOverlappingPolicy(yearStart, yearEnd, id)) {
@@ -483,6 +491,7 @@ export default function PolicyModal({
       ? `${API_BASE}/api/leave-policies/${id}`
       : `${API_BASE}/api/leave-policies`;
 
+    setSaving(true); // <-- start saving
     try {
       const res = await fetch(url, {
         method: id ? "PUT" : "POST",
@@ -545,6 +554,8 @@ export default function PolicyModal({
     } catch (err) {
       console.error("Failed to save policy:", err);
       notify("Failed to save policy.");
+    } finally {
+      setSaving(false); // <-- done saving (success or failure)
     }
   };
 
@@ -1009,8 +1020,17 @@ export default function PolicyModal({
               )}
             </div>
 
-            <button type="submit" className="policy-submit">
-              {form.id ? "Update Policy" : "Create Policy"}
+            <button
+              type="submit"
+              className="policy-submit"
+              disabled={saving}
+              aria-disabled={saving}
+            >
+              {saving
+                ? "Saving..."
+                : form.id
+                  ? "Update Policy"
+                  : "Create Policy"}
             </button>
           </form>
 
@@ -1122,12 +1142,12 @@ export default function PolicyModal({
         buttons={[
           {
             label: "Cancel",
-            className: "policy-confirm-cancel",
+            className: "ac-modal-btn",
             onClick: handleCancelDelete,
           },
           {
             label: confirmDelete.loading ? "Deleting..." : "Delete",
-            className: "policy-confirm-delete",
+            className: "ac-modal-btn",
             onClick: handleConfirmDelete,
           },
         ]}

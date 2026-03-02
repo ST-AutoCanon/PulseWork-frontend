@@ -145,7 +145,7 @@ export default function VennBalances({
 
   const visibleBalances = balances.slice(
     vennStartIndex,
-    vennStartIndex + vennVisibleCount
+    vennStartIndex + vennVisibleCount,
   );
 
   return (
@@ -193,17 +193,17 @@ export default function VennBalances({
               b.type === "casual"
                 ? "Casual Leave"
                 : b.type === "earned"
-                ? "Earned Leave"
-                : b.type
-                ? String(b.type).charAt(0).toUpperCase() + b.type.slice(1)
-                : "Leave";
+                  ? "Earned Leave"
+                  : b.type
+                    ? String(b.type).charAt(0).toUpperCase() + b.type.slice(1)
+                    : "Leave";
 
             const used = Number(b.used ?? 0);
             const allowance = Number(
-              b.allowance ?? b.earned ?? b.annual_allowance ?? 0
+              b.allowance ?? b.earned ?? b.annual_allowance ?? 0,
             );
             const remaining = Number(
-              b.remaining ?? Math.max(allowance - used, 0)
+              b.remaining ?? Math.max(allowance - used, 0),
             );
 
             return (

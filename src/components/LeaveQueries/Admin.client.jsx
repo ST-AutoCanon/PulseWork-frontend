@@ -7,6 +7,7 @@ import Modal from "../Modal/Modal.client";
 import CompensationPopup from "./CompensationPopup.client";
 import { IoSearch } from "react-icons/io5";
 import { MdOutlineRemoveRedEye, MdOutlineAttachFile } from "react-icons/md";
+import LeaveRequest from "./LeaveRequest.client";
 import { useAuth } from "../../context/AuthProvider.client";
 import {
   normalizeLeaveTypes,
@@ -79,7 +80,10 @@ const canonicalTypeMatch = (candidate, ...keywords) => {
 
 export default function Admin({ openPolicyId = null }) {
   const { user } = useAuth();
+  const isHR =
+    (user?.role || user?.designation || "").toString().toLowerCase() === "hr";
 
+  const [viewMode, setViewMode] = useState("all");
   const [leaveQueries, setLeaveQueries] = useState([]);
   const [policies, setPolicies] = useState([]);
   const [leaveTypes, setLeaveTypes] = useState([]);
@@ -1289,190 +1293,397 @@ export default function Admin({ openPolicyId = null }) {
 
   return (
     <div className="admin-container">
-      <div className="policy-header">
-        <h2>Leave Queries</h2>
-        <button
-          className="manage-button"
-          onClick={() => setShowPolicyModal(true)}
-        >
-          Manage Leave Policies
-        </button>
-      </div>
-
-      <PolicyModal
-        isOpen={showPolicyModal}
-        onClose={() => setShowPolicyModal(false)}
-        onSaved={() => {
-          fetchPolicies();
-          fetchLeaveQueries();
-          setShowPolicyModal(false);
-        }}
-        showAlert={(msg) => showAlert(msg)}
-        existingPolicies={policies}
-        openPolicyId={openPolicyId}
-      />
-
-      <Modal
-        isVisible={showPolicyAlertsModal}
-        onClose={() => setShowPolicyAlertsModal(false)}
-        buttons={[
-          { label: "Ignore & Auto-extend", onClick: handleIgnorePolicyAlerts },
-          {
-            label: "View Policy",
-            onClick: () => {
-              setShowPolicyModal(true);
-              setShowPolicyAlertsModal(false);
-            },
-          },
-        ]}
-      >
-        <div className="policy-alerts-modal-content">
-          <h4>Policy End Alerts</h4>
-          {policyAlerts.length === 0 && <p>No policy alerts.</p>}
-          {policyAlerts.map((a) => (
-            <div
-              key={a.id}
-              className={`policy-alert-item ${a.severity === "critical" ? "alert-critical" : "alert-warning"}`}
-            >
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  gap: 12,
-                }}
-              >
-                <div>
-                  <div style={{ fontWeight: 700 }}>
-                    {a.severity === "critical"
-                      ? "Policy ending soon — ACTION REQUIRED"
-                      : "Policy ending soon"}
-                  </div>
-                  <div style={{ fontSize: 13, marginTop: 4 }}>
-                    Period:{" "}
-                    <strong>
-                      {new Date(a.policy.year_start).toLocaleDateString()} —{" "}
-                      {new Date(a.policy.year_end).toLocaleDateString()}
-                    </strong>{" "}
-                    •{" "}
-                    <span style={{ fontWeight: 700 }}>
-                      {a.daysLeft} day{a.daysLeft !== 1 ? "s" : ""} left
-                    </span>
-                  </div>
-                </div>
-                <div
-                  style={{ display: "flex", flexDirection: "column", gap: 6 }}
-                >
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowPolicyModal(true);
-                      setShowPolicyAlertsModal(false);
-                    }}
-                    className="alert-btn view-btn"
-                  >
-                    View
-                  </button>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </Modal>
-
-      <div className="filters">
-        <div className="status-filter">
-          <label>Status Filter</label>
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
+      {/* TOGGLE ABOVE EVERYTHING */}
+      {isHR && (
+        <div className="admin-toggle-tabs">
+          <div
+            className={`toggle-indicator ${
+              viewMode === "self" ? "right" : "left"
+            }`}
+          />
+          <button
+            className={`toggle-tab ${viewMode === "all" ? "active" : ""}`}
+            onClick={() => setViewMode("all")}
           >
-            <option value="">All</option>
-            <option value="Approved">Approved</option>
-            <option value="Rejected">Rejected</option>
-            <option value="Pending">Pending</option>
-          </select>
+            All
+          </button>
+          <button
+            className={`toggle-tab ${viewMode === "self" ? "active" : ""}`}
+            onClick={() => setViewMode("self")}
+          >
+            Self
+          </button>
         </div>
-        <div className="search-bar">
-          <label>Search by</label>
-          <input
-            type="text"
-            placeholder="Name, Emp ID, Reason"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
+      )}
+
+      {/* ================= SELF MODE ================= */}
+      {isHR && viewMode === "self" && (
+        <div style={{ marginTop: 10 }}>
+          <LeaveRequest />
         </div>
-        <div className="date-filter">
-          <label>From:</label>
-          <input
-            type="date"
-            value={fromDate}
-            onChange={(e) => setFromDate(e.target.value)}
+      )}
+
+      {/* ================= ADMIN / ALL MODE ================= */}
+      {(!isHR || viewMode === "all") && (
+        <>
+          <div className="policy-header">
+            <h2>Leave Queries</h2>
+            <button
+              className="manage-button"
+              onClick={() => setShowPolicyModal(true)}
+            >
+              Manage Leave Policies
+            </button>
+          </div>
+
+          <PolicyModal
+            isOpen={showPolicyModal}
+            onClose={() => setShowPolicyModal(false)}
+            onSaved={() => {
+              fetchPolicies();
+              fetchLeaveQueries();
+              setShowPolicyModal(false);
+            }}
+            showAlert={(msg) => showAlert(msg)}
+            existingPolicies={policies}
+            openPolicyId={openPolicyId}
           />
-          <label>To:</label>
-          <input
-            type="date"
-            value={toDate}
-            onChange={(e) => setToDate(e.target.value)}
-          />
-        </div>
-        <button className="search-button" onClick={fetchLeaveQueries}>
-          <IoSearch /> Search
-        </button>
-      </div>
 
-      <div>
-        <div className="leave-table-container">
-          <table className="leave-table">
-            <thead>
-              <tr>
-                <th>Emp Name</th>
-                <th>Emp ID</th>
-                <th>Leave Type</th>
-                <th>Half/Full Day</th>
-                <th>Start Date</th>
-                <th>End Date</th>
-                <th>Reason</th>
-                <th>Days</th>
-                <th>Status</th>
-                <th>Comments</th>
-                <th>Attachment</th> {/* <-- new column */}
-                <th>Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              {leaveQueries
-                .slice()
-                .sort((a, b) => (b.leave_id || 0) - (a.leave_id || 0))
-                .map((query) => {
-                  const update = statusUpdates[query.leave_id] || {};
-                  const currentStatus = update.status || query.status || "";
-                  const statusClass =
-                    currentStatus === "Approved"
-                      ? "status-approved"
-                      : currentStatus === "Rejected"
-                        ? "status-rejected"
-                        : "";
-                  const isAlreadyUpdated =
-                    query.status !== "pending" && query.status !== "Pending";
-                  const isUpdating =
-                    statusUpdates[query.leave_id]?.status &&
-                    statusUpdates[query.leave_id]?.status !== query.status;
+          <Modal
+            isVisible={showPolicyAlertsModal}
+            onClose={() => setShowPolicyAlertsModal(false)}
+            buttons={[
+              {
+                label: "Ignore & Auto-extend",
+                onClick: handleIgnorePolicyAlerts,
+              },
+              {
+                label: "View Policy",
+                onClick: () => {
+                  setShowPolicyModal(true);
+                  setShowPolicyAlertsModal(false);
+                },
+              },
+            ]}
+          >
+            <div className="policy-alerts-modal-content">
+              <h4>Policy End Alerts</h4>
+              {policyAlerts.length === 0 && <p>No policy alerts.</p>}
+              {policyAlerts.map((a) => (
+                <div
+                  key={a.id}
+                  className={`policy-alert-item ${
+                    a.severity === "critical"
+                      ? "alert-critical"
+                      : "alert-warning"
+                  }`}
+                >
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      gap: 12,
+                    }}
+                  >
+                    <div>
+                      <div style={{ fontWeight: 700 }}>
+                        {a.severity === "critical"
+                          ? "Policy ending soon — ACTION REQUIRED"
+                          : "Policy ending soon"}
+                      </div>
+                      <div style={{ fontSize: 13, marginTop: 4 }}>
+                        Period:{" "}
+                        <strong>
+                          {new Date(a.policy.year_start).toLocaleDateString()} —{" "}
+                          {new Date(a.policy.year_end).toLocaleDateString()}
+                        </strong>{" "}
+                        •{" "}
+                        <span style={{ fontWeight: 700 }}>
+                          {a.daysLeft} day{a.daysLeft !== 1 ? "s" : ""} left
+                        </span>
+                      </div>
+                    </div>
+                    <div
+                      style={{
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: 6,
+                      }}
+                    >
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowPolicyModal(true);
+                          setShowPolicyAlertsModal(false);
+                        }}
+                        className="alert-btn view-btn"
+                      >
+                        View
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </Modal>
 
-                  const previewList = getNormalizedPreviewList(query);
+          {/* FILTERS */}
+          <div className="filters">
+            <div className="status-filter">
+              <label>Status Filter</label>
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+              >
+                <option value="">All</option>
+                <option value="Approved">Approved</option>
+                <option value="Rejected">Rejected</option>
+                <option value="Pending">Pending</option>
+              </select>
+            </div>
 
-                  const hasEmbeddedAttachments =
-                    previewList && previewList.length > 0;
-                  const hasPossibleServerAttachments = Boolean(query.leave_id);
+            <div className="search-bar">
+              <label>Search by</label>
+              <input
+                type="text"
+                placeholder="Name, Emp ID, Reason"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+            </div>
 
-                  const hasAttachments =
-                    hasEmbeddedAttachments || hasPossibleServerAttachments;
+            <div className="date-filter">
+              <label>From:</label>
+              <input
+                type="date"
+                value={fromDate}
+                onChange={(e) => setFromDate(e.target.value)}
+              />
+              <label>To:</label>
+              <input
+                type="date"
+                value={toDate}
+                onChange={(e) => setToDate(e.target.value)}
+              />
+            </div>
 
-                  let attachmentCell = null;
-                  if (hasAttachments) {
-                    const count = hasEmbeddedAttachments
-                      ? previewList.length
-                      : query.attachment_count || query.attachments_count || "";
-                    attachmentCell = (
+            <button className="search-button" onClick={fetchLeaveQueries}>
+              <IoSearch /> Search
+            </button>
+          </div>
+
+          {/* TABLE */}
+          <div className="leave-table-container">
+            <table className="leave-table">
+              <thead>
+                <tr>
+                  <th>Emp Name</th>
+                  <th>Emp ID</th>
+                  <th>Leave Type</th>
+                  <th>Half/Full Day</th>
+                  <th>Start Date</th>
+                  <th>End Date</th>
+                  <th>Reason</th>
+                  <th>Days</th>
+                  <th>Status</th>
+                  <th>Comments</th>
+                  <th>Attachment</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {leaveQueries
+                  .slice()
+                  .sort((a, b) => (b.leave_id || 0) - (a.leave_id || 0))
+                  .map((query) => {
+                    const update = statusUpdates[query.leave_id] || {};
+                    const currentStatus = update.status || query.status || "";
+                    const statusClass =
+                      currentStatus === "Approved"
+                        ? "status-approved"
+                        : currentStatus === "Rejected"
+                          ? "status-rejected"
+                          : "";
+                    const isAlreadyUpdated =
+                      query.status !== "pending" && query.status !== "Pending";
+                    const isUpdating =
+                      statusUpdates[query.leave_id]?.status &&
+                      statusUpdates[query.leave_id]?.status !== query.status;
+
+                    const previewList = getNormalizedPreviewList(query);
+
+                    const hasEmbeddedAttachments =
+                      previewList && previewList.length > 0;
+                    const hasPossibleServerAttachments = Boolean(
+                      query.leave_id,
+                    );
+
+                    const hasAttachments =
+                      hasEmbeddedAttachments || hasPossibleServerAttachments;
+
+                    let attachmentCell = null;
+                    if (hasAttachments) {
+                      const count = hasEmbeddedAttachments
+                        ? previewList.length
+                        : query.attachment_count ||
+                          query.attachments_count ||
+                          "";
+                      attachmentCell = (
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 8,
+                          }}
+                        >
+                          <button
+                            className="attachments-btn"
+                            onClick={() =>
+                              openAttachments(
+                                query,
+                                hasEmbeddedAttachments ? previewList : null,
+                              )
+                            }
+                            title="View attachments"
+                            style={{
+                              display: "inline-flex",
+                              alignItems: "center",
+                              gap: 6,
+                              padding: "6px 10px",
+                              cursor: "pointer",
+                            }}
+                          >
+                            <MdOutlineRemoveRedEye className="eye-icon" />
+                            <span>View {count ? `(${count})` : ""}</span>
+                          </button>
+                        </div>
+                      );
+                    } else {
+                      attachmentCell = (
+                        <div className="no-attachments">Not Attached</div>
+                      );
+                    }
+
+                    return (
+                      <tr
+                        key={query.leave_id}
+                        className={isAlreadyUpdated ? "row-updated" : ""}
+                      >
+                        <td>{query.name}</td>
+                        <td>{query.employee_id}</td>
+                        <td>{query.leave_type}</td>
+                        <td>{query.H_F_day}</td>
+                        <td>{formatDate(query.start_date)}</td>
+                        <td>{formatDate(query.end_date)}</td>
+                        <td className="comments-col">
+                          <div className="comment-preview">{query.reason}</div>
+                        </td>
+                        <td>
+                          {calculateDays(query.start_date, query.end_date)}
+                        </td>
+                        <td>
+                          <select
+                            value={currentStatus}
+                            onChange={(e) =>
+                              handleStatusChange(
+                                query.leave_id,
+                                "status",
+                                e.target.value,
+                              )
+                            }
+                            className={`status-dropdown ${statusClass}`}
+                            disabled={isAlreadyUpdated}
+                          >
+                            <option value="Pending">Pending</option>
+                            <option value="Approved">Approved</option>
+                            <option value="Rejected">Rejected</option>
+                          </select>
+                        </td>
+                        <td className="comments-col">
+                          <div className="comment-preview">
+                            {query.comments ? (
+                              <span>{query.comments}</span>
+                            ) : (
+                              <input
+                                type="text"
+                                placeholder="Enter Reason"
+                                value={update.comments || ""}
+                                onChange={(e) =>
+                                  handleStatusChange(
+                                    query.leave_id,
+                                    "comments",
+                                    e.target.value,
+                                  )
+                                }
+                                className="comments-input"
+                                disabled={isAlreadyUpdated}
+                              />
+                            )}
+                          </div>
+                        </td>
+
+                        {/* Attachment cell */}
+                        <td>{attachmentCell}</td>
+
+                        <td>
+                          <button
+                            className={`update-button ${isAlreadyUpdated ? "disabled-button" : ""}`}
+                            onClick={() => handleUpdate(query.leave_id, query)}
+                            disabled={
+                              isAlreadyUpdated ||
+                              !isUpdating ||
+                              (currentStatus === "Rejected" && !update.comments)
+                            }
+                          >
+                            {isAlreadyUpdated ? "Updated" : "Update"}
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+              </tbody>
+            </table>
+          </div>
+
+          <CompensationPopup lopModal={lopModal} setLopModal={setLopModal} />
+
+          <Modal
+            isVisible={alertModal.isVisible}
+            onClose={closeAlert}
+            buttons={[{ label: "OK", onClick: closeAlert }]}
+          >
+            <p>{alertModal.message}</p>
+          </Modal>
+
+          <Modal
+            isVisible={attachmentsModal.isVisible}
+            onClose={closeAttachments}
+            buttons={[{ label: "Close", onClick: closeAttachments }]}
+          >
+            <div className="attachments-modal-content">
+              <h4>{attachmentsModal.title}</h4>
+
+              {attachmentsModal.files.length === 0 && (
+                <p>No attachments found.</p>
+              )}
+
+              <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
+                {attachmentsModal.files.map((f, idx) => {
+                  const urlCandidate =
+                    f.url || f.file_path || f.file_url || f.url || "";
+                  const safeName = f.file_name || `attachment-${idx + 1}`;
+                  const sizeLabel = f.size ? ` • ${f.size} bytes` : "";
+                  return (
+                    <li
+                      key={f.id || idx}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        padding: "8px 6px",
+                        borderBottom: "1px solid #eee",
+                      }}
+                    >
                       <div
                         style={{
                           display: "flex",
@@ -1480,209 +1691,66 @@ export default function Admin({ openPolicyId = null }) {
                           gap: 8,
                         }}
                       >
+                        <MdOutlineAttachFile />
                         <button
-                          className="attachments-btn"
-                          onClick={() =>
-                            openAttachments(
-                              query,
-                              hasEmbeddedAttachments ? previewList : null,
-                            )
-                          }
-                          title="View attachments"
+                          type="button"
+                          onClick={() => openFileInNewTab(f)}
                           style={{
-                            display: "inline-flex",
-                            alignItems: "center",
-                            gap: 6,
-                            padding: "6px 10px",
+                            background: "none",
+                            border: "none",
+                            padding: 0,
+                            textDecoration: "underline",
+                            color: "#0070f3",
                             cursor: "pointer",
+                            fontSize: 14,
+                            textAlign: "left",
                           }}
                         >
-                          <MdOutlineRemoveRedEye className="eye-icon" />
-                          <span>View {count ? `(${count})` : ""}</span>
+                          {safeName}
                         </button>
+                        <span
+                          style={{ color: "#666", marginLeft: 8, fontSize: 12 }}
+                        >
+                          {f.mime_type ? `(${f.mime_type})` : null}
+                        </span>
                       </div>
-                    );
-                  } else {
-                    attachmentCell = (
-                      <div className="no-attachments">Not Attached</div>
-                    );
-                  }
 
-                  return (
-                    <tr
-                      key={query.leave_id}
-                      className={isAlreadyUpdated ? "row-updated" : ""}
-                    >
-                      <td>{query.name}</td>
-                      <td>{query.employee_id}</td>
-                      <td>{query.leave_type}</td>
-                      <td>{query.H_F_day}</td>
-                      <td>{formatDate(query.start_date)}</td>
-                      <td>{formatDate(query.end_date)}</td>
-                      <td className="comments-col">
-                        <div className="comment-preview">{query.reason}</div>
-                      </td>
-                      <td>{calculateDays(query.start_date, query.end_date)}</td>
-                      <td>
-                        <select
-                          value={currentStatus}
-                          onChange={(e) =>
-                            handleStatusChange(
-                              query.leave_id,
-                              "status",
-                              e.target.value,
-                            )
-                          }
-                          className={`status-dropdown ${statusClass}`}
-                          disabled={isAlreadyUpdated}
-                        >
-                          <option value="Pending">Pending</option>
-                          <option value="Approved">Approved</option>
-                          <option value="Rejected">Rejected</option>
-                        </select>
-                      </td>
-                      <td className="comments-col">
-                        <div className="comment-preview">
-                          {query.comments ? (
-                            <span>{query.comments}</span>
-                          ) : (
-                            <input
-                              type="text"
-                              placeholder="Enter Reason"
-                              value={update.comments || ""}
-                              onChange={(e) =>
-                                handleStatusChange(
-                                  query.leave_id,
-                                  "comments",
-                                  e.target.value,
-                                )
-                              }
-                              className="comments-input"
-                              disabled={isAlreadyUpdated}
-                            />
-                          )}
-                        </div>
-                      </td>
-
-                      {/* Attachment cell */}
-                      <td>{attachmentCell}</td>
-
-                      <td>
-                        <button
-                          className={`update-button ${isAlreadyUpdated ? "disabled-button" : ""}`}
-                          onClick={() => handleUpdate(query.leave_id, query)}
-                          disabled={
-                            isAlreadyUpdated ||
-                            !isUpdating ||
-                            (currentStatus === "Rejected" && !update.comments)
-                          }
-                        >
-                          {isAlreadyUpdated ? "Updated" : "Update"}
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      <CompensationPopup lopModal={lopModal} setLopModal={setLopModal} />
-
-      <Modal
-        isVisible={alertModal.isVisible}
-        onClose={closeAlert}
-        buttons={[{ label: "OK", onClick: closeAlert }]}
-      >
-        <p>{alertModal.message}</p>
-      </Modal>
-
-      {/* Attachments modal — shows file names; clicking name opens file in new tab */}
-      <Modal
-        isVisible={attachmentsModal.isVisible}
-        onClose={closeAttachments}
-        buttons={[{ label: "Close", onClick: closeAttachments }]}
-      >
-        <div className="attachments-modal-content">
-          <h4>{attachmentsModal.title}</h4>
-
-          {attachmentsModal.files.length === 0 && <p>No attachments found.</p>}
-
-          <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
-            {attachmentsModal.files.map((f, idx) => {
-              const urlCandidate =
-                f.url || f.file_path || f.file_url || f.url || "";
-              const safeName = f.file_name || `attachment-${idx + 1}`;
-              const sizeLabel = f.size ? ` • ${f.size} bytes` : "";
-              return (
-                <li
-                  key={f.id || idx}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    padding: "8px 6px",
-                    borderBottom: "1px solid #eee",
-                  }}
-                >
-                  <div
-                    style={{ display: "flex", alignItems: "center", gap: 8 }}
-                  >
-                    <MdOutlineAttachFile />
-                    <button
-                      type="button"
-                      onClick={() => openFileInNewTab(f)}
-                      style={{
-                        background: "none",
-                        border: "none",
-                        padding: 0,
-                        textDecoration: "underline",
-                        color: "#0070f3",
-                        cursor: "pointer",
-                        fontSize: 14,
-                        textAlign: "left",
-                      }}
-                    >
-                      {safeName}
-                    </button>
-                    <span
-                      style={{ color: "#666", marginLeft: 8, fontSize: 12 }}
-                    >
-                      {f.mime_type ? `(${f.mime_type})` : null}
-                    </span>
-                  </div>
-
-                  <div
-                    style={{ display: "flex", alignItems: "center", gap: 12 }}
-                  >
-                    {urlCandidate ? (
-                      <button
-                        type="button"
-                        onClick={() => openFileInNewTab(f)}
-                        className="attachment-link-button"
+                      <div
                         style={{
-                          background: "transparent",
-                          border: "1px solid #ddd",
-                          padding: "4px 8px",
-                          borderRadius: 4,
-                          cursor: "pointer",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 12,
                         }}
                       >
-                        Open
-                      </button>
-                    ) : (
-                      <span style={{ color: "#999", fontSize: 12 }}>
-                        No URL
-                      </span>
-                    )}
-                  </div>
-                </li>
-              );
-            })}
-          </ul>
-        </div>
-      </Modal>
+                        {urlCandidate ? (
+                          <button
+                            type="button"
+                            onClick={() => openFileInNewTab(f)}
+                            className="attachment-link-button"
+                            style={{
+                              background: "transparent",
+                              border: "1px solid #ddd",
+                              padding: "4px 8px",
+                              borderRadius: 4,
+                              cursor: "pointer",
+                            }}
+                          >
+                            Open
+                          </button>
+                        ) : (
+                          <span style={{ color: "#999", fontSize: 12 }}>
+                            No URL
+                          </span>
+                        )}
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          </Modal>
+        </>
+      )}
     </div>
   );
 }

@@ -436,46 +436,6 @@ export default function EmployeeForm({
       }
 
       await onSubmit(fd);
-
-      if (
-        initialData.employee_id &&
-        initialData.supervisor_id !== formData.supervisor_id
-      ) {
-        const today = new Date().toISOString().slice(0, 10);
-        const assignUrl = `${process.env.NEXT_PUBLIC_BACKEND_URL}/supervisor/assign`;
-
-        try {
-          const headers = {
-            "Content-Type": "application/json",
-            "x-api-key": process.env.NEXT_PUBLIC_API_KEY,
-          };
-          if (meId) headers["x-employee-id"] = meId;
-          if (orgId) headers["x-org-id"] = orgId;
-
-          const r = await fetch(assignUrl, {
-            method: "POST",
-            credentials: "include",
-            headers,
-            body: JSON.stringify({
-              employeeId: initialData.employee_id,
-              supervisorId: formData.supervisor_id,
-              startDate: today,
-            }),
-          });
-
-          try {
-            const json = await r.json();
-            if (!r.ok || (json && json.success === false)) {
-              console.error("Supervisor assign failed", r.status, json);
-            }
-          } catch (parseErr) {
-            if (!r.ok)
-              console.error("Supervisor assign returned non-JSON", r.status);
-          }
-        } catch (e) {
-          console.error("Supervisor assign request failed", e);
-        }
-      }
     } catch (err) {
       console.error("handleSubmit error:", err);
       setError(err.message || "Failed to save data");

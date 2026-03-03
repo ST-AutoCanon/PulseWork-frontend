@@ -183,7 +183,7 @@
   z-index: 1200;
 }
 
-.modal {
+.templateModal {
   width: 420px;
   max-width: calc(100% - 32px);
   background: #fff;

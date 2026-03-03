@@ -115,6 +115,9 @@ export default function UploadScan({
     }
   }, [bodyTypeProp, setBodyBoxes]);
 
+  // When the user selects a local file we create a blob URL exactly once.
+  // Do not regenerate it merely because the parent later echoes it back via
+  // initialHeaderUrl; that causes an infinite feedback loop.
   useEffect(() => {
     if (headerFile) {
       const u = URL.createObjectURL(headerFile);
@@ -124,11 +127,18 @@ export default function UploadScan({
           URL.revokeObjectURL(u);
         } catch (e) {}
       };
-    } else {
+    }
+    // no dependency on initialHeaderUrl here – handled in separate effect
+  }, [headerFile]);
+
+  // synchronize headerUrl from prop only when there is no local file selected
+  useEffect(() => {
+    if (!headerFile) {
       setHeaderUrl(initialHeaderUrl ?? null);
     }
-  }, [headerFile, initialHeaderUrl]);
+  }, [initialHeaderUrl, headerFile]);
 
+  // same logic for footer: don't recreate blob on prop updates
   useEffect(() => {
     if (footerFile) {
       const u = URL.createObjectURL(footerFile);
@@ -138,10 +148,14 @@ export default function UploadScan({
           URL.revokeObjectURL(u);
         } catch (e) {}
       };
-    } else {
+    }
+  }, [footerFile]);
+
+  useEffect(() => {
+    if (!footerFile) {
       setFooterUrl(initialFooterUrl ?? null);
     }
-  }, [footerFile, initialFooterUrl]);
+  }, [initialFooterUrl, footerFile]);
 
   useEffect(() => {
     if (!watermarkFile) return;
@@ -192,9 +206,12 @@ export default function UploadScan({
   useEffect(() => {
     if (typeof onPreviewChange !== "function") return;
     try {
+      // only forward the header/footer URLs when a file is present;
+      // otherwise send null so parent preview state is cleared and no
+      // network fetches occur for stale URLs.
       onPreviewChange({
-        headerUrl,
-        footerUrl,
+        headerUrl: headerFile ? headerUrl : null,
+        footerUrl: footerFile ? footerUrl : null,
         headerFile,
         footerFile,
         watermarkUrl: watermarkFile ? watermarkUrl : watermarkUrlProp,
@@ -218,11 +235,32 @@ export default function UploadScan({
     const f = e.target.files?.[0] || null;
     if (f) setHeaderFile(f);
     else setHeaderFile(null);
+    // when user explicitly removes file via input, clear any initial URL
+    if (!f && typeof onPreviewChange === "function") {
+      onPreviewChange({
+        headerUrl: null,
+        footerUrl,
+        headerFile: null,
+        footerFile,
+        watermarkUrl: watermarkFile ? watermarkUrl : watermarkUrlProp,
+        watermarkFile,
+      });
+    }
   }
   function onSelectFooter(e) {
     const f = e.target.files?.[0] || null;
     if (f) setFooterFile(f);
     else setFooterFile(null);
+    if (!f && typeof onPreviewChange === "function") {
+      onPreviewChange({
+        footerUrl: null,
+        headerUrl,
+        footerFile: null,
+        headerFile,
+        watermarkUrl: watermarkFile ? watermarkUrl : watermarkUrlProp,
+        watermarkFile,
+      });
+    }
   }
   function onSelectWatermark(e) {
     const f = e.target.files?.[0] || null;
@@ -243,10 +281,30 @@ export default function UploadScan({
   function clearHeader() {
     setHeaderFile(null);
     if (fileInputHeaderRef.current) fileInputHeaderRef.current.value = "";
+    if (typeof onPreviewChange === "function") {
+      onPreviewChange({
+        headerUrl: null,
+        footerUrl,
+        headerFile: null,
+        footerFile,
+        watermarkUrl: watermarkFile ? watermarkUrl : watermarkUrlProp,
+        watermarkFile,
+      });
+    }
   }
   function clearFooter() {
     setFooterFile(null);
     if (fileInputFooterRef.current) fileInputFooterRef.current.value = "";
+    if (typeof onPreviewChange === "function") {
+      onPreviewChange({
+        footerUrl: null,
+        headerUrl,
+        footerFile: null,
+        headerFile,
+        watermarkUrl: watermarkFile ? watermarkUrl : watermarkUrlProp,
+        watermarkFile,
+      });
+    }
   }
   function clearWatermark() {
     setWatermarkFile(null);
@@ -487,8 +545,59 @@ export default function UploadScan({
         console.warn("Failed to stringify layout/grapes_json for upload:", err);
       }
 
+      // Handle blob URLs for QR and seal images
+      // If user added a QR/seal image with a blob URL but didn't explicitly upload the file,
+      // we can still try to upload the blob
+      if (!qrFile) {
+        const qrBox = (layoutToSend || []).find(
+          (b) =>
+            String(b.fieldName || "")
+              .toLowerCase()
+              .includes("qr") ||
+            String(b.id || "")
+              .toLowerCase()
+              .includes("qr"),
+        );
+        if (
+          qrBox &&
+          qrBox.content &&
+          String(qrBox.content).startsWith("blob:")
+        ) {
+          try {
+            const blobRes = await fetch(qrBox.content);
+            const qrBlob = await blobRes.blob();
+            fd.append("qr", qrBlob, "qr_image.png");
+            console.log("📤 Uploading QR blob URL as file");
+          } catch (e) {
+            console.warn("Failed to upload QR blob URL:", e);
+          }
+        }
+      }
+
+      if (!sealFile) {
+        const sealBox = (layoutToSend || []).find((b) =>
+          /seal|stamp|logo|companyseal/i.test(
+            String(b.fieldName || "") || String(b.id || ""),
+          ),
+        );
+        if (
+          sealBox &&
+          sealBox.content &&
+          String(sealBox.content).startsWith("blob:")
+        ) {
+          try {
+            const blobRes = await fetch(sealBox.content);
+            const sealBlob = await blobRes.blob();
+            fd.append("seal", sealBlob, "seal_image.png");
+            console.log("📤 Uploading Seal blob URL as file");
+          } catch (e) {
+            console.warn("Failed to upload Seal blob URL:", e);
+          }
+        }
+      }
+
       const fileMap = {};
-      if (qrFile) {
+      if (qrFile || fd.has("qr")) {
         const qrBox =
           (layoutToSend || []).find(
             (b) =>
@@ -499,23 +608,39 @@ export default function UploadScan({
                 .toLowerCase()
                 .includes("qr"),
           ) || null;
-        if (qrBox) fileMap.qr = qrBox.id || qrBox.fieldName || null;
+        if (qrBox) {
+          const mapKey = qrBox.id || qrBox.fieldName || null;
+          fileMap.qr = mapKey;
+          console.log(
+            `📋 fileMap: QR box found: id="${qrBox.id}", fieldName="${qrBox.fieldName}", mapKey="${mapKey}"`,
+          );
+        }
       }
-      if (sealFile) {
+      if (sealFile || fd.has("seal")) {
         const sealBox =
           (layoutToSend || []).find((b) =>
             /seal|stamp|logo|companyseal/i.test(
               String(b.fieldName || "") || String(b.id || ""),
             ),
           ) || null;
-        if (sealBox) fileMap.seal = sealBox.id || sealBox.fieldName || null;
+        if (sealBox) {
+          const mapKey = sealBox.id || sealBox.fieldName || null;
+          fileMap.seal = mapKey;
+          console.log(
+            `📋 fileMap: Seal box found: id="${sealBox.id}", fieldName="${sealBox.fieldName}", mapKey="${mapKey}"`,
+          );
+        }
       }
-      if (Object.keys(fileMap).length) {
+      if (Object.keys(fileMap).length > 0) {
         try {
           fd.append("fileMap", JSON.stringify(fileMap));
         } catch (e) {
           console.warn("Failed to append fileMap", e);
         }
+      } else {
+        // Send empty fileMap flag to indicate no explicit mapping was found
+        // This allows backend to use heuristic matching
+        fd.append("useHeuristic", "true");
       }
 
       const base = (backendUrl || "").replace(/\/$/, "");
@@ -1285,7 +1410,7 @@ export default function UploadScan({
 
       {showNamePrompt && (
         <div className={styles.modalBackdrop} role="dialog" aria-modal="true">
-          <div className={styles.modal}>
+          <div className={styles.templateModal}>
             <h4 className={styles.modalTitle}>Save template</h4>
             <p className={styles.modalText}>Enter a name for the template</p>
             <input

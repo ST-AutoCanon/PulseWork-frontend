@@ -169,6 +169,12 @@ async function ensureBoxesBlobUrls(boxes = []) {
             if (cand.key === "content") nb.content = blobUrl;
             if (!nb.imageUrl && blobUrl) nb.imageUrl = blobUrl;
             continue;
+          } else {
+            // clear broken reference so preview doesn't re-request it
+            if (cand.key === "imageUrl") nb.imageUrl = "";
+            if (cand.key === "content") nb.content = "";
+            if (!nb.imageUrl) nb.imageUrl = "";
+            continue;
           }
         } catch (e) {
           console.warn(
@@ -241,7 +247,11 @@ async function replaceUploadUrlsInHtml(html = "", apiKey, backendBase) {
       if (src.startsWith("/api/")) src = backendBase.replace(/\/$/, "") + src;
 
       const blobUrl = await fetchProtectedImage(src, apiKey, employeeId);
-      if (!blobUrl) return;
+      if (!blobUrl) {
+        // remove broken image reference so preview doesn't spam 404s
+        img.setAttribute("src", "");
+        return;
+      }
 
       img.setAttribute("src", blobUrl);
       img.setAttribute("draggable", "false");
@@ -293,7 +303,13 @@ async function resolveTemplateProtectedAssets(
           src = base + src;
         }
         const blob = await fetchProtectedImage(src, apiKey, employeeId);
-        if (blob) t[field] = blob;
+        if (blob) {
+          t[field] = blob;
+        } else {
+          // couldn't fetch, clear it so downstream preview won't keep
+          // attempting the stale url and spamming 404s
+          t[field] = null;
+        }
       }
     }),
   );
@@ -339,6 +355,8 @@ async function resolveTemplateProtectedAssets(
             node.attributes["style"] =
               (node.attributes["style"] || "") +
               ";pointer-events:none;user-select:none;";
+          } else {
+            node.attributes.src = ""; // drop broken link
           }
         }
         for (const k of Object.keys(node)) {
@@ -360,6 +378,7 @@ async function resolveTemplateProtectedAssets(
             }
             const blob = await fetchProtectedImage(src, apiKey, employeeId);
             if (blob) node[k] = blob;
+            else node[k] = "";
           } else if (typeof node[k] === "object") {
             await walk(node[k]);
           }
@@ -675,6 +694,13 @@ export default function TemplateBuilder() {
     setSaveModalOpen(true);
   }
 
+  // whenever the bodyType selector changes we need to update the
+  // working set of boxes.  For scratch/upload modes we completely
+  // replace the body region with the preset for the chosen type; when
+  // editing a basic template we instead append the new fields so that
+  // the user can sprinkle multiple kinds of bodies onto a single
+  // template.  (clicking the same type again will therefore add more
+  // boxes rather than doing nothing).
   useEffect(() => {
     try {
       const preset = PRESET_FIELDS[bodyType] || [];
@@ -684,11 +710,15 @@ export default function TemplateBuilder() {
         style: { ...(b.style || {}) },
       }));
 
-      setBodyBoxes(presetBoxes);
+      if (mode === "scratch" || mode === "upload") {
+        setBodyBoxes(presetBoxes);
+      }
+      // in basic/view modes we don't auto‑modify boxes here; the
+      // handler below will append when appropriate
     } catch (e) {
       console.warn("rebuilding boxes from bodyType failed", e);
     }
-  }, [bodyType]);
+  }, [bodyType, mode]);
 
   useEffect(() => {
     if (!bodyBoxes || bodyBoxes.length === 0) {
@@ -741,6 +771,27 @@ export default function TemplateBuilder() {
       setTemplateSource(null);
     }
 
+    // clear common editing state when entering a fresh mode
+    if (newMode === "upload" || newMode === "scratch" || newMode === "basic") {
+      setPlaceholders({
+        companyName: "",
+        bankName: "",
+        accountNo: "",
+        IFSC: "",
+        accountHolder: "",
+      });
+      setQrUrl(null);
+      setSealUrl(null);
+      setPageStyle({ background: "transparent" });
+      setHeaderHeight(0);
+      setFooterHeight(0);
+    }
+    // always reset bodyType when we go into the upload mode so the user
+    // doesn’t see the last‐selected type from another editor session
+    if (newMode === "upload") {
+      setBodyType("letter");
+    }
+
     if (newMode === "saved" || newMode === "view") {
       setShowSavedPane(true);
     } else if (newMode !== "basic" || templateSource !== "saved") {
@@ -757,6 +808,30 @@ export default function TemplateBuilder() {
     }
     if (newMode !== "view") {
       setViewingTemplate(null);
+    }
+  }
+
+  // new handler used by SharedTemplateControls instead of raw
+  // setBodyType.  This allows clicking the same body type repeatedly
+  // to append more boxes when editing a basic template.
+  function handleBodyTypeChange(bt) {
+    setBodyType(bt);
+    const preset = PRESET_FIELDS[bt] || [];
+    const presetBoxes = fieldsToBoxes(preset).map((b) => ({
+      ...b,
+      locked: false,
+    }));
+
+    if (mode === "basic" && generated) {
+      // merge into existing boxes when editing a basic template
+      setBodyBoxes((prev) => [...(prev || []), ...presetBoxes]);
+    } else if (mode === "basic" && !generated) {
+      // if no template loaded yet in basic mode (e.g., user just switched tabs),
+      // replace with the preset
+      setBodyBoxes(presetBoxes);
+    } else {
+      // scratch/upload modes always replace
+      setBodyBoxes(presetBoxes);
     }
   }
 
@@ -900,6 +975,32 @@ export default function TemplateBuilder() {
 
   async function chooseBasic(template) {
     if (!template) return;
+    // helper used in both branches below, since public and saved share a
+    // similar fallback strategy
+    const applyBoxesFromTemplate = (tpl) => {
+      try {
+        let boxes = [];
+        if (tpl.layout || tpl.layout_json) {
+          const rawLayout = tpl.layout || tpl.layout_json;
+          let parsed = null;
+          if (typeof rawLayout === "string") parsed = JSON.parse(rawLayout);
+          else parsed = rawLayout;
+          if (Array.isArray(parsed)) boxes = parsed;
+        } else if (tpl.initialBoxes) {
+          boxes = tpl.initialBoxes;
+        } else if (tpl.html) {
+          boxes = templateToBoxes(tpl) || [];
+        }
+        if (!boxes || !boxes.length) {
+          boxes = fieldsToBoxes(PRESET_FIELDS[bodyType] || []);
+        }
+        setBodyBoxes(boxes);
+      } catch (e) {
+        console.warn("chooseBasic: could not populate bodyBoxes", e);
+        setBodyBoxes(fieldsToBoxes(PRESET_FIELDS[bodyType] || []));
+      }
+    };
+
     if (template.origin === "saved") {
       setTemplateSource("saved");
       try {
@@ -909,21 +1010,7 @@ export default function TemplateBuilder() {
           BACKEND_URL,
         );
 
-        try {
-          const rawLayout =
-            resolved.layout ||
-            resolved.layout_json ||
-            (resolved.meta &&
-              (resolved.meta.layout || resolved.meta.layout_json));
-          if (rawLayout) {
-            let parsed = null;
-            if (typeof rawLayout === "string") parsed = JSON.parse(rawLayout);
-            else parsed = rawLayout;
-            if (Array.isArray(parsed)) setBodyBoxes(parsed);
-          } else {
-            setBodyBoxes(fieldsToBoxes(PRESET_FIELDS[bodyType] || []));
-          }
-        } catch (e) {}
+        applyBoxesFromTemplate(resolved);
 
         const headerCandidates = [
           resolved.header_url,
@@ -964,9 +1051,13 @@ export default function TemplateBuilder() {
         console.warn("chooseBasic: resolveTemplateProtectedAssets failed", err);
       }
     }
+
     setTemplateSource("public");
     setGenerated(template);
-    setAppMode("basic");
+    applyBoxesFromTemplate(template);
+    // do NOT call setAppMode here – let chooseBasic stay in control of
+    // visibility. instead we'll manually set mode at the end.
+    setMode("basic");
   }
 
   async function handleUploadSaved(savedData) {
@@ -1349,6 +1440,13 @@ export default function TemplateBuilder() {
           parsedBodyBoxes =
             typeof rawLayout === "string" ? JSON.parse(rawLayout) : rawLayout;
           if (!Array.isArray(parsedBodyBoxes)) parsedBodyBoxes = null;
+          console.log(
+            `📋 Parsed layout from resolved.layout (type: ${typeof resolved.layout})`,
+          );
+        } else {
+          console.log(
+            `⚠️  No rawLayout found. resolved.layout=${resolved.layout}, resolved.meta=${resolved.meta ? "exists" : "missing"}`,
+          );
         }
       } catch (e) {
         console.warn("openSavedTemplate: layout parse failed", e);
@@ -1356,6 +1454,24 @@ export default function TemplateBuilder() {
       }
       if (!parsedBodyBoxes)
         parsedBodyBoxes = fieldsToBoxes(PRESET_FIELDS[bodyType] || []);
+
+      // Log: Check if QR/Seal images are in the parsed layout
+      if (Array.isArray(parsedBodyBoxes)) {
+        console.log(
+          `📊 Loaded template has ${parsedBodyBoxes.length} boxes in layout`,
+        );
+        parsedBodyBoxes.forEach((box, idx) => {
+          const isQr = String(box.fieldName || "")
+            .toLowerCase()
+            .includes("qr");
+          const isSeal = /(seal|stamp|logo)/i.test(String(box.fieldName || ""));
+          if (isQr || isSeal) {
+            console.log(
+              `  [${idx}] ${box.fieldName}: type="${box.type}", imageUrl="${box.imageUrl}", content="${String(box.content).substring(0, 50)}"`,
+            );
+          }
+        });
+      }
       setBodyBoxes(parsedBodyBoxes);
 
       const explicitHeaderCandidates = [
@@ -1576,13 +1692,27 @@ export default function TemplateBuilder() {
   }, [viewingTemplate]);
 
   useEffect(() => {
+    // clear any per-mode editing state so we always start fresh
     setSelectedFieldId(null);
-
     setShowEditor(false);
 
     setWatermarkEnabled(false);
     setWatermarkFile(null);
     setPreviewWatermarkUrl(null);
+
+    // reset dynamic data that users may have entered while editing
+    setPlaceholders({
+      companyName: "",
+      bankName: "",
+      accountNo: "",
+      IFSC: "",
+      accountHolder: "",
+    });
+    setQrUrl(null);
+    setSealUrl(null);
+    setPageStyle({ background: "transparent" });
+    setHeaderHeight(0);
+    setFooterHeight(0);
 
     if (mode === "scratch" || mode === "upload") {
       const preset = PRESET_FIELDS[bodyType] || [];
@@ -1591,6 +1721,17 @@ export default function TemplateBuilder() {
         locked: false,
       }));
       setBodyBoxes(freshBoxes);
+    }
+
+    // whenever we switch mode we also need to re-sync the editor's active
+    // area in case a new editor instance was rendered
+    const r = getActiveEditorRef();
+    if (r?.current?.setActiveArea) {
+      try {
+        r.current.setActiveArea(activeArea);
+      } catch (e) {
+        console.warn("failed to sync activeArea on mode change", e);
+      }
     }
   }, [mode]);
 
@@ -1769,6 +1910,34 @@ export default function TemplateBuilder() {
     }
   }
 
+  // whenever the chosen area changes, propagate to whatever editor is
+  // currently mounted. this also ensures the initial header selection
+  // gets applied before the user taps any tool.
+  useEffect(() => {
+    const r = getActiveEditorRef();
+    if (r?.current?.setActiveArea) {
+      try {
+        r.current.setActiveArea(activeArea);
+      } catch (e) {
+        console.warn("failed to sync activeArea from effect", e);
+      }
+    }
+  }, [activeArea]);
+
+  // also attempt to keep the editor in sync whenever activeArea state
+  // changes; this covers the initial mount and user toggles from the
+  // sidebar controls.
+  useEffect(() => {
+    const r = getActiveEditorRef();
+    if (r?.current?.setActiveArea) {
+      try {
+        r.current.setActiveArea(activeArea);
+      } catch (e) {
+        console.warn("failed to sync activeArea from effect", e);
+      }
+    }
+  }, [activeArea]);
+
   function actionAddText() {
     ensureEditorAreaSynced();
     const r = getActiveEditorRef();
@@ -1807,12 +1976,24 @@ export default function TemplateBuilder() {
 
   async function editSavedTemplate(entry) {
     if (!entry) return;
+    console.log("editSavedTemplate starting for entry", entry && entry.id);
+    let resolved = null;
+
     try {
-      const resolved = await resolveTemplateProtectedAssets(
-        entry,
-        API_KEY,
-        BACKEND_URL,
-      );
+      // fetch any blobs for protected assets; if this fails we don't want
+      // the whole edit flow to die, so catch errors here and just fall back
+      // to the raw entry.
+      try {
+        resolved = await resolveTemplateProtectedAssets(
+          entry,
+          API_KEY,
+          BACKEND_URL,
+        );
+        console.log("editSavedTemplate resolved", resolved && resolved.id);
+      } catch (e) {
+        console.warn("resolveTemplateProtectedAssets failed", e);
+        resolved = entry;
+      }
 
       const cat = entry.category || inferCategory(entry);
       const isUpload =
@@ -1820,88 +2001,105 @@ export default function TemplateBuilder() {
         String(entry.template_type || "").toLowerCase() === "scan";
 
       if (isUpload) {
-        const headerCandidates = [
-          resolved.header_url,
-          resolved.headerUrl,
-          resolved.header,
-          resolved._headerBlob,
-          resolved.imageUrl,
-          resolved.cleanedUrl,
-          resolved.thumbnail,
-        ];
-        const footerCandidates = [
-          resolved.footer_url,
-          resolved.footerUrl,
-          resolved.footer,
-          resolved._footerBlob,
-        ];
+        try {
+          const headerCandidates = [
+            resolved.header_url,
+            resolved.headerUrl,
+            resolved.header,
+            resolved._headerBlob,
+            resolved.imageUrl,
+            resolved.cleanedUrl,
+            resolved.thumbnail,
+          ];
+          const footerCandidates = [
+            resolved.footer_url,
+            resolved.footerUrl,
+            resolved.footer,
+            resolved._footerBlob,
+          ];
 
-        const headerRaw =
-          headerCandidates.find((x) => typeof x === "string" && x) || null;
-        const footerRaw =
-          footerCandidates.find((x) => typeof x === "string" && x) || null;
+          const headerRaw =
+            headerCandidates.find((x) => typeof x === "string" && x) || null;
+          const footerRaw =
+            footerCandidates.find((x) => typeof x === "string" && x) || null;
 
-        setPreviewHeaderUrl(headerRaw);
-        setPreviewFooterUrl(footerRaw);
+          setPreviewHeaderUrl(headerRaw);
+          setPreviewFooterUrl(footerRaw);
 
-        let watermarkUrl = null;
-        let watermarkPlacementProps = null;
-        if (resolved.grapesJson && resolved.grapesJson.watermark) {
-          const wm = resolved.grapesJson.watermark;
-          watermarkUrl = wm?.url || null;
-          watermarkPlacementProps = {
-            xPct: wm?.xPct || "50%",
-            yPct: wm?.yPct || "50%",
-            wPct: wm?.wPct || "60%",
-            hPct: wm?.hPct || "60%",
-            opacity: typeof wm?.opacity === "number" ? wm.opacity : 0.12,
-          };
-        } else if (resolved.meta && resolved.meta.watermark) {
-          watermarkUrl =
-            typeof resolved.meta.watermark === "string"
-              ? resolved.meta.watermark
-              : null;
-          const wp = resolved.meta.watermarkPlacement;
-          if (wp)
+          let watermarkUrl = null;
+          let watermarkPlacementProps = null;
+          if (resolved.grapesJson && resolved.grapesJson.watermark) {
+            const wm = resolved.grapesJson.watermark;
+            watermarkUrl = wm?.url || null;
             watermarkPlacementProps = {
-              xPct: wp.xPct || "50%",
-              yPct: wp.yPct || "50%",
-              wPct: wp.wPct || "60%",
-              hPct: wp.hPct || "60%",
-              opacity: typeof wp.opacity === "number" ? wp.opacity : 0.12,
+              xPct: wm?.xPct || "50%",
+              yPct: wm?.yPct || "50%",
+              wPct: wm?.wPct || "60%",
+              hPct: wm?.hPct || "60%",
+              opacity: typeof wm?.opacity === "number" ? wm.opacity : 0.12,
             };
+          } else if (resolved.meta && resolved.meta.watermark) {
+            watermarkUrl =
+              typeof resolved.meta.watermark === "string"
+                ? resolved.meta.watermark
+                : null;
+            const wp = resolved.meta.watermarkPlacement;
+            if (wp)
+              watermarkPlacementProps = {
+                xPct: wp.xPct || "50%",
+                yPct: wp.yPct || "50%",
+                wPct: wp.wPct || "60%",
+                hPct: wp.wPct || "60%",
+                opacity: typeof wp.opacity === "number" ? wp.opacity : 0.12,
+              };
+          }
+
+          setPreviewWatermarkUrl(watermarkUrl);
+          if (watermarkPlacementProps)
+            setWatermarkProps(watermarkPlacementProps);
+
+          setBodyBoxes((prev) => {
+            try {
+              const rawLayout =
+                resolved.layout ||
+                resolved.layout_json ||
+                resolved.meta?.layout ||
+                resolved.meta?.layout_json;
+              if (rawLayout) {
+                return typeof rawLayout === "string"
+                  ? JSON.parse(rawLayout)
+                  : rawLayout;
+              }
+            } catch (e) {}
+            return prev;
+          });
+
+          setAppMode("upload");
+          setShowEditor(true);
+          return;
+        } catch (err) {
+          console.warn(
+            "editSavedTemplate upload branch failed, falling back to basic",
+            err,
+          );
+          // fall through to basic mode below
         }
-
-        setPreviewWatermarkUrl(watermarkUrl);
-        if (watermarkPlacementProps) setWatermarkProps(watermarkPlacementProps);
-
-        setBodyBoxes((prev) => {
-          try {
-            const rawLayout =
-              resolved.layout ||
-              resolved.layout_json ||
-              resolved.meta?.layout ||
-              resolved.meta?.layout_json;
-            if (rawLayout) {
-              return typeof rawLayout === "string"
-                ? JSON.parse(rawLayout)
-                : rawLayout;
-            }
-          } catch (e) {}
-          return prev;
-        });
-
-        setAppMode("upload");
-        setShowEditor(true);
-        return;
       }
 
       setGenerated(resolved || entry);
       setAppMode("basic");
       setShowEditor(true);
     } catch (err) {
-      console.error("editSavedTemplate failed", err);
-      showError("Failed to open template for editing.");
+      console.error("editSavedTemplate top-level failure", err, {
+        entry,
+        resolved,
+      });
+      // always try to open something rather than bomb out completely
+      if (resolved || entry) {
+        setGenerated(resolved || entry);
+        setAppMode("basic");
+        setShowEditor(true);
+      }
     }
   }
 
@@ -2065,7 +2263,9 @@ export default function TemplateBuilder() {
     setShowEditor,
     handleWatermarkChange,
     setBodyBoxes,
-    setBodyType,
+    // use our custom handler so that basic templates append instead of
+    // clobbering existing boxes
+    setBodyType: handleBodyTypeChange,
     handlePreviewChange,
     handleUploadSaved,
     selectedFieldId,

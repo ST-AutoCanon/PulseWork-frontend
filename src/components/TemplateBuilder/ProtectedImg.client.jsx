@@ -54,6 +54,12 @@ export default function ProtectedImg({
 
         const res = await fetch(src, opts);
         if (!res.ok) {
+          // handle 404 specially to avoid noisy console errors
+          if (res.status === 404) {
+            // set error state but do not throw so we can avoid logging
+            setError("Not found");
+            return;
+          }
           const text = await res.text().catch(() => "");
           throw new Error(`Image fetch failed (${res.status}) ${text}`);
         }

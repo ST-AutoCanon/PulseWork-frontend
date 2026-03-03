@@ -32,6 +32,7 @@ export default function EditorPanel(props) {
     headerHeightPct = 10,
     footerHeightPct = 10,
     editorCanvasWidth = 794,
+    activeArea = "header",
   } = props;
 
   const {
@@ -182,6 +183,7 @@ export default function EditorPanel(props) {
                   })()}
                   initialBoxesAreBodyRelative={true}
                   onSave={handleCustomSave}
+                  onUploadImage={extras?.onUploadImage}
                   canvasWidthPx={CANVAS_WIDTH}
                   watermarkUrl={previewUrls?.previewWatermarkUrl}
                   watermarkProps={watermarkProps}
@@ -217,23 +219,69 @@ export default function EditorPanel(props) {
         )}
 
         {mode === "scratch" && (
-          <CustomTemplateEditor
-            ref={scratchEditorRef}
-            key={`scratch-${mode}-${bodyType}`}
-            onBoxesChange={setBodyBoxes}
-            background={null}
-            initialBoxes={fieldsToBoxes(PRESET_FIELDS[bodyType] || [])}
-            initialBoxesAreBodyRelative={true}
-            initialBodyType={bodyType}
-            onSave={handleCustomSave}
-            canvasWidthPx={794}
-            watermarkUrl={previewUrls?.previewWatermarkUrl}
-            watermarkProps={watermarkProps}
-            watermarkEditable={watermarkEnabled || showEditor}
-            onWatermarkChange={handleWatermarkChange}
-            headerHeightPct={headerHeightPct}
-            footerHeightPct={footerHeightPct}
-          />
+          <div style={{ position: "relative" }}>
+            {previewUrls?.previewHeaderUrl && (
+              <img
+                ref={headerImgRef}
+                src={previewUrls.previewHeaderUrl}
+                alt="Header"
+                draggable={false}
+                onDragStart={(e) => e.preventDefault()}
+                onLoad={onHeaderLoad}
+                style={{
+                  position: "absolute",
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  width: "100%",
+                  display: "block",
+                  pointerEvents: "none",
+                  userSelect: "none",
+                }}
+              />
+            )}
+
+            <CustomTemplateEditor
+              ref={scratchEditorRef}
+              initialActiveArea={activeArea}
+              key={`scratch-${mode}`}
+              onBoxesChange={setBodyBoxes}
+              background={null}
+              initialBoxes={fieldsToBoxes(PRESET_FIELDS[bodyType] || [])}
+              initialBoxesAreBodyRelative={true}
+              initialBodyType={bodyType}
+              onSave={handleCustomSave}
+              onUploadImage={extras?.onUploadImage}
+              canvasWidthPx={794}
+              watermarkUrl={previewUrls?.previewWatermarkUrl}
+              watermarkProps={watermarkProps}
+              watermarkEditable={watermarkEnabled || showEditor}
+              onWatermarkChange={handleWatermarkChange}
+              headerHeightPct={headerHeightPct}
+              footerHeightPct={footerHeightPct}
+            />
+
+            {previewUrls?.previewFooterUrl && (
+              <img
+                ref={footerImgRef}
+                src={previewUrls.previewFooterUrl}
+                alt="Footer"
+                draggable={false}
+                onDragStart={(e) => e.preventDefault()}
+                onLoad={onFooterLoad}
+                style={{
+                  position: "absolute",
+                  bottom: 0,
+                  left: 0,
+                  right: 0,
+                  width: "100%",
+                  display: "block",
+                  pointerEvents: "none",
+                  userSelect: "none",
+                }}
+              />
+            )}
+          </div>
         )}
       </div>
     </main>

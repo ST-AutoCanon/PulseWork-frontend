@@ -169,6 +169,8 @@ const CustomTemplateEditor = forwardRef(function CustomTemplateEditor(
   {
     initialBoxes = [],
     initialBoxesAreBodyRelative = false,
+    initialActiveArea = "body",
+    initialBodyType = null,
     onUploadImage,
     canvasWidthPx = 1000,
     onSave,
@@ -187,6 +189,7 @@ const CustomTemplateEditor = forwardRef(function CustomTemplateEditor(
   const fileInputRef = useRef(null);
   const innerCanvasRef = useRef(null);
   const createdUrlsRef = useRef([]);
+  const lastInitialBodyTypeRef = useRef(initialBodyType);
 
   const imageInputRef = useRef(null);
   const [activeImageBoxId, setActiveImageBoxId] = useState(null);
@@ -208,7 +211,7 @@ const CustomTemplateEditor = forwardRef(function CustomTemplateEditor(
   const dragEndedRef = useRef(null);
   const dragAllowMs = 300;
 
-  const [activeArea, setActiveArea] = useState("body");
+  const [activeArea, setActiveArea] = useState(initialActiveArea || "body");
 
   const [localWatermark, setLocalWatermark] = useState(
     watermarkProps || {
@@ -223,6 +226,17 @@ const CustomTemplateEditor = forwardRef(function CustomTemplateEditor(
   const [localWatermarkUrl, setLocalWatermarkUrl] = useState(
     watermarkUrl || null,
   );
+
+  // if parent changes the requested active area we mirror it
+  useEffect(() => {
+    if (
+      initialActiveArea &&
+      initialActiveArea !== activeArea &&
+      ["header", "body", "footer"].includes(initialActiveArea)
+    ) {
+      setActiveArea(initialActiveArea);
+    }
+  }, [initialActiveArea]);
 
   useEffect(() => {
     try {
@@ -265,8 +279,19 @@ const CustomTemplateEditor = forwardRef(function CustomTemplateEditor(
   }
 
   useEffect(() => {
+    // if initialBodyType changed, we're switching document types, so reset boxes
+    const bodyTypeChanged = lastInitialBodyTypeRef.current !== initialBodyType;
+    if (bodyTypeChanged) {
+      lastInitialBodyTypeRef.current = initialBodyType;
+    }
+
+    // only skip if no boxes provided AND document type didn't change
     if (!Array.isArray(initialBoxes) || initialBoxes.length === 0) {
-      return;
+      if (!bodyTypeChanged) {
+        return;
+      }
+      // if bodyTypeChanged, continue even with empty initialBoxes so we can
+      // merge header/footer with the new (empty) body template like letter
     }
 
     const parsePct = (s) => {
@@ -304,6 +329,15 @@ const CustomTemplateEditor = forwardRef(function CustomTemplateEditor(
     const normalized = shiftBoxesToBody(initialBoxes || []);
 
     setBoxes((prev) => {
+      // if document type just changed, intelligently merge: keep header/footer,
+      // replace body boxes only
+      if (bodyTypeChanged && Array.isArray(prev) && prev.length > 0) {
+        const headerFooterBoxes = prev.filter(
+          (b) => b.area === "header" || b.area === "footer",
+        );
+        return [...headerFooterBoxes, ...normalized];
+      }
+      // otherwise only initialize if no boxes exist yet
       if (Array.isArray(prev) && prev.length > 0) {
         return prev;
       }
@@ -323,6 +357,7 @@ const CustomTemplateEditor = forwardRef(function CustomTemplateEditor(
     headerHeightPct,
     footerHeightPct,
     initialBoxesAreBodyRelative,
+    initialBodyType,
   ]);
 
   useLayoutEffect(() => {
@@ -857,7 +892,16 @@ const CustomTemplateEditor = forwardRef(function CustomTemplateEditor(
         <img
           src={box.content}
           alt=""
-          style={{ width: "100%", height: "100%", objectFit: "contain" }}
+          style={{
+            width: "100%",
+            height: "100%",
+            objectFit: "contain",
+            cursor: "pointer",
+          }}
+          onClick={(e) => {
+            e.stopPropagation();
+            openFilePickerForLogo(box.id);
+          }}
           onDoubleClick={(e) => {
             e.stopPropagation();
             openFilePickerForLogo(box.id);

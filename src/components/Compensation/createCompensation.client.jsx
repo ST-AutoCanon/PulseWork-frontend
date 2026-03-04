@@ -3006,110 +3006,95 @@ console.log("=====================================\n");
         },
       ],
     },
+   {
+  title: "PF and Medical Contributions",
+  fields: [
     {
-      title: "PF and Medical Contributions",
-      fields: [
-        {
-          label: "PF Applicable",
-          field: "isPFApplicable",
-        },
-        ...(formData.isPFApplicable
-          ? [
-              {
-                label: "Calculation Based On",
-                field: "pfCalculationBase",
-                component: (
-                  <div className="compensation-form-group">
-                    <span className="compensation-label-text">
-                      Calculation Based On
-                    </span>
-                    <div className="compensation-input-group">
-                      <select
-                        value={formData.pfCalculationBase || ""}
-                        onChange={(e) =>
-                          handleInputChange("pfCalculationBase", e.target.value)
-                        }
-                        className="compensation-select"
-                      >
-                        <option value="">Select</option>
-                        <option value="basic">Basic Salary</option>
-                        {/* <option value="gross">Gross Salary</option> */}
-                      </select>
-                    </div>
-                  </div>
-                ),
-              },
-              {
-                label: "PF of Employee",
-                field: "isPFEmployee",
-                percentageField: "pfEmployeePercentage",
-                amountField: "pfEmployeeAmount",
-                typeField: "pfEmployeeType",
-                includeCtcField: "pfEmployeeIncludeInCtc",
-              },
-              {
-                label: "PF of Employer",
-                field: "isPFEmployer",
-                percentageField: "pfEmployerPercentage",
-                amountField: "pfEmployerAmount",
-                typeField: "pfEmployerType",
-                includeCtcField: "pfEmployerIncludeInCtc",
-              },
-            ]
-          : []),
-        {
-          label: "Medical Applicable",
-          field: "isMedicalApplicable",
-        },
-        ...(formData.isMedicalApplicable
-          ? [
-              {
-                label: "Calculation Based On",
-                field: "medicalCalculationBase",
-                component: (
-                  <div className="compensation-form-group">
-                    <span className="compensation-label-text">
-                      Calculation Based On
-                    </span>
-                    <div className="compensation-input-group">
-                      <select
-                        value={formData.medicalCalculationBase || ""}
-                        onChange={(e) =>
-                          handleInputChange(
-                            "medicalCalculationBase",
-                            e.target.value
-                          )
-                        }
-                        className="compensation-select"
-                      >
-                        <option value="">Select</option>
-                        <option value="basic">Basic Salary</option>
-                        {/* <option value="gross">Gross Salary</option> */}
-                      </select>
-                    </div>
-                  </div>
-                ),
-              },
-              {
-                label: "Esic of Employee",
-                field: "isESICEmployee",
-                percentageField: "esicEmployeePercentage",
-                amountField: "esicEmployeeAmount",
-                typeField: "esicEmployeeType",
-                includeCtcField: "esicEmployeeIncludeInCtc",
-              },
-              {
-                label: "Insurance of Employee",
-                field: "isInsuranceEmployee",
-                percentageField: "insuranceEmployeePercentage",
-                amountField: "insuranceEmployeeAmount",
-                typeField: "insuranceEmployeeType",
-                includeCtcField: "insuranceEmployeeIncludeInCtc",
-              },
-            ]
-          : []),
-      ],
+      label: "PF Applicable",
+      field: "isPFApplicable",
     },
+    ...(formData.isPFApplicable
+      ? [
+          {
+            label: "Calculation Based On",
+            field: "pfCalculationBase",
+            component: (
+              <div className="compensation-form-group">
+                <span className="compensation-label-text">Calculation Based On</span>
+                <div className="compensation-input-group">
+                  <select
+                    value={formData.pfCalculationBase || "basic"}
+                    className="compensation-select"
+                    disabled
+                  >
+                    <option value="basic">Basic Salary</option>
+                  </select>
+                </div>
+              </div>
+            ),
+          },
+          {
+            label: "PF of Employee",
+            field: "isPFEmployee",
+            percentageField: "pfEmployeePercentage",
+            amountField: "pfEmployeeAmount",
+            typeField: "pfEmployeeType",
+            includeCtcField: "pfEmployeeIncludeInCtc",
+          },
+          {
+            label: "PF of Employer",
+            field: "isPFEmployer",
+            percentageField: "pfEmployerPercentage",
+            amountField: "pfEmployerAmount",
+            typeField: "pfEmployerType",
+            includeCtcField: "pfEmployerIncludeInCtc",
+          },
+        ]
+      : []),
+    {
+      label: "Medical Applicable",
+      field: "isMedicalApplicable",
+    },
+    ...(formData.isMedicalApplicable
+      ? [
+          {
+            label: "Calculation Based On",
+            field: "medicalCalculationBase",
+            component: (
+              <div className="compensation-form-group">
+                <span className="compensation-label-text">Calculation Based On</span>
+                <div className="compensation-input-group">
+                  <select
+                    value={formData.medicalCalculationBase || "basic"}
+                    className="compensation-select"
+                    disabled   // ← Now added/fixed
+                  >
+                    <option value="basic">Basic Salary</option>
+                  </select>
+                </div>
+              </div>
+            ),
+          },
+          {
+            label: "Esic of Employee",
+            field: "isESICEmployee",
+            percentageField: "esicEmployeePercentage",
+            amountField: "esicEmployeeAmount",
+            typeField: "esicEmployeeType",
+            includeCtcField: "esicEmployeeIncludeInCtc",
+          },
+          {
+            label: "Insurance of Employee",
+            field: "isInsuranceEmployee",
+            percentageField: "insuranceEmployeePercentage",
+            amountField: "insuranceEmployeeAmount",
+            typeField: "insuranceEmployeeType",
+            includeCtcField: "insuranceEmployeeIncludeInCtc",
+          },
+        ]
+      : []),
+  ],
+},
     {
       title: "Statutory Components",
       fields: [

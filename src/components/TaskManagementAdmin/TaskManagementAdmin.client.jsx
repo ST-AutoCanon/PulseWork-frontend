@@ -1228,26 +1228,27 @@ const TaskManagementAdmin = () => {
                       </div>
                     </div>
                     <div className="form-row">
+                     <div className="form-group half-width">
+  <label>Start Date</label>
+  <DatePicker
+    selected={formData.startDate}
+    onChange={(d) => handleDateChange(d, "startDate")}
+    dateFormat="dd/MM/yyyy"
+    placeholderText="dd/mm/yyyy"
+    className="date-picker"
+    required
+  />
+</div>
                       <div className="form-group half-width">
-                        <label>Start Date</label>
-                        <DatePicker
-                          selected={formData.startDate}
-                          onChange={(d) => handleDateChange(d, "startDate")}
-                          dateFormat="dd-MM-yyyy"
-                          className="date-picker"
-                          required
-                        />
-                      </div>
-                      <div className="form-group half-width">
-                        <label>End Date</label>
-                        <DatePicker
-                          selected={formData.endDate}
-                          onChange={(d) => handleDateChange(d, "endDate")}
-                          dateFormat="dd-MM-yyyy"
-                          className="date-picker"
-                          required
-                        />
-                      </div>
+  <label>End Date</label>
+  <DatePicker
+    selected={formData.endDate}
+    onChange={(d) => handleDateChange(d, "endDate")}
+    dateFormat="dd/MM/yyyy"
+    placeholderText="dd/mm/yyyy"
+    className="date-picker"
+  />
+</div>
                     </div>
                     <div className="form-row">
                       <div className="form-group half-width">

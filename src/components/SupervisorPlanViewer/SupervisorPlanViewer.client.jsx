@@ -1,3 +1,5 @@
+
+
 "use client";
 import React, { useState, useEffect, useMemo, useRef } from "react";
 import axios from "axios";
@@ -346,69 +348,73 @@ const SupervisorPlanViewer = () => {
     fetchTasks();
   }, [supervisorId, apiHeaders]);
 
-  // useEffect(() => {
-  //   if (!supervisorId || !selectedEmployee) return;
-  //   const fetchProjects = async () => {
-  //     setLoadingProjects(true);
-  //     try {
-  //       const response = await axios.get(
-  //         `${process.env.NEXT_PUBLIC_BACKEND_URL}/projects/employeeProjects`,
-  //         {
-  //           params: { employeeId: selectedEmployee },
-  //           withCredentials: true,
-  //           headers: { "x-api-key": process.env.NEXT_PUBLIC_API_KEY || "" },
-  //           timeout: 10000,
-  //         }
-  //       );
-  //       const newProjects = {};
-  //       (response.data.projects || []).forEach((project) => {
-  //         newProjects[project.id] = project.project;
-  //       });
-  //       setProjects(newProjects);
-  //       setError(null);
-  //     } catch {
-  //       setProjects({});
-  //     } finally {
-  //       setLoadingProjects(false);
-  //     }
-  //   };
-  //   fetchProjects();
-  // }, [supervisorId, selectedEmployee]);
-useEffect(() => {
-  if (!supervisorId || !selectedEmployee || !apiHeaders) return;
+  // ────────────────────────────────────────────────────────────────
+  // UPDATED: Conditional project fetch based on visibility setting
+  useEffect(() => {
+    if (!supervisorId || !selectedEmployee || !apiHeaders) return;
 
-  const fetchProjects = async () => {
-    setLoadingProjects(true);
-    try {
-      const response = await axios.get(
-        `${process.env.NEXT_PUBLIC_BACKEND_URL}/projects/employeeProjects`,
-        {
-          params: { employeeId: selectedEmployee },
-          withCredentials: true,
-          headers: apiHeaders,               // ← important change: use full headers
-          timeout: 10000,
+    const fetchProjects = async () => {
+      setLoadingProjects(true);
+      try {
+        // Step 1: Fetch the current visibility mode
+        let visibilityMode = "assigned_only"; // default fallback
+
+        try {
+          const visRes = await axios.get(
+            `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/org/project-visibility`,
+            { withCredentials: true, headers: apiHeaders, timeout: 10000 }
+          );
+          visibilityMode = visRes.data?.visibility_mode || "assigned_only";
+        } catch (err) {
+          console.warn("Failed to fetch visibility → defaulting to assigned_only", err);
         }
-      );
 
-      const newProjects = {};
-      (response.data.projects || []).forEach((project) => {
-        newProjects[project.id] = project.project;
-      });
+        // Step 2: Choose endpoint based on visibility
+        let projResponse;
+        if (visibilityMode === "all") {
+          // Fetch ALL projects in the organization
+          projResponse = await axios.get(
+            `${process.env.NEXT_PUBLIC_BACKEND_URL}/projects`,
+            {
+              params: { orgId: orgId },
+              withCredentials: true,
+              headers: apiHeaders,
+              timeout: 10000,
+            }
+          );
+        } else {
+          // Fetch only assigned projects (original behavior)
+          projResponse = await axios.get(
+            `${process.env.NEXT_PUBLIC_BACKEND_URL}/projects/employeeProjects`,
+            {
+              params: { employeeId: selectedEmployee },
+              withCredentials: true,
+              headers: apiHeaders,
+              timeout: 10000,
+            }
+          );
+        }
 
-      setProjects(newProjects);
-      setError(null);
-    } catch (err) {
-      console.error("Projects fetch failed:", err);
-      setProjects({});
-      // Optional: show user-visible error
-      // setError("Failed to load projects for this employee.");
-    } finally {
-      setLoadingProjects(false);
-    }
-  };
+        // Step 3: Build project map
+        const newProjects = {};
+        (projResponse.data.projects || []).forEach((project) => {
+          newProjects[project.id] = project.project || project.project_name || "Unnamed";
+        });
 
-  fetchProjects();
-}, [supervisorId, selectedEmployee, apiHeaders]);   // ← add apiHeaders to deps
+        setProjects(newProjects);
+        setError(null);
+      } catch (err) {
+        console.error("Projects fetch failed:", err);
+        setProjects({});
+      } finally {
+        setLoadingProjects(false);
+      }
+    };
+
+    fetchProjects();
+  }, [supervisorId, selectedEmployee, apiHeaders, orgId]);
+  // ────────────────────────────────────────────────────────────────
+
   const weekIds = useMemo(() => {
     const unique = [...new Set(tasks.map((t) => t.week_id))];
     return unique.sort();

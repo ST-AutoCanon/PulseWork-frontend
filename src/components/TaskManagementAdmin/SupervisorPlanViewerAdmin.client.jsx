@@ -1,3 +1,5 @@
+
+
 "use client";
 
 import React, { useState, useEffect, useMemo } from "react";
@@ -55,6 +57,14 @@ const SupervisorPlanViewerAdmin = () => {
     freezeDaysSupervisor: "",
     freezeDaysEmployee: "",
   });
+
+  // ── NEW STATES for Project Types / Visibility ───────────────────────────────
+  const [projectVisibilityModal, setProjectVisibilityModal] = useState({
+    isVisible: false,
+    currentValue: "assigned_only", // fallback default
+  });
+  // ──────────────────────────────────────────────────────────────────────────────
+
   const [loadingConfig, setLoadingConfig] = useState(false);
   const [pendingReviewChanges, setPendingReviewChanges] = useState({});
 
@@ -235,28 +245,63 @@ const SupervisorPlanViewerAdmin = () => {
     );
   }, [employees, tasks]);
 
+  // ────────────────────────────────────────────────────────────────
+  // UPDATED: Conditional project fetch based on visibility setting
   useEffect(() => {
     if (!selectedEmployee) return;
 
     const fetchProjects = async () => {
       setLoadingProjects(true);
       try {
-        const response = await axios.get(
-          `${process.env.NEXT_PUBLIC_BACKEND_URL}/projects/employeeProjects`,
-          {
-            params: { employeeId: selectedEmployee },
-            withCredentials: true,
-            headers: apiHeaders,
-            timeout: 10000,
-          }
-        );
+        // Step 1: Fetch the current visibility mode
+        let visibilityMode = "assigned_only"; // default fallback
+
+        try {
+          const visRes = await axios.get(
+            `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/org/project-visibility`,
+            { withCredentials: true, headers: apiHeaders, timeout: 10000 }
+          );
+          visibilityMode = visRes.data?.visibility_mode || "assigned_only";
+        } catch (err) {
+          console.warn("Failed to fetch visibility → defaulting to assigned_only", err);
+        }
+
+        // Step 2: Choose endpoint based on visibility
+        let projResponse;
+        if (visibilityMode === "all") {
+          // Fetch ALL projects in the organization
+          projResponse = await axios.get(
+            `${process.env.NEXT_PUBLIC_BACKEND_URL}/projects`,
+            {
+              params: { orgId: user?.orgId ?? "" },
+              withCredentials: true,
+              headers: apiHeaders,
+              timeout: 10000,
+            }
+          );
+        } else {
+          // Fetch only assigned projects (original behavior)
+          projResponse = await axios.get(
+            `${process.env.NEXT_PUBLIC_BACKEND_URL}/projects/employeeProjects`,
+            {
+              params: { employeeId: selectedEmployee },
+              withCredentials: true,
+              headers: apiHeaders,
+              timeout: 10000,
+            }
+          );
+        }
+
+        // Step 3: Build project map
         const newProjects = {};
-        (response.data.projects || []).forEach((project) => {
-          newProjects[project.id] = project.project;
+        (projResponse.data.projects || []).forEach((project) => {
+          newProjects[project.id] = project.project || project.project_name || "Unnamed";
         });
+
         setProjects(newProjects);
         setError(null);
       } catch (err) {
+        console.error("Projects fetch failed:", err);
         setProjects({});
       } finally {
         setLoadingProjects(false);
@@ -264,7 +309,32 @@ const SupervisorPlanViewerAdmin = () => {
     };
 
     fetchProjects();
-  }, [selectedEmployee, apiHeaders]);
+  }, [selectedEmployee, apiHeaders, user?.orgId]);
+  // ────────────────────────────────────────────────────────────────
+
+  // ── NEW: Fetch current project visibility setting when supervisorId is ready ──
+  useEffect(() => {
+    if (!supervisorId) return;
+
+    const fetchProjectVisibility = async () => {
+      try {
+        const res = await axios.get(
+          `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/org/project-visibility`,
+          { withCredentials: true, headers: apiHeaders }
+        );
+        const mode = res.data?.visibility_mode || "assigned_only";
+        setProjectVisibilityModal((prev) => ({
+          ...prev,
+          currentValue: mode,
+        }));
+      } catch (err) {
+        console.warn("Failed to load project visibility setting:", err);
+      }
+    };
+
+    fetchProjectVisibility();
+  }, [supervisorId, apiHeaders]);
+  // ──────────────────────────────────────────────────────────────────────────────
 
   const fetchConfig = async () => {
     setLoadingConfig(true);
@@ -331,6 +401,25 @@ const SupervisorPlanViewerAdmin = () => {
       setLoadingConfig(false);
     }
   };
+
+  // ── NEW: Save project visibility setting ─────────────────────────────────────
+  const saveProjectVisibility = async () => {
+    try {
+      await axios.put(
+        `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/org/project-visibility`,
+        { visibility_mode: projectVisibilityModal.currentValue },
+        { withCredentials: true, headers: apiHeaders }
+      );
+      showAlert("Project visibility setting updated successfully");
+      setProjectVisibilityModal((prev) => ({ ...prev, isVisible: false }));
+    } catch (err) {
+      showAlert(
+        "Failed to update project visibility: " +
+          (err.response?.data?.error || err.message)
+      );
+    }
+  };
+  // ──────────────────────────────────────────────────────────────────────────────
 
   const updateTaskField = (taskId, field, value) => {
     setTasks((prev) =>
@@ -745,6 +834,7 @@ const SupervisorPlanViewerAdmin = () => {
         <p>{alertModal.message}</p>
       </Modal>
 
+      {/* Existing Freeze Days Modal */}
       {configModal.isVisible && (
         <div
           className="supervisor-plan-admin-modal-overlay"
@@ -819,17 +909,134 @@ const SupervisorPlanViewerAdmin = () => {
         </div>
       )}
 
-      <div className="supervisor-plan-admin-header">
+      {/* ── NEW: Project Visibility Modal ──────────────────────────────────────── */}
+      {projectVisibilityModal.isVisible && (
+        <div
+          className="supervisor-plan-admin-modal-overlay"
+          onClick={() =>
+            setProjectVisibilityModal((prev) => ({ ...prev, isVisible: false }))
+          }
+        >
+          <div
+            className="supervisor-plan-admin-modal"
+            onClick={(e) => e.stopPropagation()}
+            style={{ maxWidth: "480px", padding: "24px" }}
+          >
+            <h3 className="supervisor-plan-admin-modal-title">
+              Project Visibility for Employees
+            </h3>
+
+            <div style={{ margin: "24px 0" }}>
+              <p style={{ marginBottom: "20px", fontSize: "15px" }}>
+                Choose which projects employees can see and select in their views
+                (task logging, time entry, leave application, etc.):
+              </p>
+
+              <label style={{ display: "block", marginBottom: "16px" }}>
+                <input
+                  type="radio"
+                  name="proj-visibility"
+                  value="all"
+                  checked={projectVisibilityModal.currentValue === "all"}
+                  onChange={() =>
+                    setProjectVisibilityModal((prev) => ({
+                      ...prev,
+                      currentValue: "all",
+                    }))
+                  }
+                />
+                <strong style={{ marginLeft: "8px" }}>All projects</strong>
+                <br />
+                <small style={{ marginLeft: "28px", color: "#666" }}>
+                  Employees can see and select any project in the organization
+                </small>
+              </label>
+
+              <label style={{ display: "block" }}>
+                <input
+                  type="radio"
+                  name="proj-visibility"
+                  value="assigned_only"
+                  checked={projectVisibilityModal.currentValue === "assigned_only"}
+                  onChange={() =>
+                    setProjectVisibilityModal((prev) => ({
+                      ...prev,
+                      currentValue: "assigned_only",
+                    }))
+                  }
+                />
+                <strong style={{ marginLeft: "8px" }}>Only assigned projects</strong>
+                <br />
+                <small style={{ marginLeft: "28px", color: "#666" }}>
+                  Employees can only see projects where they are added to the team
+                </small>
+              </label>
+            </div>
+
+            <div className="supervisor-plan-admin-modal-buttons">
+              <button
+                type="button"
+                className="supervisor-plan-admin-modal-button supervisor-plan-admin-modal-button-cancel"
+                onClick={() =>
+                  setProjectVisibilityModal((prev) => ({ ...prev, isVisible: false }))
+                }
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="supervisor-plan-admin-modal-button supervisor-plan-admin-modal-button-save"
+                onClick={saveProjectVisibility}
+              >
+                Save
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* ────────────────────────────────────────────────────────────────────────────── */}
+
+      
+{/* <div className="supervisor-plan-admin-header">
         <button
           className="supervisor-plan-admin-config-button"
           onClick={fetchConfig}
           disabled={loadingConfig}
-          style={{ position: "absolute", top: "10px", right: "10px" }}
+          style={{  top: "10px", right: "10px",gap:"10px" }}
         >
           {loadingConfig ? "Loading..." : "Update Freeze Days"}
         </button>
-      </div>
 
+        <button
+          className="supervisor-plan-admin-config-button"
+          onClick={() =>
+            setProjectVisibilityModal((prev) => ({ ...prev, isVisible: true }))
+          }
+        >
+          Project Types
+        </button>
+      </div> */}
+      <div
+  className="supervisor-plan-admin-header"
+  style={{ display: "flex", alignItems: "center", gap: "12px" }}
+>
+  <button
+    className="supervisor-plan-admin-config-button"
+    onClick={fetchConfig}
+    disabled={loadingConfig}
+  >
+    {loadingConfig ? "Loading..." : "Update Freeze Days"}
+  </button>
+
+  <button
+    className="supervisor-plan-admin-config-button"
+    onClick={() =>
+      setProjectVisibilityModal((prev) => ({ ...prev, isVisible: true }))
+    }
+  >
+    Project Types
+  </button>
+</div>
       <div className="supervisor-plan-admin-employee-list">
         <h3>Employees</h3>
         <input

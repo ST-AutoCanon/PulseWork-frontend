@@ -7,7 +7,6 @@ import "./WeeklyTaskPlanner.css";
 import Modal from "../Modal/Modal.client";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { MdMic, MdMicNone } from "react-icons/md";
-
 const WeeklyTaskPlanner = ({
   userRole = "employee",
   employeeId,
@@ -54,7 +53,7 @@ const WeeklyTaskPlanner = ({
     const year = start.getFullYear();
     return `${startDay} ${startMonth} - ${endDay} ${endMonth} ${year}`;
   };
-  const [isSubmitting, setIsSubmitting] = useState(false);   // ← ADD THIS LINE
+  const [isSubmitting, setIsSubmitting] = useState(false); // ← ADD THIS LINE
   const dateRange = formatDateRange(startDate, endDate);
   const getISOWeekNumber = (date) => {
     const d = new Date(date);
@@ -126,7 +125,6 @@ const WeeklyTaskPlanner = ({
   const [isListening, setIsListening] = useState(false);
   const [assignListeningIndex, setAssignListeningIndex] = useState(null);
   const recognitionRef = useRef(null);
-
   useEffect(() => {
     const handleClickOutside = (event) => {
       Object.entries(dropdownRefs.current).forEach(([idx, ref]) => {
@@ -147,13 +145,11 @@ const WeeklyTaskPlanner = ({
       document.removeEventListener("touchstart", handleClickOutside);
     };
   }, [dropdownOpen]);
-
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth <= 768);
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
   }, []);
-
   useEffect(() => {
     const handleClickOutside = (e) => {
       if (
@@ -177,7 +173,6 @@ const WeeklyTaskPlanner = ({
       document.removeEventListener("touchstart", handleClickOutside);
     };
   }, [mobileTooltip.isVisible, isMobile]);
-
   const handleTooltipClick = (e, content, dotId) => {
     e.preventDefault();
     e.stopPropagation();
@@ -194,18 +189,14 @@ const WeeklyTaskPlanner = ({
       dotId: prev.dotId === dotId ? null : dotId,
     }));
   };
-
   const showAlert = (message, title = "") => {
     setAlertModal({ isVisible: true, title, message });
   };
-
   const closeAlert = () =>
     setAlertModal({ isVisible: false, title: "", message: "" });
-
   const toggleDropdown = (index) => {
     setDropdownOpen((prev) => ({ ...prev, [index]: !prev[index] }));
   };
-
   const withRetry = async (fn, retries = 3, delay = 1000) => {
     for (let i = 0; i < retries; i++) {
       try {
@@ -216,7 +207,6 @@ const WeeklyTaskPlanner = ({
       }
     }
   };
-
   const formatDateIST = (date) => {
     const istOffset = 5.5 * 60 * 60 * 1000;
     const istDate = new Date(date.getTime() + istOffset);
@@ -225,9 +215,7 @@ const WeeklyTaskPlanner = ({
     const day = String(istDate.getUTCDate()).padStart(2, "0");
     return `${year}-${month}-${day}`;
   };
-
   const effectiveFreezeDays = freezeDays;
-
   const isTaskEditable = (taskDate) => {
     if (!taskDate) return false;
     const today = new Date();
@@ -239,7 +227,6 @@ const WeeklyTaskPlanner = ({
     if (diffDays === 0) return true;
     return diffDays <= effectiveFreezeDays;
   };
-
   // NEW: Employees can only update tasks on or before today (future tasks blocked)
   const canEmployeeUpdateTask = (taskDate) => {
     if (!taskDate) return false;
@@ -249,7 +236,6 @@ const WeeklyTaskPlanner = ({
     task.setHours(0, 0, 0, 0);
     return task <= today;
   };
-
   const getTaskDateStyle = (dateStr) => {
     const [day, month] = dateStr.split(" ");
     const year = startDate.getFullYear();
@@ -287,7 +273,6 @@ const WeeklyTaskPlanner = ({
       tooltip: dateStr,
     };
   };
-
   const startListening = () => {
     if (!("webkitSpeechRecognition" in window)) {
       showAlert("Speech Recognition is not supported in this browser.");
@@ -311,12 +296,10 @@ const WeeklyTaskPlanner = ({
     recognitionRef.current.onend = () => setIsListening(false);
     recognitionRef.current.start();
   };
-
   const stopListening = () => {
     if (recognitionRef.current) recognitionRef.current.stop();
     setIsListening(false);
   };
-
   const startAssignListening = (index) => {
     if (!("webkitSpeechRecognition" in window)) {
       showAlert("Speech Recognition is not supported in this browser.");
@@ -343,12 +326,10 @@ const WeeklyTaskPlanner = ({
     recognitionRef.current.onend = () => setAssignListeningIndex(null);
     recognitionRef.current.start();
   };
-
   const stopAssignListening = () => {
     if (recognitionRef.current) recognitionRef.current.stop();
     setAssignListeningIndex(null);
   };
-
   const fetchData = async () => {
     if (!employeeId) {
       showAlert("Employee ID is required to fetch data.");
@@ -387,16 +368,52 @@ const WeeklyTaskPlanner = ({
         ? lv.data.data.filter((l) => l.status === "Approved")
         : [];
       setApprovedLeaves(approved);
-      const proj = await withRetry(() =>
-        authRequest({
-          method: "GET",
-          url: "/projects/employeeProjects",
-          params: { employeeId },
-        })
-      );
+
+      // ────────────────────────────────────────────────────────────────
+      // NEW: Fetch project visibility setting
+      let visibilityMode = "assigned_only"; // default fallback
+
+      try {
+        const visRes = await withRetry(() =>
+          authRequest({
+            method: "GET",
+            url: "/api/org/project-visibility",
+          })
+        );
+        visibilityMode = visRes.data?.visibility_mode || "assigned_only";
+      } catch (err) {
+        console.warn("Could not fetch project visibility → defaulting to assigned_only", err);
+      }
+
+      // Now fetch projects conditionally
+      let projResponse;
+      if (visibilityMode === "all") {
+        // Fetch ALL projects in the organization
+        projResponse = await withRetry(() =>
+          authRequest({
+            method: "GET",
+            url: "/projects",
+            params: { orgId: userContext.orgId },
+          })
+        );
+      } else {
+        // Fetch only assigned projects (original behavior)
+        projResponse = await withRetry(() =>
+          authRequest({
+            method: "GET",
+            url: "/projects/employeeProjects",
+            params: { employeeId },
+          })
+        );
+      }
+
       const projMap = {};
-      (proj.data.projects || []).forEach((p) => (projMap[p.id] = p.project));
+      (projResponse.data.projects || []).forEach((p) => {
+        projMap[p.id] = p.project || p.project_name || "Unnamed Project";
+      });
       setProjects(projMap);
+      // ────────────────────────────────────────────────────────────────
+
       const tsk = await withRetry(() =>
         authRequest({
           method: "GET",
@@ -435,24 +452,19 @@ const WeeklyTaskPlanner = ({
       setLoadingLeaves(false);
     }
   };
-
   useEffect(() => {
     if (process.env.NEXT_PUBLIC_BACKEND_URL) fetchData();
     else showAlert("Backend URL not configured.");
   }, [employeeId, weekId, weekOffset, userContext]);
-
   const handlePreviousWeek = () => {
     setWeekOffset((prev) => Math.max(prev - 1, -3));
   };
-
   const handleNextWeek = () => {
     setWeekOffset((prev) => Math.min(prev + 1, 3));
   };
-
   const toggleExpand = (date) => {
     setExpandedDates((prev) => ({ ...prev, [date]: !prev[date] }));
   };
-
   const handleEditClick = (task) => {
     // Only employees should be restricted by date for their own updates
     if (userRole === "employee" && !canEmployeeUpdateTask(task.task_date)) {
@@ -461,7 +473,6 @@ const WeeklyTaskPlanner = ({
       );
       return;
     }
-
     if (!isTaskEditable(task.task_date)) {
       showAlert(`Cannot edit: Task is before the ${effectiveFreezeDays}-day editable period.`);
       return;
@@ -482,7 +493,6 @@ const WeeklyTaskPlanner = ({
       });
     }
   };
-
   const handleSupStatusEditClick = (task) => {
     if (userRole !== "supervisor") return;
     if (!isTaskEditable(task.task_date)) {
@@ -506,18 +516,15 @@ const WeeklyTaskPlanner = ({
       });
     }
   };
-
   const handleSave = async (taskId) => {
     const task = tasksData
       .flatMap((d) => d.tasks)
       .find((t) => t.task_id === taskId);
-
     // Additional check for employee — prevent saving future tasks
     if (userRole === "employee" && !canEmployeeUpdateTask(task.task_date)) {
       showAlert("Cannot update future tasks.");
       return;
     }
-
     if (!isTaskEditable(task.task_date)) {
       showAlert(
         `Cannot edit: Task is before the ${effectiveFreezeDays}-day editable period.`
@@ -528,13 +535,11 @@ const WeeklyTaskPlanner = ({
       showAlert("This task is suspended and cannot be updated.");
       return;
     }
-
     // NEW: Make comment mandatory for employee updates
     if (userRole === "employee" && !formData.comment?.trim()) {
       showAlert("Please add a comment before saving your update.");
       return;
     }
-
     try {
       const updated = {
         project_id: task.project_id,
@@ -577,12 +582,10 @@ const WeeklyTaskPlanner = ({
       setFormData({ taskName: "", status: "", comment: "" });
     }
   };
-
   const handleCancelEdit = () => {
     setEditingTask(null);
     setFormData({ taskName: "", status: "", comment: "" });
   };
-
   const handleSupStatusSave = async (taskId) => {
     if (userRole !== "supervisor") return;
     const task = tasksData
@@ -708,22 +711,18 @@ const WeeklyTaskPlanner = ({
       setSupFormData({ supStatus: "", supComment: "" });
     }
   };
-
   const handleSupStatusCancel = () => {
     setEditingSupStatus(null);
     setSupFormData({ supStatus: "", supComment: "" });
   };
-
   const handleEnterReview = () => {
     if (userRole === "supervisor") setSupReviewMode(true);
   };
-
   const handleExitReview = () => {
     setSupReviewMode(false);
     setStrikeTaskId(null);
     setEditingSupStatus(null);
   };
-
   const handleApprove = async (taskId) => {
     if (userRole !== "supervisor") return;
     const task = tasksData
@@ -758,7 +757,6 @@ const WeeklyTaskPlanner = ({
       showAlert(`Failed to approve task: ${err.message}`);
     }
   };
-
   const handleSuspendReview = async (taskId) => {
     if (userRole !== "supervisor") return;
     const task = tasksData
@@ -791,7 +789,6 @@ const WeeklyTaskPlanner = ({
       showAlert(`Failed to suspend task: ${err.message}`);
     }
   };
-
   const handleStrike = async (taskId, dayDate) => {
     if (userRole !== "supervisor") return;
     const task = tasksData
@@ -834,7 +831,6 @@ const WeeklyTaskPlanner = ({
       showAlert(`Failed to strike task: ${err.message}`);
     }
   };
-
   const handleReplacementChange = (field, value) => {
     setReplacementData((prev) => ({
       ...prev,
@@ -842,7 +838,6 @@ const WeeklyTaskPlanner = ({
       ...(field === "projectId" ? { projectName: projects[value] || "" } : {}),
     }));
   };
-
   const handleAddReplacement = async () => {
     if (userRole !== "supervisor") return;
     if (!replacementData.projectId || !replacementData.taskName) {
@@ -927,7 +922,6 @@ const WeeklyTaskPlanner = ({
       showAlert(`Failed to add replacement task: ${err.message}`);
     }
   };
-
   const handleAssignClick = () => {
     setShowAssignForm(true);
     setAssignTasks([
@@ -940,14 +934,12 @@ const WeeklyTaskPlanner = ({
     ]);
     setDropdownOpen({});
   };
-
   const handleAddTask = () => {
     setAssignTasks((prev) => [
       ...prev,
       { dates: [], projectId: "", projectName: "", taskName: "" },
     ]);
   };
-
   const handleRemoveTask = (idx) => {
     if (assignTasks.length <= 1) return;
     setAssignTasks((prev) => prev.filter((_, i) => i !== idx));
@@ -957,7 +949,6 @@ const WeeklyTaskPlanner = ({
       return n;
     });
   };
-
   const handleAssignChange = (idx, field, value) => {
     setAssignTasks((prev) =>
       prev.map((t, i) => {
@@ -972,7 +963,6 @@ const WeeklyTaskPlanner = ({
       })
     );
   };
-
   const handleProjectSelect = (idx) => (e) => {
     const id = e.target.value;
     setAssignTasks((prev) =>
@@ -981,7 +971,6 @@ const WeeklyTaskPlanner = ({
       )
     );
   };
-
   const isDateInCurrentOrFuture = (dateStr) => {
   // dateStr format: "15 Feb"
   const [day, monthShort] = dateStr.split(" ");
@@ -991,113 +980,101 @@ const WeeklyTaskPlanner = ({
   };
   const month = monthMap[monthShort];
   if (month === undefined) return false;
-
   const taskDate = new Date(startDate.getFullYear(), month, parseInt(day));
   taskDate.setHours(0, 0, 0, 0);
-
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-
   return taskDate >= today;
 };
   // const handleAssignSubmit = async () => {
-  //   const valid = assignTasks.filter(
-  //     (t) => t.projectId && t.taskName && t.dates.length > 0
-  //   );
-  //   if (valid.length === 0) {
-  //     showAlert("Fill at least one task with dates, project & name.");
-  //     return;
-  //   }
-  //   const newTasksAdded = [];
-  //   try {
-  //     for (const task of valid) {
-  //       setProjects((prev) => ({
-  //         ...prev,
-  //         [task.projectId]: task.projectName,
-  //       }));
-  //       for (const date of task.dates) {
-  //         const [day, month] = date.split(" ");
-  //         const monthIdx = new Date(
-  //           `${month} 1, ${startDate.getFullYear()}`
-  //         ).getMonth();
-  //         const taskDate = new Date(
-  //           startDate.getFullYear(),
-  //           monthIdx,
-  //           parseInt(day)
-  //         );
-  //         const isoDate = formatDateIST(taskDate);
-  //         const newTaskBase = {
-  //           week_id: weekId,
-  //           task_date: isoDate,
-  //           project_id: task.projectId,
-  //           project_name: task.projectName,
-  //           task_name: task.taskName,
-  //           emp_status: "not started",
-  //           emp_comment: "",
-  //           sup_status: "incomplete",
-  //           sup_comment: "",
-  //           sup_review_status: "pending",
-  //           employee_id: employeeId,
-  //           star_rating: null,
-  //           replacement_task: null,
-  //         };
-  //         const resp = await authRequest({
-  //           method: "POST",
-  //           url: "/api/week_tasks",
-  //           data: newTaskBase,
-  //         });
-  //         const fullNewTask = {
-  //           ...newTaskBase,
-  //           task_id: resp.data.taskId,
-  //         };
-  //         newTasksAdded.push({ task: fullNewTask, date });
-  //       }
-  //     }
-  //     setTasksData((prev) => {
-  //       const copy = prev.map((day) => ({ ...day, tasks: [...day.tasks] }));
-  //       newTasksAdded.forEach(({ task, date }) => {
-  //         const dayIdx = copy.findIndex((d) => d.date === date);
-  //         if (dayIdx !== -1) {
-  //           copy[dayIdx].tasks.push(task);
-  //         }
-  //       });
-  //       return copy;
-  //     });
-  //     setNoTasks(false);
-  //     showAlert("Tasks assigned successfully!");
-  //     setShowAssignForm(false);
-  //     setAssignTasks([]);
-  //     setDropdownOpen({});
-  //   } catch (err) {
-  //     showAlert(`Failed to assign tasks: ${err.message}`);
-  //   }
+  // const valid = assignTasks.filter(
+  // (t) => t.projectId && t.taskName && t.dates.length > 0
+  // );
+  // if (valid.length === 0) {
+  // showAlert("Fill at least one task with dates, project & name.");
+  // return;
+  // }
+  // const newTasksAdded = [];
+  // try {
+  // for (const task of valid) {
+  // setProjects((prev) => ({
+  // ...prev,
+  // [task.projectId]: task.projectName,
+  // }));
+  // for (const date of task.dates) {
+  // const [day, month] = date.split(" ");
+  // const monthIdx = new Date(
+  // `${month} 1, ${startDate.getFullYear()}`
+  // ).getMonth();
+  // const taskDate = new Date(
+  // startDate.getFullYear(),
+  // monthIdx,
+  // parseInt(day)
+  // );
+  // const isoDate = formatDateIST(taskDate);
+  // const newTaskBase = {
+  // week_id: weekId,
+  // task_date: isoDate,
+  // project_id: task.projectId,
+  // project_name: task.projectName,
+  // task_name: task.taskName,
+  // emp_status: "not started",
+  // emp_comment: "",
+  // sup_status: "incomplete",
+  // sup_comment: "",
+  // sup_review_status: "pending",
+  // employee_id: employeeId,
+  // star_rating: null,
+  // replacement_task: null,
   // };
-
+  // const resp = await authRequest({
+  // method: "POST",
+  // url: "/api/week_tasks",
+  // data: newTaskBase,
+  // });
+  // const fullNewTask = {
+  // ...newTaskBase,
+  // task_id: resp.data.taskId,
+  // };
+  // newTasksAdded.push({ task: fullNewTask, date });
+  // }
+  // }
+  // setTasksData((prev) => {
+  // const copy = prev.map((day) => ({ ...day, tasks: [...day.tasks] }));
+  // newTasksAdded.forEach(({ task, date }) => {
+  // const dayIdx = copy.findIndex((d) => d.date === date);
+  // if (dayIdx !== -1) copy[dayIdx].tasks.push(task);
+  // });
+  // return copy;
+  // });
+  // setNoTasks(false);
+  // showAlert("Tasks assigned successfully!");
+  // setShowAssignForm(false);
+  // setAssignTasks([]);
+  // setDropdownOpen({});
+  // } catch (err) {
+  // showAlert(`Failed to assign tasks: ${err.message}`);
+  // }
+  // };
   const handleAssignSubmit = async () => {
   // Prevent multiple submissions
   if (isSubmitting) return;
-
   const valid = assignTasks.filter(
     (t) => t.projectId && t.taskName && t.dates.length > 0
   );
-
   if (valid.length === 0) {
     showAlert("Fill at least one task with dates, project & name.");
     return;
   }
-
   
-  setIsSubmitting(true);   // ← Start loading / disable button
-
+  setIsSubmitting(true); // ← Start loading / disable button
   const newTasksAdded = [];
-
   try {
     for (const task of valid) {
       setProjects((prev) => ({
         ...prev,
         [task.projectId]: task.projectName,
       }));
-
       for (const date of task.dates) {
         const [day, month] = date.split(" ");
         const monthIdx = new Date(
@@ -1109,7 +1086,6 @@ const WeeklyTaskPlanner = ({
           parseInt(day)
         );
         const isoDate = formatDateIST(taskDate);
-
         const newTaskBase = {
           week_id: weekId,
           task_date: isoDate,
@@ -1125,22 +1101,18 @@ const WeeklyTaskPlanner = ({
           star_rating: null,
           replacement_task: null,
         };
-
         const resp = await authRequest({
           method: "POST",
           url: "/api/week_tasks",
           data: newTaskBase,
         });
-
         const fullNewTask = {
           ...newTaskBase,
           task_id: resp.data.taskId,
         };
-
         newTasksAdded.push({ task: fullNewTask, date });
       }
     }
-
     // Update UI after all successful API calls
     setTasksData((prev) => {
       const copy = prev.map((day) => ({ ...day, tasks: [...day.tasks] }));
@@ -1152,10 +1124,8 @@ const WeeklyTaskPlanner = ({
       });
       return copy;
     });
-
     setNoTasks(false);
     showAlert("Tasks assigned successfully!");
-
     // Close modal and reset form
     setShowAssignForm(false);
     setAssignTasks([]);
@@ -1163,7 +1133,7 @@ const WeeklyTaskPlanner = ({
   } catch (err) {
     showAlert(`Failed to assign tasks: ${err.message || "Unknown error"}`);
   } finally {
-    setIsSubmitting(false);   // ← Very important: always re-enable button
+    setIsSubmitting(false); // ← Very important: always re-enable button
   }
 };
   const handleAssignCancel = () => {
@@ -1171,7 +1141,6 @@ const WeeklyTaskPlanner = ({
     setAssignTasks([]);
     setDropdownOpen({});
   };
-
   const statusColors = {
     completed: "#28a745",
     "add on": "#17a2b8",
@@ -1198,7 +1167,6 @@ const WeeklyTaskPlanner = ({
     struck: "✗",
     suspended_review: "⛔",
   };
-
   return (
     <div className="week-task-weekly-task-planner">
       <div className="week-task-planner-header">
@@ -1206,7 +1174,6 @@ const WeeklyTaskPlanner = ({
     <h2 className="week-task-title">
       Weekly Task Planner
     </h2>
-
     <div className="week-task-week-navigation">
       <button
         onClick={handlePreviousWeek}
@@ -1215,11 +1182,9 @@ const WeeklyTaskPlanner = ({
       >
         <ChevronLeft size={20} />
       </button>
-
       <span className="week-task-week-id">
         Week {weekId}: {dateRange}
       </span>
-
       <button
         onClick={handleNextWeek}
         className="week-task-nav-button-task"
@@ -1229,7 +1194,6 @@ const WeeklyTaskPlanner = ({
       </button>
     </div>
   </div>
-
   <div className="week-task-header-buttons">
     <button
       className="week-task-assign-task-button"
@@ -1239,9 +1203,7 @@ const WeeklyTaskPlanner = ({
     </button>
   </div>
 </div>
-
       
-
       {(loading || loadingHolidays || loadingLeaves) && (
         <div>Loading data…</div>
       )}
@@ -1258,7 +1220,6 @@ const WeeklyTaskPlanner = ({
           No tasks available in this Week {weekId}: {dateRange}.
         </div>
       )}
-
       {mobileTooltip.isVisible && (
         <div
           ref={tooltipRef}
@@ -1273,7 +1234,6 @@ const WeeklyTaskPlanner = ({
           {mobileTooltip.content}
         </div>
       )}
-
       {showAssignForm && (
         <div className="week-task-assign-form-modal">
           <div className="week-task-assign-form-empdriven">
@@ -1322,7 +1282,6 @@ const WeeklyTaskPlanner = ({
   const style = getTaskDateStyle(d);
   const isFutureOrToday = isDateInCurrentOrFuture(d);
   const isDisabled = !isFutureOrToday;
-
   return (
     <label
       key={d}
@@ -1351,7 +1310,7 @@ const WeeklyTaskPlanner = ({
       )}
       {isDisabled && (
         <span style={{ fontSize: "10px", color: "#e74c3c", marginLeft: "4px" }}>
-Closed        </span>
+Closed </span>
       )}
     </label>
   );
@@ -1445,11 +1404,10 @@ Closed        </span>
   <button
     onClick={handleAssignCancel}
     className="week-task-cancel-button"
-    disabled={isSubmitting}           // optional: disable cancel too during submit
+    disabled={isSubmitting} // optional: disable cancel too during submit
   >
     Cancel
   </button>
-
   <button
     onClick={handleAssignSubmit}
     className="week-task-save-button"
@@ -1461,7 +1419,6 @@ Closed        </span>
           </div>
         </div>
       )}
-
       {userRole === "supervisor" && strikeTaskId && (
         <div className="week-task-replacement-modal">
           <div className="week-task-replacement-form">
@@ -1520,7 +1477,6 @@ Closed        </span>
           </div>
         </div>
       )}
-
       {!loading &&
         !error &&
         !noTasks &&
@@ -1612,13 +1568,11 @@ Closed        </span>
                     const frozen =
                       task.sup_review_status === "suspended_review";
                     const canEdit = editable && !frozen;
-
                     // For visual feedback - employee can only edit non-future tasks
                     const employeeCanEditThis =
                       userRole === "employee"
                         ? canEmployeeUpdateTask(task.task_date) && canEdit
                         : canEdit;
-
                     return (
                       <div
                         key={`${task.task_id}-${day.date}`}
@@ -1819,7 +1773,6 @@ Closed        </span>
                             <span className="week-task-comment">
                               {task.emp_comment || "N/A"}
                             </span>
-
                             {/* Optional hint when future task */}
                             {userRole === "employee" &&
                               !canEmployeeUpdateTask(task.task_date) && (
@@ -1833,7 +1786,6 @@ Closed        </span>
                                   Update available only on/after this date
                                 </div>
                               )}
-
                             <div className="week-task-status-dots">
                               <span
                                 className="week-task-status-dot"
@@ -2046,7 +1998,6 @@ Closed        </span>
             </div>
           );
         })}
-
       <Modal
         isVisible={alertModal.isVisible}
         onClose={closeAlert}
@@ -2057,5 +2008,4 @@ Closed        </span>
     </div>
   );
 };
-
 export default WeeklyTaskPlanner;

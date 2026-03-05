@@ -30,6 +30,7 @@
 
 .mydailyworkhour123 {
   display: flex;
+  
   justify-content: space-evenly;
 }
 

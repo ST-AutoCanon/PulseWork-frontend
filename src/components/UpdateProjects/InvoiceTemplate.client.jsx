@@ -38,12 +38,12 @@ const InvoiceTemplate = React.forwardRef((props, ref) => {
       acc.total += Number(item.total || 0);
       return acc;
     },
-    { quantity: 0, amount: 0, total: 0 }
+    { quantity: 0, amount: 0, total: 0 },
   );
 
   const totalGST = parsedLineItems.reduce(
     (acc, item) => acc + (Number(item.total || 0) * Number(gst || 0)) / 100,
-    0
+    0,
   );
 
   const grossTotal = totals.total + totalGST;

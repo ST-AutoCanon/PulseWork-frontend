@@ -128,10 +128,8 @@ export default function UploadScan({
         } catch (e) {}
       };
     }
-    // no dependency on initialHeaderUrl here – handled in separate effect
   }, [headerFile]);
 
-  // synchronize headerUrl from prop only when there is no local file selected
   useEffect(() => {
     if (!headerFile) {
       setHeaderUrl(initialHeaderUrl ?? null);
@@ -235,7 +233,6 @@ export default function UploadScan({
     const f = e.target.files?.[0] || null;
     if (f) setHeaderFile(f);
     else setHeaderFile(null);
-    // when user explicitly removes file via input, clear any initial URL
     if (!f && typeof onPreviewChange === "function") {
       onPreviewChange({
         headerUrl: null,
@@ -518,7 +515,13 @@ export default function UploadScan({
         fd.append("existingWatermarkUrl", watermarkUrlProp);
       }
 
-      const layoutToSend = getBoxes() || [];
+      const layoutToSend = (getBoxes() || []).map((box) => ({
+        ...box,
+        // Ensure style object is preserved and complete
+        style: {
+          ...box.style,
+        },
+      }));
 
       let grapesJsonToSend = null;
       if (
@@ -545,9 +548,7 @@ export default function UploadScan({
         console.warn("Failed to stringify layout/grapes_json for upload:", err);
       }
 
-      // Handle blob URLs for QR and seal images
-      // If user added a QR/seal image with a blob URL but didn't explicitly upload the file,
-      // we can still try to upload the blob
+      // Upload QR as file if not already provided
       if (!qrFile) {
         const qrBox = (layoutToSend || []).find(
           (b) =>
@@ -574,6 +575,7 @@ export default function UploadScan({
         }
       }
 
+      // Upload Seal as file if not already provided
       if (!sealFile) {
         const sealBox = (layoutToSend || []).find((b) =>
           /seal|stamp|logo|companyseal/i.test(
@@ -594,54 +596,14 @@ export default function UploadScan({
             console.warn("Failed to upload Seal blob URL:", e);
           }
         }
-      }
-
-      const fileMap = {};
-      if (qrFile || fd.has("qr")) {
-        const qrBox =
-          (layoutToSend || []).find(
-            (b) =>
-              String(b.fieldName || "")
-                .toLowerCase()
-                .includes("qr") ||
-              String(b.id || "")
-                .toLowerCase()
-                .includes("qr"),
-          ) || null;
-        if (qrBox) {
-          const mapKey = qrBox.id || qrBox.fieldName || null;
-          fileMap.qr = mapKey;
-          console.log(
-            `📋 fileMap: QR box found: id="${qrBox.id}", fieldName="${qrBox.fieldName}", mapKey="${mapKey}"`,
-          );
-        }
-      }
-      if (sealFile || fd.has("seal")) {
-        const sealBox =
-          (layoutToSend || []).find((b) =>
-            /seal|stamp|logo|companyseal/i.test(
-              String(b.fieldName || "") || String(b.id || ""),
-            ),
-          ) || null;
-        if (sealBox) {
-          const mapKey = sealBox.id || sealBox.fieldName || null;
-          fileMap.seal = mapKey;
-          console.log(
-            `📋 fileMap: Seal box found: id="${sealBox.id}", fieldName="${sealBox.fieldName}", mapKey="${mapKey}"`,
-          );
-        }
-      }
-      if (Object.keys(fileMap).length > 0) {
-        try {
-          fd.append("fileMap", JSON.stringify(fileMap));
-        } catch (e) {
-          console.warn("Failed to append fileMap", e);
-        }
       } else {
         // Send empty fileMap flag to indicate no explicit mapping was found
         // This allows backend to use heuristic matching
         fd.append("useHeuristic", "true");
       }
+
+      // Note: Removed complex fileMap logic - the backend now uses simple heuristic matching
+      // which is more reliable and easier to maintain
 
       const base = (backendUrl || "").replace(/\/$/, "");
       const url = base

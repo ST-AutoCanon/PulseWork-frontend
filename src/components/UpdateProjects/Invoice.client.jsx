@@ -10,9 +10,8 @@ import {
   MdOutlineKeyboardBackspace,
   MdOutlineEdit,
 } from "react-icons/md";
-import { FiDownload } from "react-icons/fi";
+import { FiDownload, FiEye } from "react-icons/fi";
 import { GrStatusGood } from "react-icons/gr";
-import { FiEye } from "react-icons/fi";
 import Modal from "../Modal/Modal.client";
 import { useAuth } from "../../context/AuthProvider.client";
 
@@ -69,17 +68,6 @@ const Invoice = ({ onBack, project }) => {
   const [showInvoiceForm, setShowInvoiceForm] = useState(false);
   const [invoiceType, setInvoiceType] = useState("tax");
   const [selectedInvoice, setSelectedInvoice] = useState(null);
-  const [savedTemplates, setSavedTemplates] = useState([]);
-  const [showTemplatesModal, setShowTemplatesModal] = useState(false);
-  const [templatesLoading, setTemplatesLoading] = useState(false);
-  const [appliedHeaderUrl, setAppliedHeaderUrl] = useState(null);
-  const [appliedFooterUrl, setAppliedFooterUrl] = useState(null);
-  const [downloadAfterApply, setDownloadAfterApply] = useState(false);
-  const [appliedTemplateCss, setAppliedTemplateCss] = useState(null);
-  const [appliedTemplateObj, setAppliedTemplateObj] = useState(null);
-  const [appliedTemplateHtml, setAppliedTemplateHtml] = useState(null);
-  const [appliedWatermarkUrl, setAppliedWatermarkUrl] = useState(null);
-  const [appliedWatermarkProps, setAppliedWatermarkProps] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [terms, setTerms] = useState(
@@ -113,6 +101,8 @@ const Invoice = ({ onBack, project }) => {
   const [tdsForInvoiceId, setTdsForInvoiceId] = useState(null);
   const [isTdsDeducted, setIsTdsDeducted] = useState(false);
   const [tdsAmount, setTdsAmount] = useState("");
+  const [showSealModal, setShowSealModal] = useState(false);
+  const [withSeal, setWithSeal] = useState(false);
 
   const [activeTab, setActiveTab] = useState("tax");
 
@@ -156,92 +146,6 @@ const Invoice = ({ onBack, project }) => {
   useEffect(() => {
     if (project?.id) fetchInvoices();
   }, [project?.id, user?.employeeId, BACKEND_URL]);
-
-  const fetchSavedTemplates = async () => {
-    if (!BACKEND_URL || !orgId) return;
-    setTemplatesLoading(true);
-    try {
-      const res = await fetch(`${BACKEND_URL}/api/orgs/${orgId}/templates`, {
-        method: "GET",
-        credentials: "include",
-        headers: { "x-api-key": API_KEY || "" },
-        credentials: "include",
-      });
-      if (!res.ok) throw new Error(`Templates fetch failed (${res.status})`);
-      const data = await res.json();
-      const arr = Array.isArray(data)
-        ? data
-        : data.templates || data.data || [];
-      setSavedTemplates(arr);
-    } catch (err) {
-      console.error("fetchSavedTemplates failed", err);
-      showAlert("Failed to load saved templates.");
-    } finally {
-      setTemplatesLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    if (orgId) fetchSavedTemplates();
-  }, [orgId, BACKEND_URL]);
-
-  function normalizeUploadUrl(src) {
-    if (!src) return src;
-    if (src.startsWith("blob:") || src.startsWith("data:")) return src;
-    try {
-      const url = new URL(src, window.location.origin);
-      if (url.protocol === "http:" || url.protocol === "https:") {
-        const frontendOrigin = window.location.origin.replace(/\/$/, "");
-        if (BACKEND_URL && url.origin === frontendOrigin) {
-          return BACKEND_URL + url.pathname + url.search + url.hash;
-        }
-        return src;
-      }
-    } catch (e) {}
-    if (src.startsWith("/api/") && BACKEND_URL) {
-      return `${BACKEND_URL}${src}`;
-    }
-    if (
-      /^[^\/\\]+\.(png|jpe?g|svg|gif|webp)$/i.test(src) &&
-      BACKEND_URL &&
-      orgId
-    ) {
-      return `${BACKEND_URL}/api/orgs/${orgId}/uploads/${src}`;
-    }
-    return src;
-  }
-
-  async function replaceUploadUrlsInHtml(html = "") {
-    if (!html || typeof html !== "string") return html;
-
-    const uploadRegex =
-      /https?:\/\/[^"'()\s]*\/api\/orgs\/\d+\/uploads\/[A-Za-z0-9._-]+|\/api\/orgs\/\d+\/uploads\/[A-Za-z0-9._-]+/g;
-    const matches = html.match(uploadRegex);
-    if (!matches || matches.length === 0) return html;
-
-    const unique = Array.from(new Set(matches));
-    const replacements = {};
-
-    await Promise.all(
-      unique.map(async (m) => {
-        try {
-          const normalized = normalizeUploadUrl(m);
-          const blob = await fetchProtectedImageAsBlobUrl(normalized, API_KEY);
-          replacements[m] = blob || normalized;
-        } catch (err) {
-          replacements[m] = m;
-        }
-      }),
-    );
-
-    let out = html;
-    Object.keys(replacements).forEach((orig) => {
-      const safe = orig.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-      out = out.replace(new RegExp(safe, "g"), replacements[orig]);
-    });
-
-    return out;
-  }
 
   async function resolveHeaderFooterUrlsFromTemplate(tpl) {
     if (!tpl) return {};
@@ -423,163 +327,6 @@ const Invoice = ({ onBack, project }) => {
       fieldsMap,
     };
   }
-
-  const applyTemplateToInvoice = async (tpl) => {
-    if (!tpl) {
-      setAppliedHeaderUrl(null);
-      setAppliedFooterUrl(null);
-      setAppliedTemplateCss(null);
-      setAppliedWatermarkUrl(null);
-      showAlert("No template selected.");
-      return;
-    }
-
-    try {
-      let contentHtml = tpl.html || tpl.content || tpl.template || "";
-      if (
-        typeof contentHtml === "string" &&
-        /\/api\/orgs\/\d+\/uploads\//.test(contentHtml)
-      ) {
-        contentHtml = await replaceUploadUrlsInHtml(contentHtml);
-      }
-
-      const resolved = await resolveHeaderFooterUrlsFromTemplate({
-        ...tpl,
-        html: contentHtml,
-      });
-
-      setAppliedHeaderUrl(resolved.headerUrl || null);
-      setAppliedFooterUrl(resolved.footerUrl || null);
-      setAppliedTemplateCss(resolved.css || null);
-      setAppliedTemplateObj(tpl);
-      setAppliedTemplateHtml(contentHtml);
-      setAppliedWatermarkUrl(resolved.watermarkUrl || null);
-      setAppliedWatermarkProps(resolved.watermarkProps || null);
-
-      if (String(resolved.bodyType || "").toLowerCase() === "invoice") {
-        const f = resolved.fieldsMap || {};
-
-        const tryGet = (keys) => {
-          for (const k of keys) {
-            if (f[k]) return f[k];
-            if (f[k.toLowerCase()]) return f[k.toLowerCase()];
-          }
-          return null;
-        };
-
-        const tplInvoiceNo = tryGet([
-          "invoiceNo",
-          "invoice_no",
-          "invoiceNoField",
-          "invoiceNoFieldName",
-          "invoiceNumber",
-        ]);
-        const tplInvoiceDate = tryGet(["invoiceDate", "invoice_date", "date"]);
-        const tplPoNumber = tryGet([
-          "poNumber",
-          "po_number",
-          "poNo",
-          "refId",
-          "referenceId",
-        ]);
-        const tplPoDate = tryGet(["poDate", "po_date", "referenceDate"]);
-        const tplTerms = tryGet([
-          "termsAndConditions",
-          "terms",
-          "terms_and_conditions",
-        ]);
-        const tplGst = tryGet(["gst", "gstRate", "taxRate"]);
-        const tplItems = tryGet([
-          "items",
-          "tableRows",
-          "table_rows",
-          "lineItems",
-        ]);
-
-        if (tplInvoiceNo) setInvoiceNo(String(tplInvoiceNo));
-        if (tplInvoiceDate) {
-          const dateVal = String(tplInvoiceDate).trim();
-          const asDate = new Date(dateVal);
-          if (!isNaN(asDate.getTime())) {
-            setInvoiceDate(asDate.toISOString().split("T")[0]);
-          } else {
-            setInvoiceDate(dateVal);
-          }
-        }
-        if (tplPoNumber) setReferenceId(String(tplPoNumber));
-        if (tplPoDate) {
-          const dateVal = String(tplPoDate).trim();
-          const asDate = new Date(dateVal);
-          if (!isNaN(asDate.getTime())) {
-            setReferenceDate(asDate.toISOString().split("T")[0]);
-          } else {
-            setReferenceDate(dateVal);
-          }
-        }
-        if (tplTerms) setTerms(String(tplTerms));
-        if (tplGst) setGST(String(tplGst));
-        if (Array.isArray(tplItems)) {
-          try {
-            const rows = tplItems.map((r) => {
-              if (Array.isArray(r)) {
-                return {
-                  description: r[1] || "",
-                  quantity: Number(r[2] || 1),
-                  rate: Number(r[3] || 0),
-                  total: Number(r[4] || Number(r[2] || 1) * Number(r[3] || 0)),
-                };
-              } else if (typeof r === "object") {
-                return {
-                  description: r.description || r.name || "",
-                  quantity: Number(r.quantity || r.qty || 1),
-                  rate: Number(r.rate || r.unitPrice || 0),
-                  total: Number(
-                    r.total || Number(r.quantity || 1) * Number(r.rate || 0),
-                  ),
-                };
-              } else {
-                return {
-                  description: String(r || ""),
-                  quantity: 1,
-                  rate: 0,
-                  total: 0,
-                };
-              }
-            });
-            if (rows.length) setLineItems(rows);
-          } catch (e) {}
-        }
-      }
-
-      setShowTemplatesModal(false);
-      showAlert("Applied template to invoice (header/footer/css).");
-
-      if (downloadAfterApply) {
-        setDownloadAfterApply(false);
-        setTimeout(() => {
-          try {
-            if (selectedInvoice) {
-              handleDownloadInvoice(selectedInvoice);
-            } else {
-              showAlert("No invoice selected to download.");
-            }
-          } catch (err) {
-            console.error("Auto-download failed", err);
-            showAlert("Auto-download failed.");
-          }
-        }, 350);
-      }
-    } catch (err) {
-      console.error("applyTemplateToInvoice failed", err);
-      showAlert("Failed to apply template.");
-    }
-  };
-
-  const removeAppliedTemplate = () => {
-    setAppliedHeaderUrl(null);
-    setAppliedFooterUrl(null);
-    showAlert("Custom header/footer removed. Default header/footer restored.");
-  };
 
   useEffect(() => {
     let newSubTotal = 0;
@@ -783,6 +530,11 @@ const Invoice = ({ onBack, project }) => {
     setTotalAmount(invoice.totalAmount ?? 0);
     setTerms(invoice.terms ?? "");
     setShowInvoiceForm(true);
+  };
+
+  const handleDownloadClick = (invoice) => {
+    setSelectedInvoice(invoice);
+    setShowSealModal(true);
   };
 
   const handleDownloadInvoice = async (invoice) => {
@@ -993,18 +745,6 @@ const Invoice = ({ onBack, project }) => {
     }
   };
 
-  const openTemplatesModal = (invoice, forDownload = false) => {
-    setSelectedInvoice(invoice || null);
-    setDownloadAfterApply(Boolean(forDownload));
-    if (orgId) fetchSavedTemplates();
-    setShowTemplatesModal(true);
-  };
-
-  const closeTemplatesModal = () => {
-    setShowTemplatesModal(false);
-    setDownloadAfterApply(false);
-  };
-
   return (
     <div id="invoiceScreen" className="invoice-page">
       <MdOutlineKeyboardBackspace className="in-back-btn" onClick={onBack} />
@@ -1168,9 +908,7 @@ const Invoice = ({ onBack, project }) => {
                       />
                       <FiEye
                         className="in-view-icon"
-                        onClick={() => {
-                          openTemplatesModal(inv, false);
-                        }}
+                        onClick={() => setSelectedInvoice(inv)}
                       />
                     </div>
                   </td>
@@ -1182,9 +920,7 @@ const Invoice = ({ onBack, project }) => {
                       />
                       <FiDownload
                         className="in-download-icon"
-                        onClick={() => {
-                          openTemplatesModal(inv, true);
-                        }}
+                        onClick={() => handleDownloadClick(inv)}
                       />
                     </div>
                   </td>
@@ -1202,14 +938,8 @@ const Invoice = ({ onBack, project }) => {
               invoiceData={{
                 ...selectedInvoice,
                 project,
-                headerUrl: appliedHeaderUrl,
-                footerUrl: appliedFooterUrl,
+                withSeal,
               }}
-              templateCss={appliedTemplateCss}
-              templateHtml={appliedTemplateHtml}
-              templateObject={appliedTemplateObj}
-              watermarkUrl={appliedWatermarkUrl}
-              watermarkProps={appliedWatermarkProps}
             />
           )}
         </div>
@@ -1255,92 +985,39 @@ const Invoice = ({ onBack, project }) => {
         </div>
       )}
 
-      {showTemplatesModal && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          className="templates-modal-overlay"
-          onClick={(e) => {
-            if (e.target === e.currentTarget) closeTemplatesModal();
-          }}
-        >
-          <div className="templates-modal">
-            <div className="templates-modal-header">
-              <div className="templates-modal-title">
-                Choose saved template (applies header & footer)
-              </div>
-              <div className="templates-modal-close-container">
-                <button
-                  className="modeBtn templates-close-btn"
-                  onClick={closeTemplatesModal}
-                  aria-label="Close templates modal"
-                >
-                  X
-                </button>
-              </div>
+      {showSealModal && (
+        <div className="tds-modal-overlay">
+          <div className="tds-modal-content">
+            <h3>Download Invoice</h3>
+            <p>Choose seal option:</p>
+            <div className="seal-options">
+              <button
+                className="seal-btn"
+                onClick={() => {
+                  setWithSeal(true);
+                  setShowSealModal(false);
+                  handleDownloadInvoice(selectedInvoice);
+                }}
+              >
+                With Seal
+              </button>
+              <button
+                className="seal-btn"
+                onClick={() => {
+                  setWithSeal(false);
+                  setShowSealModal(false);
+                  handleDownloadInvoice(selectedInvoice);
+                }}
+              >
+                Without Seal
+              </button>
             </div>
-
-            <div className="templates-modal-body">
-              {templatesLoading ? (
-                <div className="templates-loading">Loading templates…</div>
-              ) : savedTemplates.length === 0 ? (
-                <div className="templates-empty">
-                  <div>No saved templates found for this organisation.</div>
-
-                  <div
-                    style={{
-                      display: "flex",
-                      justifyContent: "center",
-                      gap: 8,
-                      marginTop: 12,
-                      alignItems: "center",
-                    }}
-                  >
-                    <button
-                      className="modeBtn letterhead-open-popup-btn"
-                      onClick={() => {
-                        setShowTemplatesModal(false);
-
-                        window.dispatchEvent(
-                          new CustomEvent("app:navigate", {
-                            detail: { path: "/TemplateBuilder" },
-                          }),
-                        );
-                      }}
-                    >
-                      Build Template
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <div className="templates-grid">
-                  {savedTemplates.map((tpl) => (
-                    <div
-                      key={tpl.id || tpl.name || Math.random()}
-                      className="template-card"
-                    >
-                      <div className="template-title">
-                        {tpl.name || tpl.id || "Untitled"}
-                      </div>
-                      <div className="template-desc">
-                        {tpl.description || tpl.template_type || ""}
-                      </div>
-
-                      <div className="template-actions">
-                        <button
-                          className="modeBtn template-apply-btn"
-                          onClick={async () => {
-                            await applyTemplateToInvoice(tpl);
-                          }}
-                        >
-                          Apply
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
+            <button
+              className="tds-cancel"
+              onClick={() => setShowSealModal(false)}
+            >
+              Cancel
+            </button>
           </div>
         </div>
       )}

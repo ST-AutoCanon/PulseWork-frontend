@@ -170,7 +170,6 @@ async function ensureBoxesBlobUrls(boxes = []) {
             if (!nb.imageUrl && blobUrl) nb.imageUrl = blobUrl;
             continue;
           } else {
-            // clear broken reference so preview doesn't re-request it
             if (cand.key === "imageUrl") nb.imageUrl = "";
             if (cand.key === "content") nb.content = "";
             if (!nb.imageUrl) nb.imageUrl = "";
@@ -248,7 +247,6 @@ async function replaceUploadUrlsInHtml(html = "", apiKey, backendBase) {
 
       const blobUrl = await fetchProtectedImage(src, apiKey, employeeId);
       if (!blobUrl) {
-        // remove broken image reference so preview doesn't spam 404s
         img.setAttribute("src", "");
         return;
       }
@@ -306,8 +304,6 @@ async function resolveTemplateProtectedAssets(
         if (blob) {
           t[field] = blob;
         } else {
-          // couldn't fetch, clear it so downstream preview won't keep
-          // attempting the stale url and spamming 404s
           t[field] = null;
         }
       }
@@ -356,7 +352,7 @@ async function resolveTemplateProtectedAssets(
               (node.attributes["style"] || "") +
               ";pointer-events:none;user-select:none;";
           } else {
-            node.attributes.src = ""; // drop broken link
+            node.attributes.src = "";
           }
         }
         for (const k of Object.keys(node)) {
@@ -713,8 +709,6 @@ export default function TemplateBuilder() {
       if (mode === "scratch" || mode === "upload") {
         setBodyBoxes(presetBoxes);
       }
-      // in basic/view modes we don't auto‑modify boxes here; the
-      // handler below will append when appropriate
     } catch (e) {
       console.warn("rebuilding boxes from bodyType failed", e);
     }
@@ -771,7 +765,6 @@ export default function TemplateBuilder() {
       setTemplateSource(null);
     }
 
-    // clear common editing state when entering a fresh mode
     if (newMode === "upload" || newMode === "scratch" || newMode === "basic") {
       setPlaceholders({
         companyName: "",
@@ -786,10 +779,13 @@ export default function TemplateBuilder() {
       setHeaderHeight(0);
       setFooterHeight(0);
     }
-    // always reset bodyType when we go into the upload mode so the user
-    // doesn’t see the last‐selected type from another editor session
+
     if (newMode === "upload") {
       setBodyType("letter");
+    }
+
+    if (newMode !== "upload") {
+      setShowEditor(false);
     }
 
     if (newMode === "saved" || newMode === "view") {
@@ -811,9 +807,6 @@ export default function TemplateBuilder() {
     }
   }
 
-  // new handler used by SharedTemplateControls instead of raw
-  // setBodyType.  This allows clicking the same body type repeatedly
-  // to append more boxes when editing a basic template.
   function handleBodyTypeChange(bt) {
     setBodyType(bt);
     const preset = PRESET_FIELDS[bt] || [];
@@ -823,14 +816,10 @@ export default function TemplateBuilder() {
     }));
 
     if (mode === "basic" && generated) {
-      // merge into existing boxes when editing a basic template
       setBodyBoxes((prev) => [...(prev || []), ...presetBoxes]);
     } else if (mode === "basic" && !generated) {
-      // if no template loaded yet in basic mode (e.g., user just switched tabs),
-      // replace with the preset
       setBodyBoxes(presetBoxes);
     } else {
-      // scratch/upload modes always replace
       setBodyBoxes(presetBoxes);
     }
   }
@@ -975,8 +964,7 @@ export default function TemplateBuilder() {
 
   async function chooseBasic(template) {
     if (!template) return;
-    // helper used in both branches below, since public and saved share a
-    // similar fallback strategy
+
     const applyBoxesFromTemplate = (tpl) => {
       try {
         let boxes = [];
@@ -1010,7 +998,36 @@ export default function TemplateBuilder() {
           BACKEND_URL,
         );
 
-        applyBoxesFromTemplate(resolved);
+        // Parse and resolve boxes from template
+        let boxes = [];
+        try {
+          if (resolved.layout || resolved.layout_json) {
+            const rawLayout = resolved.layout || resolved.layout_json;
+            let parsed = null;
+            if (typeof rawLayout === "string") parsed = JSON.parse(rawLayout);
+            else parsed = rawLayout;
+            if (Array.isArray(parsed)) boxes = parsed;
+          } else if (resolved.initialBoxes) {
+            boxes = resolved.initialBoxes;
+          } else if (resolved.html) {
+            boxes = templateToBoxes(resolved) || [];
+          }
+          if (!boxes || !boxes.length) {
+            boxes = fieldsToBoxes(PRESET_FIELDS[bodyType] || []);
+          }
+        } catch (e) {
+          console.warn("chooseBasic: could not populate bodyBoxes", e);
+          boxes = fieldsToBoxes(PRESET_FIELDS[bodyType] || []);
+        }
+
+        // ✅ Resolve image URLs in boxes to blob URLs
+        if (Array.isArray(boxes)) {
+          console.log(`🔄 Resolving box image URLs in chooseBasic...`);
+          boxes = await ensureBoxesBlobUrls(boxes);
+          console.log(`✅ Box image URLs resolved in chooseBasic`);
+        }
+
+        setBodyBoxes(boxes);
 
         const headerCandidates = [
           resolved.header_url,
@@ -1045,7 +1062,7 @@ export default function TemplateBuilder() {
         }
 
         setGenerated(resolved);
-        setAppMode("basic");
+        setMode("basic");
         return;
       } catch (err) {
         console.warn("chooseBasic: resolveTemplateProtectedAssets failed", err);
@@ -1055,8 +1072,7 @@ export default function TemplateBuilder() {
     setTemplateSource("public");
     setGenerated(template);
     applyBoxesFromTemplate(template);
-    // do NOT call setAppMode here – let chooseBasic stay in control of
-    // visibility. instead we'll manually set mode at the end.
+
     setMode("basic");
   }
 
@@ -1145,6 +1161,13 @@ export default function TemplateBuilder() {
       }
       if (!parsedBodyBoxes) {
         parsedBodyBoxes = fieldsToBoxes(PRESET_FIELDS[bodyType] || []);
+      }
+
+      // ✅ Resolve image URLs in boxes to blob URLs for proper rendering
+      if (Array.isArray(parsedBodyBoxes)) {
+        console.log(`🔄 Resolving box image URLs in handleUploadSaved...`);
+        parsedBodyBoxes = await ensureBoxesBlobUrls(parsedBodyBoxes);
+        console.log(`✅ Box image URLs resolved in handleUploadSaved`);
       }
 
       async function ensureBlobUrl(src) {
@@ -1431,31 +1454,25 @@ export default function TemplateBuilder() {
 
       let parsedBodyBoxes = null;
       try {
-        const rawLayout =
-          resolved.layout ||
-          resolved.layout_json ||
-          (resolved.meta &&
-            (resolved.meta.layout || resolved.meta.layout_json));
-        if (rawLayout) {
-          parsedBodyBoxes =
-            typeof rawLayout === "string" ? JSON.parse(rawLayout) : rawLayout;
-          if (!Array.isArray(parsedBodyBoxes)) parsedBodyBoxes = null;
-          console.log(
-            `📋 Parsed layout from resolved.layout (type: ${typeof resolved.layout})`,
-          );
-        } else {
-          console.log(
-            `⚠️  No rawLayout found. resolved.layout=${resolved.layout}, resolved.meta=${resolved.meta ? "exists" : "missing"}`,
-          );
+        if (resolved.layout || resolved.layout_json) {
+          const rawLayout = resolved.layout || resolved.layout_json;
+          let parsed = null;
+          if (typeof rawLayout === "string") parsed = JSON.parse(rawLayout);
+          else parsed = rawLayout;
+          if (Array.isArray(parsed)) parsedBodyBoxes = parsed;
+        } else if (resolved.initialBoxes) {
+          parsedBodyBoxes = resolved.initialBoxes;
+        } else if (resolved.html) {
+          parsedBodyBoxes = templateToBoxes(resolved) || [];
+        }
+        if (!parsedBodyBoxes || !parsedBodyBoxes.length) {
+          parsedBodyBoxes = fieldsToBoxes(PRESET_FIELDS[bodyType] || []);
         }
       } catch (e) {
-        console.warn("openSavedTemplate: layout parse failed", e);
-        parsedBodyBoxes = null;
-      }
-      if (!parsedBodyBoxes)
+        console.warn("openSavedTemplate: could not parse bodyBoxes", e);
         parsedBodyBoxes = fieldsToBoxes(PRESET_FIELDS[bodyType] || []);
+      }
 
-      // Log: Check if QR/Seal images are in the parsed layout
       if (Array.isArray(parsedBodyBoxes)) {
         console.log(
           `📊 Loaded template has ${parsedBodyBoxes.length} boxes in layout`,
@@ -1471,6 +1488,11 @@ export default function TemplateBuilder() {
             );
           }
         });
+
+        // ✅ Resolve image URLs in boxes to blob URLs for proper rendering
+        console.log(`🔄 Resolving box image URLs...`);
+        parsedBodyBoxes = await ensureBoxesBlobUrls(parsedBodyBoxes);
+        console.log(`✅ Box image URLs resolved`);
       }
       setBodyBoxes(parsedBodyBoxes);
 
@@ -1700,7 +1722,6 @@ export default function TemplateBuilder() {
     setWatermarkFile(null);
     setPreviewWatermarkUrl(null);
 
-    // reset dynamic data that users may have entered while editing
     setPlaceholders({
       companyName: "",
       bankName: "",
@@ -1723,8 +1744,6 @@ export default function TemplateBuilder() {
       setBodyBoxes(freshBoxes);
     }
 
-    // whenever we switch mode we also need to re-sync the editor's active
-    // area in case a new editor instance was rendered
     const r = getActiveEditorRef();
     if (r?.current?.setActiveArea) {
       try {
@@ -1910,9 +1929,6 @@ export default function TemplateBuilder() {
     }
   }
 
-  // whenever the chosen area changes, propagate to whatever editor is
-  // currently mounted. this also ensures the initial header selection
-  // gets applied before the user taps any tool.
   useEffect(() => {
     const r = getActiveEditorRef();
     if (r?.current?.setActiveArea) {
@@ -1924,9 +1940,6 @@ export default function TemplateBuilder() {
     }
   }, [activeArea]);
 
-  // also attempt to keep the editor in sync whenever activeArea state
-  // changes; this covers the initial mount and user toggles from the
-  // sidebar controls.
   useEffect(() => {
     const r = getActiveEditorRef();
     if (r?.current?.setActiveArea) {
@@ -1980,9 +1993,6 @@ export default function TemplateBuilder() {
     let resolved = null;
 
     try {
-      // fetch any blobs for protected assets; if this fails we don't want
-      // the whole edit flow to die, so catch errors here and just fall back
-      // to the raw entry.
       try {
         resolved = await resolveTemplateProtectedAssets(
           entry,
@@ -2082,7 +2092,6 @@ export default function TemplateBuilder() {
             "editSavedTemplate upload branch failed, falling back to basic",
             err,
           );
-          // fall through to basic mode below
         }
       }
 
@@ -2094,7 +2103,6 @@ export default function TemplateBuilder() {
         entry,
         resolved,
       });
-      // always try to open something rather than bomb out completely
       if (resolved || entry) {
         setGenerated(resolved || entry);
         setAppMode("basic");
@@ -2133,12 +2141,10 @@ export default function TemplateBuilder() {
             throw new Error(`Delete failed (${res.status})`);
           }
 
-          // Remove from list
           setSavedTemplates((prev) =>
             prev.filter((t) => String(t.id || t._id) !== String(id)),
           );
 
-          // If currently viewing deleted template, reset state
           if (
             viewingTemplate &&
             (String(viewingTemplate.id) === String(id) ||
@@ -2263,8 +2269,7 @@ export default function TemplateBuilder() {
     setShowEditor,
     handleWatermarkChange,
     setBodyBoxes,
-    // use our custom handler so that basic templates append instead of
-    // clobbering existing boxes
+
     setBodyType: handleBodyTypeChange,
     handlePreviewChange,
     handleUploadSaved,

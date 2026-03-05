@@ -394,7 +394,9 @@
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
-  transition: max-height 0.3s ease, white-space 0.3s ease;
+  transition:
+    max-height 0.3s ease,
+    white-space 0.3s ease;
   cursor: pointer;
 }
 
@@ -558,6 +560,48 @@
   background-color: #a7c38a;
 }
 
+.seal-options {
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+  margin: 20px 0;
+}
+
+.seal-btn {
+  padding: 12px 24px;
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  min-width: 120px;
+}
+
+.seal-btn:nth-child(1) {
+  background-color: #79c42b;
+  color: white;
+}
+
+.seal-btn:nth-child(1):hover {
+  background-color: #76c523;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(121, 196, 43, 0.3);
+}
+
+.seal-btn:nth-child(2) {
+  background-color: #f0f0f0;
+  color: #333;
+  border: 2px solid #ddd;
+}
+
+.seal-btn:nth-child(2):hover {
+  background-color: #e0e0e0;
+  border-color: #bbb;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
 .tds-checkbox {
   text-align: center;
   margin: 5%;
@@ -643,7 +687,6 @@
 }
 
 .template-preview {
-  height: 120px;
   display: flex;
   align-items: center;
   justify-content: center;

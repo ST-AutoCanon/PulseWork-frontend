@@ -17,7 +17,29 @@ const AdminQuery = () => {
   const employeeId = user?.employeeId ?? user?.id ?? null;
   const name = user?.name ?? user?.fullName ?? user?.displayName ?? "";
   const userRole = user?.role ?? user?.userRole ?? null;
-  const orgId = user?.orgId ?? user?.raw?.org_id ?? null;
+  const orgId =
+    user?.orgId ??
+    user?.raw?.org_id ??
+    user?.organization_id ??
+    user?.org_id ??
+    null;
+
+  useEffect(() => {
+    if (!orgId) {
+      console.warn("admin: orgId not found on user object", { user, orgId });
+    } else {
+      console.log("admin: orgId loaded", orgId);
+    }
+  }, [orgId, user]);
+
+  useEffect(() => {
+    console.log("[AdminQuery] user snapshot:", {
+      user,
+      userRole,
+      orgId,
+      employeeId,
+    });
+  }, [user, userRole, orgId, employeeId]);
 
   const [queries, setQueries] = useState([]);
   const [selectedQuery, setSelectedQuery] = useState(null);
@@ -84,10 +106,19 @@ const AdminQuery = () => {
       setLoadingQueries(false);
       return;
     }
+    if (!orgId) {
+      console.warn("[socket] not connecting: orgId not available");
+      setLoadingQueries(false);
+      return;
+    }
 
     const socket = io(BACKEND_URL, {
       query: { userId: employeeId },
-      auth: { apiKey: API_KEY, orgId },
+      auth: {
+        apiKey: API_KEY,
+        userId: employeeId,
+        ...(orgId ? { orgId } : {}),
+      },
       path: "/api/socket.io",
     });
 
@@ -136,9 +167,7 @@ const AdminQuery = () => {
       socket.off("error");
       try {
         socket.disconnect();
-      } catch (e) {
-        console.warn("[socket] disconnect error", e);
-      }
+      } catch (e) {}
     };
   }, [BACKEND_URL, API_KEY, employeeId, orgId]);
 
@@ -192,7 +221,7 @@ const AdminQuery = () => {
       };
       const response = await axios.get(
         `${BACKEND_URL}/threads/${threadId}/messages`,
-        { withCredentials: true, headers }
+        { withCredentials: true, headers },
       );
       return response.data?.data ?? [];
     } catch (err) {
@@ -209,6 +238,15 @@ const AdminQuery = () => {
     }
     if (!selectedQuery) {
       showAlert("Select a thread first.");
+      return;
+    }
+
+    if (!orgId) {
+      console.warn("Attempt to send message without orgId", { user, orgId });
+      showAlert(
+        "Organization information is missing. Refresh the page or re-login.",
+        "Configuration Error",
+      );
       return;
     }
 
@@ -232,7 +270,7 @@ const AdminQuery = () => {
         await axios.post(
           `${BACKEND_URL}/threads/${selectedQuery.id}/messages`,
           form,
-          { withCredentials: true, headers }
+          { withCredentials: true, headers },
         );
 
         if (!socketConnected) {
@@ -288,7 +326,7 @@ const AdminQuery = () => {
         await axios.post(
           `${BACKEND_URL}/threads/${selectedQuery.id}/messages`,
           payload,
-          { withCredentials: true, headers }
+          { withCredentials: true, headers },
         );
         const fetched = await fetchMessages(selectedQuery.id);
         messageIdsRef.current.clear();
@@ -339,7 +377,7 @@ const AdminQuery = () => {
       await axios.put(
         `${BACKEND_URL}/threads/${threadId}/messages/read`,
         { sender_id: employeeId },
-        { withCredentials: true, headers }
+        { withCredentials: true, headers },
       );
     } catch (err) {
       console.error("Error marking messages as read:", err);
@@ -391,14 +429,24 @@ const AdminQuery = () => {
     if (!url) return showAlert("No attachment URL");
     try {
       const filename = url.split("/").pop();
+      if (!orgId) {
+        console.warn("[downloadAttachment] orgId missing, cannot download", {
+          orgId,
+          url,
+        });
+        return showAlert(
+          "Organization information missing. Refresh the page or re-login.",
+          "Configuration Error",
+        );
+      }
       const headers = {
         "x-api-key": API_KEY,
         ...(employeeId ? { "x-employee-id": employeeId } : {}),
         ...(orgId ? { "x-org-id": orgId } : {}),
       };
       const response = await axios.get(
-        `${BACKEND_URL}/attachments/${filename}`,
-        { withCredentials: true, headers, responseType: "blob" }
+        `${BACKEND_URL}/empquery/attachments/${encodeURIComponent(filename)}`,
+        { withCredentials: true, headers, responseType: "blob" },
       );
       const blob = new Blob([response.data]);
       const link = document.createElement("a");
@@ -448,7 +496,7 @@ const AdminQuery = () => {
                 .filter((query) =>
                   showResolved
                     ? query.status === "closed"
-                    : query.status !== "closed"
+                    : query.status !== "closed",
                 )
                 .map((query) => (
                   <div
@@ -482,7 +530,7 @@ const AdminQuery = () => {
                                 {
                                   hour: "2-digit",
                                   minute: "2-digit",
-                                }
+                                },
                               )
                             : "N/A"}
                         </p>
@@ -521,7 +569,7 @@ const AdminQuery = () => {
                             hour: "numeric",
                             minute: "2-digit",
                             hour12: true,
-                          }
+                          },
                         )
                       : "—"}
                   </p>
@@ -579,7 +627,7 @@ const AdminQuery = () => {
                           {message.created_at
                             ? new Date(message.created_at).toLocaleTimeString(
                                 [],
-                                { hour: "2-digit", minute: "2-digit" }
+                                { hour: "2-digit", minute: "2-digit" },
                               )
                             : ""}
                         </span>

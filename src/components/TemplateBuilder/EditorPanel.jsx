@@ -52,7 +52,7 @@ export default function EditorPanel(props) {
   } = handlers || {};
 
   const shouldMountDedicatedEditor =
-    (mode === "basic" && generated && !viewingTemplate) || mode === "scratch";
+    mode === "scratch" || (mode === "basic" && showEditor);
 
   const hasBodyBoxes = Array.isArray(bodyBoxes) && bodyBoxes.length > 0;
   const showA4Preview =
@@ -85,9 +85,9 @@ export default function EditorPanel(props) {
             watermarkUrl={previewUrls?.previewWatermarkUrl}
             watermarkProps={watermarkProps}
             bodyBoxes={bodyBoxes}
-            editable={true}
-            boxesEditable={true}
-            onBoxesChange={setBodyBoxes}
+            editable={showEditor}
+            boxesEditable={showEditor}
+            onBoxesChange={showEditor ? setBodyBoxes : undefined}
             onWatermarkChange={handleWatermarkChange}
             selectedBoxId={selectedFieldId}
             headerHeightPct={headerHeightPct}

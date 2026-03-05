@@ -44,6 +44,37 @@
   margin-bottom: 20px;
 }
 
+.compose-button {
+  background-color: #0078ce;
+  padding: 8px 12px;
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border-radius: 5px;
+  font-size: 14px;
+  border: none;
+  cursor: pointer;
+  transition:
+    background-color 0.3s ease,
+    transform 0.1s ease,
+    box-shadow 0.3s ease;
+}
+
+.compose-button:hover {
+  background-color: #006bb3;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+}
+
+.compose-button:active {
+  transform: scale(0.98);
+}
+
+.compose-button:focus {
+  outline: 2px solid #ffca28;
+  outline-offset: 2px;
+}
+
 .toggle-switch {
   display: flex;
   background: #f0f0f0;
@@ -311,7 +342,9 @@
   padding: 1.5% 2%;
   border-radius: 5px;
   cursor: pointer;
-  transition: background-color 0.3s ease, transform 0.1s ease,
+  transition:
+    background-color 0.3s ease,
+    transform 0.1s ease,
     box-shadow 0.3s ease;
 }
 

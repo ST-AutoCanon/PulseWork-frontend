@@ -107,8 +107,18 @@ export default function useLeaveRequest() {
   const closeAlert = () =>
     setAlertModal({ isVisible: false, title: "", message: "" });
 
-  const showConfirm = (message, onConfirm) =>
-    setConfirmModal({ isVisible: true, message, onConfirm });
+  const showConfirm = (message, onConfirm) => {
+    setConfirmModal({
+      isVisible: true,
+      message,
+      onConfirm: () => {
+        setLopModal((m) => ({ ...m, isVisible: false })); // Close the modal immediately
+        setTimeout(() => {
+          onConfirm?.(); // Execute the provided confirmation logic asynchronously
+        }, 0);
+      },
+    });
+  };
   const closeConfirm = () =>
     setConfirmModal({ isVisible: false, message: "", onConfirm: null });
 
@@ -829,7 +839,6 @@ export default function useLeaveRequest() {
   const handleInputChange = (e) => {
     const { name, value } = e.target;
 
-    // optimistically set the value first (so UI updates)
     setFormData((prev) => {
       const next = { ...prev, [name]: value };
       if (

@@ -690,6 +690,13 @@ export default function TemplateBuilder() {
     setSaveModalOpen(true);
   }
 
+  // whenever the bodyType selector changes we need to update the
+  // working set of boxes.  For scratch/upload modes we completely
+  // replace the body region with the preset for the chosen type; when
+  // editing a basic template we instead append the new fields so that
+  // the user can sprinkle multiple kinds of bodies onto a single
+  // template.  (clicking the same type again will therefore add more
+  // boxes rather than doing nothing).
   useEffect(() => {
     try {
       const preset = PRESET_FIELDS[bodyType] || [];
@@ -1707,6 +1714,7 @@ export default function TemplateBuilder() {
   }, [viewingTemplate]);
 
   useEffect(() => {
+    // clear any per-mode editing state so we always start fresh
     setSelectedFieldId(null);
     setShowEditor(false);
 

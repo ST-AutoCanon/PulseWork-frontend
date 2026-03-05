@@ -143,9 +143,10 @@ export default function VennBalances({
     ? new Date(activePolicy.year_end).toLocaleDateString()
     : "-";
 
+  const hasOverflow = balances.length > vennVisibleCount;
   const visibleBalances = balances.slice(
     vennStartIndex,
-    vennStartIndex + vennVisibleCount
+    vennStartIndex + vennVisibleCount,
   );
 
   return (
@@ -172,16 +173,19 @@ export default function VennBalances({
         </div>
       </div>
 
-      <div className="venn-grid-with-nav">
-        <div className="venn-nav-column">
-          <button
-            className="venn-nav-btn venn-prev"
-            onClick={prevVenn}
-            disabled={vennStartIndex <= 0}
-          >
-            ◀
-          </button>
-        </div>
+      <div className={`venn-grid-with-nav ${hasOverflow ? "" : "no-nav"}`}>
+        {hasOverflow && (
+          <div className="venn-nav-column">
+            <button
+              className="venn-nav-btn venn-prev"
+              onClick={prevVenn}
+              disabled={vennStartIndex <= 0}
+              aria-label="Previous balances"
+            >
+              ◀
+            </button>
+          </div>
+        )}
 
         <div
           className="venn-cards-container"
@@ -193,17 +197,17 @@ export default function VennBalances({
               b.type === "casual"
                 ? "Casual Leave"
                 : b.type === "earned"
-                ? "Earned Leave"
-                : b.type
-                ? String(b.type).charAt(0).toUpperCase() + b.type.slice(1)
-                : "Leave";
+                  ? "Earned Leave"
+                  : b.type
+                    ? String(b.type).charAt(0).toUpperCase() + b.type.slice(1)
+                    : "Leave";
 
             const used = Number(b.used ?? 0);
             const allowance = Number(
-              b.allowance ?? b.earned ?? b.annual_allowance ?? 0
+              b.allowance ?? b.earned ?? b.annual_allowance ?? 0,
             );
             const remaining = Number(
-              b.remaining ?? Math.max(allowance - used, 0)
+              b.remaining ?? Math.max(allowance - used, 0),
             );
 
             return (
@@ -219,15 +223,18 @@ export default function VennBalances({
           })}
         </div>
 
-        <div className="venn-nav-column">
-          <button
-            className="venn-nav-btn venn-next"
-            onClick={nextVenn}
-            disabled={vennStartIndex + vennVisibleCount >= balances.length}
-          >
-            ▶
-          </button>
-        </div>
+        {hasOverflow && (
+          <div className="venn-nav-column">
+            <button
+              className="venn-nav-btn venn-next"
+              onClick={nextVenn}
+              disabled={vennStartIndex + vennVisibleCount >= balances.length}
+              aria-label="Next balances"
+            >
+              ▶
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -80,26 +80,28 @@ export default function TeamTable({
     if (!s || !e) return 0;
     if (s > e) return 0;
 
-    // if half-day and single-day request -> 0.5 (unless that day is Sunday -> 0)
+    let cur = new Date(s.getFullYear(), s.getMonth(), s.getDate());
+    const last = new Date(e.getFullYear(), e.getMonth(), e.getDate());
+    let count = 0;
+
+    while (cur <= last) {
+      const dow = cur.getDay(); // 0 = Sunday
+      if (dow !== 0) {
+        count++;
+      }
+      cur.setDate(cur.getDate() + 1);
+    }
+
     if (h_f_day && String(h_f_day).toLowerCase().includes("half")) {
       if (
         s.getFullYear() === e.getFullYear() &&
         s.getMonth() === e.getMonth() &&
         s.getDate() === e.getDate()
       ) {
-        return s.getDay() === 0 ? 0 : 0.5;
+        return s.getDay() === 0 ? 0 : 0.5; // Half-day is 0 if Sunday
       }
-      // otherwise fall through to full-day counting for multi-day requests
     }
 
-    let cur = new Date(s.getFullYear(), s.getMonth(), s.getDate());
-    const last = new Date(e.getFullYear(), e.getMonth(), e.getDate());
-    let count = 0;
-    while (cur <= last) {
-      // JS: 0 = Sunday, 1 = Monday, ..., 6 = Saturday
-      if (cur.getDay() !== 0) count += 1;
-      cur.setDate(cur.getDate() + 1);
-    }
     return count;
   };
   const buildHeaders = useCallback(() => {

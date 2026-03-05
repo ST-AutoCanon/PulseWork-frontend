@@ -24,7 +24,7 @@ export default function LeaveRequest() {
     const w = window.innerWidth;
     if (w < 600) return 1;
     if (w < 900) return 2;
-    return 6;
+    return 5;
   });
 
   const prevVenn = () =>
@@ -150,7 +150,6 @@ export default function LeaveRequest() {
         defaultLeaveSettings={hook.defaultLeaveSettings}
         leaveTypes={hook.leaveTypes}
         userProfile={hook.userProfile}
-        /* <-- ADDED: wire attachments state into the modal */
         attachments={hook.attachments}
         setAttachments={hook.setAttachments}
       />

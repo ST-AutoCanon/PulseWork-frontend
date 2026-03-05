@@ -10,6 +10,51 @@ import { useAuth } from "../../context/AuthProvider.client";
 const API_KEY = process.env.NEXT_PUBLIC_API_KEY;
 const DEFAULT_CTC = 100000;
 
+// Duplicate of helper present in SalaryDetails/TotalsContainer; used here for
+// preview so gross/net matches the same include-in-CTC rules.
+const calculateLocalGrossNet = (salaryDetails, planData) => {
+  if (!salaryDetails) return { localGross: 0, localNet: 0 };
+  const monthlyEarningsSum = [
+    salaryDetails.basicSalary || 0,
+    salaryDetails.hra || 0,
+    salaryDetails.ltaAllowance || 0,
+    salaryDetails.otherAllowances || 0,
+    salaryDetails.incentivePay || 0,
+    salaryDetails.overtimePay || 0,
+    salaryDetails.statutoryBonus || 0,
+    // note: recordBonusPay is already included in statutoryBonus or separately?
+    0,
+  ].reduce((sum, val) => sum + parseFloat(val || 0), 0);
+
+  let monthlyDeductionsSum = 0;
+  monthlyDeductionsSum += parseFloat(salaryDetails.advanceRecovery || 0);
+  monthlyDeductionsSum += parseFloat(salaryDetails.tds || 0);
+  // lop deduction is not available here (requires external data) so skip
+
+  if (planData.pfEmployeeIncludeInCtc !== false) {
+    monthlyDeductionsSum += parseFloat(salaryDetails.employeePF || 0);
+  }
+  if (planData.pfEmployerIncludeInCtc !== false) {
+    monthlyDeductionsSum += parseFloat(salaryDetails.employerPF || 0);
+  }
+  if (planData.esicEmployeeIncludeInCtc !== false) {
+    monthlyDeductionsSum += parseFloat(salaryDetails.esic || 0);
+  }
+  if (planData.gratuityIncludeInCtc !== false) {
+    monthlyDeductionsSum += parseFloat(salaryDetails.gratuity || 0);
+  }
+  if (planData.professionalTaxIncludeInCtc !== false) {
+    monthlyDeductionsSum += parseFloat(salaryDetails.professionalTax || 0);
+  }
+  if (planData.insuranceEmployeeIncludeInCtc !== false) {
+    monthlyDeductionsSum += parseFloat(salaryDetails.insurance || 0);
+  }
+
+  const localGross = monthlyEarningsSum;
+  const localNet = localGross - monthlyDeductionsSum;
+  return { localGross, localNet };
+};
+
 const CTC_BASED_FIELDS = [
   'basicSalary',
   'otherAllowance',
@@ -563,6 +608,38 @@ const CreateCompensation = () => {
   const [previewModal, setPreviewModal] = useState(false);
   const [ctcInput, setCtcInput] = useState("");
   const [salaryDetails, setSalaryDetails] = useState(null);
+
+  // whenever salaryDetails or CTC input changes, log the sum of effective percentages
+  useEffect(() => {
+    if (salaryDetails) {
+      const salaryDetailsKeyMap = {
+        "Basic Salary": "basicSalary",
+        "House Rent Allowance (HRA)": "hra",
+        "Leave Travel Allowance (LTA)": "ltaAllowance",
+        "Other Allowance": "otherAllowances",
+        "Provident Fund (PF - Employee)": "employeePF",
+        "Provident Fund (PF - Employer)": "employerPF",
+        "Employee State Insurance (ESIC - Employee)": "esic",
+        "Insurance (Employee)": "insurance",
+        "Professional Tax": "professionalTax",
+        "Statutory Bonus": "statutoryBonus",
+        "Variable Pay / Bonus": "variablePay",
+        "Gratuity": "gratuity",
+      };
+
+      const totalCTC = parseFloat(ctcInput) || DEFAULT_CTC;
+      let sum = 0;
+      Object.values(salaryDetailsKeyMap).forEach((key) => {
+        const monthlyCalc = Number(salaryDetails[key]) || 0;
+        sum += (monthlyCalc * 12) / totalCTC * 100;
+      });
+      // round and clamp to 100
+      sum = parseFloat(sum.toFixed(4));
+      if (sum > 100) sum = 100;
+      console.log(`Preview TOTAL % from salaryDetails = ${sum.toFixed(4)}%`);
+    }
+  }, [salaryDetails, ctcInput]);
+  const [previewAllocation, setPreviewAllocation] = useState(null);
   const [formData, setFormData] = useState(defaultFormData);
   const [compensations, setCompensations] = useState([]);
 
@@ -583,6 +660,7 @@ const CreateCompensation = () => {
   const [errors, setErrors] = useState({});
   const [salaryPeriods, setSalaryPeriods] = useState([]);
   const [isOtherAllowanceAutoFilled, setIsOtherAllowanceAutoFilled] = useState(false);
+  const [isOtherAllowanceManuallyEdited, setIsOtherAllowanceManuallyEdited] = useState(false);
 
   const { user } = useAuth();
   const meId = user?.employeeId ?? user?.id ?? user?.employee_id ?? null;
@@ -694,7 +772,7 @@ const allocationInfo = useMemo(() => {
             raw: pctValue,
             effective: effectivePct,           // ← NO toFixed here
             type: "percentage",
-            display: `${pctValue}% → ${effectivePct}% effective`,
+            display: `${pctValue}% ≈ ${effectivePct}% effective`, 
           });
         }
       }
@@ -723,7 +801,7 @@ const allocationInfo = useMemo(() => {
           raw: amount,
           effective: effectivePct,           // ← NO toFixed here
           type: "amount",
-          display: `₹${amount.toLocaleString("en-IN")}${isMonthlyAmount ? '/month' : ''} → ${effectivePct}%`,
+          display: `₹${amount.toLocaleString("en-IN")}${isMonthlyAmount ? '/month' : ''} ≈ ${effectivePct}%`, 
         });
       }
     }
@@ -865,8 +943,9 @@ useEffect(() => {
 
 
 
+// Auto-fill Other Allowance percentage when appropriate
 useEffect(() => {
-  // If Other Allowance is disabled or set to amount mode, clear auto-fill flag
+  // Only show when Other Allowance is enabled & percentage mode
   if (
     !formData.isOtherAllowance ||
     formData.otherAllowanceType !== "percentage"
@@ -877,20 +956,18 @@ useEffect(() => {
     return;
   }
 
-  // Calculate exact remaining percentage needed
+  // Never override if user manually typed a value
+  if (isOtherAllowanceManuallyEdited) {
+    return;
+  }
+
   let totalAllocated = 0;
- 
-  // Use a default CTC for calculations (won't affect pure percentage fields)
-  const ctc = ctcInput ? parseFloat(ctcInput) : DEFAULT_CTC;
- 
+  const ctc = DEFAULT_CTC; // ignore preview CTC input
+
   allowancePercentageFields.forEach(
     ({ field, enable, type, amountField, include }) => {
-      // Skip Other Allowance - we'll calculate it last
       if (field === "otherAllowance") return;
-     
-      const isEnabled = formData[enable];
-      if (!isEnabled) return;
-
+      if (!formData[enable]) return;
       let isIncludedInCtc = true;
       if (include) {
         isIncludedInCtc = formData[include] === true;
@@ -900,8 +977,7 @@ useEffect(() => {
       if (formData[type] === "percentage") {
         const pctValue = parseFloat(formData[field]) || 0;
         if (pctValue > 0) {
-          const effectivePct = getEffectiveCtcPercentage(field, formData, ctc);
-          totalAllocated += effectivePct;
+          totalAllocated += getEffectiveCtcPercentage(field, formData, ctc);
         }
       } else if (formData[type] === "amount" && formData[amountField]) {
         const amount = parseFloat(formData[amountField]) || 0;
@@ -910,49 +986,72 @@ useEffect(() => {
             field === "professionalTax" ||
             field === "professionalTaxAmount" ||
             field === "insuranceEmployeeAmount";
-         
-          let effectivePct;
+          let eff;
           if (isMonthlyAmount) {
-            effectivePct = (amount * 12 / ctc) * 100;
+            eff = (amount * 12 / ctc) * 100;
           } else {
-            effectivePct = (amount / ctc) * 100;
+            eff = (amount / ctc) * 100;
           }
-          totalAllocated += effectivePct;
+          totalAllocated += eff;
         }
       }
     }
   );
 
-  // Calculate exact remaining percentage
-  const exactRemaining = 100 - totalAllocated;
-  // Always update other allowance to remaining value
-  const newOtherPct = Math.max(0, exactRemaining).toFixed(4);
-
+  const newOtherPct = Math.max(0, 100 - totalAllocated).toFixed(4);
   setFormData((prev) => {
-    if (prev.otherAllowance !== newOtherPct) {
+    if (parseFloat(prev.otherAllowance) !== parseFloat(newOtherPct)) {
       setIsOtherAllowanceAutoFilled(true);
-      return {
-        ...prev,
-        otherAllowance: newOtherPct,
-      };
-    }
-    return prev;
-  });
-
-  setFormData((prev) => {
-    // Only update if different (prevents infinite loop)
-    if (prev.otherAllowance !== newOtherPct) {
-      setIsOtherAllowanceAutoFilled(true);
-      return {
-        ...prev,
-        otherAllowance: newOtherPct,
-      };
+      return { ...prev, otherAllowance: newOtherPct };
     }
     return prev;
   });
 }, [
-  formData,
-  ctcInput,
+  formData.isOtherAllowance,
+  formData.otherAllowanceType,
+  formData.isBasicSalary,
+  formData.basicSalary,
+  formData.basicSalaryAmount,
+  formData.isHouseRentAllowance,
+  formData.houseRentAllowance,
+  formData.houseRentAllowanceAmount,
+  formData.isLtaAllowance,
+  formData.ltaAllowance,
+  formData.ltaAllowanceAmount,
+  formData.isPFEmployee,
+  formData.pfEmployeePercentage,
+  formData.pfEmployeeAmount,
+  formData.pfEmployeeIncludeInCtc,
+  formData.isPFEmployer,
+  formData.pfEmployerPercentage,
+  formData.pfEmployerAmount,
+  formData.pfEmployerIncludeInCtc,
+  formData.isESICEmployee,
+  formData.esicEmployeePercentage,
+  formData.esicEmployeeAmount,
+  formData.esicEmployeeIncludeInCtc,
+  formData.isInsuranceEmployee,
+  formData.insuranceEmployeePercentage,
+  formData.insuranceEmployeeAmount,
+  formData.insuranceEmployeeIncludeInCtc,
+  formData.isGratuityApplicable,
+  formData.gratuityPercentage,
+  formData.gratuityAmount,
+  formData.gratuityIncludeInCtc,
+  formData.isProfessionalTax,
+  formData.professionalTax,
+  formData.professionalTaxAmount,
+  formData.professionalTaxIncludeInCtc,
+  formData.isVariablePay,
+  formData.variablePay,
+  formData.variablePayAmount,
+  formData.variablePayIncludeInCtc,
+  formData.isStatutoryBonus,
+  formData.statutoryBonusPercentage,
+  formData.statutoryBonusAmount,
+  formData.statutoryBonusIncludeInCtc,
+  formData.incentivesIncludeInCtc,
+  isOtherAllowanceManuallyEdited,
 ]);
 
   const renderCategoryField = ({
@@ -1402,6 +1501,7 @@ useEffect(() => {
     setFormData(defaultFormData);
     setErrors({});
     setIsOtherAllowanceAutoFilled(false);
+    setIsOtherAllowanceManuallyEdited(false);
   };
 
   const handleCheckboxChange = (field, value) => {
@@ -1432,6 +1532,7 @@ useEffect(() => {
           newData.otherAllowanceAmount = "";
           newData.otherAllowanceType = "percentage";
           updatedErrors.otherAllowance = "";
+          setIsOtherAllowanceManuallyEdited(false);
         }
         if (field === "isPFEmployee") {
           newData.pfEmployeePercentage = "";
@@ -1512,7 +1613,8 @@ useEffect(() => {
         }
         if (field === "isOtherAllowance") {
           newData.otherAllowanceType = "percentage";
-          newData.otherAllowance = newData.otherAllowance || "10";
+          newData.otherAllowance = newData.otherAllowance || ""; // let effect fill remaining
+          setIsOtherAllowanceManuallyEdited(false);
         }
         if (field === "isPFEmployee") {
           newData.pfEmployeeType = "percentage";
@@ -1570,13 +1672,17 @@ useEffect(() => {
   };
 
   const handleInputChange = (field, value) => {
-    const newFormData = { ...formData, [field]: value };
-    const totalCTC = ctcInput ? parseFloat(ctcInput) : DEFAULT_CTC;
-
-    // Reset auto-fill flag when user manually changes other allowance
+    // track manual edit on other allowance
     if (field === "otherAllowance") {
+      if (value !== "") {
+        setIsOtherAllowanceManuallyEdited(true);
+      } else {
+        setIsOtherAllowanceManuallyEdited(false);
+      }
       setIsOtherAllowanceAutoFilled(false);
     }
+    const newFormData = { ...formData, [field]: value };
+    const totalCTC = ctcInput ? parseFloat(ctcInput) : DEFAULT_CTC;
 
     if (field.endsWith("Type")) {
       const baseField = field.replace("Type", "");
@@ -1870,6 +1976,7 @@ useEffect(() => {
     setCurrentStep(1);
     setErrors({});
     setIsOtherAllowanceAutoFilled(false);
+    setIsOtherAllowanceManuallyEdited(false);
   };
 
   const validateField = (name, value, fieldConfig, formData) => {
@@ -2170,6 +2277,20 @@ useEffect(() => {
                 ]
               : []),
         };
+        // remove stale percentage/amount values for any field that has a corresponding type
+        Object.keys(mappedData).forEach((k) => {
+          if (k.endsWith("Type")) {
+            const base = k.replace(/Type$/, "");
+            const typeVal = mappedData[k];
+            if (typeVal === "amount") {
+              const percKey = `${base}Percentage`;
+              if (mappedData.hasOwnProperty(percKey)) mappedData[percKey] = "";
+            } else if (typeVal === "percentage") {
+              const amtKey = `${base}Amount`;
+              if (mappedData.hasOwnProperty(amtKey)) mappedData[amtKey] = "";
+            }
+          }
+        });
         setViewExecCompensation(mappedData);
       } catch (error) {
         console.error("Error processing compensation details:", error);
@@ -2443,16 +2564,25 @@ const getPlanValue = (calcField, formData) => {
   let effPct = 0;
 
   if (currentType === "percentage") {
+    // percentage typed by user (may be based on basic salary)
     effPct = getEffectiveCtcPercentage(valueField, formData);
-    display = `${parsed.toFixed(2)}%`;
+    display = `${parsed.toFixed(2)}% ≈ ${effPct.toFixed(4)}% of CTC`;
   } else {
-  const ctc = parseFloat(ctcInput) || DEFAULT_CTC;
-  effPct = (rawValue * 12 / ctc) * 100;   // ← MUST HAVE * 12 here too
-  display = `₹${rawValue.toLocaleString("en-IN")} ≈ ${effPct.toFixed(2)}% of CTC (Fixed Annual)`;
-}
-
-  if (effPct > 0.01) {
-    display += ` ≈ ${effPct.toFixed(2)}% of CTC`;
+    const ctc = parseFloat(ctcInput) || DEFAULT_CTC;
+    effPct = (rawValue * 12 / ctc) * 100;   // convert annual amount to CTC %
+    const isMonthly = [
+      "basicSalaryAmount",
+      "houseRentAllowanceAmount",
+      "ltaAllowanceAmount",
+      "otherAllowanceAmount",
+      "pfEmployeeAmount",
+      "pfEmployerAmount",
+      "esicEmployeeAmount",
+      "insuranceEmployeeAmount",
+      "professionalTaxAmount",
+    ].includes(valueField);
+    const unit = isMonthly ? "/mo" : "/yr";
+    display = `₹${rawValue.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}${unit} ≈ ${effPct.toFixed(4)}% of CTC`;
   }
 
   // Basis override
@@ -2498,48 +2628,67 @@ const handleCalculate = () => {
     return;
   }
 
-  // ────────────────────────────────────────────────
-  // ACCURATE ALLOCATION CALCULATION
-  // ────────────────────────────────────────────────
+  // compute local gross/net according to include-in-CTC flags (see SalaryDetails)
+  const { localGross, localNet } = calculateLocalGrossNet(calculatedDetails, planDataCopy);
+  calculatedDetails.localGross = localGross;
+  calculatedDetails.localNet = localNet;
 
-// ────────────────────────────────────────────────
-// USE CALCULATED DETAILS DIRECTLY (100% MATCH WITH PREVIEW)
-// ────────────────────────────────────────────────
+  console.log("CTC ALLOCATION - Annual CTC:", annualCTC);
+  console.log("Calculation Bases - basicSalary:", formData.basicSalary);
+  console.log(`Local gross/net computed: ₹${localGross.toFixed(2)} / ₹${localNet.toFixed(2)}`);
 
-let totalAnnualAllocated = 0;
+  let totalAnnualAllocated = 0;
+
+const componentLog = [];
 
 Object.keys(calculatedDetails).forEach((key) => {
-  const value = Number(calculatedDetails[key]) || 0;
+  // skip the additional localGross/localNet we added
+  if (key === "localGross" || key === "localNet") return;
+
+  const monthlyValue = Number(calculatedDetails[key]) || 0;
 
   // Skip summary fields
   if (
     key === "netSalary" ||
     key === "grossSalary" ||
-    key === "tds"
+    key === "tds" ||
+    key === "recordBonusPay" ||
+    key === "bonusPay"
   ) return;
 
-  // calculatedDetails values are monthly → convert to annual
-  totalAnnualAllocated += value * 12;
+  // exclude items that are not included in CTC
+  const includeMap = {
+    employeePF: 'pfEmployeeIncludeInCtc',
+    employerPF: 'pfEmployerIncludeInCtc',
+    esic: 'esicEmployeeIncludeInCtc',
+    insurance: 'insuranceEmployeeIncludeInCtc',
+    professionalTax: 'professionalTaxIncludeInCtc',
+    gratuity: 'gratuityIncludeInCtc',
+  };
+  if (includeMap[key] && formData[includeMap[key]] === false) {
+    return;
+  }
+
+  if (monthlyValue > 0) {
+    const annualValue = monthlyValue * 12;
+    const pctOfCtc = (annualValue / annualCTC) * 100;
+    componentLog.push(`${key}: ₹${monthlyValue.toFixed(2)}/mo ≈ ₹${annualValue.toFixed(2)}/yr ≈ ${pctOfCtc.toFixed(4)}% CTC`);
+    totalAnnualAllocated += annualValue;
+  }
 });
 
-const roundedTotal =
-  Math.round((totalAnnualAllocated / annualCTC) * 100 * 100) / 100;
+console.log("Component Allocations:", componentLog);
 
-let remainingPercentage =
-  Math.round((100 - roundedTotal) * 100) / 100;
+const totalPct = (totalAnnualAllocated / annualCTC) * 100;
+const roundedTotal = parseFloat(totalPct.toFixed(2));
+const remainingAnnual = annualCTC - totalAnnualAllocated;
+const remainingPct = (remainingAnnual / annualCTC) * 100;
+let remainingPercentage = parseFloat(remainingPct.toFixed(2));
 
-if (Math.abs(remainingPercentage) < 0.01) {
-  remainingPercentage = 0;
-}
+console.log(`Total Allocated Annual: ₹${totalAnnualAllocated.toFixed(2)} (${roundedTotal.toFixed(2)}% of CTC)`);
+console.log(`Remaining Annual: ₹${remainingAnnual.toFixed(2)} (${remainingPercentage.toFixed(2)}% of CTC)`);
+console.log("=====================================\n");
 
-if (roundedTotal > 100) {
-  showAlert("Total allocation exceeds 100%");
-}
-
-console.log("Total %:", roundedTotal);
-console.log("Remaining %:", remainingPercentage);
-
-  // ────────────────────────────────────────────────
   // UPDATE STATE
   // ────────────────────────────────────────────────
 
@@ -2857,110 +3006,95 @@ console.log("Remaining %:", remainingPercentage);
         },
       ],
     },
+   {
+  title: "PF and Medical Contributions",
+  fields: [
     {
-      title: "PF and Medical Contributions",
-      fields: [
-        {
-          label: "PF Applicable",
-          field: "isPFApplicable",
-        },
-        ...(formData.isPFApplicable
-          ? [
-              {
-                label: "Calculation Based On",
-                field: "pfCalculationBase",
-                component: (
-                  <div className="compensation-form-group">
-                    <span className="compensation-label-text">
-                      Calculation Based On
-                    </span>
-                    <div className="compensation-input-group">
-                      <select
-                        value={formData.pfCalculationBase || ""}
-                        onChange={(e) =>
-                          handleInputChange("pfCalculationBase", e.target.value)
-                        }
-                        className="compensation-select"
-                      >
-                        <option value="">Select</option>
-                        <option value="basic">Basic Salary</option>
-                        {/* <option value="gross">Gross Salary</option> */}
-                      </select>
-                    </div>
-                  </div>
-                ),
-              },
-              {
-                label: "PF of Employee",
-                field: "isPFEmployee",
-                percentageField: "pfEmployeePercentage",
-                amountField: "pfEmployeeAmount",
-                typeField: "pfEmployeeType",
-                includeCtcField: "pfEmployeeIncludeInCtc",
-              },
-              {
-                label: "PF of Employer",
-                field: "isPFEmployer",
-                percentageField: "pfEmployerPercentage",
-                amountField: "pfEmployerAmount",
-                typeField: "pfEmployerType",
-                includeCtcField: "pfEmployerIncludeInCtc",
-              },
-            ]
-          : []),
-        {
-          label: "Medical Applicable",
-          field: "isMedicalApplicable",
-        },
-        ...(formData.isMedicalApplicable
-          ? [
-              {
-                label: "Calculation Based On",
-                field: "medicalCalculationBase",
-                component: (
-                  <div className="compensation-form-group">
-                    <span className="compensation-label-text">
-                      Calculation Based On
-                    </span>
-                    <div className="compensation-input-group">
-                      <select
-                        value={formData.medicalCalculationBase || ""}
-                        onChange={(e) =>
-                          handleInputChange(
-                            "medicalCalculationBase",
-                            e.target.value
-                          )
-                        }
-                        className="compensation-select"
-                      >
-                        <option value="">Select</option>
-                        <option value="basic">Basic Salary</option>
-                        {/* <option value="gross">Gross Salary</option> */}
-                      </select>
-                    </div>
-                  </div>
-                ),
-              },
-              {
-                label: "Esic of Employee",
-                field: "isESICEmployee",
-                percentageField: "esicEmployeePercentage",
-                amountField: "esicEmployeeAmount",
-                typeField: "esicEmployeeType",
-                includeCtcField: "esicEmployeeIncludeInCtc",
-              },
-              {
-                label: "Insurance of Employee",
-                field: "isInsuranceEmployee",
-                percentageField: "insuranceEmployeePercentage",
-                amountField: "insuranceEmployeeAmount",
-                typeField: "insuranceEmployeeType",
-                includeCtcField: "insuranceEmployeeIncludeInCtc",
-              },
-            ]
-          : []),
-      ],
+      label: "PF Applicable",
+      field: "isPFApplicable",
     },
+    ...(formData.isPFApplicable
+      ? [
+          {
+            label: "Calculation Based On",
+            field: "pfCalculationBase",
+            component: (
+              <div className="compensation-form-group">
+                <span className="compensation-label-text">Calculation Based On</span>
+                <div className="compensation-input-group">
+                  <select
+                    value={formData.pfCalculationBase || "basic"}
+                    className="compensation-select"
+                    disabled
+                  >
+                    <option value="basic">Basic Salary</option>
+                  </select>
+                </div>
+              </div>
+            ),
+          },
+          {
+            label: "PF of Employee",
+            field: "isPFEmployee",
+            percentageField: "pfEmployeePercentage",
+            amountField: "pfEmployeeAmount",
+            typeField: "pfEmployeeType",
+            includeCtcField: "pfEmployeeIncludeInCtc",
+          },
+          {
+            label: "PF of Employer",
+            field: "isPFEmployer",
+            percentageField: "pfEmployerPercentage",
+            amountField: "pfEmployerAmount",
+            typeField: "pfEmployerType",
+            includeCtcField: "pfEmployerIncludeInCtc",
+          },
+        ]
+      : []),
+    {
+      label: "Medical Applicable",
+      field: "isMedicalApplicable",
+    },
+    ...(formData.isMedicalApplicable
+      ? [
+          {
+            label: "Calculation Based On",
+            field: "medicalCalculationBase",
+            component: (
+              <div className="compensation-form-group">
+                <span className="compensation-label-text">Calculation Based On</span>
+                <div className="compensation-input-group">
+                  <select
+                    value={formData.medicalCalculationBase || "basic"}
+                    className="compensation-select"
+                    disabled   // ← Now added/fixed
+                  >
+                    <option value="basic">Basic Salary</option>
+                  </select>
+                </div>
+              </div>
+            ),
+          },
+          {
+            label: "Esic of Employee",
+            field: "isESICEmployee",
+            percentageField: "esicEmployeePercentage",
+            amountField: "esicEmployeeAmount",
+            typeField: "esicEmployeeType",
+            includeCtcField: "esicEmployeeIncludeInCtc",
+          },
+          {
+            label: "Insurance of Employee",
+            field: "isInsuranceEmployee",
+            percentageField: "insuranceEmployeePercentage",
+            amountField: "insuranceEmployeeAmount",
+            typeField: "insuranceEmployeeType",
+            includeCtcField: "insuranceEmployeeIncludeInCtc",
+          },
+        ]
+      : []),
+  ],
+},
     {
       title: "Statutory Components",
       fields: [
@@ -3175,68 +3309,44 @@ console.log("Remaining %:", remainingPercentage);
       "overtimePayAmount",
       "overtimePayUnits",
     ];
-    const typeFieldMap = {
-      basicSalary: {
-        typeField: "basicSalaryType",
-        percentageField: "basicSalary",
-      },
-      basicSalaryAmount: {
-        typeField: "basicSalaryType",
-        percentageField: "basicSalary",
-      },
-      houseRentAllowance: {
-        typeField: "houseRentAllowanceType",
-        percentageField: "houseRentAllowance",
-      },
-      houseRentAllowanceAmount: {
-        typeField: "houseRentAllowanceType",
-        percentageField: "houseRentAllowance",
-      },
-      ltaAllowance: {
-        typeField: "ltaAllowanceType",
-        percentageField: "ltaAllowance",
-      },
-      ltaAllowanceAmount: {
-        typeField: "ltaAllowanceType",
-        percentageField: "ltaAllowance",
-      },
-      otherAllowance: {
-        typeField: "otherAllowanceType",
-        percentageField: "otherAllowance",
-      },
-      otherAllowanceAmount: {
-        typeField: "otherAllowanceType",
-        percentageField: "otherAllowance",
-      },
-      pfEmployeePercentage: {
-        typeField: "pfEmployeeType",
-        percentageField: "pfEmployeePercentage",
-      },
-      pfEmployeeAmount: {
-        typeField: "pfEmployeeType",
-        percentageField: "pfEmployeePercentage",
-      },
-      pfEmployerPercentage: {
-        typeField: "pfEmployerType",
-        percentageField: "pfEmployerPercentage",
-      },
-      pfEmployerAmount: {
-        typeField: "pfEmployerType",
-        percentageField: "pfEmployerPercentage",
-      },
-    };
+
+    // For fields that have a corresponding "Type" (e.g. insuranceEmployeeType, gratuityType etc.)
+    // we will dynamically infer the base field and hide the irrelevant percentage/amount
+    // row in the table rather than maintaining a large static map.
     return (
       <tbody>
         {fieldOrder
-          .filter((key) =>
-            shouldDisplayField(key, compensationData[key], compensationData)
-          )
+          .filter((key) => {
+            // first standard visibility check
+            if (!shouldDisplayField(key, compensationData[key], compensationData)) {
+              return false;
+            }
+            // dynamic type/amount filtering: if a field has a sibling "Type" field,
+            // hide the irrelevant counterpart.
+            const base = key.replace(/(?:Percentage|Amount)$/, "");
+            const typeKey = `${base}Type`;
+            if (compensationData.hasOwnProperty(typeKey)) {
+              const typeValue = compensationData[typeKey];
+              if (typeValue === "amount" && key.endsWith("Percentage")) {
+                return false;
+              }
+              if (typeValue === "percentage" && key.endsWith("Amount")) {
+                return false;
+              }
+            }
+            return true;
+          })
           .map((key) => {
             const value = compensationData[key];
-            const config = typeFieldMap[key] || {};
-            const typeField = config.typeField;
-            const percentageField = config.percentageField;
-            const typeValue = typeField ? compensationData[typeField] : null;
+            // derive associated "Type" field if present (e.g. insuranceEmployeeType)
+            let typeField = null;
+            let typeValue = null;
+            const base = key.replace(/(?:Percentage|Amount)$/, "");
+            const typeKey = `${base}Type`;
+            if (compensationData.hasOwnProperty(typeKey)) {
+              typeField = typeKey;
+              typeValue = compensationData[typeKey];
+            }
             let displayValue = "";
             if (typeof value === "boolean") {
               displayValue = value ? "Yes" : "No";
@@ -3707,19 +3817,82 @@ console.log("Remaining %:", remainingPercentage);
                           } else {
   const typeValue = formData[field.typeField];
   let value = typeValue === "amount" ? formData[field.amountField] : formData[field.percentageField];
+  const basicSalary = parseFloat(formData.basicSalary) || 0;
 
   if (value !== "" && value !== undefined) {
     const numValue = parseFloat(value);
+    
+    // If salaryDetails exist (post-Calculate), compute effective CTC % from actual calculated values
+    if (salaryDetails) {
+      // Map field labels to salaryDetails keys
+      const salaryDetailsKeyMap = {
+        "Basic Salary": "basicSalary",
+        "House Rent Allowance (HRA)": "hra",
+        "Leave Travel Allowance (LTA)": "ltaAllowance",
+        "Other Allowance": "otherAllowances",
+        "Provident Fund (PF - Employee)": "employeePF",
+        "Provident Fund (PF - Employer)": "employerPF",
+        "Employee State Insurance (ESIC - Employee)": "esic",
+        "Insurance (Employee)": "insurance",
+        "Professional Tax": "professionalTax",
+        "Statutory Bonus": "statutoryBonus",
+        "Variable Pay / Bonus": "variablePay",
+        "Gratuity": "gratuity",
+      };
+      const includeMap = {
+        employeePF: 'pfEmployeeIncludeInCtc',
+        employerPF: 'pfEmployerIncludeInCtc',
+        esic: 'esicEmployeeIncludeInCtc',
+        insurance: 'insuranceEmployeeIncludeInCtc',
+        professionalTax: 'professionalTaxIncludeInCtc',
+        gratuity: 'gratuityIncludeInCtc',
+      };
 
-    if (typeValue === "amount") {
-  const annualContribution = Number(value) * 12;
-  const calculatedPercentage = (annualContribution / totalCTC * 100).toFixed(2);
-  displayValue = `₹${Number(value).toLocaleString("en-IN")} ≈ ${calculatedPercentage}% of CTC (Fixed Annual)`;
-} else {
-      displayValue = `${numValue.toLocaleString("en-IN", {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
-      })}%`;
+      const salaryKey = salaryDetailsKeyMap[field.label];
+      let monthlyCalc = salaryKey ? (Number(salaryDetails[salaryKey]) || 0) : 0;
+      // apply include-flag: if explicitly false, treat as zero
+      if (salaryKey && includeMap[salaryKey] && formData[includeMap[salaryKey]] === false) {
+        monthlyCalc = 0;
+      }
+      
+      if (monthlyCalc > 0) {
+        const annualCalc = monthlyCalc * 12;
+        const totalCTC = parseFloat(ctcInput) || DEFAULT_CTC;
+        const effPct = (annualCalc / totalCTC) * 100;
+        console.log(`Preview [${field.label}]: Using calculated value from salaryDetails[${salaryKey}] = ₹${monthlyCalc.toFixed(2)}/mo ≈ ${effPct.toFixed(4)}% of CTC`);
+        
+        if (typeValue === "amount") {
+          // Amount mode: show monthly amount and effective CTC %
+          displayValue = `₹${monthlyCalc.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/mo ≈ ${effPct.toFixed(4)}% of CTC`;
+        } else {
+          // Percentage mode: show form value ≈ effective CTC %
+          displayValue = `${numValue.toFixed(2)}% ≈ ${effPct.toFixed(4)}% of CTC`;
+        }
+      } else {
+        displayValue = "-";
+      }
+    } else {
+      // Fallback: compute from form values when salaryDetails not available
+      if (typeValue === "amount") {
+        // Determine if monthly or annual
+        const monthlyFields = ["basicSalaryAmount", "houseRentAllowanceAmount", "ltaAllowanceAmount", "otherAllowanceAmount", "pfEmployeeAmount", "pfEmployerAmount", "esicEmployeeAmount", "insuranceEmployeeAmount", "professionalTaxAmount"];
+        const isMonthly = monthlyFields.includes(field.amountField);
+        const annualValue = isMonthly ? (Number(value) * 12) : Number(value);
+        const timeUnit = isMonthly ? "/mo" : "/yr";
+        const totalCTC = parseFloat(ctcInput) || DEFAULT_CTC;
+        const effPct = (annualValue / totalCTC * 100).toFixed(4);
+        displayValue = `₹${Number(value).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}${timeUnit} ≈ ${effPct}% of CTC`;
+      } else {
+        // Percentage mode - show effective CTC percentage
+        let effectivePct = numValue;
+        const fieldBase = field.percentageField.replace("Percentage", "");
+        if (BASIC_BASED_FIELDS.includes(fieldBase) && basicSalary > 0) {
+          effectivePct = (numValue / 100) * basicSalary;
+        }
+        displayValue = Math.abs(effectivePct - numValue) < 0.01 
+          ? `${numValue.toFixed(2)}%` 
+          : `${numValue.toFixed(2)}% ≈ ${effectivePct.toFixed(4)}% of CTC`;
+      }
     }
   } else {
     displayValue = "-";
@@ -3735,6 +3908,28 @@ console.log("Remaining %:", remainingPercentage);
                         .filter((row) => row !== null)}
                     </tbody>
                   </table>
+
+                  {previewAllocation && (
+                    <div style={{
+                      marginTop: '8px',
+                      fontSize: '0.95rem',
+                      fontWeight: '600',
+                      color: Math.abs(previewAllocation.remaining) < 0.01 ? '#2e7d32' : (previewAllocation.total > 100 ? '#c62828' : '#f57c00')
+                    }}>
+                      <div>Total CTC allocation: <strong>{previewAllocation.total.toFixed(4)}%</strong></div>
+                      {Math.abs(previewAllocation.remaining) >= 0.01 && (
+                        <div style={{ marginTop: '4px', color: '#f57c00' }}>
+                          Remaining: <strong>{previewAllocation.remaining.toFixed(4)}%</strong>
+                        </div>
+                      )}
+                      {Math.abs(previewAllocation.remaining) < 0.01 && (
+                        <div style={{ marginTop: '4px', color: '#2e7d32' }}>
+                          ✓ Fully allocated to 100.0000%
+                        </div>
+                      )}
+                    </div>
+                  )}
+
                 </div>
                {salaryDetails && (
   <div className="create-preview-right">
@@ -3748,40 +3943,103 @@ console.log("Remaining %:", remainingPercentage);
         </tr>
       </thead>
       <tbody>
-        {Object.entries(salaryDetails)
-          .filter(([key, value]) =>
-            shouldDisplayField(key, value, formData) && key !== "_enhancedPlanDescriptions"
-          )
-          .map(([key, value]) => {
-          let planText = getPlanValue(key, formData).value;
-
-// Only override with enhanced if it's percentage mode or Other Allowance
-// Only override for percentage-based or special cases – skip fixed amounts
-const isAmountMode = formData[`${key}Type`] === "amount" || formData[`${key.replace("s", "")}Type`] === "amount";
-if (salaryDetails._enhancedPlanDescriptions?.[key] && !isAmountMode) {
-  planText = salaryDetails._enhancedPlanDescriptions[key];
-}
-
-            // Optional: make "Remaining ..." stand out
-            if (key === "otherAllowances" && planText.includes("Remaining")) {
-              planText = <strong style={{ color: "#2e7d32" }}>{planText}</strong>;
+        {(() => {
+          const includeMap = {
+            employeePF: 'pfEmployeeIncludeInCtc',
+            employerPF: 'pfEmployerIncludeInCtc',
+            esic: 'esicEmployeeIncludeInCtc',
+            insurance: 'insuranceEmployeeIncludeInCtc',
+            professionalTax: 'professionalTaxIncludeInCtc',
+            gratuity: 'gratuityIncludeInCtc',
+          };
+          const entries = Object.entries(salaryDetails).filter(
+            ([key, value]) => {
+              // hide internal metadata and original gross/net rows
+              if (key === "_enhancedPlanDescriptions" || key === "grossSalary" || key === "netSalary") {
+                return false;
+              }
+              if (!shouldDisplayField(key, value, formData)) {
+                return false;
+              }
+              // exclude if include flag unchecked
+              if (includeMap[key] && formData[includeMap[key]] === false) {
+                return false;
+              }
+              return true;
             }
+          );
+          let totalEff = entries.reduce((sum, [key, val]) => {
+            const monthlyCalc = Number(val) || 0;
+            const annualCalc = monthlyCalc * 12;
+            const totalCTC = parseFloat(ctcInput) || DEFAULT_CTC;
+            return sum + (annualCalc / totalCTC) * 100;
+          }, 0);
+          totalEff = parseFloat(totalEff.toFixed(4));
+          if (totalEff > 100) totalEff = 100;
 
-            return (
-              <tr key={key}>
-                <td>{formatFieldName(key)}</td>
-                <td>
-                  {typeof value === "number"
-                    ? value.toLocaleString("en-IN", {
-                        minimumFractionDigits: 2,
-                        maximumFractionDigits: 2,
-                      })
-                    : value}
-                </td>
-                <td>{planText}</td>
+          return (
+            <>
+              {entries.map(([key, value]) => {
+                const monthlyCalc = Number(value) || 0;
+                const annualCalc = monthlyCalc * 12;
+                const totalCTC = parseFloat(ctcInput) || DEFAULT_CTC;
+                const effPct = (annualCalc / totalCTC) * 100;
+
+                let planText = "-";
+                const mapping = salaryFieldToFormDataMap[key];
+                if (mapping) {
+                  const currentType =
+                    formData[mapping.type] || mapping.default?.type || "percentage";
+                  if (currentType === "amount") {
+                    planText = `₹${monthlyCalc.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/mo ≈ ${effPct.toFixed(4)}% of CTC`;
+                  } else {
+                    // percentage entry -> show effective CTC percentage only
+                    planText = `${effPct.toFixed(4)}% of CTC`;
+                  }
+                }
+
+                if (key === "otherAllowances" && planText.includes("Remaining")) {
+                  planText = <strong style={{ color: "#2e7d32" }}>{planText}</strong>;
+                }
+
+                return (
+                  <tr key={key}>
+                    <td>{formatFieldName(key)}</td>
+                    <td>
+                      {typeof value === "number"
+                        ? value.toLocaleString("en-IN", {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2,
+                          })
+                        : value}
+                    </td>
+                    <td>{planText}</td>
+                  </tr>
+                );
+              })}
+              {/* insert local gross/net rows before total */}
+              {salaryDetails.localGross !== undefined && (
+                <tr>
+                  <td>Total Gross</td>
+                  <td>{salaryDetails.localGross.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                  <td>{((salaryDetails.localGross*12)/(parseFloat(ctcInput)||DEFAULT_CTC)*100).toFixed(4)}% of CTC</td>
+                </tr>
+              )}
+              {salaryDetails.localNet !== undefined && (
+                <tr>
+                  <td>Total Net</td>
+                  <td>{salaryDetails.localNet.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                  <td>{((salaryDetails.localNet*12)/(parseFloat(ctcInput)||DEFAULT_CTC)*100).toFixed(4)}% of CTC</td>
+                </tr>
+              )}
+              <tr>
+                <td><strong>Total</strong></td>
+                <td></td>
+                <td><strong>{totalEff.toFixed(4)}% of CTC</strong></td>
               </tr>
-            );
-          })}
+            </>
+          );
+        })()}
       </tbody>
     </table>
   </div>

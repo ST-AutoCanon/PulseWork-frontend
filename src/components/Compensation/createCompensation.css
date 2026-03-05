@@ -148,7 +148,7 @@
 .compensation-popup {
   background-color: white;
   border-radius: 8px;
-  width: 100%;
+  width: 90%;
   max-width: 1350px;
   max-height: 80vh;
   overflow-y: auto;

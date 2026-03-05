@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
@@ -39,17 +40,15 @@ const calculateDays = (startDate, endDate) => {
   const e = parseDateOnly(endDate);
   if (!s || !e) return 0;
 
-  // ensure we compare only dates (midnight)
   let cur = new Date(s.getFullYear(), s.getMonth(), s.getDate());
   const last = new Date(e.getFullYear(), e.getMonth(), e.getDate());
   if (cur > last) return 0;
 
   let count = 0;
   while (cur <= last) {
-    // JS: 0 = Sunday, 1 = Monday, ..., 6 = Saturday
-    const dow = cur.getDay();
+    const dow = cur.getDay(); // 0 = Sunday
     if (dow !== 0) {
-      count += 1;
+      count++;
     }
     cur.setDate(cur.getDate() + 1);
   }
@@ -1754,3 +1753,5 @@ export default function Admin({ openPolicyId = null }) {
     </div>
   );
 }
+
+

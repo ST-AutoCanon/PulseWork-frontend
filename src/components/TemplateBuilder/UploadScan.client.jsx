@@ -115,6 +115,9 @@ export default function UploadScan({
     }
   }, [bodyTypeProp, setBodyBoxes]);
 
+  // When the user selects a local file we create a blob URL exactly once.
+  // Do not regenerate it merely because the parent later echoes it back via
+  // initialHeaderUrl; that causes an infinite feedback loop.
   useEffect(() => {
     if (headerFile) {
       const u = URL.createObjectURL(headerFile);
@@ -133,6 +136,7 @@ export default function UploadScan({
     }
   }, [initialHeaderUrl, headerFile]);
 
+  // same logic for footer: don't recreate blob on prop updates
   useEffect(() => {
     if (footerFile) {
       const u = URL.createObjectURL(footerFile);
@@ -200,6 +204,9 @@ export default function UploadScan({
   useEffect(() => {
     if (typeof onPreviewChange !== "function") return;
     try {
+      // only forward the header/footer URLs when a file is present;
+      // otherwise send null so parent preview state is cleared and no
+      // network fetches occur for stale URLs.
       onPreviewChange({
         headerUrl: headerFile ? headerUrl : null,
         footerUrl: footerFile ? footerUrl : null,
@@ -589,6 +596,10 @@ export default function UploadScan({
             console.warn("Failed to upload Seal blob URL:", e);
           }
         }
+      } else {
+        // Send empty fileMap flag to indicate no explicit mapping was found
+        // This allows backend to use heuristic matching
+        fd.append("useHeuristic", "true");
       }
 
       // Note: Removed complex fileMap logic - the backend now uses simple heuristic matching

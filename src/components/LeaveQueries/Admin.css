@@ -3,6 +3,80 @@
   font-family: Arial, sans-serif;
 }
 
+/* ===============================
+   Admin Toggle Tabs (All / Self)
+================================= */
+
+.admin-toggle-tabs {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  background: #f3f4f6;
+  border-radius: 999px;
+  padding: 4px;
+  margin-bottom: 18px;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.06);
+  user-select: none;
+}
+
+/* Sliding Active Background */
+.toggle-indicator {
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  width: calc(50% - 4px);
+  background: #2563eb;
+  border-radius: 999px;
+  transition: transform 0.3s ease;
+  z-index: 0;
+}
+
+/* Left (All) */
+.toggle-indicator.left {
+  transform: translateX(0%);
+}
+
+/* Right (Self) */
+.toggle-indicator.right {
+  transform: translateX(100%);
+}
+
+/* Buttons */
+.toggle-tab {
+  position: relative;
+  z-index: 1;
+  flex: 1;
+  padding: 8px 22px;
+  border: none;
+  background: transparent;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  border-radius: 999px;
+  transition: color 0.3s ease;
+  color: #374151;
+  min-width: 90px;
+}
+
+/* Active Text */
+.toggle-tab.active {
+  color: #ffffff;
+}
+
+/* Hover */
+.toggle-tab:not(.active):hover {
+  color: #111827;
+}
+
+/* Responsive */
+@media (max-width: 480px) {
+  .toggle-tab {
+    padding: 7px 14px;
+    font-size: 13px;
+    min-width: 70px;
+  }
+}
+
 .admin-container h2 {
   padding: 1% 0;
   color: #333;

@@ -299,7 +299,6 @@ export default function A4Preview({
       box,
     };
 
-    // 🔒 reset drag flag
     isDraggingRef.current = false;
 
     window.addEventListener("mousemove", onBoxDrag);
@@ -321,7 +320,6 @@ export default function A4Preview({
     const dx = clientX - startX;
     const dy = clientY - startY;
 
-    // 🔒 detect real drag
     if (Math.abs(dx) > dragThreshold || Math.abs(dy) > dragThreshold) {
       isDraggingRef.current = true;
     }

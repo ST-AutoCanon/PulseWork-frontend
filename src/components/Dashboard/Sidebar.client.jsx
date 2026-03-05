@@ -117,7 +117,10 @@ const Sidebar = ({ setActiveContent }) => {
         if (role === "HR") return <RbAdmin />;
         return <Reimbursement />;
       },
-      "/employeeQueries": () => <AdminQuery />,
+      "/employeeQueries": (role) => {
+        if (role === "Admin") return <AdminQuery />;
+        return <EmployeeQuery />;
+      },
       "/TemplateBuilder": () => <TemplateBuilder />,
       "/letterHead": () => <LetterHead />,
       "/assets": () => <Assets />,

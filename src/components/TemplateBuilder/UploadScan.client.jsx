@@ -124,10 +124,14 @@ export default function UploadScan({
           URL.revokeObjectURL(u);
         } catch (e) {}
       };
-    } else {
+    }
+  }, [headerFile]);
+
+  useEffect(() => {
+    if (!headerFile) {
       setHeaderUrl(initialHeaderUrl ?? null);
     }
-  }, [headerFile, initialHeaderUrl]);
+  }, [initialHeaderUrl, headerFile]);
 
   useEffect(() => {
     if (footerFile) {
@@ -138,10 +142,14 @@ export default function UploadScan({
           URL.revokeObjectURL(u);
         } catch (e) {}
       };
-    } else {
+    }
+  }, [footerFile]);
+
+  useEffect(() => {
+    if (!footerFile) {
       setFooterUrl(initialFooterUrl ?? null);
     }
-  }, [footerFile, initialFooterUrl]);
+  }, [initialFooterUrl, footerFile]);
 
   useEffect(() => {
     if (!watermarkFile) return;
@@ -193,8 +201,8 @@ export default function UploadScan({
     if (typeof onPreviewChange !== "function") return;
     try {
       onPreviewChange({
-        headerUrl,
-        footerUrl,
+        headerUrl: headerFile ? headerUrl : null,
+        footerUrl: footerFile ? footerUrl : null,
         headerFile,
         footerFile,
         watermarkUrl: watermarkFile ? watermarkUrl : watermarkUrlProp,
@@ -218,11 +226,31 @@ export default function UploadScan({
     const f = e.target.files?.[0] || null;
     if (f) setHeaderFile(f);
     else setHeaderFile(null);
+    if (!f && typeof onPreviewChange === "function") {
+      onPreviewChange({
+        headerUrl: null,
+        footerUrl,
+        headerFile: null,
+        footerFile,
+        watermarkUrl: watermarkFile ? watermarkUrl : watermarkUrlProp,
+        watermarkFile,
+      });
+    }
   }
   function onSelectFooter(e) {
     const f = e.target.files?.[0] || null;
     if (f) setFooterFile(f);
     else setFooterFile(null);
+    if (!f && typeof onPreviewChange === "function") {
+      onPreviewChange({
+        footerUrl: null,
+        headerUrl,
+        footerFile: null,
+        headerFile,
+        watermarkUrl: watermarkFile ? watermarkUrl : watermarkUrlProp,
+        watermarkFile,
+      });
+    }
   }
   function onSelectWatermark(e) {
     const f = e.target.files?.[0] || null;
@@ -243,10 +271,30 @@ export default function UploadScan({
   function clearHeader() {
     setHeaderFile(null);
     if (fileInputHeaderRef.current) fileInputHeaderRef.current.value = "";
+    if (typeof onPreviewChange === "function") {
+      onPreviewChange({
+        headerUrl: null,
+        footerUrl,
+        headerFile: null,
+        footerFile,
+        watermarkUrl: watermarkFile ? watermarkUrl : watermarkUrlProp,
+        watermarkFile,
+      });
+    }
   }
   function clearFooter() {
     setFooterFile(null);
     if (fileInputFooterRef.current) fileInputFooterRef.current.value = "";
+    if (typeof onPreviewChange === "function") {
+      onPreviewChange({
+        footerUrl: null,
+        headerUrl,
+        footerFile: null,
+        headerFile,
+        watermarkUrl: watermarkFile ? watermarkUrl : watermarkUrlProp,
+        watermarkFile,
+      });
+    }
   }
   function clearWatermark() {
     setWatermarkFile(null);
@@ -460,7 +508,13 @@ export default function UploadScan({
         fd.append("existingWatermarkUrl", watermarkUrlProp);
       }
 
-      const layoutToSend = getBoxes() || [];
+      const layoutToSend = (getBoxes() || []).map((box) => ({
+        ...box,
+        // Ensure style object is preserved and complete
+        style: {
+          ...box.style,
+        },
+      }));
 
       let grapesJsonToSend = null;
       if (
@@ -487,36 +541,58 @@ export default function UploadScan({
         console.warn("Failed to stringify layout/grapes_json for upload:", err);
       }
 
-      const fileMap = {};
-      if (qrFile) {
-        const qrBox =
-          (layoutToSend || []).find(
-            (b) =>
-              String(b.fieldName || "")
-                .toLowerCase()
-                .includes("qr") ||
-              String(b.id || "")
-                .toLowerCase()
-                .includes("qr"),
-          ) || null;
-        if (qrBox) fileMap.qr = qrBox.id || qrBox.fieldName || null;
-      }
-      if (sealFile) {
-        const sealBox =
-          (layoutToSend || []).find((b) =>
-            /seal|stamp|logo|companyseal/i.test(
-              String(b.fieldName || "") || String(b.id || ""),
-            ),
-          ) || null;
-        if (sealBox) fileMap.seal = sealBox.id || sealBox.fieldName || null;
-      }
-      if (Object.keys(fileMap).length) {
-        try {
-          fd.append("fileMap", JSON.stringify(fileMap));
-        } catch (e) {
-          console.warn("Failed to append fileMap", e);
+      // Upload QR as file if not already provided
+      if (!qrFile) {
+        const qrBox = (layoutToSend || []).find(
+          (b) =>
+            String(b.fieldName || "")
+              .toLowerCase()
+              .includes("qr") ||
+            String(b.id || "")
+              .toLowerCase()
+              .includes("qr"),
+        );
+        if (
+          qrBox &&
+          qrBox.content &&
+          String(qrBox.content).startsWith("blob:")
+        ) {
+          try {
+            const blobRes = await fetch(qrBox.content);
+            const qrBlob = await blobRes.blob();
+            fd.append("qr", qrBlob, "qr_image.png");
+            console.log("📤 Uploading QR blob URL as file");
+          } catch (e) {
+            console.warn("Failed to upload QR blob URL:", e);
+          }
         }
       }
+
+      // Upload Seal as file if not already provided
+      if (!sealFile) {
+        const sealBox = (layoutToSend || []).find((b) =>
+          /seal|stamp|logo|companyseal/i.test(
+            String(b.fieldName || "") || String(b.id || ""),
+          ),
+        );
+        if (
+          sealBox &&
+          sealBox.content &&
+          String(sealBox.content).startsWith("blob:")
+        ) {
+          try {
+            const blobRes = await fetch(sealBox.content);
+            const sealBlob = await blobRes.blob();
+            fd.append("seal", sealBlob, "seal_image.png");
+            console.log("📤 Uploading Seal blob URL as file");
+          } catch (e) {
+            console.warn("Failed to upload Seal blob URL:", e);
+          }
+        }
+      }
+
+      // Note: Removed complex fileMap logic - the backend now uses simple heuristic matching
+      // which is more reliable and easier to maintain
 
       const base = (backendUrl || "").replace(/\/$/, "");
       const url = base
@@ -1285,7 +1361,7 @@ export default function UploadScan({
 
       {showNamePrompt && (
         <div className={styles.modalBackdrop} role="dialog" aria-modal="true">
-          <div className={styles.modal}>
+          <div className={styles.templateModal}>
             <h4 className={styles.modalTitle}>Save template</h4>
             <p className={styles.modalText}>Enter a name for the template</p>
             <input

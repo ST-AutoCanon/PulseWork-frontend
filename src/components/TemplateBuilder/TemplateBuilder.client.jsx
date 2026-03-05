@@ -169,6 +169,11 @@ async function ensureBoxesBlobUrls(boxes = []) {
             if (cand.key === "content") nb.content = blobUrl;
             if (!nb.imageUrl && blobUrl) nb.imageUrl = blobUrl;
             continue;
+          } else {
+            if (cand.key === "imageUrl") nb.imageUrl = "";
+            if (cand.key === "content") nb.content = "";
+            if (!nb.imageUrl) nb.imageUrl = "";
+            continue;
           }
         } catch (e) {
           console.warn(
@@ -241,7 +246,10 @@ async function replaceUploadUrlsInHtml(html = "", apiKey, backendBase) {
       if (src.startsWith("/api/")) src = backendBase.replace(/\/$/, "") + src;
 
       const blobUrl = await fetchProtectedImage(src, apiKey, employeeId);
-      if (!blobUrl) return;
+      if (!blobUrl) {
+        img.setAttribute("src", "");
+        return;
+      }
 
       img.setAttribute("src", blobUrl);
       img.setAttribute("draggable", "false");
@@ -293,7 +301,11 @@ async function resolveTemplateProtectedAssets(
           src = base + src;
         }
         const blob = await fetchProtectedImage(src, apiKey, employeeId);
-        if (blob) t[field] = blob;
+        if (blob) {
+          t[field] = blob;
+        } else {
+          t[field] = null;
+        }
       }
     }),
   );
@@ -339,6 +351,8 @@ async function resolveTemplateProtectedAssets(
             node.attributes["style"] =
               (node.attributes["style"] || "") +
               ";pointer-events:none;user-select:none;";
+          } else {
+            node.attributes.src = "";
           }
         }
         for (const k of Object.keys(node)) {
@@ -360,6 +374,7 @@ async function resolveTemplateProtectedAssets(
             }
             const blob = await fetchProtectedImage(src, apiKey, employeeId);
             if (blob) node[k] = blob;
+            else node[k] = "";
           } else if (typeof node[k] === "object") {
             await walk(node[k]);
           }
@@ -684,11 +699,13 @@ export default function TemplateBuilder() {
         style: { ...(b.style || {}) },
       }));
 
-      setBodyBoxes(presetBoxes);
+      if (mode === "scratch" || mode === "upload") {
+        setBodyBoxes(presetBoxes);
+      }
     } catch (e) {
       console.warn("rebuilding boxes from bodyType failed", e);
     }
-  }, [bodyType]);
+  }, [bodyType, mode]);
 
   useEffect(() => {
     if (!bodyBoxes || bodyBoxes.length === 0) {
@@ -741,6 +758,29 @@ export default function TemplateBuilder() {
       setTemplateSource(null);
     }
 
+    if (newMode === "upload" || newMode === "scratch" || newMode === "basic") {
+      setPlaceholders({
+        companyName: "",
+        bankName: "",
+        accountNo: "",
+        IFSC: "",
+        accountHolder: "",
+      });
+      setQrUrl(null);
+      setSealUrl(null);
+      setPageStyle({ background: "transparent" });
+      setHeaderHeight(0);
+      setFooterHeight(0);
+    }
+
+    if (newMode === "upload") {
+      setBodyType("letter");
+    }
+
+    if (newMode !== "upload") {
+      setShowEditor(false);
+    }
+
     if (newMode === "saved" || newMode === "view") {
       setShowSavedPane(true);
     } else if (newMode !== "basic" || templateSource !== "saved") {
@@ -757,6 +797,23 @@ export default function TemplateBuilder() {
     }
     if (newMode !== "view") {
       setViewingTemplate(null);
+    }
+  }
+
+  function handleBodyTypeChange(bt) {
+    setBodyType(bt);
+    const preset = PRESET_FIELDS[bt] || [];
+    const presetBoxes = fieldsToBoxes(preset).map((b) => ({
+      ...b,
+      locked: false,
+    }));
+
+    if (mode === "basic" && generated) {
+      setBodyBoxes((prev) => [...(prev || []), ...presetBoxes]);
+    } else if (mode === "basic" && !generated) {
+      setBodyBoxes(presetBoxes);
+    } else {
+      setBodyBoxes(presetBoxes);
     }
   }
 
@@ -900,6 +957,31 @@ export default function TemplateBuilder() {
 
   async function chooseBasic(template) {
     if (!template) return;
+
+    const applyBoxesFromTemplate = (tpl) => {
+      try {
+        let boxes = [];
+        if (tpl.layout || tpl.layout_json) {
+          const rawLayout = tpl.layout || tpl.layout_json;
+          let parsed = null;
+          if (typeof rawLayout === "string") parsed = JSON.parse(rawLayout);
+          else parsed = rawLayout;
+          if (Array.isArray(parsed)) boxes = parsed;
+        } else if (tpl.initialBoxes) {
+          boxes = tpl.initialBoxes;
+        } else if (tpl.html) {
+          boxes = templateToBoxes(tpl) || [];
+        }
+        if (!boxes || !boxes.length) {
+          boxes = fieldsToBoxes(PRESET_FIELDS[bodyType] || []);
+        }
+        setBodyBoxes(boxes);
+      } catch (e) {
+        console.warn("chooseBasic: could not populate bodyBoxes", e);
+        setBodyBoxes(fieldsToBoxes(PRESET_FIELDS[bodyType] || []));
+      }
+    };
+
     if (template.origin === "saved") {
       setTemplateSource("saved");
       try {
@@ -909,21 +991,36 @@ export default function TemplateBuilder() {
           BACKEND_URL,
         );
 
+        // Parse and resolve boxes from template
+        let boxes = [];
         try {
-          const rawLayout =
-            resolved.layout ||
-            resolved.layout_json ||
-            (resolved.meta &&
-              (resolved.meta.layout || resolved.meta.layout_json));
-          if (rawLayout) {
+          if (resolved.layout || resolved.layout_json) {
+            const rawLayout = resolved.layout || resolved.layout_json;
             let parsed = null;
             if (typeof rawLayout === "string") parsed = JSON.parse(rawLayout);
             else parsed = rawLayout;
-            if (Array.isArray(parsed)) setBodyBoxes(parsed);
-          } else {
-            setBodyBoxes(fieldsToBoxes(PRESET_FIELDS[bodyType] || []));
+            if (Array.isArray(parsed)) boxes = parsed;
+          } else if (resolved.initialBoxes) {
+            boxes = resolved.initialBoxes;
+          } else if (resolved.html) {
+            boxes = templateToBoxes(resolved) || [];
           }
-        } catch (e) {}
+          if (!boxes || !boxes.length) {
+            boxes = fieldsToBoxes(PRESET_FIELDS[bodyType] || []);
+          }
+        } catch (e) {
+          console.warn("chooseBasic: could not populate bodyBoxes", e);
+          boxes = fieldsToBoxes(PRESET_FIELDS[bodyType] || []);
+        }
+
+        // ✅ Resolve image URLs in boxes to blob URLs
+        if (Array.isArray(boxes)) {
+          console.log(`🔄 Resolving box image URLs in chooseBasic...`);
+          boxes = await ensureBoxesBlobUrls(boxes);
+          console.log(`✅ Box image URLs resolved in chooseBasic`);
+        }
+
+        setBodyBoxes(boxes);
 
         const headerCandidates = [
           resolved.header_url,
@@ -958,15 +1055,18 @@ export default function TemplateBuilder() {
         }
 
         setGenerated(resolved);
-        setAppMode("basic");
+        setMode("basic");
         return;
       } catch (err) {
         console.warn("chooseBasic: resolveTemplateProtectedAssets failed", err);
       }
     }
+
     setTemplateSource("public");
     setGenerated(template);
-    setAppMode("basic");
+    applyBoxesFromTemplate(template);
+
+    setMode("basic");
   }
 
   async function handleUploadSaved(savedData) {
@@ -1054,6 +1154,13 @@ export default function TemplateBuilder() {
       }
       if (!parsedBodyBoxes) {
         parsedBodyBoxes = fieldsToBoxes(PRESET_FIELDS[bodyType] || []);
+      }
+
+      // ✅ Resolve image URLs in boxes to blob URLs for proper rendering
+      if (Array.isArray(parsedBodyBoxes)) {
+        console.log(`🔄 Resolving box image URLs in handleUploadSaved...`);
+        parsedBodyBoxes = await ensureBoxesBlobUrls(parsedBodyBoxes);
+        console.log(`✅ Box image URLs resolved in handleUploadSaved`);
       }
 
       async function ensureBlobUrl(src) {
@@ -1340,22 +1447,46 @@ export default function TemplateBuilder() {
 
       let parsedBodyBoxes = null;
       try {
-        const rawLayout =
-          resolved.layout ||
-          resolved.layout_json ||
-          (resolved.meta &&
-            (resolved.meta.layout || resolved.meta.layout_json));
-        if (rawLayout) {
-          parsedBodyBoxes =
-            typeof rawLayout === "string" ? JSON.parse(rawLayout) : rawLayout;
-          if (!Array.isArray(parsedBodyBoxes)) parsedBodyBoxes = null;
+        if (resolved.layout || resolved.layout_json) {
+          const rawLayout = resolved.layout || resolved.layout_json;
+          let parsed = null;
+          if (typeof rawLayout === "string") parsed = JSON.parse(rawLayout);
+          else parsed = rawLayout;
+          if (Array.isArray(parsed)) parsedBodyBoxes = parsed;
+        } else if (resolved.initialBoxes) {
+          parsedBodyBoxes = resolved.initialBoxes;
+        } else if (resolved.html) {
+          parsedBodyBoxes = templateToBoxes(resolved) || [];
+        }
+        if (!parsedBodyBoxes || !parsedBodyBoxes.length) {
+          parsedBodyBoxes = fieldsToBoxes(PRESET_FIELDS[bodyType] || []);
         }
       } catch (e) {
-        console.warn("openSavedTemplate: layout parse failed", e);
-        parsedBodyBoxes = null;
-      }
-      if (!parsedBodyBoxes)
+        console.warn("openSavedTemplate: could not parse bodyBoxes", e);
         parsedBodyBoxes = fieldsToBoxes(PRESET_FIELDS[bodyType] || []);
+      }
+
+      if (Array.isArray(parsedBodyBoxes)) {
+        console.log(
+          `📊 Loaded template has ${parsedBodyBoxes.length} boxes in layout`,
+        );
+        parsedBodyBoxes.forEach((box, idx) => {
+          const isQr = String(box.fieldName || "")
+            .toLowerCase()
+            .includes("qr");
+          const isSeal = /(seal|stamp|logo)/i.test(String(box.fieldName || ""));
+          if (isQr || isSeal) {
+            console.log(
+              `  [${idx}] ${box.fieldName}: type="${box.type}", imageUrl="${box.imageUrl}", content="${String(box.content).substring(0, 50)}"`,
+            );
+          }
+        });
+
+        // ✅ Resolve image URLs in boxes to blob URLs for proper rendering
+        console.log(`🔄 Resolving box image URLs...`);
+        parsedBodyBoxes = await ensureBoxesBlobUrls(parsedBodyBoxes);
+        console.log(`✅ Box image URLs resolved`);
+      }
       setBodyBoxes(parsedBodyBoxes);
 
       const explicitHeaderCandidates = [
@@ -1577,12 +1708,24 @@ export default function TemplateBuilder() {
 
   useEffect(() => {
     setSelectedFieldId(null);
-
     setShowEditor(false);
 
     setWatermarkEnabled(false);
     setWatermarkFile(null);
     setPreviewWatermarkUrl(null);
+
+    setPlaceholders({
+      companyName: "",
+      bankName: "",
+      accountNo: "",
+      IFSC: "",
+      accountHolder: "",
+    });
+    setQrUrl(null);
+    setSealUrl(null);
+    setPageStyle({ background: "transparent" });
+    setHeaderHeight(0);
+    setFooterHeight(0);
 
     if (mode === "scratch" || mode === "upload") {
       const preset = PRESET_FIELDS[bodyType] || [];
@@ -1591,6 +1734,15 @@ export default function TemplateBuilder() {
         locked: false,
       }));
       setBodyBoxes(freshBoxes);
+    }
+
+    const r = getActiveEditorRef();
+    if (r?.current?.setActiveArea) {
+      try {
+        r.current.setActiveArea(activeArea);
+      } catch (e) {
+        console.warn("failed to sync activeArea on mode change", e);
+      }
     }
   }, [mode]);
 
@@ -1769,6 +1921,28 @@ export default function TemplateBuilder() {
     }
   }
 
+  useEffect(() => {
+    const r = getActiveEditorRef();
+    if (r?.current?.setActiveArea) {
+      try {
+        r.current.setActiveArea(activeArea);
+      } catch (e) {
+        console.warn("failed to sync activeArea from effect", e);
+      }
+    }
+  }, [activeArea]);
+
+  useEffect(() => {
+    const r = getActiveEditorRef();
+    if (r?.current?.setActiveArea) {
+      try {
+        r.current.setActiveArea(activeArea);
+      } catch (e) {
+        console.warn("failed to sync activeArea from effect", e);
+      }
+    }
+  }, [activeArea]);
+
   function actionAddText() {
     ensureEditorAreaSynced();
     const r = getActiveEditorRef();
@@ -1807,12 +1981,21 @@ export default function TemplateBuilder() {
 
   async function editSavedTemplate(entry) {
     if (!entry) return;
+    console.log("editSavedTemplate starting for entry", entry && entry.id);
+    let resolved = null;
+
     try {
-      const resolved = await resolveTemplateProtectedAssets(
-        entry,
-        API_KEY,
-        BACKEND_URL,
-      );
+      try {
+        resolved = await resolveTemplateProtectedAssets(
+          entry,
+          API_KEY,
+          BACKEND_URL,
+        );
+        console.log("editSavedTemplate resolved", resolved && resolved.id);
+      } catch (e) {
+        console.warn("resolveTemplateProtectedAssets failed", e);
+        resolved = entry;
+      }
 
       const cat = entry.category || inferCategory(entry);
       const isUpload =
@@ -1820,88 +2003,103 @@ export default function TemplateBuilder() {
         String(entry.template_type || "").toLowerCase() === "scan";
 
       if (isUpload) {
-        const headerCandidates = [
-          resolved.header_url,
-          resolved.headerUrl,
-          resolved.header,
-          resolved._headerBlob,
-          resolved.imageUrl,
-          resolved.cleanedUrl,
-          resolved.thumbnail,
-        ];
-        const footerCandidates = [
-          resolved.footer_url,
-          resolved.footerUrl,
-          resolved.footer,
-          resolved._footerBlob,
-        ];
+        try {
+          const headerCandidates = [
+            resolved.header_url,
+            resolved.headerUrl,
+            resolved.header,
+            resolved._headerBlob,
+            resolved.imageUrl,
+            resolved.cleanedUrl,
+            resolved.thumbnail,
+          ];
+          const footerCandidates = [
+            resolved.footer_url,
+            resolved.footerUrl,
+            resolved.footer,
+            resolved._footerBlob,
+          ];
 
-        const headerRaw =
-          headerCandidates.find((x) => typeof x === "string" && x) || null;
-        const footerRaw =
-          footerCandidates.find((x) => typeof x === "string" && x) || null;
+          const headerRaw =
+            headerCandidates.find((x) => typeof x === "string" && x) || null;
+          const footerRaw =
+            footerCandidates.find((x) => typeof x === "string" && x) || null;
 
-        setPreviewHeaderUrl(headerRaw);
-        setPreviewFooterUrl(footerRaw);
+          setPreviewHeaderUrl(headerRaw);
+          setPreviewFooterUrl(footerRaw);
 
-        let watermarkUrl = null;
-        let watermarkPlacementProps = null;
-        if (resolved.grapesJson && resolved.grapesJson.watermark) {
-          const wm = resolved.grapesJson.watermark;
-          watermarkUrl = wm?.url || null;
-          watermarkPlacementProps = {
-            xPct: wm?.xPct || "50%",
-            yPct: wm?.yPct || "50%",
-            wPct: wm?.wPct || "60%",
-            hPct: wm?.hPct || "60%",
-            opacity: typeof wm?.opacity === "number" ? wm.opacity : 0.12,
-          };
-        } else if (resolved.meta && resolved.meta.watermark) {
-          watermarkUrl =
-            typeof resolved.meta.watermark === "string"
-              ? resolved.meta.watermark
-              : null;
-          const wp = resolved.meta.watermarkPlacement;
-          if (wp)
+          let watermarkUrl = null;
+          let watermarkPlacementProps = null;
+          if (resolved.grapesJson && resolved.grapesJson.watermark) {
+            const wm = resolved.grapesJson.watermark;
+            watermarkUrl = wm?.url || null;
             watermarkPlacementProps = {
-              xPct: wp.xPct || "50%",
-              yPct: wp.yPct || "50%",
-              wPct: wp.wPct || "60%",
-              hPct: wp.hPct || "60%",
-              opacity: typeof wp.opacity === "number" ? wp.opacity : 0.12,
+              xPct: wm?.xPct || "50%",
+              yPct: wm?.yPct || "50%",
+              wPct: wm?.wPct || "60%",
+              hPct: wm?.hPct || "60%",
+              opacity: typeof wm?.opacity === "number" ? wm.opacity : 0.12,
             };
+          } else if (resolved.meta && resolved.meta.watermark) {
+            watermarkUrl =
+              typeof resolved.meta.watermark === "string"
+                ? resolved.meta.watermark
+                : null;
+            const wp = resolved.meta.watermarkPlacement;
+            if (wp)
+              watermarkPlacementProps = {
+                xPct: wp.xPct || "50%",
+                yPct: wp.yPct || "50%",
+                wPct: wp.wPct || "60%",
+                hPct: wp.wPct || "60%",
+                opacity: typeof wp.opacity === "number" ? wp.opacity : 0.12,
+              };
+          }
+
+          setPreviewWatermarkUrl(watermarkUrl);
+          if (watermarkPlacementProps)
+            setWatermarkProps(watermarkPlacementProps);
+
+          setBodyBoxes((prev) => {
+            try {
+              const rawLayout =
+                resolved.layout ||
+                resolved.layout_json ||
+                resolved.meta?.layout ||
+                resolved.meta?.layout_json;
+              if (rawLayout) {
+                return typeof rawLayout === "string"
+                  ? JSON.parse(rawLayout)
+                  : rawLayout;
+              }
+            } catch (e) {}
+            return prev;
+          });
+
+          setAppMode("upload");
+          setShowEditor(true);
+          return;
+        } catch (err) {
+          console.warn(
+            "editSavedTemplate upload branch failed, falling back to basic",
+            err,
+          );
         }
-
-        setPreviewWatermarkUrl(watermarkUrl);
-        if (watermarkPlacementProps) setWatermarkProps(watermarkPlacementProps);
-
-        setBodyBoxes((prev) => {
-          try {
-            const rawLayout =
-              resolved.layout ||
-              resolved.layout_json ||
-              resolved.meta?.layout ||
-              resolved.meta?.layout_json;
-            if (rawLayout) {
-              return typeof rawLayout === "string"
-                ? JSON.parse(rawLayout)
-                : rawLayout;
-            }
-          } catch (e) {}
-          return prev;
-        });
-
-        setAppMode("upload");
-        setShowEditor(true);
-        return;
       }
 
       setGenerated(resolved || entry);
       setAppMode("basic");
       setShowEditor(true);
     } catch (err) {
-      console.error("editSavedTemplate failed", err);
-      showError("Failed to open template for editing.");
+      console.error("editSavedTemplate top-level failure", err, {
+        entry,
+        resolved,
+      });
+      if (resolved || entry) {
+        setGenerated(resolved || entry);
+        setAppMode("basic");
+        setShowEditor(true);
+      }
     }
   }
 
@@ -1935,12 +2133,10 @@ export default function TemplateBuilder() {
             throw new Error(`Delete failed (${res.status})`);
           }
 
-          // Remove from list
           setSavedTemplates((prev) =>
             prev.filter((t) => String(t.id || t._id) !== String(id)),
           );
 
-          // If currently viewing deleted template, reset state
           if (
             viewingTemplate &&
             (String(viewingTemplate.id) === String(id) ||
@@ -2065,7 +2261,8 @@ export default function TemplateBuilder() {
     setShowEditor,
     handleWatermarkChange,
     setBodyBoxes,
-    setBodyType,
+
+    setBodyType: handleBodyTypeChange,
     handlePreviewChange,
     handleUploadSaved,
     selectedFieldId,

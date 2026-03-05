@@ -22,8 +22,33 @@ const EmployeeQuery = () => {
   const departmentId = user?.department_id ?? user?.departmentId ?? null;
   const name = user?.name ?? user?.fullName ?? "";
   const userRole = user?.role ?? user?.userRole ?? "";
-  const orgId = user?.orgId ?? user?.raw?.org_id ?? null;
+  const orgId =
+    user?.orgId ??
+    user?.raw?.org_id ??
+    user?.organization_id ??
+    user?.org_id ??
+    null;
 
+  useEffect(() => {
+    if (!orgId) {
+      console.warn("orgId is not set in user object:", {
+        user,
+        orgId,
+        employeeId,
+      });
+    } else {
+      console.log("orgId loaded:", orgId);
+    }
+  }, [orgId, user]);
+
+  useEffect(() => {
+    console.log("[EmployeeQuery] user snapshot:", {
+      user,
+      userRole,
+      orgId,
+      employeeId,
+    });
+  }, [user, userRole, orgId, employeeId]);
   const [queries, setQueries] = useState([]);
   const [selectedQuery, setSelectedQuery] = useState(null);
   const [messages, setMessages] = useState([]);
@@ -47,7 +72,7 @@ const EmployeeQuery = () => {
   const selectedThreadIdRef = useRef(null);
 
   const [isMobile, setIsMobile] = useState(
-    typeof window !== "undefined" ? window.innerWidth <= 768 : false
+    typeof window !== "undefined" ? window.innerWidth <= 768 : false,
   );
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -136,12 +161,18 @@ const EmployeeQuery = () => {
     };
   }, [loading, queries.length]);
 
-  const buildHeaders = (extra = {}) => ({
-    "x-api-key": API_KEY,
-    ...(employeeId ? { "x-employee-id": employeeId } : {}),
-    ...(orgId ? { "x-org-id": orgId } : {}),
-    ...extra,
-  });
+  const buildHeaders = (extra = {}) => {
+    const headers = {
+      "x-api-key": API_KEY,
+      ...(employeeId ? { "x-employee-id": employeeId } : {}),
+      ...extra,
+    };
+    // Always send orgId if available, otherwise it will fail on backend
+    if (orgId) {
+      headers["x-org-id"] = orgId;
+    }
+    return headers;
+  };
 
   const feedbackOptions = [
     { value: "very unsatisfied", stars: 1 },
@@ -174,6 +205,7 @@ const EmployeeQuery = () => {
       auth: {
         apiKey: process.env.NEXT_PUBLIC_API_KEY,
         userId: employeeId,
+        ...(orgId ? { orgId } : {}),
       },
       query: { userId: employeeId },
     });
@@ -206,7 +238,7 @@ const EmployeeQuery = () => {
             (m.thread_id === msg.thread_id &&
               m.sender_id === msg.sender_id &&
               m.message === msg.message &&
-              m.attachment_url === msg.attachment_url)
+              m.attachment_url === msg.attachment_url),
         );
         return sameMessage ? prev : [...prev, msg];
       });
@@ -216,7 +248,7 @@ const EmployeeQuery = () => {
     socket.on("messageAck", (msg) => {
       setMessages((prev) => {
         const alreadyExists = prev.some(
-          (m) => String(m.id) === String(msg.id) || m.message === msg.message
+          (m) => String(m.id) === String(msg.id) || m.message === msg.message,
         );
         return alreadyExists ? prev : [...prev, msg];
       });
@@ -243,7 +275,7 @@ const EmployeeQuery = () => {
     try {
       const headers = buildHeaders();
       const url = `${BACKEND_URL}/threads/employee/${encodeURIComponent(
-        employeeId
+        employeeId,
       )}`;
       const response = await axios.get(url, { withCredentials: true, headers });
       const payload = response.data;
@@ -271,7 +303,7 @@ const EmployeeQuery = () => {
         const headers = buildHeaders();
         const res = await axios.get(
           `${BACKEND_URL}/threads/${selectedQuery.id}/messages`,
-          { withCredentials: true, headers }
+          { withCredentials: true, headers },
         );
         const msgs = res.data?.data ?? res.data ?? [];
         setMessages(Array.isArray(msgs) ? msgs : []);
@@ -286,12 +318,12 @@ const EmployeeQuery = () => {
         await axios.put(
           `${BACKEND_URL}/threads/${selectedQuery.id}/messages/read`,
           { sender_id: employeeId },
-          { withCredentials: true, headers }
+          { withCredentials: true, headers },
         );
         setQueries((prev) =>
           prev.map((q) =>
-            q.id === selectedQuery.id ? { ...q, unread_message_count: 0 } : q
-          )
+            q.id === selectedQuery.id ? { ...q, unread_message_count: 0 } : q,
+          ),
         );
       } catch (err) {}
     })();
@@ -318,6 +350,15 @@ const EmployeeQuery = () => {
       return;
     }
 
+    if (!orgId) {
+      console.warn("OrgId is not available:", { orgId, user });
+      showAlert(
+        "Organization information is missing. Please refresh and try again.",
+        "Configuration Error",
+      );
+      return;
+    }
+
     if (attachmentFile) {
       const formData = new FormData();
       formData.append("attachment", attachmentFile);
@@ -331,7 +372,7 @@ const EmployeeQuery = () => {
         const res = await axios.post(
           `${BACKEND_URL}/threads/${selectedQuery.id}/messages`,
           formData,
-          { withCredentials: true, headers }
+          { withCredentials: true, headers },
         );
         const newMsg = res.data?.data?.message ?? res.data?.data ?? res.data;
         setInputMessage("");
@@ -368,7 +409,7 @@ const EmployeeQuery = () => {
             const res = await axios.post(
               `${BACKEND_URL}/threads/${selectedQuery.id}/messages`,
               payload,
-              { withCredentials: true, headers }
+              { withCredentials: true, headers },
             );
             const newMsg =
               res.data?.data?.message ?? res.data?.data ?? res.data;
@@ -385,7 +426,7 @@ const EmployeeQuery = () => {
         const res = await axios.post(
           `${BACKEND_URL}/threads/${selectedQuery.id}/messages`,
           payload,
-          { withCredentials: true, headers }
+          { withCredentials: true, headers },
         );
         const newMsg = res.data?.data?.message ?? res.data?.data ?? res.data;
         setInputMessage("");
@@ -401,6 +442,16 @@ const EmployeeQuery = () => {
       showAlert("Please fill out all fields.");
       return;
     }
+
+    if (!orgId) {
+      console.warn("OrgId is not available:", { orgId, user });
+      showAlert(
+        "Organization information is missing. Please refresh and try again.",
+        "Configuration Error",
+      );
+      return;
+    }
+
     try {
       const headers = buildHeaders({ "Content-Type": "application/json" });
       const payload = {
@@ -458,7 +509,7 @@ const EmployeeQuery = () => {
       await axios.put(
         `${BACKEND_URL}/threads/${threadToClose}/close`,
         { feedback, note: queryText },
-        { withCredentials: true, headers }
+        { withCredentials: true, headers },
       );
       showAlert("Thread closed successfully.");
       setShowFeedbackModal(false);
@@ -467,8 +518,8 @@ const EmployeeQuery = () => {
       setShowThankYouModal(true);
       setQueries((prev) =>
         prev.map((q) =>
-          q.id === threadToClose ? { ...q, status: "closed" } : q
-        )
+          q.id === threadToClose ? { ...q, status: "closed" } : q,
+        ),
       );
     } catch (err) {
       console.error("Error closing thread:", err);
@@ -488,8 +539,8 @@ const EmployeeQuery = () => {
       const filename = url.split("/").pop();
       const headers = buildHeaders();
       const response = await axios.get(
-        `${BACKEND_URL}/attachments/${encodeURIComponent(filename)}`,
-        { withCredentials: true, headers, responseType: "blob" }
+        `${BACKEND_URL}/empquery/attachments/${encodeURIComponent(filename)}`,
+        { withCredentials: true, headers, responseType: "blob" },
       );
       const blob = new Blob([response.data]);
       const link = document.createElement("a");
@@ -520,12 +571,12 @@ const EmployeeQuery = () => {
         {
           withCredentials: true,
           headers: buildHeaders({ "Content-Type": "application/json" }),
-        }
+        },
       );
       setQueries((prev) =>
         prev.map((item) =>
-          item.id === q.id ? { ...item, unread_message_count: 0 } : item
-        )
+          item.id === q.id ? { ...item, unread_message_count: 0 } : item,
+        ),
       );
     } catch (err) {
       console.error("handleSelectQuery error:", err);
@@ -541,9 +592,11 @@ const EmployeeQuery = () => {
     <div className="emp-query-container">
       <div className="emp-query-header">
         <h2>Employee Queries</h2>
-        <button className="compose-button" onClick={() => setShowModal(true)}>
-          <BiEdit className="compose-icon" /> Compose
-        </button>
+        {typeof userRole === "string" && /employee/i.test(userRole) && (
+          <button className="compose-button" onClick={() => setShowModal(true)}>
+            <BiEdit className="compose-icon" /> Compose
+          </button>
+        )}
       </div>
 
       <div className="emp-query-content">
@@ -574,7 +627,7 @@ const EmployeeQuery = () => {
                   .filter((qq) =>
                     showResolved
                       ? qq.status === "closed"
-                      : qq.status !== "closed"
+                      : qq.status !== "closed",
                   )
                   .map((qq) => (
                     <div
@@ -658,7 +711,7 @@ const EmployeeQuery = () => {
                           className={`star ${
                             index <=
                             feedbackOptions.findIndex(
-                              (o) => o.value === feedback
+                              (o) => o.value === feedback,
                             )
                               ? "selected"
                               : ""
@@ -789,7 +842,7 @@ const EmployeeQuery = () => {
                               hour: "numeric",
                               minute: "2-digit",
                               hour12: true,
-                            }
+                            },
                           )
                         : "—"}
                     </p>
@@ -834,7 +887,7 @@ const EmployeeQuery = () => {
                           {message.created_at
                             ? new Date(message.created_at).toLocaleTimeString(
                                 [],
-                                { hour: "2-digit", minute: "2-digit" }
+                                { hour: "2-digit", minute: "2-digit" },
                               )
                             : ""}
                         </span>

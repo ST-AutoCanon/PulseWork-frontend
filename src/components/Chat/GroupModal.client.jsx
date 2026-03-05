@@ -98,9 +98,9 @@ export default function GroupModal({ onCreate, onClose, employeeId }) {
   };
 
   return (
-    <div className="modal" role="dialog" aria-modal="true" onClick={onClose}>
+    <div className="eqmodal" role="dialog" aria-modal="true" onClick={onClose}>
       <div
-        className="modal-content"
+        className="eqmodal-content"
         onClick={(e) => e.stopPropagation()}
         role="document"
       >
@@ -177,7 +177,7 @@ export default function GroupModal({ onCreate, onClose, employeeId }) {
           </div>
         )}
 
-        <div className="modal-actions">
+        <div className="eqmodal-actions">
           <button
             className="create-btn"
             onClick={create}

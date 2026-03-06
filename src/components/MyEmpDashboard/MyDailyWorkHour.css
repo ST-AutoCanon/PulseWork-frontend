@@ -1,11 +1,11 @@
 .work-hour-container {
-  width: 82.5%;
+  width: 100%;
+  max-width: 1050px;   /* prevents stretching on large screens */
   background-color: #fff;
   padding: 20px;
   border-radius: 8px;
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
 }
-
 .work-hour-header {
   display: flex;
   align-items: center;

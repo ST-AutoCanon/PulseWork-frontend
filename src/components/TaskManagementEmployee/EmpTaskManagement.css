@@ -748,7 +748,6 @@
   }
 
   .emp-task-meta-row {
-    flex-direction: column;
     align-items: flex-start;
     gap: 6px;
   }
@@ -868,9 +867,7 @@
     font-size: 0.7rem;
   }
 
-  .emp-task-chat-input {
-    flex-direction: column;
-  }
+ 
 
   .emp-task-chat-input input {
     padding: 10px;

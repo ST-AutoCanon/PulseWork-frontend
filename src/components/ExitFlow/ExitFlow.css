@@ -4750,3 +4750,63 @@
     margin: 0.4rem auto 0.2rem auto !important;
   }
 }
+
+/* ────────────────────────────────────────────────
+   FORCE LEFT ALIGNMENT OF FORM LABELS
+   ──────────────────────────────────────────────── */
+
+/* All labels inside the resignation form */
+.exf-resignation-form .exf-form-label,
+.exf-resignation-form-container .exf-form-label,
+.exf-form-grid-1 .exf-form-label,
+.exf-resignation-form .exf-form-label--required {
+  text-align: left !important;
+  justify-content: flex-start !important;
+  display: block !important;
+  width: 100% !important;
+  margin-right: auto !important;
+  padding-left: 0 !important;
+}
+
+/* Make sure inputs/selects/textareas also start from left */
+.exf-resignation-form .exf-form-input,
+.exf-resignation-form .exf-form-select,
+.exf-resignation-form .exf-form-textarea,
+.exf-resignation-form .exf-divider {
+  text-align: left !important;
+  margin-left: 0 !important;
+  margin-right: auto !important;
+}
+
+/* Prevent any centering coming from parent containers */
+.exf-resignation-form-container,
+.exf-resignation-form,
+.exf-form-grid-1,
+.exf-form-group,
+.exf-form-group--full {
+  text-align: left !important;
+  align-items: flex-start !important;
+  justify-content: flex-start !important;
+}
+
+/* Very strong rule for mobile – overrides almost everything */
+@media (max-width: 1023px) {
+  .exf-resignation-form .exf-form-label,
+  .exf-form-grid-1 label {
+    text-align: left !important;
+    text-align: start !important;
+    justify-content: flex-start !important;
+    display: block !important;
+    width: 100% !important;
+    margin: 0 0 0.5rem 0 !important;
+    padding: 0 !important;
+    float: none !important;
+  }
+
+  /* Also fix the whole form row */
+  .exf-form-group,
+  .exf-form-group--full {
+    text-align: left !important;
+    align-items: flex-start !important;
+  }
+}

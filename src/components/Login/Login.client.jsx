@@ -222,12 +222,13 @@ export default function Login({ onClose }) {
         parentOrigin || parentOriginRef.current || "*",
       );
 
-      router.push(
-        usernameVal.toLowerCase() === "manish.p@yopmail.com" &&
-          minimalUser.role.toLowerCase() === "general"
-          ? "/FacePunch"
-          : "/dashboard",
-      );
+       const role = minimalUser.role?.toLowerCase();
+
+if (role === "general") {
+  router.push("/FacePunch");
+} else {
+  router.push("/dashboard");
+}
     } catch (err) {
       const message = err?.message || "Login failed";
 

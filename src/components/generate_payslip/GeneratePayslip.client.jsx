@@ -102,9 +102,34 @@ export default function GeneratePayslip() {
   const closeViewDetails = () =>
     setViewDetailsModal({ isVisible: false, employee: null });
 
-  // ────────────────────────────────────────────────
-  // Template fetching & image protection logic
-  // ────────────────────────────────────────────────
+  // Helper function to extract date without timezone issues
+  // This ensures the date shows correctly without shifting to previous day
+  const extractDateOnly = (dateString) => {
+    if (!dateString) return "";
+    
+    let dateStr = dateString;
+    
+    // Handle ISO format with time component (e.g., "2026-01-09T00:00:00.000Z")
+    if (dateString.includes("T")) {
+      dateStr = dateString.split("T")[0];
+    }
+    
+    // Validate it's a proper date format YYYY-MM-DD
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+      return dateStr;
+    }
+    
+    // Parse and add one day to compensate for timezone loss during storage
+    // This is needed because the backend stores dates incorrectly due to timezone handling
+    const [year, month, day] = dateStr.split('-').map(Number);
+    const date = new Date(year, month - 1, day);
+    date.setDate(date.getDate() + 1);
+    
+    // Format back to YYYY-MM-DD
+    const paddedMonth = String(date.getMonth() + 1).padStart(2, '0');
+    const paddedDay = String(date.getDate()).padStart(2, '0');
+    return `${date.getFullYear()}-${paddedMonth}-${paddedDay}`;
+  };
 
   const [templateHtml, setTemplateHtml] = useState(null);
   const [templateCss, setTemplateCss] = useState(null);
@@ -634,7 +659,7 @@ export default function GeneratePayslip() {
       employeeName: employee.employee_name || "N/A",
       employeeId: employee.employee_id || "N/A",
       designation: (employee.designation || employee.position || "") + (employee.department_name ? ` (${employee.department_name})` : ""),
-      dateOfJoining: employee.date_of_joining ? employee.date_of_joining.split("T")[0] : "N/A",
+      dateOfJoining: extractDateOnly(employee.date_of_joining) || "N/A",
       accountNo: employee.account_no || "N/A",
       bankName: "",
       workingDays: parseFloat(employee.working_days || 30),
@@ -805,9 +830,7 @@ export default function GeneratePayslip() {
           designation:
             (selected.position || selected.designation || "") +
             (selected.department_name ? ` (${selected.department_name})` : ""),
-         dateOfJoining: selected.date_of_joining
-  ? selected.date_of_joining.substring(0, 10)
-  : "",
+          dateOfJoining: extractDateOnly(selected.date_of_joining) || "",
           accountNo: selected.account_no || "",
           uinNo: selected.uin_no || "",
           panNumber: selected.pan_number || "",
@@ -951,9 +974,7 @@ account_no: formData.accountNo || "",
       designation:
         (employee.designation || employee.position || "") +
         (employee.department_name ? ` (${employee.department_name})` : ""),
-      dateOfJoining: employee.date_of_joining
-        ? employee.date_of_joining.split("T")[0]
-        : "",
+      dateOfJoining: extractDateOnly(employee.date_of_joining) || "",
       accountNo: employee.account_no || "",
       workingDays: employee.working_days
         ? employee.working_days.toString()
@@ -1235,7 +1256,7 @@ account_no: formData.accountNo || "",
                       (employee.department_name ? ` (${employee.department_name})` : "")}
                   </td>
                   <td className="generatePayslip-table-cell">
-                    {(employee.date_of_joining || "").split("T")[0] || "-"}
+                    {extractDateOnly(employee.date_of_joining) || "-"}
                   </td>
                   <td className="generatePayslip-table-cell generatePayslip-action-cell">
                     <button

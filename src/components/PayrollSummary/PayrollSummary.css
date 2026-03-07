@@ -134,3 +134,119 @@
 .advance-table th {
   background-color: #f2f2f2;
 }
+.payroll-container {
+  max-width: 900px;           /* increased a bit for better desktop feel */
+  margin: 20px auto;          /* centered with some breathing room */
+  padding: 16px;
+  font-family: Arial, Helvetica, sans-serif;
+  background: #f9f9f9;
+  border-radius: 10px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.payroll-controls {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;    /* centers on all screens */
+  align-items: center;
+  gap: 12px;                  /* better spacing between label & select */
+  margin-bottom: 24px;
+  padding: 0 10px;
+}
+
+.payroll-select {
+  padding: 8px 12px;
+  font-size: 15px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+          /* prevents it from becoming too narrow */
+  max-width: 100%;            /* very important on mobile */
+  box-sizing: border-box;
+}
+
+/* ──────────────────────────────────────── */
+/*               BUTTON                     */
+/* ──────────────────────────────────────── */
+
+.payroll-download-btn {
+  display: block;
+  width: 100%;
+  max-width: 220px;           /* reasonable max width */
+  margin: 30px auto 10px;     /* centered + good spacing */
+  padding: 12px 20px;
+  font-size: 16px;
+  font-weight: bold;
+  color: white;
+  background: #28a745;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background 0.3s ease;
+}
+
+.payroll-download-btn:hover {
+  background: #218838;
+}
+
+/* ──────────────────────────────────────── */
+/*          TABLE RESPONSIVENESS            */
+/* ──────────────────────────────────────── */
+
+.payslip {
+  padding: 16px;              /* slightly less padding on small screens */
+  overflow-x: auto;           /* allows horizontal scroll if table is too wide */
+}
+
+.payslip-table {
+  width: 100%;
+  min-width: 320px;           /* prevents table from collapsing too much */
+  border-collapse: collapse;
+  margin-top: 10px;
+}
+
+/* ──────────────────────────────────────── */
+/*               MEDIA QUERIES              */
+/* ──────────────────────────────────────── */
+
+@media (max-width: 640px) {
+  .payroll-container {
+    margin: 12px;
+    padding: 12px;
+    border-radius: 8px;
+  }
+
+  .payroll-controls {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  .payroll-select {
+    width: 100%;
+  }
+
+  .payroll-download-btn {
+    max-width: 100%;          /* button takes full width on small screens */
+    margin: 24px auto 16px;
+  }
+
+  .payslip {
+    padding: 12px;
+  }
+
+  .payslip-table th,
+  .payslip-table td {
+    padding: 8px;             /* slightly smaller padding */
+    font-size: 13px;          /* readable but not too big */
+  }
+}
+
+@media (max-width: 400px) {
+  .payroll-title {
+    font-size: 22px;
+  }
+
+  .payslip h2 {
+    font-size: 18px;
+  }
+}

@@ -478,22 +478,27 @@ const Assets = () => {
         ];
 
     // Auto-add a new pending row if the latest assignment is returned
-    let rows = [...formattedAssignments];
-    if (rows.length > 0) {
-      const latest = rows[0];
-      if (latest.returnDate || latest.assigningStatus === "Returned") {
-        const today = new Date().toISOString().split("T")[0];
-        const newPendingRow = {
-          assignedTo: "",
-          employeeId: "",
-          startDate: today,
-          returnDate: "",
-          assigningStatus: "Pending",
-          comments: "",
-        };
-        rows = [newPendingRow, ...rows];
-      }
-    }
+  let rows = [...formattedAssignments];
+
+if (rows.length > 0) {
+  const latest = rows[0];
+
+  // Add new row only when asset is actually returned
+  if (latest.returnDate && latest.assigningStatus === "Returned") {
+    const today = new Date().toISOString().split("T")[0];
+
+    const newPendingRow = {
+      assignedTo: "",
+      employeeId: "",
+      startDate: today,
+      returnDate: "",
+      assigningStatus: "Pending",
+      comments: "",
+    };
+
+    rows = [newPendingRow, ...rows];
+  }
+}
 
     setAssignmentRowsByAsset((prev) => ({
       ...prev,
@@ -1562,13 +1567,13 @@ const Assets = () => {
       </div>
       {showAssignPopup && selectedAsset && (
         <div className="assign-popup">
-          <h3>Assign Asset: {selectedAsset.asset_name}</h3>
+          {/* <h3>Assign Asset: {selectedAsset.asset_name}</h3>
           <p>
             <strong>Asset ID:</strong> {selectedAsset.asset_id}
           </p>
           <p>
             <strong>Category:</strong> {selectedAsset.category}
-          </p>
+          </p> */}
 
           <div className="assignpopup-overlay">
             <div className="assignpopup-content">

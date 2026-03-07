@@ -877,6 +877,7 @@ const ClaimFields = ({
 
       case "Meals":
       case "Telecommunication":
+      case "Telecom":
       case "Stationary":
       case "Miscellaneous":
         return <div className="rb-main-form">{renderRowsUI()}</div>;

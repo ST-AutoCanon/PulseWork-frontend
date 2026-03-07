@@ -21,7 +21,7 @@ const AuthContext = createContext({
 function getCookie(name) {
   if (typeof document === "undefined") return null;
   const match = document.cookie.match(
-    new RegExp("(?:^|; )" + name.replace(/[-.+*]/g, "\\$&") + "=([^;]*)")
+    new RegExp("(?:^|; )" + name.replace(/[-.+*]/g, "\\$&") + "=([^;]*)"),
   );
   return match ? decodeURIComponent(match[1]) : null;
 }
@@ -83,7 +83,7 @@ function extractDepartment(body) {
       safeGet(body, "raw.deptId"),
       safeGet(body, "raw.dept_id"),
       safeGet(body, "message.department_id"),
-      safeGet(body, "message.raw.department_id")
+      safeGet(body, "message.raw.department_id"),
     ) ?? null
   );
 }
@@ -98,7 +98,7 @@ function extractOrg(body) {
       safeGet(body, "raw.org_id"),
       safeGet(body, "raw.orgId"),
       safeGet(body, "message.org_id"),
-      safeGet(body, "message.raw.org_id")
+      safeGet(body, "message.raw.org_id"),
     ) ?? null
   );
 }
@@ -113,7 +113,7 @@ function extractEmployeeId(body) {
       safeGet(body, "raw.employeeId"),
       safeGet(body, "raw.employee_id"),
       safeGet(body, "message.employeeId"),
-      safeGet(body, "message.raw.employeeId")
+      safeGet(body, "message.raw.employeeId"),
     ) ?? null
   );
 }
@@ -142,11 +142,11 @@ export function AuthProvider({ children }) {
 
   const allowedIframeOrigins = useMemo(
     () => parseAllowedOrigins(process.env.NEXT_PUBLIC_ALLOWED_IFRAME_ORIGINS),
-    []
+    [],
   );
   const parentOriginCandidate = useMemo(
     () => resolveParentOrigin(allowedIframeOrigins),
-    [allowedIframeOrigins]
+    [allowedIframeOrigins],
   );
 
   useEffect(() => {
@@ -192,7 +192,7 @@ export function AuthProvider({ children }) {
           name: pickFirst(
             body.name,
             safeGet(body, "dashboard.name"),
-            safeGet(body, "raw.name")
+            safeGet(body, "raw.name"),
           ),
           role: pickFirst(body.role, safeGet(body, "raw.role")) ?? null,
           dashboard: body.dashboard ?? {},
@@ -252,7 +252,7 @@ export function AuthProvider({ children }) {
         name: pickFirst(
           body.name,
           safeGet(body, "dashboard.name"),
-          safeGet(body, "raw.name")
+          safeGet(body, "raw.name"),
         ),
         role: pickFirst(body.role, safeGet(body, "raw.role")) ?? null,
         dashboard: body.dashboard ?? {},
@@ -313,7 +313,7 @@ export function AuthProvider({ children }) {
               reason: reason ?? "unknown",
               path: "/",
             },
-            target
+            target,
           );
         }
       } catch (err) {

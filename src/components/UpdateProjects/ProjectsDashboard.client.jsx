@@ -145,7 +145,10 @@ const ProjectsDashboard = () => {
 
   const fetchProjects = async () => {
     try {
-      if (userRole !== "Admin" && !employeeId) {
+      // Finance Managers should see all projects same as Admins.
+      const canSeeAllProjects = isAdmin || isFinanceManager;
+
+      if (!canSeeAllProjects && !employeeId) {
         setProjects([]);
         return;
       }
@@ -153,7 +156,7 @@ const ProjectsDashboard = () => {
       let url = "";
       const BACKEND = process.env.NEXT_PUBLIC_BACKEND_URL;
 
-      if (userRole === "Admin") {
+      if (canSeeAllProjects) {
         url = `${BACKEND}/projects`;
       } else {
         url = `${BACKEND}/projects/employeeProjects?employeeId=${encodeURIComponent(

@@ -31,26 +31,40 @@ export default function FiltersPanel({
             data-placeholder="From"
             data-empty={!filters.from_date}
           >
+            <label className="date-input-label" htmlFor="from-date-filter">
+              From
+            </label>
             <input
+              id="from-date-filter"
               type="date"
               name="from_date"
               placeholder="From"
               value={filters.from_date || ""}
               onChange={handleFilterChange}
             />
+            <span className="date-placeholder" aria-hidden="true">
+              From
+            </span>
           </div>
           <div
             className="date-input-wrapper"
             data-placeholder="To"
             data-empty={!filters.to_date}
           >
+            <label className="date-input-label" htmlFor="to-date-filter">
+              To
+            </label>
             <input
+              id="to-date-filter"
               type="date"
               name="to_date"
               placeholder="To"
               value={filters.to_date || ""}
               onChange={handleFilterChange}
             />
+            <span className="date-placeholder" aria-hidden="true">
+              To
+            </span>
           </div>
         </div>
 

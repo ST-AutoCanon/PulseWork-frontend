@@ -22,7 +22,7 @@ const safeNumber = (v) => {
   return Number.isFinite(n) ? n : 0;
 };
 
-const DownloadDetailsList = () => {
+const DownloadDetailsList = ({ refreshKey }) => {
   const { user } = useAuth();
   const [records, setRecords] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -76,11 +76,11 @@ const DownloadDetailsList = () => {
     return () => {
       mounted = false;
     };
-  }, [user, BACKEND_URL, API_KEY]);
+  }, [user, BACKEND_URL, API_KEY, refreshKey]);
 
   const toggleRow = (id) =>
     setExpandedRows((prev) =>
-      prev.includes(id) ? prev.filter((r) => r !== id) : [...prev, id]
+      prev.includes(id) ? prev.filter((r) => r !== id) : [...prev, id],
     );
 
   if (loading) return <p>Loading download records…</p>;

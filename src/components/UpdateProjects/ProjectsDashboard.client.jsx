@@ -110,6 +110,7 @@ const ProjectsDashboard = () => {
   const [invoiceNumberDirect, setInvoiceNumberDirect] = useState("");
   const [invoiceSequence, setInvoiceSequence] = useState(1);
   const [downloadDetails, setDownloadDetails] = useState({});
+  const [downloadDetailsRefreshKey, setDownloadDetailsRefreshKey] = useState(0);
 
   const { user } = useAuth();
   const userRole = user?.role ?? null;
@@ -272,6 +273,9 @@ const ProjectsDashboard = () => {
       });
 
       await updateInvoiceNumber();
+
+      // Refresh the download details list so the new record appears immediately
+      setDownloadDetailsRefreshKey((prev) => prev + 1);
     } catch (error) {
       console.error("Error generating PDF", error);
     }
@@ -519,7 +523,7 @@ const ProjectsDashboard = () => {
                   />
                 </div>
               )}
-              <DownloadDetailsList />
+              <DownloadDetailsList refreshKey={downloadDetailsRefreshKey} />
             </div>
           )}
         </>

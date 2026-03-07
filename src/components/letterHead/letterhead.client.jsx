@@ -112,12 +112,8 @@ const LetterHead = () => {
   const [showPopup, setShowPopup] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
   const [pdfUrl, setPdfUrl] = useState(null);
-  const [letterType, setLetterType] = useState("");
+  const [letterType, setLetterType] = useState("Letter");
   const [letterheads, setLetterheads] = useState([]);
-  const [templates, setTemplates] = useState([]);
-  const [savedTemplates, setSavedTemplates] = useState([]);
-  const [selectedTemplateId, setSelectedTemplateId] = useState("");
-  const [selectedTemplate, setSelectedTemplate] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -131,7 +127,7 @@ const LetterHead = () => {
   const watermarkBlobRef = useRef(null);
   const watermarkSourceRef = useRef(null);
 
-  const originalLogo = null;
+  const defaultLogoUrl = "/images/sukalpa_logo.png";
   const API_KEY = process.env.NEXT_PUBLIC_API_KEY;
   const BACKEND_URL = (process.env.NEXT_PUBLIC_BACKEND_URL || "").replace(
     /\/$/,
@@ -223,24 +219,60 @@ const LetterHead = () => {
     return htmlContent;
   };
 
+  const fallbackTemplate = `
+    <h1 style="font-weight: bold;">General Letter</h1>
+    <p>Dear [Recipient Name],</p>
+    <h2 style="font-weight: bold;">Introduction</h2>
+    <p>This is a general letter template. Please edit the content as needed to suit your requirements.</p>
+    <h2 style="font-weight: bold;">Conclusion</h2>
+    <p>Thank you.</p>
+    <p>Regards,</p>
+  `;
+
+  const bankDetailsTemplate = `
+    <h1 style="font-weight: bold;">Bank Details Letter</h1>
+    <p>[Place], [Date]</p>
+    <p>Dear [Title] [Recipient Name],</p>
+    <h2 style="font-weight: bold;">Introduction</h2>
+    <p>We are pleased to provide the bank details for [Recipient Name], who joined our organization on [Date of Appointment].</p>
+    <h2 style="font-weight: bold;">Bank Details</h2>
+    <p>Please update the following details in your records.</p>
+    <p>Regards,</p>
+  `;
+
+  const bankDetailsRequestTemplate = `
+    <h1 style="font-weight: bold;">Bank Details Request Letter</h1>
+    <p>[Place], [Date]</p>
+    <p>Dear [Title] [Recipient Name],</p>
+    <h2 style="font-weight: bold;">Introduction</h2>
+    <p>We kindly request [Recipient Name] to provide their bank details for our records, effective from [Date of Appointment].</p>
+    <h2 style="font-weight: bold;">Details Required</h2>
+    <p>Please submit the required bank details at your earliest convenience.</p>
+    <p>Regards,</p>
+  `;
+
+  const getTemplateForLetterType = (type) => {
+    if (type === "Bank Details") return bankDetailsTemplate;
+    if (type === "Bank Details Request Letter")
+      return bankDetailsRequestTemplate;
+    return fallbackTemplate;
+  };
+
   useEffect(() => {
     if (showPopup && contentRef.current) {
-      contentRef.current.innerHTML = formData.body || "";
+      const html =
+        formData.body ||
+        parseTemplateToHTML(getTemplateForLetterType(letterType));
+      contentRef.current.innerHTML = html;
+      setFormData((prev) => ({ ...prev, body: html }));
     }
-  }, [showPopup]);
+  }, [showPopup, letterType]);
 
   useEffect(() => {
     let mounted = true;
     async function fetchData() {
       setLoading(true);
       try {
-        const templatesResp = await axios
-          .get(`${BACKEND_URL}/api/templates/list`, {
-            withCredentials: true,
-            headers,
-          })
-          .catch(() => ({ data: { data: [] } }));
-
         const letterheadsResp = await axios
           .get(`${BACKEND_URL}/api/letterheads/list`, {
             withCredentials: true,
@@ -248,30 +280,16 @@ const LetterHead = () => {
           })
           .catch(() => ({ data: { data: [] } }));
 
-        let saved = [];
-        if (orgId) {
-          const savedResp = await axios.get(
-            `${BACKEND_URL}/api/orgs/${orgId}/templates`,
-            { withCredentials: true, headers },
-          );
-          saved = Array.isArray(savedResp.data)
-            ? savedResp.data
-            : savedResp.data?.data || [];
-        }
-
         if (!mounted) return;
-
-        setTemplates(templatesResp.data.data || []);
         setLetterheads(letterheadsResp.data.data || []);
-        setSavedTemplates(saved || []);
       } catch (error) {
         console.error("Error fetching data:", error);
         showAlert(
-          "Failed to fetch data: " +
+          "Failed to fetch letterheads: " +
             (error?.response?.data?.error || error.message || "unknown"),
         );
       } finally {
-        setLoading(false);
+        if (mounted) setLoading(false);
       }
     }
     fetchData();
@@ -521,9 +539,8 @@ const LetterHead = () => {
   };
 
   const applySavedTemplate = async (templateId) => {
-    const template = savedTemplates.find(
-      (t) => String(t.id) === String(templateId),
-    );
+    // Template selection has been removed; this is intentionally a no-op.
+    return;
     if (!template) {
       revokeIfBlob(headerBlobRef.current);
       revokeIfBlob(footerBlobRef.current);
@@ -1101,8 +1118,9 @@ const LetterHead = () => {
         const pdfBlob = await generatePDF(
           letterRef.current,
           letter_type,
-          originalLogo,
+          headerBlobUrl || defaultLogoUrl,
           recipient_name,
+          title,
           employee_name,
           position,
           effective_date,
@@ -1218,12 +1236,15 @@ const LetterHead = () => {
       setLetterheads(updatedResponse.data.data || []);
       setShowPopup(false);
 
+      const initialBody = parseTemplateToHTML(
+        getTemplateForLetterType("Letter"),
+      );
       setFormData({
         letterhead_code: "",
         template_name: "",
-        letter_type: "",
+        letter_type: "Letter",
         subject: "",
-        body: "",
+        body: initialBody,
         recipient_name: "",
         title: "",
         mobile_number: "",
@@ -1243,16 +1264,14 @@ const LetterHead = () => {
         cin_number: "",
         place: "",
       });
-      setLetterType("");
-      if (contentRef.current) contentRef.current.innerHTML = "";
+      setLetterType("Letter");
+      if (contentRef.current) contentRef.current.innerHTML = initialBody;
       revokeIfBlob(headerBlobRef.current);
       revokeIfBlob(footerBlobRef.current);
       headerBlobRef.current = null;
       footerBlobRef.current = null;
       setHeaderBlobUrl(null);
       setFooterBlobUrl(null);
-      setSelectedTemplate(null);
-      setSelectedTemplateId("");
     } catch (error) {
       const errorMessage = error.response?.data?.error || error.message;
       console.error(
@@ -1271,74 +1290,19 @@ const LetterHead = () => {
     const selectedType = e.target.value;
     setLetterType(selectedType);
 
+    const templateContent = getTemplateForLetterType(selectedType);
+    const html = parseTemplateToHTML(templateContent);
+
+    if (contentRef.current) {
+      contentRef.current.innerHTML = html;
+    }
+
     setFormData((prev) => ({
       ...prev,
       letter_type: selectedType,
-      subject: "",
+      subject: selectedType === "Letter" ? "" : selectedType,
+      body: html,
     }));
-
-    const selectedTemplateItem = templates.find(
-      (template) => template.letter_type === selectedType,
-    );
-
-    const newBodyHtml = selectedTemplateItem
-      ? parseTemplateToHTML(selectedTemplateItem.content || "")
-      : "";
-
-    const editorHasHeader =
-      !!contentRef.current &&
-      !!contentRef.current.querySelector(".template-header");
-    const editorHasFooter =
-      !!contentRef.current &&
-      !!contentRef.current.querySelector(".template-footer");
-    const haveBlobHeader = !!headerBlobRef.current;
-    const haveBlobFooter = !!footerBlobRef.current;
-
-    if (
-      contentRef.current &&
-      (editorHasHeader || editorHasFooter || haveBlobHeader || haveBlobFooter)
-    ) {
-      replaceEditorBody(newBodyHtml);
-      setFormData((prev) => ({
-        ...prev,
-        letter_type: selectedType,
-        subject: selectedTemplateItem?.subject || "",
-        body: contentRef.current.innerHTML,
-        company_name: selectedTemplateItem?.company_name || prev.company_name,
-        company_address:
-          selectedTemplateItem?.company_address || prev.company_address,
-        company_address_line2:
-          selectedTemplateItem?.company_address_line2 ||
-          prev.company_address_line2,
-        gstin_number: selectedTemplateItem?.gstin_number || prev.gstin_number,
-        cin_number: selectedTemplateItem?.cin_number || prev.cin_number,
-      }));
-    } else {
-      if (contentRef.current) {
-        mergeBodyKeepingHeaderFooter(newBodyHtml);
-        setFormData((prev) => ({
-          ...prev,
-          letter_type: selectedType,
-          subject: selectedTemplateItem?.subject || "",
-          body: contentRef.current.innerHTML,
-          company_name: selectedTemplateItem?.company_name || prev.company_name,
-          company_address:
-            selectedTemplateItem?.company_address || prev.company_address,
-          company_address_line2:
-            selectedTemplateItem?.company_address_line2 ||
-            prev.company_address_line2,
-          gstin_number: selectedTemplateItem?.gstin_number || prev.gstin_number,
-          cin_number: selectedTemplateItem?.cin_number || prev.cin_number,
-        }));
-      } else {
-        setFormData((prev) => ({
-          ...prev,
-          letter_type: selectedType,
-          subject: selectedTemplateItem?.subject || "",
-          body: newBodyHtml,
-        }));
-      }
-    }
   };
 
   const applyFormat = (command, value = null) => {
@@ -1431,8 +1395,9 @@ const LetterHead = () => {
         await generatePDF(
           letterRef.current,
           letterType,
-          originalLogo,
+          headerBlobUrl || defaultLogoUrl,
           formData.recipient_name,
+          formData.title,
           formData.employee_name,
           formData.position,
           formData.effective_date,
@@ -1475,8 +1440,9 @@ const LetterHead = () => {
         const pdfBlob = await generatePDF(
           letterRef.current,
           letterType,
-          originalLogo,
+          headerBlobUrl,
           formData.recipient_name,
+          formData.title,
           formData.employee_name,
           formData.position,
           formData.effective_date,
@@ -1517,12 +1483,13 @@ const LetterHead = () => {
     setShowPopup(false);
     setIsEditing(false);
     setEditingId(null);
+    const initialBody = parseTemplateToHTML(getTemplateForLetterType("Letter"));
     setFormData({
       letterhead_code: "",
       template_name: "",
-      letter_type: "",
+      letter_type: "Letter",
       subject: "",
-      body: "",
+      body: initialBody,
       recipient_name: "",
       title: "",
       mobile_number: "",
@@ -1542,16 +1509,14 @@ const LetterHead = () => {
       cin_number: "",
       place: "",
     });
-    setLetterType("");
-    if (contentRef.current) contentRef.current.innerHTML = "";
+    setLetterType("Letter");
+    if (contentRef.current) contentRef.current.innerHTML = initialBody;
     revokeIfBlob(headerBlobRef.current);
     revokeIfBlob(footerBlobRef.current);
     headerBlobRef.current = null;
     footerBlobRef.current = null;
     setHeaderBlobUrl(null);
     setFooterBlobUrl(null);
-    setSelectedTemplateId("");
-    setSelectedTemplate(null);
   };
 
   const handleKeyDown = (e) => {
@@ -1583,10 +1548,11 @@ const LetterHead = () => {
     };
   }, []);
 
-  if (loading) return <div>Loading templates...</div>;
+  if (loading) return <div>Loading...</div>;
 
+  const headerLogoSrc = headerBlobUrl || defaultLogoUrl;
   const showExternalHeader =
-    !!headerBlobUrl && !editorContainsWrapper("template-header");
+    !!headerLogoSrc && !editorContainsWrapper("template-header");
   const showExternalFooter =
     !!footerBlobUrl && !editorContainsWrapper("template-footer");
 
@@ -1739,15 +1705,6 @@ const LetterHead = () => {
             ref={letterRef}
             style={{ position: "relative" }}
           >
-            {showExternalHeader ? (
-              <div style={{ textAlign: "center", marginBottom: 8 }}>
-                <img
-                  src={headerBlobUrl}
-                  alt="Header"
-                  style={{ maxWidth: "100%", height: "auto" }}
-                />
-              </div>
-            ) : null}
             <div
               className="letterhead-letterhead-header"
               style={{ display: "none" }}
@@ -1755,75 +1712,6 @@ const LetterHead = () => {
             />
 
             <div className="letterhead-letter-form">
-              <div className="letterhead-form-row">
-                <div className="letterhead-form-group">
-                  <label htmlFor="savedTemplateSelect">
-                    Letterhead Template (header/footer)
-                  </label>
-                  <div className="letterhead-input-container">
-                    {savedTemplates && savedTemplates.length > 0 ? (
-                      <select
-                        id="savedTemplateSelect"
-                        value={selectedTemplateId || ""}
-                        onChange={async (e) => {
-                          const val = e.target.value;
-                          if (!val) {
-                            revokeIfBlob(headerBlobRef.current);
-                            revokeIfBlob(footerBlobRef.current);
-                            headerBlobRef.current = null;
-                            footerBlobRef.current = null;
-                            setSelectedTemplate(null);
-                            setSelectedTemplateId("");
-                            setHeaderBlobUrl(null);
-                            setFooterBlobUrl(null);
-                            if (contentRef.current)
-                              contentRef.current.innerHTML = "";
-                            setFormData((prev) => ({ ...prev, body: "" }));
-                            return;
-                          }
-                          setSelectedTemplateId(val);
-                          await applySavedTemplate(val);
-                        }}
-                        className="letterhead-input-field"
-                      >
-                        <option value="">
-                          — Choose saved template (header/footer) —
-                        </option>
-                        {savedTemplates.map((t) => (
-                          <option key={t.id} value={t.id}>
-                            {t.name || t.template_name || t.id}
-                          </option>
-                        ))}
-                      </select>
-                    ) : (
-                      <div
-                        style={{
-                          display: "flex",
-                          gap: 8,
-                          alignItems: "center",
-                        }}
-                      >
-                        <span>No saved templates for this org.</span>
-
-                        <button
-                          onClick={() => {
-                            console.log("Build Template clicked");
-                            window.dispatchEvent(
-                              new CustomEvent("app:navigate", {
-                                detail: { path: "/TemplateBuilder" },
-                              }),
-                            );
-                          }}
-                          className="letterhead-open-popup-btn"
-                        >
-                          Build Template
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-
               <div className="letterhead-form-row">
                 <div className="letterhead-form-group">
                   <label htmlFor="letterType">Letter Type</label>
@@ -1835,15 +1723,11 @@ const LetterHead = () => {
                       className="letterhead-letter-type-select letterhead-highlighted-select"
                     >
                       <option value="">Select letter type</option>
-                      {templates.length > 0 &&
-                        templates.map((template) => (
-                          <option
-                            key={template.letter_type}
-                            value={template.letter_type}
-                          >
-                            {template.letter_type}
-                          </option>
-                        ))}
+                      {Object.keys(letterFields).map((type) => (
+                        <option key={type} value={type}>
+                          {type}
+                        </option>
+                      ))}
                     </select>
                   </div>
                 </div>
@@ -2038,8 +1922,9 @@ const LetterHead = () => {
                     const pdfBlob = await generatePDF(
                       clone,
                       letterType,
-                      originalLogo,
+                      headerBlobUrl || defaultLogoUrl,
                       formData.recipient_name,
+                      formData.title,
                       formData.employee_name,
                       formData.position,
                       formData.effective_date,
@@ -2141,8 +2026,9 @@ const LetterHead = () => {
                     await generatePDF(
                       clone,
                       letterType,
-                      originalLogo,
+                      headerBlobUrl || defaultLogoUrl,
                       formData.recipient_name,
+                      formData.title,
                       formData.employee_name,
                       formData.position,
                       formData.effective_date,

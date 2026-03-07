@@ -2308,7 +2308,10 @@ const Reimbursement = () => {
                     <strong>Invoice(s):</strong> {invDisplay}
                   </p>
                   <p>
-                    <strong>Amount:</strong> Rs {claim.total_amount}
+                    <strong>Amount:</strong> Rs{" "}
+                    {Number(
+                      claim.aggregated_total || claim.total_amount || 0,
+                    ).toFixed(2)}
                   </p>
                 </div>
                 <div className="rb-card-footer">

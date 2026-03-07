@@ -40,7 +40,7 @@ const claimTypes = [
   { icon: <GiKnifeFork className="claim-icons" />, label: "Meals" },
   {
     icon: <MdOutlinePhoneAndroid className="claim-icons" />,
-    label: "Telecommunication",
+    label: "Telecom",
   },
   { icon: <GiPencilBrush className="claim-icons" />, label: "Stationary" },
   {
@@ -128,6 +128,7 @@ const defaultRowForType = (type) => {
         meals_objective: "",
       };
     case "telecommunication":
+    case "telecom":
       return {
         ...base,
         service_provider: "",
@@ -1743,7 +1744,13 @@ const Reimbursement = () => {
       return !!formData.transport_type || !!formData._forceShowTransport;
 
     if (
-      ["meals", "miscellaneous", "telecommunication", "stationary"].includes(ct)
+      [
+        "meals",
+        "miscellaneous",
+        "telecommunication",
+        "telecom",
+        "stationary",
+      ].includes(ct)
     )
       return true;
 

@@ -143,12 +143,10 @@ export default function LeaveFormModal({
           (o) => String(o.type) === String(selectedType),
         )?.label || selectedType;
       const msg = activePolicy
-        ? `This "${label}" leave requires at least ${notice} day(s) advance. Please pick a start date on or after ${computeMinStartForNotice(
-            notice,
-          )}.`
-        : `By default, a "${label}" leave requires at least ${notice} day(s) advance. Please pick a start date on or after ${computeMinStartForNotice(
-            notice,
-          )}.`;
+        ? `This "${label}" leave requires at least ${notice} day(s) advance.
+          `
+        : `By default, a "${label}" leave requires at least ${notice} day(s) advance.
+          `;
       try {
         showAlert?.(msg);
       } catch (e) {}
@@ -391,9 +389,7 @@ export default function LeaveFormModal({
                   style={{ fontSize: 13, color: "#333", marginTop: 6 }}
                 >
                   This leave requires <strong>{advanceNoticeDays}</strong>{" "}
-                  day(s) advance. Earliest allowed start:{" "}
-                  <strong>{computeMinStartForNotice(advanceNoticeDays)}</strong>
-                  .
+                  day(s) advance.
                 </div>
               )}
             </div>

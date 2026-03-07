@@ -11,6 +11,7 @@ const iconMap = {
   Transportation: <MdEmojiTransportation className="claim-icons" />,
   Meals: <GiKnifeFork className="claim-icons" />,
   Telecommunication: <MdOutlinePhoneAndroid className="claim-icons" />,
+  Telecom: <MdOutlinePhoneAndroid className="claim-icons" />,
   Stationary: <GiPencilBrush className="claim-icons" />,
   Miscellaneous: <TbTriangleSquareCircle className="claim-icons" />,
 };
@@ -34,7 +35,7 @@ const ClaimFields = ({
   initialSelectionForChild = [],
 }) => {
   const [localParticipantMode, setLocalParticipantMode] = useState(
-    formData.participant_mode || "single"
+    formData.participant_mode || "single",
   );
 
   const maxDate = useMemo(() => {
@@ -119,6 +120,7 @@ const ClaimFields = ({
           meals_objective: "",
         };
       case "Telecommunication":
+      case "Telecom":
         return {
           ...base,
           service_provider: "",
@@ -611,7 +613,7 @@ const ClaimFields = ({
                     </>
                   )}
 
-                  {ct === "Telecommunication" && (
+                  {(ct === "Telecommunication" || ct === "Telecom") && (
                     <>
                       <div className="field">
                         <label>Service Provider</label>

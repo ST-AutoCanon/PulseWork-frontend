@@ -1,6 +1,15 @@
 "use client";
 
 import jsPDF from "jspdf";
+import logoBase64Data from "./logo-base64.js";
+
+const {
+  insigniaRomanFont,
+  logoBase64,
+  emailIconBase64,
+  websiteIconBase64,
+  phoneIconBase64,
+} = logoBase64Data || {};
 
 const fetchUrlToDataUrl = async (url) => {
   if (!url) return null;
@@ -139,7 +148,7 @@ const findHeaderFooterElements = (container, contentEl) => {
       if (
         prev.matches &&
         prev.matches(
-          ".letterhead-content-area, .letterhead-letter-form, .letterhead-form-group, .letterhead-content"
+          ".letterhead-content-area, .letterhead-letter-form, .letterhead-form-group, .letterhead-content",
         )
       )
         break;
@@ -198,6 +207,7 @@ const generatePDF = async (
   letterType,
   logoUrl,
   recipientName,
+  title,
   employeeName,
   position,
   effectiveDate,
@@ -205,7 +215,7 @@ const generatePDF = async (
   gstinNumber,
   cinNumber,
   address,
-  preview = false
+  preview = false,
 ) => {
   if (typeof window === "undefined") {
     throw new Error("generatePDF must run in the browser environment.");
@@ -217,6 +227,24 @@ const generatePDF = async (
       format: "a4",
       orientation: "portrait",
     });
+
+    let fontLoaded = false;
+    try {
+      if (
+        insigniaRomanFont &&
+        typeof insigniaRomanFont === "string" &&
+        insigniaRomanFont.length > 0
+      ) {
+        doc.addFileToVFS("InsigniaRoman.ttf", insigniaRomanFont);
+        doc.addFont("InsigniaRoman.ttf", "InsigniaRoman", "normal");
+        doc.setFont("InsigniaRoman", "normal");
+        fontLoaded = true;
+      }
+    } catch (error) {
+      console.error("Error adding Insignia Roman font:", error);
+    }
+
+    let logoImage = logoBase64 || null;
 
     const pageWidth = doc.internal.pageSize.getWidth();
     const pageHeight = doc.internal.pageSize.getHeight();
@@ -250,8 +278,8 @@ const generatePDF = async (
       console.warn("header/footer load failed:", err);
     }
 
-    const headerImgElement = await loadImageElement(headerImageDataUrl);
-    const footerImgElement = await loadImageElement(footerImageDataUrl);
+    // Prefer the embedded logo as the default watermark/header logo.
+    logoImage = logoImage || headerImageDataUrl;
 
     const setGStateSafe = (opacity) => {
       try {
@@ -265,106 +293,195 @@ const generatePDF = async (
       } catch {}
     };
 
-    const addHeader = () => {
-      let headerBottom = margin;
-      if (headerImageDataUrl && headerImgElement) {
+    const addWatermark = () => {
+      if (
+        logoImage &&
+        typeof logoImage === "string" &&
+        logoImage.startsWith("data:image")
+      ) {
         try {
-          const maxHeaderWidth = pageWidth - margin * 2;
-          let drawW = headerImgElement?.naturalWidth || maxHeaderWidth;
-          let drawH = headerImgElement?.naturalHeight || 80;
-          if (drawW > maxHeaderWidth) {
-            const scale = maxHeaderWidth / drawW;
-            drawW = maxHeaderWidth;
-            drawH = drawH * scale;
-          }
-          const yForHeaderImage = margin - 10;
-          try {
-            doc.addImage(
-              headerImageDataUrl,
-              "PNG",
-              pageWidth / 2 - drawW / 2,
-              yForHeaderImage,
-              drawW,
-              drawH,
-              undefined,
-              "FAST"
-            );
-          } catch (err) {
-            try {
-              doc.addImage(
-                headerImageDataUrl,
-                "PNG",
-                pageWidth / 2 - drawW / 2,
-                yForHeaderImage,
-                drawW,
-                drawH
-              );
-            } catch (err2) {
-              console.warn("Failed to draw header image:", err2);
-            }
-          }
-          headerBottom = yForHeaderImage + drawH + 8;
-          doc.setDrawColor(0, 0, 0);
-          doc.setLineWidth(0.5);
-          doc.line(margin, headerBottom, pageWidth - margin, headerBottom);
-          return headerBottom + baseLineHeight;
-        } catch (err) {
-          console.warn("Error rendering header image:", err);
+          setGStateSafe(0.15);
+          const watermarkSize = 240;
+          doc.addImage(
+            logoImage,
+            "PNG",
+            (pageWidth - watermarkSize) / 2,
+            (pageHeight - watermarkSize) / 2,
+            watermarkSize,
+            watermarkSize,
+            undefined,
+            "FAST",
+          );
+        } catch (error) {
+          console.error("Error adding watermark:", error);
+        } finally {
+          setGStateSafe(1);
+        }
+      }
+    };
+
+    const addHeader = () => {
+      const logoWidth = 80;
+      const logoHeight = 80;
+      const logoTop = margin - 10;
+
+      if (logoImage && logoImage.startsWith("data:image")) {
+        try {
+          doc.addImage(
+            logoImage,
+            "PNG",
+            margin,
+            logoTop,
+            logoWidth,
+            logoHeight,
+          );
+        } catch (error) {
+          console.error("Error adding header logo:", error);
         }
       }
 
+      try {
+        doc.setFont(fontLoaded ? "InsigniaRoman" : "helvetica", "normal");
+        doc.setFontSize(26);
+        doc.setTextColor("#0F6679");
+        const companyNameText =
+          companyName || "Sukalpa Tech Solutions Pvt. Ltd.";
+        const logoRightEdge = margin + logoWidth + 10;
+        doc.text(companyNameText, logoRightEdge, margin + 25);
+
+        doc.setFont(fontLoaded ? "InsigniaRoman" : "helvetica", "normal");
+        doc.setFontSize(14);
+        doc.setTextColor(0, 0, 0);
+        const taglineText = "Let us join to support you deserve";
+        doc.text(taglineText, logoRightEdge, margin + 60);
+      } catch (error) {
+        console.error("Error adding heading:", error);
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(20);
+        doc.setTextColor("#0F6679");
+        doc.text(
+          companyName || "Sukalpa Tech Solutions Pvt. Ltd.",
+          margin + 90,
+          margin + 25,
+        );
+      }
+
+      const headerBottom = margin + Math.max(logoHeight, 55) + 15;
+      doc.setDrawColor(145, 219, 69);
+      doc.setLineWidth(1);
+      const lineLength = pageWidth - 2 * margin;
+      const solidLength = lineLength * 0.75;
+      doc.line(margin, headerBottom, margin + solidLength, headerBottom);
+      doc.setLineDash([2, 2], 0);
+      doc.line(
+        margin + solidLength,
+        headerBottom,
+        pageWidth - margin,
+        headerBottom,
+      );
+      doc.setLineDash();
+      doc.setDrawColor(0, 40, 111);
+      doc.setLineWidth(3);
+      doc.line(margin, headerBottom + 4, pageWidth - margin, headerBottom + 4);
+      doc.setDrawColor(0, 0, 0);
+      doc.setLineWidth(0.5);
+      doc.setLineDash();
       return headerBottom + baseLineHeight;
     };
 
     const addFooter = (pageNumber, totalPages) => {
-      if (footerImageDataUrl && footerImgElement) {
-        try {
-          const maxFooterWidth = pageWidth - margin * 2;
-          let drawW = footerImgElement?.naturalWidth || maxFooterWidth;
-          let drawH = footerImgElement?.naturalHeight || 80;
-          if (drawW > maxFooterWidth) {
-            const scale = maxFooterWidth / drawW;
-            drawW = maxFooterWidth;
-            drawH = drawH * scale;
-          }
-          const yForFooterImage = pageHeight - footerHeight - drawH / 2;
-          try {
-            doc.addImage(
-              footerImageDataUrl,
-              "PNG",
-              pageWidth / 2 - drawW / 2,
-              yForFooterImage,
-              drawW,
-              drawH,
-              undefined,
-              "FAST"
-            );
-          } catch (err) {
-            try {
-              doc.addImage(
-                footerImageDataUrl,
-                "PNG",
-                pageWidth / 2 - drawW / 2,
-                yForFooterImage,
-                drawW,
-                drawH
-              );
-            } catch (err2) {
-              console.warn("Failed to draw footer image:", err2);
-            }
-          }
-        } catch (err) {
-          console.warn("Error rendering footer image:", err);
-        }
-      }
-
-      const pageInfo = `Page ${pageNumber} of ${totalPages}`;
       doc.setFont("helvetica", "normal");
-      doc.setFontSize(9);
+      doc.setFontSize(8);
       doc.setTextColor(100, 100, 100);
-      doc.text(pageInfo, pageWidth - margin, pageHeight - 12, {
-        align: "right",
+
+      const contactInfo = {
+        email: "admin@sukalpatechsolutions.com",
+        website: "https://sukalpatechsolutions.com",
+        phone: "+91 78928-59968",
+      };
+      const addressText = companyName
+        ? `${companyName} | #71, Bauxite Road, Sarathi Nagar, Belagavi -591108`
+        : "Sukalpa Tech Solutions Pvt Ltd. | #71, Bauxite Road, Sarathi Nagar, Belagavi -591108";
+      const pageInfo = `Page ${pageNumber} of ${totalPages}`;
+
+      const footerY = pageHeight - footerHeight;
+      const centerX = pageWidth / 2;
+      const gapBetweenItems = 20;
+      const iconSize = 8;
+      const iconTextGap = 5;
+      const iconVerticalOffset = 2;
+
+      const lineWidth = 450;
+      const lineSpacing = 4;
+      const lineY = footerY - 5;
+
+      doc.setDrawColor(145, 219, 69);
+      doc.setLineWidth(1);
+      const solidLength = lineWidth * 0.75;
+      doc.line(
+        centerX - lineWidth / 2,
+        lineY,
+        centerX - lineWidth / 2 + solidLength,
+        lineY,
+      );
+      doc.setLineDash([2, 2], 0);
+      doc.line(
+        centerX - lineWidth / 2 + solidLength,
+        lineY,
+        centerX + lineWidth / 2,
+        lineY,
+      );
+      doc.setLineDash();
+
+      doc.setDrawColor(0, 40, 111);
+      doc.setLineWidth(3);
+      doc.line(
+        centerX - lineWidth / 2,
+        lineY + lineSpacing,
+        centerX + lineWidth / 2,
+        lineY + lineSpacing,
+      );
+
+      const contactY = footerY + 15;
+      const contactItems = [
+        { icon: emailIconBase64, text: contactInfo.email },
+        { icon: websiteIconBase64, text: contactInfo.website },
+        { icon: phoneIconBase64, text: contactInfo.phone },
+      ];
+
+      let totalContactWidth = 0;
+      const itemWidths = contactItems.map((item) => {
+        const textWidth = doc.getTextWidth(item.text);
+        const itemWidth = (item.icon ? iconSize + iconTextGap : 0) + textWidth;
+        totalContactWidth +=
+          itemWidth + (totalContactWidth > 0 ? gapBetweenItems : 0);
+        return itemWidth;
       });
+
+      let contactX = centerX - totalContactWidth / 2;
+
+      contactItems.forEach(({ icon, text }, index) => {
+        try {
+          if (icon) {
+            const iconY = contactY - iconSize / 2 + iconVerticalOffset;
+            const textY = iconY + iconSize / 2 + 2;
+            doc.addImage(icon, "PNG", contactX, iconY, iconSize, iconSize);
+            doc.text(text, contactX + iconSize + iconTextGap, textY);
+            contactX += itemWidths[index] + gapBetweenItems;
+          } else {
+            doc.text(text, contactX, contactY);
+            contactX += itemWidths[index] + gapBetweenItems;
+          }
+        } catch (error) {
+          console.error(`Error adding contact icon for ${text}:`, error);
+          doc.text(text, contactX, contactY);
+          contactX += itemWidths[index] + gapBetweenItems;
+        }
+      });
+
+      const addressY = contactY + 15;
+      doc.text(addressText, centerX, addressY, { align: "center" });
+      doc.text(pageInfo, centerX, addressY + 15, { align: "center" });
     };
 
     const checkPageOverflow = (yPos, requiredHeight) => {
@@ -375,58 +492,19 @@ const generatePDF = async (
     const addNewPage = () => {
       addFooter(doc.getNumberOfPages(), doc.getNumberOfPages());
       doc.addPage();
+      addWatermark();
       const headerBottomNew = addHeader();
       return headerBottomNew + 20;
     };
 
-    const watermarkEl = element?.querySelector?.(".pdf-watermark") || null;
-    let watermarkDataUrl = null;
-    let watermarkImgElement = null;
-    let watermarkStyle = null;
-    if (watermarkEl) {
-      try {
-        watermarkDataUrl = await imgElementToDataUrl(watermarkEl);
-        if (watermarkDataUrl) {
-          watermarkImgElement = await loadImageElement(watermarkDataUrl);
-        }
-      } catch (e) {
-        console.warn("Watermark load failed:", e);
-      }
-
-      watermarkStyle = {
-        left:
-          watermarkEl.style?.left ||
-          watermarkEl.getAttribute("data-left") ||
-          null,
-        top:
-          watermarkEl.style?.top ||
-          watermarkEl.getAttribute("data-top") ||
-          null,
-        width:
-          watermarkEl.style?.width ||
-          watermarkEl.getAttribute("data-width") ||
-          null,
-        height:
-          watermarkEl.style?.height ||
-          watermarkEl.getAttribute("data-height") ||
-          null,
-        opacity:
-          watermarkEl.style && watermarkEl.style.opacity
-            ? parseFloat(watermarkEl.style.opacity)
-            : watermarkEl.getAttribute("data-opacity")
-            ? parseFloat(watermarkEl.getAttribute("data-opacity"))
-            : null,
-        transform: watermarkEl.style?.transform || null,
-      };
-    }
-
+    addWatermark();
     const headerBottom = addHeader();
     let yPosition = headerBottom + 20;
 
     if (element) {
       const dateInput =
         element.querySelector?.(
-          '.letterhead-input-field[placeholder="Date"]'
+          '.letterhead-input-field[placeholder="Date"]',
         ) || element.querySelector?.('input[name="date"], input[id="date"]');
       const dateVal =
         (dateInput && dateInput.value) ||
@@ -445,13 +523,13 @@ const generatePDF = async (
     doc.setFontSize(12);
     const subjectInput =
       element?.querySelector(
-        '.letterhead-input-field[placeholder="Subject"]'
+        '.letterhead-input-field[placeholder="Subject"]',
       ) || element?.querySelector('input[name="subject"], input[id="subject"]');
     const subjectText = subjectInput?.value || "";
     if (subjectText) {
       const subjectLines = doc.splitTextToSize(
         subjectText,
-        pageWidth - margin * 2
+        pageWidth - margin * 2,
       );
       doc.text(subjectLines, pageWidth / 2, yPosition, { align: "center" });
       yPosition += subjectLines.length * baseLineHeight + paragraphSpacing;
@@ -466,7 +544,7 @@ const generatePDF = async (
       (titleInput?.value ? titleInput.value + " " : "") +
       (recipientName ||
         element?.querySelector(
-          '.letterhead-input-field[placeholder="Recipient Name"]'
+          '.letterhead-input-field[placeholder="Recipient Name"]',
         )?.value ||
         "");
     if (recipientNameVal && recipientNameVal.trim()) {
@@ -474,7 +552,7 @@ const generatePDF = async (
       yPosition += baseLineHeight;
       const recipientLines = doc.splitTextToSize(
         recipientNameVal,
-        pageWidth - margin * 2
+        pageWidth - margin * 2,
       );
       doc.text(recipientLines, margin, yPosition);
       yPosition += recipientLines.length * baseLineHeight + paragraphSpacing;
@@ -489,7 +567,7 @@ const generatePDF = async (
       yPosition += baseLineHeight;
       const addressLines = doc.splitTextToSize(
         addressVal,
-        pageWidth - margin * 2
+        pageWidth - margin * 2,
       );
       doc.text(addressLines, margin, yPosition);
       yPosition += addressLines.length * baseLineHeight + paragraphSpacing;
@@ -543,6 +621,7 @@ const generatePDF = async (
 
     const replacements = {
       "\\[Recipient Name\\]": recipientName || "",
+      "\\[Title\\]": title || "",
       "\\[Employee Name\\]": employeeName || "",
       "\\[Position\\]": position || "",
       "\\[Date\\]": effectiveDate || "",
@@ -561,7 +640,7 @@ const generatePDF = async (
     const parser = new DOMParser();
     const docHTML = parser.parseFromString(
       `<div>${htmlContent || ""}</div>`,
-      "text/html"
+      "text/html",
     );
     const contentNodes = docHTML.querySelector("div").childNodes;
 
@@ -621,7 +700,7 @@ const generatePDF = async (
           thead.querySelectorAll("tr").forEach((tr) => {
             const cells = [];
             tr.querySelectorAll("th").forEach((th) =>
-              cells.push({ text: th.textContent.trim(), isHeader: true })
+              cells.push({ text: th.textContent.trim(), isHeader: true }),
             );
             rows.push(cells);
           });
@@ -630,14 +709,14 @@ const generatePDF = async (
           tbody.querySelectorAll("tr").forEach((tr) => {
             const cells = [];
             tr.querySelectorAll("td").forEach((td) =>
-              cells.push({ text: td.textContent.trim() })
+              cells.push({ text: td.textContent.trim() }),
             );
             rows.push(cells);
           });
         }
         const colCount = rows.reduce((m, r) => Math.max(m, r.length), 0);
         const colWidths = new Array(colCount).fill(
-          (pageWidth - margin * 2) / colCount
+          (pageWidth - margin * 2) / colCount,
         );
 
         const rowHeight = 20;
@@ -655,7 +734,7 @@ const generatePDF = async (
               doc.rect(x, y, colWidths[cIdx], rowHeight);
               const textLines = doc.splitTextToSize(
                 cell.text || "",
-                colWidths[cIdx] - 6
+                colWidths[cIdx] - 6,
               );
               doc.text(textLines, x + 4, y + 14);
               x += colWidths[cIdx];
@@ -690,12 +769,12 @@ const generatePDF = async (
     }
 
     const sigField = element?.querySelector?.(
-      '.letterhead-input-field[placeholder="Signature (Your Name, Designation)"]'
+      '.letterhead-input-field[placeholder="Signature (Your Name, Designation)"]',
     );
     if (sigField && sigField.value && sigField.value.trim()) {
       const sigLines = doc.splitTextToSize(
         sigField.value.trim(),
-        pageWidth - margin * 2
+        pageWidth - margin * 2,
       );
       if (
         !checkPageOverflow(yPosition, sigLines.length * baseLineHeight + 20)
@@ -707,112 +786,6 @@ const generatePDF = async (
     }
 
     addFooter(doc.getNumberOfPages(), doc.getNumberOfPages());
-
-    if (watermarkDataUrl && watermarkImgElement && watermarkStyle) {
-      try {
-        const totalPages = doc.getNumberOfPages();
-        const computeTarget = (styleW, styleH, imgEl) => {
-          let tgtW = parseLength(styleW, pageWidth);
-          let tgtH = parseLength(styleH, pageHeight);
-
-          if (tgtW && !tgtH && imgEl) {
-            const ratio =
-              (imgEl.naturalHeight || imgEl.height) /
-              (imgEl.naturalWidth || imgEl.width);
-            tgtH = tgtW * ratio;
-          } else if (!tgtW && tgtH && imgEl) {
-            const ratio =
-              (imgEl.naturalWidth || imgEl.width) /
-              (imgEl.naturalHeight || imgEl.height);
-            tgtW = tgtH * ratio;
-          } else if (!tgtW && !tgtH && imgEl) {
-            tgtW = pageWidth * 0.6;
-            const ratio =
-              (imgEl.naturalHeight || imgEl.height) /
-              (imgEl.naturalWidth || imgEl.width);
-            tgtH = tgtW * ratio;
-          }
-          return { tgtW, tgtH };
-        };
-
-        const { tgtW, tgtH } = computeTarget(
-          watermarkStyle.width,
-          watermarkStyle.height,
-          watermarkImgElement
-        );
-
-        const computeCenter = (leftStyle, topStyle, width, height) => {
-          const xCenter = (() => {
-            const px = parseLength(leftStyle, pageWidth);
-            if (px != null) return px;
-            return pageWidth / 2;
-          })();
-          const yCenter = (() => {
-            const py = parseLength(topStyle, pageHeight);
-            if (py != null) return py;
-            return pageHeight / 2;
-          })();
-          const x = xCenter - (width || 0) / 2;
-          const y = yCenter - (height || 0) / 2;
-          return { x, y };
-        };
-
-        const opacity =
-          typeof watermarkStyle.opacity === "number" &&
-          !isNaN(watermarkStyle.opacity)
-            ? watermarkStyle.opacity
-            : 0.12;
-
-        for (let p = 1; p <= totalPages; p++) {
-          doc.setPage(p);
-          try {
-            setGStateSafe(opacity);
-          } catch (e) {}
-          const { x, y } = computeCenter(
-            watermarkStyle.left,
-            watermarkStyle.top,
-            tgtW,
-            tgtH
-          );
-          try {
-            doc.addImage(
-              watermarkDataUrl,
-              "PNG",
-              x,
-              y,
-              tgtW,
-              tgtH,
-              undefined,
-              "FAST"
-            );
-          } catch (err) {
-            try {
-              doc.addImage(
-                watermarkDataUrl,
-                "JPEG",
-                x,
-                y,
-                tgtW,
-                tgtH,
-                undefined,
-                "FAST"
-              );
-            } catch (err2) {
-              try {
-                doc.addImage(watermarkDataUrl, x, y, tgtW, tgtH);
-              } catch (err3) {
-                console.warn("Failed to draw watermark image on page", p, err3);
-              }
-            }
-          }
-          try {
-            setGStateSafe(1);
-          } catch (e) {}
-        }
-      } catch (e) {
-        console.warn("Failed to render watermark across pages:", e);
-      }
-    }
 
     if (preview) {
       return doc.output("blob");

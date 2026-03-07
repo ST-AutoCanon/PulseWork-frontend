@@ -29,12 +29,14 @@ export default function FiltersPanel({
           <input
             type="date"
             name="from_date"
+            placeholder="From"
             value={filters.from_date || ""}
             onChange={handleFilterChange}
           />
           <input
             type="date"
             name="to_date"
+            placeholder="To"
             value={filters.to_date || ""}
             onChange={handleFilterChange}
           />

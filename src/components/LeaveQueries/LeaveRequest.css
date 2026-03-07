@@ -152,15 +152,24 @@
   flex-direction: column;
   justify-content: center;
   background-color: #7b7a7a;
-  max-height: 84vh;
+  max-height: 90vh;
   width: 60%;
-  padding: 0%;
+  padding: 0;
   box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
   box-sizing: border-box;
   position: fixed;
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
+  overflow: auto;
+}
+
+@media (max-width: 768px) {
+  .leave-modal-content {
+    width: 90%;
+    max-width: 480px;
+    padding: 12px 0;
+  }
 }
 
 .leave-form {
@@ -172,6 +181,8 @@
   border: 1px solid #ccc;
   width: 100%;
   height: 100%;
+  max-height: 100%;
+  overflow: auto;
   box-sizing: border-box;
 }
 
@@ -1819,6 +1830,7 @@
 
   .compact-team-row input::placeholder {
     color: #94a3b8;
+    opacity: 1;
   }
 
   .compact-buttons {
@@ -1853,6 +1865,17 @@
   .compact-buttons button:hover {
     transform: translateY(-1px);
     box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
+  }
+
+  .leave-form-actions {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  .leave-form-actions .leave-save,
+  .leave-form-actions .leave-cancel {
+    width: 100%;
   }
 }
 

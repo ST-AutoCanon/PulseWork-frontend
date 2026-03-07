@@ -23,10 +23,35 @@ export const parseDateOnly = (isoDate) => {
   return null;
 };
 
-export const calculateDays = (startDate, endDate, h_f_day = "") => {
+export const calculateDays = (
+  startDate,
+  endDate,
+  h_f_day = "",
+  excludeSundays = false,
+) => {
   const s = parseDateOnly(startDate);
   const e = parseDateOnly(endDate);
   if (!s || !e || e < s) return 0;
+
+  // If we're excluding Sundays, we need to count days explicitly.
+  if (excludeSundays) {
+    let count = 0;
+    for (let d = new Date(s); d <= e; d.setDate(d.getDate() + 1)) {
+      if (d.getDay() !== 0) {
+        count += 1;
+      }
+    }
+
+    // Special handling for half-day requests on the same day.
+    if (
+      String(h_f_day).toLowerCase().includes("half") &&
+      s.getTime() === e.getTime()
+    ) {
+      return s.getDay() === 0 ? 0 : 0.5;
+    }
+
+    return count;
+  }
 
   const msPerDay = 24 * 60 * 60 * 1000;
   const diffDays = Math.round((e - s) / msPerDay) + 1;

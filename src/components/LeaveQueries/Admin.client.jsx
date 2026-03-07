@@ -636,7 +636,12 @@ export default function Admin({ openPolicyId = null }) {
     const upd = statusUpdates[leaveId] || {};
 
     if (upd.status === "Approved") {
-      const days = calculateDays(query.start_date, query.end_date);
+      const days = calculateDays(
+        query.start_date,
+        query.end_date,
+        query.H_F_day,
+        true,
+      );
       const balances = await loadLeaveBalance(query.employee_id);
       const bal =
         balances.find((r) => {
@@ -1543,7 +1548,12 @@ export default function Admin({ openPolicyId = null }) {
                           <div className="comment-preview">{query.reason}</div>
                         </td>
                         <td>
-                          {calculateDays(query.start_date, query.end_date)}
+                          {calculateDays(
+                            query.start_date,
+                            query.end_date,
+                            query.H_F_day,
+                            true,
+                          )}
                         </td>
                         <td>
                           <select

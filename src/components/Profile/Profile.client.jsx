@@ -359,7 +359,7 @@ const Profile = ({ onClose, notificationId = null }) => {
     const fetchAssets = async () => {
       try {
         const r = await axios.get(
-          `${BASE_URL}/assets/assigned-assets/${employeeId}`,
+          `${BASE_URL}/api/assigned-assets/${employeeId}`,
           {
             withCredentials: true,
             headers: {

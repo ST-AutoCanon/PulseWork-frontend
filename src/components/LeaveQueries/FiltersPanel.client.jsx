@@ -26,20 +26,32 @@ export default function FiltersPanel({
     return (
       <div className="mobile-compact-filter">
         <div className="compact-date-row">
-          <input
-            type="date"
-            name="from_date"
-            placeholder="From"
-            value={filters.from_date || ""}
-            onChange={handleFilterChange}
-          />
-          <input
-            type="date"
-            name="to_date"
-            placeholder="To"
-            value={filters.to_date || ""}
-            onChange={handleFilterChange}
-          />
+          <div
+            className="date-input-wrapper"
+            data-placeholder="From"
+            data-empty={!filters.from_date}
+          >
+            <input
+              type="date"
+              name="from_date"
+              placeholder="From"
+              value={filters.from_date || ""}
+              onChange={handleFilterChange}
+            />
+          </div>
+          <div
+            className="date-input-wrapper"
+            data-placeholder="To"
+            data-empty={!filters.to_date}
+          >
+            <input
+              type="date"
+              name="to_date"
+              placeholder="To"
+              value={filters.to_date || ""}
+              onChange={handleFilterChange}
+            />
+          </div>
         </div>
 
         {canViewTeam && (

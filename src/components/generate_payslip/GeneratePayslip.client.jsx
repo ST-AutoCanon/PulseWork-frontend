@@ -805,9 +805,9 @@ export default function GeneratePayslip() {
           designation:
             (selected.position || selected.designation || "") +
             (selected.department_name ? ` (${selected.department_name})` : ""),
-          dateOfJoining: selected.date_of_joining
-            ? selected.date_of_joining.split("T")[0]
-            : "",
+         dateOfJoining: selected.date_of_joining
+  ? selected.date_of_joining.substring(0, 10)
+  : "",
           accountNo: selected.account_no || "",
           uinNo: selected.uin_no || "",
           panNumber: selected.pan_number || "",

@@ -15,10 +15,18 @@
 
 .leave-filters {
   display: flex;
-  justify-content: flex-start;
+  justify-content: space-between;
   align-items: center;
   width: 100%;
+  flex-wrap: wrap;
   gap: 1%;
+}
+
+/* ensure filter buttons size automatically instead of fixed 12% */
+.leave-filters .filter-button,
+.leave-filters .leave-form-button {
+  width: auto;
+  flex: 0 0 auto;
 }
 
 .leave-filters label {
@@ -36,7 +44,6 @@
 
 .filter-button,
 .leave-form-button {
-  margin-left: auto;
   padding: 1%;
   font-size: 100%;
   cursor: pointer;
@@ -744,7 +751,9 @@
 
   .filter-button,
   .leave-form-button {
-    width: 100%;
+    /* allow buttons to size naturally within filter row */
+    width: auto;
+    flex: 0 0 auto;
     font-size: medium;
     padding: 10px;
   }
@@ -1309,8 +1318,15 @@
   padding: 8px 4px;
 }
 
+/* make the cards container flex-grow so arrows and cards fully fill the row */
+.venn-cards-container {
+  flex: 1 1 auto;
+  min-width: 0; /* allows children to shrink when needed */
+}
+
+/* nav column should not grow */
 .venn-nav-column {
-  width: 44px;
+  flex: 0 0 44px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1428,7 +1444,7 @@
   align-items: flex-start;
 
   justify-content: flex-start;
-  gap: 30px;
+  gap: 4%;
 
   box-sizing: border-box;
 }
@@ -1510,6 +1526,12 @@
   }
   .venn-cards-container {
     gap: 12px;
+  }
+
+  /* mobile filters: make buttons full width for easy tapping */
+  .leave-filters .filter-button,
+  .leave-filters .leave-form-button {
+    width: 100%;
   }
 }
 
@@ -1851,13 +1873,6 @@
 }
 
 @media (min-width: 769px) {
-  .leave-filters {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 8px 10px;
-  }
-
   .team-search-input {
     padding: 8px 10px;
     border: 1px solid #ccc;

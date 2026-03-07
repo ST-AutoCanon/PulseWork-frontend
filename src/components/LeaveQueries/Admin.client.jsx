@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
@@ -14,46 +13,12 @@ import {
   normalizeLeaveTypes,
   getTypeKey,
   getTypeLabel,
+  calculateDays,
 } from "./leaveUtils.client";
 
 const formatDate = (isoDate) => {
   if (!isoDate) return "";
   return new Date(isoDate).toISOString().split("T")[0];
-};
-
-const parseDateOnly = (isoDate) => {
-  if (!isoDate) return null;
-  const d = new Date(isoDate);
-  if (isNaN(d.getTime())) {
-    const parts = String(isoDate).split("-");
-    if (parts.length >= 3) {
-      const [y, m, day] = parts;
-      return new Date(Number(y), Number(m) - 1, Number(day));
-    }
-    return null;
-  }
-  return new Date(d.getFullYear(), d.getMonth(), d.getDate());
-};
-
-const calculateDays = (startDate, endDate) => {
-  const s = parseDateOnly(startDate);
-  const e = parseDateOnly(endDate);
-  if (!s || !e) return 0;
-
-  let cur = new Date(s.getFullYear(), s.getMonth(), s.getDate());
-  const last = new Date(e.getFullYear(), e.getMonth(), e.getDate());
-  if (cur > last) return 0;
-
-  let count = 0;
-  while (cur <= last) {
-    const dow = cur.getDay(); // 0 = Sunday
-    if (dow !== 0) {
-      count++;
-    }
-    cur.setDate(cur.getDate() + 1);
-  }
-
-  return count;
 };
 
 const API_BASE = process.env.NEXT_PUBLIC_BACKEND_URL || "";
@@ -1753,5 +1718,3 @@ export default function Admin({ openPolicyId = null }) {
     </div>
   );
 }
-
-

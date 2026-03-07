@@ -678,17 +678,36 @@ export default function useProjectForm({
 
   const openAttachment = async (fileName) => {
     try {
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_BACKEND_URL}/pjattachments/${fileName}`,
-        {
-          method: "GET",
-          credentials: "include",
-          headers: {
-            "x-api-key": process.env.NEXT_PUBLIC_API_KEY,
-            ...(orgId ? { "x-org-id": orgId } : {}),
-          },
+      // Ensure the attachment URL is built correctly regardless of whether
+      // the backend value already includes the pjattachments prefix.
+      let attachmentPath = String(fileName || "").trim();
+      if (!attachmentPath) return;
+
+      const backendUrl =
+        process.env.NEXT_PUBLIC_BACKEND_URL?.replace(/\/+$/, "") || "";
+
+      let url;
+      if (
+        attachmentPath.startsWith("http://") ||
+        attachmentPath.startsWith("https://")
+      ) {
+        url = attachmentPath;
+      } else if (attachmentPath.startsWith("/pjattachments")) {
+        url = `${backendUrl}${attachmentPath}`;
+      } else {
+        // Strip leading slashes to avoid doubling
+        const cleanPath = attachmentPath.replace(/^\/+/, "");
+        url = `${backendUrl}/pjattachments/${cleanPath}`;
+      }
+
+      const response = await fetch(url, {
+        method: "GET",
+        credentials: "include",
+        headers: {
+          "x-api-key": process.env.NEXT_PUBLIC_API_KEY,
+          ...(orgId ? { "x-org-id": orgId } : {}),
         },
-      );
+      });
 
       if (!response.ok) throw new Error("Failed to fetch the file.");
       const blob = await response.blob();

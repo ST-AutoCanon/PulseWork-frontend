@@ -153,12 +153,21 @@ export default function useLeaveRequest() {
     }
   };
 
-  const hasExistingSameMonthForType = (typeKey, startDateStr) => {
+  const hasExistingSameMonthForType = (
+    typeKey,
+    startDateStr,
+    excludeLeaveId = null,
+  ) => {
     try {
       const start = startDateStr ? new Date(startDateStr) : new Date();
       const month = start.getMonth();
       const year = start.getFullYear();
+      const excludeId = excludeLeaveId ? String(excludeLeaveId) : null;
+
       const arr = (leaveRequests.self || []).filter((r) => {
+        const leaveId = String(r.leave_id || r.id || "");
+        if (excludeId && leaveId && leaveId === excludeId) return false;
+
         const rType = String(
           r.leave_type || r.type || r.leaveType || "",
         ).toLowerCase();
@@ -623,10 +632,29 @@ export default function useLeaveRequest() {
         );
       });
 
+      const normalizeStatusForApi = (status) => {
+        if (!status) return "";
+        const trimmed = String(status).trim();
+        if (!trimmed) return "";
+        // Ensure status values (e.g., pending/approved/rejected) match what the backend stores.
+        return trimmed[0].toUpperCase() + trimmed.slice(1).toLowerCase();
+      };
+
       let teamRequests = [];
       if (canViewTeam) {
         const teamUrl = `${BACKEND}/team-lead/${employeeId}`;
-        const teamResponse = await fetch(teamUrl, {
+        const teamParams = new URLSearchParams();
+        if (filters.from_date)
+          teamParams.append("from_date", filters.from_date);
+        if (filters.to_date) teamParams.append("to_date", filters.to_date);
+        if (teamSearch) teamParams.append("search", teamSearch);
+        if (teamStatus)
+          teamParams.append("status", normalizeStatusForApi(teamStatus));
+
+        const teamFinalUrl = teamParams.toString()
+          ? `${teamUrl}?${teamParams}`
+          : teamUrl;
+        const teamResponse = await fetch(teamFinalUrl, {
           credentials: "include",
           headers,
         });
@@ -1106,6 +1134,7 @@ export default function useLeaveRequest() {
       const alreadyThisMonth = hasExistingSameMonthForType(
         selectedTypeRaw,
         formData.startDate,
+        editingId,
       );
       if (alreadyThisMonth) {
         showAlert(

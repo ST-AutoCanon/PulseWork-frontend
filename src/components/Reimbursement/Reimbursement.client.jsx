@@ -2247,6 +2247,22 @@ const Reimbursement = () => {
             const canEdit = isPending;
             const canDelete = isPending;
 
+            const primaryCardDate =
+              claim.date_range ||
+              claim.date ||
+              (claim.from_date && claim.to_date
+                ? `${claim.from_date} - ${claim.to_date}`
+                : null) ||
+              (Array.isArray(claim.lines) && claim.lines[0]?.payload
+                ? claim.lines[0].payload.date ||
+                  (claim.lines[0].payload.from_date &&
+                  claim.lines[0].payload.to_date
+                    ? `${claim.lines[0].payload.from_date} - ${claim.lines[0].payload.to_date}`
+                    : claim.lines[0].payload.from_date)
+                : null);
+
+            const cardPurpose = claim.purpose || claim.comments || "-";
+
             return (
               <div className="rb-reimbursement-card" key={claim.id}>
                 <div className="rb-card-header">
@@ -2267,10 +2283,19 @@ const Reimbursement = () => {
                   </p>
                   <p>
                     <strong>Date:</strong>{" "}
-                    {claim.date ? formatDisplayDate(claim.date) : " "}
+                    {primaryCardDate
+                      ? Array.isArray(primaryCardDate)
+                        ? primaryCardDate.map(formatDisplayDate).join(" - ")
+                        : String(primaryCardDate).includes(" - ")
+                          ? String(primaryCardDate)
+                              .split(" - ")
+                              .map(formatDisplayDate)
+                              .join(" - ")
+                          : formatDisplayDate(primaryCardDate)
+                      : " "}
                   </p>
                   <p>
-                    <strong>Purpose:</strong> {claim.purpose}
+                    <strong>Purpose:</strong> {cardPurpose}
                   </p>
                   <p>
                     <strong>Invoice(s):</strong> {invDisplay}

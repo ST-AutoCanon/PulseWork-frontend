@@ -237,6 +237,21 @@ export default function EmployeeForm({
     fd.append(key, JSON.stringify([s]));
   }
 
+  const resolveUrlValue = (field, ...alternatives) => {
+    const hasValue = (v) =>
+      Array.isArray(v) ? v.length > 0 : typeof v === "string" && v.trim();
+
+    const value = formData[field];
+    if (hasValue(value)) return value;
+
+    for (const alt of alternatives) {
+      const v = formData[alt];
+      if (hasValue(v)) return v;
+    }
+
+    return null;
+  };
+
   function appendFilesFromArray(fd, field, arr) {
     if (!Array.isArray(arr)) return;
     for (const f of arr) {
@@ -276,6 +291,15 @@ export default function EmployeeForm({
           const urlOnly = exp.files.filter((x) => typeof x === "string");
           if (urlOnly.length)
             fd.append(`experience[${idx}][doc_urls]`, JSON.stringify(urlOnly));
+        } else if (Array.isArray(exp.doc_urls)) {
+          const urlOnly = exp.doc_urls.filter((x) => typeof x === "string");
+          if (urlOnly.length)
+            fd.append(`experience[${idx}][doc_urls]`, JSON.stringify(urlOnly));
+        } else if (typeof exp.doc_urls === "string" && exp.doc_urls.trim()) {
+          fd.append(
+            `experience[${idx}][doc_urls]`,
+            JSON.stringify([exp.doc_urls.trim()]),
+          );
         }
       }
     });
@@ -413,26 +437,28 @@ export default function EmployeeForm({
 
       appendAdditionalCertsEntries(fd, formData.additional_certs);
 
+      const resolveCertUrls = (field) =>
+        resolveUrlValue(field, `${field}_url`, `${field}_urls`);
+
       if (!hasFileIn(formData.tenth_cert))
-        appendUrlArray(fd, "tenth_cert_url", formData.tenth_cert);
+        appendUrlArray(fd, "tenth_cert_url", resolveCertUrls("tenth_cert"));
       if (!hasFileIn(formData.twelfth_cert))
-        appendUrlArray(fd, "twelfth_cert_url", formData.twelfth_cert);
+        appendUrlArray(fd, "twelfth_cert_url", resolveCertUrls("twelfth_cert"));
       if (!hasFileIn(formData.ug_cert))
-        appendUrlArray(fd, "ug_cert_url", formData.ug_cert);
+        appendUrlArray(fd, "ug_cert_url", resolveCertUrls("ug_cert"));
       if (!hasFileIn(formData.pg_cert))
-        appendUrlArray(fd, "pg_cert_url", formData.pg_cert);
+        appendUrlArray(fd, "pg_cert_url", resolveCertUrls("pg_cert"));
 
       if (!hasFileIn(formData.other_docs))
         appendUrlArray(
           fd,
           "other_docs_urls",
-          formData.other_docs || formData.other_docs_urls,
+          resolveUrlValue("other_docs", "other_docs_urls"),
         );
 
-      if (!isFile(formData.resume) && formData.resume) {
-        appendUrlArray(fd, "resume_url", formData.resume);
-      } else if (!formData.resume && formData.resume_url) {
-        appendUrlArray(fd, "resume_url", formData.resume_url);
+      const resumeUrl = resolveUrlValue("resume", "resume_url", "resume_urls");
+      if (!hasFileIn(formData.resume) && resumeUrl) {
+        appendUrlArray(fd, "resume_url", resumeUrl);
       }
 
       await onSubmit(fd);

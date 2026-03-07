@@ -129,7 +129,7 @@ function MobileTopbar(props) {
             <div className="mobile-calendar-overlay">
               <HolidayCalendar closeCalendar={() => setShowCalendar(false)} />
             </div>,
-            portalRoot
+            portalRoot,
           )
         ) : (
           <div className="mobile-calendar-inline">
@@ -159,12 +159,12 @@ export default function Topbar() {
 
   const allowedIframeOrigins = useMemo(
     () => parseAllowedOrigins(process.env.NEXT_PUBLIC_ALLOWED_IFRAME_ORIGINS),
-    []
+    [],
   );
 
   const parentOriginCandidate = useMemo(
     () => resolveParentOrigin(allowedIframeOrigins),
-    [allowedIframeOrigins]
+    [allowedIframeOrigins],
   );
 
   useEffect(() => {
@@ -212,7 +212,7 @@ export default function Topbar() {
       .then((res) => {
         const list = res?.data?.notifications || res?.data?.message || [];
         setNotificationCount(
-          Array.isArray(list) ? list.length : list?.length || 0
+          Array.isArray(list) ? list.length : list?.length || 0,
         );
       })
       .catch((err) => {
@@ -241,32 +241,55 @@ export default function Topbar() {
       role === "Admin"
         ? "/images/admin-avatar.png"
         : gender === "Female"
-        ? "/images/female-avatar.jpeg"
-        : "/images/male-avatar.jpeg";
+          ? "/images/female-avatar.jpeg"
+          : "/images/male-avatar.jpeg";
 
     const defaultPath = defaultAvatar(
       user?.role,
-      user?.gender ?? user?.dashboard?.gender
+      user?.gender ?? user?.dashboard?.gender,
     );
 
     const normalizeInputUrl = (maybe) => {
       if (!maybe) return null;
+
       if (Array.isArray(maybe))
         return maybe.length > 0 ? normalizeInputUrl(maybe[0]) : null;
+
       if (typeof maybe === "object") {
-        return maybe.url || maybe.path || maybe.file || null;
+        if (typeof maybe.url === "string" && maybe.url) return maybe.url;
+        if (typeof maybe.path === "string" && maybe.path) return maybe.path;
+        if (typeof maybe.file === "string" && maybe.file) return maybe.file;
+        if (typeof maybe.photoUrl === "string" && maybe.photoUrl)
+          return maybe.photoUrl;
+        if (typeof maybe.photo_url === "string" && maybe.photo_url)
+          return maybe.photo_url;
+        if (typeof maybe.avatar === "string" && maybe.avatar)
+          return maybe.avatar;
+        if (typeof maybe.image === "string" && maybe.image) return maybe.image;
+        if (Object.keys(maybe).length === 0) return null;
+        for (const k of ["link", "href", "download"]) {
+          if (typeof maybe[k] === "string" && maybe[k]) return maybe[k];
+        }
+        return null;
       }
+
       if (typeof maybe === "string") {
         const s = maybe.trim();
         if (!s) return null;
+
         try {
-          const parsed = JSON.parse(decodeURIComponent(s));
+          const parsed = JSON.parse(s);
           return normalizeInputUrl(Array.isArray(parsed) ? parsed[0] : parsed);
         } catch {
           return s;
         }
       }
-      return null;
+
+      try {
+        return String(maybe);
+      } catch {
+        return null;
+      }
     };
 
     const buildFetchUrl = (url) => {
@@ -280,7 +303,14 @@ export default function Topbar() {
     };
 
     const dashboard = user?.dashboard ?? {};
-    const photoUrl = dashboard.photoUrl ?? dashboard.photo_url ?? null;
+    const photoUrl =
+      dashboard.photoUrl ||
+      dashboard.photo_url ||
+      user?.photoUrl ||
+      user?.photo_url ||
+      user?.raw?.photoUrl ||
+      user?.raw?.photo_url ||
+      null;
 
     if (!user) {
       setAvatar(defaultPath);
@@ -321,7 +351,7 @@ export default function Topbar() {
         setOrgName(
           resp?.data?.subdomain
             ? String(resp.data.subdomain)
-            : "Unknown Organization"
+            : "Unknown Organization",
         );
       } catch {
         setOrgName("Unknown Organization");
@@ -345,12 +375,12 @@ export default function Topbar() {
   const getCalendarNode = () => {
     if (portalRoot) {
       const node = portalRoot.querySelector(
-        ".desktop-calendar-overlay, .mobile-calendar-overlay, .calendar-dropdown-inline"
+        ".desktop-calendar-overlay, .mobile-calendar-overlay, .calendar-dropdown-inline",
       );
       if (node) return node;
     }
     return document.querySelector(
-      ".calendar-dropdown-inline, .mobile-calendar-overlay, .desktop-calendar-overlay"
+      ".calendar-dropdown-inline, .mobile-calendar-overlay, .desktop-calendar-overlay",
     );
   };
 
@@ -511,7 +541,7 @@ export default function Topbar() {
               <div className="desktop-calendar-overlay">
                 <HolidayCalendar closeCalendar={() => setShowCalendar(false)} />
               </div>,
-              portalRoot
+              portalRoot,
             )
           ) : (
             <div className="calendar-dropdown-inline">

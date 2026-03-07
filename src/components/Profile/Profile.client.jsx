@@ -252,7 +252,7 @@ const Profile = ({ onClose, notificationId = null }) => {
           bubbles: true,
           cancelable: true,
           view: window,
-        })
+        }),
       );
 
       a.remove();
@@ -285,12 +285,12 @@ const Profile = ({ onClose, notificationId = null }) => {
             "x-org-id": orgId ?? "",
             ...(employeeId ? { "x-employee-id": employeeId } : {}),
           },
-        }
+        },
       );
 
       try {
         window.dispatchEvent(
-          new CustomEvent("notification-read", { detail: { id } })
+          new CustomEvent("notification-read", { detail: { id } }),
         );
       } catch (e) {
         console.warn("notification-read event dispatch failed", e);
@@ -305,26 +305,26 @@ const Profile = ({ onClose, notificationId = null }) => {
   const closeAlert = () =>
     setAlertModal({ isVisible: false, message: "", missingFields: [] });
 
-  useEffect(() => {
+  const fetchProfile = async ({ checkMissingFields = true } = {}) => {
     if (!employeeId) {
       setLoading(false);
       return;
     }
 
-    const fetchProfile = async () => {
-      try {
-        const r = await axios.get(`${BASE_URL}/full/${employeeId}`, {
-          withCredentials: true,
-          headers: {
-            "x-api-key": API_KEY ?? "",
-            "x-org-id": orgId ?? "",
-            "Content-Type": "application/json",
-            ...(employeeId ? { "x-employee-id": employeeId } : {}),
-          },
-        });
-        const data = r.data.data;
-        setProfile(data);
+    try {
+      const r = await axios.get(`${BASE_URL}/full/${employeeId}`, {
+        withCredentials: true,
+        headers: {
+          "x-api-key": API_KEY ?? "",
+          "x-org-id": orgId ?? "",
+          "Content-Type": "application/json",
+          ...(employeeId ? { "x-employee-id": employeeId } : {}),
+        },
+      });
+      const data = r.data.data;
+      setProfile(data);
 
+      if (checkMissingFields) {
         const missing = getMissingFields(data);
         if (missing.length > 0) {
           setAlertModal({
@@ -337,29 +337,33 @@ const Profile = ({ onClose, notificationId = null }) => {
         if (notificationId && missing.length > 0) {
           setShowUpdateModal(true);
         }
+      }
 
-        if (hasValue(data.photo_url)) {
-          try {
-            const blob = await fetchBlob(data.photo_url);
-            setAvatar(URL.createObjectURL(blob));
-          } catch {
-            setAvatar(getDefaultAvatar(data.gender));
-          }
-        } else {
+      if (hasValue(data.photo_url)) {
+        try {
+          const blob = await fetchBlob(data.photo_url);
+          setAvatar(URL.createObjectURL(blob));
+        } catch {
           setAvatar(getDefaultAvatar(data.gender));
         }
-      } catch (err) {
-        console.error("Failed to load profile:", err);
-        showAlert("Failed to load profile");
-      } finally {
-        setLoading(false);
+      } else {
+        setAvatar(getDefaultAvatar(data.gender));
       }
-    };
+    } catch (err) {
+      console.error("Failed to load profile:", err);
+      showAlert("Failed to load profile");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchProfile();
 
     const fetchAssets = async () => {
       try {
         const r = await axios.get(
-          `${BASE_URL}/api/assigned-assets/${employeeId}`,
+          `${BASE_URL}/assets/assigned-assets/${employeeId}`,
           {
             withCredentials: true,
             headers: {
@@ -367,7 +371,7 @@ const Profile = ({ onClose, notificationId = null }) => {
               "x-org-id": orgId ?? "",
               ...(employeeId ? { "x-employee-id": employeeId } : {}),
             },
-          }
+          },
         );
         setAssignedAssets(r.data.data || []);
       } catch (err) {
@@ -376,14 +380,11 @@ const Profile = ({ onClose, notificationId = null }) => {
       }
     };
 
-    fetchProfile();
     fetchAssets();
   }, [employeeId, notificationId]);
 
   const handleProfileSaved = async (updatedProfile) => {
-    if (updatedProfile && typeof updatedProfile === "object") {
-      setProfile(updatedProfile);
-    }
+    await fetchProfile({ checkMissingFields: false });
 
     if (notificationId) {
       try {
@@ -391,7 +392,7 @@ const Profile = ({ onClose, notificationId = null }) => {
       } catch (err) {
         console.error(
           "Failed to mark notification read after saving profile:",
-          err
+          err,
         );
       }
     }

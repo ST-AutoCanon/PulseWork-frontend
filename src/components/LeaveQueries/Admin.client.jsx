@@ -396,12 +396,15 @@ export default function Admin({ openPolicyId = null }) {
     return copy;
   };
 
-  const loadLeaveBalance = async (employeeId) => {
-    if (leaveBalances[employeeId]) {
-      return leaveBalances[employeeId];
+  const loadLeaveBalance = async (employeeId, asOfDate = null) => {
+    const cacheKey = `${employeeId}::${asOfDate || ""}`;
+    if (leaveBalances[cacheKey]) {
+      return leaveBalances[cacheKey];
     }
     try {
-      const url = `${API_BASE}/api/leave-policies/employee/${employeeId}/leave-balance`;
+      const url = `${API_BASE}/api/leave-policies/employee/${employeeId}/leave-balance${
+        asOfDate ? `?date=${encodeURIComponent(asOfDate)}` : ""
+      }`;
 
       const res = await fetch(url, {
         credentials: "include",
@@ -423,7 +426,7 @@ export default function Admin({ openPolicyId = null }) {
         data = augmentBalancesWithMenstrual(data, profile);
       } catch (err) {}
 
-      setLeaveBalances((b) => ({ ...b, [employeeId]: data }));
+      setLeaveBalances((b) => ({ ...b, [cacheKey]: data }));
       return data;
     } catch (err) {
       console.error("[loadLeaveBalance] Error:", err);
@@ -642,26 +645,64 @@ export default function Admin({ openPolicyId = null }) {
         query.H_F_day,
         true,
       );
-      const balances = await loadLeaveBalance(query.employee_id);
-      const bal =
-        balances.find((r) => {
-          const t = (r.type || r.label || "").toString().toLowerCase();
-          const qType = (query.leave_type || "").toString().toLowerCase();
-          if (!t || !qType) return false;
-          if (t === qType) return true;
-          const matchByDb = (leaveTypes || []).some((lt) => {
-            const ltKey = (lt.key || "").toString().toLowerCase();
-            const ltLabel = (lt.label || "").toString().toLowerCase();
-            return (
-              ltKey === qType ||
-              ltLabel === qType ||
-              ltKey === t ||
-              ltLabel === t
-            );
-          });
-          if (matchByDb) return true;
-          return t.includes(qType) || qType.includes(t);
-        }) || null;
+      const asOfDate =
+        query.start_date ||
+        query.startDate ||
+        query.start ||
+        query.startDateTime ||
+        null;
+      const balances = await loadLeaveBalance(query.employee_id, asOfDate);
+
+      const normalizeType = (s) =>
+        String(s || "")
+          .trim()
+          .toLowerCase()
+          .replace(/[-_\s]+/g, "");
+
+      const qType = normalizeType(
+        query.leave_type ||
+          query.leaveType ||
+          query.leave_type_label ||
+          query.leaveTypeLabel ||
+          "",
+      );
+
+      const balanceByNormalizedType = (balances || []).reduce((acc, b) => {
+        const key = normalizeType(b.type || b.label);
+        if (key) acc[key] = b;
+        return acc;
+      }, {});
+
+      let bal = balanceByNormalizedType[qType] || null;
+
+      if (!bal) {
+        // Try to map through known leave types (from API) to balance entries
+        const typeMap = (leaveTypes || []).reduce((acc, lt) => {
+          const key = normalizeType(lt.key || lt.type || lt.label);
+          const label = normalizeType(lt.label || lt.name || lt.type);
+          if (key) acc[key] = lt;
+          if (label) acc[label] = lt;
+          return acc;
+        }, {});
+
+        const mapped = typeMap[qType];
+        if (mapped) {
+          const mappedKey = normalizeType(
+            mapped.key || mapped.type || mapped.label,
+          );
+          bal = balanceByNormalizedType[mappedKey] || bal;
+        }
+      }
+
+      if (!bal) {
+        // Fallback: allow partial matches
+        bal =
+          (balances || []).find((r) => {
+            const t = normalizeType(r.type || r.label);
+            if (!t || !qType) return false;
+            return t.includes(qType) || qType.includes(t);
+          }) || null;
+      }
 
       const remaining =
         bal && bal.remaining !== undefined ? Number(bal.remaining) || 0 : 0;

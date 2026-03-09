@@ -9,6 +9,17 @@ import { useAuth } from "../../context/AuthProvider.client";
 import Modal from "../Modal/Modal.client";
 
 const BUILD_TEMPLATE_ROUTE = "/templates";
+
+// Helper function to normalize letter types for display matching
+const normalizeLetterType = (type) => {
+  if (!type) return "";
+  const normalized = type.toLowerCase().trim();
+  if (normalized === "general letter" || normalized === "letter") {
+    return "Letter";
+  }
+  return type;
+};
+
 const protectedBlobCache = new Map();
 
 function normalizeUploadUrl(src, backendBase) {
@@ -62,7 +73,7 @@ async function replaceUploadUrlsInHtml(
   html = "",
   apiKey,
   backendBase,
-  orgId = null,
+  orgId = null
 ) {
   if (!html || typeof html !== "string") return html;
 
@@ -82,11 +93,11 @@ async function replaceUploadUrlsInHtml(
         candidate,
         apiKey,
         backendBase,
-        orgId,
+        orgId
       );
       if (blob) replacements[m] = blob;
       else replacements[m] = candidate;
-    }),
+    })
   );
 
   let out = html;
@@ -112,8 +123,12 @@ const LetterHead = () => {
   const [showPopup, setShowPopup] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
   const [pdfUrl, setPdfUrl] = useState(null);
-  const [letterType, setLetterType] = useState("Letter");
+  const [letterType, setLetterType] = useState("");
   const [letterheads, setLetterheads] = useState([]);
+  const [templates, setTemplates] = useState([]);
+  const [savedTemplates, setSavedTemplates] = useState([]);
+  const [selectedTemplateId, setSelectedTemplateId] = useState("");
+  const [selectedTemplate, setSelectedTemplate] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -127,11 +142,11 @@ const LetterHead = () => {
   const watermarkBlobRef = useRef(null);
   const watermarkSourceRef = useRef(null);
 
-  const defaultLogoUrl = "/images/sukalpa_logo.png";
+  const originalLogo = null;
   const API_KEY = process.env.NEXT_PUBLIC_API_KEY;
   const BACKEND_URL = (process.env.NEXT_PUBLIC_BACKEND_URL || "").replace(
     /\/$/,
-    "",
+    ""
   );
   const meId = user?.employeeId;
   const orgId = user?.orgId ?? user?.org_id ?? null;
@@ -219,60 +234,24 @@ const LetterHead = () => {
     return htmlContent;
   };
 
-  const fallbackTemplate = `
-    <h1 style="font-weight: bold;">General Letter</h1>
-    <p>Dear [Recipient Name],</p>
-    <h2 style="font-weight: bold;">Introduction</h2>
-    <p>This is a general letter template. Please edit the content as needed to suit your requirements.</p>
-    <h2 style="font-weight: bold;">Conclusion</h2>
-    <p>Thank you.</p>
-    <p>Regards,</p>
-  `;
-
-  const bankDetailsTemplate = `
-    <h1 style="font-weight: bold;">Bank Details Letter</h1>
-    <p>[Place], [Date]</p>
-    <p>Dear [Title] [Recipient Name],</p>
-    <h2 style="font-weight: bold;">Introduction</h2>
-    <p>We are pleased to provide the bank details for [Recipient Name], who joined our organization on [Date of Appointment].</p>
-    <h2 style="font-weight: bold;">Bank Details</h2>
-    <p>Please update the following details in your records.</p>
-    <p>Regards,</p>
-  `;
-
-  const bankDetailsRequestTemplate = `
-    <h1 style="font-weight: bold;">Bank Details Request Letter</h1>
-    <p>[Place], [Date]</p>
-    <p>Dear [Title] [Recipient Name],</p>
-    <h2 style="font-weight: bold;">Introduction</h2>
-    <p>We kindly request [Recipient Name] to provide their bank details for our records, effective from [Date of Appointment].</p>
-    <h2 style="font-weight: bold;">Details Required</h2>
-    <p>Please submit the required bank details at your earliest convenience.</p>
-    <p>Regards,</p>
-  `;
-
-  const getTemplateForLetterType = (type) => {
-    if (type === "Bank Details") return bankDetailsTemplate;
-    if (type === "Bank Details Request Letter")
-      return bankDetailsRequestTemplate;
-    return fallbackTemplate;
-  };
-
   useEffect(() => {
     if (showPopup && contentRef.current) {
-      const html =
-        formData.body ||
-        parseTemplateToHTML(getTemplateForLetterType(letterType));
-      contentRef.current.innerHTML = html;
-      setFormData((prev) => ({ ...prev, body: html }));
+      contentRef.current.innerHTML = formData.body || "";
     }
-  }, [showPopup, letterType]);
+  }, [showPopup]);
 
   useEffect(() => {
     let mounted = true;
     async function fetchData() {
       setLoading(true);
       try {
+        const templatesResp = await axios
+          .get(`${BACKEND_URL}/api/templates/list`, {
+            withCredentials: true,
+            headers,
+          })
+          .catch(() => ({ data: { data: [] } }));
+
         const letterheadsResp = await axios
           .get(`${BACKEND_URL}/api/letterheads/list`, {
             withCredentials: true,
@@ -280,16 +259,30 @@ const LetterHead = () => {
           })
           .catch(() => ({ data: { data: [] } }));
 
+        let saved = [];
+        if (orgId) {
+          const savedResp = await axios.get(
+            `${BACKEND_URL}/api/orgs/${orgId}/templates`,
+            { withCredentials: true, headers }
+          );
+          saved = Array.isArray(savedResp.data)
+            ? savedResp.data
+            : savedResp.data?.data || [];
+        }
+
         if (!mounted) return;
+
+        setTemplates(templatesResp.data.data || []);
         setLetterheads(letterheadsResp.data.data || []);
+        setSavedTemplates(saved || []);
       } catch (error) {
         console.error("Error fetching data:", error);
         showAlert(
-          "Failed to fetch letterheads: " +
-            (error?.response?.data?.error || error.message || "unknown"),
+          "Failed to fetch data: " +
+            (error?.response?.data?.error || error.message || "unknown")
         );
       } finally {
-        if (mounted) setLoading(false);
+        setLoading(false);
       }
     }
     fetchData();
@@ -399,7 +392,7 @@ const LetterHead = () => {
       const parser = new DOMParser();
       const doc = parser.parseFromString(
         `<div id="tmp">${html}</div>`,
-        "text/html",
+        "text/html"
       );
       const container = doc.getElementById("tmp");
       const children = Array.from(container.children);
@@ -539,8 +532,9 @@ const LetterHead = () => {
   };
 
   const applySavedTemplate = async (templateId) => {
-    // Template selection has been removed; this is intentionally a no-op.
-    return;
+    const template = savedTemplates.find(
+      (t) => String(t.id) === String(templateId)
+    );
     if (!template) {
       revokeIfBlob(headerBlobRef.current);
       revokeIfBlob(footerBlobRef.current);
@@ -615,7 +609,7 @@ const LetterHead = () => {
               normalized,
               API_KEY,
               BACKEND_URL,
-              orgId,
+              orgId
             );
             if (blob) return blob;
             return normalized;
@@ -664,20 +658,20 @@ const LetterHead = () => {
           template?.meta?.sealUrl,
           template?.meta?.uploads && template?.meta?.uploads.qr,
           template?.meta?.uploads && template?.meta?.uploads.seal,
-        ].filter(Boolean),
+        ].filter(Boolean)
       );
 
       const sanitizeCandidates = (arr) =>
         arr.filter((c) => c && !excludeSet.has(c));
 
       let headerBlob = await pickAndFetch(
-        sanitizeCandidates(explicitHeaderCandidates),
+        sanitizeCandidates(explicitHeaderCandidates)
       );
       let footerBlob = await pickAndFetch(
-        sanitizeCandidates(explicitFooterCandidates),
+        sanitizeCandidates(explicitFooterCandidates)
       );
       let watermarkBlob = await pickAndFetch(
-        sanitizeCandidates(explicitWatermarkCandidates),
+        sanitizeCandidates(explicitWatermarkCandidates)
       );
 
       const htmlToScan = template.html || template.content || "";
@@ -705,7 +699,7 @@ const LetterHead = () => {
         } catch (e) {}
 
         const found = Array.from(foundSet).filter(
-          (f) => f && !excludeSet.has(f),
+          (f) => f && !excludeSet.has(f)
         );
         if (!headerBlob && found.length) {
           headerBlob = await pickAndFetch([
@@ -721,7 +715,7 @@ const LetterHead = () => {
         }
         if (!watermarkBlob && found.length) {
           const candid = found.find(
-            (u) => u !== headerBlob && u !== footerBlob,
+            (u) => u !== headerBlob && u !== footerBlob
           );
           if (candid)
             watermarkBlob = await pickAndFetch([
@@ -757,13 +751,13 @@ const LetterHead = () => {
       if (watermarkBlob) {
         if (headerBlob && headerBlob === watermarkBlob) {
           console.warn(
-            "applySavedTemplate: clearing header because it matched watermark",
+            "applySavedTemplate: clearing header because it matched watermark"
           );
           headerBlob = null;
         }
         if (footerBlob && footerBlob === watermarkBlob) {
           console.warn(
-            "applySavedTemplate: clearing footer because it matched watermark",
+            "applySavedTemplate: clearing footer because it matched watermark"
           );
           footerBlob = null;
         }
@@ -816,7 +810,7 @@ const LetterHead = () => {
           contentHtml,
           API_KEY,
           BACKEND_URL,
-          orgId,
+          orgId
         );
       }
 
@@ -827,13 +821,13 @@ const LetterHead = () => {
       const wrappedHeaderHtml = headerHtml
         ? `<div class="template-header">${headerHtml}</div>`
         : headerBlobRef.current
-          ? `<div class="template-header"><img src="${headerBlobRef.current}" alt="Header" style="max-width:100%;height:auto;" /></div>`
-          : "";
+        ? `<div class="template-header"><img src="${headerBlobRef.current}" alt="Header" style="max-width:100%;height:auto;" /></div>`
+        : "";
       const wrappedFooterHtml = footerHtml
         ? `<div class="template-footer">${footerHtml}</div>`
         : footerBlobRef.current
-          ? `<div class="template-footer"><img src="${footerBlobRef.current}" alt="Footer" style="max-width:100%;height:auto;" /></div>`
-          : "";
+        ? `<div class="template-footer"><img src="${footerBlobRef.current}" alt="Footer" style="max-width:100%;height:auto;" /></div>`
+        : "";
 
       if (bodyHtml !== undefined) {
         finalBodyHtml = `${wrappedHeaderHtml}${
@@ -861,7 +855,7 @@ const LetterHead = () => {
     } catch (err) {
       console.error("applySavedTemplate error:", err);
       showAlert(
-        "Failed to apply saved template: " + (err?.message || "unknown"),
+        "Failed to apply saved template: " + (err?.message || "unknown")
       );
     }
   };
@@ -882,7 +876,7 @@ const LetterHead = () => {
     try {
       const response = await axios.get(
         `${BACKEND_URL}/api/letterheads/download/${filename}`,
-        { withCredentials: true, headers, responseType: "blob" },
+        { withCredentials: true, headers, responseType: "blob" }
       );
       const blob = new Blob([response.data], { type: "application/pdf" });
       const url = window.URL.createObjectURL(blob);
@@ -1118,9 +1112,8 @@ const LetterHead = () => {
         const pdfBlob = await generatePDF(
           letterRef.current,
           letter_type,
-          headerBlobUrl || defaultLogoUrl,
+          originalLogo,
           recipient_name,
-          title,
           employee_name,
           position,
           effective_date,
@@ -1128,7 +1121,7 @@ const LetterHead = () => {
           gstin_number,
           cin_number,
           address,
-          true,
+          true
         );
         pdfFile = new File([pdfBlob], `letterhead-${Date.now()}.pdf`, {
           type: "application/pdf",
@@ -1158,12 +1151,12 @@ const LetterHead = () => {
     formDataToSend.append("address", address || "");
     formDataToSend.append(
       "date",
-      date ? new Date(date).toISOString().split("T")[0] : "",
+      date ? new Date(date).toISOString().split("T")[0] : ""
     );
     formDataToSend.append("signature", signature || "");
     formDataToSend.append(
       "employee_name",
-      letter_type === "Relieving Letter" ? employee_name : "",
+      letter_type === "Relieving Letter" ? employee_name : ""
     );
     formDataToSend.append(
       "position",
@@ -1173,23 +1166,21 @@ const LetterHead = () => {
         "Bank Details Request Letter",
       ].includes(letter_type)
         ? position
-        : "",
+        : ""
     );
     formDataToSend.append(
       "annual_salary",
-      letter_type === "Offer Letter" ? annual_salary : "",
+      letter_type === "Offer Letter" ? annual_salary : ""
     );
     formDataToSend.append(
       "effective_date",
-      effective_date
-        ? new Date(effective_date).toISOString().split("T")[0]
-        : "",
+      effective_date ? new Date(effective_date).toISOString().split("T")[0] : ""
     );
     formDataToSend.append(
       "date_of_appointment",
       date_of_appointment
         ? new Date(date_of_appointment).toISOString().split("T")[0]
-        : "",
+        : ""
     );
     formDataToSend.append("company_name", company_name || "");
     formDataToSend.append("company_address", company_address || "");
@@ -1200,7 +1191,7 @@ const LetterHead = () => {
       "place",
       ["Bank Details", "Bank Details Request Letter"].includes(letter_type)
         ? place
-        : "",
+        : ""
     );
     formDataToSend.append("letterhead_file", pdfFile);
 
@@ -1213,7 +1204,7 @@ const LetterHead = () => {
           {
             withCredentials: true,
             headers: { ...headers, "Content-Type": "multipart/form-data" },
-          },
+          }
         );
         showAlert("Letterhead updated successfully!");
         setIsEditing(false);
@@ -1225,26 +1216,23 @@ const LetterHead = () => {
           {
             withCredentials: true,
             headers: { ...headers, "Content-Type": "multipart/form-data" },
-          },
+          }
         );
         showAlert("Letterhead saved successfully!");
       }
       const updatedResponse = await axios.get(
         `${BACKEND_URL}/api/letterheads/list`,
-        { withCredentials: true, headers },
+        { withCredentials: true, headers }
       );
       setLetterheads(updatedResponse.data.data || []);
       setShowPopup(false);
 
-      const initialBody = parseTemplateToHTML(
-        getTemplateForLetterType("Letter"),
-      );
       setFormData({
         letterhead_code: "",
         template_name: "",
-        letter_type: "Letter",
+        letter_type: "",
         subject: "",
-        body: initialBody,
+        body: "",
         recipient_name: "",
         title: "",
         mobile_number: "",
@@ -1264,24 +1252,26 @@ const LetterHead = () => {
         cin_number: "",
         place: "",
       });
-      setLetterType("Letter");
-      if (contentRef.current) contentRef.current.innerHTML = initialBody;
+      setLetterType("");
+      if (contentRef.current) contentRef.current.innerHTML = "";
       revokeIfBlob(headerBlobRef.current);
       revokeIfBlob(footerBlobRef.current);
       headerBlobRef.current = null;
       footerBlobRef.current = null;
       setHeaderBlobUrl(null);
       setFooterBlobUrl(null);
+      setSelectedTemplate(null);
+      setSelectedTemplateId("");
     } catch (error) {
       const errorMessage = error.response?.data?.error || error.message;
       console.error(
         "Error:",
         isEditing ? "updating" : "saving",
         "letterhead:",
-        error,
+        error
       );
       showAlert(
-        `Failed to ${isEditing ? "update" : "save"} letterhead: ${errorMessage}`,
+        `Failed to ${isEditing ? "update" : "save"} letterhead: ${errorMessage}`
       );
     }
   };
@@ -1290,19 +1280,74 @@ const LetterHead = () => {
     const selectedType = e.target.value;
     setLetterType(selectedType);
 
-    const templateContent = getTemplateForLetterType(selectedType);
-    const html = parseTemplateToHTML(templateContent);
-
-    if (contentRef.current) {
-      contentRef.current.innerHTML = html;
-    }
-
     setFormData((prev) => ({
       ...prev,
       letter_type: selectedType,
-      subject: selectedType === "Letter" ? "" : selectedType,
-      body: html,
+      subject: "",
     }));
+
+    const selectedTemplateItem = templates.find(
+      (template) => template.letter_type === selectedType
+    );
+
+    const newBodyHtml = selectedTemplateItem
+      ? parseTemplateToHTML(selectedTemplateItem.content || "")
+      : "";
+
+    const editorHasHeader =
+      !!contentRef.current &&
+      !!contentRef.current.querySelector(".template-header");
+    const editorHasFooter =
+      !!contentRef.current &&
+      !!contentRef.current.querySelector(".template-footer");
+    const haveBlobHeader = !!headerBlobRef.current;
+    const haveBlobFooter = !!footerBlobRef.current;
+
+    if (
+      contentRef.current &&
+      (editorHasHeader || editorHasFooter || haveBlobHeader || haveBlobFooter)
+    ) {
+      replaceEditorBody(newBodyHtml);
+      setFormData((prev) => ({
+        ...prev,
+        letter_type: selectedType,
+        subject: selectedTemplateItem?.subject || "",
+        body: contentRef.current.innerHTML,
+        company_name: selectedTemplateItem?.company_name || prev.company_name,
+        company_address:
+          selectedTemplateItem?.company_address || prev.company_address,
+        company_address_line2:
+          selectedTemplateItem?.company_address_line2 ||
+          prev.company_address_line2,
+        gstin_number: selectedTemplateItem?.gstin_number || prev.gstin_number,
+        cin_number: selectedTemplateItem?.cin_number || prev.cin_number,
+      }));
+    } else {
+      if (contentRef.current) {
+        mergeBodyKeepingHeaderFooter(newBodyHtml);
+        setFormData((prev) => ({
+          ...prev,
+          letter_type: selectedType,
+          subject: selectedTemplateItem?.subject || "",
+          body: contentRef.current.innerHTML,
+          company_name: selectedTemplateItem?.company_name || prev.company_name,
+          company_address:
+            selectedTemplateItem?.company_address || prev.company_address,
+          company_address_line2:
+            selectedTemplateItem?.company_address_line2 ||
+            prev.company_address_line2,
+          gstin_number: selectedTemplateItem?.gstin_number || prev.gstin_number,
+          cin_number: selectedTemplateItem?.cin_number || prev.cin_number,
+        }));
+      } else {
+        setFormData((prev) => ({
+          ...prev,
+          letter_type: selectedType,
+          subject: selectedTemplateItem?.subject || "",
+          body: newBodyHtml,
+        }));
+      }
+    }
   };
 
   const applyFormat = (command, value = null) => {
@@ -1324,26 +1369,72 @@ const LetterHead = () => {
   const escapeRegExp = (s) => (s || "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
   const updateContentWithFormData = (fieldName, value) => {
-    if (!contentRef.current) return;
-    try {
-      const html = contentRef.current.innerHTML || "";
-      const camel = fieldName.replace(/_([a-z])/g, (m, p) => p.toUpperCase());
-      const patterns = [
-        new RegExp(`{{\\s*${escapeRegExp(fieldName)}\\s*}}`, "g"),
-        new RegExp(`{{\\s*${escapeRegExp(camel)}\\s*}}`, "g"),
-        new RegExp(`\\[\\[\\s*${escapeRegExp(fieldName)}\\s*\\]\\]`, "g"),
-      ];
-      let out = html;
-      patterns.forEach((p) => (out = out.replace(p, value || "")));
-      if (out !== html) {
-        contentRef.current.innerHTML = out;
-        setFormData((prev) => ({
-          ...prev,
-          body: contentRef.current.innerHTML,
-        }));
+    // Format the value - if it's a date field, format it nicely
+    let formattedValue = value || "";
+    if (value && (fieldName.includes('date') || fieldName.includes('Date'))) {
+      // Try to format date to DD-MMM-YYYY format
+      try {
+        const dateObj = new Date(value);
+        if (!isNaN(dateObj.getTime())) {
+          formattedValue = dateObj.toLocaleDateString('en-GB', {
+            day: '2-digit',
+            month: 'short',
+            year: 'numeric'
+          }).replace(/ /g, '-');
+        }
+      } catch (e) {
+        formattedValue = value;
       }
-    } catch (e) {
-      console.warn("updateContentWithFormData failed", e);
+    }
+    
+    const patterns = [
+      new RegExp(`{{\\s*${escapeRegExp(fieldName)}\\s*}}`, "g"),
+      new RegExp(`{{\\s*${escapeRegExp(fieldName.replace(/_([a-z])/g, (m, p) => p.toUpperCase()))}\\s*}}`, "g"),
+      new RegExp(`\\[\\[\\s*${escapeRegExp(fieldName)}\\s*\\]\\]`, "g"),
+      // Also match [fieldName] format without any spaces
+      new RegExp(`\\[${escapeRegExp(fieldName)}\\]`, "gi"),
+      new RegExp(`\\[${escapeRegExp(fieldName.replace(/_/g, ' '))}\\]`, "gi"),
+      // Match [ fieldName ] with spaces
+      new RegExp(`\\[\\s*${escapeRegExp(fieldName)}\\s*\\]`, "gi"),
+      new RegExp(`\\[\\s*${escapeRegExp(fieldName.replace(/_/g, ' '))}\\s*\\]`, "gi"),
+    ];
+    
+    // Update the main editor if it exists
+    if (contentRef.current) {
+      try {
+        const html = contentRef.current.innerHTML || "";
+        let out = html;
+        patterns.forEach((p) => (out = out.replace(p, formattedValue)));
+        if (out !== html) {
+          contentRef.current.innerHTML = out;
+          setFormData((prev) => ({
+            ...prev,
+            body: contentRef.current.innerHTML,
+          }));
+        }
+      } catch (e) {
+        console.warn("updateContentWithFormData failed for editor", e);
+      }
+    }
+    
+    // Also update the details popup body if it exists
+    if (showDetailsPopup?.letterhead?.body) {
+      try {
+        const html = showDetailsPopup.letterhead.body;
+        let out = html;
+        patterns.forEach((p) => (out = out.replace(p, formattedValue)));
+        if (out !== html) {
+          setShowDetailsPopup((prev) => ({
+            ...prev,
+            letterhead: {
+              ...prev.letterhead,
+              body: out,
+            },
+          }));
+        }
+      } catch (e) {
+        console.warn("updateContentWithFormData failed for details popup", e);
+      }
     }
   };
 
@@ -1395,16 +1486,15 @@ const LetterHead = () => {
         await generatePDF(
           letterRef.current,
           letterType,
-          headerBlobUrl || defaultLogoUrl,
+          originalLogo,
           formData.recipient_name,
-          formData.title,
           formData.employee_name,
           formData.position,
           formData.effective_date,
           formData.company_name,
           formData.gstin_number,
           formData.cin_number,
-          formData.address,
+          formData.address
         );
         setFormData((prev) => ({
           ...prev,
@@ -1440,9 +1530,8 @@ const LetterHead = () => {
         const pdfBlob = await generatePDF(
           letterRef.current,
           letterType,
-          headerBlobUrl,
+          originalLogo,
           formData.recipient_name,
-          formData.title,
           formData.employee_name,
           formData.position,
           formData.effective_date,
@@ -1450,7 +1539,7 @@ const LetterHead = () => {
           formData.gstin_number,
           formData.cin_number,
           formData.address,
-          true,
+          true
         );
         const pdfUri = URL.createObjectURL(pdfBlob);
         setPdfUrl(pdfUri);
@@ -1483,13 +1572,12 @@ const LetterHead = () => {
     setShowPopup(false);
     setIsEditing(false);
     setEditingId(null);
-    const initialBody = parseTemplateToHTML(getTemplateForLetterType("Letter"));
     setFormData({
       letterhead_code: "",
       template_name: "",
-      letter_type: "Letter",
+      letter_type: "",
       subject: "",
-      body: initialBody,
+      body: "",
       recipient_name: "",
       title: "",
       mobile_number: "",
@@ -1509,14 +1597,16 @@ const LetterHead = () => {
       cin_number: "",
       place: "",
     });
-    setLetterType("Letter");
-    if (contentRef.current) contentRef.current.innerHTML = initialBody;
+    setLetterType("");
+    if (contentRef.current) contentRef.current.innerHTML = "";
     revokeIfBlob(headerBlobRef.current);
     revokeIfBlob(footerBlobRef.current);
     headerBlobRef.current = null;
     footerBlobRef.current = null;
     setHeaderBlobUrl(null);
     setFooterBlobUrl(null);
+    setSelectedTemplateId("");
+    setSelectedTemplate(null);
   };
 
   const handleKeyDown = (e) => {
@@ -1548,11 +1638,10 @@ const LetterHead = () => {
     };
   }, []);
 
-  if (loading) return <div>Loading...</div>;
+  if (loading) return <div>Loading templates...</div>;
 
-  const headerLogoSrc = headerBlobUrl || defaultLogoUrl;
   const showExternalHeader =
-    !!headerLogoSrc && !editorContainsWrapper("template-header");
+    !!headerBlobUrl && !editorContainsWrapper("template-header");
   const showExternalFooter =
     !!footerBlobUrl && !editorContainsWrapper("template-footer");
 
@@ -1603,7 +1692,7 @@ const LetterHead = () => {
                     )}
                   </td>
                   <td>
-                    {letterhead.letter_type === "Letter" ? (
+                    {normalizeLetterType(letterhead.letter_type) === "Letter" ? (
                       <i
                         className="fa fa-eye"
                         style={{ cursor: "pointer", color: "#7FBD2C" }}
@@ -1625,7 +1714,7 @@ const LetterHead = () => {
                         onClick={() =>
                           handleViewDetails(
                             letterhead,
-                            "Bank Details Request Letter",
+                            "Bank Details Request Letter"
                           )
                         }
                         aria-label="View bank details request letter"
@@ -1683,17 +1772,146 @@ const LetterHead = () => {
 
       {showDetailsPopup && (
         <div className="letterhead-popup-overlay">
-          <div
-            className="letterhead-popup-content"
-            style={{ maxWidth: "500px", padding: "20px" }}
-          >
-            <h3>{showDetailsPopup.type} Details</h3>
-            <button
-              onClick={handleCloseDetailsPopup}
-              className="letterhead-close-btn"
-            >
-              Close
-            </button>
+          <div className="letterhead-details-popup">
+            <div className="letterhead-details-header">
+              <h3>{showDetailsPopup.type} Details</h3>
+              <button
+                onClick={handleCloseDetailsPopup}
+                className="letterhead-details-close-btn"
+                aria-label="Close"
+              >
+                ×
+              </button>
+            </div>
+            
+            <div className="letterhead-details-content">
+              {showDetailsPopup.letterhead && (
+                <>
+                  <div className="letterhead-details-section">
+                    <div className="letterhead-details-grid">
+                      {showDetailsPopup.letterhead.letterhead_code && (
+                        <div className="letterhead-details-item">
+                          <span className="letterhead-details-label">Letterhead Code</span>
+                          <span className="letterhead-details-value">{showDetailsPopup.letterhead.letterhead_code}</span>
+                        </div>
+                      )}
+                      {showDetailsPopup.letterhead.subject && (
+                        <div className="letterhead-details-item">
+                          <span className="letterhead-details-label">Subject</span>
+                          <span className="letterhead-details-value">{showDetailsPopup.letterhead.subject}</span>
+                        </div>
+                      )}
+                      {showDetailsPopup.letterhead.recipient_name && (
+                        <div className="letterhead-details-item">
+                          <span className="letterhead-details-label">Recipient Name</span>
+                          <span className="letterhead-details-value">{showDetailsPopup.letterhead.recipient_name}</span>
+                        </div>
+                      )}
+                      {showDetailsPopup.letterhead.title && (
+                        <div className="letterhead-details-item">
+                          <span className="letterhead-details-label">Title</span>
+                          <span className="letterhead-details-value">{showDetailsPopup.letterhead.title}</span>
+                        </div>
+                      )}
+                      {showDetailsPopup.letterhead.company_name && (
+                        <div className="letterhead-details-item">
+                          <span className="letterhead-details-label">Company Name</span>
+                          <span className="letterhead-details-value">{showDetailsPopup.letterhead.company_name}</span>
+                        </div>
+                      )}
+                      {showDetailsPopup.letterhead.company_address && (
+                        <div className="letterhead-details-item">
+                          <span className="letterhead-details-label">Company Address</span>
+                          <span className="letterhead-details-value">{showDetailsPopup.letterhead.company_address}</span>
+                        </div>
+                      )}
+                      {showDetailsPopup.letterhead.gstin_number && (
+                        <div className="letterhead-details-item">
+                          <span className="letterhead-details-label">GSTIN Number</span>
+                          <span className="letterhead-details-value">{showDetailsPopup.letterhead.gstin_number}</span>
+                        </div>
+                      )}
+                      {showDetailsPopup.letterhead.cin_number && (
+                        <div className="letterhead-details-item">
+                          <span className="letterhead-details-label">CIN Number</span>
+                          <span className="letterhead-details-value">{showDetailsPopup.letterhead.cin_number}</span>
+                        </div>
+                      )}
+                      {showDetailsPopup.letterhead.position && (
+                        <div className="letterhead-details-item">
+                          <span className="letterhead-details-label">Position</span>
+                          <span className="letterhead-details-value">{showDetailsPopup.letterhead.position}</span>
+                        </div>
+                      )}
+                      {showDetailsPopup.letterhead.annual_salary && (
+                        <div className="letterhead-details-item">
+                          <span className="letterhead-details-label">Annual Salary</span>
+                          <span className="letterhead-details-value">{showDetailsPopup.letterhead.annual_salary}</span>
+                        </div>
+                      )}
+                      {showDetailsPopup.letterhead.date_of_appointment && (
+                        <div className="letterhead-details-item">
+                          <span className="letterhead-details-label">Date of Appointment</span>
+                          <span className="letterhead-details-value">{showDetailsPopup.letterhead.date_of_appointment}</span>
+                        </div>
+                      )}
+                      {showDetailsPopup.letterhead.effective_date && (
+                        <div className="letterhead-details-item">
+                          <span className="letterhead-details-label">Effective Date</span>
+                          <span className="letterhead-details-value">{showDetailsPopup.letterhead.effective_date}</span>
+                        </div>
+                      )}
+                      {showDetailsPopup.letterhead.employee_name && (
+                        <div className="letterhead-details-item">
+                          <span className="letterhead-details-label">Employee Name</span>
+                          <span className="letterhead-details-value">{showDetailsPopup.letterhead.employee_name}</span>
+                        </div>
+                      )}
+                      {showDetailsPopup.letterhead.email && (
+                        <div className="letterhead-details-item">
+                          <span className="letterhead-details-label">Email</span>
+                          <span className="letterhead-details-value">{showDetailsPopup.letterhead.email}</span>
+                        </div>
+                      )}
+                      {showDetailsPopup.letterhead.mobile_number && (
+                        <div className="letterhead-details-item">
+                          <span className="letterhead-details-label">Mobile Number</span>
+                          <span className="letterhead-details-value">{showDetailsPopup.letterhead.mobile_number}</span>
+                        </div>
+                      )}
+                      {showDetailsPopup.letterhead.address && (
+                        <div className="letterhead-details-item">
+                          <span className="letterhead-details-label">Address</span>
+                          <span className="letterhead-details-value">{showDetailsPopup.letterhead.address}</span>
+                        </div>
+                      )}
+                      {showDetailsPopup.letterhead.date && (
+                        <div className="letterhead-details-item">
+                          <span className="letterhead-details-label">Date</span>
+                          <span className="letterhead-details-value">{showDetailsPopup.letterhead.date}</span>
+                        </div>
+                      )}
+                      {showDetailsPopup.letterhead.place && (
+                        <div className="letterhead-details-item">
+                          <span className="letterhead-details-label">Place</span>
+                          <span className="letterhead-details-value">{showDetailsPopup.letterhead.place}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  
+                  {showDetailsPopup.letterhead.body && (
+                    <div className="letterhead-details-body">
+                      <div className="letterhead-details-body-title">Body Content</div>
+                      <div 
+                        className="letterhead-details-body-content"
+                        dangerouslySetInnerHTML={{ __html: showDetailsPopup.letterhead.body }}
+                      />
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
           </div>
         </div>
       )}
@@ -1705,6 +1923,15 @@ const LetterHead = () => {
             ref={letterRef}
             style={{ position: "relative" }}
           >
+            {showExternalHeader ? (
+              <div style={{ textAlign: "center", marginBottom: 8 }}>
+                <img
+                  src={headerBlobUrl}
+                  alt="Header"
+                  style={{ maxWidth: "100%", height: "auto" }}
+                />
+              </div>
+            ) : null}
             <div
               className="letterhead-letterhead-header"
               style={{ display: "none" }}
@@ -1712,6 +1939,74 @@ const LetterHead = () => {
             />
 
             <div className="letterhead-letter-form">
+              <div className="letterhead-form-row">
+                <div className="letterhead-form-group">
+                  <label htmlFor="savedTemplateSelect">
+                    Letterhead Template (header/footer)
+                  </label>
+                  <div className="letterhead-input-container">
+                    {savedTemplates && savedTemplates.length > 0 ? (
+                      <select
+                        id="savedTemplateSelect"
+                        value={selectedTemplateId || ""}
+                        onChange={async (e) => {
+                          const val = e.target.value;
+                          if (!val) {
+                            revokeIfBlob(headerBlobRef.current);
+                            revokeIfBlob(footerBlobRef.current);
+                            headerBlobRef.current = null;
+                            footerBlobRef.current = null;
+                            setSelectedTemplate(null);
+                            setSelectedTemplateId("");
+                            setHeaderBlobUrl(null);
+                            setFooterBlobUrl(null);
+                            if (contentRef.current)
+                              contentRef.current.innerHTML = "";
+                            setFormData((prev) => ({ ...prev, body: "" }));
+                            return;
+                          }
+                          setSelectedTemplateId(val);
+                          await applySavedTemplate(val);
+                        }}
+                        className="letterhead-input-field"
+                      >
+                        <option value="">
+                          — Choose saved template (header/footer) —
+                        </option>
+                        {savedTemplates.map((t) => (
+                          <option key={t.id} value={t.id}>
+                            {t.name || t.template_name || t.id}
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      <div
+                        style={{
+                          display: "flex",
+                          gap: 8,
+                          alignItems: "center",
+                        }}
+                      >
+                        <span>No saved templates for this org.</span>
+
+                        <button
+                          onClick={() => {
+                            window.dispatchEvent(
+                              new CustomEvent("app:navigate", {
+                                detail: { path: "/TemplateBuilder" },
+                              })
+                            );
+                          }}
+                          className="letterhead-open-popup-btn"
+                        >
+                          Build Template
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
               <div className="letterhead-form-row">
                 <div className="letterhead-form-group">
                   <label htmlFor="letterType">Letter Type</label>
@@ -1723,11 +2018,15 @@ const LetterHead = () => {
                       className="letterhead-letter-type-select letterhead-highlighted-select"
                     >
                       <option value="">Select letter type</option>
-                      {Object.keys(letterFields).map((type) => (
-                        <option key={type} value={type}>
-                          {type}
-                        </option>
-                      ))}
+                      {templates.length > 0 &&
+                        templates.map((template) => (
+                          <option
+                            key={template.letter_type}
+                            value={template.letter_type}
+                          >
+                            {template.letter_type}
+                          </option>
+                        ))}
                     </select>
                   </div>
                 </div>
@@ -1751,7 +2050,7 @@ const LetterHead = () => {
                               if (field.updateContent)
                                 updateContentWithFormData(
                                   field.name,
-                                  e.target.value,
+                                  e.target.value
                                 );
                             }}
                             className="letterhead-input-field"
@@ -1786,7 +2085,7 @@ const LetterHead = () => {
                             if (field.updateContent)
                               updateContentWithFormData(
                                 field.name,
-                                e.target.value,
+                                e.target.value
                               );
                           }}
                           className="letterhead-input-field"
@@ -1901,7 +2200,7 @@ const LetterHead = () => {
                           : "auto";
                         wm.style.transform = "translate(-50%, -50%)";
                         wm.style.opacity = String(
-                          watermarkPropsState.opacity ?? 0.12,
+                          watermarkPropsState.opacity ?? 0.12
                         );
                         wm.style.pointerEvents = "none";
                         wm.style.zIndex = "9999";
@@ -1912,7 +2211,7 @@ const LetterHead = () => {
                       } catch (e) {
                         console.warn(
                           "Failed to inject watermark into clone:",
-                          e,
+                          e
                         );
                       }
                     }
@@ -1922,9 +2221,8 @@ const LetterHead = () => {
                     const pdfBlob = await generatePDF(
                       clone,
                       letterType,
-                      headerBlobUrl || defaultLogoUrl,
+                      originalLogo,
                       formData.recipient_name,
-                      formData.title,
                       formData.employee_name,
                       formData.position,
                       formData.effective_date,
@@ -1932,7 +2230,7 @@ const LetterHead = () => {
                       formData.gstin_number,
                       formData.cin_number,
                       formData.address,
-                      true,
+                      true
                     );
 
                     try {
@@ -1949,12 +2247,12 @@ const LetterHead = () => {
                   } catch (error) {
                     console.error(
                       "Error generating PDF preview (clone):",
-                      error,
+                      error
                     );
                     showAlert(
                       `Failed to generate PDF preview: ${
                         error?.message || error
-                      }`,
+                      }`
                     );
                   } finally {
                     setIsGenerating(false);
@@ -2005,7 +2303,7 @@ const LetterHead = () => {
                           : "auto";
                         wm.style.transform = "translate(-50%, -50%)";
                         wm.style.opacity = String(
-                          watermarkPropsState.opacity ?? 0.12,
+                          watermarkPropsState.opacity ?? 0.12
                         );
                         wm.style.pointerEvents = "none";
                         wm.style.zIndex = "9999";
@@ -2016,7 +2314,7 @@ const LetterHead = () => {
                       } catch (e) {
                         console.warn(
                           "Failed to inject watermark into clone for generate:",
-                          e,
+                          e
                         );
                       }
                     }
@@ -2026,16 +2324,15 @@ const LetterHead = () => {
                     await generatePDF(
                       clone,
                       letterType,
-                      headerBlobUrl || defaultLogoUrl,
+                      originalLogo,
                       formData.recipient_name,
-                      formData.title,
                       formData.employee_name,
                       formData.position,
                       formData.effective_date,
                       formData.company_name,
                       formData.gstin_number,
                       formData.cin_number,
-                      formData.address,
+                      formData.address
                     );
 
                     try {
@@ -2049,7 +2346,7 @@ const LetterHead = () => {
                   } catch (error) {
                     console.error("Error generating PDF (clone):", error);
                     showAlert(
-                      `Failed to generate PDF: ${error?.message || error}`,
+                      `Failed to generate PDF: ${error?.message || error}`
                     );
                   } finally {
                     setIsGenerating(false);
@@ -2071,8 +2368,8 @@ const LetterHead = () => {
                     ? "Updating..."
                     : "Saving..."
                   : isEditing
-                    ? "Update"
-                    : "Save"}
+                  ? "Update"
+                  : "Save"}
               </button>
             </div>
           </div>

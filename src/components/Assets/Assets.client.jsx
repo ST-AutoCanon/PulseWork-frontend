@@ -1689,9 +1689,15 @@ if (rows.length > 0) {
 
     <select
       value={assignment.assigningStatus}
-      onChange={(e) =>
-        updateAssignment(index, "assigningStatus", e.target.value)
-      }
+      onChange={(e) => {
+        const newStatus = e.target.value;
+        // Validation: Check if return date is selected when choosing "Returned" status
+        if (newStatus === "Returned" && !assignment.returnDate) {
+          showAlert("Please select a return date first before marking as Returned.");
+          return;
+        }
+        updateAssignment(index, "assigningStatus", newStatus);
+      }}
       disabled={index > 0}
     >
       <option value="Pending">Unassigned</option>

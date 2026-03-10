@@ -429,13 +429,135 @@
   text-decoration: underline;
 }
 
-.letterhead-edit-icon {
-  font-size: 1rem;
-  cursor: pointer;
+.letterhead-edit-icon:hover {
   color: #7fbd2c;
+}
+
+/* Details Popup Styles */
+.letterhead-details-popup {
+  background-color: #fff;
+  border-radius: 8px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  max-width: 700px;
+  width: 90%;
+  max-height: 85vh;
+  overflow-y: auto;
+}
+
+.letterhead-details-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 25px;
+  border-bottom: 1px solid #e0e0e0;
+  background-color: #f8f9fa;
+  border-radius: 8px 8px 0 0;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.letterhead-details-header h3 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: #333;
+}
+
+.letterhead-details-close-btn {
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  color: #666;
+  padding: 0;
+  line-height: 1;
   transition: color 0.2s;
 }
 
-.letterhead-edit-icon:hover {
+.letterhead-details-close-btn:hover {
+  color: #dc3545;
+}
+
+.letterhead-details-content {
+  padding: 25px;
+}
+
+.letterhead-details-section {
+  margin-bottom: 20px;
+}
+
+.letterhead-details-section-title {
+  font-size: 14px;
+  font-weight: 600;
   color: #7fbd2c;
+  text-transform: uppercase;
+  margin-bottom: 10px;
+  letter-spacing: 0.5px;
+}
+
+.letterhead-details-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px 20px;
+}
+
+.letterhead-details-item {
+  display: flex;
+  flex-direction: column;
+}
+
+.letterhead-details-label {
+  font-size: 12px;
+  color: #888;
+  margin-bottom: 3px;
+}
+
+.letterhead-details-value {
+  font-size: 14px;
+  color: #333;
+  font-weight: 500;
+}
+
+.letterhead-details-body {
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px solid #e0e0e0;
+}
+
+.letterhead-details-body-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #7fbd2c;
+  margin-bottom: 10px;
+}
+
+.letterhead-details-body-content {
+  background-color: #f8f9fa;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  padding: 15px;
+  max-height: 300px;
+  overflow-y: auto;
+  font-size: 13px;
+  line-height: 1.6;
+  color: #444;
+}
+
+.letterhead-details-body-content img {
+  max-width: 100%;
+  height: auto;
+}
+
+.letterhead-details-empty {
+  text-align: center;
+  color: #999;
+  padding: 20px;
+  font-style: italic;
+}
+
+@media (max-width: 600px) {
+  .letterhead-details-grid {
+    grid-template-columns: 1fr;
+  }
 }

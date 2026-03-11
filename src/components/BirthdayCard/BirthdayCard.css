@@ -14,7 +14,13 @@
   overflow: hidden;
   animation: cardFade 5s forwards;
 }
-
+.birthday-card {
+  position: fixed;
+  top: 170px;
+  right: 20px;
+  z-index: 9999;
+  pointer-events: none;
+}
 @keyframes cardFade {
   0% {
     opacity: 0;

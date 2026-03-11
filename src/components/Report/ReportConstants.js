@@ -94,9 +94,7 @@ export const SUB_OPTIONS = {
     { key: "first_name", label: "First Name" },
     { key: "last_name", label: "Last Name" },
     { key: "email", label: "Email" },
-    { key: "alternate_email", label: "Alternate Email" },
     { key: "phone_number", label: "Phone" },
-    { key: "alternate_number", label: "Alternate Number" },
 
     { key: "status", label: "Status" },
 
@@ -108,55 +106,10 @@ export const SUB_OPTIONS = {
     { key: "position", label: "Position" },
     { key: "supervisor_id", label: "Supervisor ID" },
     { key: "joining_date", label: "Joining Date" },
-    { key: "salary", label: "Salary" },
-    { key: "resume_url", label: "Resume URL" },
-
     { key: "address", label: "Address" },
-    { key: "father_name", label: "Father's Name" },
-    { key: "father_dob", label: "Father DOB" },
-    { key: "father_gov_doc_url", label: "Father Gov Doc URL" },
-    { key: "mother_name", label: "Mother's Name" },
-    { key: "mother_dob", label: "Mother DOB" },
-    { key: "mother_gov_doc_url", label: "Mother Gov Doc URL" },
-
     { key: "gender", label: "Gender" },
-    { key: "marital_status", label: "Marital Status" },
-    { key: "spouse_name", label: "Spouse Name" },
-    { key: "spouse_dob", label: "Spouse DOB" },
-    { key: "spouse_gov_doc_url", label: "Spouse Gov Doc URL" },
-    { key: "marriage_date", label: "Marriage Date" },
 
     { key: "aadhaar_number", label: "Aadhaar Number" },
-    { key: "aadhaar_doc_url", label: "Aadhaar Doc URL" },
-    { key: "pan_number", label: "PAN Number" },
-    { key: "pan_doc_url", label: "PAN Doc URL" },
-    { key: "passport_number", label: "Passport Number" },
-    { key: "passport_doc_url", label: "Passport Doc URL" },
-    { key: "voter_id", label: "Voter ID" },
-    { key: "voter_id_doc_url", label: "Voter ID Doc URL" },
-
-    { key: "insurance_doc", label: "Insurance Doc" },
-
-    { key: "driving_license_number", label: "Driving License Number" },
-    { key: "driving_license_doc_url", label: "Driving License Doc URL" },
-
-    { key: "child1_name", label: "Child 1 Name" },
-    { key: "child1_dob", label: "Child 1 DOB" },
-    { key: "child1_gov_doc_url", label: "Child 1 Gov Doc URL" },
-    { key: "child2_name", label: "Child 2 Name" },
-    { key: "child2_dob", label: "Child 2 DOB" },
-    { key: "child2_gov_doc_url", label: "Child 2 Gov Doc URL" },
-    { key: "child3_name", label: "Child 3 Name" },
-    { key: "child3_dob", label: "Child 3 DOB" },
-    { key: "child3_gov_doc_url", label: "Child 3 Gov Doc URL" },
-
-    { key: "uan_number", label: "UAN Number" },
-    { key: "pf_number", label: "PF Number" },
-    { key: "esi_number", label: "ESI Number" },
-
-    { key: "blood_group", label: "Blood Group" },
-    { key: "emergency_name", label: "Emergency Contact Name" },
-    { key: "emergency_number", label: "Emergency Contact Number" },
 
     { key: "created_at", label: "Created At" },
   ],

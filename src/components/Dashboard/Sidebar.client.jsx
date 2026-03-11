@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState, useMemo, useRef } from "react";
+import { usePathname, useRouter } from "next/navigation";
 import * as MdIcons from "react-icons/md";
 import { useAuth } from "../../context/AuthProvider.client";
 import "./Sidebar.css";
@@ -44,6 +45,8 @@ import TaskManagementHr from "../TaskManagementHr/TaskManagementHr.jsx";
 
 const Sidebar = ({ setActiveContent }) => {
   const { user, hydrated } = useAuth();
+  const pathname = usePathname();
+  const router = useRouter();
   const [menuItems, setMenuItems] = useState([]);
   const [activeItem, setActiveItem] = useState("/dashboard");
   const [activeSubItem, setActiveSubItem] = useState("");
@@ -244,13 +247,26 @@ const Sidebar = ({ setActiveContent }) => {
   const handleMenuClick = (item, subOption = null) => {
     const role = user?.role ?? "Employee";
 
-    setActiveItem(item.path);
-    setActiveSubItem(subOption || "");
-
     const hasDropdown =
       item.path === "/compensation" ||
       item.path === "/TaskManagement" ||
       item.path === "/Salary_Statement";
+
+    const desiredPath = (() => {
+      if (item.path === "/compensation" && subOption) {
+        return `/compensation/${subOption}`;
+      }
+      if (item.path === "/TaskManagement") {
+        return `/TaskManagement/${subOption || "employee"}`;
+      }
+      if (item.path === "/Salary_Statement" && subOption) {
+        return `/Salary_Statement/${subOption}`;
+      }
+      return item.path;
+    })();
+
+    setActiveItem(item.path);
+    setActiveSubItem(subOption || "");
 
     if (hasDropdown && !subOption) {
       if (item.path === "/compensation") {
@@ -277,30 +293,24 @@ const Sidebar = ({ setActiveContent }) => {
       switch (subOption) {
         case "create":
           content = <CreateCompensation />;
-          setActiveNav("/compensation/create");
           break;
         case "assign":
           content = <AssignCompensation />;
-          setActiveNav("/compensation/assign");
           break;
         case "breakup":
           content = <SalaryBreakupMain />;
-          setActiveNav("/compensation/breakup");
           break;
         case "details":
           content = <SalaryDetails />;
-          setActiveNav("/compensation/details");
           break;
       }
       setShowCompensationDropdown(true);
     } else if (item.path === "/TaskManagement") {
       content = pathToComponent["/TaskManagement"](role, subOption);
-      setActiveNav(`/TaskManagement/${subOption || "employee"}`);
       setShowTaskDropdown(true);
     } else if (item.path === "/Salary_Statement" && subOption) {
       content =
         subOption === "statement" ? <Salary_Statement /> : <GeneratePayslip />;
-      setActiveNav(`/Salary_Statement/${subOption}`);
       setShowSalaryDropdown(true);
     } else {
       const resolver = pathToComponent[item.path];
@@ -317,8 +327,11 @@ const Sidebar = ({ setActiveContent }) => {
     }
 
     if (content) {
-      setActiveNav(item.path);
+      setActiveNav(desiredPath);
       setActiveContent(content);
+      if (desiredPath && pathname !== desiredPath) {
+        router.push(desiredPath);
+      }
     } else {
       console.warn("No content to display for path:", item.path);
     }

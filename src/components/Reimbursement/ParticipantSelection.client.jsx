@@ -30,7 +30,7 @@ const ParticipantSelection = ({
             employee_id: it.employee_id || it.id || it.employeeId,
             name: it.name || it.employee_name || "",
           }
-        : { employee_id: it, name: String(it) }
+        : { employee_id: it, name: String(it) },
     );
   });
   const [error, setError] = useState(null);
@@ -43,7 +43,6 @@ const ParticipantSelection = ({
     process.env.REACT_APP_BACKEND_URL ||
     user?.raw?.backend ||
     user?.raw?.backendUrl ||
-    localStorage.getItem("backend") ||
     "";
   const BACKEND = (() => {
     if (!RAW_BACKEND) return "";
@@ -57,45 +56,15 @@ const ParticipantSelection = ({
     process.env.REACT_APP_API_KEY ||
     user?.apiKey ||
     user?.raw?.apiKey ||
-    localStorage.getItem("apiKey") ||
-    localStorage.getItem("x-api-key") ||
     "";
 
-  const authToken =
-    user?.token ||
-    user?.authToken ||
-    user?.accessToken ||
-    localStorage.getItem("authToken") ||
-    localStorage.getItem("token") ||
-    null;
+  const authToken = user?.token || user?.authToken || user?.accessToken || null;
 
   const readLoggedEmployeeId = useCallback(() => {
     if (user) {
-      if (user.employeeId || user.id || user.empId || user.emp_id)
-        return user.employeeId || user.id || user.empId || user.emp_id || null;
+      return user.employeeId || user.id || user.empId || user.emp_id || null;
     }
-    try {
-      const rawDashboard = localStorage.getItem("dashboardData");
-      if (rawDashboard) {
-        const parsed = JSON.parse(rawDashboard);
-        if (parsed) {
-          return (
-            parsed.employeeId ||
-            parsed.employee_id ||
-            parsed.id ||
-            parsed.empId ||
-            parsed.emp_id ||
-            null
-          );
-        }
-      }
-    } catch (e) {}
-    return (
-      localStorage.getItem("x-employee-id") ||
-      localStorage.getItem("employeeId") ||
-      localStorage.getItem("employee_id") ||
-      null
-    );
+    return null;
   }, [user]);
 
   const loggedEmployeeId = readLoggedEmployeeId();
@@ -110,22 +79,7 @@ const ParticipantSelection = ({
         null
       );
     }
-    try {
-      const rawDashboard = localStorage.getItem("dashboardData");
-      if (rawDashboard) {
-        const parsed = JSON.parse(rawDashboard);
-        if (parsed)
-          return (
-            parsed.orgId || parsed.org_id || parsed.organization_id || null
-          );
-      }
-    } catch (e) {}
-    return (
-      localStorage.getItem("x-org-id") ||
-      localStorage.getItem("orgId") ||
-      localStorage.getItem("org_id") ||
-      null
-    );
+    return null;
   }, [user]);
 
   const buildHeaders = useCallback(() => {
@@ -213,14 +167,14 @@ const ParticipantSelection = ({
             results = await tryFetchFromCandidate(
               url,
               params,
-              cancelRef.current.token
+              cancelRef.current.token,
             );
             if (results && results.length) break;
           } catch (err) {
             if (err?.code === "MISSING_X_EMPLOYEE_ID") {
               setEmployees([]);
               setError(
-                "Server requires x-employee-id header for this request. Please ensure you're logged in."
+                "Server requires x-employee-id header for this request. Please ensure you're logged in.",
               );
               setLoading(false);
               return;
@@ -265,7 +219,7 @@ const ParticipantSelection = ({
         setLoading(false);
       }
     },
-    [departmentId, limit, BACKEND, employeeEndpoints, buildHeaders]
+    [departmentId, limit, BACKEND, employeeEndpoints, buildHeaders],
   );
 
   useEffect(() => {
@@ -290,7 +244,7 @@ const ParticipantSelection = ({
     (arr || [])
       .filter(Boolean)
       .map((it) =>
-        typeof it === "object" ? it.employee_id || it.id || it.employeeId : it
+        typeof it === "object" ? it.employee_id || it.id || it.employeeId : it,
       )
       .filter(Boolean)
       .map(String);
@@ -315,7 +269,7 @@ const ParticipantSelection = ({
               employee_id: it.employee_id || it.id || it.employeeId,
               name: it.name || it.employee_name || "",
             }
-          : { employee_id: it, name: String(it) }
+          : { employee_id: it, name: String(it) },
       )
       .filter((n) => n.employee_id);
 
@@ -374,11 +328,11 @@ const ParticipantSelection = ({
     if (!emp) return;
     const empId = emp.employee_id || emp.id || emp.employeeId;
     const existsIndex = selected.findIndex(
-      (s) => String(s.employee_id) === String(empId)
+      (s) => String(s.employee_id) === String(empId),
     );
     if (existsIndex !== -1) {
       setSelected((prev) =>
-        prev.filter((p) => String(p.employee_id) !== String(empId))
+        prev.filter((p) => String(p.employee_id) !== String(empId)),
       );
     } else {
       const obj = {
@@ -395,7 +349,7 @@ const ParticipantSelection = ({
 
   const handleRemoveChip = (emp) => {
     setSelected((prev) =>
-      prev.filter((p) => String(p.employee_id) !== String(emp.employee_id))
+      prev.filter((p) => String(p.employee_id) !== String(emp.employee_id)),
     );
   };
 
@@ -494,7 +448,7 @@ const ParticipantSelection = ({
             emp.employee_id || emp.id || emp.employeeId || emp.empId;
           const name = emp.name || String(empId);
           const isSelected = selected.some(
-            (s) => String(s.employee_id) === String(empId)
+            (s) => String(s.employee_id) === String(empId),
           );
           return (
             <div
@@ -524,8 +478,8 @@ const ParticipantSelection = ({
                     ? "Selected — click to remove"
                     : "Click to add to group"
                   : isSelected
-                  ? "Selected"
-                  : "Click to select"}
+                    ? "Selected"
+                    : "Click to select"}
               </div>
             </div>
           );

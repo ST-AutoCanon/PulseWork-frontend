@@ -1,5 +1,3 @@
-"use client";
-
 import React from "react";
 
 export default function FieldsGrid({
@@ -12,7 +10,6 @@ export default function FieldsGrid({
     <div className="rp-fields-grid" aria-disabled={disabled}>
       {availableFields.map((f) => {
         const selected = selectedFields.includes(f.key);
-
         return (
           <button
             key={f.key}

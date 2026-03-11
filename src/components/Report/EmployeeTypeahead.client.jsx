@@ -1,55 +1,46 @@
-"use client";
-
 import React, { useState, useEffect, useRef } from "react";
 import axios from "axios";
 import { MdClose } from "react-icons/md";
 import { getApiBase } from "./ReportUtils";
 import { useAuth } from "../../context/AuthProvider.client";
 
-function extractEmployeeIdFromUser(user) {
-  try {
-    if (!user) return "";
-    return (
-      user.employeeId ||
-      user.employee_id ||
-      user.id ||
-      user.raw?.employeeId ||
-      user.raw?.employee_id ||
-      user.raw?.id ||
-      ""
-    );
-  } catch {
-    return "";
-  }
-}
-
+/**
+ * EmployeeTypeahead
+ *
+ * Props:
+ *  - departmentId (optional) <-- IMPORTANT: this will be used if provided
+ *  - employeeId (optional) <-- used for server-side filtering if present
+ *  - placeholder, limit, onSelect, onTyping, onClear, selectedValue, isTyping, minChars, debounceMs
+ */
 export default function EmployeeTypeahead({
+  departmentId: propDepartmentId = null,
+  employeeId: propEmployeeId = "",
   placeholder = "Search by name or email...",
   limit = 10,
   onSelect = () => {},
   onTyping = () => {},
   onClear = () => {},
-
   selectedValue = "",
   isTyping = false,
   minChars = 2,
   debounceMs = 180,
 }) {
-  const { user } = useAuth();
-
-  const employeeId = extractEmployeeIdFromUser(user);
-  const departmentId =
-    user?.raw?.department_id ||
-    user?.department_id ||
-    user?.departmentId ||
-    null;
-
   const [query, setQuery] = useState(selectedValue || "");
   const [suggestions, setSuggestions] = useState([]);
   const [totalMatches, setTotalMatches] = useState(0);
   const [loading, setLoading] = useState(false);
   const [open, setOpen] = useState(false);
   const [errorText, setErrorText] = useState("");
+  const { user } = useAuth();
+
+  const userDepartmentId = user?.department_id ?? user?.departmentId ?? null;
+
+  // final departmentId: prefer prop over auth context
+  const departmentId = propDepartmentId
+    ? String(propDepartmentId)
+    : userDepartmentId
+      ? String(userDepartmentId)
+      : null;
 
   const debRef = useRef(null);
   const latestRequestId = useRef(0);
@@ -58,11 +49,17 @@ export default function EmployeeTypeahead({
   const lastTypingRef = useRef(false);
   const mountedRef = useRef(true);
 
+  const employeeId =
+    propEmployeeId || user?.employeeId || user?.id || user?.empId || "";
+
   useEffect(() => {
     mountedRef.current = true;
     return () => {
       mountedRef.current = false;
-      if (debRef.current) clearTimeout(debRef.current);
+      if (debRef.current) {
+        clearTimeout(debRef.current);
+        debRef.current = null;
+      }
       latestRequestId.current++;
     };
   }, []);
@@ -75,12 +72,15 @@ export default function EmployeeTypeahead({
     ) {
       setQuery(selectedValue);
     }
-  }, [selectedValue, isTyping, query]);
+  }, [selectedValue, isTyping]); // keep as before
 
   useEffect(() => {
     function onDocClick(e) {
       if (boxRef.current && !boxRef.current.contains(e.target)) {
-        if (debRef.current) clearTimeout(debRef.current);
+        if (debRef.current) {
+          clearTimeout(debRef.current);
+          debRef.current = null;
+        }
         setOpen(false);
       }
     }
@@ -92,82 +92,103 @@ export default function EmployeeTypeahead({
     const nowTyping = Boolean(query && query.trim().length > 0);
     if (lastTypingRef.current !== nowTyping) {
       lastTypingRef.current = nowTyping;
-      onTyping?.(nowTyping);
-      if (!nowTyping) onClear?.();
+      try {
+        onTyping(nowTyping);
+      } catch (e) {}
+      if (!nowTyping)
+        try {
+          onClear();
+        } catch (e) {}
     }
   }, [query, onTyping, onClear]);
 
+  // MAIN fetch effect — depends on query, departmentId, limit, debounce etc.
   useEffect(() => {
-    if (debRef.current) clearTimeout(debRef.current);
+    if (debRef.current) {
+      clearTimeout(debRef.current);
+      debRef.current = null;
+    }
 
-    const trimmed = query?.trim() || "";
+    const trimmed = query ? query.trim() : "";
     if (trimmed.length < minChars) {
-      setSuggestions([]);
-      setTotalMatches(0);
-      setLoading(false);
-      setOpen(false);
-      setErrorText("");
+      if (mountedRef.current) {
+        setSuggestions([]);
+        setTotalMatches(0);
+        setLoading(false);
+        setOpen(false);
+        setErrorText("");
+      }
       return;
     }
+    if (!mountedRef.current) return;
 
     setLoading(true);
     setErrorText("");
-
     debRef.current = setTimeout(async () => {
       const reqId = ++latestRequestId.current;
-      const base = getApiBase?.() || "";
+      const base = (getApiBase && getApiBase()) || "";
       const params = new URLSearchParams();
 
-      params.set("q", trimmed);
-      params.set("limit", String(limit));
-      if (departmentId) params.set("department_id", String(departmentId));
+      try {
+        params.set("q", trimmed);
+        params.set("limit", String(limit));
+        // Use departmentId (prop preferred). Only add it if available.
+        if (departmentId) params.set("department_id", String(departmentId));
+      } catch (e) {}
 
       const url = `${base.replace(
         /\/$/,
-        ""
+        "",
       )}/api/report/search-employees?${params.toString()}`;
+      const headers = {
+        Accept: "application/json",
+        "x-api-key": process.env.REACT_APP_API_KEY || "",
+        "x-employee-id": employeeId || "",
+      };
 
       try {
         const resp = await axios.get(url, {
           withCredentials: true,
+          headers,
           timeout: 10_000,
-          headers: {
-            Accept: "application/json",
-            "x-api-key": process.env.NEXT_PUBLIC_API_KEY || "",
-            ...(employeeId ? { "x-employee-id": String(employeeId) } : {}),
-          },
         });
 
-        if (!mountedRef.current || reqId !== latestRequestId.current) return;
+        if (reqId !== latestRequestId.current) return;
+        if (!mountedRef.current) return;
 
-        const data = resp?.data || {};
-        const items = Array.isArray(data)
-          ? data
-          : data.results || data.data || data.rows || [];
+        const data = resp && resp.data ? resp.data : {};
+        let items = [];
+        if (Array.isArray(data)) items = data;
+        else if (Array.isArray(data.results)) items = data.results;
+        else if (Array.isArray(data.data)) items = data.data;
+        else if (Array.isArray(data.rows)) items = data.rows;
+        else items = [];
 
-        setSuggestions(items.slice(0, limit));
-        setTotalMatches(
-          typeof data.total === "number" ? data.total : items.length
-        );
-        setOpen(items.length > 0);
-        setErrorText("");
+        if (mountedRef.current && reqId === latestRequestId.current) {
+          setSuggestions(items.slice(0, limit));
+          setTotalMatches(
+            typeof data.total === "number" ? data.total : items.length,
+          );
+          setOpen(items.length > 0);
+          setErrorText("");
+        }
       } catch (err) {
-        if (!mountedRef.current || reqId !== latestRequestId.current) return;
-
-        const msg = err?.message || "Unknown error";
+        if (!mountedRef.current) return;
+        if (reqId !== latestRequestId.current) return;
+        const msg = err && err.message ? String(err.message) : "Unknown error";
         if (
           msg.toLowerCase().includes("cors") ||
-          msg.toLowerCase().includes("network")
+          msg.toLowerCase().includes("failed to fetch") ||
+          msg.toLowerCase().includes("network error")
         ) {
           setErrorText(
-            "Network/CORS error — check backend CORS configuration."
+            "Network/CORS error — check server CORS and getApiBase().",
           );
-        } else if (err?.response?.status) {
+        } else if (err && err.response && err.response.status) {
           setErrorText(`Server returned ${err.response.status}`);
         } else {
           setErrorText(msg);
         }
-
         setSuggestions([]);
         setTotalMatches(0);
         setOpen(false);
@@ -179,37 +200,52 @@ export default function EmployeeTypeahead({
     }, debounceMs);
 
     return () => {
-      if (debRef.current) clearTimeout(debRef.current);
+      if (debRef.current) {
+        clearTimeout(debRef.current);
+        debRef.current = null;
+      }
     };
   }, [query, limit, departmentId, debounceMs, minChars, employeeId]);
 
   function handleSelect(item) {
     const name = item.employee_name || item.name || item.email || "";
-    setQuery(name);
-    setSuggestions([]);
-    setTotalMatches(0);
-    setOpen(false);
-    onSelect?.(item);
-
+    if (mountedRef.current) {
+      setSuggestions([]);
+      setTotalMatches(0);
+      setQuery(name);
+      setOpen(false);
+    }
+    try {
+      onSelect(item);
+    } catch (e) {}
     setTimeout(() => {
-      const input = inputRef.current;
-      input?.focus?.();
-      if (input?.setSelectionRange) {
-        const len = input.value?.length || 0;
-        input.setSelectionRange(len, len);
-      }
+      try {
+        const input = inputRef && inputRef.current;
+        if (input && typeof input.focus === "function") input.focus();
+        if (input && typeof input.setSelectionRange === "function") {
+          const len = input.value ? input.value.length : 0;
+          input.setSelectionRange(len, len);
+        }
+      } catch (e) {}
     }, 30);
   }
 
   function handleClear() {
-    if (debRef.current) clearTimeout(debRef.current);
+    if (debRef.current) {
+      clearTimeout(debRef.current);
+      debRef.current = null;
+    }
     latestRequestId.current++;
-    setQuery("");
-    setSuggestions([]);
-    setTotalMatches(0);
-    setOpen(false);
-    setErrorText("");
-    onClear?.();
+    if (mountedRef.current) {
+      setQuery("");
+      setSuggestions([]);
+      setTotalMatches(0);
+      setOpen(false);
+      setErrorText("");
+    }
+    try {
+      onClear();
+    } catch (e) {}
   }
 
   return (
@@ -224,56 +260,99 @@ export default function EmployeeTypeahead({
         placeholder={placeholder}
         value={query}
         onChange={(e) => setQuery(e.target.value)}
-        onFocus={() => suggestions.length && setOpen(true)}
-        autoComplete="off"
+        onFocus={() => {
+          if (suggestions.length) setOpen(true);
+        }}
         aria-label="Search employee"
+        autoComplete="off"
+        style={{ width: "100%" }}
       />
-
       {loading && (
-        <span className="typeahead-spinner">
+        <span
+          className="typeahead-spinner"
+          aria-hidden
+          style={{ position: "absolute", right: 36, top: 10 }}
+        >
           <span className="rp-spinner" />
         </span>
       )}
-
       {query && !loading && (
         <button
           type="button"
           className="typeahead-clear"
           onClick={handleClear}
-          aria-label="Clear search"
+          aria-label="Clear employee search"
+          title="Clear"
+          style={{
+            position: "absolute",
+            right: 8,
+            top: 6,
+            background: "transparent",
+            border: "none",
+            padding: 4,
+            cursor: "pointer",
+          }}
         >
           <MdClose size={16} />
         </button>
       )}
-
       {errorText && (
         <div style={{ color: "crimson", fontSize: 12, marginTop: 6 }}>
           {errorText}
         </div>
       )}
-
       {open && (suggestions.length > 0 || totalMatches > 0) && (
-        <div className="typeahead-dropdown" role="listbox">
-          <div className="typeahead-info">
+        <div
+          className="typeahead-dropdown"
+          role="listbox"
+          style={{
+            position: "absolute",
+            zIndex: 1000,
+            left: 0,
+            right: 0,
+            background: "#fff",
+            border: "1px solid #e2e8f0",
+            boxShadow: "0 4px 12px rgba(0,0,0,0.06)",
+            marginTop: 6,
+          }}
+        >
+          <div
+            className="typeahead-info"
+            style={{ padding: "6px 10px", fontSize: 12, color: "#666" }}
+          >
             {totalMatches === 0
               ? "No matches"
               : `${totalMatches} employee${totalMatches > 1 ? "s" : ""} match`}
           </div>
-
-          <ul>
+          <ul
+            style={{
+              listStyle: "none",
+              margin: 0,
+              padding: 0,
+              maxHeight: 240,
+              overflow: "auto",
+            }}
+          >
             {suggestions.map((s) => (
               <li
-                key={`${s.employee_id || s.id}-${s.email || s.name}`}
-                onMouseDown={(e) => {
-                  e.preventDefault();
+                key={`${s.employee_id || s.id || ""}-${
+                  s.employee_name || s.name || s.email || ""
+                }`}
+                onMouseDown={(ev) => {
+                  ev.preventDefault();
                   handleSelect(s);
                 }}
+                style={{
+                  padding: "8px 10px",
+                  cursor: "pointer",
+                  borderBottom: "1px solid #f1f5f9",
+                }}
               >
-                <div className="typeahead-name">
+                <div style={{ fontWeight: 600 }}>
                   {s.employee_name || s.name || s.email || "(no name)"}
                 </div>
-                <div className="typeahead-sub">
-                  {s.employee_id || ""}{" "}
+                <div style={{ fontSize: 12, color: "#666" }}>
+                  {s.employee_id ? `${s.employee_id} ` : ""}
                   {s.department_name || s.department || "No department"}
                 </div>
               </li>

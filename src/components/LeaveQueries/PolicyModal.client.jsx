@@ -98,6 +98,10 @@ export default function PolicyModal({
     message: "Are you sure you want to delete this policy?",
   });
 
+  // Keep track of ignored/extended policies in memory (no localStorage)
+  const [ignoredPolicies, setIgnoredPolicies] = useState({});
+  const [extendedPolicies, setExtendedPolicies] = useState({});
+
   // existing loading for initial fetch
   const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState(null);
@@ -172,6 +176,16 @@ export default function PolicyModal({
   useEffect(() => {
     setPolicyAlerts(computePolicyAlerts(policies));
   }, [policies]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    if (!Array.isArray(policies) || policies.length === 0) return;
+    if (!ignoredPolicies || Object.keys(ignoredPolicies).length === 0) return;
+
+    runAutoExtendOnLoad(policies).catch((err) =>
+      console.error("runAutoExtendOnLoad failed:", err),
+    );
+  }, [isOpen, policies, ignoredPolicies]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -542,12 +556,6 @@ export default function PolicyModal({
 
       const DELAY_MS = 1200;
       setTimeout(() => {
-        try {
-          if (id) {
-            localStorage.removeItem(`policyIgnored:${id}`);
-            localStorage.removeItem(`policyExtended:${id}`);
-          }
-        } catch (_) {}
         if (typeof onSaved === "function") onSaved();
         onClose();
       }, DELAY_MS);
@@ -602,10 +610,6 @@ export default function PolicyModal({
       } else {
         setPolicies([]);
       }
-      try {
-        localStorage.removeItem(`policyIgnored:${id}`);
-        localStorage.removeItem(`policyExtended:${id}`);
-      } catch (_) {}
       if (typeof onSaved === "function") onSaved();
       setConfirmDelete({
         isVisible: false,
@@ -629,20 +633,15 @@ export default function PolicyModal({
     });
 
   const handleIgnoreAlert = async (policy) => {
-    try {
-      const key = `policyIgnored:${policy.id}`;
-      const ts = new Date().toISOString();
-      localStorage.setItem(key, ts);
-      notify(
-        "Alert ignored — if the policy ends and no changes are made, it will be auto-extended up to 3 months.",
+    const ts = new Date().toISOString();
+    setIgnoredPolicies((prev) => ({ ...prev, [policy.id]: ts }));
+    notify(
+      "Alert ignored — if the policy ends and no changes are made, it will be auto-extended up to 3 months.",
+    );
+    if (daysUntil(policy.year_end) < 0) {
+      extendPolicyIfNeeded(policy, ts).catch((err) =>
+        console.error("Auto-extend failed:", err),
       );
-      if (daysUntil(policy.year_end) < 0) {
-        extendPolicyIfNeeded(policy, ts).catch((err) =>
-          console.error("Auto-extend failed:", err),
-        );
-      }
-    } catch (err) {
-      console.error("Failed to record ignore:", err);
     }
   };
 
@@ -652,86 +651,79 @@ export default function PolicyModal({
     monthsToAdd = 3,
   ) => {
     if (!policy || !policy.id || !policy.year_end) return false;
-    const ignoredKey = `policyIgnored:${policy.id}`;
-    const extendedKey = `policyExtended:${policy.id}`;
 
-    try {
-      if (!ignoredAtISO) ignoredAtISO = localStorage.getItem(ignoredKey);
-      if (!ignoredAtISO) return false;
-      if (localStorage.getItem(extendedKey)) return false;
+    const ignoredAt = ignoredAtISO || ignoredPolicies?.[policy.id] || null;
+    if (!ignoredAt) return false;
 
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      const endDate = new Date(policy.year_end);
-      endDate.setHours(0, 0, 0, 0);
+    if (extendedPolicies?.[policy.id]) return false;
 
-      if (endDate >= today) return false;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const endDate = new Date(policy.year_end);
+    endDate.setHours(0, 0, 0, 0);
 
-      if (policy.updated_at) {
-        const updatedAt = new Date(policy.updated_at);
-        const ignoredAt = new Date(ignoredAtISO);
-        if (updatedAt > ignoredAt) return false;
-      }
+    if (endDate >= today) return false;
 
-      const newEnd = new Date(policy.year_end);
-      newEnd.setMonth(newEnd.getMonth() + monthsToAdd);
-      newEnd.setHours(0, 0, 0, 0);
-      const newEndISO = newEnd.toISOString().split("T")[0];
-
-      const payload = {
-        period: policy.period,
-        year_start: policy.year_start,
-        year_end: newEndISO,
-        leave_settings: policy.leave_settings || [],
-      };
-
-      const res = await fetch(`${API_BASE}/api/leave-policies/${policy.id}`, {
-        method: "PUT",
-        credentials: "include",
-        headers: buildHeaders(),
-        body: JSON.stringify(payload),
-      });
-
-      if (!res.ok)
-        throw new Error(`Extend API failed with status ${res.status}`);
-
-      localStorage.setItem(extendedKey, newEndISO);
-
-      const fresh = await fetch(`${API_BASE}/api/leave-policies`, {
-        credentials: "include",
-        headers: buildHeaders(),
-        cache: "no-store",
-      });
-      if (fresh.ok) {
-        const json = await fresh.json();
-        const list = Array.isArray(json?.data)
-          ? json.data
-          : Array.isArray(json)
-            ? json
-            : [];
-        setPolicies(list);
-      } else {
-        setPolicies([]);
-      }
-
-      if (typeof onSaved === "function") onSaved();
-      notify(
-        `Policy automatically extended to ${newEnd.toLocaleDateString()} (grace extension).`,
-      );
-      return true;
-    } catch (err) {
-      console.error("extendPolicyIfNeeded error:", err);
-      return false;
+    if (policy.updated_at) {
+      const updatedAt = new Date(policy.updated_at);
+      const ignoredAtDate = new Date(ignoredAt);
+      if (updatedAt > ignoredAtDate) return false;
     }
+
+    const newEnd = new Date(policy.year_end);
+    newEnd.setMonth(newEnd.getMonth() + monthsToAdd);
+    newEnd.setHours(0, 0, 0, 0);
+    const newEndISO = newEnd.toISOString().split("T")[0];
+
+    const payload = {
+      period: policy.period,
+      year_start: policy.year_start,
+      year_end: newEndISO,
+      leave_settings: policy.leave_settings || [],
+    };
+
+    const res = await fetch(`${API_BASE}/api/leave-policies/${policy.id}`, {
+      method: "PUT",
+      credentials: "include",
+      headers: buildHeaders(),
+      body: JSON.stringify(payload),
+    });
+
+    if (!res.ok) throw new Error(`Extend API failed with status ${res.status}`);
+
+    setExtendedPolicies((prev) => ({ ...prev, [policy.id]: newEndISO }));
+
+    const fresh = await fetch(`${API_BASE}/api/leave-policies`, {
+      credentials: "include",
+      headers: buildHeaders(),
+      cache: "no-store",
+    });
+    if (fresh.ok) {
+      const json = await fresh.json();
+      const list = Array.isArray(json?.data)
+        ? json.data
+        : Array.isArray(json)
+          ? json
+          : [];
+      setPolicies(list);
+    } else {
+      setPolicies([]);
+    }
+
+    if (typeof onSaved === "function") onSaved();
+    notify(
+      `Policy automatically extended to ${newEnd.toLocaleDateString()} (grace extension).`,
+    );
+    return true;
   };
 
   const runAutoExtendOnLoad = async (policyList = []) => {
     if (!Array.isArray(policyList) || policyList.length === 0) return;
     for (const p of policyList) {
       try {
-        const ignoredAt = localStorage.getItem(`policyIgnored:${p.id}`);
+        const ignoredAt = ignoredPolicies?.[p.id];
         if (!ignoredAt) continue;
-        if (localStorage.getItem(`policyExtended:${p.id}`)) continue;
+        if (extendedPolicies?.[p.id]) continue;
         if (daysUntil(p.year_end) < 0) {
           await extendPolicyIfNeeded(p, ignoredAt, 3);
         }

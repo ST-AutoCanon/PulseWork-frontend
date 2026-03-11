@@ -1,5 +1,3 @@
-"use client";
-
 import React, { useState, useEffect } from "react";
 
 export default function Pagination({
@@ -16,26 +14,19 @@ export default function Pagination({
 
   const goTo = (p) => {
     const pageNum = Math.min(Math.max(1, Number(p || 1)), totalPages || 1);
-
     setJump(pageNum);
-
-    if (pageNum !== currentPage) {
-      onPageChange(pageNum);
-    }
+    if (pageNum !== currentPage) onPageChange(pageNum);
   };
 
   const renderPages = () => {
     const pages = [];
     const windowSize = 5;
-
     let start = Math.max(1, currentPage - Math.floor(windowSize / 2));
     let end = start + windowSize - 1;
-
     if (end > totalPages) {
       end = totalPages;
       start = Math.max(1, end - windowSize + 1);
     }
-
     for (let p = start; p <= end; p++) {
       pages.push(
         <button
@@ -46,10 +37,9 @@ export default function Pagination({
           type="button"
         >
           {p}
-        </button>
+        </button>,
       );
     }
-
     return pages;
   };
 

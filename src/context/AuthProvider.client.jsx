@@ -297,6 +297,47 @@ export function AuthProvider({ children }) {
     return minimalUser;
   };
 
+  useEffect(() => {
+    const orgId = user?.orgId;
+    const employeeId =
+      user?.employeeId || user?.id || user?.empId || user?.emp_id;
+
+    try {
+      if (
+        axios &&
+        axios.defaults &&
+        axios.defaults.headers &&
+        axios.defaults.headers.common
+      ) {
+        if (orgId) axios.defaults.headers.common["x-org-id"] = String(orgId);
+        else delete axios.defaults.headers.common["x-org-id"];
+
+        if (employeeId)
+          axios.defaults.headers.common["x-employee-id"] = String(employeeId);
+        else delete axios.defaults.headers.common["x-employee-id"];
+      }
+    } catch (e) {
+      console.warn("Failed to set axios default headers (orgId/employeeId)", e);
+    }
+
+    if (typeof window !== "undefined") {
+      if (!window.__ORIGINAL_FETCH) {
+        window.__ORIGINAL_FETCH = window.fetch.bind(window);
+        window.fetch = async (input, init = {}) => {
+          const currentOrg = window.__ORG_ID || null;
+          const currentEmp = window.__EMPLOYEE_ID || null;
+          const headers = new Headers(init.headers || {});
+          if (currentOrg) headers.set("x-org-id", String(currentOrg));
+          if (currentEmp) headers.set("x-employee-id", String(currentEmp));
+          const updatedInit = { ...init, headers };
+          return window.__ORIGINAL_FETCH(input, updatedInit);
+        };
+      }
+      window.__ORG_ID = orgId || null;
+      window.__EMPLOYEE_ID = employeeId || null;
+    }
+  }, [user?.orgId, user?.employeeId, user?.id, user?.empId, user?.emp_id]);
+
   const isFramed = () =>
     typeof window !== "undefined" &&
     window.parent &&

@@ -9,7 +9,6 @@ import { useAuth } from "../../context/AuthProvider.client";
 
 const logoUrl = "/images/sukalpa_logo.png";
 const MASTER_ORG_VALUE = "__MASTER__";
-const ORGS_STORAGE_KEY = "login_orgs_v1";
 
 export default function Login({ onClose }) {
   const { login } = useAuth();
@@ -34,7 +33,14 @@ export default function Login({ onClose }) {
 
   const toggleShowPassword = () => setShowPassword((p) => !p);
   const showAlert = (message, title = " ") =>
-    setAlertModal({ isVisible: true, title, message });
+    setAlertModal({
+      isVisible: true,
+      title,
+      message:
+        message && typeof message === "object"
+          ? JSON.stringify(message, null, 2)
+          : String(message || ""),
+    });
   const closeAlert = () =>
     setAlertModal({ isVisible: false, title: "", message: "" });
   const closeModal = () => {
@@ -46,16 +52,6 @@ export default function Login({ onClose }) {
     let aborted = false;
 
     async function loadOrgs() {
-      try {
-        const cached = localStorage.getItem(ORGS_STORAGE_KEY);
-        if (cached) {
-          const parsed = JSON.parse(cached);
-          if (Array.isArray(parsed) && parsed.length > 0) {
-            setOrgs(parsed);
-          }
-        }
-      } catch {}
-
       try {
         const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/orgs`, {
           method: "GET",
@@ -76,7 +72,6 @@ export default function Login({ onClose }) {
 
         if (!aborted) {
           setOrgs(withMaster);
-          localStorage.setItem(ORGS_STORAGE_KEY, JSON.stringify(withMaster));
         }
       } catch (err) {
         console.warn("Failed to refresh orgs:", err);
@@ -222,13 +217,13 @@ export default function Login({ onClose }) {
         parentOrigin || parentOriginRef.current || "*",
       );
 
-       const role = minimalUser.role?.toLowerCase();
+      const role = minimalUser.role?.toLowerCase();
 
-if (role === "general") {
-  router.push("/FacePunch");
-} else {
-  router.push("/dashboard");
-}
+      if (role === "general") {
+        router.push("/FacePunch");
+      } else {
+        router.push("/dashboard");
+      }
     } catch (err) {
       const message = err?.message || "Login failed";
 
@@ -251,6 +246,65 @@ if (role === "general") {
     e.preventDefault();
     if (!isSubmitting) {
       handleParentLogin(username, password);
+    }
+  };
+
+  const handleForgotPassword = async (e) => {
+    e.preventDefault();
+    if (isSubmitting) return;
+
+    if (!username) {
+      const msg = "Please enter your email to reset your password.";
+      setFieldError(msg);
+      showAlert(msg);
+      return;
+    }
+
+    if (!selectedOrgId) {
+      const msg = "Please select your organization before resetting password.";
+      setFieldError(msg);
+      showAlert(msg);
+      return;
+    }
+
+    const payload = { email: username };
+    const headers = {
+      "Content-Type": "application/json",
+      "x-api-key": process.env.NEXT_PUBLIC_API_KEY,
+    };
+
+    // Only send orgId when not logging in as super admin
+    if (selectedOrgId && selectedOrgId !== MASTER_ORG_VALUE) {
+      payload.orgId = selectedOrgId;
+      headers["x-org-id"] = selectedOrgId;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_BACKEND_URL}/forgot-password`,
+        {
+          method: "POST",
+          credentials: "include",
+          headers,
+          body: JSON.stringify(payload),
+        },
+      );
+
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok)
+        throw new Error(data?.message || "Unable to send reset email");
+
+      showAlert(
+        data?.message || "Password reset link has been sent to your email.",
+        "Success",
+      );
+    } catch (err) {
+      const message =
+        err?.message || "Failed to send reset email. Please try again.";
+      showAlert(message, "Error");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 

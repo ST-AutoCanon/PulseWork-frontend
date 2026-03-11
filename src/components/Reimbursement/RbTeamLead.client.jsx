@@ -724,7 +724,6 @@ const RbTeamLead = () => {
         return;
       }
 
-      const authToken = localStorage.getItem("token");
       const fetchedFiles = await Promise.all(
         files.map(async (file) => {
           try {

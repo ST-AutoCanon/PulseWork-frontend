@@ -33,26 +33,11 @@ const ReimbursementForm = (props) => {
     const headers = {};
     const apiKey =
       process.env.NEXT_PUBLIC_API_KEY || process.env.REACT_APP_API_KEY || "";
-    const token =
-      localStorage.getItem("token") || localStorage.getItem("authToken");
+    const token = user?.token || user?.authToken || user?.accessToken || null;
     if (apiKey) headers["x-api-key"] = apiKey;
     if (token) headers["Authorization"] = `Bearer ${token}`;
 
-    const actorId =
-      user?.employeeId ||
-      user?.id ||
-      (() => {
-        try {
-          const raw = localStorage.getItem("dashboardData");
-          if (!raw) return null;
-          const parsed = JSON.parse(raw);
-          return (
-            parsed?.employeeId || parsed?.employee_id || parsed?.id || null
-          );
-        } catch (e) {
-          return null;
-        }
-      })();
+    const actorId = user?.employeeId || user?.id || user?.empId || user?.emp_id;
     if (actorId) headers["x-employee-id"] = String(actorId);
 
     const orgId =
@@ -60,8 +45,6 @@ const ReimbursementForm = (props) => {
       user?.raw?.org_id ||
       user?.org_id ||
       user?.organization_id ||
-      localStorage.getItem("x-org-id") ||
-      localStorage.getItem("orgId") ||
       null;
     if (orgId) headers["x-org-id"] = String(orgId);
 
@@ -98,7 +81,7 @@ const ReimbursementForm = (props) => {
     }
 
     const cleaned = raw.map((i) =>
-      i === undefined || i === null ? "" : String(i).trim()
+      i === undefined || i === null ? "" : String(i).trim(),
     );
 
     const hasEmpty = cleaned.some((c) => c === "");
@@ -146,7 +129,7 @@ const ReimbursementForm = (props) => {
           (e) =>
             String(e.employee_id) === String(p) ||
             String(e.id) === String(p) ||
-            String(e.empId) === String(p)
+            String(e.empId) === String(p),
         );
         return {
           employee_id: p,
@@ -172,8 +155,8 @@ const ReimbursementForm = (props) => {
       const mainInvs = Array.isArray(formData.invoices)
         ? formData.invoices
         : formData.invoices
-        ? [formData.invoices]
-        : [];
+          ? [formData.invoices]
+          : [];
 
       for (let i = 0; i < mainInvs.length; i++) {
         const v = (mainInvs[i] || "").toString().trim();
@@ -193,7 +176,7 @@ const ReimbursementForm = (props) => {
           input
         ) {
           input.setCustomValidity(
-            `Duplicate invoice in form: "${duplicateInvoice}"`
+            `Duplicate invoice in form: "${duplicateInvoice}"`,
           );
           input.reportValidity?.();
           input.focus?.();
@@ -226,7 +209,7 @@ const ReimbursementForm = (props) => {
               input
             ) {
               input.setCustomValidity(
-                `Duplicate invoice in form: "${duplicateInvoice}"`
+                `Duplicate invoice in form: "${duplicateInvoice}"`,
               );
               input.reportValidity?.();
               input.focus?.();

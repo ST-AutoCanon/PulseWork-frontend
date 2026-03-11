@@ -1,6 +1,5 @@
 "use client";
-
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import Sidebar from "./Sidebar.client";
 import Topbar from "./Topbar.client";
 import "./Dashboard.css";
@@ -15,7 +14,7 @@ const Dashboard = () => {
   const [activeContent, setActiveContent] = useState(null);
   const [showBirthday, setShowBirthday] = useState(false);
   const [employeeName, setEmployeeName] = useState("");
-
+  const birthdayChecked = useRef(false);
   const email =
     user?.raw?.email ?? user?.dashboard?.email ?? user?.email ?? null;
   const meId = user?.employeeId ?? user?.id ?? null;
@@ -43,15 +42,17 @@ const Dashboard = () => {
     let cancelled = false;
 
     const fetchBirthday = async () => {
-      if (!hydrated) return;
-      if (!email) return;
+      if (!hydrated || !email || birthdayChecked.current) return;
+
+      birthdayChecked.current = true; // run only once after login
+
       try {
         const response = await axios.get(
           `${BACKEND_URL}/api/employee/birthday/${email}`,
           {
             withCredentials: true,
             headers,
-          }
+          },
         );
 
         const { full_name, first_name, dob } = response.data || {};
@@ -60,7 +61,10 @@ const Dashboard = () => {
         if (isBirthdayToday(dob) && !cancelled) {
           setEmployeeName(nameToUse);
           setShowBirthday(true);
-          setTimeout(() => setShowBirthday(false), 25000);
+
+          setTimeout(() => {
+            setShowBirthday(false);
+          }, 25000);
         }
       } catch (error) {
         console.error("❌ Error fetching birthday:", error);
@@ -72,7 +76,7 @@ const Dashboard = () => {
     return () => {
       cancelled = true;
     };
-  }, [email, BACKEND_URL, headers, hydrated]);
+  }, [hydrated, email]);
 
   const renderContent = () => (
     <div className="content-container-design">

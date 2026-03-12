@@ -880,7 +880,7 @@ const fieldLabels = {
     accountNo: "Account Number",
     workingDays: "Working Days",
     leavesTaken: "Leaves Taken",
-    uinNo: "UAN No",
+    uinNo: "UIN No",
     panNumber: "PAN Number",
     esiNumber: "ESI Number",
     pfNumber: "PF Number",
@@ -1594,7 +1594,7 @@ const fieldOrder = [
             <dt>Designation</dt>         <dd>{viewDetailsModal.employee.designation || viewDetailsModal.employee.position || "—"}</dd>
             <dt>Date of Joining</dt>     <dd>{viewDetailsModal.employee.date_of_joining?.split("T")[0] || "—"}</dd>
             <dt>PAN Number</dt>          <dd className="mono">{viewDetailsModal.employee.pan_number || "—"}</dd>
-            <dt>UAN </dt>           <dd className="mono">{viewDetailsModal.employee.uin_no || "—"}</dd>
+            <dt>UIN </dt>           <dd className="mono">{viewDetailsModal.employee.uin_no || "—"}</dd>
             <dt>PF Number</dt>           <dd className="mono">{viewDetailsModal.employee.pf_number || "—"}</dd>
             <dt>ESI Number</dt>          <dd className="mono">{viewDetailsModal.employee.esi_number || "—"}</dd>
           </dl>

@@ -1,4 +1,4 @@
-
+/*final code*/
 "use client";
 
 import React, { useState, useEffect } from "react";
@@ -55,6 +55,14 @@ export default function GeneratePayslip() {
     employee: null,
   });
 
+
+
+
+
+
+
+
+  
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [manualEmployeeId, setManualEmployeeId] = useState(false);

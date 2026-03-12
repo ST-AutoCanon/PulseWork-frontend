@@ -48,6 +48,12 @@ export default function Login({ onClose }) {
     if (onClose) onClose();
   };
 
+  const postToParent = (msg, origin) => {
+    try {
+      window.parent?.postMessage(msg, origin || parentOriginRef.current || "*");
+    } catch {}
+  };
+
   useEffect(() => {
     let aborted = false;
 
@@ -132,6 +138,16 @@ export default function Login({ onClose }) {
             parentOrgId,
             parentLoginAsSuperAdmin,
           );
+        }
+
+        if (msg.type === "parent-forgot-password") {
+          const parentOrgId =
+            msg.orgId !== undefined ? String(msg.orgId) : undefined;
+          if (parentOrgId !== undefined) {
+            setSelectedOrgId(parentOrgId);
+          }
+
+          handleParentForgotPassword(msg.username, ev.origin, parentOrgId);
         }
       } catch {}
     }
@@ -249,34 +265,46 @@ export default function Login({ onClose }) {
     }
   };
 
-  const handleForgotPassword = async (e) => {
-    e.preventDefault();
-    if (isSubmitting) return;
+  const doForgotPassword = async ({ usernameVal, orgId, parentOrigin }) => {
+    setFieldError(null);
 
-    if (!username) {
+    if (!usernameVal) {
       const msg = "Please enter your email to reset your password.";
       setFieldError(msg);
       showAlert(msg);
+      if (parentOrigin || isFramed) {
+        postToParent(
+          { type: "forgot-password-failed", error: msg },
+          parentOrigin,
+        );
+      }
       return;
     }
 
-    if (!selectedOrgId) {
+    const orgToUse = orgId !== undefined ? orgId : selectedOrgId;
+    if (!orgToUse) {
       const msg = "Please select your organization before resetting password.";
       setFieldError(msg);
       showAlert(msg);
+      if (parentOrigin || isFramed) {
+        postToParent(
+          { type: "forgot-password-failed", error: msg },
+          parentOrigin,
+        );
+      }
       return;
     }
 
-    const payload = { email: username };
+    const payload = { email: usernameVal };
     const headers = {
       "Content-Type": "application/json",
       "x-api-key": process.env.NEXT_PUBLIC_API_KEY,
     };
 
     // Only send orgId when not logging in as super admin
-    if (selectedOrgId && selectedOrgId !== MASTER_ORG_VALUE) {
-      payload.orgId = selectedOrgId;
-      headers["x-org-id"] = selectedOrgId;
+    if (orgToUse && orgToUse !== MASTER_ORG_VALUE) {
+      payload.orgId = orgToUse;
+      headers["x-org-id"] = orgToUse;
     }
 
     setIsSubmitting(true);
@@ -295,17 +323,48 @@ export default function Login({ onClose }) {
       if (!res.ok)
         throw new Error(data?.message || "Unable to send reset email");
 
-      showAlert(
-        data?.message || "Password reset link has been sent to your email.",
-        "Success",
-      );
+      const successMessage =
+        data?.message || "Password reset link has been sent to your email.";
+      showAlert(successMessage, "Success");
+
+      if (parentOrigin || isFramed) {
+        postToParent(
+          { type: "forgot-password-success", message: successMessage },
+          parentOrigin,
+        );
+      }
     } catch (err) {
       const message =
         err?.message || "Failed to send reset email. Please try again.";
       showAlert(message, "Error");
+      if (parentOrigin || isFramed) {
+        postToParent(
+          { type: "forgot-password-failed", error: message },
+          parentOrigin,
+        );
+      }
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const handleParentForgotPassword = (
+    usernameVal,
+    parentOrigin,
+    overrideOrgId,
+  ) => {
+    doForgotPassword({
+      usernameVal,
+      orgId: overrideOrgId,
+      parentOrigin,
+    });
+  };
+
+  const handleForgotPassword = async (e) => {
+    e.preventDefault();
+    if (isSubmitting) return;
+
+    await doForgotPassword({ usernameVal: username, orgId: selectedOrgId });
   };
 
   if (isFramed === null || isFramed) return null;

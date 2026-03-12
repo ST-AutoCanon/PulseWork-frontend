@@ -871,7 +871,7 @@ export default function GeneratePayslip() {
     return { grossEarnings, totalDeductions, netSalary };
   };
 
-  const fieldLabels = {
+const fieldLabels = {
     employeeName: "Employee Name",
     employeeId: "Employee ID",
     gender: "Gender",
@@ -891,6 +891,8 @@ export default function GeneratePayslip() {
     esiInsurance: "ESI/Insurance",
     professionalTax: "Professional Tax",
     tds: "TDS",
+    selectedMonth: "Month",
+    selectedYear: "Year",
   };
 
   const validateForm = () => {
@@ -1177,12 +1179,13 @@ account_no: formData.accountNo || "",
     "Download"
   ];
 
-  const fieldOrder = [
+const fieldOrder = [
     "employeeId", "employeeName", "gender", "designation",
     "dateOfJoining", "accountNo", "workingDays", "leavesTaken",
     "uinNo", "panNumber", "esiNumber", "pfNumber",
     "basic", "hra", "otherAllowance", "pf", "esiInsurance",
-    "professionalTax", "tds"
+    "professionalTax", "tds",
+    "selectedMonth", "selectedYear"
   ];
 
   const rows = [];
@@ -1352,13 +1355,13 @@ account_no: formData.accountNo || "",
                           className="generatePayslip-form-label"
                         >
                           {fieldLabels[field] || field}
-                          {[
-                            "employeeName", "employeeId", "gender", "designation",
-                            "dateOfJoining", "accountNo", "workingDays", "leavesTaken",
-                            "uinNo", "panNumber", "basic", "hra", "otherAllowance", "tds"
-                          ].includes(field) && (
-                            <span className="generatePayslip-required"> *</span>
-                          )}
+                        {[
+                          "employeeName", "employeeId", "gender", "designation",
+                          "dateOfJoining", "accountNo", "workingDays", "leavesTaken",
+                          "uinNo", "panNumber", "basic", "hra", "otherAllowance", "tds"
+                        ].includes(field) && (
+                          <span className="generatePayslip-required"> *</span>
+                        )}
                         </label>
 
                         {field === "employeeId" ? (

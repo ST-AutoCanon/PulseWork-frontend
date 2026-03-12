@@ -98,7 +98,10 @@ const getEffectiveCtcPercentage = (fieldName, formData, ctc = DEFAULT_CTC) => {
   const rawPct = parseFloat(formData[fieldName]) || 0;
   if (rawPct <= 0) return 0;
 
-  const basicPct = parseFloat(formData.basicSalary) || 0;
+  // Get the actual basic salary amount (formData.basicSalary is a %, so convert to amount)
+  // For default CTC of 100000, if basicSalary is 40%, basic amount = 40000
+  const basicSalaryAmount = (parseFloat(formData.basicSalary) || 0) / 100 * ctc;
+  const basicPct = basicSalaryAmount; // This is now the actual amount in rupees
 
  
   const includeFieldMap = {
@@ -122,9 +125,10 @@ const getEffectiveCtcPercentage = (fieldName, formData, ctc = DEFAULT_CTC) => {
     return rawPct;
   }
 
-  // Basic-based → convert
+  // Basic-based → convert: (percentage of basic) → (percentage of CTC)
+  // e.g., 20% of basic (which is 40% of CTC = 40000) = 20/100 * 40000 = 8000 annually = 8% of CTC
   if (BASIC_BASED_FIELDS.includes(cleanField)) {
-    return (rawPct / 100) * basicPct;
+    return (rawPct / 100) * basicPct / ctc * 100;
   }
 
   // Gross-based
@@ -741,8 +745,8 @@ const CreateCompensation = () => {
 const allocationInfo = useMemo(() => {
   let totalAllocated = 0;
   const components = [];
-  const ctc = parseFloat(ctcInput) || DEFAULT_CTC;
-  const validCtc = !isNaN(ctc) && ctc > 0 ? ctc : DEFAULT_CTC;
+  // Always use DEFAULT_CTC for percentage calculations (fixed at 1,00,000)
+  const validCtc = DEFAULT_CTC;
 
   allowancePercentageFields.forEach(
     ({ field, enable, type, amountField, include }) => {
@@ -780,11 +784,26 @@ const allocationInfo = useMemo(() => {
         const amount = parseFloat(formData[amountField]) || 0;
         if (amount <= 0) return;
 
-        // Special fields (Professional Tax, Insurance) are monthly amounts, not annual
-        const isMonthlyAmount =
-          field === "professionalTax" ||
-          field === "professionalTaxAmount" ||
-          field === "insuranceEmployeeAmount";
+        // Most amount fields in this system are MONTHLY amounts, not annual
+        // Only some specific fields are truly annual
+        // Check if it's a known monthly field
+        const monthlyAmountFields = [
+          "basicSalaryAmount",
+          "houseRentAllowanceAmount", 
+          "ltaAllowanceAmount",
+          "otherAllowanceAmount",
+          "pfEmployeeAmount",
+          "pfEmployerAmount",
+          "esicEmployeeAmount",
+          "insuranceEmployeeAmount",
+          "professionalTaxAmount",
+          "gratuityAmount",
+          "variablePayAmount",
+          "statutoryBonusAmount",
+          "incentivesAmount"
+        ];
+        
+        const isMonthlyAmount = monthlyAmountFields.includes(amountField);
 
         let effectivePct;
         if (isMonthlyAmount) {
@@ -962,7 +981,8 @@ useEffect(() => {
   }
 
   let totalAllocated = 0;
-  const ctc = DEFAULT_CTC; // ignore preview CTC input
+  // Always use DEFAULT_CTC for percentage calculations (fixed at 1,00,000)
+  const ctc = DEFAULT_CTC;
 
   allowancePercentageFields.forEach(
     ({ field, enable, type, amountField, include }) => {
@@ -982,10 +1002,25 @@ useEffect(() => {
       } else if (formData[type] === "amount" && formData[amountField]) {
         const amount = parseFloat(formData[amountField]) || 0;
         if (amount > 0) {
-          const isMonthlyAmount =
-            field === "professionalTax" ||
-            field === "professionalTaxAmount" ||
-            field === "insuranceEmployeeAmount";
+          // All amount fields in this system are MONTHLY amounts
+          const monthlyAmountFields = [
+            "basicSalaryAmount",
+            "houseRentAllowanceAmount", 
+            "ltaAllowanceAmount",
+            "otherAllowanceAmount",
+            "pfEmployeeAmount",
+            "pfEmployerAmount",
+            "esicEmployeeAmount",
+            "insuranceEmployeeAmount",
+            "professionalTaxAmount",
+            "gratuityAmount",
+            "variablePayAmount",
+            "statutoryBonusAmount",
+            "incentivesAmount"
+          ];
+          
+          const isMonthlyAmount = monthlyAmountFields.includes(amountField);
+          
           let eff;
           if (isMonthlyAmount) {
             eff = (amount * 12 / ctc) * 100;
@@ -1007,6 +1042,7 @@ useEffect(() => {
     return prev;
   });
 }, [
+  formData.targetCtc,
   formData.isOtherAllowance,
   formData.otherAllowanceType,
   formData.isBasicSalary,
@@ -1052,6 +1088,7 @@ useEffect(() => {
   formData.statutoryBonusIncludeInCtc,
   formData.incentivesIncludeInCtc,
   isOtherAllowanceManuallyEdited,
+  ctcInput,
 ]);
 
   const renderCategoryField = ({
@@ -1273,28 +1310,21 @@ useEffect(() => {
         required={required}
       />
 
-      {/* Accurate CTC % for fixed amount */}
+      {/* Accurate CTC % for fixed amount - ALL amount fields are MONTHLY */}
       {(() => {
         const amt = parseFloat(formData[amountField]) || 0;
         if (amt <= 0) return null;
 
         const totalCtc = parseFloat(ctcInput) || DEFAULT_CTC;
-        const annualPct = (amt / totalCtc) * 100;
-        const monthlyAmt = amt / 12;
+        // All amount fields are monthly, so multiply by 12 to get annual
+        const annualAmount = amt * 12;
+        const annualPct = (annualAmount / totalCtc) * 100;
 
         return (
           <span style={{ color: "#555", fontSize: "0.92rem", whiteSpace: "nowrap" }}>
-            ≈ {annualPct.toFixed(2)}% of CTC          </span>
+            ≈ {annualPct.toFixed(2)}% of CTC (₹{amt.toLocaleString("en-IN")}/mo)
+          </span>
         );
-
-        <span style={{
-        color: '#777',
-        fontSize: '0.85rem',
-        fontStyle: 'italic',
-        marginLeft: '12px'
-      }}>
-        {getBaseLabel(amountField, formData)}
-      </span>
       })()}
     </div>
 
@@ -2721,7 +2751,7 @@ console.log("=====================================\n");
     {
       title: "Plan Details",
       fields: [
-        {
+{
           component: (
             <div className="compensation-form-group">
               <span className="compensation-label-text">

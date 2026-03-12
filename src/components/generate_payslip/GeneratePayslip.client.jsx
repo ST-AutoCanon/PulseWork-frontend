@@ -1,4 +1,4 @@
-/*final code*/
+
 "use client";
 
 import React, { useState, useEffect } from "react";
@@ -55,14 +55,6 @@ export default function GeneratePayslip() {
     employee: null,
   });
 
-
-
-
-
-
-
-
-  
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [manualEmployeeId, setManualEmployeeId] = useState(false);
@@ -437,7 +429,7 @@ export default function GeneratePayslip() {
             </div>` : ''}
             ${uinNo && uinNo !== "N/A" ? `
             <div style="margin-bottom: 10px;">
-              <strong style="display: inline-block; width: 130px; color: #333;">UIN:</strong>
+              <strong style="display: inline-block; width: 130px; color: #333;">UAN:</strong>
               ${uinNo}
             </div>` : ''}
             ${bankName && bankName !== "N/A" ? `
@@ -888,7 +880,7 @@ const fieldLabels = {
     accountNo: "Account Number",
     workingDays: "Working Days",
     leavesTaken: "Leaves Taken",
-    uinNo: "UIN No",
+    uinNo: "UAN No",
     panNumber: "PAN Number",
     esiNumber: "ESI Number",
     pfNumber: "PF Number",
@@ -1602,7 +1594,7 @@ const fieldOrder = [
             <dt>Designation</dt>         <dd>{viewDetailsModal.employee.designation || viewDetailsModal.employee.position || "—"}</dd>
             <dt>Date of Joining</dt>     <dd>{viewDetailsModal.employee.date_of_joining?.split("T")[0] || "—"}</dd>
             <dt>PAN Number</dt>          <dd className="mono">{viewDetailsModal.employee.pan_number || "—"}</dd>
-            <dt>UIN </dt>           <dd className="mono">{viewDetailsModal.employee.uin_no || "—"}</dd>
+            <dt>UAN </dt>           <dd className="mono">{viewDetailsModal.employee.uin_no || "—"}</dd>
             <dt>PF Number</dt>           <dd className="mono">{viewDetailsModal.employee.pf_number || "—"}</dd>
             <dt>ESI Number</dt>          <dd className="mono">{viewDetailsModal.employee.esi_number || "—"}</dd>
           </dl>

@@ -96,7 +96,6 @@ export default function StepFamilyDetails({ data, onChange }) {
               name="spouse_name"
               value={data.spouse_name || ""}
               onChange={(e) => onChange("spouse_name", e.target.value)}
-              pattern="^[A-Z][a-zA-Z]+$"
               title="Must start with a capital letter and contain only letters"
               required
             />
@@ -130,7 +129,6 @@ export default function StepFamilyDetails({ data, onChange }) {
                   name={`child${i}_name`}
                   value={data[`child${i}_name`] || ""}
                   onChange={(e) => onChange(`child${i}_name`, e.target.value)}
-                  pattern="^[A-Z][a-zA-Z]+$"
                   title="Must start with a capital letter and contain only letters"
                 />
               </label>

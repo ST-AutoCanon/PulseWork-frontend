@@ -146,14 +146,28 @@ export default function GeneratePayslip() {
 
   const protectedImgCache = new Map();
 
-  const normalizeUploadUrl = (src) => {
-    if (!src) return src;
-    if (src.startsWith("blob:") || src.startsWith("data:")) return src;
-    const backend = BACKEND_URL.replace(/\/$/, "");
-    if (src.startsWith("/api/")) return backend + src;
-    return src;
-  };
+ const normalizeUploadUrl = (src) => {
+  if (!src) return src;
 
+  // already valid
+  if (src.startsWith("blob:") || src.startsWith("data:") || src.startsWith("http")) {
+    return src;
+  }
+
+  const backend = BACKEND_URL.replace(/\/$/, "");
+
+  // if already api path
+  if (src.startsWith("/api/")) {
+    return backend + src;
+  }
+
+  // if only filename stored in DB
+  if (!src.includes("/")) {
+    return `${backend}/api/orgs/${orgId}/uploads/${src}`;
+  }
+
+  return src;
+};
   const blobToDataUrl = (blob) =>
     new Promise((resolve, reject) => {
       const reader = new FileReader();
@@ -685,20 +699,74 @@ export default function GeneratePayslip() {
     };
   };
 
-  const generatePdfWithTemplate = async (tableData) => {
+const waitForImagesToLoad = async (container, timeout = 10000) => {
+    const imgs = Array.from(container.querySelectorAll("img"));
+    if (imgs.length === 0) return Promise.resolve();
+
+    return new Promise((resolve) => {
+      let settled = 0;
+      const onSettled = () => {
+        settled += 1;
+        if (settled === imgs.length) resolve();
+      };
+
+      imgs.forEach((img) => {
+        if (img.complete && img.naturalHeight > 0) {
+          onSettled();
+        } else {
+          const t = setTimeout(onSettled, timeout);
+          const wrapped = () => {
+            clearTimeout(t);
+            onSettled();
+          };
+          img.addEventListener("load", wrapped, { once: true });
+          img.addEventListener("error", wrapped, { once: true });
+        }
+      });
+    });
+  };
+
+const generatePdfWithTemplate = async (tableData) => {
     const tableHtml = buildDataTableHtml(tableData);
-    const finalHtml = buildProcessedTemplate(tableHtml);
+    let finalHtml = buildProcessedTemplate(tableHtml);
 
-    const pdfBlob = await generatePayslipPDF(
-      {}, // dummy payrollData
-      { month: selectedMonth, year: selectedYear },
-      {},
-      {},
-      {},
-      { html: finalHtml }
-    );
+    // Create offscreen container for rendering
+    const container = document.createElement("div");
+    container.style.position = "absolute";
+    container.style.left = "-9999px";
+    container.style.top = "-9999px";
+    container.style.width = "210mm";
+    container.style.minHeight = "297mm";
+    container.style.padding = "15mm";
+    container.style.background = "#fff";
+    container.style.boxSizing = "border-box";
+    container.style.fontFamily = "Arial, sans-serif";
+    document.body.appendChild(container);
 
-    return pdfBlob;
+    container.innerHTML = finalHtml;
+
+    // Wait for all images to load
+    await waitForImagesToLoad(container);
+
+    const html2canvas = (await import("html2canvas")).default;
+    const canvas = await html2canvas(container, { 
+      scale: 2, 
+      useCORS: true,
+      allowTaint: true,
+      backgroundColor: '#ffffff',
+      width: container.scrollWidth,
+      height: container.scrollHeight
+    });
+    const imgData = canvas.toDataURL("image/png");
+
+    const { jsPDF } = await import("jspdf");
+    const pdf = new jsPDF("p", "mm", "a4");
+    const pdfWidth = pdf.internal.pageSize.getWidth();
+    const pdfHeight = pdf.internal.pageSize.getHeight();
+    pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
+
+    document.body.removeChild(container);
+    return pdf.output("blob");
   };
 
   // ────────────────────────────────────────────────

@@ -1,4 +1,4 @@
-
+/*fixed route code*/
 "use client";
 
 import React, { useState, useEffect } from "react";
@@ -158,10 +158,11 @@ export default function GeneratePayslip() {
 
   // if already api path
   if (src.startsWith("/api/")) {
-    return backend + src;
-  }
+  return BACKEND_URL.replace(/\/api$/, "") + src;
+}
 
-  // if only filename stored in DB
+
+// if only filename stored in DB
   if (!src.includes("/")) {
     return `${backend}/api/orgs/${orgId}/uploads/${src}`;
   }

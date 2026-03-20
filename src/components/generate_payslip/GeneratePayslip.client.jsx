@@ -1,13 +1,17 @@
-/*fixed route code*/
+
 "use client";
 
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import generatePayslipPDF from "../../utils/generatePayslipPDF";
+import generatePayslipPDFDefault from "./generatePayslipPDFDefault";
+
+
 import "./generate_payslip.css";
 import Modal from "../Modal/Modal.client";
 import { useAuth } from "../../context/AuthProvider.client";
 import '@fortawesome/fontawesome-free/css/all.min.css';
+
 export default function GeneratePayslip() {
   const { user } = useAuth();
 
@@ -222,7 +226,53 @@ export default function GeneratePayslip() {
     });
     return out;
   };
+// Custom Template → Has Watermark (unchanged)
+const handleDownloadWithCustomTemplate = async () => {
+  const validationError = validateForm();
+  if (validationError) return showAlert(validationError, "Validation Error");
 
+  setIsLoading(true);
+  try {
+    const tableData = prepareManualPayslipData();
+    const pdfBlob = await generatePdfWithTemplate(tableData);
+
+    const url = URL.createObjectURL(pdfBlob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${formData.employeeId}_Custom.pdf`;
+    a.click();
+    URL.revokeObjectURL(url);
+    showAlert("Downloaded with Custom Template (with Watermark)", "Success");
+  } catch (e) {
+    showAlert("Failed to generate Custom PDF", "Error");
+  } finally {
+    setIsLoading(false);
+  }
+};
+
+// Default Template → With Watermark (same as Custom)
+const handleDownloadWithDefaultTemplate = async () => {
+  const validationError = validateForm();
+  if (validationError) return showAlert(validationError, "Validation Error");
+
+  setIsLoading(true);
+  try {
+    const tableData = prepareManualPayslipData();
+    const pdfBlob = await generatePayslipPDFDefault(tableData, selectedMonth, selectedYear, watermarkImgSrc, watermarkProps);
+
+    const url = URL.createObjectURL(pdfBlob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${formData.employeeId}_Default.pdf`;
+    a.click();
+    URL.revokeObjectURL(url);
+    showAlert("Downloaded with Default Template (with Watermark)", "Success");
+  } catch (e) {
+    showAlert("Failed to generate Default PDF", "Error");
+  } finally {
+    setIsLoading(false);
+  }
+};
   const ensurePercent = (v, defaultVal = "50%") => {
     if (!v) return defaultVal;
     if (typeof v === "number") return `${v}%`;
@@ -553,73 +603,83 @@ export default function GeneratePayslip() {
     return employeeDetailsHtml + tableHtml;
   };
 
-  const buildProcessedTemplate = (tableHtml) => {
-    let baseHtml = templateHtml || `<div class="template-page"><div class="template-body"></div></div>`;
-    if (templateCss) baseHtml = `<style>${templateCss}</style>${baseHtml}`;
+const buildProcessedTemplate = (tableHtml) => {
+  let baseHtml = templateHtml || `<div class="template-page"><div class="template-body"></div></div>`;
+  if (templateCss) baseHtml = `<style>${templateCss}</style>${baseHtml}`;
 
-    const parser = new DOMParser();
-    const doc = parser.parseFromString(baseHtml, "text/html");
-    let pageContainer = doc.querySelector(".template-page") || doc.body;
-    pageContainer.style.position = "relative";
-    pageContainer.style.minHeight = "100vh";
-    pageContainer.style.boxSizing = "border-box";
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(baseHtml, "text/html");
 
-    let bodyDiv = doc.querySelector(".template-body") || pageContainer;
-    bodyDiv.innerHTML = tableHtml;
-    bodyDiv.style.padding = "20px 40px";
+  let pageContainer = doc.querySelector(".template-page") || doc.body;
 
-    if (headerImgSrc && !doc.querySelector(".template-header")) {
-      const headerDiv = doc.createElement("div");
-      headerDiv.className = "template-header";
-      headerDiv.style.marginBottom = "20px";
-      headerDiv.style.textAlign = "center";
-      const img = doc.createElement("img");
-      img.src = headerImgSrc;
-      img.style.maxWidth = "100%";
-      img.style.display = "block";
-      headerDiv.appendChild(img);
-      pageContainer.insertBefore(headerDiv, bodyDiv);
-    }
+  // Make sure container can hold watermark properly
+  pageContainer.style.position = "relative";
+  pageContainer.style.minHeight = "297mm";
+  pageContainer.style.width = "210mm";
+  pageContainer.style.margin = "0 auto";
+  pageContainer.style.boxSizing = "border-box";
+  pageContainer.style.overflow = "hidden";
 
-    if (footerImgSrc && !doc.querySelector(".template-footer")) {
-      const footerDiv = doc.createElement("div");
-      footerDiv.className = "template-footer";
-      footerDiv.style.marginTop = "20px";
-      footerDiv.style.textAlign = "center";
-      const img = doc.createElement("img");
-      img.src = footerImgSrc;
-      img.style.maxWidth = "100%";
-      img.style.display = "block";
-      footerDiv.appendChild(img);
-      pageContainer.appendChild(footerDiv);
-    }
+  let bodyDiv = doc.querySelector(".template-body") || pageContainer;
+  bodyDiv.innerHTML = tableHtml;
+  bodyDiv.style.padding = "20px 40px";
 
-    if (watermarkImgSrc) {
-      doc.querySelectorAll(".pdf-watermark").forEach((el) => el.remove());
-      const wmWrapper = doc.createElement("div");
-      wmWrapper.className = "pdf-watermark";
-      wmWrapper.style.position = "absolute";
-      wmWrapper.style.top = watermarkProps.yPct;
-      wmWrapper.style.left = watermarkProps.xPct;
-      wmWrapper.style.width = watermarkProps.wPct;
-      wmWrapper.style.height = watermarkProps.hPct;
-      wmWrapper.style.transform = "translate(-50%, -50%)";
-      wmWrapper.style.opacity = watermarkProps.opacity;
-      wmWrapper.style.pointerEvents = "none";
-      wmWrapper.style.zIndex = "-1";
+  // Header
+  if (headerImgSrc) {
+    const headerDiv = doc.createElement("div");
+    headerDiv.className = "template-header";
+    headerDiv.style.textAlign = "center";
+    headerDiv.style.marginBottom = "20px";
+    const img = doc.createElement("img");
+    img.src = headerImgSrc;
+    img.style.maxWidth = "100%";
+    headerDiv.appendChild(img);
+    pageContainer.insertBefore(headerDiv, bodyDiv);
+  }
 
-      const img = doc.createElement("img");
-      img.src = watermarkImgSrc;
-      img.style.width = "100%";
-      img.style.height = "100%";
-      img.style.objectFit = "contain";
-      wmWrapper.appendChild(img);
+  // Footer
+  if (footerImgSrc) {
+    const footerDiv = doc.createElement("div");
+    footerDiv.className = "template-footer";
+    footerDiv.style.textAlign = "center";
+    footerDiv.style.marginTop = "20px";
+    const img = doc.createElement("img");
+    img.src = footerImgSrc;
+    img.style.maxWidth = "100%";
+    footerDiv.appendChild(img);
+    pageContainer.appendChild(footerDiv);
+  }
 
-      pageContainer.insertBefore(wmWrapper, pageContainer.firstChild);
-    }
+  // ==================== WATERMARK - FIXED VERSION ====================
+  if (watermarkImgSrc) {
+    doc.querySelectorAll(".pdf-watermark").forEach(el => el.remove());
 
-    return doc.documentElement.outerHTML;
-  };
+    const wmWrapper = doc.createElement("div");
+    wmWrapper.className = "pdf-watermark";
+    wmWrapper.style.position = "absolute";
+    wmWrapper.style.top = "50%";
+    wmWrapper.style.left = "50%";
+    wmWrapper.style.width = "70%";
+    wmWrapper.style.height = "70%";
+    wmWrapper.style.transform = "translate(-50%, -50%)";
+    wmWrapper.style.opacity = "3.65";           // Adjust opacity here
+    wmWrapper.style.zIndex = "0";
+    wmWrapper.style.pointerEvents = "none";
+    wmWrapper.style.overflow = "hidden";
+
+    const img = doc.createElement("img");
+    img.src = watermarkImgSrc;
+    img.style.width = "100%";
+    img.style.height = "100%";
+    img.style.objectFit = "contain";
+    wmWrapper.appendChild(img);
+
+    // Insert as FIRST child so it stays behind everything
+    pageContainer.insertBefore(wmWrapper, pageContainer.firstChild);
+  }
+
+  return doc.documentElement.outerHTML;
+};
 
   // ────────────────────────────────────────────────
   // Data preparation
@@ -728,47 +788,47 @@ const waitForImagesToLoad = async (container, timeout = 10000) => {
   };
 
 const generatePdfWithTemplate = async (tableData) => {
-    const tableHtml = buildDataTableHtml(tableData);
-    let finalHtml = buildProcessedTemplate(tableHtml);
+  const tableHtml = buildDataTableHtml(tableData);
+  const finalHtml = buildProcessedTemplate(tableHtml);
 
-    // Create offscreen container for rendering
-    const container = document.createElement("div");
-    container.style.position = "absolute";
-    container.style.left = "-9999px";
-    container.style.top = "-9999px";
-    container.style.width = "210mm";
-    container.style.minHeight = "297mm";
-    container.style.padding = "15mm";
-    container.style.background = "#fff";
-    container.style.boxSizing = "border-box";
-    container.style.fontFamily = "Arial, sans-serif";
-    document.body.appendChild(container);
+  const container = document.createElement("div");
+  container.style.position = "absolute";
+  container.style.left = "-9999px";
+  container.style.top = "-9999px";
+  container.style.width = "210mm";
+  container.style.minHeight = "297mm";
+  container.style.backgroundColor = "#ffffff";
+  document.body.appendChild(container);
 
-    container.innerHTML = finalHtml;
+  container.innerHTML = finalHtml;
 
-    // Wait for all images to load
-    await waitForImagesToLoad(container);
+  // Wait for all images (including watermark)
+  await waitForImagesToLoad(container, 15000);
 
-    const html2canvas = (await import("html2canvas")).default;
-    const canvas = await html2canvas(container, { 
-      scale: 2, 
-      useCORS: true,
-      allowTaint: true,
-      backgroundColor: '#ffffff',
-      width: container.scrollWidth,
-      height: container.scrollHeight
-    });
-    const imgData = canvas.toDataURL("image/png");
+  const html2canvas = (await import("html2canvas")).default;
 
-    const { jsPDF } = await import("jspdf");
-    const pdf = new jsPDF("p", "mm", "a4");
-    const pdfWidth = pdf.internal.pageSize.getWidth();
-    const pdfHeight = pdf.internal.pageSize.getHeight();
-    pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
+  const canvas = await html2canvas(container, {
+    scale: 2,
+    useCORS: true,
+    allowTaint: true,
+    backgroundColor: "#ffffff",
+    width: container.offsetWidth,
+    height: container.offsetHeight,
+    logging: false,
+  });
 
-    document.body.removeChild(container);
-    return pdf.output("blob");
-  };
+  const imgData = canvas.toDataURL("image/png", 1.0);
+
+  const { jsPDF } = await import("jspdf");
+  const pdf = new jsPDF("p", "mm", "a4");
+  const pdfWidth = pdf.internal.pageSize.getWidth();
+  const pdfHeight = pdf.internal.pageSize.getHeight();
+
+  pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
+
+  document.body.removeChild(container);
+  return pdf.output("blob");
+};
 
   // ────────────────────────────────────────────────
   // Data fetching
@@ -1196,29 +1256,56 @@ account_no: formData.accountNo || "",
     }
   };
 
-  const handleDownloadForEmployee = async (employee) => {
-    setIsLoading(true);
+  // const handleDownloadForEmployee = async (employee) => {
+  //   setIsLoading(true);
 
-    try {
-      const tableData = prepareSavedPayslipData(employee);
-      const pdfBlob = await generatePdfWithTemplate(tableData);
+  //   try {
+  //     const tableData = prepareSavedPayslipData(employee);
+  //     const pdfBlob = await generatePdfWithTemplate(tableData);
 
-      const url = URL.createObjectURL(pdfBlob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `${employee.employee_id}_${employee.month}_${employee.year}_Payslip.pdf`;
-      a.click();
-      URL.revokeObjectURL(url);
+  //     const url = URL.createObjectURL(pdfBlob);
+  //     const a = document.createElement("a");
+  //     a.href = url;
+  //     a.download = `${employee.employee_id}_${employee.month}_${employee.year}_Payslip.pdf`;
+  //     a.click();
+  //     URL.revokeObjectURL(url);
 
-      showAlert(`Downloaded payslip for ${employee.employee_name}`, "Success");
-    } catch (err) {
-      console.error(err);
-      showAlert("Download failed", "Error");
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  //     showAlert(`Downloaded payslip for ${employee.employee_name}`, "Success");
+  //   } catch (err) {
+  //     console.error(err);
+  //     showAlert("Download failed", "Error");
+  //   } finally {
+  //     setIsLoading(false);
+  //   }
+  // };
+// UPDATED: Now maps to Quick Default Template
+const handleDownloadForEmployee = async (employee) => {
+  setIsLoading(true);
+  try {
+    const tableData = prepareSavedPayslipData(employee);
 
+    // ← CHANGED: Use Default Template instead of Custom
+    const pdfBlob = await generatePayslipPDFDefault(
+      tableData, 
+      employee.month || selectedMonth, 
+      employee.year || selectedYear
+    );
+
+    const url = URL.createObjectURL(pdfBlob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${employee.employee_id || employee.employeeId}_${employee.month || selectedMonth}_${employee.year || selectedYear}_Payslip.pdf`;
+    a.click();
+    URL.revokeObjectURL(url);
+
+    showAlert(`Default Payslip downloaded for ${employee.employee_name}`, "Success");
+  } catch (err) {
+    console.error("Default download error:", err);
+    showAlert("Failed to download Default Payslip", "Error");
+  } finally {
+    setIsLoading(false);
+  }
+};
   useEffect(() => {
     return () => {
       if (pdfUrl) URL.revokeObjectURL(pdfUrl);
@@ -1557,74 +1644,93 @@ const fieldOrder = [
               </div>
             )}
 
-            <div className="generatePayslip-form-buttons">
-             <button
-  onClick={() => {
-    if (preview) {
-      // Just go back to form
-      setPreview(false);
-      if (pdfUrl) {
-        URL.revokeObjectURL(pdfUrl);
-        setPdfUrl(null);
-      }
-    } else {
-      // Full close + reset
+       <div className="generatePayslip-form-buttons">
+  <button
+    onClick={() => {
       setShowModal(false);
       setPreview(false);
       setError(null);
       setSuccess(null);
-      if (pdfUrl) URL.revokeObjectURL(pdfUrl);
-      setPdfUrl(null);
+      if (pdfUrl) {
+        URL.revokeObjectURL(pdfUrl);
+        setPdfUrl(null);
+      }
       setEditingEmployeeId(null);
-      setFormData(initialFormData);  // optional: only if you want to clear form
-    }
-  }}
-  className="generatePayslip-cancel-btn"
-  disabled={isLoading}
->
-  {preview ? "Back" : "Cancel"}
-</button>
+    }}
+    className="generatePayslip-cancel-btn"
+    disabled={isLoading}
+  >
+    {preview ? "Back" : "Cancel"}
+  </button>
 
-              {preview ? (
-                <>
-                  <button
-                    onClick={handleSaveToBackend}
-                    className="generatePayslip-save-btn"
-                    disabled={isLoading}
-                  >
-                    {isLoading ? "Saving..." : "Save to Database"}
-                  </button>
-                  <button
-                    onClick={handleDownloadPDF}
-                    className="generatePayslip-download-btn"
-                    disabled={isLoading}
-                  >
-                    {isLoading ? "Downloading..." : "Download PDF"}
-                  </button>
-                </>
-              ) : (
-                <>
-                  <button
-                    onClick={handleSaveToBackend}
-                    className="generatePayslip-save-btn"
-                    disabled={isLoading}
-                  >
-                    {isLoading
-                      ? "Saving..."
-                      : editingEmployeeId
-                      ? "Update"
-                      : "Save"}
-                  </button>
-                  <button
-                    onClick={handlePreview}
-                    className="generatePayslip-preview-btn"
-                    disabled={isLoading}
-                  >
-                    Preview PDF
-                  </button>
-                </>
-              )}
-            </div>
+  {preview ? (
+    <>
+      <button 
+        onClick={handleSaveToBackend} 
+        className="generatePayslip-save-btn" 
+        disabled={isLoading}
+      >
+        {isLoading ? "Saving..." : "Save to Database"}
+      </button>
+
+      {/* Disabled Quick Custom Button */}
+      <button
+        onClick={handleDownloadWithCustomTemplate}
+        className="generatePayslip-download-btn"
+        disabled={true}           // ← DISABLED
+        style={{ opacity: 0.6, cursor: "not-allowed" }}
+      >
+        Quick Custom (Disabled)
+      </button>
+
+      <button
+        onClick={handleDownloadWithDefaultTemplate}
+        className="generatePayslip-download-btn"
+        style={{ backgroundColor: "#28a745", color: "white" }}
+        disabled={isLoading}
+      >
+        {isLoading ? "Downloading..." : "Download with Default Template"}
+      </button>
+    </>
+  ) : (
+    <>
+      <button 
+        onClick={handleSaveToBackend} 
+        className="generatePayslip-save-btn" 
+        disabled={isLoading}
+      >
+        Save
+      </button>
+
+      <button 
+        onClick={handlePreview} 
+        className="generatePayslip-preview-btn" 
+        disabled={isLoading}
+      >
+        Preview
+      </button>
+
+      {/* Disabled Quick Custom Button - Non-Preview Mode */}
+      <button
+        onClick={handleDownloadWithCustomTemplate}
+        className="generatePayslip-download-btn"
+        disabled={true}           // ← DISABLED
+        style={{ opacity: 0.6, cursor: "not-allowed" }}
+      >
+        Using buildtemplate (Disabled)
+      </button>
+
+      <button
+        onClick={handleDownloadWithDefaultTemplate}
+        className="generatePayslip-download-btn"
+        style={{ backgroundColor: "#28a745" }}
+        disabled={isLoading}
+      >
+        Quick Default
+      </button>
+    </>
+  )}
+</div>
           </div>
         </div>
       )}

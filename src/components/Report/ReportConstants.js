@@ -92,6 +92,7 @@ export const SUB_OPTIONS = {
     { key: "employee_id", label: "Employee ID" },
     { key: "employee_name", label: "Employee Name" },
     { key: "first_name", label: "First Name" },
+    { key: "middle_name", label: "Middle Name" },
     { key: "last_name", label: "Last Name" },
     { key: "email", label: "Email" },
     { key: "phone_number", label: "Phone" },

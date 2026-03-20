@@ -61,6 +61,7 @@ const ProjectCard = ({
       <div className="company">
         <h3>{company}</h3>
         {(userRole === "Admin" ||
+          userRole === "HR" ||
           userRole === "Manager" ||
           userRole === "Supervisor") && (
           <MdUpdate
@@ -122,7 +123,7 @@ const ProjectsDashboard = () => {
   const normalizedRole = (userRole || "").trim();
   const normalizedDept = (userDepartment || "").trim().toLowerCase();
 
-  const isAdmin = normalizedRole === "Admin";
+  const isAdmin = normalizedRole === "Admin" || normalizedRole === "HR";
   const isFinanceDept = normalizedDept === "finance";
   const isFinanceManager =
     isFinanceDept &&
@@ -416,7 +417,7 @@ const ProjectsDashboard = () => {
         <>
           <div className="project-header">
             <h2>Update Projects</h2>
-            {userRole === "Admin" && (
+            {isAdmin && (
               <button className="add-project-button" onClick={() => openForm()}>
                 + Add New Project
               </button>

@@ -29,6 +29,10 @@ export default function useProjectForm({
       allowedSteps: [1, 2, 3, 4],
       editable: { 1: true, 2: true, 3: true, 4: true },
     },
+    HR: {
+      allowedSteps: [1, 2, 3, 4],
+      editable: { 1: true, 2: true, 3: true, 4: true },
+    },
     Employee: {
       allowedSteps: [1, 2, 3],
       editable: { 1: false, 2: false, 3: false, 4: false },

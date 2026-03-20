@@ -1,5 +1,3 @@
-
-
 "use client";
 
 import React, { useEffect, useState, useRef } from "react";
@@ -42,6 +40,7 @@ export default function MyDailyWorkHour() {
   const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "";
 
   const mountedRef = useRef(true);
+
   useEffect(() => {
     mountedRef.current = true;
     return () => {
@@ -143,13 +142,59 @@ export default function MyDailyWorkHour() {
     plugins: {
       legend: { display: false },
       title: { display: false },
-      tooltip: {
-        callbacks: {
-          label: function (tooltipItem) {
-            return formatTime(tooltipItem.raw);
-          },
-        },
-      },
+      // tooltip: {
+      //   callbacks: {
+      //     label: function (tooltipItem) {
+      //       const index = tooltipItem.dataIndex;
+
+      //       const punchIn = chartData.firstPunchIn?.[index];
+      //       const punchOut = chartData.lastPunchOut?.[index];
+
+      //       const work = formatTime(tooltipItem.raw);
+
+      //       const formatClock = (time) => {
+      //         if (!time) return "--:--";
+      //         const t = new Date(time);
+      //         return t.toLocaleTimeString([], {
+      //           hour: "2-digit",
+      //           minute: "2-digit",
+      //         });
+      //       };
+
+      //       return [
+      //         `Work Hours: ${work}`,
+      //         `Punch In: ${formatClock(punchIn)}`,
+      //         `Punch Out: ${formatClock(punchOut)}`,
+      //       ];
+      //     },
+      //   },
+      // },
+   tooltip: {
+  callbacks: {
+    label: function (tooltipItem) {
+      const index = tooltipItem.dataIndex;
+      const work = formatTime(tooltipItem.raw);
+
+      const punchIn = chartData.firstPunchIn?.[index];
+      const punchOut = chartData.lastPunchOut?.[index];
+
+      const formatClock = (time) => {
+        if (!time) return "--:--";
+        const t = new Date(time);
+        return t.toLocaleTimeString([], {
+          hour: "2-digit",
+          minute: "2-digit",
+        });
+      };
+
+      return [
+        `Work Hours: ${work}`,
+        `First Punch In: ${formatClock(punchIn)}`,
+        `Last Punch Out: ${formatClock(punchOut)}`,
+      ];
+    },
+  },
+},
       datalabels: {
         color: "#fff",
         anchor: "end",
@@ -177,6 +222,7 @@ export default function MyDailyWorkHour() {
     <div className="work-hour-container">
       <div className="work-hour-header">
         <h3>My daily work hours</h3>
+
         <div className="work-hour-view-options">
           {["Daily", "Weekly", "Monthly"].map((option) => (
             <button
@@ -188,6 +234,7 @@ export default function MyDailyWorkHour() {
             </button>
           ))}
         </div>
+
         <div className="work-hour-legend">
           {view === "Weekly" ? (
             <>
@@ -245,6 +292,14 @@ async function fetchWorkHourAPI(
   });
 }
 
+function safeJSONParse(value) {
+  try {
+    return typeof value === "string" ? JSON.parse(value) : value;
+  } catch {
+    return null;
+  }
+}
+
 function parseWorkHourResponse(res) {
   if (res.status !== 200) {
     return { success: false };
@@ -252,17 +307,15 @@ function parseWorkHourResponse(res) {
 
   if (Array.isArray(res.data)) {
     const dataMap = res.data.reduce((acc, item) => {
-      acc[item.view] = item.data;
+      acc[item.view] = safeJSONParse(item.data);
       return acc;
     }, {});
+
     return { success: true, data: dataMap };
   }
 
   if (typeof res.data === "object") {
-    const dataMap = Array.isArray(res.data)
-      ? { Daily: res.data }
-      : res.data;
-    return { success: true, data: dataMap };
+    return { success: true, data: res.data };
   }
 
   return { success: false };

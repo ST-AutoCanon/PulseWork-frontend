@@ -1,3 +1,11 @@
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap');
+@font-face {
+  font-family: "InsigniaRoman";
+  src: url("/fonts/Insignia-Roman.ttf") format("truetype");
+  font-weight: normal;
+  font-style: normal;
+  
+}
 .topbar1 {
   display: flex;
   justify-content: space-between;
@@ -72,18 +80,12 @@
 }
 
 .org-name-text {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  font-weight: 800;
-  font-size: 24px;
-  letter-spacing: -0.5px;
-  text-transform: uppercase;
+  font-family: "Insignia Roman", sans-serif;
+  font-weight: 550;
+  font-size: 28px;
+  letter-spacing: 1px;
+  text-transform: lowercase; /* 👈 IMPORTANT */
   color: #1e40af;
-  background: none;
-  padding: 0;
-  border-radius: 0;
-  box-shadow: none;
 }
 
 .org-name-text .org-icon-text {

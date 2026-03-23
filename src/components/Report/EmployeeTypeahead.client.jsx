@@ -132,8 +132,8 @@ export default function EmployeeTypeahead({
       try {
         params.set("q", trimmed);
         params.set("limit", String(limit));
-        // Use departmentId (prop preferred). Only add it if available.
-        if (departmentId) params.set("department_id", String(departmentId));
+        // Department filtering disabled for employee search to allow selecting any employee
+        // if (departmentId) params.set("department_id", String(departmentId));
       } catch (e) {}
 
       const url = `${base.replace(
@@ -209,12 +209,19 @@ export default function EmployeeTypeahead({
 
   function handleSelect(item) {
     const name = item.employee_name || item.name || item.email || "";
+    const id =
+      item.employee_id || item.id || item.emp_id || item.employeeId || "";
     if (mountedRef.current) {
       setSuggestions([]);
       setTotalMatches(0);
       setQuery(name);
       setOpen(false);
     }
+    // Keep explicit ID+name pair for upstream filters
+    item.employee_id = id;
+    item.employee_name = name;
+    item.employeeId = id;
+    item.employeeName = name;
     try {
       onSelect(item);
     } catch (e) {}

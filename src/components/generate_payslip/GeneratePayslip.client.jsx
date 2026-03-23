@@ -26,7 +26,7 @@ export default function GeneratePayslip() {
   const meId = user?.employeeId ?? user?.id ?? null;
 
   const API_KEY = process.env.NEXT_PUBLIC_API_KEY;
-  const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5001";
+  const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL ;
 
   const getHeaders = (extra = {}) => {
     const base = {
@@ -106,8 +106,7 @@ export default function GeneratePayslip() {
   const closeViewDetails = () =>
     setViewDetailsModal({ isVisible: false, employee: null });
 
-  // Helper function to extract date without timezone issues
-  // This ensures the date shows correctly without shifting to previous day
+// Helper function to safely extract YYYY-MM-DD date string
   const extractDateOnly = (dateString) => {
     if (!dateString) return "";
     
@@ -118,21 +117,12 @@ export default function GeneratePayslip() {
       dateStr = dateString.split("T")[0];
     }
     
-    // Validate it's a proper date format YYYY-MM-DD
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+    // Return if already valid YYYY-MM-DD
+    if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
       return dateStr;
     }
     
-    // Parse and add one day to compensate for timezone loss during storage
-    // This is needed because the backend stores dates incorrectly due to timezone handling
-    const [year, month, day] = dateStr.split('-').map(Number);
-    const date = new Date(year, month - 1, day);
-    date.setDate(date.getDate() + 1);
-    
-    // Format back to YYYY-MM-DD
-    const paddedMonth = String(date.getMonth() + 1).padStart(2, '0');
-    const paddedDay = String(date.getDate()).padStart(2, '0');
-    return `${date.getFullYear()}-${paddedMonth}-${paddedDay}`;
+    return "";
   };
 
   const [templateHtml, setTemplateHtml] = useState(null);
@@ -1073,7 +1063,7 @@ const fieldLabels = {
       employee_id: formData.employeeId || "",
       gender: formData.gender || "",
       designation: formData.designation || "",
-date_of_joining: formData.dateOfJoining || "", 
+date_of_joining: formData.dateOfJoining || "", // Normalized YYYY-MM-DD
 
 account_no: formData.accountNo || "",
       working_days: parseInt(formData.workingDays) || 0,
@@ -1259,26 +1249,7 @@ account_no: formData.accountNo || "",
   // const handleDownloadForEmployee = async (employee) => {
   //   setIsLoading(true);
 
-  //   try {
-  //     const tableData = prepareSavedPayslipData(employee);
-  //     const pdfBlob = await generatePdfWithTemplate(tableData);
-
-  //     const url = URL.createObjectURL(pdfBlob);
-  //     const a = document.createElement("a");
-  //     a.href = url;
-  //     a.download = `${employee.employee_id}_${employee.month}_${employee.year}_Payslip.pdf`;
-  //     a.click();
-  //     URL.revokeObjectURL(url);
-
-  //     showAlert(`Downloaded payslip for ${employee.employee_name}`, "Success");
-  //   } catch (err) {
-  //     console.error(err);
-  //     showAlert("Download failed", "Error");
-  //   } finally {
-  //     setIsLoading(false);
-  //   }
-  // };
-// UPDATED: Now maps to Quick Default Template
+  
 const handleDownloadForEmployee = async (employee) => {
   setIsLoading(true);
   try {
@@ -1463,13 +1434,16 @@ const fieldOrder = [
               onClick={() => {
                 setShowModal(false);
                 setPreview(false);
+                setFormData(initialFormData);
+                setSelectedMonth(new Date().getMonth() + 1);
+                setSelectedYear(new Date().getFullYear());
+                setEditingEmployeeId(null);
                 setError(null);
                 setSuccess(null);
                 if (pdfUrl) {
                   URL.revokeObjectURL(pdfUrl);
                   setPdfUrl(null);
                 }
-                setEditingEmployeeId(null);
               }}
             >
               ×
@@ -1647,15 +1621,29 @@ const fieldOrder = [
        <div className="generatePayslip-form-buttons">
   <button
     onClick={() => {
-      setShowModal(false);
-      setPreview(false);
-      setError(null);
-      setSuccess(null);
-      if (pdfUrl) {
-        URL.revokeObjectURL(pdfUrl);
-        setPdfUrl(null);
+      if (preview) {
+        // ← We're in preview mode → go back to form (stay in modal)
+        setPreview(false);
+        // Optional: clear preview URL to free memory
+        if (pdfUrl) {
+          URL.revokeObjectURL(pdfUrl);
+          setPdfUrl(null);
+        }
+      } else {
+        // ← Normal mode (form) → really close the modal
+        setShowModal(false);
+        setPreview(false);
+        setFormData(initialFormData);
+        setSelectedMonth(new Date().getMonth() + 1);
+        setSelectedYear(new Date().getFullYear());
+        setEditingEmployeeId(null);
+        setError(null);
+        setSuccess(null);
+        if (pdfUrl) {
+          URL.revokeObjectURL(pdfUrl);
+          setPdfUrl(null);
+        }
       }
-      setEditingEmployeeId(null);
     }}
     className="generatePayslip-cancel-btn"
     disabled={isLoading}

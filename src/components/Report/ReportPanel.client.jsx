@@ -498,8 +498,13 @@ export default function ReportPanel() {
 
   const onTypeStart = useCallback((typing) => setIsTypingSearch(typing), []);
   const onEmployeeSelect = useCallback((item) => {
-    setFilterEmployeeId(item.employee_id || item.id || null);
-    setFilterEmployeeName(item.employee_name || item.name || item.email || "");
+    const employeeIdRaw =
+      item.employee_id || item.id || item.emp_id || item.employeeId || "";
+    const employeeNameRaw =
+      item.employee_name || item.name || item.email || item.employeeName || "";
+
+    setFilterEmployeeId(employeeIdRaw || employeeNameRaw);
+    setFilterEmployeeName(employeeNameRaw);
     if (item.department_id) setFilterDepartmentId(item.department_id);
     setIsTypingSearch(false);
   }, []);
@@ -970,7 +975,7 @@ export default function ReportPanel() {
               />
               <div className="rp-typeahead-subtext">
                 {filterEmployeeId ? (
-                  <em>Filtering by employee id: {filterEmployeeId}</em>
+                  <em>Filtering by employee: {filterEmployeeId}</em>
                 ) : (
                   <em>Search by name or email</em>
                 )}

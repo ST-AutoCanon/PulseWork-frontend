@@ -134,6 +134,7 @@ export default function VennBalances({
   nextVenn,
   setIsLopModalOpen,
 }) {
+  if (!activePolicy) return null;
   if (!balances || balances.length === 0) return null;
 
   const start = activePolicy?.year_start

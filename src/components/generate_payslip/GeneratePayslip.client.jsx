@@ -106,24 +106,43 @@ export default function GeneratePayslip() {
   const closeViewDetails = () =>
     setViewDetailsModal({ isVisible: false, employee: null });
 
-// Helper function to safely extract YYYY-MM-DD date string
-  const extractDateOnly = (dateString) => {
-    if (!dateString) return "";
-    
-    let dateStr = dateString;
-    
-    // Handle ISO format with time component (e.g., "2026-01-09T00:00:00.000Z")
-    if (dateString.includes("T")) {
-      dateStr = dateString.split("T")[0];
+  // Helper function to safely extract YYYY-MM-DD date string (fixed timezone issue)
+ // Helper function to safely extract YYYY-MM-DD (fixes timezone shift)
+const extractDateOnly = (dateString) => {
+  if (!dateString) return "";
+
+  // Case 1: Already YYYY-MM-DD string
+  if (/^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
+    return dateString;
+  }
+
+  // Case 2: ISO string (with T or Z)
+  if (typeof dateString === "string") {
+    // Split at T or space and take only date part
+    const datePart = dateString.split(/[T\s]/)[0];
+    if (/^\d{4}-\d{2}-\d{2}$/.test(datePart)) {
+      return datePart;
     }
-    
-    // Return if already valid YYYY-MM-DD
-    if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
-      return dateStr;
+  }
+
+  // Case 3: If it's a Date object or something else
+  try {
+    const date = new Date(dateString);
+    if (!isNaN(date.getTime())) {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, "0");
+      const day = String(date.getDate()).padStart(2, "0");
+      return `${year}-${month}-${day}`;
     }
-    
-    return "";
-  };
+  } catch (e) {}
+
+  return "";
+};
+
+
+
+// Helper function to safely extract YYYY-MM-DD date string (fixed timezone issue)
+
 
   const [templateHtml, setTemplateHtml] = useState(null);
   const [templateCss, setTemplateCss] = useState(null);
@@ -503,7 +522,7 @@ const handleDownloadWithDefaultTemplate = async () => {
             </div>
             ${leavesTaken > 0 ? `
             <div style="margin-bottom: 10px;">
-              <strong style="display: inline-block; width: 130px; color: #333;">LOP Days:</strong>
+              <strong style="display: inline-block; width: 130px; color: #333;">Leaves taken </strong>
               ${leavesTaken}
             </div>` : ''}
             ${dateOfJoining && dateOfJoining !== "N/A" ? `

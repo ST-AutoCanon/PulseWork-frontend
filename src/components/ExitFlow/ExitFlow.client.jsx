@@ -799,13 +799,19 @@ const handleReviewAction = async (reviewType, action) => {
       } else {
         // all tab → use real role
         const effectiveRole = role?.toLowerCase() === "manager" ? "supervisor" : role?.toLowerCase();
-        if (effectiveRole === "hr") {
+        if (effectiveRole === "hr" || effectiveRole === "admin") {
           endpoint = `${BACKEND_URL}/api/exit/hr/withdraw/final`;
         } else if (effectiveRole === "supervisor") {
           endpoint = `${BACKEND_URL}/api/exit/supervisor/withdraw`;
         }
         methodPayload = { ...payload, status: action };
+        if (!endpoint) {
+          throw new Error(`No withdrawal endpoint configured for role: ${effectiveRole}`);
+        }
       }
+    }
+    if (!endpoint) {
+      throw new Error(`No endpoint configured for reviewType: ${reviewType}`);
     }
     const res = await axios.post(endpoint, methodPayload, {
       headers: {

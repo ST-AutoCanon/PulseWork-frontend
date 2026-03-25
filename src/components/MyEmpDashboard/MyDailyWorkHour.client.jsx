@@ -131,7 +131,7 @@ export default function MyDailyWorkHour() {
             ? "#0033cc"
             : "#99ccff"
         ),
-        barThickness: view === "Daily" ? 30 : view === "Weekly" ? 40 : 10,
+        barThickness: view === "Daily" ? 30 : view === "Weekly" ? 18 : 8,
       },
     ],
   });
@@ -207,12 +207,12 @@ export default function MyDailyWorkHour() {
       x: { grid: { display: false } },
       y: {
         beginAtZero: true,
-        max: view === "Weekly" ? 48 : 10,
+        max: view === "Weekly" ? 12 : 10,
         ticks: {
           callback: function (value) {
             return formatTime(value);
           },
-          stepSize: view === "Weekly" ? 8 : 1,
+          stepSize: view === "Weekly" ? 2 : 1,
         },
       },
     },

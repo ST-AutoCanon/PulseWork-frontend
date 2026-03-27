@@ -282,6 +282,10 @@ async function resolveTemplateProtectedAssets(
     "cleaned_url",
     "headerUrl",
     "footerUrl",
+    "qrUrl",
+    "sealUrl",
+    "qr_url",
+    "seal_url",
   ];
 
   await Promise.all(
@@ -391,6 +395,81 @@ async function resolveTemplateProtectedAssets(
   }
 
   return t;
+}
+
+function extractQrSealUrls(template = {}) {
+  if (!template || typeof template !== "object")
+    return { qr: null, seal: null };
+
+  const candidates = {
+    qr: [
+      template.qrUrl,
+      template.qr_url,
+      template.qr,
+      template.meta?.qrUrl,
+      template.meta?.qr_url,
+      template.meta?.qr,
+      template.meta?.uploads?.qr,
+      template.grapesJson?.qrUrl,
+      template.grapesJson?.qr_url,
+      template.grapesJson?.qr,
+    ].filter((x) => typeof x === "string" && x),
+    seal: [
+      template.sealUrl,
+      template.seal_url,
+      template.seal,
+      template.meta?.sealUrl,
+      template.meta?.seal_url,
+      template.meta?.seal,
+      template.meta?.uploads?.seal,
+      template.grapesJson?.sealUrl,
+      template.grapesJson?.seal_url,
+      template.grapesJson?.seal,
+    ].filter((x) => typeof x === "string" && x),
+  };
+
+  return {
+    qr: candidates.qr.length > 0 ? candidates.qr[0] : null,
+    seal: candidates.seal.length > 0 ? candidates.seal[0] : null,
+  };
+}
+
+async function ensureBlobUrlForTemplateUrl(src, BACKEND_URL, API_KEY, orgId) {
+  if (!src) return null;
+  if (
+    src.startsWith("blob:") ||
+    src.startsWith("data:") ||
+    /^https?:\/\//i.test(src)
+  ) {
+    return src;
+  }
+
+  let normalized = src;
+  if (
+    !normalized.startsWith("/api/") &&
+    !/^https?:\/\//i.test(normalized) &&
+    /^[^\/\\]+\.(png|jpe?g|svg|gif|webp)$/i.test(normalized)
+  ) {
+    if (BACKEND_URL && orgId) {
+      normalized = `${String(BACKEND_URL).replace(/\/$/, "")}/api/orgs/${orgId}/uploads/${normalized}`;
+    }
+  }
+
+  if (normalized.startsWith("/api/") && BACKEND_URL) {
+    normalized = `${String(BACKEND_URL).replace(/\/$/, "")}${normalized}`;
+  }
+
+  try {
+    const blobUrl = await fetchProtectedImage(normalized, API_KEY, orgId);
+    return blobUrl || normalized;
+  } catch (e) {
+    console.warn(
+      "ensureBlobUrlForTemplateUrl: fetchProtectedImage failed",
+      src,
+      e,
+    );
+    return normalized;
+  }
 }
 
 export default function TemplateBuilder() {
@@ -591,23 +670,27 @@ export default function TemplateBuilder() {
   }
 
   function applyImageOverrides({ qr, seal }) {
-    setBodyBoxes((prev) =>
-      (prev || []).map((b) => {
-        const newBox = { ...b };
-        const name =
-          ((newBox.fieldName || "") + "").toLowerCase() ||
-          (newBox.name || "").toLowerCase();
-        if (qr && /(qrcode|qr|qr_code)/.test(name)) {
-          newBox.imageUrl = qr;
-          newBox.content = qr;
-        }
-        if (seal && /(seal|companyseal|stamp)/.test(name)) {
-          newBox.imageUrl = seal;
-          newBox.content = seal;
-        }
-        return { ...newBox, locked: false };
-      }),
-    );
+    setBodyBoxes((prev) => applyQrSealToBoxes(prev, { qr, seal }));
+  }
+
+  function applyQrSealToBoxes(boxes = [], { qr, seal }) {
+    if (!Array.isArray(boxes)) return boxes;
+    return boxes.map((b) => {
+      if (!b || typeof b !== "object") return b;
+      const newBox = { ...b };
+      const name =
+        ((newBox.fieldName || "") + "").toLowerCase() ||
+        (newBox.name || "").toLowerCase();
+      if (qr && /(qrcode|qr|qr_code)/.test(name)) {
+        newBox.imageUrl = qr;
+        newBox.content = qr;
+      }
+      if (seal && /(seal|companyseal|stamp)/.test(name)) {
+        newBox.imageUrl = seal;
+        newBox.content = seal;
+      }
+      return { ...newBox, locked: false };
+    });
   }
 
   function updateFieldById(id, patch = {}) {
@@ -1149,7 +1232,9 @@ export default function TemplateBuilder() {
           resolved.layout ||
           resolved.layout_json ||
           (resolved.meta &&
-            (resolved.meta.layout || resolved.meta.layout_json));
+            (resolved.meta.layout || resolved.meta.layout_json)) ||
+          (resolved.grapesJson &&
+            (resolved.grapesJson.layout || resolved.grapesJson.layout_json));
         if (rawLayout) {
           parsedBodyBoxes =
             typeof rawLayout === "string" ? JSON.parse(rawLayout) : rawLayout;
@@ -1340,7 +1425,31 @@ export default function TemplateBuilder() {
         finalFooterUrl = null;
       }
 
-      setBodyBoxes(parsedBodyBoxes);
+      const { qr: qrRaw, seal: sealRaw } = extractQrSealUrls(resolved);
+      const qrUrlResolved = qrRaw
+        ? await ensureBlobUrlForTemplateUrl(qrRaw, BACKEND_URL, API_KEY, orgId)
+        : null;
+      const sealUrlResolved = sealRaw
+        ? await ensureBlobUrlForTemplateUrl(
+            sealRaw,
+            BACKEND_URL,
+            API_KEY,
+            orgId,
+          )
+        : null;
+
+      setQrUrl(qrUrlResolved || null);
+      setSealUrl(sealUrlResolved || null);
+
+      let finalBodyBoxes = parsedBodyBoxes;
+      if (qrUrlResolved || sealUrlResolved) {
+        finalBodyBoxes = applyQrSealToBoxes(finalBodyBoxes, {
+          qr: qrUrlResolved,
+          seal: sealUrlResolved,
+        });
+      }
+
+      setBodyBoxes(finalBodyBoxes);
       setViewingTemplate({
         name: normalized.name || normalized.meta?.name || "",
         headerUrl: finalHeaderUrl,
@@ -1354,7 +1463,7 @@ export default function TemplateBuilder() {
             hPct: "60%",
             opacity: 0.12,
           },
-        bodyBoxes: parsedBodyBoxes,
+        bodyBoxes: finalBodyBoxes,
       });
 
       setAppMode("view");
@@ -1460,6 +1569,16 @@ export default function TemplateBuilder() {
           if (typeof rawLayout === "string") parsed = JSON.parse(rawLayout);
           else parsed = rawLayout;
           if (Array.isArray(parsed)) parsedBodyBoxes = parsed;
+        } else if (
+          resolved.grapesJson &&
+          (resolved.grapesJson.layout || resolved.grapesJson.layout_json)
+        ) {
+          const rawLayout =
+            resolved.grapesJson.layout || resolved.grapesJson.layout_json;
+          let parsed = null;
+          if (typeof rawLayout === "string") parsed = JSON.parse(rawLayout);
+          else parsed = rawLayout;
+          if (Array.isArray(parsed)) parsedBodyBoxes = parsed;
         } else if (resolved.initialBoxes) {
           parsedBodyBoxes = resolved.initialBoxes;
         } else if (resolved.html) {
@@ -1494,7 +1613,32 @@ export default function TemplateBuilder() {
         parsedBodyBoxes = await ensureBoxesBlobUrls(parsedBodyBoxes);
         console.log(`✅ Box image URLs resolved`);
       }
-      setBodyBoxes(parsedBodyBoxes);
+
+      const { qr: qrRaw, seal: sealRaw } = extractQrSealUrls(resolved);
+      const qrUrlResolved = qrRaw
+        ? await ensureBlobUrlForTemplateUrl(qrRaw, BACKEND_URL, API_KEY, orgId)
+        : null;
+      const sealUrlResolved = sealRaw
+        ? await ensureBlobUrlForTemplateUrl(
+            sealRaw,
+            BACKEND_URL,
+            API_KEY,
+            orgId,
+          )
+        : null;
+
+      setQrUrl(qrUrlResolved || null);
+      setSealUrl(sealUrlResolved || null);
+
+      let finalBodyBoxes = parsedBodyBoxes;
+      if (qrUrlResolved || sealUrlResolved) {
+        finalBodyBoxes = applyQrSealToBoxes(finalBodyBoxes, {
+          qr: qrUrlResolved,
+          seal: sealUrlResolved,
+        });
+      }
+
+      setBodyBoxes(finalBodyBoxes);
 
       const explicitHeaderCandidates = [
         resolved.header_url,
@@ -1689,7 +1833,7 @@ export default function TemplateBuilder() {
           hPct: "60%",
           opacity: 0.12,
         },
-        bodyBoxes: parsedBodyBoxes,
+        bodyBoxes: finalBodyBoxes,
       });
       setGenerated(null);
       setAppMode("view");
@@ -2068,21 +2212,54 @@ export default function TemplateBuilder() {
           if (watermarkPlacementProps)
             setWatermarkProps(watermarkPlacementProps);
 
-          setBodyBoxes((prev) => {
-            try {
-              const rawLayout =
-                resolved.layout ||
-                resolved.layout_json ||
-                resolved.meta?.layout ||
-                resolved.meta?.layout_json;
-              if (rawLayout) {
-                return typeof rawLayout === "string"
+          let parsedBodyBoxes = null;
+          try {
+            const rawLayout =
+              resolved.layout ||
+              resolved.layout_json ||
+              resolved.meta?.layout ||
+              resolved.meta?.layout_json ||
+              resolved.grapesJson?.layout ||
+              resolved.grapesJson?.layout_json;
+            if (rawLayout) {
+              parsedBodyBoxes =
+                typeof rawLayout === "string"
                   ? JSON.parse(rawLayout)
                   : rawLayout;
-              }
-            } catch (e) {}
-            return prev;
-          });
+            }
+          } catch (e) {
+            console.warn("editSavedTemplate: failed to parse layout", e);
+          }
+
+          if (!Array.isArray(parsedBodyBoxes)) {
+            parsedBodyBoxes = fieldsToBoxes(PRESET_FIELDS[bodyType] || []);
+          }
+
+          parsedBodyBoxes = await ensureBoxesBlobUrls(parsedBodyBoxes);
+          setBodyBoxes(parsedBodyBoxes);
+
+          const { qr: qrRaw, seal: sealRaw } = extractQrSealUrls(resolved);
+          const qrUrlResolved = qrRaw
+            ? await ensureBlobUrlForTemplateUrl(
+                qrRaw,
+                BACKEND_URL,
+                API_KEY,
+                orgId,
+              )
+            : null;
+          const sealUrlResolved = sealRaw
+            ? await ensureBlobUrlForTemplateUrl(
+                sealRaw,
+                BACKEND_URL,
+                API_KEY,
+                orgId,
+              )
+            : null;
+
+          setQrUrl(qrUrlResolved || null);
+          setSealUrl(sealUrlResolved || null);
+          if (qrUrlResolved || sealUrlResolved)
+            applyImageOverrides({ qr: qrUrlResolved, seal: sealUrlResolved });
 
           setAppMode("upload");
           setShowEditor(true);

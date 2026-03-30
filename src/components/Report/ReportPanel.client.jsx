@@ -203,7 +203,10 @@ export default function ReportPanel() {
   );
 
   const isAdmin = Boolean(
-    userRole && String(userRole).toLowerCase() === "admin",
+    userRole &&
+    (lowerRole === "admin" ||
+      lowerRole === "hr" ||
+      lowerRole === "human resources"),
   );
 
   const [filterEmployeeId, setFilterEmployeeId] = useState(null);

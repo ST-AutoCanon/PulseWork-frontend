@@ -1,11 +1,21 @@
 .download-form {
-  width: 90%;
-  background-color: #e8e9ea;
-  border-radius: 10px;
-  border: 10px solid #00468c;
-  margin: 0 2rem;
-  padding: 1rem;
+  width: 100%;
+  height: 100%;
+  background-color: white;
   font-family: Arial, sans-serif;
+}
+
+.download-title {
+  display: flex;
+  justify-content: space-between;
+  background-color: #00468c;
+  color: #fff;
+  align-items: center;
+  padding: 1rem 2rem;
+}
+
+.download-title h2 {
+  margin: 0;
 }
 
 .download-form-grid {
@@ -87,6 +97,24 @@
   padding: 4px;
   font-size: 1.2rem;
   background-color: #7fbd2c;
+  color: white;
+  border: 1px solid #ccc;
+  border-radius: 20px;
+  cursor: pointer;
+}
+
+.download-remove-button-cell {
+  width: 30px;
+  display: flex;
+  align-items: flex-end;
+  padding-top: 1rem;
+}
+
+.download-remove-line-item-btn {
+  width: 100%;
+  padding: 4px;
+  font-size: 1.2rem;
+  background-color: #dc3545;
   color: white;
   border: 1px solid #ccc;
   border-radius: 20px;

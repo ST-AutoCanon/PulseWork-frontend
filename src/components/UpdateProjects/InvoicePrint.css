@@ -307,3 +307,197 @@
 .note {
   position: static;
 }
+
+/* ========================= */
+/* ORG 32 STYLES */
+/* ========================= */
+
+.invoice-print-container.org-32 {
+  padding: 0;
+  border: 2px solid #2f2f2f;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Header wrapper */
+.invoice-print-container.org-32 .invoice-print-header.org32-header {
+  background: #fff;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  border-bottom: 1px solid #8f8f8f;
+  padding: 0;
+  margin-top: 2%;
+  position: relative;
+}
+
+/* Top branding row */
+.org32-header-top {
+  display: flex;
+  align-items: stretch;
+  width: 100%;
+  min-height: 72px;
+}
+
+.org32-left-accent {
+  width: 54px;
+  flex: 0 0 54px;
+  background: #d89a00;
+}
+
+.org32-brand-block {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  min-width: 0;
+  padding: 6px 10px 4px 10px;
+}
+
+.org32-brand-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.org32-logo {
+  width: 68px;
+  height: 68px;
+  object-fit: contain;
+  flex: 0 0 auto;
+  margin-left: 2%;
+}
+
+.org32-brand-text {
+  min-width: 0;
+  line-height: 1;
+}
+
+.org32-company-name {
+  margin: 0 0 0 2%;
+  font-size: 46px;
+  font-weight: 900;
+  color: #c18a00;
+  letter-spacing: 0.2px;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.org32-tagline {
+  margin: 3px 0 0 29%;
+  font-size: 20px;
+  color: #7e746b;
+  text-align: right;
+}
+
+.org32-gst-text {
+  width: 100%;
+  display: flex;
+  justify-content: flex-end;
+  padding: 2px 25px 4px 14px;
+  font-size: 16px;
+  font-weight: bold;
+  color: #3a2f2a;
+  box-sizing: border-box;
+}
+
+/* Contact bar matches the image: starts after the accent/logo area and sits directly below GST text */
+.org32-contact-bar {
+  width: 46%;
+  margin-left: auto;
+  background: #1498d6;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  gap: 40px;
+  padding: 9px 14px;
+  padding-left: 4%;
+  box-sizing: border-box;
+  min-height: 44px;
+}
+
+.org32-contact-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 20px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.org32-contact-icon {
+  font-size: 24px;
+  flex: 0 0 auto;
+}
+
+/* Body should remain same, but section headers turn black for org 32 */
+.invoice-print-container.org-32 .invoice-content {
+  flex: 1;
+}
+
+.invoice-print-container.org-32 .invoice-title-block {
+  color: #000;
+  margin: 2% 0;
+  padding: 8px 0;
+}
+
+.invoice-print-container.org-32 .bill-header {
+  background-color: #000;
+  color: #fff;
+}
+
+.invoice-print-container.org-32 .bill-header h4 {
+  color: #fff;
+}
+
+.invoice-print-container.org-32 .in-print-table th {
+  background-color: #000;
+  color: #fff;
+}
+
+.invoice-print-container.org-32 .amount-in-words,
+.invoice-print-container.org-32 .amounts,
+.invoice-print-container.org-32 .tax-box {
+  background-color: #000;
+  color: #fff;
+}
+
+.invoice-print-container.org-32 .invoice-footer h4 {
+  background-color: #000;
+  color: #fff;
+}
+
+/* Footer bar */
+.org32-footer {
+  margin-top: auto;
+  display: block;
+}
+
+.org32-footer-bar {
+  width: 100%;
+  background: #1498d6;
+  color: #fff;
+  min-height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 0 14px;
+  margin-bottom: 5%;
+  box-sizing: border-box;
+  font-size: 20px;
+  font-style: italic;
+  font-weight: 500;
+}
+
+.org32-footer-icon {
+  font-size: 20px;
+  flex: 0 0 auto;
+}
+
+.invoice-print-placeholder {
+  padding: 12px;
+  font-size: 14px;
+  color: #666;
+}

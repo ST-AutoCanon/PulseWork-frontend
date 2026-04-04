@@ -1,8 +1,11 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import "./DownloadDetailsList.css";
 import { useAuth } from "../../context/AuthProvider.client";
+import jsPDF from "jspdf";
+import html2canvas from "html2canvas";
+import InvoiceTemplate from "./InvoiceTemplate.client";
 
 const formatDateIST = (dateString, withTime = false) => {
   try {
@@ -28,6 +31,12 @@ const DownloadDetailsList = ({ refreshKey }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [expandedRows, setExpandedRows] = useState([]);
+  const [redownloadDetails, setRedownloadDetails] = useState({});
+  const [redownloadInvoiceType, setRedownloadInvoiceType] =
+    useState("Tax Invoice");
+  const [redownloadInvoiceNumber, setRedownloadInvoiceNumber] = useState("");
+
+  const printRef = useRef(null);
 
   const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
   const API_KEY = process.env.NEXT_PUBLIC_API_KEY;
@@ -83,6 +92,54 @@ const DownloadDetailsList = ({ refreshKey }) => {
       prev.includes(id) ? prev.filter((r) => r !== id) : [...prev, id],
     );
 
+  const handleRedownload = async (record) => {
+    setRedownloadDetails({
+      to: record.toName || record.to,
+      address: record.address,
+      companyGst: record.companyGst,
+      contact: record.contact,
+      state: record.state,
+      invoiceDate: record.invoiceDate,
+      referenceDate: record.referenceDate,
+      referenceId: record.referenceId,
+      placeOfSupply: record.placeOfSupply,
+      withSeal: record.withSeal,
+      lineItems: record.lineItems || [],
+      subTotal: record.subTotal,
+      gst: record.gst,
+      gstAmount: record.gstAmount,
+      advance: record.advance,
+      totalExcludingTax: record.totalExcludingTax,
+      totalIncludingTax: record.totalIncludingTax,
+      terms: record.terms,
+    });
+    setRedownloadInvoiceType(record.invoiceType || "Tax Invoice");
+    setRedownloadInvoiceNumber(record.invoiceNumber || "");
+
+    // Wait for render
+    setTimeout(async () => {
+      if (!printRef.current) return;
+
+      try {
+        const canvas = await html2canvas(printRef.current, { scale: 2 });
+        const imgData = canvas.toDataURL("image/png");
+        const pdf = new jsPDF({
+          orientation: "portrait",
+          unit: "pt",
+          format: "a4",
+        });
+        const pdfWidth = pdf.internal.pageSize.getWidth();
+        const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+        pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
+
+        const filename = `${record.invoiceNumber || "invoice"}.pdf`;
+        pdf.save(filename);
+      } catch (error) {
+        console.error("Error generating PDF", error);
+      }
+    }, 100);
+  };
+
   if (loading) return <p>Loading download records…</p>;
   if (error) return <p style={{ color: "red" }}>Error: {error}</p>;
 
@@ -104,6 +161,7 @@ const DownloadDetailsList = ({ refreshKey }) => {
               <th>Total (Incl. Tax)</th>
               <th>Downloaded At</th>
               <th>Details</th>
+              <th>Actions</th>
             </tr>
           </thead>
 
@@ -130,11 +188,19 @@ const DownloadDetailsList = ({ refreshKey }) => {
                         {expandedRows.includes(r.id) ? "Hide" : "View"}
                       </button>
                     </td>
+                    <td>
+                      <button
+                        className="d-redownload-btn"
+                        onClick={() => handleRedownload(r)}
+                      >
+                        Redownload
+                      </button>
+                    </td>
                   </tr>
 
                   {expandedRows.includes(r.id) && (
                     <tr className="expanded-content">
-                      <td colSpan={8}>
+                      <td colSpan={9}>
                         <strong>Items:</strong>
                         <table className="line-items-table">
                           <thead>
@@ -237,6 +303,15 @@ const DownloadDetailsList = ({ refreshKey }) => {
           </tbody>
         </table>
       )}
+      <div style={{ position: "absolute", top: "-10000px", left: "-10000px" }}>
+        <div ref={printRef}>
+          <InvoiceTemplate
+            invoiceType={redownloadInvoiceType}
+            invoiceNumber={redownloadInvoiceNumber}
+            downloadDetails={redownloadDetails}
+          />
+        </div>
+      </div>
     </div>
   );
 };

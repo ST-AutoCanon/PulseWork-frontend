@@ -64,6 +64,7 @@ export default function EmployeeForm({
     alternate_number: "",
     gender: "",
     blood_group: "",
+    emergency_contact_person: "",
     emergency_name: "",
     emergency_number: "",
     address: "",

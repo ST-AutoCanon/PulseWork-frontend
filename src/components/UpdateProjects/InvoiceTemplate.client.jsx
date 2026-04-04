@@ -3,9 +3,20 @@
 import React from "react";
 import "./InvoiceTemplate.css";
 import { numberToWords } from "./numberToWords.client";
+import { FiPhone, FiMail, FiMapPin } from "react-icons/fi";
 
 const InvoiceTemplate = React.forwardRef((props, ref) => {
-  const { invoiceType = "", invoiceNumber = "", downloadDetails = {} } = props;
+  const {
+    invoiceType = "",
+    invoiceNumber = "",
+    downloadDetails = {},
+    orgId,
+  } = props;
+
+  const currentOrgId = Number(orgId);
+  const isOrg32 = currentOrgId === 32;
+  const isQuotation = invoiceType === "Quotation";
+  const isPO = invoiceType === "Purchase Order";
 
   const {
     to,
@@ -60,34 +71,78 @@ const InvoiceTemplate = React.forwardRef((props, ref) => {
   const emptyRows =
     emptyRowCount > 0 ? Array.from({ length: emptyRowCount }) : [];
 
+  const headerTitle = invoiceType ? invoiceType.toUpperCase() : "INVOICE";
+
   return (
-    <div ref={ref} className="emp-inv-container">
-      <header className="emp-inv-header">
-        <div className="emp-inv-logo">
-          <img src="/images/company-logo.png" alt="Company Logo" />
-        </div>
-        <div className="emp-inv-address">
-          <h2 className="emp-inv-name">Sukalpa Tech Solutions Pvt Ltd</h2>
-          <p>MSME/Udyam No: UDYAM-KR-04-0106460</p>
-          <p>#71, Sarathi Nagar, Near Sahyadri Nagar, Belagavi -591108</p>
-          <p>State: 29-Karnataka</p>
-          <p>Phone no.: 9686465612</p>
-          <p>Email: om@sukalpatechsolutions.com</p>
-          <p>GSTIN: 29ABICS7525C1Z6</p>
-          <p>PAN: ABICS7525C</p>
-        </div>
-      </header>
+    <div ref={ref} className={`emp-inv-container ${isOrg32 ? "org-32" : ""}`}>
+      {isOrg32 ? (
+        <header className="org32-header">
+          <div className="org32-gst-line">GST Reg. No. : 29CRGPG2296B1ZU</div>
+          <div className="org32-top-row">
+            <div className="org32-left-accent" />
+            <div className="org32-brand-area">
+              <div className="org32-brand-left">
+                <img
+                  src="/images/avinya-logo.png"
+                  alt="AVINYA MOTORS"
+                  className="org32-logo"
+                />
+                <div className="org32-brand-text">
+                  <h2 className="org32-company-name">AVINYA MOTORS</h2>
+                  <p className="org32-tagline">
+                    Manufacturer of Automobile parts
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="org32-contact-row">
+              <div className="org32-contact-item">
+                <FiPhone className="org32-contact-icon" />
+                <span>+91 9243236748</span>
+              </div>
+              <div className="org32-contact-item">
+                <FiMail className="org32-contact-icon" />
+                <span>enquiryavinya@gmail.com</span>
+              </div>
+            </div>
+          </div>
+        </header>
+      ) : (
+        <header className="emp-inv-header">
+          <div className="emp-inv-logo">
+            <img src="/images/company-logo.png" alt="Company Logo" />
+          </div>
+          <div className="emp-inv-address">
+            <h2 className="emp-inv-name">Sukalpa Tech Solutions Pvt Ltd</h2>
+            <p>MSME/Udyam No: UDYAM-KR-04-0106460</p>
+            <p>#71, Sarathi Nagar, Near Sahyadri Nagar, Belagavi -591108</p>
+            <p>State: 29-Karnataka</p>
+            <p>Phone no.: 9686465612</p>
+            <p>Email: om@sukalpatechsolutions.com</p>
+            <p>GSTIN: 29ABICS7525C1Z6</p>
+            <p>PAN: ABICS7525C</p>
+          </div>
+        </header>
+      )}
 
       <div className="emp-inv-title-section">
-        <div className="emp-inv-title-block">
-          {invoiceType ? invoiceType.toUpperCase() : "INVOICE"}
-        </div>
-        <div className="emp-bill-header">
-          <h4>{invoiceType === "Quotation" ? "Estimate For" : "Bill To"}</h4>
+        <div className="emp-inv-title-block">{headerTitle}</div>
+
+        <div className={`emp-bill-header ${isOrg32 ? "org32-black" : ""}`}>
           <h4>
-            {invoiceType === "Quotation" ? "Estimate Details" : "Bill Details"}
+            {isQuotation ? "Estimate For" : isPO ? "Order To" : "Bill To"}
+          </h4>
+
+          <h4>
+            {isQuotation
+              ? "Estimate Details"
+              : isPO
+                ? "Order Details"
+                : "Bill Details"}
           </h4>
         </div>
+
         <div className="emp-bill-data">
           <div className="emp-bill-to">
             <strong>
@@ -98,16 +153,18 @@ const InvoiceTemplate = React.forwardRef((props, ref) => {
             <p>GSTIN : {companyGst || "_________"}</p>
             <p>State: {state || "_________"}</p>
           </div>
+
           <div className="emp-inv-details">
             <p>
               <span className="temp-label">
-                {invoiceType === "Quotation" ? "Estimate No" : "Invoice No"}
+                {isQuotation ? "Estimate No" : isPO ? "Order No" : "Invoice No"}
               </span>
               : <strong>{invoiceNumber}</strong>
             </p>
+
             <p>
               <span className="temp-label">
-                {invoiceType === "Quotation" ? "Date" : "Invoice Date"}
+                {isQuotation || isPO ? "Date" : "Invoice Date"}
               </span>
               :{" "}
               <strong>
@@ -122,11 +179,13 @@ const InvoiceTemplate = React.forwardRef((props, ref) => {
                   : "_________"}
               </strong>
             </p>
+
             <p>
               <span className="temp-label">Place of supply</span>:{" "}
               <strong>{placeOfSupply || "_________"}</strong>
             </p>
-            {invoiceType !== "Quotation" && (
+
+            {!isQuotation && !isPO && (
               <>
                 <p>
                   <span className="temp-label">PO Date</span>:{" "}
@@ -157,6 +216,7 @@ const InvoiceTemplate = React.forwardRef((props, ref) => {
           <tr>
             <th>S.No</th>
             <th>Item/Service Description</th>
+            <th>HSN/SAC</th>
             <th>Quantity</th>
             <th>Amount</th>
             <th>Sub total</th>
@@ -172,6 +232,7 @@ const InvoiceTemplate = React.forwardRef((props, ref) => {
               <tr key={idx}>
                 <td>{idx + 1}</td>
                 <td>{item.description || ""}</td>
+                <td>{item.hsnSac || ""}</td>
                 <td>{item.quantity || ""}</td>
                 <td>₹ {Number(item.rate || 0).toLocaleString("en-IN")}</td>
                 <td>₹ {Number(item.total || 0).toLocaleString("en-IN")}</td>
@@ -192,6 +253,7 @@ const InvoiceTemplate = React.forwardRef((props, ref) => {
               <td>&nbsp;</td>
               <td>&nbsp;</td>
               <td>&nbsp;</td>
+              <td>&nbsp;</td>
             </tr>
           ))}
 
@@ -200,6 +262,7 @@ const InvoiceTemplate = React.forwardRef((props, ref) => {
             <td>
               <strong>Totals</strong>
             </td>
+            <td></td>
             <td>
               <strong>{totals.quantity}</strong>
             </td>
@@ -223,12 +286,13 @@ const InvoiceTemplate = React.forwardRef((props, ref) => {
 
       <div className="emp-tax-section">
         <div className="emp-partition">
-          <div className="emp-tax-box">
+          <div className={`emp-tax-box ${isOrg32 ? "org32-black" : ""}`}>
             <p>Tax type</p>
             <p>Taxable amount</p>
             <p>Rate</p>
             <p>Tax amount</p>
           </div>
+
           {state && state.toLowerCase() === "karnataka" ? (
             <>
               <div className="emp-tax-box-body">
@@ -257,14 +321,14 @@ const InvoiceTemplate = React.forwardRef((props, ref) => {
             </div>
           )}
 
-          <p className="emp-amount-in-words">
+          <p className={`emp-amount-in-words ${isOrg32 ? "org32-black" : ""}`}>
             <strong>Order Amount in words</strong>
           </p>
           <div className="emp-amount-in-words-text">
             {numberToWords(Math.round(totalIncludingTax || 0))}
           </div>
 
-          <p className="emp-amount-in-words">
+          <p className={`emp-amount-in-words ${isOrg32 ? "org32-black" : ""}`}>
             <strong>Terms and Conditions</strong>
           </p>
           <div>
@@ -273,7 +337,7 @@ const InvoiceTemplate = React.forwardRef((props, ref) => {
         </div>
 
         <div className="emp-partition">
-          <div className="emp-amounts">
+          <div className={`emp-amounts ${isOrg32 ? "org32-black" : ""}`}>
             <strong>Amounts</strong>
           </div>
 
@@ -311,49 +375,63 @@ const InvoiceTemplate = React.forwardRef((props, ref) => {
         </div>
       </div>
 
-      <footer className="emp-inv-footer">
-        <div className="emp-footer-partition">
-          <h4>Bank Details</h4>
-          <div className="emp-bank-details">
-            <div className="emp-qr-code">
-              <img src="/images/upi-qr-code.png" alt="UPI QR Code" />
-            </div>
-            <div>
-              <p>
-                Name: HDFC BANK, BELGAUM
-                <br />
-                Account No: 50200089573214
-                <br />
-                IFSC code: HDFC0000253
-                <br />
-                Account holder's name: Sukalpa Tech Solutions Pvt Ltd
-              </p>
-            </div>
+      {isOrg32 ? (
+        <footer className="org32-footer">
+          <div className="org32-footer-bar">
+            <FiMapPin className="org32-footer-icon" />
+            <span>
+              Plot No. 04, 2nd Cross, Prajwani Road, Near High Court, Belur
+              Industrial Area, Dharwad - 580 011
+            </span>
           </div>
-        </div>
-
-        <div className="emp-seal-signs">
-          <p>For: Sukalpa Tech Solutions Pvt Ltd</p>
-          {withSeal ? (
-            <div className="emp-seal">
-              <img src="/images/seal.png" alt="SEAL" />
+        </footer>
+      ) : (
+        <>
+          <footer className="emp-inv-footer">
+            <div className="emp-footer-partition">
+              <h4>Bank Details</h4>
+              <div className="emp-bank-details">
+                <div className="emp-qr-code">
+                  <img src="/images/upi-qr-code.png" alt="UPI QR Code" />
+                </div>
+                <div>
+                  <p>
+                    Name: HDFC BANK, BELGAUM
+                    <br />
+                    Account No: 50200089573214
+                    <br />
+                    IFSC code: HDFC0000253
+                    <br />
+                    Account holder&apos;s name: Sukalpa Tech Solutions Pvt Ltd
+                  </p>
+                </div>
+              </div>
             </div>
-          ) : (
-            <div className="emp-no-seal" />
-          )}
-          <strong>
-            <p className="emp-authorized">Authorized Signatory</p>
-          </strong>
-        </div>
-      </footer>
 
-      <div className="emp-note">
-        <p>
-          Note: We are a registered MSME under the MSMED Act. As per Section 15,
-          kindly ensure payment within 45 days from the invoice date.
-        </p>
-        <p>Timely payment supports small businesses like ours.</p>
-      </div>
+            <div className="emp-seal-signs">
+              <p>For: Sukalpa Tech Solutions Pvt Ltd</p>
+              {withSeal ? (
+                <div className="emp-seal">
+                  <img src="/images/seal.png" alt="SEAL" />
+                </div>
+              ) : (
+                <div className="emp-no-seal" />
+              )}
+              <strong>
+                <p className="emp-authorized">Authorized Signatory</p>
+              </strong>
+            </div>
+          </footer>
+
+          <div className="emp-note">
+            <p>
+              Note: We are a registered MSME under the MSMED Act. As per Section
+              15, kindly ensure payment within 45 days from the invoice date.
+            </p>
+            <p>Timely payment supports small businesses like ours.</p>
+          </div>
+        </>
+      )}
     </div>
   );
 });

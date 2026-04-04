@@ -940,6 +940,7 @@ const Invoice = ({ onBack, project }) => {
                 project,
                 withSeal,
               }}
+              orgId={orgId}
             />
           )}
         </div>

@@ -688,62 +688,28 @@ const CustomTemplateEditor = forwardRef(function CustomTemplateEditor(
       return; // do NOT create new box
     }
 
-    try {
-      if (onUploadImage && typeof onUploadImage === "function") {
-        const url = await onUploadImage(file);
-        if (url) {
-          updateBox(targetId, { content: url });
-          pendingLogoTargetRef.current = null;
-          return;
-        }
-      }
-    } catch (err) {
-      console.warn("onUploadImage failed:", err);
-    }
-
-    const objUrl = URL.createObjectURL(file);
-    createdUrlsRef.current.push(objUrl);
-    updateBox(targetId, { content: objUrl });
-    pendingLogoTargetRef.current = null;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const dataUrl = e.target.result;
+      updateBox(targetId, { content: dataUrl });
+      pendingLogoTargetRef.current = null;
+    };
+    reader.readAsDataURL(file);
   }
 
   function handleReplaceImage(file, box) {
     if (!file || !box) return;
 
-    const applyUrl = (url) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const dataUrl = e.target.result;
       setBoxes((prev) =>
         prev.map((b) =>
-          String(b.id) === String(box.id) ? { ...b, content: url } : b,
+          String(b.id) === String(box.id) ? { ...b, content: dataUrl } : b,
         ),
       );
     };
-
-    if (typeof onUploadImage === "function") {
-      try {
-        const result = onUploadImage(file, box);
-
-        // If async uploader
-        if (result && typeof result.then === "function") {
-          result.then((url) => {
-            if (url) applyUrl(url);
-          });
-          return;
-        }
-
-        // If sync uploader returning url
-        if (typeof result === "string") {
-          applyUrl(result);
-          return;
-        }
-      } catch (err) {
-        console.warn("onUploadImage failed", err);
-      }
-    }
-
-    // fallback
-    const localUrl = URL.createObjectURL(file);
-    createdUrlsRef.current.push(localUrl);
-    applyUrl(localUrl);
+    reader.readAsDataURL(file);
   }
 
   function updateTableCell(boxId, r, c, value) {

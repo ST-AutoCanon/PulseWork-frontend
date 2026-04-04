@@ -130,7 +130,7 @@
   border: 1px solid #e9eef0;
   box-sizing: border-box;
   display: grid;
-  grid-template-rows: auto 1fr auto;
+  grid-template-rows: 15% 75% 10%;
   align-items: stretch;
 }
 

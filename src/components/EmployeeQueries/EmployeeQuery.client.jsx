@@ -592,7 +592,7 @@ const EmployeeQuery = () => {
     <div className="emp-query-container">
       <div className="emp-query-header">
         <h2>Employee Queries</h2>
-        {typeof userRole === "string" && /employee/i.test(userRole) && (
+        {typeof userRole === "string" && !/admin/i.test(userRole) && (
           <button className="compose-button" onClick={() => setShowModal(true)}>
             <BiEdit className="compose-icon" /> Compose
           </button>

@@ -27,6 +27,8 @@ const getInvoiceTypeKey = (type) => {
       return "proforma";
     case "Quotation":
       return "quotation";
+    case "Purchase Order":
+      return "po";
     default:
       return "tax";
   }
@@ -41,6 +43,8 @@ const getFormattedInvoiceNumber = (typeKey, sequence) => {
       return `STS/25-26/PI/${padded}`;
     case "quotation":
       return `STS-Q-${padded}`;
+    case "po":
+      return `STS/PO/${padded}`;
     default:
       return `STS/25-26/${padded}`;
   }
@@ -488,6 +492,7 @@ const ProjectsDashboard = () => {
                   <option value="Tax Invoice">Tax Invoice</option>
                   <option value="Proforma Invoice">Proforma Invoice</option>
                   <option value="Quotation">Quotation</option>
+                  <option value="Purchase Order">Purchase Order</option>
                 </select>
                 <button
                   className="download-form-button"
@@ -521,6 +526,7 @@ const ProjectsDashboard = () => {
                     invoiceType={selectedInvoiceType}
                     invoiceNumber={invoiceNumberDirect}
                     downloadDetails={downloadDetails}
+                    orgId={user?.orgId}
                   />
                 </div>
               )}
@@ -548,20 +554,23 @@ const ProjectsDashboard = () => {
           />
         </div>
       )}
-      {currentScreen === "projects" &&
-        showDownloadForm &&
-        activeTab === "General Templates" && (
-          <DownloadForm
-            onSubmit={handleDownloadFormSubmit}
-            onCancel={() => setShowDownloadForm(false)}
-          />
-        )}
+      {showDownloadForm && activeTab === "General Templates" && (
+        <div className="pj-modal">
+          <div className="pj-modal-content">
+            <DownloadForm
+              onSubmit={handleDownloadFormSubmit}
+              onCancel={() => setShowDownloadForm(false)}
+            />
+          </div>
+        </div>
+      )}
       <div style={{ position: "absolute", top: "-10000px", left: "-10000px" }}>
         <div ref={printRef}>
           <InvoiceTemplate
             invoiceType={selectedInvoiceType}
             invoiceNumber={invoiceNumberDirect}
             downloadDetails={downloadDetails}
+            orgId={user?.orgId}
           />
         </div>
       </div>

@@ -133,6 +133,9 @@ function TabbedPersonalDetails({ emp }) {
           <dt>Emergency</dt>
           <dd>
             {emp.emergency_name ? `${emp.emergency_name}` : "—"}
+            {emp.emergency_contact_person
+              ? ` (${emp.emergency_contact_person})`
+              : ""}
             {emp.emergency_number ? ` (${emp.emergency_number})` : ""}
           </dd>
 

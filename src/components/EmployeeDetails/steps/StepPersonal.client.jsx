@@ -143,6 +143,25 @@ export default function StepPersonal({ data, onChange }) {
       </label>
 
       <label>
+        Emergency Contact Person<span className="required">*</span>
+        <select
+          name="emergency_contact_person"
+          value={data.emergency_contact_person || ""}
+          onChange={(e) => onChange("emergency_contact_person", e.target.value)}
+          required
+        >
+          <option value="">Select</option>
+          <option>Father</option>
+          <option>Mother</option>
+          <option>Spouse</option>
+          <option>Brother</option>
+          <option>Sister</option>
+          <option>Family Member</option>
+          <option>Friend</option>
+        </select>
+      </label>
+
+      <label>
         Emergency Contact Name<span className="required">*</span>
         <input
           type="text"
@@ -159,9 +178,26 @@ export default function StepPersonal({ data, onChange }) {
           type="tel"
           name="emergency_number"
           value={data.emergency_number || ""}
-          onChange={(e) => onChange("emergency_number", e.target.value)}
+          onChange={(e) => {
+            const value = e.target.value;
+
+            // Check conflict with mobile & alternate
+            if (
+              value &&
+              (value === data.phone_number || value === data.alternate_number)
+            ) {
+              e.target.setCustomValidity(
+                "Emergency number cannot be same as mobile or alternate number",
+              );
+            } else {
+              e.target.setCustomValidity("");
+            }
+
+            onChange("emergency_number", value);
+          }}
+          onBlur={(e) => e.target.reportValidity()}
           pattern="^[6-9]\d{9}$"
-          title="10‑digit Indian mobile number starting with 6–9"
+          title="10-digit Indian mobile number starting with 6–9"
           required
         />
       </label>

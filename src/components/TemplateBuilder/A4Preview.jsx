@@ -28,8 +28,14 @@ export default function A4Preview({
   previewFooterUrl,
   previewWatermarkUrl,
 
-  headerHeightPct = 10,
+  headerHeightPct = 15,
   footerHeightPct = 10,
+  editableHeader = false,
+  editableFooter = false,
+  onHeaderChange = null,
+  onFooterChange = null,
+  initialHeaderProps = null,
+  initialFooterProps = null,
 }) {
   const resolvedHeaderProp = headerUrl ?? previewHeaderUrl ?? null;
   const resolvedFooterProp = footerUrl ?? previewFooterUrl ?? null;
@@ -40,7 +46,26 @@ export default function A4Preview({
   const h = Math.round(w * a4Ratio);
 
   const previewRef = useRef(null);
+  const headerSlotRef = useRef(null);
+  const footerSlotRef = useRef(null);
   const [hoveredBoxId, setHoveredBoxId] = useState(null);
+
+  const [localHeader, setLocalHeader] = useState(
+    initialHeaderProps || {
+      xPct: "50%",
+      yPct: "50%",
+      wPct: "100%",
+      hPct: "100%",
+    },
+  );
+  const [localFooter, setLocalFooter] = useState(
+    initialFooterProps || {
+      xPct: "50%",
+      yPct: "50%",
+      wPct: "100%",
+      hPct: "100%",
+    },
+  );
 
   const pctToPx = (pct, size) =>
     (Number(String(pct).replace("%", "")) / 100) * size;
@@ -58,17 +83,6 @@ export default function A4Preview({
     return s;
   };
 
-  const defaultWm = {
-    xPct: (watermarkProps && watermarkProps.xPct) || "50%",
-    yPct: (watermarkProps && watermarkProps.yPct) || "50%",
-    wPct: (watermarkProps && watermarkProps.wPct) || "60%",
-    hPct: (watermarkProps && watermarkProps.hPct) || "60%",
-    opacity:
-      watermarkProps && typeof watermarkProps.opacity === "number"
-        ? watermarkProps.opacity
-        : 0.12,
-  };
-  const [localWatermark, setLocalWatermark] = useState(defaultWm);
   useEffect(() => {
     setLocalWatermark((cur) => ({
       xPct: watermarkProps?.xPct ?? cur.xPct,
@@ -88,26 +102,13 @@ export default function A4Preview({
     watermarkProps?.opacity,
   ]);
 
-  const prevWmRef = useRef(JSON.stringify(localWatermark));
-  const emitWatermarkIfChanged = useCallback(
-    (next) => {
-      const sNext = JSON.stringify(next || {});
-      if (sNext === prevWmRef.current) return;
-      prevWmRef.current = sNext;
-      setLocalWatermark(next);
-      if (typeof onWatermarkChange === "function") {
-        try {
-          onWatermarkChange(next);
-        } catch (e) {
-          console.warn("onWatermarkChange threw", e);
-        }
-      }
-    },
-    [onWatermarkChange],
-  );
-
   const watermarkDragState = useRef(null);
   const watermarkResizeState = useRef(null);
+
+  const headerDragState = useRef(null);
+  const headerResizeState = useRef(null);
+  const footerDragState = useRef(null);
+  const footerResizeState = useRef(null);
 
   function startWatermarkDrag(e) {
     if (!editable || !previewRef.current) return;
@@ -265,6 +266,266 @@ export default function A4Preview({
     window.removeEventListener("mouseup", watermarkStopResize);
     window.removeEventListener("touchmove", watermarkOnResize);
     window.removeEventListener("touchend", watermarkStopResize);
+  }
+
+  function startHeaderDrag(e) {
+    if (!editableHeader || !headerSlotRef.current) return;
+    e.preventDefault();
+    const rect = headerSlotRef.current.getBoundingClientRect();
+    const mouseX = e.clientX ?? (e.touches && e.touches[0].clientX);
+    const mouseY = e.clientY ?? (e.touches && e.touches[0].clientY);
+    const currentXPct = pctToPx(localHeader.xPct, rect.width);
+    const currentYPct = pctToPx(localHeader.yPct, rect.height);
+    headerDragState.current = {
+      startMouseX: mouseX,
+      startMouseY: mouseY,
+      startXPct: currentXPct,
+      startYPct: currentYPct,
+      rect,
+    };
+    document.addEventListener("mousemove", headerOnDrag);
+    document.addEventListener("mouseup", headerStopDrag);
+    document.addEventListener("touchmove", headerOnDrag, { passive: false });
+    document.addEventListener("touchend", headerStopDrag);
+  }
+
+  function headerOnDrag(ev) {
+    if (!headerDragState.current) return;
+    if (ev.type === "touchmove") ev.preventDefault();
+    const clientX = ev.clientX ?? (ev.touches && ev.touches[0].clientX);
+    const clientY = ev.clientY ?? (ev.touches && ev.touches[0].clientY);
+    const { startMouseX, startMouseY, startXPct, startYPct, rect } =
+      headerDragState.current;
+    const deltaX = clientX - startMouseX;
+    const deltaY = clientY - startMouseY;
+    const newXPct = Math.max(0, Math.min(rect.width, startXPct + deltaX));
+    const newYPct = Math.max(0, Math.min(rect.height, startYPct + deltaY));
+    const newXPctStr = pxToPct(newXPct, rect.width);
+    const newYPctStr = pxToPct(newYPct, rect.height);
+    setLocalHeader((prev) => ({ ...prev, xPct: newXPctStr, yPct: newYPctStr }));
+  }
+
+  function headerStopDrag() {
+    if (onHeaderChange) {
+      onHeaderChange(localHeader);
+    }
+    headerDragState.current = null;
+    document.removeEventListener("mousemove", headerOnDrag);
+    document.removeEventListener("mouseup", headerStopDrag);
+    document.removeEventListener("touchmove", headerOnDrag);
+    document.removeEventListener("touchend", headerStopDrag);
+  }
+
+  function startHeaderResize(e, corner) {
+    if (!editableHeader || !headerSlotRef.current) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const rect = headerSlotRef.current.getBoundingClientRect();
+    headerResizeState.current = {
+      corner,
+      startMouseX: e.clientX ?? (e.touches && e.touches[0].clientX),
+      startMouseY: e.clientY ?? (e.touches && e.touches[0].clientY),
+      startWidth: pctToPx(localHeader.wPct, rect.width),
+      startHeight: pctToPx(localHeader.hPct, rect.height),
+      startXPct: pctToPx(localHeader.xPct, rect.width),
+      startYPct: pctToPx(localHeader.yPct, rect.height),
+      rect,
+    };
+    document.addEventListener("mousemove", headerOnResize);
+    document.addEventListener("mouseup", headerStopResize);
+    document.addEventListener("touchmove", headerOnResize, { passive: false });
+    document.addEventListener("touchend", headerStopResize);
+  }
+
+  function headerOnResize(ev) {
+    if (!headerResizeState.current) return;
+    if (ev.type === "touchmove") ev.preventDefault();
+    const clientX = ev.clientX ?? (ev.touches && ev.touches[0].clientX);
+    const clientY = ev.clientY ?? (ev.touches && ev.touches[0].clientY);
+    const {
+      corner,
+      startMouseX,
+      startMouseY,
+      startWidth,
+      startHeight,
+      startXPct,
+      startYPct,
+      rect,
+    } = headerResizeState.current;
+    const deltaX = clientX - startMouseX;
+    const deltaY = clientY - startMouseY;
+    let newWidth = startWidth;
+    let newHeight = startHeight;
+    let newXPct = startXPct;
+    let newYPct = startYPct;
+    if (corner.includes("e")) newWidth = Math.max(10, startWidth + deltaX);
+    if (corner.includes("w")) {
+      const dw = -deltaX;
+      newWidth = Math.max(10, startWidth + dw);
+      newXPct = startXPct + deltaX / 2;
+    }
+    if (corner.includes("s")) newHeight = Math.max(10, startHeight + deltaY);
+    if (corner.includes("n")) {
+      const dh = -deltaY;
+      newHeight = Math.max(10, startHeight + dh);
+      newYPct = startYPct + deltaY / 2;
+    }
+    newXPct = Math.max(0, Math.min(rect.width, newXPct));
+    newYPct = Math.max(0, Math.min(rect.height, newYPct));
+    newWidth = Math.min(newWidth, rect.width);
+    newHeight = Math.min(newHeight, rect.height);
+    const newWPct = pxToPct(newWidth, rect.width);
+    const newHPct = pxToPct(newHeight, rect.height);
+    const newXPctStr = pxToPct(newXPct, rect.width);
+    const newYPctStr = pxToPct(newYPct, rect.height);
+    setLocalHeader((prev) => ({
+      ...prev,
+      wPct: newWPct,
+      hPct: newHPct,
+      xPct: newXPctStr,
+      yPct: newYPctStr,
+    }));
+  }
+
+  function headerStopResize() {
+    if (onHeaderChange) {
+      onHeaderChange(localHeader);
+    }
+    headerResizeState.current = null;
+    document.removeEventListener("mousemove", headerOnResize);
+    document.removeEventListener("mouseup", headerStopResize);
+    document.removeEventListener("touchmove", headerOnResize);
+    document.removeEventListener("touchend", headerStopResize);
+  }
+
+  function startFooterDrag(e) {
+    if (!editableFooter || !footerSlotRef.current) return;
+    e.preventDefault();
+    const rect = footerSlotRef.current.getBoundingClientRect();
+    const mouseX = e.clientX ?? (e.touches && e.touches[0].clientX);
+    const mouseY = e.clientY ?? (e.touches && e.touches[0].clientY);
+    const currentXPct = pctToPx(localFooter.xPct, rect.width);
+    const currentYPct = pctToPx(localFooter.yPct, rect.height);
+    footerDragState.current = {
+      startMouseX: mouseX,
+      startMouseY: mouseY,
+      startXPct: currentXPct,
+      startYPct: currentYPct,
+      rect,
+    };
+    document.addEventListener("mousemove", footerOnDrag);
+    document.addEventListener("mouseup", footerStopDrag);
+    document.addEventListener("touchmove", footerOnDrag, { passive: false });
+    document.addEventListener("touchend", footerStopDrag);
+  }
+
+  function footerOnDrag(ev) {
+    if (!footerDragState.current) return;
+    if (ev.type === "touchmove") ev.preventDefault();
+    const clientX = ev.clientX ?? (ev.touches && ev.touches[0].clientX);
+    const clientY = ev.clientY ?? (ev.touches && ev.touches[0].clientY);
+    const { startMouseX, startMouseY, startXPct, startYPct, rect } =
+      footerDragState.current;
+    const deltaX = clientX - startMouseX;
+    const deltaY = clientY - startMouseY;
+    const newXPct = Math.max(0, Math.min(rect.width, startXPct + deltaX));
+    const newYPct = Math.max(0, Math.min(rect.height, startYPct + deltaY));
+    const newXPctStr = pxToPct(newXPct, rect.width);
+    const newYPctStr = pxToPct(newYPct, rect.height);
+    setLocalFooter((prev) => ({ ...prev, xPct: newXPctStr, yPct: newYPctStr }));
+  }
+
+  function footerStopDrag() {
+    if (onFooterChange) {
+      onFooterChange(localFooter);
+    }
+    footerDragState.current = null;
+    document.removeEventListener("mousemove", footerOnDrag);
+    document.removeEventListener("mouseup", footerStopDrag);
+    document.removeEventListener("touchmove", footerOnDrag);
+    document.removeEventListener("touchend", footerStopDrag);
+  }
+
+  function startFooterResize(e, corner) {
+    if (!editableFooter || !footerSlotRef.current) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const rect = footerSlotRef.current.getBoundingClientRect();
+    footerResizeState.current = {
+      corner,
+      startMouseX: e.clientX ?? (e.touches && e.touches[0].clientX),
+      startMouseY: e.clientY ?? (e.touches && e.touches[0].clientY),
+      startWidth: pctToPx(localFooter.wPct, rect.width),
+      startHeight: pctToPx(localFooter.hPct, rect.height),
+      startXPct: pctToPx(localFooter.xPct, rect.width),
+      startYPct: pctToPx(localFooter.yPct, rect.height),
+      rect,
+    };
+    document.addEventListener("mousemove", footerOnResize);
+    document.addEventListener("mouseup", footerStopResize);
+    document.addEventListener("touchmove", footerOnResize, { passive: false });
+    document.addEventListener("touchend", footerStopResize);
+  }
+
+  function footerOnResize(ev) {
+    if (!footerResizeState.current) return;
+    if (ev.type === "touchmove") ev.preventDefault();
+    const clientX = ev.clientX ?? (ev.touches && ev.touches[0].clientX);
+    const clientY = ev.clientY ?? (ev.touches && ev.touches[0].clientY);
+    const {
+      corner,
+      startMouseX,
+      startMouseY,
+      startWidth,
+      startHeight,
+      startXPct,
+      startYPct,
+      rect,
+    } = footerResizeState.current;
+    const deltaX = clientX - startMouseX;
+    const deltaY = clientY - startMouseY;
+    let newWidth = startWidth;
+    let newHeight = startHeight;
+    let newXPct = startXPct;
+    let newYPct = startYPct;
+    if (corner.includes("e")) newWidth = Math.max(10, startWidth + deltaX);
+    if (corner.includes("w")) {
+      const dw = -deltaX;
+      newWidth = Math.max(10, startWidth + dw);
+      newXPct = startXPct + deltaX / 2;
+    }
+    if (corner.includes("s")) newHeight = Math.max(10, startHeight + deltaY);
+    if (corner.includes("n")) {
+      const dh = -deltaY;
+      newHeight = Math.max(10, startHeight + dh);
+      newYPct = startYPct + deltaY / 2;
+    }
+    newXPct = Math.max(0, Math.min(rect.width, newXPct));
+    newYPct = Math.max(0, Math.min(rect.height, newYPct));
+    newWidth = Math.min(newWidth, rect.width);
+    newHeight = Math.min(newHeight, rect.height);
+    const newWPct = pxToPct(newWidth, rect.width);
+    const newHPct = pxToPct(newHeight, rect.height);
+    const newXPctStr = pxToPct(newXPct, rect.width);
+    const newYPctStr = pxToPct(newYPct, rect.height);
+    setLocalFooter((prev) => ({
+      ...prev,
+      wPct: newWPct,
+      hPct: newHPct,
+      xPct: newXPctStr,
+      yPct: newYPctStr,
+    }));
+  }
+
+  function footerStopResize() {
+    if (onFooterChange) {
+      onFooterChange(localFooter);
+    }
+    footerResizeState.current = null;
+    document.removeEventListener("mousemove", footerOnResize);
+    document.removeEventListener("mouseup", footerStopResize);
+    document.removeEventListener("touchmove", footerOnResize);
+    document.removeEventListener("touchend", footerStopResize);
   }
 
   const boxDragState = useRef(null);
@@ -486,6 +747,69 @@ export default function A4Preview({
     };
   }, []);
 
+  const resolvedHeader = resolveImgSrc(resolvedHeaderProp);
+  const resolvedFooter = resolveImgSrc(resolvedFooterProp);
+  const resolvedWatermark = resolveImgSrc(resolvedWatermarkProp);
+
+  const headerPct = Number(String(headerHeightPct).replace("%", "")) || 15;
+  const footerPct = Number(String(footerHeightPct).replace("%", "")) || 10;
+  const bodyPct = Math.max(2, 100 - headerPct - footerPct);
+  const gridTemplateRows = `${headerPct}% ${bodyPct}% ${footerPct}%`;
+
+  const bodyCenterYPct = headerPct + bodyPct / 2;
+
+  const defaultWm = {
+    xPct: (watermarkProps && watermarkProps.xPct) || "50%",
+    yPct: (watermarkProps && watermarkProps.yPct) || "55%",
+    wPct: (watermarkProps && watermarkProps.wPct) || "60%",
+    hPct: (watermarkProps && watermarkProps.hPct) || "60%",
+    opacity:
+      watermarkProps && typeof watermarkProps.opacity === "number"
+        ? watermarkProps.opacity
+        : 0.12,
+  };
+  const [localWatermark, setLocalWatermark] = useState(defaultWm);
+
+  const prevWmRef = useRef(JSON.stringify(localWatermark));
+  const emitWatermarkIfChanged = useCallback(
+    (next) => {
+      const sNext = JSON.stringify(next || {});
+      if (sNext === prevWmRef.current) return;
+      prevWmRef.current = sNext;
+      setLocalWatermark(next);
+      if (typeof onWatermarkChange === "function") {
+        try {
+          onWatermarkChange(next);
+        } catch (e) {
+          console.warn("onWatermarkChange threw", e);
+        }
+      }
+    },
+    [onWatermarkChange],
+  );
+
+  const handleStyle = (pos) => {
+    const base = {
+      position: "absolute",
+      width: 12,
+      height: 12,
+      background: "#fff",
+      border: "1px solid #0f1724",
+      borderRadius: 2,
+      zIndex: 60,
+      touchAction: "none",
+    };
+    if (pos === "nw")
+      return { ...base, left: -6, top: -6, cursor: "nwse-resize" };
+    if (pos === "ne")
+      return { ...base, right: -6, top: -6, cursor: "nesw-resize" };
+    if (pos === "se")
+      return { ...base, right: -6, bottom: -6, cursor: "nwse-resize" };
+    if (pos === "sw")
+      return { ...base, left: -6, bottom: -6, cursor: "nesw-resize" };
+    return base;
+  };
+
   const watermarkStyle = useMemo(() => {
     if (!localWatermark) return { display: "none" };
     const xNum =
@@ -521,37 +845,6 @@ export default function A4Preview({
     };
   }, [localWatermark, w, h, editable]);
 
-  const resolvedHeader = resolveImgSrc(resolvedHeaderProp);
-  const resolvedFooter = resolveImgSrc(resolvedFooterProp);
-  const resolvedWatermark = resolveImgSrc(resolvedWatermarkProp);
-
-  const headerPct = Number(String(headerHeightPct).replace("%", "")) || 10;
-  const footerPct = Number(String(footerHeightPct).replace("%", "")) || 10;
-  const bodyPct = Math.max(2, 100 - headerPct - footerPct);
-  const gridTemplateRows = `${headerPct}% ${bodyPct}% ${footerPct}%`;
-
-  const handleStyle = (pos) => {
-    const base = {
-      position: "absolute",
-      width: 12,
-      height: 12,
-      background: "#fff",
-      border: "1px solid #0f1724",
-      borderRadius: 2,
-      zIndex: 60,
-      touchAction: "none",
-    };
-    if (pos === "nw")
-      return { ...base, left: -6, top: -6, cursor: "nwse-resize" };
-    if (pos === "ne")
-      return { ...base, right: -6, top: -6, cursor: "nesw-resize" };
-    if (pos === "se")
-      return { ...base, right: -6, bottom: -6, cursor: "nwse-resize" };
-    if (pos === "sw")
-      return { ...base, left: -6, bottom: -6, cursor: "nesw-resize" };
-    return base;
-  };
-
   return (
     <div className={styles.previewArea}>
       <div
@@ -569,28 +862,83 @@ export default function A4Preview({
         >
           <div
             className={styles.headerSlot}
+            ref={headerSlotRef}
             style={{
+              position: "relative",
               overflow: "hidden",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
+              border: "1px dashed #ccc",
             }}
             aria-hidden
           >
             {resolvedHeader ? (
-              <img
-                src={resolvedHeader}
-                alt="Header preview"
-                className={styles.slotImg}
+              <div
                 style={{
-                  width: "100%",
-                  height: "100%",
-                  display: "block",
-                  objectFit: "contain",
+                  position: "absolute",
+                  top: localHeader.yPct,
+                  left: localHeader.xPct,
+                  transform: "translate(-50%, -50%)",
+                  width: localHeader.wPct,
+                  height: localHeader.hPct,
+                  cursor: editableHeader ? "move" : "default",
                 }}
-              />
+                onMouseDown={editableHeader ? startHeaderDrag : undefined}
+                onTouchStart={editableHeader ? startHeaderDrag : undefined}
+              >
+                <img
+                  src={resolvedHeader}
+                  alt="Header preview"
+                  style={{
+                    width: "100%",
+                    height: "100%",
+                    objectFit: "cover",
+                    display: "block",
+                    pointerEvents: "none",
+                    userSelect: "none",
+                  }}
+                />
+                {editableHeader && (
+                  <>
+                    <div
+                      data-resize="nw"
+                      onMouseDown={(e) => startHeaderResize(e, "nw")}
+                      onTouchStart={(e) => startHeaderResize(e, "nw")}
+                      style={handleStyle("nw")}
+                      title="Resize (NW)"
+                    />
+                    <div
+                      data-resize="ne"
+                      onMouseDown={(e) => startHeaderResize(e, "ne")}
+                      onTouchStart={(e) => startHeaderResize(e, "ne")}
+                      style={handleStyle("ne")}
+                      title="Resize (NE)"
+                    />
+                    <div
+                      data-resize="se"
+                      onMouseDown={(e) => startHeaderResize(e, "se")}
+                      onTouchStart={(e) => startHeaderResize(e, "se")}
+                      style={handleStyle("se")}
+                      title="Resize (SE)"
+                    />
+                    <div
+                      data-resize="sw"
+                      onMouseDown={(e) => startHeaderResize(e, "sw")}
+                      onTouchStart={(e) => startHeaderResize(e, "sw")}
+                      style={handleStyle("sw")}
+                      title="Resize (SW)"
+                    />
+                  </>
+                )}
+              </div>
             ) : (
-              <div className={styles.slotPlaceholder}>
+              <div
+                className={styles.slotPlaceholder}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  height: "100%",
+                }}
+              >
                 Header will appear here
               </div>
             )}
@@ -616,7 +964,7 @@ export default function A4Preview({
                   style={{
                     width: "100%",
                     height: "100%",
-                    objectFit: "contain",
+                    objectFit: "cover",
                     opacity: localWatermark.opacity,
                     pointerEvents: "none",
                     display: "block",
@@ -861,27 +1209,82 @@ export default function A4Preview({
 
           <div
             className={styles.footerSlot}
+            ref={footerSlotRef}
             style={{
+              position: "relative",
               overflow: "hidden",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
+              border: "1px dashed #ccc",
             }}
           >
             {resolvedFooter ? (
-              <img
-                src={resolvedFooter}
-                alt="Footer preview"
-                className={styles.slotImg}
+              <div
                 style={{
-                  width: "100%",
-                  height: "100%",
-                  display: "block",
-                  objectFit: "contain",
+                  position: "absolute",
+                  top: localFooter.yPct,
+                  left: localFooter.xPct,
+                  transform: "translate(-50%, -50%)",
+                  width: localFooter.wPct,
+                  height: localFooter.hPct,
+                  cursor: editableFooter ? "move" : "default",
                 }}
-              />
+                onMouseDown={editableFooter ? startFooterDrag : undefined}
+                onTouchStart={editableFooter ? startFooterDrag : undefined}
+              >
+                <img
+                  src={resolvedFooter}
+                  alt="Footer preview"
+                  style={{
+                    width: "100%",
+                    height: "100%",
+                    objectFit: "cover",
+                    display: "block",
+                    pointerEvents: "none",
+                    userSelect: "none",
+                  }}
+                />
+                {editableFooter && (
+                  <>
+                    <div
+                      data-resize="nw"
+                      onMouseDown={(e) => startFooterResize(e, "nw")}
+                      onTouchStart={(e) => startFooterResize(e, "nw")}
+                      style={handleStyle("nw")}
+                      title="Resize (NW)"
+                    />
+                    <div
+                      data-resize="ne"
+                      onMouseDown={(e) => startFooterResize(e, "ne")}
+                      onTouchStart={(e) => startFooterResize(e, "ne")}
+                      style={handleStyle("ne")}
+                      title="Resize (NE)"
+                    />
+                    <div
+                      data-resize="se"
+                      onMouseDown={(e) => startFooterResize(e, "se")}
+                      onTouchStart={(e) => startFooterResize(e, "se")}
+                      style={handleStyle("se")}
+                      title="Resize (SE)"
+                    />
+                    <div
+                      data-resize="sw"
+                      onMouseDown={(e) => startFooterResize(e, "sw")}
+                      onTouchStart={(e) => startFooterResize(e, "sw")}
+                      style={handleStyle("sw")}
+                      title="Resize (SW)"
+                    />
+                  </>
+                )}
+              </div>
             ) : (
-              <div className={styles.slotPlaceholder}>
+              <div
+                className={styles.slotPlaceholder}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  height: "100%",
+                }}
+              >
                 Footer will appear here
               </div>
             )}

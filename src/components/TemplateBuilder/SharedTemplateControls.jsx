@@ -1,5 +1,4 @@
 import React, { useRef, useState, useEffect } from "react";
-import { BODY_TYPES } from "./templatePresets";
 import stylesLocal from "./UploadScan.module.css";
 
 export default function SharedTemplateControls({
@@ -12,16 +11,21 @@ export default function SharedTemplateControls({
   watermarkProps,
   onWatermarkChange,
   fileInputWatermarkRef: externalFileInputRef,
-  bodyType,
-  onBodyTypeChange,
   showEditor = false,
   onSetActiveArea,
   activeArea = "header",
   showInsertControls = true,
   onPreviewA4,
   onSaveTemplate,
+  onPreviewChange,
+  headerFile,
+  setHeaderFile,
+  footerFile,
+  setFooterFile,
 }) {
   const fileInputRef = externalFileInputRef || useRef(null);
+  const fileInputHeaderRef = useRef(null);
+  const fileInputFooterRef = useRef(null);
 
   const [localActive, setLocalActive] = useState(
     String(activeArea || "header"),
@@ -30,6 +34,26 @@ export default function SharedTemplateControls({
   useEffect(() => {
     setLocalActive(String(activeArea || "header"));
   }, [activeArea]);
+
+  function onSelectHeader(e) {
+    const f = e.target.files?.[0] || null;
+    setHeaderFile && setHeaderFile(f);
+  }
+
+  function clearHeader() {
+    setHeaderFile && setHeaderFile(null);
+    if (fileInputHeaderRef.current) fileInputHeaderRef.current.value = "";
+  }
+
+  function onSelectFooter(e) {
+    const f = e.target.files?.[0] || null;
+    setFooterFile && setFooterFile(f);
+  }
+
+  function clearFooter() {
+    setFooterFile && setFooterFile(null);
+    if (fileInputFooterRef.current) fileInputFooterRef.current.value = "";
+  }
 
   function onSelectWatermark(e) {
     const f = e.target.files?.[0] || null;
@@ -45,6 +69,7 @@ export default function SharedTemplateControls({
     setWatermarkFile && setWatermarkFile(null);
     setUseWatermark && setUseWatermark(false);
     if (fileInputRef.current) fileInputRef.current.value = "";
+
     if (typeof onWatermarkChange === "function") {
       onWatermarkChange({
         xPct: "20%",
@@ -56,6 +81,24 @@ export default function SharedTemplateControls({
     }
   }
 
+  useEffect(() => {
+    if (onPreviewChange) {
+      onPreviewChange({
+        headerUrl: headerFile ? URL.createObjectURL(headerFile) : null,
+        footerUrl: footerFile ? URL.createObjectURL(footerFile) : null,
+        watermarkUrl:
+          watermarkUrlProp ||
+          (watermarkFile ? URL.createObjectURL(watermarkFile) : null),
+      });
+    }
+  }, [
+    headerFile,
+    footerFile,
+    watermarkUrlProp,
+    watermarkFile,
+    onPreviewChange,
+  ]);
+
   function handleWatermarkChangeFromPreview(next) {
     if (!next) return;
     if (typeof onWatermarkChange === "function") {
@@ -65,7 +108,7 @@ export default function SharedTemplateControls({
 
   const effectiveWatermarkProps = watermarkProps || {
     xPct: "50%",
-    yPct: "50%",
+    yPct: "55%",
     wPct: "60%",
     hPct: "60%",
     opacity: 0.12,
@@ -73,7 +116,6 @@ export default function SharedTemplateControls({
 
   function handleSetActiveArea(area) {
     setLocalActive(area);
-
     if (typeof onSetActiveArea === "function") {
       try {
         onSetActiveArea(area);
@@ -83,32 +125,69 @@ export default function SharedTemplateControls({
     }
   }
 
-  const baseBtnStyle = {
-    padding: "8px 12px",
-    borderRadius: "8px",
-    border: "1px solid #e6e9eb",
-    background: "transparent",
-    cursor: "pointer",
-    fontSize: "13px",
-    fontWeight: 400,
-    color: "#333",
-    transition: "all 0.15s ease-in-out",
-    minWidth: 64,
-    textAlign: "center",
-  };
-
-  const activeBtnStyle = {
-    border: "2px solid #0f6679",
-    background: "#f0f7f9",
-    color: "#0f6679",
-    fontWeight: 600,
-    boxShadow: "0 1px 0 rgba(15,102,121,0.12)",
-  };
-
-  const hoverStyle = {};
-
   return (
     <div className={styles?.sharedControls || stylesLocal.controls}>
+      {/* ===== Header Controls ===== */}
+      <div style={{ marginTop: 12 }}>
+        <label style={{ fontSize: 14, fontWeight: 600 }}>Header Image</label>
+        <div style={{ marginTop: 8 }}>
+          <input
+            ref={fileInputHeaderRef}
+            type="file"
+            accept="image/*"
+            onChange={onSelectHeader}
+            className={styles?.fileInput || stylesLocal.fileInput}
+          />
+          {headerFile ? (
+            <>
+              <div style={{ fontSize: 13 }}>{headerFile.name}</div>
+              <button
+                type="button"
+                className={styles?.clearBtn || stylesLocal.clearBtn}
+                onClick={clearHeader}
+              >
+                Remove
+              </button>
+            </>
+          ) : (
+            <div style={{ fontSize: 13, color: "#64748b" }}>
+              Choose an image for header
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* ===== Footer Controls ===== */}
+      <div style={{ marginTop: 12 }}>
+        <label style={{ fontSize: 14, fontWeight: 600 }}>Footer Image</label>
+        <div style={{ marginTop: 8 }}>
+          <input
+            ref={fileInputFooterRef}
+            type="file"
+            accept="image/*"
+            onChange={onSelectFooter}
+            className={styles?.fileInput || stylesLocal.fileInput}
+          />
+          {footerFile ? (
+            <>
+              <div style={{ fontSize: 13 }}>{footerFile.name}</div>
+              <button
+                type="button"
+                className={styles?.clearBtn || stylesLocal.clearBtn}
+                onClick={clearFooter}
+              >
+                Remove
+              </button>
+            </>
+          ) : (
+            <div style={{ fontSize: 13, color: "#64748b" }}>
+              Choose an image for footer
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* ===== Watermark Controls ===== */}
       <div
         style={{ marginTop: 12, borderTop: "1px solid #f1f5f9", paddingTop: 8 }}
       >
@@ -141,6 +220,7 @@ export default function SharedTemplateControls({
                 onChange={onSelectWatermark}
                 className={styles?.fileInput || stylesLocal.fileInput}
               />
+
               {watermarkFile ? (
                 <>
                   <div style={{ fontSize: 13 }}>{watermarkFile.name}</div>
@@ -185,6 +265,7 @@ export default function SharedTemplateControls({
                     });
                   }}
                 />
+
                 <button
                   type="button"
                   onClick={() =>
@@ -197,13 +278,14 @@ export default function SharedTemplateControls({
                 >
                   Reset size
                 </button>
+
                 <button
                   type="button"
                   onClick={() =>
                     handleWatermarkChangeFromPreview({
                       ...effectiveWatermarkProps,
                       xPct: "50%",
-                      yPct: "50%",
+                      yPct: "35%",
                     })
                   }
                 >
@@ -215,40 +297,6 @@ export default function SharedTemplateControls({
         )}
       </div>
 
-      <div
-        style={{
-          margin: "8px 0",
-          borderTop: "1px solid #f1f5f9",
-          paddingTop: 8,
-        }}
-      >
-        <div style={{ fontSize: 13, marginBottom: 6 }}>Document body</div>
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          {BODY_TYPES.map((b) => (
-            <button
-              key={b.key}
-              onClick={() => onBodyTypeChange && onBodyTypeChange(b.key)}
-              style={{
-                padding: "8px 12px",
-                borderRadius: "8px",
-                border:
-                  bodyType === b.key
-                    ? "2px solid #0f6679"
-                    : "1px solid #e6e9eb",
-                background: bodyType === b.key ? "#f0f7f9" : "transparent",
-                cursor: "pointer",
-                fontSize: "13px",
-                fontWeight: bodyType === b.key ? "600" : "400",
-                color: bodyType === b.key ? "#0f6679" : "#333",
-              }}
-              type="button"
-              title={`Create ${b.label}`}
-            >
-              {b.label}
-            </button>
-          ))}
-        </div>
-      </div>
       {/* ===== Footer Controls ===== */}
       <div
         style={{
@@ -266,12 +314,10 @@ export default function SharedTemplateControls({
           style={{
             padding: "10px 16px",
             borderRadius: 10,
-            border: "linear-gradient(180deg, #77dd0d, #9ef04a)",
             background: "white",
             color: "black",
             fontWeight: 600,
             cursor: "pointer",
-            transition: "all 0.2s ease",
           }}
         >
           Preview on A4
@@ -288,7 +334,6 @@ export default function SharedTemplateControls({
             color: "black",
             fontWeight: 600,
             cursor: "pointer",
-            transition: "all 0.2s ease",
           }}
         >
           Save as Template

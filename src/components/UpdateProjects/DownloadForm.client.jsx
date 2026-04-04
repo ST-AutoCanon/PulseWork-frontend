@@ -91,6 +91,12 @@ const DownloadForm = ({ onSubmit, onCancel }) => {
     ]);
   };
 
+  const handleRemoveLineItem = (index) => {
+    if (lineItems.length > 1) {
+      setLineItems(lineItems.filter((_, i) => i !== index));
+    }
+  };
+
   const handleTermsChange = (e) => {
     const raw = e.target.value;
     const words = raw.trim().split(/\s+/).filter(Boolean);
@@ -138,6 +144,12 @@ const DownloadForm = ({ onSubmit, onCancel }) => {
 
   return (
     <form className="download-form" onSubmit={handleSubmit}>
+      <div className="download-title">
+        <h2>Invoice Details</h2>
+        <button className="pj-close-button" type="button" onClick={onCancel}>
+          X
+        </button>
+      </div>
       <div className="download-form-grid">
         <div className="download-form-group">
           <label>To:</label>
@@ -257,6 +269,15 @@ const DownloadForm = ({ onSubmit, onCancel }) => {
               <div className="download-total-field">
                 <label>Total</label>
                 <input type="number" value={item.total} readOnly />
+              </div>
+              <div className="download-remove-button-cell">
+                <button
+                  type="button"
+                  className="download-remove-line-item-btn"
+                  onClick={() => handleRemoveLineItem(index)}
+                >
+                  -
+                </button>
               </div>
               <div className="download-add-button-cell">
                 {index === lineItems.length - 1 && (

@@ -224,7 +224,7 @@ export default function MyDailyWorkHour() {
         <h3>My daily work hours</h3>
 
         <div className="work-hour-view-options">
-          {["Daily", "Weekly", "Monthly"].map((option) => (
+          {["Daily", "Current-Month", "Monthly"].map((option) => (
             <button
               key={option}
               className={view === option ? "active" : ""}

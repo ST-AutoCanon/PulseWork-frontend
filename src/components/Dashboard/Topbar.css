@@ -84,7 +84,7 @@
   font-weight: 550;
   font-size: 28px;
   letter-spacing: 1px;
-  text-transform: lowercase; /* 👈 IMPORTANT */
+  text-transform: capitalize; /* ✅ FIXED */
   color: #1e40af;
 }
 
@@ -178,14 +178,13 @@
 .mobile-org-card {
   color: white;
   padding: 8px 24px;
-  font-weight: 800;
   font-size: 17px;
   letter-spacing: -0.3px;
-  text-transform: uppercase;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
+   font-family: "Insignia Roman", sans-serif;
   position: relative;
   overflow: hidden;
 }

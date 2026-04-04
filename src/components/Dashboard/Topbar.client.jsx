@@ -28,7 +28,13 @@ function parseAllowedOrigins(raw) {
     .map((s) => s.trim())
     .filter(Boolean);
 }
-
+const formatOrgName = (name) => {
+  return (name || "")
+    .toLowerCase() // make everything lowercase first
+    .split(" ")
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
+};
 function resolveParentOrigin(allowedOrigins) {
   if (!allowedOrigins || allowedOrigins.length === 0) return null;
   try {
@@ -67,8 +73,7 @@ function MobileTopbar(props) {
     <div className="mobile-topbar-v2">
       <div className="mobile-header-colored">
         <div className="mobile-org-card">
-          <span>{String(orgName || "").toUpperCase()}</span>
-        </div>
+<span>{formatOrgName(orgName)}</span>        </div>
       </div>
 
       <div className="mobile-main-row">
@@ -497,8 +502,7 @@ export default function Topbar() {
       <div className="org-name-section">
         <div className="org-name-text">
           {userRole !== "SuperAdmin" && (
-            <span>{String(orgName || "").toUpperCase()}</span>
-          )}
+<span>{formatOrgName(orgName)}</span>          )}
         </div>
       </div>
 

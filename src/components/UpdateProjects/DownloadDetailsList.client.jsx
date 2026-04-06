@@ -25,6 +25,28 @@ const safeNumber = (v) => {
   return Number.isFinite(n) ? n : 0;
 };
 
+const normalizeInvoiceTypeLabel = (value) => {
+  const t = String(value || "")
+    .trim()
+    .toLowerCase();
+
+  switch (t) {
+    case "tax":
+    case "tax invoice":
+      return "Tax Invoice";
+    case "proforma":
+    case "proforma invoice":
+      return "Proforma Invoice";
+    case "quotation":
+      return "Quotation";
+    case "po":
+    case "purchase order":
+      return "Purchase Order";
+    default:
+      return "Tax Invoice";
+  }
+};
+
 const DownloadDetailsList = ({ refreshKey }) => {
   const { user } = useAuth();
   const [records, setRecords] = useState([]);
@@ -35,11 +57,15 @@ const DownloadDetailsList = ({ refreshKey }) => {
   const [redownloadInvoiceType, setRedownloadInvoiceType] =
     useState("Tax Invoice");
   const [redownloadInvoiceNumber, setRedownloadInvoiceNumber] = useState("");
+  const [pendingRedownloadId, setPendingRedownloadId] = useState(null);
 
   const printRef = useRef(null);
 
   const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
   const API_KEY = process.env.NEXT_PUBLIC_API_KEY;
+
+  const orgId =
+    user?.orgId || user?.raw?.org_id || user?.org_id || user?.organization_id;
 
   useEffect(() => {
     let mounted = true;
@@ -52,11 +78,6 @@ const DownloadDetailsList = ({ refreshKey }) => {
           "Content-Type": "application/json",
           "x-api-key": API_KEY || "",
         };
-        const orgId =
-          user?.orgId ||
-          user?.raw?.org_id ||
-          user?.org_id ||
-          user?.organization_id;
         if (orgId) headers["x-org-id"] = orgId;
         const meId = user?.employeeId ?? user?.id ?? null;
         if (meId) headers["x-employee-id"] = String(meId);
@@ -85,42 +106,50 @@ const DownloadDetailsList = ({ refreshKey }) => {
     return () => {
       mounted = false;
     };
-  }, [user, BACKEND_URL, API_KEY, refreshKey]);
+  }, [user, BACKEND_URL, API_KEY, refreshKey, orgId]);
 
   const toggleRow = (id) =>
     setExpandedRows((prev) =>
       prev.includes(id) ? prev.filter((r) => r !== id) : [...prev, id],
     );
 
+  const buildDownloadDetails = (record) => ({
+    to: record.toName || record.to,
+    address: record.address,
+    companyGst: record.companyGst,
+    contact: record.contact,
+    state: record.state,
+    invoiceDate: record.invoiceDate,
+    referenceDate: record.referenceDate,
+    referenceId: record.referenceId,
+    placeOfSupply: record.placeOfSupply,
+    withSeal: record.withSeal,
+    lineItems: record.lineItems || [],
+    subTotal: record.subTotal,
+    gst: record.gst,
+    gstAmount: record.gstAmount,
+    advance: record.advance,
+    totalExcludingTax: record.totalExcludingTax,
+    totalIncludingTax: record.totalIncludingTax,
+    terms: record.terms,
+  });
+
   const handleRedownload = async (record) => {
-    setRedownloadDetails({
-      to: record.toName || record.to,
-      address: record.address,
-      companyGst: record.companyGst,
-      contact: record.contact,
-      state: record.state,
-      invoiceDate: record.invoiceDate,
-      referenceDate: record.referenceDate,
-      referenceId: record.referenceId,
-      placeOfSupply: record.placeOfSupply,
-      withSeal: record.withSeal,
-      lineItems: record.lineItems || [],
-      subTotal: record.subTotal,
-      gst: record.gst,
-      gstAmount: record.gstAmount,
-      advance: record.advance,
-      totalExcludingTax: record.totalExcludingTax,
-      totalIncludingTax: record.totalIncludingTax,
-      terms: record.terms,
-    });
-    setRedownloadInvoiceType(record.invoiceType || "Tax Invoice");
+    setRedownloadDetails(buildDownloadDetails(record));
+    setRedownloadInvoiceType(normalizeInvoiceTypeLabel(record.invoiceType));
     setRedownloadInvoiceNumber(record.invoiceNumber || "");
+    setPendingRedownloadId(record.id ?? `${Date.now()}`);
+  };
 
-    // Wait for render
-    setTimeout(async () => {
-      if (!printRef.current) return;
+  useEffect(() => {
+    if (!pendingRedownloadId) return;
 
+    const run = async () => {
       try {
+        await new Promise((resolve) => setTimeout(resolve, 200));
+
+        if (!printRef.current) return;
+
         const canvas = await html2canvas(printRef.current, { scale: 2 });
         const imgData = canvas.toDataURL("image/png");
         const pdf = new jsPDF({
@@ -132,13 +161,23 @@ const DownloadDetailsList = ({ refreshKey }) => {
         const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
         pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
 
-        const filename = `${record.invoiceNumber || "invoice"}.pdf`;
+        const filename = `${redownloadInvoiceNumber || "invoice"}.pdf`;
         pdf.save(filename);
       } catch (error) {
         console.error("Error generating PDF", error);
+      } finally {
+        setPendingRedownloadId(null);
       }
-    }, 100);
-  };
+    };
+
+    run();
+  }, [
+    pendingRedownloadId,
+    redownloadDetails,
+    redownloadInvoiceType,
+    redownloadInvoiceNumber,
+    orgId,
+  ]);
 
   if (loading) return <p>Loading download records…</p>;
   if (error) return <p style={{ color: "red" }}>Error: {error}</p>;
@@ -303,12 +342,14 @@ const DownloadDetailsList = ({ refreshKey }) => {
           </tbody>
         </table>
       )}
+
       <div style={{ position: "absolute", top: "-10000px", left: "-10000px" }}>
         <div ref={printRef}>
           <InvoiceTemplate
             invoiceType={redownloadInvoiceType}
             invoiceNumber={redownloadInvoiceNumber}
             downloadDetails={redownloadDetails}
+            orgId={orgId}
           />
         </div>
       </div>

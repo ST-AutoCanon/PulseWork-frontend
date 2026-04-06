@@ -825,7 +825,7 @@ export default function EmployeeDetails() {
                 <th>Emp ID</th>
                 <th>Emp Name</th>
                 <th>DOJ</th>
-                <th>Status</th>
+                <th>Status/LWD</th>
                 <th>Personal</th>
                 <th>Education</th>
                 <th>Professional</th>
@@ -858,7 +858,24 @@ export default function EmployeeDetails() {
                           : "status-inactive"
                       }
                     >
-                      {emp.status}
+                      {emp.status === "Inactive" ? (
+                        <>
+                          Inactive
+                          <br />
+                          {emp.hr_final_lwd && (
+                            <span className="lwd-text">
+                              (
+                              {format(
+                                new Date(emp.hr_final_lwd),
+                                "dd MMM yyyy",
+                              )}
+                              )
+                            </span>
+                          )}
+                        </>
+                      ) : (
+                        emp.status
+                      )}
                     </td>
                     <td>
                       <button

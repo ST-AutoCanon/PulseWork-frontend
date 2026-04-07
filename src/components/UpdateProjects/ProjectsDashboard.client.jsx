@@ -34,22 +34,6 @@ const getInvoiceTypeKey = (type) => {
   }
 };
 
-const getFormattedInvoiceNumber = (typeKey, sequence) => {
-  const padded = sequence.toString().padStart(4, "0");
-  switch (typeKey) {
-    case "tax":
-      return `STS/25-26/${padded}`;
-    case "proforma":
-      return `STS/25-26/PI/${padded}`;
-    case "quotation":
-      return `STS-Q-${padded}`;
-    case "po":
-      return `STS/PO/${padded}`;
-    default:
-      return `STS/25-26/${padded}`;
-  }
-};
-
 const ProjectCard = ({
   projectData,
   onUpdate,
@@ -198,14 +182,16 @@ const ProjectsDashboard = () => {
 
   const printRef = useRef(null);
   const invoiceTypeKey = getInvoiceTypeKey(selectedInvoiceType);
-  const invoiceNumber = getFormattedInvoiceNumber(
-    invoiceTypeKey,
-    invoiceSequence,
-  );
 
   useEffect(() => {
     fetchInvoiceSequence();
   }, [selectedInvoiceType]);
+
+  useEffect(() => {
+    if (invoiceTypeKey) {
+      fetchInvoiceSequence();
+    }
+  }, [invoiceTypeKey]);
 
   const fetchInvoiceSequence = async () => {
     try {

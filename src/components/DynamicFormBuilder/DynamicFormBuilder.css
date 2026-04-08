@@ -1,0 +1,1067 @@
+/* DynamicFormBuilder.css - Final Clean & Well Aligned */
+
+.df-container {
+  max-width: 1280px;
+  margin: auto;
+  padding: 25px 25px;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen", "Ubuntu", "Cantarell", sans-serif;
+  min-height: 100vh;
+}
+.df-template-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 20px;
+  width: 100%;
+}
+.df-title {
+  text-align: center;
+  font-size: 29px;
+  font-weight: 700;
+  margin-bottom: 25px;
+  color: #0f172a;
+}
+
+/* Builder Card */
+.df-builder-card {
+  background: white;
+  padding: 28px;
+  border-radius: 16px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+  border: 1px solid #e2e8f0;
+}
+
+/* Top Row */
+.df-top-config {
+  display: grid;
+  grid-template-columns: 2.2fr 1fr 1fr 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 26px;
+  align-items: end;
+}
+
+.df-top-config > div label {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: #334155;
+  margin-bottom: 6px;
+}
+
+.df-top-config input,
+.df-top-config select {
+  padding: 11px 13px;
+  border-radius: 10px;
+  border: 1.5px solid #e2e8f0;
+  font-size: 14.5px;
+  background: #fafbff;
+}
+
+.df-top-config input:focus,
+.df-top-config select:focus {
+  border-color: #4f46e5;
+  background: white;
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+}
+
+/* Main Builder */
+.df-builder {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+}
+
+/* Left: Add Form Fields */
+.df-field-builder {
+  background: #f0f9ff;
+  padding: 24px;
+  border-radius: 14px;
+}
+
+/* Right: Added Fields */
+.df-field-list-container {
+  background: #f8fafc;
+  padding: 24px;
+  border-radius: 14px;
+  border: 1.5px solid #e2e8f0;
+}
+
+.df-field-list {
+  max-height: 420px;
+  overflow-y: auto;
+}
+
+.df-field-item {
+  padding: 14px 16px;
+  margin-bottom: 10px;
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 14px;
+}
+
+/* Buttons */
+.df-add-btn,
+.df-submit-btn {
+  width: 100%;
+  padding: 12px 24px;
+  border-radius: 10px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.df-add-btn {
+  background: #16a34a;
+  color: white;
+  margin-top: 16px;
+}
+
+.df-submit-btn {
+  background: #16a34a;
+  color: white;
+  margin-top: 24px;
+}
+
+/* Preview & Fill Form - Fixed Padding */
+/* ==================== IMPROVED FORM STYLING ==================== */
+
+.df-fill-preview,
+.df-preview {
+  background: white;
+  padding: 40px 50px;
+  border-radius: 16px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.08);
+  border: 1px solid #e2e8f0;
+  max-width: 900px;
+  margin: 20px auto;
+}
+
+.df-fill-preview h3,
+.df-preview h3 {
+  text-align: center;
+  margin-bottom: 35px;
+  color: #0f172a;
+  font-size: 26px;
+  font-weight: 700;
+}
+
+/* Main Form Container */
+.df-form {
+  display: grid;
+  gap: 28px 20px;
+  max-width: 820px;
+  margin: 0 auto;
+}
+
+/* Grid Layouts */
+.df-grid-one    { grid-template-columns: 1fr; }
+.df-grid-two    { grid-template-columns: repeat(2, 1fr); }
+.df-grid-three  { grid-template-columns: repeat(3, 1fr); }
+
+/* Full width for complex fields */
+.df-form-group:has(.df-radio-group),
+.df-form-group:has(.df-checkbox-group),
+.df-form-group:has(textarea),
+.df-form-group:has(.df-date-range),
+.df-form-group:has(.df-rating-container) {
+  grid-column: 1 / -1;
+}
+
+/* Form Group - Clean Card-like Fields */
+.df-form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: #fafcff;
+  padding: 18px 20px;
+  border-radius: 12px;
+  border: 1.5px solid #e2e8f0;
+  transition: all 0.2s ease;
+}
+
+.df-form-group:hover {
+  border-color: #6366f1;
+  background: #f8faff;
+  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.08);
+}
+
+.df-form-group label {
+  font-weight: 600;
+  font-size: 15px;
+  color: #1e293b;
+  margin-bottom: 6px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Required Asterisk */
+.df-form-group label .required {
+  color: #ef4444;
+  font-size: 16px;
+}
+
+/* Input Styling */
+.df-input,
+select,
+textarea {
+  width: 100%;
+  padding: 14px 16px;
+  border: 2px solid #cbd5e1;
+  border-radius: 10px;
+  font-size: 15px;
+  background: white;
+  transition: all 0.2s ease;
+  box-sizing: border-box;
+}
+
+.df-input:focus,
+select:focus,
+textarea:focus {
+  border-color: #6366f1;
+  box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.12);
+  outline: none;
+}
+
+/* Textarea */
+textarea.df-input {
+  min-height: 110px;
+  resize: vertical;
+}
+
+/* Select Dropdown */
+select.df-input {
+  cursor: pointer;
+}
+
+/* Radio & Checkbox Groups */
+.df-radio-group,
+.df-checkbox-group {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 6px;
+}
+
+.df-radio-label,
+.df-checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: 1px solid transparent;
+}
+
+.df-radio-label:hover,
+.df-checkbox-label:hover {
+  background: #f0f4ff;
+  border-color: #c7d2fe;
+}
+
+.df-radio-label input,
+.df-checkbox-label input {
+  accent-color: #6366f1;
+  width: 18px;
+  height: 18px;
+}
+
+/* Rating Stars */
+.df-rating-container {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 32px;
+  margin-top: 8px;
+}
+
+.df-star {
+  color: #e2e8f0;
+  cursor: pointer;
+  transition: transform 0.2s, color 0.2s;
+}
+
+.df-star:hover,
+.df-star.filled {
+  color: #fbbf24;
+  transform: scale(1.15);
+}
+
+/* Date Range */
+.df-date-range {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.df-date-range > div {
+  flex: 1;
+  min-width: 240px;
+}
+
+/* Submit & Back Buttons */
+.df-submit-btn,
+.df-back-btn {
+  margin-top: 20px;
+  padding: 14px 32px;
+  font-size: 16px;
+  font-weight: 600;
+  border-radius: 10px;
+  border: none;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  align-self: center;
+}
+
+.df-submit-btn {
+  background: linear-gradient(135deg, #16a34a, #15803d);
+  color: white;
+  box-shadow: 0 4px 15px rgba(22, 163, 74, 0.3);
+}
+
+.df-submit-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(22, 163, 74, 0.4);
+}
+
+.df-back-btn {
+  background: #64748b;
+  color: white;
+}
+
+.df-back-btn:hover {
+  background: #475569;
+}
+
+.df-input:focus,
+select:focus,
+textarea:focus {
+  border-color: #4f46e5;
+  background: white;
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+}
+
+/* Assign Section */
+/* Add this to your existing CSS or replace the assign section styles */
+
+.assign-container {
+  margin-top: 20px;
+  padding: 18px;
+  background: #f8f9fa;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+}
+
+.assign-container h4 {
+  margin: 0 0 12px 0;
+  color: #1e293b;
+}
+
+.assign-list {
+  max-height: 240px;
+  overflow-y: auto;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 8px;
+  background: white;
+}
+
+.assign-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-bottom: 1px solid #f1f5f9;
+  cursor: pointer;
+}
+
+.assign-item:last-child {
+  border-bottom: none;
+}
+
+.assign-item:hover {
+  background: #f8fafc;
+}
+
+/* Mobile */
+@media (max-width: 1100px) {
+  .df-top-config { grid-template-columns: repeat(2, 1fr); }
+  .df-builder { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 768px) {
+  .df-container { padding: 20px; }
+  .df-builder-card { padding: 22px; }
+}
+
+/* Mobile */
+@media (max-width: 1050px) {
+  .df-top-config { grid-template-columns: repeat(2, 1fr); }
+  .df-builder { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 768px) {
+  .df-container { padding: 18px; }
+  .df-builder-card { padding: 22px; }
+}
+
+/* ===== BUTTONS ===== */
+.df-add-btn,
+.df-submit-btn {
+  width: fit-content;
+  padding: 12px 24px;
+  border-radius: 10px;
+  border: none;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-size: 14px;
+  letter-spacing: 0.3px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+.df-add-btn {
+  background: #16a34a;
+  color: white;
+}
+.df-add-btn:hover {
+  background: #16a34a;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);
+}
+.df-add-btn:active {
+  transform: translateY(0);
+}
+.df-submit-btn {
+  background: #16a34a;
+  color: white;
+  margin-top: 24px;
+}
+.df-submit-btn:hover {
+  background: #15803d;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(22, 163, 74, 0.3);
+}
+.df-submit-btn:active {
+  transform: translateY(0);
+}
+
+/* ===== FIELD LIST ===== */
+.df-field-list {
+  background: #f8fafc;
+  border-radius: 12px;
+  padding: 20px;
+  border: 1.5px solid #e2e8f0;
+  max-height: 420px;
+  overflow-y: auto;
+  transition: border-color 0.3s ease;
+}
+.df-field-list:hover {
+  border-color: #cbd5e1;
+}
+.df-field-item {
+  background: white;
+  border-radius: 10px;
+  padding: 14px 16px;
+  border: 1px solid #e5e7eb;
+  margin-bottom: 10px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: all 0.2s ease;
+}
+.df-field-item:hover {
+  border-color: #cbd5e1;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  background: #fafbff;
+}
+.df-field-item span {
+  font-size: 13px;
+  color: #334155;
+  font-weight: 500;
+}
+
+/* ===== FIELD ACTION BUTTONS ===== */
+.df-field-actions {
+  display: flex;
+  gap: 6px;
+}
+
+/* ===== BUTTON THEME FIX ===== */
+.df-edit-btn,
+.df-view-btn,
+.df-fill-btn,
+.df-delete-btn {
+  border: none;
+  padding: 8px 14px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
+}
+
+/* Preview */
+.df-view-btn {
+  background: #16a34a;
+  color: white;
+}
+.df-view-btn:hover {
+  background: #16a34a;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 6px rgba(79, 70, 229, 0.3);
+}
+
+/* Fill */
+.df-fill-btn {
+  background: #16a34a;
+  color: white;
+}
+.df-fill-btn:hover {
+  background: #15803d;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 6px rgba(22, 163, 74, 0.3);
+}
+
+/* Edit */
+.df-edit-btn {
+  background: #16a34a;
+  color: white;
+}
+.df-edit-btn:hover {
+  background: #16a34a;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 6px rgba(14, 165, 233, 0.3);
+}
+
+/* Delete */
+.df-delete-btn {
+  background: #16a34a;
+  color: white;
+}
+.df-delete-btn:hover {
+  background: #16a34a;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 6px rgba(239, 68, 68, 0.3);
+}
+
+/* Hover */
+.df-template-actions button:hover,
+.df-field-actions button:hover {
+  transform: translateY(-1px);
+}
+
+/* ===== TEMPLATE SECTION ===== */
+.df-templates h3 {
+  font-size: 20px;
+  margin-bottom: 15px;
+}
+
+/* GRID FIX */
+.df-template-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px,1fr));
+  gap: 20px;
+  align-items: stretch;
+}
+
+/* CARD FIX */
+.df-template-card {
+  background: white;
+  border-radius: 12px;
+  padding: 24px;
+  border: 1.5px solid #e2e8f0;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.05);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  min-height: 160px;
+  transition: all 0.3s ease;
+}
+.df-template-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.12);
+  border-color: #4f46e5;
+}
+.df-template-card h4 {
+  font-size: 17px;
+  font-weight: 600;
+  margin-bottom: 12px;
+  color: #0f172a;
+  line-height: 1.4;
+}
+
+/* BUTTON WRAP FIX */
+.df-template-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+/* ===== PREVIEW / FILL FORM ===== */
+.df-preview,
+.df-fill-preview {
+  background: white;
+  padding: 40px;
+  border-radius: 16px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  border: 1px solid rgba(0, 0, 0, 0.05);
+}
+.df-preview h3,
+.df-fill-preview h3 {
+  margin-bottom: 30px;
+  font-size: 24px;
+  color: #0f172a;
+  font-weight: 700;
+}
+
+/* ===== FORM STYLE ===== */
+.df-form {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  max-width: 750px;
+  width: 100%;
+}
+.df-form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.df-form-group label {
+  font-weight: 600;
+  margin-bottom: 2px;
+  color: #1e293b;
+  font-size: 15px;
+  letter-spacing: 0.2px;
+}
+
+/* ===== RADIO BUTTONS ===== */
+.df-radio-group {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 6px;
+}
+.df-radio-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  padding: 8px 12px;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+}
+.df-radio-label:hover {
+  background: #f0f4ff;
+}
+.df-radio-label input {
+  width: auto;
+  margin: 0;
+  cursor: pointer;
+  accent-color: #4f46e5;
+}
+
+/* ===== CHECKBOX GROUP ===== */
+.df-checkbox-group {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 6px;
+}
+.df-checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  padding: 8px 12px;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+}
+.df-checkbox-label:hover {
+  background: #f0f4ff;
+}
+.df-checkbox-label input {
+  
+  margin: 0;
+  cursor: pointer;
+  accent-color: #4f46e5;
+}
+
+/* ===== DATE RANGE ===== */
+.df-date-range {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+.df-date-range input {
+  flex: 1;
+}
+
+/* ===== RATING ===== */
+.df-rating-container {
+  font-size: 28px;
+  letter-spacing: 4px;
+  margin-top: 8px;
+}
+.df-star {
+  color: #e2e8f0;
+  cursor: pointer;
+  transition: all 0.1s ease;
+  display: inline-block;
+}
+.df-star:hover,
+.df-star.filled {
+  color: #fbbf24;
+  transform: scale(1.1);
+}
+
+/* ===== BACK BUTTON ===== */
+.df-back-btn {
+  margin-top: 24px;
+  background: #64748b;
+  border: none;
+  color: white;
+  padding: 10px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+.df-back-btn:hover {
+  background: #475569;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* ===== ERROR / LOADING ===== */
+.df-error {
+  background: #fee2e2;
+  color: #7f1d1d;
+  padding: 14px 16px;
+  border-radius: 10px;
+  margin-bottom: 16px;
+  border-left: 4px solid #dc2626;
+  font-weight: 500;
+}
+.df-loading {
+  text-align: center;
+  margin-bottom: 16px;
+  font-weight: 500;
+  color: #4f46e5;
+}
+
+/* ===== MOBILE ===== */
+@media (max-width: 900px) {
+  .df-builder-card {
+    grid-template-columns: 1fr;
+  }
+  .df-builder {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Modal Overlay */
+.df-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  backdrop-filter: blur(4px);
+}
+.df-modal {
+  background: white;
+  border-radius: 16px;
+  width: 90%;
+  max-width: 600px;
+  padding: 28px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  animation: slideUp 0.3s ease;
+}
+@keyframes slideUp {
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+.df-responses-modal {
+  max-width: 900px;
+  width: 90%;
+}
+.df-modal-header h3 {
+  margin: 0 0 20px;
+  font-size: 20px;
+  font-weight: 700;
+  color: #0f172a;
+}
+.df-modal-content {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+.df-modal-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+  margin-top: 28px;
+}
+
+/* Responses Table */
+.df-responses-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 20px;
+  font-size: 13px;
+}
+.df-responses-table th,
+.df-responses-table td {
+  padding: 14px 12px;
+  border-bottom: 1px solid #e5e7eb;
+  text-align: left;
+}
+.df-responses-table th {
+  background: #f8fafc;
+  font-weight: 700;
+  color: #1e293b;
+  letter-spacing: 0.3px;
+}
+.df-responses-table tr:hover {
+  background: #f8fafd;
+}
+.df-responses-table pre {
+  background: #f9fafb;
+  padding: 12px;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  overflow-x: auto;
+  border: 1px solid #e2e8f0;
+}
+
+/* Compact Buttons */
+.df-btn.compact {
+  padding: 8px 16px;
+  font-size: 0.9rem;
+}
+
+/* Professional Fill Form */
+.df-fill-section .df-professional-form {
+  max-width: 900px;
+  margin: 0 auto;
+  background: white;
+  padding: 40px;
+  border-radius: 16px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+  border: 1px solid rgba(0, 0, 0, 0.05);
+}
+.df-form-item {
+  margin-bottom: 32px;
+}
+.df-form-label {
+  font-weight: 700;
+  display: block;
+  margin-bottom: 10px;
+  font-size: 14px;
+  color: #0f172a;
+  letter-spacing: 0.3px;
+}
+.df-field-wrapper {
+  width: 100%;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .df-form-row { flex-direction: column; }
+  .df-modal { width: 95%; padding: 20px; }
+}
+
+/* Answers table layout */
+.df-answer-table {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 200px;
+  overflow-y: auto;
+}
+.df-answer-row {
+  display: grid;
+  grid-template-columns: 180px 1fr;
+  gap: 10px;
+  padding: 6px 8px;
+  background: #f9fafb;
+  border-radius: 6px;
+  font-size: 13px;
+}
+.df-answer-question {
+  font-weight: 600;
+  color: #334155;
+}
+.df-answer-value {
+  color: #475569;
+  word-break: break-word;
+}
+/* ─── Layout selector ─────────────────────────────────────── */
+.df-layout-section {
+  grid-column: span 2;
+  margin: 16px 0 8px;
+}
+
+.df-layout-label {
+  font-weight: 600;
+  display: block;
+  margin-bottom: 10px;
+  color: #334155;
+}
+
+.df-layout-options {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.df-layout-option {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  padding: 12px 16px;
+  border: 2px solid #e2e8f0;
+  border-radius: 10px;
+  transition: all 0.15s;
+  background: white;
+}
+
+.df-layout-option:hover,
+.df-layout-option.active {
+  border-color: #4f46e5;
+  background: rgba(79, 70, 229, 0.05);
+  transform: translateY(-1px);
+}
+
+.df-layout-preview {
+  width: 160px;
+  height: 80px;
+  border: 2px dashed #94a3b8;
+  border-radius: 8px;
+  padding: 8px;
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  align-content: flex-start;
+  background: #f8fafc;
+}
+
+.mock-field {
+  background: #cbd5e1;
+  border-radius: 6px;
+  height: 36px;
+}
+
+.mock-field.full  { width: 100%; }
+.mock-field.half  { width: calc(50% - 3px); }
+.mock-field.third { width: calc(33.333% - 4px); }
+
+/* ─── Form grid layout ────────────────────────────────────── */
+.df-grid-layout {
+  display: grid;
+  gap: 20px 16px;           /* row gap / column gap */
+}
+
+.df-grid-one    { grid-template-columns: 1fr; }
+.df-grid-two    { grid-template-columns: repeat(2, 1fr); }
+.df-grid-three  { grid-template-columns: repeat(3, 1fr); }
+
+/* Mobile — collapse to single column */
+@media (max-width: 768px) {
+  .df-grid-two,
+  .df-grid-three {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Optional: make some field types always full width */
+.df-form-group:has(.df-radio-group),
+.df-form-group:has(.df-checkbox-group),
+.df-form-group:has(textarea),
+.df-form-group:has(.df-date-range) {
+  grid-column: 1 / -1;      /* span full width even in multi-column layouts */
+}
+/* Core grid setup - already have this */
+.df-grid-layout {
+  display: grid;
+  gap: 20px 16px;           /* row-gap / column-gap */
+}
+
+.df-grid-one    { grid-template-columns: 1fr; }
+.df-grid-two    { grid-template-columns: repeat(2, 1fr); }
+.df-grid-three  { grid-template-columns: repeat(3, 1fr); }
+
+/* ────────────────────────────────────────────────
+   Force full-width for fields that shouldn't be squeezed
+───────────────────────────────────────────────── */
+.df-span-full {
+  grid-column: 1 / -1;
+}
+
+/* Optional: also make long text inputs full width if you want */
+
+
+/* Mobile - always single column anyway */
+@media (max-width: 768px) {
+  .df-grid-two,
+  .df-grid-three {
+    grid-template-columns: 1fr;
+  }
+  /* No need to force full-width on mobile */
+  .df-form-group {
+    grid-column: auto !important;
+  }
+}
+
+.df-template-card {
+  background: white;
+  border-radius: 12px;
+  padding: 24px;
+  border: 1.5px solid #e2e8f0;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.05);
+  display: flex;
+  flex-direction: column;
+  min-height: 260px;           /* Increased for better date visibility */
+  transition: all 0.3s ease;
+}
+
+.df-template-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.12);
+  border-color: #4f46e5;
+}
+
+
+.assign-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  border-bottom: 1px solid #f1f5f9;
+  font-size: 14.5px;
+}
+
+.assign-item span {
+  flex: 1;
+}

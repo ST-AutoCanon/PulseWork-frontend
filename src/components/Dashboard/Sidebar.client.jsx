@@ -41,6 +41,7 @@ import OvertimeDetails from "../Compensation/OvertimeDetails";
 import OvertimeSupervisor from "../Compensation/overtimeSupervisor";
 import ExitFlow from "../ExitFlow/ExitFlow.client";
 import TaskManagementHr from "../TaskManagementHr/TaskManagementHr.jsx";
+import DynamicFormBuilder from "../DynamicFormBuilder/DynamicFormBuilder.client";
 
 const Sidebar = ({ setActiveContent }) => {
   const { user, hydrated } = useAuth();
@@ -111,6 +112,8 @@ const Sidebar = ({ setActiveContent }) => {
       "/payrollSummary": () => <PayrollSummary />,
       "/messenger": () => <Chat />,
       "/EmployeeLogin": () => <EmployeeLogin />,
+       "/FormBuilder": () => <DynamicFormBuilder />,
+
       "/reimbursement": (role) => {
         if (role === "Admin") return <RbAdmin />;
         if (role === "Manager") return <RbTeamLead />;

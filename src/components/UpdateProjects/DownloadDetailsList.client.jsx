@@ -137,8 +137,8 @@ const DownloadDetailsList = ({ refreshKey }) => {
   const handleRedownload = async (record) => {
     setRedownloadDetails(buildDownloadDetails(record));
 
-    // ✅ FIX: use raw key
-    setRedownloadInvoiceType(record.invoiceType);
+    // Keep the full display label for the template title
+    setRedownloadInvoiceType(normalizeInvoiceTypeLabel(record.invoiceType));
 
     setRedownloadInvoiceNumber(record.invoiceNumber || "");
     setPendingRedownloadId(record.id ?? `${Date.now()}`);

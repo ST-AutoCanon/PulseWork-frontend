@@ -1,3 +1,5 @@
+"use client";
+
 import React from "react";
 import "./InvoicePrint.css";
 import { numberToWords } from "./numberToWords.client";
@@ -17,7 +19,13 @@ const ORG32_HEADER = {
 
 const ORG32_FOOTER = {
   address:
-    "  Plot No. 04, 2nd Cross, Prajwani Road, Near High Court, Belur Industrial Area, Dharwad - 580 011  ",
+    "Plot No. 04, 2nd Cross, Prajwani Road, Near High Court, Belur Industrial Area, Dharwad - 580 011",
+  bankName: "INDIAN OVERSEAS BANK",
+  accountNo: "030802000003462",
+  ifsc: "IOBA0000308",
+  accountHolder: "AVINYA MOTORS",
+  qrSrc: "/images/qr_avinya.png",
+  sealSrc: "/images/avinya_seal.jpeg",
 };
 
 const fmtINR = (value) => {
@@ -125,7 +133,6 @@ const InvoicePrint = React.forwardRef(({ invoiceData = {}, orgId }, ref) => {
     0,
   );
 
-  // Prefer explicit gstAmount (server-side) but fall back to computed
   const effectiveGstAmount = gstAmount || Number(totalGSTFromLines.toFixed(2));
   const grossTotal = totals.total + effectiveGstAmount;
 
@@ -398,9 +405,90 @@ const InvoicePrint = React.forwardRef(({ invoiceData = {}, orgId }, ref) => {
       </div>
 
       {isOrg32 ? (
-        <footer className="invoice-footer org32-footer">
+        <footer
+          className="invoice-footer org32-footer"
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            gap: "10px",
+            marginTop: "12px",
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              gap: "16px",
+              alignItems: "stretch",
+            }}
+          >
+            <div className="footer-partition" style={{ width: "49%" }}>
+              <h4 style={{ background: "#000", color: "#fff", margin: 0 }}>
+                Bank Details
+              </h4>
+              <div className="bank-details" style={{ gap: "12px" }}>
+                <div className="qr-code" style={{ margin: "1% 2% 0 0" }}>
+                  <img
+                    src={ORG32_FOOTER.qrSrc}
+                    alt="AVINYA QR Code"
+                    style={{ width: "150px", height: "150px" }}
+                  />
+                </div>
+                <p style={{ fontSize: "medium" }}>
+                  Name: {ORG32_FOOTER.bankName}
+                  <br />
+                  <br />
+                  Account No: {ORG32_FOOTER.accountNo}
+                  <br />
+                  <br />
+                  IFSC code: {ORG32_FOOTER.ifsc}
+                  <br />
+                  <br />
+                  Account holder&apos;s name: {ORG32_FOOTER.accountHolder}
+                </p>
+              </div>
+            </div>
+
+            <div
+              className="seal-signs"
+              style={{
+                width: "49%",
+                textAlign: "center",
+                margin: 0,
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                justifyContent: "space-between",
+              }}
+            >
+              <p style={{ margin: 0 }}>For: AVINYA MOTORS</p>
+              {withSeal ? (
+                <div className="seal">
+                  <img
+                    src={ORG32_FOOTER.sealSrc}
+                    alt="SEAL"
+                    style={{ width: "200px", height: "150px" }}
+                  />
+                </div>
+              ) : (
+                <div
+                  className="no-seal"
+                  style={{ width: "200px", height: "150px" }}
+                />
+              )}
+              <strong>
+                <p className="authorized" style={{ margin: 0 }}>
+                  Authorized Signatory
+                </p>
+              </strong>
+            </div>
+          </div>
+
           <div className="org32-footer-bar">
-            <FiMapPin className="org32-footer-icon" />
+            <FiMapPin
+              className="org32-footer-icon"
+              style={{ fontSize: "18px" }}
+            />
             <span>{ORG32_FOOTER.address}</span>
           </div>
         </footer>

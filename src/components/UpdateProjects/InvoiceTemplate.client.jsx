@@ -377,12 +377,98 @@ const InvoiceTemplate = React.forwardRef((props, ref) => {
 
       {isOrg32 ? (
         <footer className="org32-footer">
-          <div className="org32-footer-bar">
-            <FiMapPin className="org32-footer-icon" />
-            <span>
-              Plot No. 04, 2nd Cross, Prajwani Road, Near High Court, Belur
-              Industrial Area, Dharwad - 580 011
-            </span>
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              gap: "10px",
+              marginTop: "12px",
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                gap: "16px",
+                alignItems: "stretch",
+              }}
+            >
+              <div className="emp-footer-partition" style={{ width: "49%" }}>
+                <h4
+                  style={{
+                    background: "#000",
+                    color: "#fff",
+                    margin: 0,
+                    padding: "10px 14px",
+                  }}
+                >
+                  Bank Details
+                </h4>
+                <div className="emp-bank-details" style={{ gap: "12px" }}>
+                  <div className="emp-qr-code" style={{ margin: "1% 2% 0 0" }}>
+                    <img
+                      src="/images/qr_avinya.png"
+                      alt="AVINYA QR Code"
+                      style={{ width: "150px", height: "150px" }}
+                    />
+                  </div>
+                  <p style={{ fontSize: "medium" }}>
+                    Name: INDIAN OVERSEAS BANK
+                    <br />
+                    <br />
+                    Account No: 030802000003462
+                    <br />
+                    <br />
+                    IFSC code: IOBA0000308
+                    <br />
+                    <br />
+                    Account holder&apos;s name: AVINYA MOTORS
+                  </p>
+                </div>
+              </div>
+
+              <div
+                className="emp-seal-signs"
+                style={{
+                  width: "49%",
+                  textAlign: "center",
+                  margin: 0,
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                }}
+              >
+                <p style={{ margin: 0 }}>For: AVINYA MOTORS</p>
+                {withSeal ? (
+                  <div className="emp-seal">
+                    <img
+                      src="/images/avinya_seal.jpeg"
+                      alt="SEAL"
+                      style={{ width: "200px", height: "150px" }}
+                    />
+                  </div>
+                ) : (
+                  <div
+                    className="emp-no-seal"
+                    style={{ width: "200px", height: "150px" }}
+                  />
+                )}
+                <strong>
+                  <p className="emp-authorized" style={{ margin: 0 }}>
+                    Authorized Signatory
+                  </p>
+                </strong>
+              </div>
+            </div>
+
+            <div className="org32-footer-bar">
+              <FiMapPin
+                className="org32-footer-icon"
+                style={{ fontSize: "18px" }}
+              />
+              <span>{`Plot No. 04, 2nd Cross, Prajwani Road, Near High Court, Belur Industrial Area, Dharwad - 580 011`}</span>
+            </div>
           </div>
         </footer>
       ) : (

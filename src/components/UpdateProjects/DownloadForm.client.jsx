@@ -16,6 +16,7 @@ const DownloadForm = ({ onSubmit, onCancel }) => {
 
   const createdBy = user?.employeeId ?? user?.id ?? null;
   const createdByOrg = user?.orgId ?? user?.raw?.org_id ?? null;
+  const isOrg32 = Number(createdByOrg) === 32;
 
   const [to, setTo] = useState("");
   const [address, setAddress] = useState("");
@@ -26,7 +27,7 @@ const DownloadForm = ({ onSubmit, onCancel }) => {
   const [referenceDate, setReferenceDate] = useState("");
   const [referenceId, setReferenceId] = useState("");
   const [placeOfSupply, setPlaceOfSupply] = useState("");
-  const [withSeal, setWithSeal] = useState(false);
+  const [withSeal, setWithSeal] = useState(isOrg32);
 
   const [lineItems, setLineItems] = useState([
     { description: "", quantity: 1, rate: 0, total: 0 },
@@ -150,6 +151,7 @@ const DownloadForm = ({ onSubmit, onCancel }) => {
           X
         </button>
       </div>
+
       <div className="download-form-grid">
         <div className="download-form-group">
           <label>To:</label>
@@ -352,6 +354,7 @@ const DownloadForm = ({ onSubmit, onCancel }) => {
           </div>
         </div>
       </div>
+
       <div className="download-checkbox-group">
         <input
           type="checkbox"

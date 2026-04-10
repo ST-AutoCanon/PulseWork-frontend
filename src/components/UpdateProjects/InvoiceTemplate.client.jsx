@@ -66,7 +66,7 @@ const InvoiceTemplate = React.forwardRef((props, ref) => {
       ? (Number(gstAmount) / 2).toFixed(2)
       : (totalGST / 2).toFixed(2);
 
-  const fixedRows = 8;
+  const fixedRows = 6;
   const emptyRowCount = fixedRows - parsedLineItems.length;
   const emptyRows =
     emptyRowCount > 0 ? Array.from({ length: emptyRowCount }) : [];
@@ -185,10 +185,13 @@ const InvoiceTemplate = React.forwardRef((props, ref) => {
               <strong>{placeOfSupply || "_________"}</strong>
             </p>
 
-            {!isQuotation && !isPO && (
+            {!isQuotation && (
               <>
                 <p>
-                  <span className="temp-label">PO Date</span>:{" "}
+                  <span className="temp-label">
+                    {isPO ? "Reference Date" : "PO Date"}
+                  </span>
+                  :{" "}
                   <strong>
                     {referenceDate
                       ? new Date(referenceDate)
@@ -201,9 +204,12 @@ const InvoiceTemplate = React.forwardRef((props, ref) => {
                       : "_________"}
                   </strong>
                 </p>
+
                 <p>
-                  <span className="temp-label">PO Number</span>:{" "}
-                  <strong>{referenceId || "_________"}</strong>
+                  <span className="temp-label">
+                    {isPO ? "Reference ID" : "PO Number"}
+                  </span>
+                  : <strong>{referenceId || "_________"}</strong>
                 </p>
               </>
             )}

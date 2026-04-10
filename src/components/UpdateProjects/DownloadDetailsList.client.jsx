@@ -6,6 +6,9 @@ import { useAuth } from "../../context/AuthProvider.client";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
 import InvoiceTemplate from "./InvoiceTemplate.client";
+import DownloadForm from "./DownloadForm.client";
+import { FiEye, FiDownload } from "react-icons/fi";
+import { MdOutlineEdit } from "react-icons/md";
 
 const formatDateIST = (dateString, withTime = false) => {
   try {
@@ -59,6 +62,9 @@ const DownloadDetailsList = ({ refreshKey }) => {
   const [redownloadInvoiceNumber, setRedownloadInvoiceNumber] = useState("");
   const [pendingRedownloadId, setPendingRedownloadId] = useState(null);
 
+  const [editingRecord, setEditingRecord] = useState(null);
+  const [showEditModal, setShowEditModal] = useState(false);
+
   const printRef = useRef(null);
 
   const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
@@ -92,8 +98,9 @@ const DownloadDetailsList = ({ refreshKey }) => {
         const downloadDetails =
           json?.downloadDetails ?? json?.message ?? json ?? [];
 
-        if (mounted)
+        if (mounted) {
           setRecords(Array.isArray(downloadDetails) ? downloadDetails : []);
+        }
       } catch (err) {
         console.error("Fetch download details failed:", err);
         if (mounted) setError(err.message || "Failed to fetch records");
@@ -124,7 +131,15 @@ const DownloadDetailsList = ({ refreshKey }) => {
     referenceId: record.referenceId,
     placeOfSupply: record.placeOfSupply,
     withSeal: record.withSeal,
-    lineItems: record.lineItems || [],
+    lineItems: Array.isArray(record.lineItems)
+      ? record.lineItems.map((item) => ({
+          description: item?.description || "",
+          hsnSac: item?.hsnSac || item?.hsn || "",
+          quantity: item?.quantity ?? 0,
+          rate: item?.rate ?? 0,
+          total: item?.total ?? 0,
+        }))
+      : [],
     subTotal: record.subTotal,
     gst: record.gst,
     gstAmount: record.gstAmount,
@@ -136,12 +151,114 @@ const DownloadDetailsList = ({ refreshKey }) => {
 
   const handleRedownload = async (record) => {
     setRedownloadDetails(buildDownloadDetails(record));
-
-    // Keep the full display label for the template title
     setRedownloadInvoiceType(normalizeInvoiceTypeLabel(record.invoiceType));
-
     setRedownloadInvoiceNumber(record.invoiceNumber || "");
     setPendingRedownloadId(record.id ?? `${Date.now()}`);
+  };
+
+  const handleEdit = (record) => {
+    setEditingRecord({
+      id: record.id,
+      invoiceType: record.invoiceType,
+      invoiceNumber: record.invoiceNumber,
+      to: record.toName || record.to || "",
+      address: record.address || "",
+      contact: record.contact || "",
+      companyGst: record.companyGst || "",
+      state: record.state || "",
+      invoiceDate: record.invoiceDate || "",
+      referenceDate: record.referenceDate || "",
+      referenceId: record.referenceId || "",
+      placeOfSupply: record.placeOfSupply || "",
+      withSeal: Boolean(record.withSeal),
+      lineItems: Array.isArray(record.lineItems) ? record.lineItems : [],
+      subTotal: record.subTotal || 0,
+      gst: record.gst || 0,
+      gstAmount: record.gstAmount || 0,
+      advance: record.advance || 0,
+      totalExcludingTax: record.totalExcludingTax || 0,
+      totalIncludingTax: record.totalIncludingTax || 0,
+      terms: record.terms || "",
+    });
+    setShowEditModal(true);
+  };
+
+  const handleSaveEdit = async (payload) => {
+    try {
+      const headers = {
+        "Content-Type": "application/json",
+        "x-api-key": API_KEY || "",
+      };
+      if (orgId) headers["x-org-id"] = orgId;
+      const meId = user?.employeeId ?? user?.id ?? null;
+      if (meId) headers["x-employee-id"] = String(meId);
+
+      const resp = await fetch(
+        `${BACKEND_URL}/download-details/${editingRecord.id}`,
+        {
+          method: "PUT",
+          credentials: "include",
+          headers,
+          body: JSON.stringify({
+            invoiceType: normalizeInvoiceTypeLabel(
+              payload.invoiceType || editingRecord.invoiceType,
+            )
+              .toLowerCase()
+              .includes("proforma")
+              ? "proforma"
+              : normalizeInvoiceTypeLabel(
+                    payload.invoiceType || editingRecord.invoiceType,
+                  )
+                    .toLowerCase()
+                    .includes("quotation")
+                ? "quotation"
+                : normalizeInvoiceTypeLabel(
+                      payload.invoiceType || editingRecord.invoiceType,
+                    )
+                      .toLowerCase()
+                      .includes("purchase order")
+                  ? "po"
+                  : "tax",
+            invoiceNumber: editingRecord.invoiceNumber,
+            to: payload.to,
+            address: payload.address,
+            contact: payload.contact,
+            companyGst: payload.companyGst,
+            state: payload.state,
+            invoiceDate: payload.invoiceDate,
+            referenceDate: payload.referenceDate,
+            referenceId: payload.referenceId,
+            placeOfSupply: payload.placeOfSupply,
+            withSeal: payload.withSeal,
+            lineItems: payload.lineItems,
+            subTotal: payload.subTotal,
+            gst: payload.gst,
+            gstAmount: payload.gstAmount,
+            advance: payload.advance,
+            totalExcludingTax: payload.totalExcludingTax,
+            totalIncludingTax: payload.totalIncludingTax,
+            terms: payload.terms,
+          }),
+        },
+      );
+
+      if (!resp.ok) {
+        throw new Error(`Update failed (${resp.status})`);
+      }
+
+      setShowEditModal(false);
+      setEditingRecord(null);
+
+      const refreshed = await resp.json();
+      setRecords((prev) =>
+        prev.map((r) =>
+          r.id === editingRecord.id ? refreshed.downloadDetail || r : r,
+        ),
+      );
+    } catch (err) {
+      console.error("Edit download details failed:", err);
+      setError(err.message || "Failed to update");
+    }
   };
 
   useEffect(() => {
@@ -224,19 +341,35 @@ const DownloadDetailsList = ({ refreshKey }) => {
                     <td>{formatDateIST(r.createdAt, true)}</td>
                     <td>
                       <button
-                        className="d-toggle-btn"
+                        className="d-icon-btn"
+                        title={expandedRows.includes(r.id) ? "Hide" : "View"}
+                        aria-label={
+                          expandedRows.includes(r.id) ? "Hide" : "View"
+                        }
                         onClick={() => toggleRow(r.id)}
                       >
-                        {expandedRows.includes(r.id) ? "Hide" : "View"}
+                        <FiEye />
                       </button>
                     </td>
                     <td>
-                      <button
-                        className="d-redownload-btn"
-                        onClick={() => handleRedownload(r)}
-                      >
-                        Redownload
-                      </button>
+                      <div className="d-actions">
+                        <button
+                          className="d-icon-btn"
+                          title="Edit"
+                          aria-label="Edit"
+                          onClick={() => handleEdit(r)}
+                        >
+                          <MdOutlineEdit />
+                        </button>
+                        <button
+                          className="d-icon-btn"
+                          title="Redownload"
+                          aria-label="Redownload"
+                          onClick={() => handleRedownload(r)}
+                        >
+                          <FiDownload />
+                        </button>
+                      </div>
                     </td>
                   </tr>
 
@@ -249,6 +382,7 @@ const DownloadDetailsList = ({ refreshKey }) => {
                             <tr>
                               <th>Sl. No.</th>
                               <th>Description</th>
+                              <th>HSN/SAC</th>
                               <th>Qty</th>
                               <th>Rate</th>
                               <th>Total</th>
@@ -257,7 +391,7 @@ const DownloadDetailsList = ({ refreshKey }) => {
                           <tbody>
                             {lineItems.length === 0 ? (
                               <tr>
-                                <td colSpan={5}>No line items</td>
+                                <td colSpan={6}>No line items</td>
                               </tr>
                             ) : (
                               lineItems.map((item, i) => (
@@ -266,6 +400,7 @@ const DownloadDetailsList = ({ refreshKey }) => {
                                   <td>
                                     {item.description ?? item.name ?? "—"}
                                   </td>
+                                  <td>{item.hsnSac ?? item.hsn ?? "—"}</td>
                                   <td>{item.quantity ?? item.qty ?? "—"}</td>
                                   <td>
                                     {Number(item.rate ?? item.unitPrice ?? 0)
@@ -344,6 +479,23 @@ const DownloadDetailsList = ({ refreshKey }) => {
             })}
           </tbody>
         </table>
+      )}
+
+      {showEditModal && editingRecord && (
+        <div className="pj-modal">
+          <div className="pj-modal-content">
+            <DownloadForm
+              initialData={editingRecord}
+              isEditMode={true}
+              customers={[]}
+              onSubmit={handleSaveEdit}
+              onCancel={() => {
+                setShowEditModal(false);
+                setEditingRecord(null);
+              }}
+            />
+          </div>
+        </div>
       )}
 
       <div style={{ position: "absolute", top: "-10000px", left: "-10000px" }}>

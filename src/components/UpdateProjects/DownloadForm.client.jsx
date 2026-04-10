@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { FiSearch, FiX, FiChevronDown } from "react-icons/fi";
 import "./DownloadForm.css";
 import { useAuth } from "../../context/AuthProvider.client";
 
@@ -11,12 +12,44 @@ const toNumber = (v) => {
   return Number.isFinite(n) ? n : 0;
 };
 
-const DownloadForm = ({ onSubmit, onCancel }) => {
+const emptyLineItem = () => ({
+  description: "",
+  hsnSac: "",
+  quantity: 1,
+  rate: 0,
+  total: 0,
+});
+
+const normalizeItems = (items) => {
+  if (!Array.isArray(items) || items.length === 0) return [emptyLineItem()];
+  return items.map((item) => ({
+    description: item?.description || "",
+    hsnSac: item?.hsnSac || item?.hsn || "",
+    quantity: item?.quantity ?? 1,
+    rate: item?.rate ?? 0,
+    total: item?.total ?? 0,
+  }));
+};
+
+const DownloadForm = ({
+  onSubmit,
+  onCancel,
+  customers = [],
+  selectedProject,
+  initialData = null,
+  isEditMode = false,
+}) => {
   const { user } = useAuth();
 
   const createdBy = user?.employeeId ?? user?.id ?? null;
   const createdByOrg = user?.orgId ?? user?.raw?.org_id ?? null;
   const isOrg32 = Number(createdByOrg) === 32;
+
+  const [selectedCustomerId, setSelectedCustomerId] = useState("");
+  const [customerSearch, setCustomerSearch] = useState("");
+  const [showCustomerPanel, setShowCustomerPanel] = useState(false);
+
+  const customerWrapRef = useRef(null);
 
   const [to, setTo] = useState("");
   const [address, setAddress] = useState("");
@@ -29,9 +62,7 @@ const DownloadForm = ({ onSubmit, onCancel }) => {
   const [placeOfSupply, setPlaceOfSupply] = useState("");
   const [withSeal, setWithSeal] = useState(isOrg32);
 
-  const [lineItems, setLineItems] = useState([
-    { description: "", quantity: 1, rate: 0, total: 0 },
-  ]);
+  const [lineItems, setLineItems] = useState([emptyLineItem()]);
 
   const [subTotal, setSubTotal] = useState(0);
   const [gst, setGST] = useState(0);
@@ -40,6 +71,118 @@ const DownloadForm = ({ onSubmit, onCancel }) => {
   const [totalExcludingTax, setTotalExcludingTax] = useState(0);
   const [totalIncludingTax, setTotalIncludingTax] = useState(0);
   const [terms, setTerms] = useState("");
+
+  const applyCustomer = (customer) => {
+    if (!customer) return;
+    setTo(customer.company_name || "");
+    setAddress(customer.company_address || "");
+    setCompanyGst(customer.company_gst || "");
+    setContact(customer.project_poc_contact || "");
+    setState(customer.state || "");
+  };
+
+  const filteredCustomers = useMemo(() => {
+    const q = customerSearch.trim().toLowerCase();
+    if (!q) return customers.slice(0, 8);
+
+    return customers.filter((customer) => {
+      const name = String(customer.company_name || "").toLowerCase();
+      const gstVal = String(customer.company_gst || "").toLowerCase();
+      const pan = String(customer.company_pan || "").toLowerCase();
+      const contactVal = String(
+        customer.project_poc_contact || "",
+      ).toLowerCase();
+      const addressVal = String(customer.company_address || "").toLowerCase();
+      return (
+        name.includes(q) ||
+        gstVal.includes(q) ||
+        pan.includes(q) ||
+        contactVal.includes(q) ||
+        addressVal.includes(q)
+      );
+    });
+  }, [customers, customerSearch]);
+
+  const handleCustomerSelect = (customer) => {
+    if (!customer) return;
+    setSelectedCustomerId(String(customer.id));
+    setCustomerSearch(customer.company_name || "");
+    setShowCustomerPanel(false);
+    applyCustomer(customer);
+  };
+
+  const handleClearCustomer = () => {
+    setSelectedCustomerId("");
+    setCustomerSearch("");
+    setShowCustomerPanel(false);
+  };
+
+  useEffect(() => {
+    const onClickOutside = (e) => {
+      if (
+        customerWrapRef.current &&
+        !customerWrapRef.current.contains(e.target)
+      ) {
+        setShowCustomerPanel(false);
+      }
+    };
+
+    document.addEventListener("mousedown", onClickOutside);
+    return () => document.removeEventListener("mousedown", onClickOutside);
+  }, []);
+
+  useEffect(() => {
+    if (initialData) {
+      setSelectedCustomerId(initialData.selectedCustomerId || "");
+      setCustomerSearch(initialData.to || initialData.toName || "");
+      setTo(initialData.to || initialData.toName || "");
+      setAddress(initialData.address || "");
+      setCompanyGst(initialData.companyGst || "");
+      setContact(initialData.contact || "");
+      setState(initialData.state || "");
+      setInvoiceDate(initialData.invoiceDate || "");
+      setReferenceDate(initialData.referenceDate || "");
+      setReferenceId(initialData.referenceId || "");
+      setPlaceOfSupply(initialData.placeOfSupply || "");
+      setWithSeal(Boolean(initialData.withSeal));
+      setLineItems(normalizeItems(initialData.lineItems));
+      setSubTotal(Number(initialData.subTotal || 0));
+      setGST(Number(initialData.gst || 0));
+      setGSTAmount(Number(initialData.gstAmount || 0));
+      setAdvance(Number(initialData.advance || 0));
+      setTotalExcludingTax(Number(initialData.totalExcludingTax || 0));
+      setTotalIncludingTax(Number(initialData.totalIncludingTax || 0));
+      setTerms(initialData.terms || "");
+      return;
+    }
+
+    if (selectedProject) {
+      setTo(selectedProject.company || "");
+      setAddress(selectedProject.address || "");
+      setCompanyGst(selectedProject.gst || "");
+      setContact(selectedProject.clientNumber || "");
+      setState(selectedProject.state || "");
+    }
+  }, [initialData, selectedProject]);
+
+  useEffect(() => {
+    if (!initialData && selectedProject && customers.length) {
+      const match = customers.find(
+        (c) =>
+          String(c.company_name || "")
+            .trim()
+            .toLowerCase() ===
+          String(selectedProject.company || "")
+            .trim()
+            .toLowerCase(),
+      );
+
+      if (match) {
+        setSelectedCustomerId(String(match.id));
+        setCustomerSearch(match.company_name || "");
+      }
+    }
+  }, [selectedProject, customers, initialData]);
 
   useEffect(() => {
     let newSubTotal = 0;
@@ -59,7 +202,9 @@ const DownloadForm = ({ onSubmit, onCancel }) => {
       setLineItems(updated);
     }
     setSubTotal(Number(newSubTotal.toFixed(2)));
-  }, [lineItems.map((li) => `${li.quantity}:${li.rate}`).join("|")]);
+  }, [
+    lineItems.map((li) => `${li.quantity}:${li.rate}:${li.hsnSac}`).join("|"),
+  ]);
 
   useEffect(() => {
     const base = toNumber(subTotal);
@@ -86,10 +231,7 @@ const DownloadForm = ({ onSubmit, onCancel }) => {
   };
 
   const handleAddLineItem = () => {
-    setLineItems((prev) => [
-      ...prev,
-      { description: "", quantity: 1, rate: 0, total: 0 },
-    ]);
+    setLineItems((prev) => [...prev, emptyLineItem()]);
   };
 
   const handleRemoveLineItem = (index) => {
@@ -112,6 +254,7 @@ const DownloadForm = ({ onSubmit, onCancel }) => {
     e.preventDefault();
 
     const payload = {
+      selectedCustomerId: selectedCustomerId || null,
       to: to || null,
       address: address || null,
       contact: contact || null,
@@ -124,6 +267,7 @@ const DownloadForm = ({ onSubmit, onCancel }) => {
       withSeal: Boolean(withSeal),
       lineItems: (lineItems || []).map((li) => ({
         description: li.description || "",
+        hsnSac: li.hsnSac || "",
         quantity: toNumber(li.quantity),
         rate: toNumber(li.rate),
         total: toNumber(li.total),
@@ -146,10 +290,104 @@ const DownloadForm = ({ onSubmit, onCancel }) => {
   return (
     <form className="download-form" onSubmit={handleSubmit}>
       <div className="download-title">
-        <h2>Invoice Details</h2>
+        <h2>{isEditMode ? "Edit Invoice Details" : "Invoice Details"}</h2>
         <button className="pj-close-button" type="button" onClick={onCancel}>
           X
         </button>
+      </div>
+      <div className="download-customer-group" ref={customerWrapRef}>
+        <label className="download-customer-label">Customer Search</label>
+
+        <div className="download-customer-shell">
+          <div className="download-customer-bar">
+            <FiSearch className="download-customer-search-icon" />
+            <input
+              type="text"
+              value={customerSearch}
+              onChange={(e) => {
+                setCustomerSearch(e.target.value);
+                setSelectedCustomerId("");
+                setShowCustomerPanel(true);
+              }}
+              onFocus={() => setShowCustomerPanel(true)}
+              placeholder="Search by company, GST, PAN, contact, address"
+            />
+
+            {customerSearch && (
+              <button
+                type="button"
+                className="download-customer-clear-icon-btn"
+                onClick={handleClearCustomer}
+                aria-label="Clear customer search"
+              >
+                <FiX />
+              </button>
+            )}
+          </div>
+
+          <div className="download-customer-meta-row">
+            <span>
+              {filteredCustomers.length} result
+              {filteredCustomers.length === 1 ? "" : "s"}
+            </span>
+
+            <button
+              type="button"
+              className="download-customer-panel-toggle"
+              onClick={() => setShowCustomerPanel((v) => !v)}
+            >
+              Browse <FiChevronDown />
+            </button>
+          </div>
+
+          {showCustomerPanel && (
+            <div className="download-customer-panel">
+              {filteredCustomers.length > 0 ? (
+                filteredCustomers.map((customer) => (
+                  <button
+                    key={customer.id}
+                    type="button"
+                    className={`download-customer-item ${
+                      String(customer.id) === String(selectedCustomerId)
+                        ? "selected"
+                        : ""
+                    }`}
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => handleCustomerSelect(customer)}
+                  >
+                    <div className="download-customer-item-top">
+                      <strong>{customer.company_name || "Unnamed"}</strong>
+                      {String(customer.id) === String(selectedCustomerId) && (
+                        <span className="download-customer-selected-badge">
+                          Selected
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="download-customer-item-grid">
+                      <span>
+                        GST: <b>{customer.company_gst || "—"}</b>
+                      </span>
+                      <span>
+                        PAN: <b>{customer.company_pan || "—"}</b>
+                      </span>
+                      <span>
+                        Contact: <b>{customer.project_poc_contact || "—"}</b>
+                      </span>
+                      <span className="download-customer-address">
+                        {customer.company_address || "—"}
+                      </span>
+                    </div>
+                  </button>
+                ))
+              ) : (
+                <div className="download-customer-empty">
+                  No matching customers found
+                </div>
+              )}
+            </div>
+          )}
+        </div>
       </div>
 
       <div className="download-form-grid">
@@ -161,6 +399,7 @@ const DownloadForm = ({ onSubmit, onCancel }) => {
             onChange={(e) => setTo(e.target.value)}
           />
         </div>
+
         <div className="download-form-group">
           <label>Address:</label>
           <input
@@ -169,6 +408,7 @@ const DownloadForm = ({ onSubmit, onCancel }) => {
             onChange={(e) => setAddress(e.target.value)}
           />
         </div>
+
         <div className="download-form-group">
           <label>Contact:</label>
           <input
@@ -177,6 +417,7 @@ const DownloadForm = ({ onSubmit, onCancel }) => {
             onChange={(e) => setContact(e.target.value)}
           />
         </div>
+
         <div className="download-form-group">
           <label>GSTIN:</label>
           <input
@@ -185,6 +426,7 @@ const DownloadForm = ({ onSubmit, onCancel }) => {
             onChange={(e) => setCompanyGst(e.target.value)}
           />
         </div>
+
         <div className="download-form-group">
           <label>State:</label>
           <input
@@ -193,6 +435,7 @@ const DownloadForm = ({ onSubmit, onCancel }) => {
             onChange={(e) => setState(e.target.value)}
           />
         </div>
+
         <div className="download-form-group">
           <label>Invoice Date:</label>
           <input
@@ -201,6 +444,7 @@ const DownloadForm = ({ onSubmit, onCancel }) => {
             onChange={(e) => setInvoiceDate(e.target.value)}
           />
         </div>
+
         <div className="download-form-group">
           <label>Reference Date:</label>
           <input
@@ -209,6 +453,7 @@ const DownloadForm = ({ onSubmit, onCancel }) => {
             onChange={(e) => setReferenceDate(e.target.value)}
           />
         </div>
+
         <div className="download-form-group">
           <label>Reference ID:</label>
           <input
@@ -217,6 +462,7 @@ const DownloadForm = ({ onSubmit, onCancel }) => {
             onChange={(e) => setReferenceId(e.target.value)}
           />
         </div>
+
         <div className="download-form-group">
           <label>Place of Supply:</label>
           <input
@@ -235,6 +481,7 @@ const DownloadForm = ({ onSubmit, onCancel }) => {
                 <label>Sl No.</label>
                 <input type="text" value={index + 1} readOnly />
               </div>
+
               <div className="download-description-field">
                 <label>Description</label>
                 <input
@@ -245,6 +492,18 @@ const DownloadForm = ({ onSubmit, onCancel }) => {
                   }
                 />
               </div>
+
+              <div className="download-hsn-field">
+                <label>HSN/SAC</label>
+                <input
+                  type="text"
+                  value={item.hsnSac || ""}
+                  onChange={(e) =>
+                    handleLineItemChange(index, "hsnSac", e.target.value)
+                  }
+                />
+              </div>
+
               <div className="download-qty-field">
                 <label>Qty</label>
                 <input
@@ -256,6 +515,7 @@ const DownloadForm = ({ onSubmit, onCancel }) => {
                   }
                 />
               </div>
+
               <div className="download-amount-field">
                 <label>Amount</label>
                 <input
@@ -268,10 +528,12 @@ const DownloadForm = ({ onSubmit, onCancel }) => {
                   }
                 />
               </div>
+
               <div className="download-total-field">
                 <label>Total</label>
                 <input type="number" value={item.total} readOnly />
               </div>
+
               <div className="download-remove-button-cell">
                 <button
                   type="button"
@@ -281,6 +543,7 @@ const DownloadForm = ({ onSubmit, onCancel }) => {
                   -
                 </button>
               </div>
+
               <div className="download-add-button-cell">
                 {index === lineItems.length - 1 && (
                   <button
@@ -365,7 +628,9 @@ const DownloadForm = ({ onSubmit, onCancel }) => {
       </div>
 
       <div className="download-form-actions">
-        <button type="submit">Save Details</button>
+        <button type="submit">
+          {isEditMode ? "Update Details" : "Save Details"}
+        </button>
         <button type="button" onClick={onCancel}>
           Cancel
         </button>

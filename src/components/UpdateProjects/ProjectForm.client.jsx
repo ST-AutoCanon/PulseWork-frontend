@@ -11,7 +11,13 @@ import StepThree from "./StepThree.client";
 import StepFour from "./StepFour.client";
 import { useAuth } from "../../context/AuthProvider.client";
 
-const ProjectForm = ({ onClose, projectData, onSuccess, onProjectAdded }) => {
+const ProjectForm = ({
+  onClose,
+  projectData,
+  onSuccess,
+  onProjectAdded,
+  customers = [],
+}) => {
   const { user } = useAuth();
   const employeeId = user?.employeeId ?? user?.id ?? null;
 
@@ -96,7 +102,11 @@ const ProjectForm = ({ onClose, projectData, onSuccess, onProjectAdded }) => {
 
       <div className="pj-form-content">
         {step === 1 && (
-          <StepOne {...valuesForSteps.stepOne} editable={editable[1]} />
+          <StepOne
+            {...valuesForSteps.stepOne}
+            editable={editable[1]}
+            customers={customers}
+          />
         )}
 
         {step === 2 && (

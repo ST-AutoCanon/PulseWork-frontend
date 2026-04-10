@@ -5,6 +5,7 @@ import "./ProjectsDashboard.css";
 import ProjectForm from "./ProjectForm.client";
 import InvoiceTemplate from "./InvoiceTemplate.client";
 import DownloadForm from "./DownloadForm.client";
+import CustomerForm from "./CustomerForm.client";
 import Invoice from "./Invoice.client";
 import { MdUpdate } from "react-icons/md";
 import { FiDownload, FiEye } from "react-icons/fi";
@@ -90,8 +91,10 @@ const ProjectCard = ({
 const ProjectsDashboard = () => {
   const [currentScreen, setCurrentScreen] = useState("projects");
   const [showForm, setShowForm] = useState(false);
+  const [showCustomerForm, setShowCustomerForm] = useState(false);
   const [showDownloadForm, setShowDownloadForm] = useState(false);
   const [projects, setProjects] = useState([]);
+  const [customers, setCustomers] = useState([]);
   const [selectedProject, setSelectedProject] = useState(null);
   const [activeTab, setActiveTab] = useState("Current");
   const [selectedInvoiceType, setSelectedInvoiceType] = useState("Tax Invoice");
@@ -133,9 +136,27 @@ const ProjectsDashboard = () => {
     return headers;
   };
 
+  const fetchCustomers = async () => {
+    try {
+      const BACKEND = process.env.NEXT_PUBLIC_BACKEND_URL;
+      const response = await fetch(`${BACKEND}/customers`, {
+        method: "GET",
+        credentials: "include",
+        headers: buildHeaders(),
+      });
+
+      if (!response.ok) throw new Error("Failed to fetch customers");
+
+      const data = await response.json();
+      setCustomers(data.customers || []);
+    } catch (error) {
+      console.error("Error fetching customers:", error);
+      setCustomers([]);
+    }
+  };
+
   const fetchProjects = async () => {
     try {
-      // Finance Managers should see all projects same as Admins.
       const canSeeAllProjects = isAdmin || isFinanceManager;
 
       if (!canSeeAllProjects && !employeeId) {
@@ -174,10 +195,16 @@ const ProjectsDashboard = () => {
 
   useEffect(() => {
     fetchProjects();
+    fetchCustomers();
   }, [userRole, employeeId]);
 
   const handleProjectAdded = () => {
     fetchProjects();
+  };
+
+  const handleCustomerAdded = () => {
+    fetchCustomers();
+    setShowCustomerForm(false);
   };
 
   const printRef = useRef(null);
@@ -264,8 +291,6 @@ const ProjectsDashboard = () => {
       });
 
       await updateInvoiceNumber();
-
-      // Refresh the download details list so the new record appears immediately
       setDownloadDetailsRefreshKey((prev) => prev + 1);
     } catch (error) {
       console.error("Error generating PDF", error);
@@ -351,7 +376,6 @@ const ProjectsDashboard = () => {
       const invoiceEl = document.getElementById("invoiceScreen");
       if (invoiceEl) {
         const scrollParent = findClosestScrollParent(invoiceEl);
-
         scrollToInvoiceTop(invoiceEl, scrollParent, headerOffset);
 
         try {
@@ -408,11 +432,33 @@ const ProjectsDashboard = () => {
           <div className="project-header">
             <h2>Update Projects</h2>
             {isAdmin && (
-              <button className="add-project-button" onClick={() => openForm()}>
-                + Add New Project
-              </button>
+              <div style={{ display: "flex", gap: "10px" }}>
+                <button
+                  className="add-project-button"
+                  onClick={() => openForm()}
+                >
+                  + Add New Project
+                </button>
+                <button
+                  className="add-project-button"
+                  onClick={() => setShowCustomerForm(true)}
+                >
+                  + Add Customer
+                </button>
+              </div>
             )}
           </div>
+
+          {showCustomerForm && (
+            <div className="pj-modal">
+              <div className="pj-modal-content">
+                <CustomerForm
+                  onClose={() => setShowCustomerForm(false)}
+                  onSuccess={handleCustomerAdded}
+                />
+              </div>
+            </div>
+          )}
 
           <div className="project-tabs">
             <span
@@ -506,6 +552,7 @@ const ProjectsDashboard = () => {
                   Download <FiDownload className="template-icons" />
                 </button>
               </div>
+
               {showTemplatePreview && (
                 <div className="template-preview">
                   <InvoiceTemplate
@@ -516,11 +563,13 @@ const ProjectsDashboard = () => {
                   />
                 </div>
               )}
+
               <DownloadDetailsList refreshKey={downloadDetailsRefreshKey} />
             </div>
           )}
         </>
       )}
+
       {showForm && (
         <div className="pj-modal">
           <div className="pj-modal-content">
@@ -528,10 +577,12 @@ const ProjectsDashboard = () => {
               projectData={selectedProject}
               onClose={() => setShowForm(false)}
               onProjectAdded={handleProjectAdded}
+              customers={customers}
             />
           </div>
         </div>
       )}
+
       {currentScreen === "invoices" && (
         <div id="invoiceScreen" tabIndex={-1} style={{ outline: "none" }}>
           <Invoice
@@ -540,16 +591,20 @@ const ProjectsDashboard = () => {
           />
         </div>
       )}
+
       {showDownloadForm && activeTab === "General Templates" && (
         <div className="pj-modal">
           <div className="pj-modal-content">
             <DownloadForm
               onSubmit={handleDownloadFormSubmit}
               onCancel={() => setShowDownloadForm(false)}
+              customers={customers}
+              selectedProject={selectedProject}
             />
           </div>
         </div>
       )}
+
       <div style={{ position: "absolute", top: "-10000px", left: "-10000px" }}>
         <div ref={printRef}>
           <InvoiceTemplate

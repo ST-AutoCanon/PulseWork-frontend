@@ -85,7 +85,7 @@ const Invoice = ({ onBack, project }) => {
   const [referenceDate, setReferenceDate] = useState("");
 
   const [lineItems, setLineItems] = useState([
-    { description: "", quantity: 1, rate: 0, total: 0 },
+    { description: "", hsnSac: "", quantity: 1, rate: 0, total: 0 },
   ]);
 
   const [gst, setGST] = useState("18");
@@ -369,7 +369,7 @@ const Invoice = ({ onBack, project }) => {
   const handleAddLineItem = () => {
     setLineItems((prev) => [
       ...prev,
-      { description: "", quantity: 1, rate: 0, total: 0 },
+      { description: "", hsnSac: "", quantity: 1, rate: 0, total: 0 },
     ]);
   };
 
@@ -388,7 +388,9 @@ const Invoice = ({ onBack, project }) => {
     setInvoiceNo("");
     setReferenceId("");
     setReferenceDate("");
-    setLineItems([{ description: "", quantity: 1, rate: 0, total: 0 }]);
+    setLineItems([
+      { description: "", hsnSac: "", quantity: 1, rate: 0, total: 0 },
+    ]);
     setGST("18");
     setSubTotal(0);
     setGSTAmount(0);
@@ -426,7 +428,13 @@ const Invoice = ({ onBack, project }) => {
       referenceId,
       referenceDate,
       terms,
-      lineItems,
+      lineItems: lineItems.map((item) => ({
+        description: item.description || "",
+        hsnSac: item.hsnSac || "",
+        quantity: item.quantity,
+        rate: item.rate,
+        total: item.total,
+      })),
       subTotal,
       advance,
       totalExcludingTax,
@@ -511,14 +519,24 @@ const Invoice = ({ onBack, project }) => {
           parsedItems = [];
         }
       }
+
       if (!Array.isArray(parsedItems)) parsedItems = [];
-      setLineItems(
-        parsedItems.length
-          ? parsedItems
-          : [{ description: "", quantity: 1, rate: 0, total: 0 }],
-      );
+
+      const normalizedItems = parsedItems.length
+        ? parsedItems.map((item) => ({
+            description: item.description || "",
+            hsnSac: item.hsnSac || item.hsn || "",
+            quantity: item.quantity ?? 1,
+            rate: item.rate ?? 0,
+            total: item.total ?? 0,
+          }))
+        : [{ description: "", hsnSac: "", quantity: 1, rate: 0, total: 0 }];
+
+      setLineItems(normalizedItems);
     } else {
-      setLineItems([{ description: "", quantity: 1, rate: 0, total: 0 }]);
+      setLineItems([
+        { description: "", hsnSac: "", quantity: 1, rate: 0, total: 0 },
+      ]);
     }
 
     setGST(invoice.gst ?? "18");
@@ -1115,6 +1133,20 @@ const Invoice = ({ onBack, project }) => {
                               handleLineItemChange(
                                 index,
                                 "description",
+                                e.target.value,
+                              )
+                            }
+                          />
+                        </div>
+                        <div className="hsn-field">
+                          <label>HSN/SAC</label>
+                          <input
+                            type="text"
+                            value={item.hsnSac || ""}
+                            onChange={(e) =>
+                              handleLineItemChange(
+                                index,
+                                "hsnSac",
                                 e.target.value,
                               )
                             }

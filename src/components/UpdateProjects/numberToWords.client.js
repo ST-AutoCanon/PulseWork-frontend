@@ -75,5 +75,5 @@ export const numberToWords = (num) => {
     result += convertBelowThousand(num) + " ";
   }
 
-  return result.trim() + " Rupees Only";
+  return result.trim() + " Only";
 };

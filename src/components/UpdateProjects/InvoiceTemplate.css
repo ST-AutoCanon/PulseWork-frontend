@@ -115,15 +115,21 @@
 }
 
 .emp-inv-table td {
-  width: 150px;
+  width: 110px;
   border: 2px solid #7e7e7e;
   padding: 8px;
   text-align: right;
 }
 
+.emp-inv-table th:nth-child(1),
+.emp-inv-table td:nth-child(1) {
+  width: 50px;
+  text-align: left;
+}
+
 .emp-inv-table th:nth-child(2),
 .emp-inv-table td:nth-child(2) {
-  width: 500px;
+  width: 300px;
   text-align: left;
 }
 
@@ -319,7 +325,6 @@
   flex: 1;
   display: flex;
   align-items: stretch;
-  justify-content: space-between;
   min-width: 0;
   box-sizing: border-box;
 }
@@ -327,30 +332,29 @@
 .org32-brand-left {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 6px 10px 4px 10px;
   min-width: 0;
 }
 
 .org32-logo {
-  width: 58px;
-  height: 58px;
+  width: 68px;
+  height: 68px;
   object-fit: contain;
   flex: 0 0 auto;
 }
 
 .org32-brand-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
   min-width: 0;
-  line-height: 1;
+  box-sizing: border-box;
 }
 
 .org32-company-name {
-  margin: 0;
+  margin: 0 0 0 2%;
   font-size: 40px;
-  font-weight: 800;
+  font-weight: 900;
   color: #c18a00;
-  letter-spacing: 0.2px;
-  line-height: 1;
   white-space: nowrap;
 }
 
@@ -358,7 +362,7 @@
   margin: 3px 0 0;
   font-size: 16px;
   color: #7e746b;
-  text-align: center;
+  text-align: right;
 }
 
 .org32-gst-line {
@@ -373,14 +377,14 @@
 }
 
 .org32-contact-row {
-  width: 40%;
+  width: 45%;
   margin-left: auto;
   background: #1498d6;
   color: #fff;
   display: flex;
   align-items: center;
-  gap: 20px;
-  padding: 9px 14px;
+  gap: 10px;
+  padding: 9px;
   box-sizing: border-box;
   min-height: 44px;
 }
@@ -389,13 +393,13 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 14px;
+  font-size: 18px;
   font-weight: 500;
   white-space: nowrap;
 }
 
 .org32-contact-icon {
-  font-size: 16px;
+  font-size: 20px;
   flex: 0 0 auto;
 }
 

@@ -1,6 +1,7 @@
 "use client";
 
-import React from "react";
+import React, { useMemo, useRef, useState, useEffect } from "react";
+import { FiSearch, FiX, FiChevronDown } from "react-icons/fi";
 import { useAuth } from "../../context/AuthProvider.client";
 
 const StepOne = ({
@@ -18,6 +19,7 @@ const StepOne = ({
   handleFileUpload,
   openAttachment,
   editable,
+  customers = [],
 }) => {
   const { user } = useAuth();
   const userRole = user?.role ?? "Employee";
@@ -26,8 +28,194 @@ const StepOne = ({
       ? editable
       : !["Employee", "General"].includes(userRole);
 
+  const [selectedCustomerId, setSelectedCustomerId] = useState("");
+  const [customerSearch, setCustomerSearch] = useState("");
+  const [showCustomerPanel, setShowCustomerPanel] = useState(false);
+
+  const customerWrapRef = useRef(null);
+
+  const applyCustomer = (customer) => {
+    if (!customer) return;
+
+    handleChange({
+      target: { name: "company_name", value: customer.company_name || "" },
+    });
+    handleChange({
+      target: { name: "company_gst", value: customer.company_gst || "" },
+    });
+    handleChange({
+      target: { name: "company_pan", value: customer.company_pan || "" },
+    });
+    handleChange({
+      target: {
+        name: "company_address",
+        value: customer.company_address || "",
+      },
+    });
+    handleChange({
+      target: { name: "country", value: customer.country || "" },
+    });
+    handleChange({
+      target: { name: "state", value: customer.state || "" },
+    });
+    handleChange({
+      target: {
+        name: "project_poc_name",
+        value: customer.project_poc_name || "",
+      },
+    });
+    handleChange({
+      target: {
+        name: "project_poc_contact",
+        value: customer.project_poc_contact || "",
+      },
+    });
+  };
+
+  const filteredCustomers = useMemo(() => {
+    const q = customerSearch.trim().toLowerCase();
+    if (!q) return customers.slice(0, 8);
+
+    return customers.filter((customer) => {
+      const name = String(customer.company_name || "").toLowerCase();
+      const gst = String(customer.company_gst || "").toLowerCase();
+      const pan = String(customer.company_pan || "").toLowerCase();
+      const contact = String(customer.project_poc_contact || "").toLowerCase();
+      const address = String(customer.company_address || "").toLowerCase();
+      return (
+        name.includes(q) ||
+        gst.includes(q) ||
+        pan.includes(q) ||
+        contact.includes(q) ||
+        address.includes(q)
+      );
+    });
+  }, [customers, customerSearch]);
+
+  const handleCustomerSelect = (customer) => {
+    if (!customer) return;
+    setSelectedCustomerId(String(customer.id));
+    setCustomerSearch(customer.company_name || "");
+    setShowCustomerPanel(false);
+    applyCustomer(customer);
+  };
+
+  const handleClearCustomer = () => {
+    setSelectedCustomerId("");
+    setCustomerSearch("");
+    setShowCustomerPanel(false);
+  };
+
+  useEffect(() => {
+    const onClickOutside = (e) => {
+      if (
+        customerWrapRef.current &&
+        !customerWrapRef.current.contains(e.target)
+      ) {
+        setShowCustomerPanel(false);
+      }
+    };
+    document.addEventListener("mousedown", onClickOutside);
+    return () => document.removeEventListener("mousedown", onClickOutside);
+  }, []);
+
   return (
     <div className="pj-step-one">
+      <div className="pj-customer-group" ref={customerWrapRef}>
+        <label className="customer-label">Customer Search</label>
+
+        <div className="pj-customer-search-shell">
+          <div className="pj-customer-search-bar">
+            <FiSearch className="pj-customer-search-icon" />
+            <input
+              type="text"
+              value={customerSearch}
+              onChange={(e) => {
+                setCustomerSearch(e.target.value);
+                setSelectedCustomerId("");
+                setShowCustomerPanel(true);
+              }}
+              onFocus={() => setShowCustomerPanel(true)}
+              placeholder="Search by company, GST, PAN, contact, address"
+              disabled={!isEditable}
+            />
+
+            {customerSearch && isEditable && (
+              <button
+                type="button"
+                className="pj-customer-clear-icon-btn"
+                onClick={handleClearCustomer}
+                aria-label="Clear customer search"
+              >
+                <FiX />
+              </button>
+            )}
+          </div>
+
+          <div className="pj-customer-meta-row">
+            <span>
+              {filteredCustomers.length} result
+              {filteredCustomers.length === 1 ? "" : "s"}
+            </span>
+            <button
+              type="button"
+              className="pj-customer-panel-toggle"
+              onClick={() => setShowCustomerPanel((v) => !v)}
+              disabled={!isEditable}
+            >
+              Browse <FiChevronDown />
+            </button>
+          </div>
+
+          {showCustomerPanel && isEditable && (
+            <div className="pj-customer-panel">
+              {filteredCustomers.length > 0 ? (
+                filteredCustomers.map((customer) => (
+                  <button
+                    key={customer.id}
+                    type="button"
+                    className={`pj-customer-item ${
+                      String(customer.id) === String(selectedCustomerId)
+                        ? "selected"
+                        : ""
+                    }`}
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => handleCustomerSelect(customer)}
+                  >
+                    <div className="pj-customer-item-top">
+                      <strong>{customer.company_name || "Unnamed"}</strong>
+                      {String(customer.id) === String(selectedCustomerId) && (
+                        <span className="pj-customer-selected-badge">
+                          Selected
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="pj-customer-item-grid">
+                      <span>
+                        GST: <b>{customer.company_gst || "—"}</b>
+                      </span>
+                      <span>
+                        PAN: <b>{customer.company_pan || "—"}</b>
+                      </span>
+                      <span>
+                        Contact: <b>{customer.project_poc_contact || "—"}</b>
+                      </span>
+                      <span className="pj-customer-address">
+                        {customer.company_address || "—"}
+                      </span>
+                    </div>
+                  </button>
+                ))
+              ) : (
+                <div className="pj-customer-empty">
+                  No matching customers found
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
       <div className="pj-form-grid">
         <div className="pj-form-group">
           <label>
@@ -42,6 +230,7 @@ const StepOne = ({
             required
           />
         </div>
+
         <div className="pj-form-group">
           <label>
             Project Name<span className="required">*</span>
@@ -55,6 +244,7 @@ const StepOne = ({
             required
           />
         </div>
+
         <div className="pj-form-group">
           <label>
             Project POC Name<span className="required">*</span>
@@ -68,6 +258,7 @@ const StepOne = ({
             required
           />
         </div>
+
         <div className="pj-form-group">
           <label>
             Project POC Contact<span className="required">*</span>
@@ -81,6 +272,7 @@ const StepOne = ({
             required
           />
         </div>
+
         <div className="pj-form-group">
           <label>
             Company GST<span className="required">*</span>
@@ -94,6 +286,7 @@ const StepOne = ({
             required
           />
         </div>
+
         <div className="pj-form-group">
           <label>
             Company PAN<span className="required">*</span>
@@ -107,6 +300,7 @@ const StepOne = ({
             required
           />
         </div>
+
         <div className="pj-form-group">
           <label>
             Company Address<span className="required">*</span>
@@ -120,6 +314,7 @@ const StepOne = ({
             required
           />
         </div>
+
         <div className="pj-form-group">
           <label>
             Country (Company Located at)<span className="required">*</span>
@@ -139,6 +334,7 @@ const StepOne = ({
             ))}
           </select>
         </div>
+
         <div className="pj-form-group">
           <label>
             State (Company Located at)<span className="required">*</span>
@@ -206,6 +402,7 @@ const StepOne = ({
             required
           />
         </div>
+
         <div className="pj-form-group">
           <label>
             Tentative End Date<span className="required">*</span>
@@ -220,6 +417,7 @@ const StepOne = ({
             required
           />
         </div>
+
         <div className="pj-form-group">
           <label>
             Mode of Service<span className="required">*</span>
@@ -240,6 +438,7 @@ const StepOne = ({
             </option>
           </select>
         </div>
+
         <div className="pj-form-group">
           <label>
             Service Location<span className="required">*</span>
@@ -253,6 +452,7 @@ const StepOne = ({
             required
           />
         </div>
+
         <div className="pj-form-group">
           <label>
             Project Status<span className="required">*</span>
@@ -273,6 +473,7 @@ const StepOne = ({
             <option value="Cancelled">Cancelled</option>
           </select>
         </div>
+
         <div className="pj-form-group">
           <label>
             Payment Type<span className="required">*</span>
@@ -333,9 +534,7 @@ const StepOne = ({
               />
               <label
                 htmlFor="fileInput"
-                className={`pj-custom-file-upload ${
-                  !isEditable ? "disabled" : ""
-                }`}
+                className={`pj-custom-file-upload ${!isEditable ? "disabled" : ""}`}
               >
                 Browse
               </label>

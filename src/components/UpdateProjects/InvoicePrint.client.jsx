@@ -47,6 +47,7 @@ const safeParseLineItems = (raw) => {
   if (Array.isArray(raw)) {
     return raw.map((it) => ({
       description: it?.description ?? it?.name ?? "",
+      hsnSac: it?.hsnSac ?? it?.hsn ?? "",
       quantity: safeNumber(it?.quantity ?? it?.qty ?? 0),
       rate: safeNumber(it?.rate ?? it?.unitPrice ?? 0),
       total: safeNumber(
@@ -274,7 +275,7 @@ const InvoicePrint = React.forwardRef(({ invoiceData = {}, orgId }, ref) => {
             })}
 
             {(() => {
-              const fixedRows = 4;
+              const fixedRows = 6;
               const emptyRowCount = Math.max(
                 0,
                 fixedRows - parsedLineItems.length,

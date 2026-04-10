@@ -95,3 +95,24 @@
   margin: 1rem;
   text-align: left;
 }
+
+.d-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.d-icon-btn {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+}
+
+.d-icon-btn:hover {
+  opacity: 0.75;
+}

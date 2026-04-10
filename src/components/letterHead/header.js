@@ -1,7 +1,7 @@
 
 
 import {
-  EMAIL_ICON_BASE64,
+  EMAIL_ICON_BASE64, 
   WEBSITE_ICON_BASE64,
   PHONE_ICON_BASE64
 } from "./../../utils/footerIconsBase64";
@@ -193,7 +193,66 @@ doc.line(
     console.error("[PDF Header] Error:", err);
   }
 };
+/* =========================
+   DRAW WATERMARK (SAFE)
+========================= */
 
+export const drawWatermark = async (doc, orgId) => {
+  const config = getOrgHeaderConfig(orgId);
+
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+
+  try {
+    const logoImg = await loadImage(config.logo);
+    if (!logoImg) return;
+
+    const watermarkSize = 110;
+
+    const x = (pageWidth - watermarkSize) / 2;
+    const y = (pageHeight - watermarkSize) / 2 - 5;
+
+    /* =========================
+       🔥 MAKE IMAGE TRANSPARENT
+    ========================= */
+
+    const img = new Image();
+    img.src = logoImg;
+
+    await new Promise((resolve) => {
+      img.onload = resolve;
+    });
+
+    const canvas = document.createElement("canvas");
+    const ctx = canvas.getContext("2d");
+
+    canvas.width = img.width;
+    canvas.height = img.height;
+
+    // ⭐ THIS IS THE KEY LINE
+    ctx.globalAlpha = 0.08;  // adjust (0.05 - 0.15)
+
+    ctx.drawImage(img, 0, 0);
+
+    const transparentImage = canvas.toDataURL("image/png");
+
+    /* =========================
+       ADD TO PDF
+    ========================= */
+
+    doc.addImage(
+      transparentImage,
+      "PNG",
+      x,
+      y,
+      watermarkSize,
+      watermarkSize
+    );
+
+  } catch (err) {
+    console.error("Watermark error:", err);
+  }
+};
 /* =========================================
    DRAW FOOTER
 ========================================= */
@@ -208,7 +267,14 @@ export const drawFooter = async (
   pageNumber = 1,
   totalPages = 1
 ) => {
-  console.log(`[PDF Footer] Drawing footer for page ${pageNumber}`);
+
+  /* 🔥 HARD RESET (fix for first page issue) */
+  if (doc.GState) {
+    doc.setGState(new doc.GState({ opacity: 1 }));
+  }
+
+  doc.setFont("helvetica", "normal");
+  doc.setTextColor(0, 0, 0);
 
   const config = getOrgHeaderConfig(orgId);
   const pageWidth = doc.internal.pageSize.getWidth();
@@ -216,60 +282,54 @@ export const drawFooter = async (
   const margin = 10;
 
   try {
-    /* ==================== LINES (moved upward) ==================== */
+
+    /* ==================== FIXED BASELINE ==================== */
+    const footerBaseY = pageHeight - 30;
+
     const lineStartX = margin;
     const lineEndX = pageWidth - margin;
     const totalLength = lineEndX - lineStartX;
     const solidEndX = lineStartX + 0.75 * totalLength;
 
-    // Green line
-    const greenLineY = pageHeight - 38;   // ← Increased gap from bottom
+    /* ==================== GREEN LINE ==================== */
+    const greenLineY = footerBaseY - 8;
+
     doc.setDrawColor(0, 128, 0);
     doc.setLineWidth(0.7);
     doc.line(lineStartX, greenLineY, solidEndX, greenLineY);
 
-    // Dotted part
     doc.setLineCap(1);
     doc.setLineDashPattern([0.6, 1.2], 0);
     doc.line(solidEndX, greenLineY, lineEndX, greenLineY);
     doc.setLineDashPattern([], 0);
     doc.setLineCap(0);
 
-    // Blue line
-    const blueLineY = pageHeight - 36;    // ← Slightly above green
+    /* ==================== BLUE LINE ==================== */
+    const blueLineY = footerBaseY - 6;
+
     doc.setDrawColor(0, 70, 140);
     doc.setLineWidth(0.8);
     doc.line(lineStartX, blueLineY, lineEndX, blueLineY);
 
-    /* ==================== CONTACT LINE WITH ICONS ==================== */
-    const contactY = pageHeight - 27;     // ← Moved up so it doesn't get cut off
+    /* ==================== CONTACT ==================== */
+    const contactY = footerBaseY + 2;
 
-const iconSize = 6;    const textSize = 7.5;
+    const iconSize = 6;
+    const textSize = 7.5;
     const spacing = 10;
     const iconTextGap = 4.5;
 
     const items = [
-  {
-    icon: EMAIL_ICON_BASE64,
-    text: "admin@sukalpatechsolutions.com"
-  },
-  {
-    icon: WEBSITE_ICON_BASE64,
-    text: "https://sukalpatechsolutions.com"
-  },
-  {
-    icon: PHONE_ICON_BASE64,
-    text: "+91 78928-59968"
-  }
-];
+      { icon: EMAIL_ICON_BASE64, text: "admin@sukalpatechsolutions.com" },
+      { icon: WEBSITE_ICON_BASE64, text: "https://sukalpatechsolutions.com" },
+      { icon: PHONE_ICON_BASE64, text: "+91 78928-59968" }
+    ];
 
-    // Preload all icons first
     const loadedIcons = items.map((item) => ({
-  ...item,
-  image: item.icon
-}));
+      ...item,
+      image: item.icon
+    }));
 
-    // Calculate total width for perfect centering
     let totalWidth = 0;
     loadedIcons.forEach((item) => {
       const textWidth = doc.getTextWidth(item.text);
@@ -277,57 +337,60 @@ const iconSize = 6;    const textSize = 7.5;
     });
     totalWidth -= spacing;
 
-let currentX = (pageWidth - totalWidth) / 2 + 55;
+    let currentX = (pageWidth - totalWidth) / 2;
+
     for (const item of loadedIcons) {
-      // Draw Icon
-      if (item.image) {
-        doc.addImage(
-          item.image,
-          "PNG",
-          currentX,
-          contactY - iconSize / 2 + 0.8,   // vertical center
-          iconSize,
-          iconSize
-        );
-      } else {
-        // Fallback circle + letter
-        doc.setDrawColor(15, 102, 121);
-        doc.circle(currentX + iconSize / 2, contactY + 0.5, 4, "S");
 
-        doc.setFont("helvetica", "bold");
-        doc.setFontSize(7);
-        doc.setTextColor(15, 102, 121);
-        const letter = item.iconPath.includes("email") ? "E" : 
-                       item.iconPath.includes("phone") ? "P" : "W";
-        doc.text(letter, currentX + iconSize / 2 - 1.8, contactY + 2.2);
-      }
+  // ✅ Ensure valid base64 before drawing
+  if (item.image && item.image.startsWith("data:image")) {
+    
+    doc.addImage(
+      item.image,
+      "PNG",
+      currentX,
+      contactY - iconSize / 2 + 0.8,
+      iconSize,
+      iconSize
+    );
 
-      // Draw Text
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(textSize);
-      doc.setTextColor(0, 0, 0);
-      doc.text(item.text, currentX + iconSize + iconTextGap, contactY + 2.8);
+  } else {
+    console.warn("Invalid icon:", item.text);
+  }
 
-      currentX += iconSize + iconTextGap + doc.getTextWidth(item.text) + spacing;
-    }
+  // Text
+  doc.setFontSize(textSize);
+  doc.setTextColor(0, 0, 0);
+
+  doc.text(
+    item.text,
+    currentX + iconSize + iconTextGap,
+    contactY + 2.8
+  );
+
+  currentX += iconSize + iconTextGap + doc.getTextWidth(item.text) + spacing;
+}
+
+      
 
     /* ==================== ADDRESS ==================== */
-    const addressText = "Sukalpa Tech Solutions Pvt Ltd. | #71, Bauxite Road, Sarathi Nagar, Belagavi -591108";
     doc.setFontSize(8);
-    doc.text(addressText, pageWidth / 2, pageHeight - 15, { align: "center" });
+    doc.text(
+      "Sukalpa Tech Solutions Pvt Ltd. | #71, Bauxite Road, Sarathi Nagar, Belagavi -591108",
+      pageWidth / 2,
+      footerBaseY + 10,
+      { align: "center" }
+    );
 
     /* ==================== PAGE NUMBER ==================== */
-    const pageText = `Page ${pageNumber} of ${totalPages}`;
     doc.setFontSize(8);
-    doc.text(pageText, pageWidth - margin - 2, pageHeight - 8, { align: "right" });
+    doc.text(
+      `Page ${pageNumber} of ${totalPages}`,
+      pageWidth - margin - 2,
+      footerBaseY + 17,
+      { align: "right" }
+    );
 
-    /* ==================== SMALL LOGO (optional) ==================== */
-    const smallLogo = await loadImage(config.logo);
-    if (smallLogo) {
-      doc.addImage(smallLogo, "PNG", margin + 2, pageHeight - 29, 11, 11);
-    }
-
-    console.log(`[PDF Footer] Footer added successfully for page ${pageNumber}`);
+   
 
   } catch (err) {
     console.error("[PDF Footer] Error:", err);

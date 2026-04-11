@@ -53,7 +53,6 @@
 .invoice-details p {
   display: flex;
   gap: 0.5rem;
-  margin: 2% 0;
   align-items: center;
 }
 
@@ -347,11 +346,10 @@
 .org32-brand-block {
   flex: 1;
   display: flex;
-  align-items: center;
-  justify-content: flex-start;
+  align-items: stretch;
   min-width: 0;
-  padding: 6px 10px 4px 10px;
   box-sizing: border-box;
+  margin: 0;
 }
 
 .org32-brand-left {
@@ -377,6 +375,7 @@
 
 .org32-company-name {
   margin: 0 0 0 2%;
+  padding: 0;
   font-size: 40px;
   font-weight: 900;
   color: #c18a00;
@@ -384,8 +383,8 @@
 }
 
 .org32-tagline {
-  margin: 3px 0 0;
-  font-size: 16px;
+  margin: -10px 0 0;
+  font-size: 18px;
   color: #7e746b;
   text-align: right;
 }
@@ -410,7 +409,7 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 9px 14px;
+  padding: 9px;
   box-sizing: border-box;
   min-height: 44px;
 }

@@ -2,6 +2,7 @@
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { FiSearch, FiX, FiChevronDown } from "react-icons/fi";
+import { Country, State } from "country-state-city";
 import "./DownloadForm.css";
 import { useAuth } from "../../context/AuthProvider.client";
 
@@ -51,10 +52,14 @@ const DownloadForm = ({
 
   const customerWrapRef = useRef(null);
 
+  const [countries, setCountries] = useState([]);
+  const [states, setStates] = useState([]);
+
   const [to, setTo] = useState("");
   const [address, setAddress] = useState("");
   const [companyGst, setCompanyGst] = useState("");
   const [contact, setContact] = useState("");
+  const [country, setCountry] = useState("");
   const [state, setState] = useState("");
   const [invoiceDate, setInvoiceDate] = useState("");
   const [referenceDate, setReferenceDate] = useState("");
@@ -72,12 +77,33 @@ const DownloadForm = ({
   const [totalIncludingTax, setTotalIncludingTax] = useState(0);
   const [terms, setTerms] = useState("");
 
+  useEffect(() => {
+    const countryList = Country.getAllCountries().map((item) => ({
+      code: item.isoCode,
+      name: item.name,
+    }));
+    setCountries(countryList);
+  }, []);
+
+  useEffect(() => {
+    if (country) {
+      const stateList = State.getStatesOfCountry(country).map((item) => ({
+        code: item.isoCode,
+        name: item.name,
+      }));
+      setStates(stateList);
+    } else {
+      setStates([]);
+    }
+  }, [country]);
+
   const applyCustomer = (customer) => {
     if (!customer) return;
     setTo(customer.company_name || "");
     setAddress(customer.company_address || "");
     setCompanyGst(customer.company_gst || "");
     setContact(customer.project_poc_contact || "");
+    setCountry(customer.country || "");
     setState(customer.state || "");
   };
 
@@ -139,6 +165,7 @@ const DownloadForm = ({
       setAddress(initialData.address || "");
       setCompanyGst(initialData.companyGst || "");
       setContact(initialData.contact || "");
+      setCountry(initialData.country || "");
       setState(initialData.state || "");
       setInvoiceDate(initialData.invoiceDate || "");
       setReferenceDate(initialData.referenceDate || "");
@@ -161,6 +188,7 @@ const DownloadForm = ({
       setAddress(selectedProject.address || "");
       setCompanyGst(selectedProject.gst || "");
       setContact(selectedProject.clientNumber || "");
+      setCountry(selectedProject.country || "");
       setState(selectedProject.state || "");
     }
   }, [initialData, selectedProject]);
@@ -259,6 +287,7 @@ const DownloadForm = ({
       address: address || null,
       contact: contact || null,
       companyGst: companyGst || null,
+      country: country || null,
       state: state || null,
       invoiceDate: invoiceDate || null,
       referenceDate: referenceDate || null,
@@ -295,6 +324,7 @@ const DownloadForm = ({
           X
         </button>
       </div>
+
       <div className="download-customer-group" ref={customerWrapRef}>
         <label className="download-customer-label">Customer Search</label>
 
@@ -428,12 +458,37 @@ const DownloadForm = ({
         </div>
 
         <div className="download-form-group">
+          <label>Country:</label>
+          <select
+            value={country}
+            onChange={(e) => {
+              setCountry(e.target.value);
+              setState("");
+            }}
+          >
+            <option value="">Select Country</option>
+            {countries.map((item) => (
+              <option key={item.code} value={item.code}>
+                {item.name}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="download-form-group">
           <label>State:</label>
-          <input
-            type="text"
+          <select
             value={state}
             onChange={(e) => setState(e.target.value)}
-          />
+            disabled={!country}
+          >
+            <option value="">Select State</option>
+            {states.map((item) => (
+              <option key={item.code} value={item.name}>
+                {item.name}
+              </option>
+            ))}
+          </select>
         </div>
 
         <div className="download-form-group">

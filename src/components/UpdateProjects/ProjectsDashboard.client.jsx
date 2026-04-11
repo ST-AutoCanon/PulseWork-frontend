@@ -7,7 +7,8 @@ import InvoiceTemplate from "./InvoiceTemplate.client";
 import DownloadForm from "./DownloadForm.client";
 import CustomerForm from "./CustomerForm.client";
 import Invoice from "./Invoice.client";
-import { MdUpdate } from "react-icons/md";
+import Modal from "../Modal/Modal.client";
+import { MdUpdate, MdOutlineEdit } from "react-icons/md";
 import { FiDownload, FiEye } from "react-icons/fi";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
@@ -96,6 +97,7 @@ const ProjectsDashboard = () => {
   const [projects, setProjects] = useState([]);
   const [customers, setCustomers] = useState([]);
   const [selectedProject, setSelectedProject] = useState(null);
+  const [selectedCustomer, setSelectedCustomer] = useState(null);
   const [activeTab, setActiveTab] = useState("Current");
   const [selectedInvoiceType, setSelectedInvoiceType] = useState("Tax Invoice");
   const [showTemplatePreview, setShowTemplatePreview] = useState(false);
@@ -103,6 +105,12 @@ const ProjectsDashboard = () => {
   const [invoiceSequence, setInvoiceSequence] = useState(1);
   const [downloadDetails, setDownloadDetails] = useState({});
   const [downloadDetailsRefreshKey, setDownloadDetailsRefreshKey] = useState(0);
+
+  const [customerNotice, setCustomerNotice] = useState({
+    isVisible: false,
+    message: "",
+    title: "Success",
+  });
 
   const { user } = useAuth();
   const userRole = user?.role ?? null;
@@ -202,9 +210,29 @@ const ProjectsDashboard = () => {
     fetchProjects();
   };
 
-  const handleCustomerAdded = () => {
-    fetchCustomers();
+  const openCustomerForm = (customer = null) => {
+    setSelectedCustomer(customer);
+    setShowCustomerForm(true);
+  };
+
+  const closeCustomerForm = () => {
     setShowCustomerForm(false);
+    setSelectedCustomer(null);
+  };
+
+  const handleCustomerSaved = async (payload = {}) => {
+    await fetchCustomers();
+    setShowCustomerForm(false);
+    setSelectedCustomer(null);
+    setCustomerNotice({
+      isVisible: true,
+      title: "Success",
+      message: payload?.message || "Customer saved successfully.",
+    });
+  };
+
+  const closeCustomerNotice = () => {
+    setCustomerNotice({ isVisible: false, message: "", title: "Success" });
   };
 
   const printRef = useRef(null);
@@ -441,7 +469,7 @@ const ProjectsDashboard = () => {
                 </button>
                 <button
                   className="add-project-button"
-                  onClick={() => setShowCustomerForm(true)}
+                  onClick={() => openCustomerForm()}
                 >
                   + Add Customer
                 </button>
@@ -453,8 +481,9 @@ const ProjectsDashboard = () => {
             <div className="pj-modal">
               <div className="pj-modal-content">
                 <CustomerForm
-                  onClose={() => setShowCustomerForm(false)}
-                  onSuccess={handleCustomerAdded}
+                  onClose={closeCustomerForm}
+                  onSuccess={handleCustomerSaved}
+                  initialData={selectedCustomer}
                 />
               </div>
             </div>
@@ -480,37 +509,103 @@ const ProjectsDashboard = () => {
               Pending
             </span>
             {canAccessGeneralTemplates && (
-              <span
-                className={
-                  activeTab === "General Templates" ? "active-tab" : ""
-                }
-                onClick={() => setActiveTab("General Templates")}
-              >
-                General Templates
-              </span>
+              <>
+                <span
+                  className={
+                    activeTab === "General Templates" ? "active-tab" : ""
+                  }
+                  onClick={() => setActiveTab("General Templates")}
+                >
+                  General Templates
+                </span>
+                <span
+                  className={
+                    activeTab === "Saved Customers" ? "active-tab" : ""
+                  }
+                  onClick={() => setActiveTab("Saved Customers")}
+                >
+                  Saved Customers
+                </span>
+              </>
             )}
           </div>
 
-          {activeTab !== "General Templates" && (
-            <div className="project-cards-container">
-              {filteredProjects.length > 0 ? (
-                [...filteredProjects]
-                  .sort((a, b) => b.id - a.id)
-                  .map((proj) => (
-                    <ProjectCard
-                      key={proj.id}
-                      projectData={proj}
-                      onUpdate={openForm}
-                      onViewInvoices={openInvoiceScreen}
-                      userRole={userRole}
-                      canRaiseInvoice={canAccessGeneralTemplates}
-                    />
-                  ))
-              ) : (
-                <p>No projects available.</p>
-              )}
+          {activeTab === "Saved Customers" && canAccessGeneralTemplates && (
+            <div className="general-templates-section">
+              <div
+                className="download-details-container"
+                style={{ marginTop: 0 }}
+              >
+                <h2>Saved Customers</h2>
+
+                {customers.length === 0 ? (
+                  <p>No customers saved yet.</p>
+                ) : (
+                  <table className="download-table">
+                    <thead>
+                      <tr>
+                        <th>Sl No.</th>
+                        <th>Company</th>
+                        <th>GSTIN</th>
+                        <th>PAN</th>
+                        <th>Address</th>
+                        <th>Country</th>
+                        <th>State</th>
+                        <th>POC</th>
+                        <th>Contact</th>
+                        <th>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {customers.map((customer, idx) => (
+                        <tr key={customer.id ?? idx}>
+                          <td>{idx + 1}</td>
+                          <td>{customer.company_name || "—"}</td>
+                          <td>{customer.company_gst || "—"}</td>
+                          <td>{customer.company_pan || "—"}</td>
+                          <td>{customer.company_address || "—"}</td>
+                          <td>{customer.country || "—"}</td>
+                          <td>{customer.state || "—"}</td>
+                          <td>{customer.project_poc_name || "—"}</td>
+                          <td>{customer.project_poc_contact || "—"}</td>
+                          <td>
+                            <div className="invoice-action-buttons">
+                              <MdOutlineEdit
+                                className="in-edit-icon"
+                                onClick={() => openCustomerForm(customer)}
+                              />
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+              </div>
             </div>
           )}
+
+          {activeTab !== "General Templates" &&
+            activeTab !== "Saved Customers" && (
+              <div className="project-cards-container">
+                {filteredProjects.length > 0 ? (
+                  [...filteredProjects]
+                    .sort((a, b) => b.id - a.id)
+                    .map((proj) => (
+                      <ProjectCard
+                        key={proj.id}
+                        projectData={proj}
+                        onUpdate={openForm}
+                        onViewInvoices={openInvoiceScreen}
+                        userRole={userRole}
+                        canRaiseInvoice={canAccessGeneralTemplates}
+                      />
+                    ))
+                ) : (
+                  <p>No projects available.</p>
+                )}
+              </div>
+            )}
 
           {activeTab === "General Templates" && canAccessGeneralTemplates && (
             <div className="general-templates-section">
@@ -603,6 +698,23 @@ const ProjectsDashboard = () => {
             />
           </div>
         </div>
+      )}
+
+      {customerNotice.isVisible && (
+        <Modal
+          isVisible={customerNotice.isVisible}
+          title={customerNotice.title}
+          onClose={closeCustomerNotice}
+          buttons={[
+            {
+              label: "OK",
+              className: "confirm-btn",
+              onClick: closeCustomerNotice,
+            },
+          ]}
+        >
+          <p>{customerNotice.message}</p>
+        </Modal>
       )}
 
       <div style={{ position: "absolute", top: "-10000px", left: "-10000px" }}>

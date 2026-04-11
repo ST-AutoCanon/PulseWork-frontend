@@ -1,11 +1,16 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import "./DownloadForm.css";
+import { Country, State } from "country-state-city";
 import { useAuth } from "../../context/AuthProvider.client";
 
-const CustomerForm = ({ onClose, onSuccess }) => {
+const CustomerForm = ({ onClose, onSuccess, initialData = null }) => {
   const { user } = useAuth();
+  const isEditMode = Boolean(initialData?.id);
+
+  const [countries, setCountries] = useState([]);
+  const [states, setStates] = useState([]);
 
   const [formData, setFormData] = useState({
     company_name: "",
@@ -17,6 +22,40 @@ const CustomerForm = ({ onClose, onSuccess }) => {
     project_poc_name: "",
     project_poc_contact: "",
   });
+
+  useEffect(() => {
+    const countryList = Country.getAllCountries().map((item) => ({
+      code: item.isoCode,
+      name: item.name,
+    }));
+    setCountries(countryList);
+  }, []);
+
+  useEffect(() => {
+    if (formData.country) {
+      const stateList = State.getStatesOfCountry(formData.country).map(
+        (item) => ({ code: item.isoCode, name: item.name }),
+      );
+      setStates(stateList);
+    } else {
+      setStates([]);
+    }
+  }, [formData.country]);
+
+  useEffect(() => {
+    if (!initialData) return;
+
+    setFormData({
+      company_name: initialData.company_name || "",
+      company_gst: initialData.company_gst || "",
+      company_pan: initialData.company_pan || "",
+      company_address: initialData.company_address || "",
+      country: initialData.country || "",
+      state: initialData.state || "",
+      project_poc_name: initialData.project_poc_name || "",
+      project_poc_contact: initialData.project_poc_contact || "",
+    });
+  }, [initialData]);
 
   const buildHeaders = () => {
     const headers = {
@@ -44,30 +83,51 @@ const CustomerForm = ({ onClose, onSuccess }) => {
 
     try {
       const BACKEND = process.env.NEXT_PUBLIC_BACKEND_URL;
+      const url = isEditMode
+        ? `${BACKEND}/customers/${initialData.id}`
+        : `${BACKEND}/customers`;
+      const method = isEditMode ? "PUT" : "POST";
 
-      const response = await fetch(`${BACKEND}/customers`, {
-        method: "POST",
+      const response = await fetch(url, {
+        method,
         credentials: "include",
         headers: buildHeaders(),
         body: JSON.stringify(formData),
       });
 
       if (!response.ok) {
-        throw new Error(`Failed to create customer: ${response.status}`);
+        throw new Error(
+          `Failed to ${isEditMode ? "update" : "create"} customer: ${
+            response.status
+          }`,
+        );
       }
 
-      if (onSuccess) await onSuccess();
+      const data = await response.json().catch(() => ({}));
+
+      if (onSuccess) {
+        onSuccess({
+          message:
+            data?.message ||
+            (isEditMode
+              ? "Customer updated successfully."
+              : "Customer created successfully."),
+        });
+      }
+
       if (onClose) onClose();
     } catch (error) {
-      console.error("Error creating customer:", error);
-      alert("Failed to create customer");
+      console.error("Error saving customer:", error);
+      alert("Failed to save customer");
     }
   };
+
+  const stateDisabled = !formData.country;
 
   return (
     <form className="download-form" onSubmit={handleSubmit}>
       <div className="download-title">
-        <h2>Add Customer</h2>
+        <h2>{isEditMode ? "Edit Customer" : "Add Customer"}</h2>
         <button className="pj-close-button" type="button" onClick={onClose}>
           X
         </button>
@@ -119,22 +179,41 @@ const CustomerForm = ({ onClose, onSuccess }) => {
 
         <div className="download-form-group">
           <label>Country</label>
-          <input
-            type="text"
+          <select
             name="country"
             value={formData.country}
-            onChange={handleChange}
-          />
+            onChange={(e) => {
+              setFormData((prev) => ({
+                ...prev,
+                country: e.target.value,
+                state: "",
+              }));
+            }}
+          >
+            <option value="">Select Country</option>
+            {countries.map((country) => (
+              <option key={country.code} value={country.code}>
+                {country.name}
+              </option>
+            ))}
+          </select>
         </div>
 
         <div className="download-form-group">
           <label>State</label>
-          <input
-            type="text"
+          <select
             name="state"
             value={formData.state}
             onChange={handleChange}
-          />
+            disabled={stateDisabled}
+          >
+            <option value="">Select State</option>
+            {states.map((state) => (
+              <option key={state.code} value={state.name}>
+                {state.name}
+              </option>
+            ))}
+          </select>
         </div>
 
         <div className="download-form-group">
@@ -159,7 +238,9 @@ const CustomerForm = ({ onClose, onSuccess }) => {
       </div>
 
       <div className="download-form-actions">
-        <button type="submit">Save Customer</button>
+        <button type="submit">
+          {isEditMode ? "Update Customer" : "Save Customer"}
+        </button>
         <button type="button" onClick={onClose}>
           Cancel
         </button>

@@ -247,7 +247,7 @@ const StepOne = ({
 
         <div className="pj-form-group">
           <label>
-            Project POC Name<span className="required">*</span>
+            Project POC Email<span className="required">*</span>
           </label>
           <input
             type="text"

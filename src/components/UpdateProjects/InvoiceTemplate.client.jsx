@@ -13,10 +13,16 @@ const InvoiceTemplate = React.forwardRef((props, ref) => {
     orgId,
   } = props;
 
-  const currentOrgId = Number(orgId);
-  const isOrg32 = currentOrgId === 32;
-  const isQuotation = invoiceType === "Quotation";
-  const isPO = invoiceType === "Purchase Order";
+  const normalizedType = String(invoiceType || "")
+    .trim()
+    .toLowerCase();
+  const isOrg32 = Number(orgId) === 32;
+  const isCreditNote =
+    normalizedType === "credit note" ||
+    normalizedType === "credit_note" ||
+    normalizedType === "creditnote";
+  const isQuotation = normalizedType === "quotation";
+  const isPO = normalizedType === "purchase order" || normalizedType === "po";
 
   const {
     to,
@@ -36,6 +42,9 @@ const InvoiceTemplate = React.forwardRef((props, ref) => {
     advance,
     totalExcludingTax,
     totalIncludingTax,
+    roundOff,
+    roundOffAmount,
+    finalTotalAmount,
     terms,
   } = downloadDetails;
 
@@ -52,12 +61,18 @@ const InvoiceTemplate = React.forwardRef((props, ref) => {
     { quantity: 0, amount: 0, total: 0 },
   );
 
+  const subtotalAmount = Number(subTotal || totals.total || 0);
+
   const totalGST = parsedLineItems.reduce(
     (acc, item) => acc + (Number(item.total || 0) * Number(gst || 0)) / 100,
     0,
   );
 
-  const grossTotal = totals.total + totalGST;
+  const grossTotal = subtotalAmount + totalGST;
+  const roundOffValue = Number(roundOffAmount || 0);
+  const displayTotal = Number(
+    finalTotalAmount ?? totalIncludingTax ?? grossTotal,
+  );
 
   const halfGSTRate =
     gst && Number(gst) > 0 ? (Number(gst) / 2).toFixed(2) : "0.00";
@@ -71,7 +86,11 @@ const InvoiceTemplate = React.forwardRef((props, ref) => {
   const emptyRows =
     emptyRowCount > 0 ? Array.from({ length: emptyRowCount }) : [];
 
-  const headerTitle = invoiceType ? invoiceType.toUpperCase() : "INVOICE";
+  const headerTitle = isCreditNote
+    ? "CREDIT NOTE"
+    : invoiceType
+      ? invoiceType.toUpperCase()
+      : "INVOICE";
 
   return (
     <div ref={ref} className={`emp-inv-container ${isOrg32 ? "org-32" : ""}`}>
@@ -131,15 +150,23 @@ const InvoiceTemplate = React.forwardRef((props, ref) => {
 
         <div className={`emp-bill-header ${isOrg32 ? "org32-black" : ""}`}>
           <h4>
-            {isQuotation ? "Estimate For" : isPO ? "Order To" : "Bill To"}
+            {isCreditNote
+              ? "Return From"
+              : isQuotation
+                ? "Estimate For"
+                : isPO
+                  ? "Order To"
+                  : "Bill To"}
           </h4>
 
           <h4>
-            {isQuotation
-              ? "Estimate Details"
-              : isPO
-                ? "Order Details"
-                : "Bill Details"}
+            {isCreditNote
+              ? "Return Details"
+              : isQuotation
+                ? "Estimate Details"
+                : isPO
+                  ? "Order Details"
+                  : "Bill Details"}
           </h4>
         </div>
 
@@ -157,14 +184,24 @@ const InvoiceTemplate = React.forwardRef((props, ref) => {
           <div className="emp-inv-details">
             <p>
               <span className="temp-label">
-                {isQuotation ? "Estimate No" : isPO ? "Order No" : "Invoice No"}
+                {isCreditNote
+                  ? "Return No"
+                  : isQuotation
+                    ? "Estimate No"
+                    : isPO
+                      ? "Order No"
+                      : "Invoice No"}
               </span>
               : <strong>{invoiceNumber}</strong>
             </p>
 
             <p>
               <span className="temp-label">
-                {isQuotation || isPO ? "Date" : "Invoice Date"}
+                {isCreditNote
+                  ? "Credit Note Date"
+                  : isQuotation || isPO
+                    ? "Date"
+                    : "Invoice Date"}
               </span>
               :{" "}
               <strong>
@@ -185,13 +222,10 @@ const InvoiceTemplate = React.forwardRef((props, ref) => {
               <strong>{placeOfSupply || "_________"}</strong>
             </p>
 
-            {!isQuotation && (
+            {isCreditNote ? (
               <>
                 <p>
-                  <span className="temp-label">
-                    {isPO ? "Reference Date" : "PO Date"}
-                  </span>
-                  :{" "}
+                  <span className="temp-label">Invoice Date</span>:{" "}
                   <strong>
                     {referenceDate
                       ? new Date(referenceDate)
@@ -206,12 +240,39 @@ const InvoiceTemplate = React.forwardRef((props, ref) => {
                 </p>
 
                 <p>
-                  <span className="temp-label">
-                    {isPO ? "Reference ID" : "PO Number"}
-                  </span>
-                  : <strong>{referenceId || "_________"}</strong>
+                  <span className="temp-label">Invoice No</span>:{" "}
+                  <strong>{referenceId || "_________"}</strong>
                 </p>
               </>
+            ) : (
+              !isQuotation && (
+                <>
+                  <p>
+                    <span className="temp-label">
+                      {isPO ? "Reference Date" : "PO Date"}
+                    </span>
+                    :{" "}
+                    <strong>
+                      {referenceDate
+                        ? new Date(referenceDate)
+                            .toLocaleDateString("en-GB", {
+                              day: "2-digit",
+                              month: "short",
+                              year: "numeric",
+                            })
+                            .replace(/ /g, "-")
+                        : "_________"}
+                    </strong>
+                  </p>
+
+                  <p>
+                    <span className="temp-label">
+                      {isPO ? "Reference ID" : "PO Number"}
+                    </span>
+                    : <strong>{referenceId || "_________"}</strong>
+                  </p>
+                </>
+              )
             )}
           </div>
         </div>
@@ -222,9 +283,10 @@ const InvoiceTemplate = React.forwardRef((props, ref) => {
           <tr>
             <th>S.No</th>
             <th>Item/Service Description</th>
+            {isOrg32 && <th>Part Number</th>}
             <th>HSN/SAC</th>
-            <th>Quantity</th>
             <th>Amount</th>
+            <th>Quantity</th>
             <th>Sub total</th>
             <th>GST ({gst}%)</th>
             <th>Total</th>
@@ -238,9 +300,10 @@ const InvoiceTemplate = React.forwardRef((props, ref) => {
               <tr key={idx}>
                 <td>{idx + 1}</td>
                 <td>{item.description || ""}</td>
+                {isOrg32 && <td>{item.partNumber || ""}</td>}
                 <td>{item.hsnSac || ""}</td>
-                <td>{item.quantity || ""}</td>
                 <td>₹ {Number(item.rate || 0).toLocaleString("en-IN")}</td>
+                <td>{item.quantity || ""}</td>
                 <td>₹ {Number(item.total || 0).toLocaleString("en-IN")}</td>
                 <td>₹ {Number(lineGST.toFixed(2)).toLocaleString("en-IN")}</td>
                 <td>
@@ -254,6 +317,7 @@ const InvoiceTemplate = React.forwardRef((props, ref) => {
             <tr key={`empty-${index}`}>
               <td>&nbsp;</td>
               <td>&nbsp;</td>
+              {isOrg32 && <td>&nbsp;</td>}
               <td>&nbsp;</td>
               <td>&nbsp;</td>
               <td>&nbsp;</td>
@@ -268,15 +332,18 @@ const InvoiceTemplate = React.forwardRef((props, ref) => {
             <td>
               <strong>Totals</strong>
             </td>
+            {isOrg32 && <td></td>}
             <td></td>
-            <td>
-              <strong>{totals.quantity}</strong>
-            </td>
             <td>
               <strong>₹ {Number(totals.amount).toLocaleString("en-IN")}</strong>
             </td>
             <td>
-              <strong>₹ {Number(totals.total).toLocaleString("en-IN")}</strong>
+              <strong>{totals.quantity}</strong>
+            </td>
+            <td>
+              <strong>
+                ₹ {Number(subtotalAmount).toLocaleString("en-IN")}
+              </strong>
             </td>
             <td>
               <strong>
@@ -303,17 +370,13 @@ const InvoiceTemplate = React.forwardRef((props, ref) => {
             <>
               <div className="emp-tax-box-body">
                 <p className="emp-tax-label">CGST</p>
-                <p>
-                  ₹ {Number(totalExcludingTax || 0).toLocaleString("en-IN")}
-                </p>
+                <p>₹ {Number(subtotalAmount || 0).toLocaleString("en-IN")}</p>
                 <p>{halfGSTRate}%</p>
                 <p>₹ {Number(halfGSTAmount).toLocaleString("en-IN")}</p>
               </div>
               <div className="emp-tax-box-body">
                 <p className="emp-tax-label">SGST</p>
-                <p>
-                  ₹ {Number(totalExcludingTax || 0).toLocaleString("en-IN")}
-                </p>
+                <p>₹ {Number(subtotalAmount || 0).toLocaleString("en-IN")}</p>
                 <p>{halfGSTRate}%</p>
                 <p>₹ {Number(halfGSTAmount).toLocaleString("en-IN")}</p>
               </div>
@@ -321,17 +384,21 @@ const InvoiceTemplate = React.forwardRef((props, ref) => {
           ) : (
             <div className="emp-tax-box-body">
               <p className="emp-tax-label">IGST</p>
-              <p>₹ {Number(totalExcludingTax || 0).toLocaleString("en-IN")}</p>
+              <p>₹ {Number(subtotalAmount || 0).toLocaleString("en-IN")}</p>
               <p>{gst}%</p>
               <p>₹ {Number(gstAmount || 0).toLocaleString("en-IN")}</p>
             </div>
           )}
 
           <p className={`emp-amount-in-words ${isOrg32 ? "org32-black" : ""}`}>
-            <strong>Order Amount in words</strong>
+            <strong>
+              {isCreditNote
+                ? "Credit Note Amount in words"
+                : "Order Amount in words"}
+            </strong>
           </p>
           <div className="emp-amount-in-words-text">
-            {numberToWords(Math.round(totalIncludingTax || 0))}
+            {numberToWords(Math.round(displayTotal || grossTotal))}
           </div>
 
           <p className={`emp-amount-in-words ${isOrg32 ? "org32-black" : ""}`}>
@@ -351,18 +418,24 @@ const InvoiceTemplate = React.forwardRef((props, ref) => {
             <div className="emp-amounts-section">
               <div className="emp-total-block">
                 <div>Sub Total</div>
-                <div>₹ {Number(grossTotal).toLocaleString("en-IN")}</div>
+                <div>₹ {Number(subtotalAmount).toLocaleString("en-IN")}</div>
+              </div>
+              <div className="emp-total-block">
+                <div>Round Off</div>
+                <div>
+                  ₹{" "}
+                  {Number(roundOff ? roundOffValue : 0).toLocaleString("en-IN")}
+                </div>
+              </div>
+              <div className="emp-total-block">
+                <div className="emp-bold">Total</div>
+                <div className="emp-bold">
+                  ₹ {Number(displayTotal || grossTotal).toLocaleString("en-IN")}
+                </div>
               </div>
             </div>
 
             <div className="emp-amounts-section">
-              <div className="emp-total-block">
-                <div className="emp-bold">Total</div>
-                <div className="emp-bold">
-                  ₹ {Number(grossTotal).toLocaleString("en-IN")}
-                </div>
-              </div>
-
               <div className="emp-total-block">
                 <div>Advance</div>
                 <div>₹ {Number(advance || 0).toLocaleString("en-IN")}</div>
@@ -373,7 +446,7 @@ const InvoiceTemplate = React.forwardRef((props, ref) => {
               <div className="emp-total-block">
                 <div>Payable Amount</div>
                 <div>
-                  ₹ {Number(totalIncludingTax || 0).toLocaleString("en-IN")}
+                  ₹ {Number(displayTotal || grossTotal).toLocaleString("en-IN")}
                 </div>
               </div>
             </div>

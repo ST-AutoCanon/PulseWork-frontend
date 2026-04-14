@@ -217,7 +217,7 @@ const CustomerForm = ({ onClose, onSuccess, initialData = null }) => {
         </div>
 
         <div className="download-form-group">
-          <label>POC Name</label>
+          <label>POC Email</label>
           <input
             type="text"
             name="project_poc_name"

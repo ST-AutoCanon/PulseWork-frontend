@@ -354,6 +354,7 @@
 }
 
 .totals label {
+  display: flex;
   text-align: center;
   width: 50%;
   margin: 2% 0;
@@ -753,6 +754,16 @@
 .template-open-btn {
   background: #ffffff;
   color: #111827;
+}
+
+.roundoff-label {
+  display: flex;
+  justify-content: flex-start;
+  font-weight: 600;
+}
+
+.roundoff-checkbox {
+  width: 15px !important;
 }
 
 @media (max-width: 520px) {

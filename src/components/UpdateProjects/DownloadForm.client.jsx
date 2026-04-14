@@ -15,6 +15,7 @@ const toNumber = (v) => {
 
 const emptyLineItem = () => ({
   description: "",
+  partNumber: "", // ✅ NEW
   hsnSac: "",
   quantity: 1,
   rate: 0,
@@ -25,11 +26,38 @@ const normalizeItems = (items) => {
   if (!Array.isArray(items) || items.length === 0) return [emptyLineItem()];
   return items.map((item) => ({
     description: item?.description || "",
+    partNumber: item?.partNumber || "", // ✅ NEW
     hsnSac: item?.hsnSac || item?.hsn || "",
     quantity: item?.quantity ?? 1,
     rate: item?.rate ?? 0,
     total: item?.total ?? 0,
   }));
+};
+
+const normalizeInvoiceTypeKey = (value) => {
+  const t = String(value || "")
+    .trim()
+    .toLowerCase();
+
+  if (t.includes("proforma")) return "proforma";
+  if (t.includes("quotation")) return "quotation";
+  if (t.includes("purchase order") || t === "po") return "po";
+  if (t.includes("credit note") || t === "credit_note" || t === "creditnote")
+    return "credit_note";
+  return "tax";
+};
+
+const normalizeInvoiceTypeLabel = (value) => {
+  const t = String(value || "")
+    .trim()
+    .toLowerCase();
+
+  if (t.includes("proforma")) return "Proforma Invoice";
+  if (t.includes("quotation")) return "Quotation";
+  if (t.includes("purchase order") || t === "po") return "Purchase Order";
+  if (t.includes("credit note") || t === "credit_note" || t === "creditnote")
+    return "Credit Note";
+  return "Tax Invoice";
 };
 
 const DownloadForm = ({
@@ -39,12 +67,21 @@ const DownloadForm = ({
   selectedProject,
   initialData = null,
   isEditMode = false,
+  invoiceType = "Tax Invoice",
 }) => {
   const { user } = useAuth();
 
   const createdBy = user?.employeeId ?? user?.id ?? null;
   const createdByOrg = user?.orgId ?? user?.raw?.org_id ?? null;
   const isOrg32 = Number(createdByOrg) === 32;
+
+  const currentInvoiceType = normalizeInvoiceTypeLabel(
+    initialData?.invoiceType || invoiceType,
+  );
+  const invoiceTypeKey = normalizeInvoiceTypeKey(
+    initialData?.invoiceType || invoiceType,
+  );
+  const isCreditNote = invoiceTypeKey === "credit_note";
 
   const [selectedCustomerId, setSelectedCustomerId] = useState("");
   const [customerSearch, setCustomerSearch] = useState("");
@@ -75,6 +112,11 @@ const DownloadForm = ({
   const [advance, setAdvance] = useState(0);
   const [totalExcludingTax, setTotalExcludingTax] = useState(0);
   const [totalIncludingTax, setTotalIncludingTax] = useState(0);
+
+  const [roundOff, setRoundOff] = useState(false);
+  const [roundOffAmount, setRoundOffAmount] = useState(0);
+  const [finalTotalAmount, setFinalTotalAmount] = useState(0);
+
   const [terms, setTerms] = useState("");
 
   useEffect(() => {
@@ -119,12 +161,17 @@ const DownloadForm = ({
         customer.project_poc_contact || "",
       ).toLowerCase();
       const addressVal = String(customer.company_address || "").toLowerCase();
+      const countryVal = String(customer.country || "").toLowerCase();
+      const stateVal = String(customer.state || "").toLowerCase();
+
       return (
         name.includes(q) ||
         gstVal.includes(q) ||
         pan.includes(q) ||
         contactVal.includes(q) ||
-        addressVal.includes(q)
+        addressVal.includes(q) ||
+        countryVal.includes(q) ||
+        stateVal.includes(q)
       );
     });
   }, [customers, customerSearch]);
@@ -158,40 +205,92 @@ const DownloadForm = ({
   }, []);
 
   useEffect(() => {
-    if (initialData) {
-      setSelectedCustomerId(initialData.selectedCustomerId || "");
-      setCustomerSearch(initialData.to || initialData.toName || "");
-      setTo(initialData.to || initialData.toName || "");
-      setAddress(initialData.address || "");
-      setCompanyGst(initialData.companyGst || "");
-      setContact(initialData.contact || "");
-      setCountry(initialData.country || "");
-      setState(initialData.state || "");
-      setInvoiceDate(initialData.invoiceDate || "");
-      setReferenceDate(initialData.referenceDate || "");
-      setReferenceId(initialData.referenceId || "");
-      setPlaceOfSupply(initialData.placeOfSupply || "");
-      setWithSeal(Boolean(initialData.withSeal));
-      setLineItems(normalizeItems(initialData.lineItems));
-      setSubTotal(Number(initialData.subTotal || 0));
-      setGST(Number(initialData.gst || 0));
-      setGSTAmount(Number(initialData.gstAmount || 0));
-      setAdvance(Number(initialData.advance || 0));
-      setTotalExcludingTax(Number(initialData.totalExcludingTax || 0));
-      setTotalIncludingTax(Number(initialData.totalIncludingTax || 0));
-      setTerms(initialData.terms || "");
-      return;
-    }
+    const source = initialData || selectedProject;
+    if (!source) return;
 
-    if (selectedProject) {
-      setTo(selectedProject.company || "");
-      setAddress(selectedProject.address || "");
-      setCompanyGst(selectedProject.gst || "");
-      setContact(selectedProject.clientNumber || "");
-      setCountry(selectedProject.country || "");
-      setState(selectedProject.state || "");
+    const initialTo = source.to || source.toName || source.company_name || "";
+    const initialAddress = source.address || source.company_address || "";
+    const initialGst = source.companyGst || source.company_gst || "";
+    const initialContact = source.contact || source.project_poc_contact || "";
+    const initialCountry = source.country || "";
+    const initialState = source.state || "";
+
+    setSelectedCustomerId(source.selectedCustomerId || "");
+
+    setTo(initialTo);
+    setAddress(initialAddress);
+    setCompanyGst(initialGst);
+    setContact(initialContact);
+    setCountry(initialCountry);
+    setState(initialState);
+    setInvoiceDate(source.invoiceDate || "");
+    setReferenceDate(source.referenceDate || "");
+    setReferenceId(source.referenceId || "");
+    setPlaceOfSupply(source.placeOfSupply || "");
+    setWithSeal(Boolean(source.withSeal));
+    setLineItems(normalizeItems(source.lineItems));
+    setSubTotal(Number(source.subTotal || 0));
+    setGST(Number(source.gst || 0));
+    setGSTAmount(Number(source.gstAmount || 0));
+    setAdvance(Number(source.advance || 0));
+    setTotalExcludingTax(Number(source.totalExcludingTax || 0));
+    setTotalIncludingTax(Number(source.totalIncludingTax || 0));
+    setRoundOff(Boolean(source.roundOff));
+    setRoundOffAmount(Number(source.roundOffAmount || 0));
+    setFinalTotalAmount(
+      Number(source.finalTotalAmount || source.totalIncludingTax || 0),
+    );
+    setTerms(source.terms || "");
+
+    if (customers.length > 0) {
+      const match =
+        (source.selectedCustomerId &&
+          customers.find(
+            (c) => String(c.id) === String(source.selectedCustomerId),
+          )) ||
+        customers.find((c) => {
+          const name = String(c.company_name || "")
+            .trim()
+            .toLowerCase();
+          const gst = String(c.company_gst || "")
+            .trim()
+            .toLowerCase();
+          const pan = String(c.company_pan || "")
+            .trim()
+            .toLowerCase();
+          const contact = String(c.project_poc_contact || "")
+            .trim()
+            .toLowerCase();
+
+          return (
+            (initialTo && name === String(initialTo).trim().toLowerCase()) ||
+            (initialGst && gst === String(initialGst).trim().toLowerCase()) ||
+            (initialContact &&
+              contact === String(initialContact).trim().toLowerCase()) ||
+            (initialAddress &&
+              String(c.company_address || "")
+                .trim()
+                .toLowerCase() ===
+                String(initialAddress).trim().toLowerCase()) ||
+            (pan &&
+              pan ===
+                String(source.company_pan || "")
+                  .trim()
+                  .toLowerCase())
+          );
+        });
+
+      if (match) {
+        setSelectedCustomerId(String(match.id));
+        setCustomerSearch(match.company_name || initialTo || "");
+        applyCustomer(match);
+      } else {
+        setCustomerSearch(initialTo);
+      }
+    } else {
+      setCustomerSearch(initialTo);
     }
-  }, [initialData, selectedProject]);
+  }, [initialData, selectedProject, customers]);
 
   useEffect(() => {
     if (!initialData && selectedProject && customers.length) {
@@ -208,6 +307,7 @@ const DownloadForm = ({
       if (match) {
         setSelectedCustomerId(String(match.id));
         setCustomerSearch(match.company_name || "");
+        applyCustomer(match);
       }
     }
   }, [selectedProject, customers, initialData]);
@@ -250,6 +350,20 @@ const DownloadForm = ({
     setTotalIncludingTax(Number((excl + gstAmt).toFixed(2)));
   }, [subTotal, advance, gstAmount]);
 
+  useEffect(() => {
+    const baseTotal = toNumber(totalIncludingTax);
+    const rounded = Math.round(baseTotal);
+    const roundOffValue = roundOff
+      ? Number((rounded - baseTotal).toFixed(2))
+      : 0;
+    const finalTotal = roundOff
+      ? Number((baseTotal + roundOffValue).toFixed(2))
+      : Number(baseTotal.toFixed(2));
+
+    setRoundOffAmount(roundOffValue);
+    setFinalTotalAmount(finalTotal);
+  }, [totalIncludingTax, roundOff]);
+
   const handleLineItemChange = (index, field, value) => {
     setLineItems((prev) => {
       const next = [...prev];
@@ -282,6 +396,8 @@ const DownloadForm = ({
     e.preventDefault();
 
     const payload = {
+      invoiceType: invoiceTypeKey,
+      invoiceTypeLabel: currentInvoiceType,
       selectedCustomerId: selectedCustomerId || null,
       to: to || null,
       address: address || null,
@@ -294,8 +410,13 @@ const DownloadForm = ({
       referenceId: referenceId || null,
       placeOfSupply: placeOfSupply || null,
       withSeal: Boolean(withSeal),
+      roundOff: Boolean(roundOff),
+      roundOffAmount: toNumber(roundOffAmount),
+      totalBeforeRoundOff: toNumber(totalIncludingTax),
+      finalTotalAmount: toNumber(finalTotalAmount),
       lineItems: (lineItems || []).map((li) => ({
         description: li.description || "",
+        partNumber: li.partNumber || "", // ✅ NEW
         hsnSac: li.hsnSac || "",
         quantity: toNumber(li.quantity),
         rate: toNumber(li.rate),
@@ -306,7 +427,7 @@ const DownloadForm = ({
       gstAmount: toNumber(gstAmount),
       advance: toNumber(advance),
       totalExcludingTax: toNumber(totalExcludingTax),
-      totalIncludingTax: toNumber(totalIncludingTax),
+      totalIncludingTax: toNumber(finalTotalAmount),
       terms: terms || "",
       createdBy,
       createdByOrg,
@@ -316,10 +437,26 @@ const DownloadForm = ({
     if (onSubmit) onSubmit(payload);
   };
 
+  const titleText = isEditMode
+    ? isCreditNote
+      ? "Edit Credit Note Details"
+      : "Edit Invoice Details"
+    : isCreditNote
+      ? "Credit Note Details"
+      : "Invoice Details";
+
+  const toLabel = isCreditNote ? "Return From" : "To";
+  const detailsHeading = isCreditNote ? "Return Details" : "Invoice Details";
+  const referenceDateLabel = isCreditNote ? "Invoice Date" : "Reference Date";
+  const referenceIdLabel = isCreditNote ? "Invoice No" : "Reference ID";
+  const displayFinalTotal = roundOff
+    ? finalTotalAmount
+    : toNumber(totalIncludingTax);
+
   return (
     <form className="download-form" onSubmit={handleSubmit}>
       <div className="download-title">
-        <h2>{isEditMode ? "Edit Invoice Details" : "Invoice Details"}</h2>
+        <h2>{titleText}</h2>
         <button className="pj-close-button" type="button" onClick={onCancel}>
           X
         </button>
@@ -412,7 +549,9 @@ const DownloadForm = ({
                 ))
               ) : (
                 <div className="download-customer-empty">
-                  No matching customers found
+                  {customers.length === 0
+                    ? "No customers available"
+                    : "No matching customers found"}
                 </div>
               )}
             </div>
@@ -422,7 +561,7 @@ const DownloadForm = ({
 
       <div className="download-form-grid">
         <div className="download-form-group">
-          <label>To:</label>
+          <label>{toLabel}:</label>
           <input
             type="text"
             value={to}
@@ -501,7 +640,7 @@ const DownloadForm = ({
         </div>
 
         <div className="download-form-group">
-          <label>Reference Date:</label>
+          <label>{referenceDateLabel}:</label>
           <input
             type="date"
             value={referenceDate}
@@ -510,7 +649,7 @@ const DownloadForm = ({
         </div>
 
         <div className="download-form-group">
-          <label>Reference ID:</label>
+          <label>{referenceIdLabel}:</label>
           <input
             type="text"
             value={referenceId}
@@ -547,6 +686,19 @@ const DownloadForm = ({
                   }
                 />
               </div>
+
+              {isOrg32 && (
+                <div className="download-part-number-field">
+                  <label>Part Number</label>
+                  <input
+                    type="text"
+                    value={item.partNumber || ""}
+                    onChange={(e) =>
+                      handleLineItemChange(index, "partNumber", e.target.value)
+                    }
+                  />
+                </div>
+              )}
 
               <div className="download-hsn-field">
                 <label>HSN/SAC</label>
@@ -632,12 +784,25 @@ const DownloadForm = ({
 
         <div className="download-totals">
           <div className="download-summary-excluding">
-            <h4>Invoice Summary</h4>
+            <h4>{detailsHeading}</h4>
             <div className="download-input-group">
               <div>
                 <label>Sub Total</label>
                 <input type="number" value={subTotal} readOnly />
               </div>
+
+              <div>
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={roundOff}
+                    onChange={(e) => setRoundOff(e.target.checked)}
+                  />
+                  Round Off
+                </label>
+                <input type="number" value={roundOffAmount} readOnly />
+              </div>
+
               <div>
                 <label>Advance Paid</label>
                 <input
@@ -646,10 +811,12 @@ const DownloadForm = ({
                   onChange={(e) => setAdvance(e.target.value)}
                 />
               </div>
+
               <div>
                 <label>Total Excluding Tax</label>
                 <input type="number" value={totalExcludingTax} readOnly />
               </div>
+
               <div>
                 <label>GST</label>
                 <div className="download-gst-group">
@@ -664,9 +831,10 @@ const DownloadForm = ({
                   <input type="number" value={gstAmount} readOnly />
                 </div>
               </div>
+
               <div>
                 <label>Total Including Tax</label>
-                <input type="number" value={totalIncludingTax} readOnly />
+                <input type="number" value={displayFinalTotal} readOnly />
               </div>
             </div>
           </div>

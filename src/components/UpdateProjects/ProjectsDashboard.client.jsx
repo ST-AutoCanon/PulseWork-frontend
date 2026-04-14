@@ -31,6 +31,8 @@ const getInvoiceTypeKey = (type) => {
       return "quotation";
     case "Purchase Order":
       return "po";
+    case "Credit Note":
+      return "credit_note";
     default:
       return "tax";
   }
@@ -620,6 +622,7 @@ const ProjectsDashboard = () => {
                   <option value="Proforma Invoice">Proforma Invoice</option>
                   <option value="Quotation">Quotation</option>
                   <option value="Purchase Order">Purchase Order</option>
+                  <option value="Credit Note">Credit Note</option>
                 </select>
                 <button
                   className="download-form-button"
@@ -659,7 +662,10 @@ const ProjectsDashboard = () => {
                 </div>
               )}
 
-              <DownloadDetailsList refreshKey={downloadDetailsRefreshKey} />
+              <DownloadDetailsList
+                refreshKey={downloadDetailsRefreshKey}
+                customers={customers}
+              />
             </div>
           )}
         </>
@@ -695,6 +701,7 @@ const ProjectsDashboard = () => {
               onCancel={() => setShowDownloadForm(false)}
               customers={customers}
               selectedProject={selectedProject}
+              invoiceType={selectedInvoiceType}
             />
           </div>
         </div>

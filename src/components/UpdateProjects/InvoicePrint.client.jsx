@@ -97,6 +97,9 @@ const InvoicePrint = React.forwardRef(({ invoiceData = {}, orgId }, ref) => {
     terms = "",
     gst: rawGst = 0,
     totalIncludingTax: rawTotalIncl = 0,
+    totalBeforeRoundOff: rawTotalBeforeRoundOff = 0,
+    roundOff = false,
+    roundOffAmount: rawRoundOffAmount = 0,
     advance: rawAdvance = 0,
     project = {},
   } = invoiceData;
@@ -105,6 +108,8 @@ const InvoicePrint = React.forwardRef(({ invoiceData = {}, orgId }, ref) => {
   const gstAmount = safeNumber(rawGstAmount);
   const totalExcludingTax = safeNumber(rawTotalExcl);
   const totalIncludingTax = safeNumber(rawTotalIncl);
+  const totalBeforeRoundOff = safeNumber(rawTotalBeforeRoundOff);
+  const roundOffAmount = safeNumber(rawRoundOffAmount);
   const advance = safeNumber(rawAdvance);
 
   const parsedLineItems = safeParseLineItems(invoiceData.lineItems);
@@ -129,16 +134,47 @@ const InvoicePrint = React.forwardRef(({ invoiceData = {}, orgId }, ref) => {
     { quantity: 0, amount: 0, total: 0 },
   );
 
+  const subtotalAmount = totals.total;
+
   const totalGSTFromLines = parsedLineItems.reduce(
     (acc, item) => acc + (safeNumber(item.total) * gst) / 100,
     0,
   );
 
   const effectiveGstAmount = gstAmount || Number(totalGSTFromLines.toFixed(2));
-  const grossTotal = totals.total + effectiveGstAmount;
+  const grossTotal = subtotalAmount + effectiveGstAmount;
 
-  const halfGSTRate = (gst / 2).toFixed(2);
-  const halfGSTAmount = (effectiveGstAmount / 2).toFixed(2);
+  const computedRoundOff =
+    roundOff && Number.isFinite(roundOffAmount)
+      ? roundOffAmount
+      : roundOff
+        ? Number(
+            (
+              Math.round(totalBeforeRoundOff || grossTotal) -
+              (totalBeforeRoundOff || grossTotal)
+            ).toFixed(2),
+          )
+        : 0;
+
+  const displayTotal = roundOff
+    ? Number(
+        ((totalBeforeRoundOff || grossTotal) + computedRoundOff).toFixed(2),
+      )
+    : Number((totalIncludingTax || grossTotal).toFixed(2));
+
+  const halfGSTRate =
+    gst && Number(gst) > 0 ? (Number(gst) / 2).toFixed(2) : "0.00";
+  const halfGSTAmount =
+    gstAmount && Number(gstAmount) > 0
+      ? (Number(gstAmount) / 2).toFixed(2)
+      : (totalGSTFromLines / 2).toFixed(2);
+
+  const fixedRows = 6;
+  const emptyRowCount = fixedRows - parsedLineItems.length;
+  const emptyRows =
+    emptyRowCount > 0 ? Array.from({ length: emptyRowCount }) : [];
+
+  const headerTitle = invoiceType ? invoiceType.toUpperCase() : "INVOICE";
 
   return (
     <div
@@ -248,8 +284,8 @@ const InvoicePrint = React.forwardRef(({ invoiceData = {}, orgId }, ref) => {
               <th>S.No</th>
               <th>Item/Service Description</th>
               <th>HSN/SAC</th>
-              <th>Quantity</th>
               <th>Amount</th>
+              <th>Quantity</th>
               <th>Sub total</th>
               <th>GST ({gst}%)</th>
               <th>Total</th>
@@ -265,8 +301,8 @@ const InvoicePrint = React.forwardRef(({ invoiceData = {}, orgId }, ref) => {
                   <td>{idx + 1}</td>
                   <td>{item.description || "—"}</td>
                   <td>{item.hsnSac || "—"}</td>
-                  <td>{item.quantity}</td>
                   <td>{fmtINR(item.rate)}</td>
+                  <td>{item.quantity}</td>
                   <td>{fmtINR(lineTotal)}</td>
                   <td>{fmtINR(Number(lineGST.toFixed(2)))}</td>
                   <td>{fmtINR(Number(lineGross.toFixed(2)))}</td>
@@ -274,27 +310,18 @@ const InvoicePrint = React.forwardRef(({ invoiceData = {}, orgId }, ref) => {
               );
             })}
 
-            {(() => {
-              const fixedRows = 6;
-              const emptyRowCount = Math.max(
-                0,
-                fixedRows - parsedLineItems.length,
-              );
-              return emptyRowCount > 0
-                ? Array.from({ length: emptyRowCount }).map((_, index) => (
-                    <tr key={`empty-${index}`}>
-                      <td>&nbsp;</td>
-                      <td>&nbsp;</td>
-                      <td>&nbsp;</td>
-                      <td>&nbsp;</td>
-                      <td>&nbsp;</td>
-                      <td>&nbsp;</td>
-                      <td>&nbsp;</td>
-                      <td>&nbsp;</td>
-                    </tr>
-                  ))
-                : null;
-            })()}
+            {emptyRows.map((_, index) => (
+              <tr key={`empty-${index}`}>
+                <td>&nbsp;</td>
+                <td>&nbsp;</td>
+                <td>&nbsp;</td>
+                <td>&nbsp;</td>
+                <td>&nbsp;</td>
+                <td>&nbsp;</td>
+                <td>&nbsp;</td>
+                <td>&nbsp;</td>
+              </tr>
+            ))}
 
             <tr className="totals-row">
               <td></td>
@@ -303,13 +330,13 @@ const InvoicePrint = React.forwardRef(({ invoiceData = {}, orgId }, ref) => {
               </td>
               <td></td>
               <td>
-                <strong>{totals.quantity}</strong>
-              </td>
-              <td>
                 <strong>{fmtINR(totals.amount)}</strong>
               </td>
               <td>
-                <strong>{fmtINR(totals.total)}</strong>
+                <strong>{totals.quantity}</strong>
+              </td>
+              <td>
+                <strong>{fmtINR(subtotalAmount)}</strong>
               </td>
               <td>
                 <strong>{fmtINR(effectiveGstAmount)}</strong>
@@ -336,13 +363,13 @@ const InvoicePrint = React.forwardRef(({ invoiceData = {}, orgId }, ref) => {
               <>
                 <div className="tax-box-body">
                   <p className="tax-gst">CGST</p>
-                  <p>{fmtINR(totalExcludingTax)}</p>
+                  <p>{fmtINR(subtotalAmount)}</p>
                   <p>{halfGSTRate}%</p>
                   <p>{fmtINR(halfGSTAmount)}</p>
                 </div>
                 <div className="tax-box-body">
                   <p className="tax-gst">SGST</p>
-                  <p>{fmtINR(totalExcludingTax)}</p>
+                  <p>{fmtINR(subtotalAmount)}</p>
                   <p>{halfGSTRate}%</p>
                   <p>{fmtINR(halfGSTAmount)}</p>
                 </div>
@@ -350,7 +377,7 @@ const InvoicePrint = React.forwardRef(({ invoiceData = {}, orgId }, ref) => {
             ) : (
               <div className="tax-box-body">
                 <p className="tax-gst">IGST</p>
-                <p>{fmtINR(totalExcludingTax)}</p>
+                <p>{fmtINR(subtotalAmount)}</p>
                 <p>{gst}%</p>
                 <p>{fmtINR(effectiveGstAmount)}</p>
               </div>
@@ -360,7 +387,7 @@ const InvoicePrint = React.forwardRef(({ invoiceData = {}, orgId }, ref) => {
               <strong>Order Amount in words</strong>
             </p>
             <div className="amount-in-words-text">
-              {numberToWords(Math.round(totalIncludingTax || grossTotal))}
+              {numberToWords(Math.round(displayTotal || grossTotal))}
             </div>
 
             <p className="amount-in-words">
@@ -379,14 +406,18 @@ const InvoicePrint = React.forwardRef(({ invoiceData = {}, orgId }, ref) => {
               <div className="amounts-section">
                 <div className="total-block">
                   <p>Sub Total</p>
-                  <p>{fmtINR(grossTotal)}</p>
+                  <p>{fmtINR(subtotalAmount)}</p>
+                </div>
+                <div className="total-block">
+                  <p>Round Off</p>
+                  <p>{fmtINR(roundOff ? computedRoundOff : 0)}</p>
                 </div>
               </div>
 
               <div className="amounts-section">
                 <div className="total-block">
                   <p className="bold">Total</p>
-                  <p className="bold">{fmtINR(grossTotal)}</p>
+                  <p className="bold">{fmtINR(displayTotal || grossTotal)}</p>
                 </div>
                 <div className="total-block">
                   <p>Advance</p>
@@ -397,7 +428,7 @@ const InvoicePrint = React.forwardRef(({ invoiceData = {}, orgId }, ref) => {
               <div className="amounts-section">
                 <div className="total-block">
                   <p>Payable Amount</p>
-                  <p>{fmtINR(totalIncludingTax || grossTotal)}</p>
+                  <p>{fmtINR(displayTotal || grossTotal)}</p>
                 </div>
               </div>
             </div>

@@ -16,19 +16,23 @@ import Modal from "../Modal/Modal.client";
 import { useAuth } from "../../context/AuthProvider.client";
 
 const protectedImageCache = new Map();
+
 async function fetchProtectedImageAsBlobUrl(src, apiKey) {
   if (!src) return null;
   if (src.startsWith("blob:") || src.startsWith("data:")) return src;
+
   const cached = protectedImageCache.get(src);
   if (cached) return cached;
+
   try {
     const res = await fetch(src, {
       method: "GET",
       credentials: "include",
       headers: { "x-api-key": apiKey || "" },
-      credentials: "include",
     });
+
     if (!res.ok) throw new Error(`Image fetch failed (${res.status})`);
+
     const blob = await res.blob();
     const url = URL.createObjectURL(blob);
     protectedImageCache.set(src, url);
@@ -97,6 +101,12 @@ const Invoice = ({ onBack, project }) => {
   const [advance, setAdvance] = useState(0);
   const [totalExcludingTax, setTotalExcludingTax] = useState(0);
   const [totalIncludingTax, setTotalIncludingTax] = useState(0);
+
+  const [roundOff, setRoundOff] = useState(false);
+  const [roundOffAmount, setRoundOffAmount] = useState(0);
+  const [finalTotalAmount, setFinalTotalAmount] = useState(0);
+  const [totalBeforeRoundOff, setTotalBeforeRoundOff] = useState(0);
+
   const [showTdsModal, setShowTdsModal] = useState(false);
   const [tdsForInvoiceId, setTdsForInvoiceId] = useState(null);
   const [isTdsDeducted, setIsTdsDeducted] = useState(false);
@@ -358,6 +368,16 @@ const Invoice = ({ onBack, project }) => {
     setTotalIncludingTax(excl + gstAmt);
   }, [subTotal, advance, gstAmount]);
 
+  useEffect(() => {
+    const base = Number(totalIncludingTax || 0);
+    const rounded = Math.round(base);
+    const delta = roundOff ? Number((rounded - base).toFixed(2)) : 0;
+
+    setRoundOffAmount(delta);
+    setFinalTotalAmount(Number((base + delta).toFixed(2)));
+    setTotalBeforeRoundOff(base);
+  }, [totalIncludingTax, roundOff]);
+
   const handleLineItemChange = (index, field, value) => {
     setLineItems((prev) => {
       const next = [...prev];
@@ -398,25 +418,27 @@ const Invoice = ({ onBack, project }) => {
     setAdvance(0);
     setTotalExcludingTax(0);
     setTotalIncludingTax(0);
+    setRoundOff(false);
+    setRoundOffAmount(0);
+    setFinalTotalAmount(0);
+    setTotalBeforeRoundOff(0);
     setEditingInvoiceId(null);
   };
 
   const handleSubmit = async () => {
-    if (isSubmitting) return; // 🔒 prevent double click
+    if (isSubmitting) return;
 
     if (!BACKEND_URL) {
       showAlert("Backend not configured");
       return;
     }
 
-    setIsSubmitting(true); // 🔒 lock button
+    setIsSubmitting(true);
 
     const combinedDescription = lineItems
       .map(
         (item, idx) =>
-          `Line ${idx + 1}: ${item.description} (Qty: ${item.quantity}, Rate: ${
-            item.rate
-          })`,
+          `Line ${idx + 1}: ${item.description} (Qty: ${item.quantity}, Rate: ${item.rate})`,
       )
       .join("; ");
 
@@ -441,7 +463,11 @@ const Invoice = ({ onBack, project }) => {
       gst,
       gstAmount,
       totalAmount,
-      totalIncludingTax,
+      totalBeforeRoundOff,
+      roundOff,
+      roundOffAmount,
+      totalIncludingTax: finalTotalAmount,
+      finalTotalAmount,
       workDescription: combinedDescription,
     };
 
@@ -492,7 +518,7 @@ const Invoice = ({ onBack, project }) => {
       console.error(error);
       showAlert("Failed to save invoice.");
     } finally {
-      setIsSubmitting(false); // 🔓 always unlock
+      setIsSubmitting(false);
     }
   };
 
@@ -544,7 +570,19 @@ const Invoice = ({ onBack, project }) => {
     setAdvance(invoice.advance ?? 0);
     setGSTAmount(invoice.gstAmount ?? 0);
     setTotalExcludingTax(invoice.totalExcludingTax ?? 0);
-    setTotalIncludingTax(invoice.totalIncludingTax ?? 0);
+
+    const preRoundTotal =
+      invoice.totalBeforeRoundOff ??
+      invoice.totalIncludingTax ??
+      invoice.totalAmount ??
+      0;
+
+    setTotalIncludingTax(preRoundTotal);
+    setRoundOff(Boolean(invoice.roundOff));
+    setRoundOffAmount(invoice.roundOffAmount ?? 0);
+    setFinalTotalAmount(invoice.totalIncludingTax ?? invoice.totalAmount ?? 0);
+    setTotalBeforeRoundOff(preRoundTotal);
+
     setTotalAmount(invoice.totalAmount ?? 0);
     setTerms(invoice.terms ?? "");
     setShowInvoiceForm(true);
@@ -708,7 +746,6 @@ const Invoice = ({ onBack, project }) => {
 
     const updatedInvoice = {
       ...invoice,
-
       gstPayment: val("gstPayment"),
       milestoneId: val("milestoneId"),
       status: val("status"),
@@ -851,7 +888,7 @@ const Invoice = ({ onBack, project }) => {
                   </td>
                   <td>{inv.totalExcludingTax}</td>
                   <td>{inv.gstAmount}</td>
-                  <td>{inv.totalAmount}</td>
+                  <td>{inv.totalIncludingTax ?? inv.totalAmount}</td>
                   <td>
                     <select
                       value={
@@ -1222,6 +1259,28 @@ const Invoice = ({ onBack, project }) => {
                           <label>Sub Total</label>
                           <input type="number" value={subTotal} readOnly />
                         </div>
+
+                        <div className="roundoff-row">
+                          <label className="roundoff-label">
+                            <div>
+                              <input
+                                type="checkbox"
+                                checked={roundOff}
+                                onChange={(e) => setRoundOff(e.target.checked)}
+                                className="roundoff-checkbox"
+                              />
+                            </div>
+                            <div>Round Off</div>
+                          </label>
+
+                          <input
+                            type="number"
+                            value={roundOffAmount}
+                            readOnly
+                            className="roundoff-value"
+                          />
+                        </div>
+
                         <div>
                           <label>Advance Paid</label>
                           <input
@@ -1230,6 +1289,7 @@ const Invoice = ({ onBack, project }) => {
                             onChange={(e) => setAdvance(e.target.value)}
                           />
                         </div>
+
                         <div>
                           <label>Total Excluding Tax</label>
                           <input
@@ -1238,6 +1298,7 @@ const Invoice = ({ onBack, project }) => {
                             readOnly
                           />
                         </div>
+
                         <div>
                           <label>GST</label>
                           <div className="in-gst-group">
@@ -1255,13 +1316,14 @@ const Invoice = ({ onBack, project }) => {
                         </div>
                       </div>
                     </div>
+
                     <div className="summary-including">
                       <div className="in-input-group">
                         <div>
                           <label>Total Including Tax</label>
                           <input
                             type="number"
-                            value={totalIncludingTax}
+                            value={finalTotalAmount}
                             readOnly
                           />
                         </div>

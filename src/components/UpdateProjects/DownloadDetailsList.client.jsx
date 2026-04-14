@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import "./DownloadDetailsList.css";
 import { useAuth } from "../../context/AuthProvider.client";
 import jsPDF from "jspdf";
@@ -50,7 +50,29 @@ const normalizeInvoiceTypeLabel = (value) => {
   }
 };
 
-const DownloadDetailsList = ({ refreshKey }) => {
+const normalizeInvoiceTypeKey = (value) => {
+  const t = String(value || "")
+    .trim()
+    .toLowerCase();
+
+  if (t.includes("proforma")) return "proforma";
+  if (t.includes("quotation")) return "quotation";
+  if (t.includes("purchase order") || t === "po") return "po";
+  return "tax";
+};
+
+const normalizeLineItems = (items) => {
+  if (!Array.isArray(items)) return [];
+  return items.map((item) => ({
+    description: item?.description || item?.name || "",
+    hsnSac: item?.hsnSac || item?.hsn || "",
+    quantity: item?.quantity ?? item?.qty ?? 0,
+    rate: item?.rate ?? item?.unitPrice ?? 0,
+    total: item?.total ?? item?.amount ?? 0,
+  }));
+};
+
+const DownloadDetailsList = ({ refreshKey, customers = [] }) => {
   const { user } = useAuth();
   const [records, setRecords] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -75,15 +97,19 @@ const DownloadDetailsList = ({ refreshKey }) => {
 
   useEffect(() => {
     let mounted = true;
+
     const fetchDetails = async () => {
       setLoading(true);
       setError(null);
+
       try {
         if (!BACKEND_URL) throw new Error("Backend URL not configured");
+
         const headers = {
           "Content-Type": "application/json",
           "x-api-key": API_KEY || "",
         };
+
         if (orgId) headers["x-org-id"] = orgId;
         const meId = user?.employeeId ?? user?.id ?? null;
         if (meId) headers["x-employee-id"] = String(meId);
@@ -92,9 +118,10 @@ const DownloadDetailsList = ({ refreshKey }) => {
           credentials: "include",
           headers,
         });
-        if (!resp.ok) throw new Error(`Error ${resp.status}`);
-        const json = await resp.json();
 
+        if (!resp.ok) throw new Error(`Error ${resp.status}`);
+
+        const json = await resp.json();
         const downloadDetails =
           json?.downloadDetails ?? json?.message ?? json ?? [];
 
@@ -120,34 +147,74 @@ const DownloadDetailsList = ({ refreshKey }) => {
       prev.includes(id) ? prev.filter((r) => r !== id) : [...prev, id],
     );
 
-  const buildDownloadDetails = (record) => ({
-    to: record.toName || record.to,
-    address: record.address,
-    companyGst: record.companyGst,
-    contact: record.contact,
-    state: record.state,
-    invoiceDate: record.invoiceDate,
-    referenceDate: record.referenceDate,
-    referenceId: record.referenceId,
-    placeOfSupply: record.placeOfSupply,
-    withSeal: record.withSeal,
-    lineItems: Array.isArray(record.lineItems)
-      ? record.lineItems.map((item) => ({
-          description: item?.description || "",
-          hsnSac: item?.hsnSac || item?.hsn || "",
-          quantity: item?.quantity ?? 0,
-          rate: item?.rate ?? 0,
-          total: item?.total ?? 0,
-        }))
-      : [],
-    subTotal: record.subTotal,
-    gst: record.gst,
-    gstAmount: record.gstAmount,
-    advance: record.advance,
-    totalExcludingTax: record.totalExcludingTax,
-    totalIncludingTax: record.totalIncludingTax,
-    terms: record.terms,
-  });
+  const findCustomerForRecord = useMemo(() => {
+    return (record) => {
+      const targetName = String(record?.toName || record?.to || "")
+        .trim()
+        .toLowerCase();
+      const targetGst = String(record?.companyGst || "")
+        .trim()
+        .toLowerCase();
+      const targetContact = String(record?.contact || "")
+        .trim()
+        .toLowerCase();
+
+      return (
+        customers.find((c) => {
+          const name = String(c.company_name || "")
+            .trim()
+            .toLowerCase();
+          const gst = String(c.company_gst || "")
+            .trim()
+            .toLowerCase();
+          const contact = String(c.project_poc_contact || "")
+            .trim()
+            .toLowerCase();
+
+          return (
+            (targetName && name === targetName) ||
+            (targetGst && gst === targetGst) ||
+            (targetContact && contact === targetContact)
+          );
+        }) || null
+      );
+    };
+  }, [customers]);
+
+  const buildDownloadDetails = (record) => {
+    const matchedCustomer = findCustomerForRecord(record);
+
+    return {
+      selectedCustomerId: matchedCustomer?.id ? String(matchedCustomer.id) : "",
+      to: record.toName || record.to || matchedCustomer?.company_name || "",
+      address: record.address || matchedCustomer?.company_address || "",
+      companyGst: record.companyGst || matchedCustomer?.company_gst || "",
+      contact: record.contact || matchedCustomer?.project_poc_contact || "",
+      country: matchedCustomer?.country || "",
+      state: record.state || matchedCustomer?.state || "",
+      invoiceDate: record.invoiceDate,
+      referenceDate: record.referenceDate,
+      referenceId: record.referenceId,
+      placeOfSupply: record.placeOfSupply,
+      withSeal: record.withSeal,
+      lineItems: Array.isArray(record.lineItems)
+        ? record.lineItems.map((item) => ({
+            description: item?.description || "",
+            hsnSac: item?.hsnSac || item?.hsn || "",
+            quantity: item?.quantity ?? 0,
+            rate: item?.rate ?? 0,
+            total: item?.total ?? 0,
+          }))
+        : [],
+      subTotal: record.subTotal,
+      gst: record.gst,
+      gstAmount: record.gstAmount,
+      advance: record.advance,
+      totalExcludingTax: record.totalExcludingTax,
+      totalIncludingTax: record.totalIncludingTax,
+      terms: record.terms,
+    };
+  };
 
   const handleRedownload = async (record) => {
     setRedownloadDetails(buildDownloadDetails(record));
@@ -157,15 +224,24 @@ const DownloadDetailsList = ({ refreshKey }) => {
   };
 
   const handleEdit = (record) => {
+    const matchedCustomer = findCustomerForRecord(record);
+
     setEditingRecord({
       id: record.id,
       invoiceType: record.invoiceType,
       invoiceNumber: record.invoiceNumber,
+
+      // ✅ ADD THIS
+      selectedCustomerId: matchedCustomer?.id ? String(matchedCustomer.id) : "",
+
       to: record.toName || record.to || "",
       address: record.address || "",
       contact: record.contact || "",
       companyGst: record.companyGst || "",
+
+      country: record.country || "IN",
       state: record.state || "",
+
       invoiceDate: record.invoiceDate || "",
       referenceDate: record.referenceDate || "",
       referenceId: record.referenceId || "",
@@ -180,10 +256,13 @@ const DownloadDetailsList = ({ refreshKey }) => {
       totalIncludingTax: record.totalIncludingTax || 0,
       terms: record.terms || "",
     });
+
     setShowEditModal(true);
   };
 
   const handleSaveEdit = async (payload) => {
+    if (!editingRecord?.id) return;
+
     try {
       const headers = {
         "Content-Type": "application/json",
@@ -200,30 +279,17 @@ const DownloadDetailsList = ({ refreshKey }) => {
           credentials: "include",
           headers,
           body: JSON.stringify({
-            invoiceType: normalizeInvoiceTypeLabel(
+            invoiceType: normalizeInvoiceTypeKey(
               payload.invoiceType || editingRecord.invoiceType,
-            )
-              .toLowerCase()
-              .includes("proforma")
-              ? "proforma"
-              : normalizeInvoiceTypeLabel(
-                    payload.invoiceType || editingRecord.invoiceType,
-                  )
-                    .toLowerCase()
-                    .includes("quotation")
-                ? "quotation"
-                : normalizeInvoiceTypeLabel(
-                      payload.invoiceType || editingRecord.invoiceType,
-                    )
-                      .toLowerCase()
-                      .includes("purchase order")
-                  ? "po"
-                  : "tax",
+            ),
             invoiceNumber: editingRecord.invoiceNumber,
+            selectedCustomerId:
+              payload.selectedCustomerId || editingRecord.selectedCustomerId,
             to: payload.to,
             address: payload.address,
             contact: payload.contact,
             companyGst: payload.companyGst,
+            country: payload.country,
             state: payload.state,
             invoiceDate: payload.invoiceDate,
             referenceDate: payload.referenceDate,
@@ -246,15 +312,32 @@ const DownloadDetailsList = ({ refreshKey }) => {
         throw new Error(`Update failed (${resp.status})`);
       }
 
+      const refreshed = await resp.json();
+      const updatedRecord =
+        refreshed?.downloadDetail || refreshed?.record || null;
+
+      if (updatedRecord) {
+        setRecords((prev) =>
+          prev.map((r) => (r.id === editingRecord.id ? updatedRecord : r)),
+        );
+      } else {
+        setRecords((prev) =>
+          prev.map((r) =>
+            r.id === editingRecord.id
+              ? {
+                  ...r,
+                  ...payload,
+                  invoiceType: normalizeInvoiceTypeKey(
+                    payload.invoiceType || editingRecord.invoiceType,
+                  ),
+                }
+              : r,
+          ),
+        );
+      }
+
       setShowEditModal(false);
       setEditingRecord(null);
-
-      const refreshed = await resp.json();
-      setRecords((prev) =>
-        prev.map((r) =>
-          r.id === editingRecord.id ? refreshed.downloadDetail || r : r,
-        ),
-      );
     } catch (err) {
       console.error("Edit download details failed:", err);
       setError(err.message || "Failed to update");
@@ -347,6 +430,7 @@ const DownloadDetailsList = ({ refreshKey }) => {
                           expandedRows.includes(r.id) ? "Hide" : "View"
                         }
                         onClick={() => toggleRow(r.id)}
+                        type="button"
                       >
                         <FiEye />
                       </button>
@@ -358,6 +442,7 @@ const DownloadDetailsList = ({ refreshKey }) => {
                           title="Edit"
                           aria-label="Edit"
                           onClick={() => handleEdit(r)}
+                          type="button"
                         >
                           <MdOutlineEdit />
                         </button>
@@ -366,6 +451,7 @@ const DownloadDetailsList = ({ refreshKey }) => {
                           title="Redownload"
                           aria-label="Redownload"
                           onClick={() => handleRedownload(r)}
+                          type="button"
                         >
                           <FiDownload />
                         </button>
@@ -431,6 +517,9 @@ const DownloadDetailsList = ({ refreshKey }) => {
                               <strong>GSTIN:</strong> {r.companyGst ?? "—"}
                             </li>
                             <li>
+                              <strong>Country:</strong> {r.country ?? "—"}
+                            </li>
+                            <li>
                               <strong>State:</strong> {r.state ?? "—"}
                             </li>
                             <li>
@@ -487,7 +576,7 @@ const DownloadDetailsList = ({ refreshKey }) => {
             <DownloadForm
               initialData={editingRecord}
               isEditMode={true}
-              customers={[]}
+              customers={customers}
               onSubmit={handleSaveEdit}
               onCancel={() => {
                 setShowEditModal(false);

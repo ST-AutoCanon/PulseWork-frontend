@@ -47,6 +47,7 @@ const safeParseLineItems = (raw) => {
   if (Array.isArray(raw)) {
     return raw.map((it) => ({
       description: it?.description ?? it?.name ?? "",
+      partNumber: it?.partNumber ?? "",
       hsnSac: it?.hsnSac ?? it?.hsn ?? "",
       quantity: safeNumber(it?.quantity ?? it?.qty ?? 0),
       rate: safeNumber(it?.rate ?? it?.unitPrice ?? 0),
@@ -283,6 +284,7 @@ const InvoicePrint = React.forwardRef(({ invoiceData = {}, orgId }, ref) => {
             <tr>
               <th>S.No</th>
               <th>Item/Service Description</th>
+              {isOrg32 && <th>Parts Number</th>}
               <th>HSN/SAC</th>
               <th>Amount</th>
               <th>Quantity</th>
@@ -300,6 +302,7 @@ const InvoicePrint = React.forwardRef(({ invoiceData = {}, orgId }, ref) => {
                 <tr key={idx}>
                   <td>{idx + 1}</td>
                   <td>{item.description || "—"}</td>
+                  {isOrg32 && <td>{item.partNumber || "—"}</td>}
                   <td>{item.hsnSac || "—"}</td>
                   <td>{fmtINR(item.rate)}</td>
                   <td>{item.quantity}</td>
@@ -314,6 +317,7 @@ const InvoicePrint = React.forwardRef(({ invoiceData = {}, orgId }, ref) => {
               <tr key={`empty-${index}`}>
                 <td>&nbsp;</td>
                 <td>&nbsp;</td>
+                {isOrg32 && <td>&nbsp;</td>}
                 <td>&nbsp;</td>
                 <td>&nbsp;</td>
                 <td>&nbsp;</td>
@@ -328,6 +332,7 @@ const InvoicePrint = React.forwardRef(({ invoiceData = {}, orgId }, ref) => {
               <td>
                 <strong>Totals</strong>
               </td>
+              {isOrg32 && <td></td>}
               <td></td>
               <td>
                 <strong>{fmtINR(totals.amount)}</strong>

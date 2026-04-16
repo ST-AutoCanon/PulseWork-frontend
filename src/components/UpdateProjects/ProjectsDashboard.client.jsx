@@ -32,7 +32,7 @@ const getInvoiceTypeKey = (type) => {
     case "Purchase Order":
       return "po";
     case "Credit Note":
-      return "credit_note";
+      return "credit";
     default:
       return "tax";
   }

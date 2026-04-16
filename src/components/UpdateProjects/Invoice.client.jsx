@@ -55,6 +55,7 @@ const Invoice = ({ onBack, project }) => {
   );
   const API_KEY = process.env.NEXT_PUBLIC_API_KEY;
   const orgId = user?.orgId ?? user?.org_id ?? null;
+  const isOrg32 = Number(orgId) === 32;
 
   const buildHeaders = () => {
     const h = {
@@ -88,9 +89,16 @@ const Invoice = ({ onBack, project }) => {
   const [referenceId, setReferenceId] = useState("");
   const [referenceDate, setReferenceDate] = useState("");
 
-  const [lineItems, setLineItems] = useState([
-    { description: "", hsnSac: "", quantity: 1, rate: 0, total: 0 },
-  ]);
+  const createEmptyLineItem = () => ({
+    description: "",
+    partNumber: "",
+    hsnSac: "",
+    quantity: 1,
+    rate: 0,
+    total: 0,
+  });
+
+  const [lineItems, setLineItems] = useState([createEmptyLineItem()]);
 
   const [gst, setGST] = useState("18");
   const [editingInvoiceId, setEditingInvoiceId] = useState(null);
@@ -349,7 +357,11 @@ const Invoice = ({ onBack, project }) => {
     });
     setSubTotal(newSubTotal);
     setLineItems(updated);
-  }, [lineItems.map((li) => `${li.quantity}:${li.rate}`).join("|")]);
+  }, [
+    lineItems
+      .map((li) => `${li.quantity}:${li.rate}:${li.partNumber || ""}`)
+      .join("|"),
+  ]);
 
   useEffect(() => {
     const base = parseFloat(subTotal) || 0;
@@ -389,8 +401,22 @@ const Invoice = ({ onBack, project }) => {
   const handleAddLineItem = () => {
     setLineItems((prev) => [
       ...prev,
-      { description: "", hsnSac: "", quantity: 1, rate: 0, total: 0 },
+      {
+        description: "",
+        partNumber: "",
+        hsnSac: "",
+        quantity: 1,
+        rate: 0,
+        total: 0,
+      },
     ]);
+  };
+
+  const handleRemoveLineItem = (index) => {
+    setLineItems((prev) => {
+      if (prev.length <= 1) return prev;
+      return prev.filter((_, i) => i !== index);
+    });
   };
 
   const handleAddInvoice = () => {
@@ -409,7 +435,14 @@ const Invoice = ({ onBack, project }) => {
     setReferenceId("");
     setReferenceDate("");
     setLineItems([
-      { description: "", hsnSac: "", quantity: 1, rate: 0, total: 0 },
+      {
+        description: "",
+        partNumber: "",
+        hsnSac: "",
+        quantity: 1,
+        rate: 0,
+        total: 0,
+      },
     ]);
     setGST("18");
     setSubTotal(0);
@@ -452,6 +485,7 @@ const Invoice = ({ onBack, project }) => {
       terms,
       lineItems: lineItems.map((item) => ({
         description: item.description || "",
+        partNumber: item.partNumber || "",
         hsnSac: item.hsnSac || "",
         quantity: item.quantity,
         rate: item.rate,
@@ -551,17 +585,34 @@ const Invoice = ({ onBack, project }) => {
       const normalizedItems = parsedItems.length
         ? parsedItems.map((item) => ({
             description: item.description || "",
+            partNumber: item.partNumber || "",
             hsnSac: item.hsnSac || item.hsn || "",
             quantity: item.quantity ?? 1,
             rate: item.rate ?? 0,
             total: item.total ?? 0,
           }))
-        : [{ description: "", hsnSac: "", quantity: 1, rate: 0, total: 0 }];
+        : [
+            {
+              description: "",
+              partNumber: "",
+              hsnSac: "",
+              quantity: 1,
+              rate: 0,
+              total: 0,
+            },
+          ];
 
       setLineItems(normalizedItems);
     } else {
       setLineItems([
-        { description: "", hsnSac: "", quantity: 1, rate: 0, total: 0 },
+        {
+          description: "",
+          partNumber: "",
+          hsnSac: "",
+          quantity: 1,
+          rate: 0,
+          total: 0,
+        },
       ]);
     }
 
@@ -1161,6 +1212,7 @@ const Invoice = ({ onBack, project }) => {
                           <label>Sl No.</label>
                           <input type="text" value={index + 1} readOnly />
                         </div>
+
                         <div className="description-field">
                           <label>Description</label>
                           <input
@@ -1175,6 +1227,24 @@ const Invoice = ({ onBack, project }) => {
                             }
                           />
                         </div>
+
+                        {isOrg32 && (
+                          <div className="description-field">
+                            <label>Parts Number</label>
+                            <input
+                              type="text"
+                              value={item.partNumber || ""}
+                              onChange={(e) =>
+                                handleLineItemChange(
+                                  index,
+                                  "partNumber",
+                                  e.target.value,
+                                )
+                              }
+                            />
+                          </div>
+                        )}
+
                         <div className="hsn-field">
                           <label>HSN/SAC</label>
                           <input
@@ -1189,6 +1259,7 @@ const Invoice = ({ onBack, project }) => {
                             }
                           />
                         </div>
+
                         <div className="qty-field">
                           <label>Qty</label>
                           <input
@@ -1203,6 +1274,7 @@ const Invoice = ({ onBack, project }) => {
                             }
                           />
                         </div>
+
                         <div className="amount-field">
                           <label>Amount</label>
                           <input
@@ -1217,10 +1289,24 @@ const Invoice = ({ onBack, project }) => {
                             }
                           />
                         </div>
+
                         <div className="total-field">
                           <label>Total</label>
                           <input type="number" value={item.total} readOnly />
                         </div>
+
+                        <div className="row-action-cell">
+                          <button
+                            type="button"
+                            className="remove-line-item-btn"
+                            onClick={() => handleRemoveLineItem(index)}
+                            disabled={lineItems.length === 1}
+                            title="Remove row"
+                          >
+                            −
+                          </button>
+                        </div>
+
                         {index === lineItems.length - 1 && (
                           <div className="add-button-cell">
                             <button

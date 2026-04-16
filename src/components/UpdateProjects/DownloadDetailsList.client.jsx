@@ -45,6 +45,9 @@ const normalizeInvoiceTypeLabel = (value) => {
     case "po":
     case "purchase order":
       return "Purchase Order";
+    case "credit":
+    case "credit note":
+      return "Credit Note";
     default:
       return "Tax Invoice";
   }
@@ -58,6 +61,7 @@ const normalizeInvoiceTypeKey = (value) => {
   if (t.includes("proforma")) return "proforma";
   if (t.includes("quotation")) return "quotation";
   if (t.includes("purchase order") || t === "po") return "po";
+  if (t.includes("credit note") || t === "credit") return "credit";
   return "tax";
 };
 
@@ -65,6 +69,7 @@ const normalizeLineItems = (items) => {
   if (!Array.isArray(items)) return [];
   return items.map((item) => ({
     description: item?.description || item?.name || "",
+    partNumber: item?.partNumber || item?.part_number || "",
     hsnSac: item?.hsnSac || item?.hsn || "",
     quantity: item?.quantity ?? item?.qty ?? 0,
     rate: item?.rate ?? item?.unitPrice ?? 0,
@@ -183,6 +188,7 @@ const DownloadDetailsList = ({ refreshKey, customers = [] }) => {
 
   const buildDownloadDetails = (record) => {
     const matchedCustomer = findCustomerForRecord(record);
+    const lineItems = Array.isArray(record.lineItems) ? record.lineItems : [];
 
     return {
       selectedCustomerId: matchedCustomer?.id ? String(matchedCustomer.id) : "",
@@ -197,21 +203,23 @@ const DownloadDetailsList = ({ refreshKey, customers = [] }) => {
       referenceId: record.referenceId,
       placeOfSupply: record.placeOfSupply,
       withSeal: record.withSeal,
-      lineItems: Array.isArray(record.lineItems)
-        ? record.lineItems.map((item) => ({
-            description: item?.description || "",
-            hsnSac: item?.hsnSac || item?.hsn || "",
-            quantity: item?.quantity ?? 0,
-            rate: item?.rate ?? 0,
-            total: item?.total ?? 0,
-          }))
-        : [],
+      lineItems: lineItems.map((item) => ({
+        description: item?.description || "",
+        partNumber: item?.partNumber || item?.part_number || "",
+        hsnSac: item?.hsnSac || item?.hsn || "",
+        quantity: item?.quantity ?? 0,
+        rate: item?.rate ?? 0,
+        total: item?.total ?? 0,
+      })),
       subTotal: record.subTotal,
       gst: record.gst,
       gstAmount: record.gstAmount,
       advance: record.advance,
       totalExcludingTax: record.totalExcludingTax,
       totalIncludingTax: record.totalIncludingTax,
+      roundOff: Boolean(record.roundOff),
+      roundOffAmount: record.roundOffAmount,
+      finalTotalAmount: record.finalTotalAmount,
       terms: record.terms,
     };
   };
@@ -225,13 +233,13 @@ const DownloadDetailsList = ({ refreshKey, customers = [] }) => {
 
   const handleEdit = (record) => {
     const matchedCustomer = findCustomerForRecord(record);
+    const normalizedType = normalizeInvoiceTypeKey(record.invoiceType);
 
     setEditingRecord({
       id: record.id,
-      invoiceType: record.invoiceType,
+      invoiceType: normalizedType,
       invoiceNumber: record.invoiceNumber,
 
-      // ✅ ADD THIS
       selectedCustomerId: matchedCustomer?.id ? String(matchedCustomer.id) : "",
 
       to: record.toName || record.to || "",
@@ -254,6 +262,10 @@ const DownloadDetailsList = ({ refreshKey, customers = [] }) => {
       advance: record.advance || 0,
       totalExcludingTax: record.totalExcludingTax || 0,
       totalIncludingTax: record.totalIncludingTax || 0,
+      roundOff: Boolean(record.roundOff),
+      roundOffAmount: record.roundOffAmount || 0,
+      finalTotalAmount:
+        record.finalTotalAmount || record.totalIncludingTax || 0,
       terms: record.terms || "",
     });
 
@@ -303,6 +315,9 @@ const DownloadDetailsList = ({ refreshKey, customers = [] }) => {
             advance: payload.advance,
             totalExcludingTax: payload.totalExcludingTax,
             totalIncludingTax: payload.totalIncludingTax,
+            roundOff: payload.roundOff,
+            roundOffAmount: payload.roundOffAmount,
+            finalTotalAmount: payload.finalTotalAmount,
             terms: payload.terms,
           }),
         },
@@ -411,13 +426,15 @@ const DownloadDetailsList = ({ refreshKey, customers = [] }) => {
             {records.map((r, idx) => {
               const totalInc = safeNumber(r.totalIncludingTax);
               const lineItems = Array.isArray(r.lineItems) ? r.lineItems : [];
+              const rowType = normalizeInvoiceTypeKey(r.invoiceType);
+              const typeLabel = normalizeInvoiceTypeLabel(r.invoiceType);
 
               return (
                 <React.Fragment key={r.id ?? `${idx}-${r.invoiceNumber || ""}`}>
                   <tr>
                     <td>{idx + 1}</td>
                     <td>{r.invoiceNumber ?? "—"}</td>
-                    <td>{r.invoiceType ?? "—"}</td>
+                    <td>{typeLabel}</td>
                     <td>{r.toName ?? r.to ?? "—"}</td>
                     <td>{formatDateIST(r.invoiceDate)}</td>
                     <td>{totalInc.toFixed(2)}</td>
@@ -462,12 +479,21 @@ const DownloadDetailsList = ({ refreshKey, customers = [] }) => {
                   {expandedRows.includes(r.id) && (
                     <tr className="expanded-content">
                       <td colSpan={9}>
-                        <strong>Items:</strong>
+                        <strong>
+                          {rowType === "credit"
+                            ? "Return Details:"
+                            : rowType === "po"
+                              ? "Order Details:"
+                              : rowType === "quotation"
+                                ? "Estimate Details:"
+                                : "Invoice Details:"}
+                        </strong>
                         <table className="line-items-table">
                           <thead>
                             <tr>
                               <th>Sl. No.</th>
                               <th>Description</th>
+                              <th>Part No.</th>
                               <th>HSN/SAC</th>
                               <th>Qty</th>
                               <th>Rate</th>
@@ -477,7 +503,7 @@ const DownloadDetailsList = ({ refreshKey, customers = [] }) => {
                           <tbody>
                             {lineItems.length === 0 ? (
                               <tr>
-                                <td colSpan={6}>No line items</td>
+                                <td colSpan={7}>No line items</td>
                               </tr>
                             ) : (
                               lineItems.map((item, i) => (
@@ -485,6 +511,9 @@ const DownloadDetailsList = ({ refreshKey, customers = [] }) => {
                                   <td>{i + 1}</td>
                                   <td>
                                     {item.description ?? item.name ?? "—"}
+                                  </td>
+                                  <td>
+                                    {item.partNumber ?? item.part_number ?? "—"}
                                   </td>
                                   <td>{item.hsnSac ?? item.hsn ?? "—"}</td>
                                   <td>{item.quantity ?? item.qty ?? "—"}</td>
@@ -505,7 +534,15 @@ const DownloadDetailsList = ({ refreshKey, customers = [] }) => {
                         </table>
 
                         <div className="order-details">
-                          <strong>Order Details:</strong>
+                          <strong>
+                            {rowType === "credit"
+                              ? "Return From:"
+                              : rowType === "po"
+                                ? "Order To:"
+                                : rowType === "quotation"
+                                  ? "Estimate For:"
+                                  : "Bill To:"}
+                          </strong>
                           <ul className="other-info-list">
                             <li>
                               <strong>Address:</strong> {r.address ?? "—"}
@@ -523,15 +560,36 @@ const DownloadDetailsList = ({ refreshKey, customers = [] }) => {
                               <strong>State:</strong> {r.state ?? "—"}
                             </li>
                             <li>
-                              <strong>Reference:</strong> {r.referenceId ?? "—"}
+                              <strong>
+                                {rowType === "credit"
+                                  ? "Invoice No:"
+                                  : rowType === "po"
+                                    ? "Reference:"
+                                    : "Reference:"}
+                              </strong>{" "}
+                              {r.referenceId ?? "—"}
                               {r.referenceDate
                                 ? ` on ${formatDateIST(r.referenceDate)}`
                                 : ""}
                             </li>
                             <li>
-                              <strong>Place of Supply:</strong>{" "}
-                              {r.placeOfSupply ?? "—"}
+                              <strong>
+                                {rowType === "credit"
+                                  ? "Invoice Date:"
+                                  : "Place of Supply:"}
+                              </strong>{" "}
+                              {rowType === "credit"
+                                ? r.invoiceDate
+                                  ? formatDateIST(r.invoiceDate)
+                                  : "—"
+                                : (r.placeOfSupply ?? "—")}
                             </li>
+                            {rowType !== "credit" && (
+                              <li>
+                                <strong>Place of Supply:</strong>{" "}
+                                {r.placeOfSupply ?? "—"}
+                              </li>
+                            )}
                             <li>
                               <strong>With Seal:</strong>{" "}
                               {r.withSeal ? "Yes" : "No"}
@@ -539,6 +597,13 @@ const DownloadDetailsList = ({ refreshKey, customers = [] }) => {
                             <li>
                               <strong>Sub Total:</strong>{" "}
                               {safeNumber(r.subTotal).toFixed(2)}
+                            </li>
+                            <li>
+                              <strong>Round Off:</strong>{" "}
+                              {r.roundOff ? "Yes" : "No"}{" "}
+                              {r.roundOff
+                                ? `(${safeNumber(r.roundOffAmount).toFixed(2)})`
+                                : ""}
                             </li>
                             <li>
                               <strong>Advance:</strong>{" "}
@@ -554,6 +619,12 @@ const DownloadDetailsList = ({ refreshKey, customers = [] }) => {
                             <li>
                               <strong>Total Excl. Tax:</strong>{" "}
                               {safeNumber(r.totalExcludingTax).toFixed(2)}
+                            </li>
+                            <li>
+                              <strong>Total Incl. Tax:</strong>{" "}
+                              {safeNumber(
+                                r.finalTotalAmount ?? r.totalIncludingTax,
+                              ).toFixed(2)}
                             </li>
                             <li>
                               <strong>Terms:</strong> {r.terms ?? "—"}

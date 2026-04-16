@@ -42,8 +42,7 @@ const normalizeInvoiceTypeKey = (value) => {
   if (t.includes("proforma")) return "proforma";
   if (t.includes("quotation")) return "quotation";
   if (t.includes("purchase order") || t === "po") return "po";
-  if (t.includes("credit note") || t === "credit_note" || t === "creditnote")
-    return "credit_note";
+  if (t.includes("credit note") || t === "credit") return "credit";
   return "tax";
 };
 
@@ -55,8 +54,7 @@ const normalizeInvoiceTypeLabel = (value) => {
   if (t.includes("proforma")) return "Proforma Invoice";
   if (t.includes("quotation")) return "Quotation";
   if (t.includes("purchase order") || t === "po") return "Purchase Order";
-  if (t.includes("credit note") || t === "credit_note" || t === "creditnote")
-    return "Credit Note";
+  if (t.includes("credit note") || t === "credit") return "Credit Note";
   return "Tax Invoice";
 };
 
@@ -81,7 +79,7 @@ const DownloadForm = ({
   const invoiceTypeKey = normalizeInvoiceTypeKey(
     initialData?.invoiceType || invoiceType,
   );
-  const isCreditNote = invoiceTypeKey === "credit_note";
+  const isCreditNote = invoiceTypeKey === "credit";
 
   const [selectedCustomerId, setSelectedCustomerId] = useState("");
   const [customerSearch, setCustomerSearch] = useState("");

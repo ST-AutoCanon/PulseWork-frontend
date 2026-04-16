@@ -112,7 +112,7 @@ const Sidebar = ({ setActiveContent }) => {
       "/payrollSummary": () => <PayrollSummary />,
       "/messenger": () => <Chat />,
       "/EmployeeLogin": () => <EmployeeLogin />,
-       "/FormBuilder": () => <DynamicFormBuilder />,
+       "/Formify": () => <DynamicFormBuilder />,
 
       "/reimbursement": (role) => {
         if (role === "Admin") return <RbAdmin />;

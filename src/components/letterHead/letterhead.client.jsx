@@ -50,6 +50,33 @@ const showAlert = (message, title = "") => {
     title: "",
     message: "",
   });
+
+  // Bi-directional field mapping: display -> db field
+  const FIELD_MAPPING = {
+    "recipient name": "recipient_name",
+    "employee name": "employee_name",
+    "position": "position",
+    "mobile number": "mobile_number",
+    "phone number": "phone_number",
+    "contact number": "contact_number",
+    "email": "email",
+    "mail": "email",
+    "date": "date",
+    "title": "title",
+    "subject": "subject",
+    "address": "address",
+    "signature": "signature",
+    "annual salary": "annual_salary",
+    "date of appointment": "date_of_appointment",
+    "effective date": "effective_date",
+    "place": "place",
+    "company name": "company_name",
+    "company address": "company_address",
+    "company address line2": "company_address_line2",
+    "gstin number": "gstin_number",
+    "cin number": "cin_number"
+  };
+
   // Saved Letters
   const [savedLetters, setSavedLetters] = useState([]);
   
@@ -114,100 +141,76 @@ const showAlert = (message, title = "") => {
     }
   };
 
-const handleFieldChange = (key, value) => {
-  const cleanKey = key.trim().replace(/\s+/g, ' ');
-  const lowerKey = cleanKey.toLowerCase();
+const handleFieldChange = (displayKey, value) => {
+  const lowerKey = displayKey.toLowerCase();
+  let processedValue = value;
+  let errorMsg = '';
 
   /* ================= EMAIL ================= */
-  if (
-    lowerKey.includes("email") ||
-    lowerKey.includes("mail")
-  ) {
-    const cleaned = value.replace(/[^a-zA-Z0-9@._-]/g, '');
-
+  if (lowerKey.includes('email') || lowerKey.includes('mail')) {
+    processedValue = value.replace(/[^a-zA-Z0-9@._-]/g, '');
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-    setFormData(prev => ({
-      ...prev,
-      [cleanKey]: cleaned
-    }));
-
-    setErrors(prev => ({
-      ...prev,
-      [cleanKey]:
-        cleaned && !emailRegex.test(cleaned)
-          ? "Invalid email format"
-          : ""
-    }));
-
-    return;
+    if (processedValue && !emailRegex.test(processedValue)) {
+      errorMsg = 'Invalid email format';
+    }
   }
-
   /* ================= MOBILE ================= */
-  if (
-    lowerKey.includes("mobile") ||
-    lowerKey.includes("phone") ||
-    lowerKey.includes("contact")
+  else if (
+    lowerKey.includes('mobile') ||
+    lowerKey.includes('phone') ||
+    lowerKey.includes('contact')
   ) {
-    const numericValue = value.replace(/\D/g, '').slice(0, 10);
-
-    setFormData(prev => ({
-      ...prev,
-      [cleanKey]: numericValue
-    }));
-
-    return;
+    processedValue = value.replace(/\D/g, '').slice(0, 10);
+  }
+  /* ================= DATE ================= */
+  else if (lowerKey.includes('date')) {
+    processedValue = value;
   }
 
-  /* ================= DATE (FIXED) ================= */
-  if (lowerKey.includes("date")) {
-    // ✅ DO NOT FORMAT HERE
-    // Keep yyyy-MM-dd for input field
-    setFormData(prev => ({
-      ...prev,
-      [cleanKey]: value
-    }));
-
-    return;
-  }
-
-  /* ================= DEFAULT ================= */
   setFormData(prev => ({
     ...prev,
-    [cleanKey]: value
+    [displayKey]: processedValue
+  }));
+
+  setErrors(prev => ({
+    ...prev,
+    [displayKey]: errorMsg
   }));
 };
 
   // Replace Placeholders
-  const replacePlaceholders = (html, data) => {
-    if (!html) return '<p class="letterhead-no-content">Select a letter type to see preview</p>';
+ const replacePlaceholders = (html, data) => {
+  if (!html) return '<p class="letterhead-no-content">Select a letter type to see preview</p>';
 
-    let cleanedHtml = html.replace(/\[([^\]]+)\]/g, match => match.replace(/<[^>]*>/g, ''));
+  let cleanedHtml = html.replace(/\[([^\]]+)\]/g, match => match.replace(/<[^>]*>/g, ''));
 
-    const normalizedData = {};
-    Object.keys(data).forEach(key => {
-      const cleanKey = key.trim().replace(/\s+/g, ' ').toLowerCase();
-      normalizedData[cleanKey] = data[key];
-    });
+  const normalizedData = {};
+  Object.keys(data).forEach(key => {
+    let cleanKey = key.trim().replace(/\s+/g, ' ').toLowerCase();
+    cleanKey = cleanKey.replace(/_/g, ' ');   // ← Added this line
+    normalizedData[cleanKey] = data[key];
+  });
 
-    return cleanedHtml.replace(/\[([^\]]+)\]/g, (match, placeholder) => {
-  const cleanPlaceholder = placeholder.trim().replace(/\s+/g, ' ').toLowerCase();
-  let value = normalizedData[cleanPlaceholder];
+  return cleanedHtml.replace(/\[([^\]]+)\]/g, (match, placeholder) => {
+    let cleanPlaceholder = placeholder.trim().replace(/\s+/g, ' ').toLowerCase();
+    cleanPlaceholder = cleanPlaceholder.replace(/_/g, ' ');   // ← Added this line
 
-  // ✅ Format date ONLY for preview/PDF
-  if (cleanPlaceholder.includes("date") && value) {
-    value = new Date(value).toLocaleDateString('en-GB', {
-      day: '2-digit',
-      month: 'short',
-      year: 'numeric'
-    });
-  }
+    let value = normalizedData[cleanPlaceholder];
 
-  return value && value.trim() !== ''
-    ? value
-    : `<span class="letterhead-placeholder-missing">${match}</span>`;
-});
-  };
+    // Format date for preview/PDF
+    if (cleanPlaceholder.includes("date") && value) {
+      value = new Date(value).toLocaleDateString('en-GB', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric'
+      });
+    }
+
+    return value && value.trim() !== ''
+      ? value
+      : `<span class="letterhead-placeholder-missing">${match}</span>`;
+  });
+};
 
   const livePreviewHtml = useMemo(() => {
     return replacePlaceholders(quillContent, formData);
@@ -224,86 +227,306 @@ const handleFieldChange = (key, value) => {
   };
 
   // Load Letter for Editing
-  const handleEditLetter = (letter) => {
-    // Find matching template
-    const template = templates.find(t => t.letter_type === letter.letter_type);
-    
-    if (!template) {
-      showAlert("Template for this letter not found. Please create a new one.");
-      return;
+  // Load Letter for Editing - FIXED
+// Load Letter for Editing - FIXED & IMPROVED
+// ==================== FIXED handleEditLetter ====================
+
+const formatDateForInput = (dateValue) => {
+
+  if (!dateValue) return "";
+
+  try {
+
+    const date = new Date(dateValue);
+
+    if (isNaN(date)) return "";
+
+    return date.toISOString().split("T")[0];
+
+  } catch (error) {
+
+    return "";
+
+  }
+
+};
+const handleEditLetter = (letter) => {
+
+  console.log("Letter Data:", letter);
+
+  const template = templates.find(
+    t => t.letter_type === letter.letter_type
+  );
+
+  if (!template) {
+    showAlert("Template not found.");
+    return;
+  }
+
+  setSelectedTemplate(template);
+
+  setLetterName(
+    letter.template_name ||
+    letter.letter_type ||
+    ""
+  );
+
+  setEditingId(letter.id);
+  setIsEditing(true);
+
+  const restoredFormData = {};
+
+  /* ================================
+     DATE FIELDS
+  ================================ */
+
+  const formatDate = (value) => {
+
+    if (!value) return "";
+
+    try {
+
+      const d = new Date(value);
+
+      if (isNaN(d.getTime()))
+        return "";
+
+      return d.toISOString().slice(0, 10);
+
+    } catch {
+
+      return "";
+
     }
 
-    setSelectedTemplate(template);
-    setQuillContent(template.content || letter.body || '');
-    setLetterName(letter.template_name || '');
-    setEditingId(letter.id);
-    setIsEditing(true);
-
-    // Extract placeholders and fill formData from saved body (simple approach)
-    const regex = /\[([^\]]+)\]/g;
-    const matches = [...(template.content || '').matchAll(regex)];
-    const initialData = {};
-    
-    matches.forEach(match => {
-      const fieldName = match[1].trim();
-      initialData[fieldName] = ''; // Will be filled better if you store field values separately
-    });
-
-    // Try to restore values from saved body (basic)
-    setFormData(initialData);
-
-    // Scroll to top
-    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
+
+  restoredFormData["Date"] =
+    formatDate(letter.date);
+
+  restoredFormData["Date Of Appointment"] =
+    formatDate(
+      letter.date_of_appointment
+    );
+
+  restoredFormData["Effective Date"] =
+    formatDate(
+      letter.effective_date
+    );
+
+  /* ================================
+     SUBJECT (NEW FIX)
+  ================================ */
+
+  if (letter.subject) {
+
+    restoredFormData["Subject"] =
+      letter.subject;
+
+  }
+
+  /* ================================
+     NAME FIELDS
+  ================================ */
+
+  if (letter.recipient_name) {
+
+    restoredFormData["Recipient Name"] =
+      letter.recipient_name;
+
+  }
+
+  if (letter.employee_name) {
+
+    restoredFormData["Employee Name"] =
+      letter.employee_name;
+
+  }
+
+  /* ================================
+     MOBILE
+  ================================ */
+
+  if (letter.mobile_number) {
+
+    restoredFormData["Mobile Number"] =
+      letter.mobile_number;
+
+    restoredFormData["Contact Number"] =
+      letter.mobile_number;
+
+  }
+
+  /* ================================
+     EMAIL
+  ================================ */
+
+  if (letter.email) {
+
+    restoredFormData["Email"] =
+      letter.email;
+
+    restoredFormData["Mail"] =
+      letter.email;
+
+  }
+
+  /* ================================
+     POSITION
+  ================================ */
+
+  if (letter.position) {
+
+    restoredFormData["Position"] =
+      letter.position;
+
+  }
+
+  /* ================================
+     COMPANY NAME
+  ================================ */
+
+  if (letter.company_name) {
+
+    restoredFormData["Company Name"] =
+      letter.company_name;
+
+  }
+
+  /* ================================
+     ADDRESS
+  ================================ */
+
+  if (letter.address) {
+
+    restoredFormData["Address"] =
+      letter.address;
+
+  }
+
+  /* ================================
+     PLACE
+  ================================ */
+
+  if (letter.place) {
+
+    restoredFormData["Place"] =
+      letter.place;
+
+  }
+
+  /* ================================
+     TITLE
+  ================================ */
+
+  if (letter.title) {
+
+    restoredFormData["Title"] =
+      letter.title;
+
+  }
+
+  /* ================================
+     SALARY
+  ================================ */
+
+  if (letter.annual_salary) {
+
+    restoredFormData["Annual Salary"] =
+      letter.annual_salary;
+
+  }
+
+  console.log(
+    "Restored Form Data:",
+    restoredFormData
+  );
+
+  setFormData(restoredFormData);
+
+  /* ================================
+     LOAD EDITOR CONTENT
+  ================================ */
+
+  setTimeout(() => {
+
+    setQuillContent(
+      template.content ||
+      letter.body ||
+      ""
+    );
+
+  }, 100);
+
+  window.scrollTo({
+    top: 0,
+    behavior: "smooth"
+  });
+
+};
 
   // Save or Update Letter
   const handleSaveOrUpdate = async () => {
-    if (!selectedTemplate || !extractedOrgId) {
-      showAlert("Please select a template and ensure you are logged in.");
-      return;
+  if (!selectedTemplate || !extractedOrgId) {
+    showAlert("Please select a template and ensure you are logged in.");
+    return;
+  }
+  if (!letterName.trim()) {
+    showAlert("Please enter a letter name");
+    return;
+  }
+
+  setSaving(true);
+
+  try {
+    // Inside handleSaveOrUpdate
+const payload = {
+  letter_type: selectedTemplate.letter_type,
+  template_name: letterName.trim(),
+  body: livePreviewHtml,
+  subject: formData["Subject"] || formData["subject"] || selectedTemplate.letter_type,
+};
+
+// Add all form fields
+Object.entries(formData).forEach(([display, value]) => {
+  if (value) {
+    const lowerDisplay = display.toLowerCase().trim();
+    const dbKey = FIELD_MAPPING[lowerDisplay];
+    
+    if (dbKey) {
+      payload[dbKey] = value;
+    } else {
+      // For completely new fields like bank_name, employee_id, etc.
+      const snakeKey = lowerDisplay.replace(/\s+/g, '_');
+      payload[snakeKey] = value;
     }
-    if (!letterName.trim()) {
-      aleshowAlert("Please enter a letter name");
-      return;
+  }
+});
+
+    let res;
+    if (isEditing && editingId) {
+      res = await axios.put(`${BACKEND_URL}/api/letterheads/update/${editingId}`, payload, {
+        withCredentials: true,
+        headers: { 'x-org-id': extractedOrgId }
+      });
+      showAlert("Letter updated successfully!");
+    } else {
+      res = await axios.post(`${BACKEND_URL}/api/letterheads/add`, payload, {
+        withCredentials: true,
+        headers: { 'x-org-id': extractedOrgId }
+      });
+      showAlert("Letter saved successfully!");
     }
 
-    setSaving(true);
-
-    try {
-      const payload = {
-        letter_type: selectedTemplate.letter_type,
-        template_name: letterName.trim(),
-        body: livePreviewHtml,
-        subject: formData.Subject || formData.subject || '',
-        ...formData
-      };
-
-      let res;
-      if (isEditing && editingId) {
-        // Update existing letter
-        res = await axios.put(`${BACKEND_URL}/api/letterheads/update/${editingId}`, payload, {
-          withCredentials: true,
-          headers: { 'x-org-id': extractedOrgId }
-        });
-        showAlert("Letter updated successfully!");
-      } else {
-        // Create new letter
-        res = await axios.post(`${BACKEND_URL}/api/letterheads/add`, payload, {
-          withCredentials: true,
-          headers: { 'x-org-id': extractedOrgId }
-        });
-        showAlert("Letter saved successfully!");
-      }
-
-      resetForm();
-      fetchSavedLetters();
-    } catch (error) {
-      console.error("Save/Update error:", error);
-      showAlert("Failed to save letter. Please try again.");
-    } finally {
-      setSaving(false);
-    }
-  };
+    resetForm();
+    fetchSavedLetters();
+  } catch (error) {
+    console.error("Save/Update error:", error);
+    showAlert("Failed to save letter. Please try again.");
+  } finally {
+    setSaving(false);
+  }
+};
 
   // Generate PDF
 const generatePDF = async (
@@ -320,10 +543,11 @@ const generatePDF = async (
         ? savedLetter.body
         : livePreviewHtml;
 
-    if (!contentHtml) {
-      showAlert("No content available");
-      return;
-    }
+   if (!contentHtml) {
+  showAlert("No content available");
+  setGenerating(false); // ⭐ FIX
+  return;
+}
 
     /* =========================
        CREATE TEMP CONTENT
@@ -571,10 +795,25 @@ for (let i = 1; i <= totalPages; i++) {
 
   const placeholderFields = useMemo(() => {
     if (!selectedTemplate?.content) return [];
+
     const textOnly = selectedTemplate.content.replace(/<[^>]*>/g, '');
     const regex = /\[([^\]]+)\]/g;
     const matches = [...textOnly.matchAll(regex)];
-    return [...new Set(matches.map(m => m[1].trim().replace(/\s+/g, ' ')))];
+    
+    const uniquePlaceholders = [...new Set(matches.map(m => m[1].trim().toLowerCase()))];
+
+    // Filter mappings that match template placeholders
+    return Object.entries(FIELD_MAPPING)
+      .filter(([displayLower]) => 
+        uniquePlaceholders.some(ph => 
+          ph.replace(/_/g, ' ').toLowerCase().includes(displayLower) ||
+          displayLower.includes(ph.replace(/_/g, ' '))
+        )
+      )
+      .map(([displayLower, dbKey]) => ({
+        display: displayLower.replace(/\b\w/g, l => l.toUpperCase()),
+        dbKey
+      }));
   }, [selectedTemplate]);
 
   if (loading) return <div className="letterhead-no-template">Loading letter templates...</div>;
@@ -601,7 +840,7 @@ for (let i = 1; i <= totalPages; i++) {
           <div className="letterhead-fields-section">
             <h3>Fill Details</h3>
             <div className="letterhead-dynamic-form">
-            {placeholderFields.map(field => {
+{(placeholderFields || []).map(({display: field}) => {
 
   const lowerField = field.toLowerCase();
 
@@ -619,23 +858,22 @@ for (let i = 1; i <= totalPages; i++) {
     <div key={field} className="letterhead-form-group">
       <label>{field}</label>
 
-     <input
-  type={
-    isDateField ? "date" :
-    isEmailField ? "email" :
-    "text"
-  }
-  value={formData[field] || ''}
-  onChange={(e) => handleFieldChange(field, e.target.value)}
-  placeholder={`Enter ${field}`}
-/>
+      <input
+        type={
+          isDateField ? "date" :
+          isEmailField ? "email" :
+          "text"
+        }
+        value={formData[field] || ''}
+        onChange={(e) => handleFieldChange(field, e.target.value)}
+        placeholder={`Enter ${field}`}
+      />
 
-{/* 🔴 Show error */}
-{errors[field] && (
-  <span style={{ color: "red", fontSize: "12px" }}>
-    {errors[field]}
-  </span>
-)}
+      {errors[field] && (
+        <span style={{ color: "red", fontSize: "12px" }}>
+          {errors[field]}
+        </span>
+      )}
     </div>
   );
 })}
@@ -700,9 +938,9 @@ for (let i = 1; i <= totalPages; i++) {
             <div className="letterhead-preview-section">
               <h3>Live Preview</h3>
               <div 
-                className="letterhead-live-preview-box"
-                dangerouslySetInnerHTML={{ __html: livePreviewHtml }}
-              />
+  className="letterhead-live-preview-box ql-editor"
+  dangerouslySetInnerHTML={{ __html: livePreviewHtml }}
+/>
             </div>
           </div>
         )}

@@ -1,6 +1,24 @@
 /* letterhead.css - Professional Letterhead Editor */
 /* NEW Vertical Layout */
+/* ===============================
+   QUILL ALIGNMENT FIX
+================================ */
 
+.ql-align-center {
+  text-align: center;
+}
+
+.ql-align-right {
+  text-align: right;
+}
+
+.ql-align-left {
+  text-align: left;
+}
+
+.ql-align-justify {
+  text-align: justify;
+}
 .letterhead-content-vertical {
   display: flex;
   flex-direction: column;
@@ -480,10 +498,17 @@
 /* PDF PAGE */
 
 .pdf-page {
+
   position: relative;
+
   width: 210mm;
+
   min-height: 297mm;
+
   background: white;
+
+  overflow: hidden;   /* prevents bleed */
+
 }
 
 /* HEADER */
@@ -513,8 +538,36 @@
 /* BODY CONTENT */
 
 .pdf-body {
-  padding: 120px 40px 100px 40px;
+
+  padding: 120px 25mm 100px 25mm;  /* FIXED */
+
   min-height: 200mm;
+
+  box-sizing: border-box;
+
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+
+}
+.pdf-body p {
+
+  margin-bottom: 12px;
+
+  text-align: justify;
+
+  word-break: break-word;
+
+  overflow-wrap: break-word;
+
+}
+.ql-editor {
+
+  white-space: normal !important;
+
+  word-break: break-word;
+
+  overflow-wrap: break-word;
+
 }
 
 /* WATERMARK */

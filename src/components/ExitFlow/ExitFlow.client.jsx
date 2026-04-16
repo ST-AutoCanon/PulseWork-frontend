@@ -8,6 +8,8 @@ import "./ExitFlow.css";
 import { createPortal } from "react-dom";
 import Modal from "../Modal/Modal.client";
 import ClearanceModal from "./ClearanceModal.jsx";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faStar } from "@fortawesome/free-solid-svg-icons";
 export default function ExitFlow() {
   const { user } = useAuth();
   const employeeId = user?.employeeId ?? user?.employee_id ?? user?.id ?? null;
@@ -58,6 +60,7 @@ export default function ExitFlow() {
   const [clearanceActiveTab, setClearanceActiveTab] = useState("kt");
   const [ktPlans, setKtPlans] = useState([]);
   const [assets, setAssets] = useState([]);
+  const [editableFinalLwd, setEditableFinalLwd] = useState("");   // For editing at clearance stage
   const roleLower = role?.toLowerCase() || "";
   const isAdmin = roleLower === "admin";
   const isHr = roleLower === "hr" || roleLower === "human resource" || roleLower === "hr admin";
@@ -86,6 +89,10 @@ export default function ExitFlow() {
     name: "",
     returnDate: "",
   });
+  // NEW: HR Evaluation - Only for All tab + Clearance stage
+// Replace the old 4-rating state with this simple one
+const [overallRating, setOverallRating] = useState(0);   // 1 to 5
+const [hrComments, setHrComments] = useState("");
   const [exitCompleted, setExitCompleted] = useState(false);
   const [showClearanceModal, setShowClearanceModal] = useState(false);
   useEffect(() => {
@@ -115,6 +122,27 @@ useEffect(() => {
   };
   init();
 }, [employeeId, orgId]);
+// 🔥 RESTORE HR RATING & COMMENTS WHEN OPENING CLEARANCE
+useEffect(() => {
+  if (selectedRequest?.type === "clearance" && activeTab === "all" && (isHr || isAdmin)) {
+    setOverallRating(selectedRequest.overall_rating || 0);
+    setHrComments(selectedRequest.hr_comments || "");
+  } else {
+    // Reset when modal is closed or different type
+    setOverallRating(0);
+    setHrComments("");
+  }
+}, [selectedRequest, activeTab, isHr, isAdmin]);
+// Auto-fill editableFinalLwd when clearance review modal opens
+// Auto-fill editableFinalLwd when clearance review opens
+useEffect(() => {
+  if (selectedRequest?.type === "clearance") {
+    const cleanDate = getCleanDate(selectedRequest.final_lwd);
+    setEditableFinalLwd(cleanDate);
+  } else {
+    setEditableFinalLwd("");
+  }
+}, [selectedRequest]);
 // NEW: Fetch team/all requests when relevant tab is active
 useEffect(() => {
   if (activeTab === "team" || activeTab === "all") {
@@ -142,6 +170,55 @@ useEffect(() => {
       console.error("[SELF] Fetch failed:", err.message);
     }
   };
+ const handleUpdateFinalLwd = async () => {
+  if (!editableFinalLwd || !selectedRequest?.id) {
+    showAlert("Please select a valid Last Working Day", "Error", "warning");
+    return;
+  }
+
+  setLoading(true);
+  try {
+    const res = await axios.put(
+      `${BACKEND_URL}/api/clearance/update-final-lwd`,   // ← CHANGED TO /clearance/
+      {
+        exitId: selectedRequest.id,
+        finalLwd: editableFinalLwd,
+      },
+      {
+        headers: {
+          "x-api-key": API_KEY,
+          "x-employee-id": employeeId,
+          "x-org-id": orgId,
+        },
+        withCredentials: true,
+      }
+    );
+
+    if (res.data?.success) {
+      showAlert("Last Working Day updated successfully!", "Success", "success");
+      
+      // Refresh data
+      await fetchAllTeamRequests();
+      if (selectedRequest?.id) {
+        await fetchClearanceItems(selectedRequest.id);
+      }
+      
+      // Update local state
+      setSelectedRequest(prev => ({ ...prev, final_lwd: editableFinalLwd }));
+      setEditableFinalLwd("");   // clear the input after success
+    }
+
+  } catch (err) {
+    console.error("Update LWD Error:", err.response?.data || err.message);
+    showAlert(
+      err.response?.data?.error || "Failed to update LWD. Please try again.", 
+      "Error", 
+      "error"
+    );
+  } finally {
+    setLoading(false);
+  }
+};
   const fetchClearanceItems = async (exitId) => {
     if (!exitId) return;
     try {
@@ -204,7 +281,7 @@ useEffect(() => {
       setLoadingTeamMembers(false);
     }
   };
-  const fetchAllTeamRequests = async () => {
+ const fetchAllTeamRequests = async () => {
   try {
     let url;
     if (activeTab === "all") {
@@ -212,8 +289,9 @@ useEffect(() => {
     } else if (activeTab === "team") {
       url = `${BACKEND_URL}/api/exit/my-team/all`;
     } else {
-      return; // not a team/all tab → skip
+      return;
     }
+
     const res = await axios.get(url, {
       headers: {
         "x-api-key": API_KEY,
@@ -222,26 +300,65 @@ useEffect(() => {
       },
       withCredentials: true,
     });
-    const requests = res.data?.data || res.data || [];
-    console.log("[TEAM REQUESTS] Raw response:", res.data);
-    console.log("[TEAM REQUESTS] Total count:", requests.length);
-    console.log("[TEAM REQUESTS] All statuses:", requests.map(r => ({ id: r.id, emp_id: r.employee_id, supervisor_status: r.supervisor_status, hr_status: r.hr_status, withdrawal_supervisor_status: r.withdrawal_supervisor_status, withdrawal_hr_status: r.withdrawal_hr_status })));
-    setAllTeamRequests(requests);
-    // Filter pending data based on role
+
+    const rawRequests = res.data?.data || res.data || [];
+
+    console.log("[TEAM REQUESTS] Raw response received:", rawRequests.length, "items");
+
+    // 🔥 PARSE HR RATING & COMMENTS FOR FRONTEND
+    const processedRequests = rawRequests.map((req) => {
+      let overallRating = 0;
+      let hrComments = "";
+
+      // Parse hr_ratings (which is stored as JSON in DB)
+      if (req.hr_ratings) {
+        try {
+          const parsed = typeof req.hr_ratings === "string" 
+            ? JSON.parse(req.hr_ratings) 
+            : req.hr_ratings;
+          overallRating = parsed?.overall || 0;
+        } catch (e) {
+          console.warn(`Failed to parse hr_ratings for exit ID ${req.id}`, e);
+        }
+      }
+
+      // Get hr_evaluation_comments
+      if (req.hr_evaluation_comments) {
+        hrComments = req.hr_evaluation_comments;
+      }
+
+      return {
+        ...req,
+        overall_rating: overallRating,      // ← This is what your useEffect looks for
+        hr_comments: hrComments             // ← This is what your useEffect looks for
+      };
+    });
+
+    console.log("[TEAM REQUESTS] Processed with HR data:", 
+      processedRequests.map(r => ({
+        id: r.id,
+        overall_rating: r.overall_rating,
+        hr_comments_length: r.hr_comments?.length || 0
+      }))
+    );
+
+    // Use processed data everywhere
+    setAllTeamRequests(processedRequests);
+
+    // Filter pending data using processedRequests
     const effectiveRole = role?.toLowerCase() === "manager" ? "supervisor" : role?.toLowerCase();
+
     let filteredPendingNormal = [];
     let filteredPendingWithdraw = [];
 
     if (isHr || isAdmin) {
-      // HR/Admin sees requests where HR still needs to act
-      filteredPendingNormal = requests.filter(r =>
+      filteredPendingNormal = processedRequests.filter(r =>
         !r.final_outcome &&
         !r.withdrawal_requested_at &&
         (r.hr_status === "PENDING" || !r.hr_status)
       );
     } else {
-      // Supervisor / others see only their own pending
-      filteredPendingNormal = requests.filter(r =>
+      filteredPendingNormal = processedRequests.filter(r =>
         !r.final_outcome &&
         !r.withdrawal_requested_at &&
         !["APPROVED", "REJECTED"].includes(r.supervisor_status || "") &&
@@ -249,26 +366,19 @@ useEffect(() => {
       );
     }
 
-    // Show withdrawals that are not finally resolved
-    filteredPendingWithdraw = requests.filter(r =>
+    filteredPendingWithdraw = processedRequests.filter(r =>
       r.withdrawal_requested_at &&
       !["APPROVED", "REJECTED"].includes(r.withdrawal_supervisor_status || "") &&
       !["APPROVED", "REJECTED"].includes(r.withdrawal_hr_status || "")
     );
-    console.log("[TEAM REQUESTS] Effective role:", effectiveRole);
-    console.log("[TEAM REQUESTS] Filtered pending normal:", filteredPendingNormal.length, "items");
-    console.log("[TEAM REQUESTS] Filtered pending withdraw:", filteredPendingWithdraw.length, "items");
-    console.log("[TEAM REQUESTS] Effective role:", effectiveRole);
-    console.log("[TEAM REQUESTS] Filtered pending normal:", filteredPendingNormal.length, "items");
-    console.log("[TEAM REQUESTS] Filtered pending withdraw:", filteredPendingWithdraw.length, "items");
-    if (filteredPendingNormal.length > 0) {
-      console.log("[TEAM REQUESTS] First pending normal:", filteredPendingNormal[0]);
-    }
+
     setPendingData({
       normal: filteredPendingNormal,
       withdraw: filteredPendingWithdraw,
     });
-    setResignedClearance(requests.filter(r => r.final_outcome === "RESIGNED"));
+
+    setResignedClearance(processedRequests.filter(r => r.final_outcome === "RESIGNED"));
+
   } catch (err) {
     console.error("[TEAM REQUESTS FETCH ERROR]", err.response?.data || err.message);
   }
@@ -568,6 +678,22 @@ useEffect(() => {
       setLoading(false);
     }
   };
+  // Safe date formatter for <input type="date"> to avoid timezone shift
+const getCleanDate = (dateString) => {
+  if (!dateString) return "";
+  
+  // Handle both "2026-04-15" and "2026-04-15T00:00:00" formats
+  const date = new Date(dateString);
+  
+  if (isNaN(date.getTime())) return "";
+  
+  // Return YYYY-MM-DD format without timezone shift
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  
+  return `${year}-${month}-${day}`;
+};
   const handleAddAsset = async () => {
     if (!newAssetForm.name.trim() || !newAssetForm.returnDate) {
       return setErrorMessage("Asset name and return date are required");
@@ -628,39 +754,66 @@ useEffect(() => {
       setLoading(false);
     }
   };
-  const handleFinalizeExit = async () => {
-    setLoading(true);
-    setErrorMessage("");
-    try {
-      const exitId = selectedRequest?.id || selfRequest?.id;
-      if (!exitId) throw new Error("No exit request selected");
-      const res = await axios.post(
-        `${BACKEND_URL}/api/clearance/finalize`,
-        { exitId },
-        {
-          headers: {
-            "x-api-key": API_KEY,
-            "x-employee-id": employeeId,
-            "x-org-id": orgId,
-          },
-          withCredentials: true,
-        }
-      );
-      if (res.data?.success) {
-        showAlert("Exit finalized successfully!");
-        setSelectedRequest(null);
-        await fetchSelfRequest();
-        await fetchAllTeamRequests();
-      } else {
-        throw new Error(res.data?.error || "Finalize failed - no success response");
+const handleFinalizeExit = async () => {
+  setLoading(true);
+  setErrorMessage("");
+
+  try {
+    const exitId = selectedRequest?.id || selfRequest?.id;
+    if (!exitId) throw new Error("No exit request selected");
+
+    // Validation - Only for HR/Admin in All tab
+    if (activeTab === "all" && (isHr || isAdmin)) {
+      if (overallRating === 0) {
+        setErrorMessage("Please provide overall rating before finalizing");
+        setLoading(false);
+        return;
       }
-    } catch (err) {
-      setErrorMessage(err.response?.data?.error || err.message || "Failed to finalize exit");
-      showAlert("Finalize failed: " + (err.response?.data?.error || "Check console"));
-    } finally {
-      setLoading(false);
+      if (!hrComments.trim()) {
+        setErrorMessage("HR final comments are required before finalizing");
+        setLoading(false);
+        return;
+      }
     }
-  };
+
+    const payload = {
+      exitId,
+      overallRating: (activeTab === "all" && (isHr || isAdmin)) ? overallRating : null,
+      hrComments: (activeTab === "all" && (isHr || isAdmin)) ? hrComments : null,
+    };
+
+    const res = await axios.post(
+      `${BACKEND_URL}/api/clearance/finalize`,
+      payload,
+      {
+        headers: {
+          "x-api-key": API_KEY,
+          "x-employee-id": employeeId,
+          "x-org-id": orgId,
+        },
+        withCredentials: true,
+      }
+    );
+
+    if (res.data?.success) {
+      showAlert("Exit finalized successfully!", "Success", "success");
+      setSelectedRequest(null);
+      
+      // Reset states
+      setOverallRating(0);
+      setHrComments("");
+      
+      await fetchAllTeamRequests();
+      await fetchSelfRequest();
+    }
+  } catch (err) {
+    const msg = err.response?.data?.error || err.message || "Failed to finalize exit";
+    setErrorMessage(msg);
+    showAlert(msg, "Error", "error");
+  } finally {
+    setLoading(false);
+  }
+};
   const handleApply = async () => {
   // ── Reset previous global error (optional)
   setErrorMessage("");
@@ -2284,9 +2437,44 @@ const handleReviewAction = async (reviewType, action) => {
                     </div>
                   </div>
                 )}
-                {/* Clearance Section */}
+                {/* Edit Last Working Day - HR/Admin Only in All Tab */}
+{/* Edit Last Working Day - HR/Admin Only in All Tab */}
+{/* Edit Last Working Day - HR/Admin Only in All Tab */}
+{/* Edit Last Working Day - HR/Admin Only in All Tab */}
+{selectedRequest.type === "clearance" && activeTab === "all" && (isHr || isAdmin) && (
+ <div className="info-card mt-6">
+  <h4 className="section-title mb-3">Edit Last Working Day</h4>
+
+  <div className="flex gap-3 items-center">
+    <div>
+      <label className="block text-sm font-medium mb-1">
+        Final Last Working Day
+      </label>
+      <input
+        type="date"
+        value={editableFinalLwd || getCleanDate(selectedRequest.final_lwd) || ""}
+        onChange={(e) => setEditableFinalLwd(e.target.value)}
+        className="exf-form-input"
+        min={new Date().toISOString().split("T")[0]}
+      />
+    </div>
+
+    <button
+      onClick={handleUpdateFinalLwd}
+      disabled={loading || !editableFinalLwd}
+      className="btn btn-secondary px-6 py-2 text-sm mt-6"
+    >
+      {loading ? "Updating..." : "Save New LWD"}
+    </button>
+  </div>
+</div>
+)}
+
+                                {/* Clearance Section */}
+                                {/* Clearance Section */}
                 {selectedRequest.type === "clearance" && (
                   <div className="clearance-section">
+
                     {/* KT Plans */}
                     <div className="section-block">
                       <h4 className="section-title">Knowledge Transfer Plans</h4>
@@ -2347,9 +2535,7 @@ const handleReviewAction = async (reviewType, action) => {
                                       type="checkbox"
                                       checked={kt.hr_approved || false}
                                       onChange={(e) => handleApproveItem(kt.id, e.target.checked, "KT")}
-                                      disabled={
-                                        loading || (isHrOnly && !kt.supervisor_approved)
-                                      }
+                                      disabled={loading || (isHrOnly && !kt.supervisor_approved)}
                                     />
                                     <span>HR/Admin Approved</span>
                                   </label>
@@ -2360,6 +2546,7 @@ const handleReviewAction = async (reviewType, action) => {
                         </div>
                       )}
                     </div>
+
                     {/* Assets */}
                     <div className="section-block">
                       <h4 className="section-title">Assets</h4>
@@ -2391,9 +2578,7 @@ const handleReviewAction = async (reviewType, action) => {
                                       type="checkbox"
                                       checked={asset.hr_approved || false}
                                       onChange={(e) => handleApproveItem(asset.id, e.target.checked, "ASSET")}
-                                      disabled={
-                                        loading || (isHrOnly && !asset.supervisor_approved)
-                                      }
+                                      disabled={loading || (isHrOnly && !asset.supervisor_approved)}
                                     />
                                     <span>HR/Admin Approved</span>
                                   </label>
@@ -2404,59 +2589,103 @@ const handleReviewAction = async (reviewType, action) => {
                         </div>
                       )}
                     </div>
+
+                    {/* HR FINAL EVALUATION - ONLY IN "ALL EMPLOYEES" TAB */}
+                   {/* HR Final Evaluation - Only in All Employees Tab */}
+{/* HR Final Evaluation - Only in All Employees Tab */}
+{/* HR Final Evaluation - Star Rating */}
+{/* HR Final Evaluation - Only in All Employees Tab for Clearance */}
+{/* HR Final Evaluation - Clean Stars + Persisted Data */}
+{activeTab === "all" && (isHr || isAdmin) && selectedRequest?.type === "clearance" && (
+  <div className="info-card mt-8 border-t pt-6">
+    <h4 className="section-title mb-4">HR Final Evaluation Before Finalizing Exit</h4>
+    
+    {/* Clean Star Rating - No Boxes */}
+    <div className="mb-6">
+      <label className="block text-sm font-medium mb-3">
+        Overall Rating <span className="text-red-500">*</span>
+      </label>
+      
+      <div className="star-rating flex gap-3 text-6xl">
+        {[1, 2, 3, 4, 5].map((star) => (
+          <button
+            key={star}
+            type="button"
+            onClick={() => setOverallRating(star)}
+            className={`transition-all duration-200 hover:scale-110 focus:outline-none ${
+              overallRating >= star 
+                ? "text-yellow-400" 
+                : "text-gray-300 hover:text-yellow-200"
+            }`}
+          >
+            ★
+          </button>
+        ))}
+      </div>
+
+      <div className="mt-3 text-sm font-medium text-gray-700">
+        {overallRating ? `${overallRating} out of 5` : "Click on stars to rate"}
+      </div>
+    </div>
+
+    {/* HR Comments */}
+    <div>
+      <label className="block text-sm font-medium mb-2">
+        HR Final Comments / Remarks <span className="text-red-500">*</span>
+      </label>
+      <textarea
+        rows={4}
+        value={hrComments}
+        onChange={(e) => setHrComments(e.target.value)}
+        placeholder="Final remarks, observations, or recommendations before closing the exit process..."
+        className="exf-form-textarea w-full"
+      />
+    </div>
+  </div>
+)}
+
                     {/* Finalize Button */}
                     {isHrOrAdmin && (
-                      <div className="finalize-wrapper">
+                      <div className="finalize-wrapper mt-8">
                         {selectedRequest.clearance_completed_at ? (
                           <div className="success-banner">
                             <div className="success-title">✓ Exit Flow Cleared & Finalized</div>
-                            <p className="success-text">
-                              This employee's exit process is fully completed.
-                            </p>
-                            <p className="success-date">
-                              Finalized on: {selectedRequest.clearance_completed_at
-                                ? new Date(selectedRequest.clearance_completed_at).toLocaleDateString("en-IN", {
-                                    day: "numeric",
-                                    month: "short",
-                                    year: "numeric"
-                                  })
-                                : "Not yet finalized"}
-                            </p>
+                            <p className="success-text">This employee's exit process is fully completed.</p>
                           </div>
                         ) : (
-                          (() => {
-                            // compute permission locally so logic is easier to reason about
-                            const requiresSupervisor = isHrOnly; // only enforce supervisor approvals for plain HR users
-                            const hasAllHrApproved = !ktPlans.some(kt => !kt.hr_approved) && !assets.some(a => !a.hr_approved);
-                            const hasAllSupervisorApproved = !requiresSupervisor ||
-                              (!ktPlans.some(kt => !kt.supervisor_approved) && !assets.some(a => !a.supervisor_approved));
-                            const canFinalize = !loading && hasAllHrApproved && hasAllSupervisorApproved;
-                            return (
-                              <button
-                                className={`finalize-btn ${canFinalize ? "" : "disabled"}`}
-                                onClick={handleFinalizeExit}
-                                disabled={!canFinalize}
-                              >
-                                {loading ? "Finalizing..." : "Finalize Exit & Clearance"}
-                              </button>
-                            );
-                          })()
-                        )}                      </div>
+                          <button
+                            className={`finalize-btn ${!loading && 
+                              !ktPlans.some(kt => !kt.hr_approved) && 
+                              !assets.some(a => !a.hr_approved) ? "" : "disabled"}`}
+                            onClick={handleFinalizeExit}
+                            disabled={loading}
+                          >
+                            {loading ? "Finalizing..." : "Finalize Exit & Clearance"}
+                          </button>
+                        )}
+                      </div>
                     )}
+
                   </div>
                 )}
+
+                {/* NEW: HR Evaluation - Only visible in "All" tab for Resigned Employees */}
+
               </div>
               {/* Action Buttons */}
               <div className="modal-footer">
                 <button
                   className="btn btn-secondary"
-                  onClick={() => {
-                    setSelectedRequest(null);
-                    setLeavePolicy("");
-                    setFinalLwd("");
-                    setRecommendedLwd("");
-                    setReviewComment("");
-                  }}
+    onClick={() => {
+  setSelectedRequest(null);
+  setLeavePolicy("");
+  setFinalLwd("");
+  setReviewComment("");
+  setRecommendedLwd("");
+  setOverallRating(0);
+  setHrComments("");
+  setEditableFinalLwd("");
+}}
                 >
                   Cancel
                 </button>

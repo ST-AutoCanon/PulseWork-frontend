@@ -1,8 +1,9 @@
 
 
 
+
 "use client";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect , useMemo} from "react";
 import "./DynamicFormBuilder.css";
 import { useAuth } from "../../context/AuthProvider.client";
 import Modal from "../Modal/Modal.client";
@@ -76,6 +77,7 @@ export default function DynamicFormBuilder() {
   const [activeTab, setActiveTab] = useState("self");
   const [alreadyAssignedIds, setAlreadyAssignedIds] = useState([]);
   const [expandedResponses, setExpandedResponses] = useState(new Set());
+  const [searchTerm, setSearchTerm] = useState("");
   // Alert Modal State
   const [alertModal, setAlertModal] = useState({
     isVisible: false,
@@ -100,6 +102,22 @@ export default function DynamicFormBuilder() {
     if (typeof value !== "string") return "";
     return value.split("T")[0].split(" ")[0];
   };
+  // ==================== COMPUTED FILTERED EMPLOYEES ====================
+const filteredEmployees = React.useMemo(() => {
+  if (!searchTerm.trim()) return employees;
+
+  const searchLower = searchTerm.toLowerCase().trim();
+
+  return employees.filter((emp) => {
+    const fullName = `${emp.first_name || ""} ${emp.middle_name || ""} ${emp.last_name || ""}`
+      .trim()
+      .toLowerCase();
+    
+    const empId = String(emp.employee_id || emp.id || "").toLowerCase();
+
+    return fullName.includes(searchLower) || empId.includes(searchLower);
+  });
+}, [employees, searchTerm]);
  const toTitleCase = (str) => {
   if (!str) return "";
   return str
@@ -363,7 +381,16 @@ useEffect(() => {
     setAlreadyAssignedIds([]);
     return;
   }
+// Filtered employees based on search
+const filteredEmployees = employees.filter((emp) => {
+  if (!searchTerm) return true;
+  
+  const searchLower = searchTerm.toLowerCase().trim();
+  const fullName = `${emp.first_name || ""} ${emp.middle_name || ""} ${emp.last_name || ""}`.toLowerCase();
+  const empId = String(emp.employee_id || emp.id || "").toLowerCase();
 
+  return fullName.includes(searchLower) || empId.includes(searchLower);
+});
   const fetchAlreadyAssigned = async () => {
     try {
       console.log(`🔍 Fetching assigned employees for form ID: ${editingId}`);
@@ -468,10 +495,8 @@ const toggleResponse = (index) => {
 
     // Supervisor Validation
     if (formType === 'employee_supervisor' && hasSupervisorFeedback) {
-      const allowedTypes = ['text', 'radio', 'checkbox-group', 'rating'];
-      if (!allowedTypes.includes(supervisorType)) {
-        showAlert("Supervisor feedback can only be text, radio, checkbox group, or rating.");
-        return;
+const allowedTypes = ['text', 'textarea', 'radio', 'checkbox-group', 'rating'];      if (!allowedTypes.includes(supervisorType)) {
+showAlert("Supervisor feedback can only be text, textarea, radio, checkbox group, or rating.");        return;
       }
       if (!supervisorLabel.trim()) {
         showAlert("Supervisor feedback label is required.");
@@ -1125,55 +1150,97 @@ const handleSelectSubmission = async (submission) => {
         return <em>Unsupported field type: {field.type}</em>;
     }
   };
-  const viewResponses = async (formId, formName) => {
+ const viewResponses = async (formId, formName) => {
+  try {
+    setLoading(true);
+    setCurrentResponses([]);
+
+    // Fetch form details
+    const formRes = await fetch(`${BACKEND_URL}/api/forms/${formId}`, {
+      credentials: "include",
+      headers: getHeaders(),
+    });
+    if (!formRes.ok) throw new Error("Failed to load form");
+    const formJson = await formRes.json();
+    const form = formJson.data || formJson;
+
+    // Fetch responses (submitted ones)
+    const res = await fetch(`${BACKEND_URL}/api/forms/${formId}/responses`, {
+      method: "GET",
+      credentials: "include",
+      headers: getHeaders(),
+    });
+    if (!res.ok) throw new Error("Failed to load responses");
+    const json = await res.json();
+    let rawResponses = Array.isArray(json) 
+      ? json 
+      : json.data || json.responses || [];
+
+    // === NEW: Fetch Assigned Employees ===
+    let assignedEmployees = [];
     try {
-      setLoading(true);
-      setCurrentResponses([]);
-      const formRes = await fetch(`${BACKEND_URL}/api/forms/${formId}`, {
-        credentials: "include",
-        headers: getHeaders(),
-      });
-      if (!formRes.ok) throw new Error("Failed to load form");
-      const formJson = await formRes.json();
-      const form = formJson.data || formJson;
-      const res = await fetch(`${BACKEND_URL}/api/forms/${formId}/responses`, {
+      const assignRes = await fetch(`${BACKEND_URL}/api/forms/${formId}/assigned`, {
         method: "GET",
         credentials: "include",
         headers: getHeaders(),
       });
-      if (!res.ok) throw new Error("Failed to load responses");
-      const json = await res.json();
-      let rawResponses = [];
-      if (Array.isArray(json)) rawResponses = json;
-      else if (Array.isArray(json.data)) rawResponses = json.data;
-      else if (Array.isArray(json.responses)) rawResponses = json.responses;
-      const fieldMetaMap = (() => {
-        let formJson = form.form_json;
-        if (typeof formJson === 'string') {
-          try { formJson = JSON.parse(formJson); } catch (e) { formJson = []; }
-        }
-        return (formJson || []).reduce((acc, f) => {
-          if (form.form_type === 'employee_supervisor') {
-            if (f.employee) {
-              acc[String(f.id)] = { label: f.employee.label || f.id, visibleTo: "employee" };
-              if (f.supervisor) {
-                acc[String(f.id) + '_sup'] = { label: f.supervisor.label || f.id + '_sup', visibleTo: "supervisor" };
-              }
-            }
-          } else {
-            if (f.employee) {
-              acc[String(f.id)] = { label: f.employee.label || f.id, visibleTo: "both" };
-            } else {
-              acc[String(f.id)] = { label: f.label || f.id, visibleTo: "both" };
+
+      if (assignRes.ok) {
+        const assignJson = await assignRes.json();
+        assignedEmployees = assignJson.data || assignJson.assigned || assignJson.employeeIds || [];
+      }
+    } catch (assignErr) {
+      console.warn("Could not fetch assigned employees:", assignErr);
+    }
+
+    // Create a map of submitted responses by employee_id
+    const submittedMap = new Map();
+    rawResponses.forEach((resp) => {
+      const empId = String(resp.employee_id || resp.employeeId || "");
+      if (empId) submittedMap.set(empId, resp);
+    });
+
+    // Build final list: All assigned employees + their submission status
+    const fieldMetaMap = (() => {
+      let formJsonData = form.form_json;
+      if (typeof formJsonData === 'string') {
+        try { formJsonData = JSON.parse(formJsonData); } catch (e) { formJsonData = []; }
+      }
+      return (formJsonData || []).reduce((acc, f) => {
+        if (form.form_type === 'employee_supervisor') {
+          if (f.employee) {
+            acc[String(f.id)] = { label: f.employee.label || f.id, visibleTo: "employee" };
+            if (f.supervisor) {
+              acc[String(f.id) + '_sup'] = { 
+                label: f.supervisor.label || f.id + '_sup', 
+                visibleTo: "supervisor" 
+              };
             }
           }
-          return acc;
-        }, {});
-      })();
-      const formatted = rawResponses.map((resp) => {
-        const responseJson = resp.response_json || {};
+        } else {
+          if (f.employee) {
+            acc[String(f.id)] = { label: f.employee.label || f.id, visibleTo: "both" };
+          } else {
+            acc[String(f.id)] = { label: f.label || f.id, visibleTo: "both" };
+          }
+        }
+        return acc;
+      }, {});
+    })();
+
+    const formattedResponses = assignedEmployees.map((emp) => {
+      const empId = String(emp.employee_id || emp.id || "");
+      const submittedResp = submittedMap.get(empId);
+
+      const fullName = `${emp.first_name || ''} ${emp.middle_name || ''} ${emp.last_name || ''}`.trim() 
+        || `Employee ${empId}`;
+
+      if (submittedResp) {
+        // Already submitted
+        const responseJson = submittedResp.response_json || {};
         const readable = {};
         const meta = {};
+
         Object.keys(responseJson).forEach((key) => {
           if (String(key).startsWith("__")) {
             meta[key] = responseJson[key];
@@ -1182,6 +1249,7 @@ const handleSelectSubmission = async (submission) => {
           const fieldInfo = fieldMetaMap[String(key)] || { label: key, visibleTo: "both" };
           let label = fieldInfo.label;
           if (fieldInfo.visibleTo === "supervisor") label = `${label} (Supervisor only)`;
+
           let answer = responseJson[key];
           if (answer && typeof answer === "object" && !Array.isArray(answer)) {
             if (answer.start || answer.end) {
@@ -1194,24 +1262,43 @@ const handleSelectSubmission = async (submission) => {
           } else if (answer === "" || answer === null || answer === undefined) {
             answer = "No answer";
           }
+
           readable[label] = answer;
         });
+
         return {
-          ...resp,
+          ...submittedResp,
+          employeeDisplay: fullName,
+          status: "submitted",
           readableAnswers: readable,
           metadata: meta,
-          employeeDisplay: resp.employee_name || `Employee ${resp.employee_id || "Unknown"}`,
+          submitted_at: submittedResp.submitted_at || submittedResp.created_at,
         };
-      });
-      setCurrentResponses(formatted);
-      setCurrentFormTitle(formName || form.form_name || "Form Responses");
-      setShowResponsesModal(true);
-    } catch (err) {
-      showAlert("Error loading responses: " + err.message, "Error", "error");
-    } finally {
-      setLoading(false);
-    }
-  };
+      } else {
+        // Not submitted yet
+        return {
+          employee_id: empId,
+          employeeDisplay: fullName,
+          status: "not_submitted",
+          readableAnswers: {},
+          metadata: {
+            __status: "Not Submitted Yet",
+            __submitted_at: null
+          },
+        };
+      }
+    });
+
+    setCurrentResponses(formattedResponses);
+    setCurrentFormTitle(formName || form.form_name || "Form Responses");
+    setShowResponsesModal(true);
+  } catch (err) {
+    console.error(err);
+    showAlert("Error loading responses: " + err.message, "Error", "error");
+  } finally {
+    setLoading(false);
+  }
+};
  const handleAssign = async () => {
   if (selectedEmployeeIds.length === 0) {
     showAlert("Please select at least one employee", "Warning", "warning");
@@ -1272,12 +1359,13 @@ const handleSelectSubmission = async (submission) => {
       Form Name
     </label>
     <input
-      placeholder="e.g. Employee Survey"
-      value={formName}
-      onChange={(e) => setFormName(toTitleCase(e.target.value))}
-      className="df-input"
-      style={{ fontSize: "1.1rem", fontWeight: "500" }}
-    />
+  placeholder="e.g. Employee Survey"
+  value={formName}
+  onChange={(e) => setFormName(e.target.value)}   // ← Raw value only
+  onBlur={() => setFormName(toTitleCase(formName))} // ← Apply title case when user leaves the field
+  className="df-input"
+  style={{ fontSize: "1.1rem", fontWeight: "500" }}
+/>
   </div>
 
   <div>
@@ -1362,16 +1450,17 @@ const handleSelectSubmission = async (submission) => {
     <label style={{ display: "block", marginBottom: "8px", fontWeight: "500", fontSize: "0.9rem" }}>
       Supervisor Field Type
     </label>
-    <select 
-      value={supervisorType} 
-      onChange={(e) => setSupervisorType(e.target.value)} 
-      className="df-input"
-    >
-      <option value="text">📝 Text</option>
-      <option value="radio">◉ Radio Buttons</option>
-      <option value="checkbox-group">☑️ Checkbox Group</option>
-      <option value="rating">⭐ Rating</option>
-    </select>
+    <select
+  value={supervisorType}
+  onChange={(e) => setSupervisorType(e.target.value)}
+  className="df-input"
+>
+  <option value="text">📝 Text (Single Line)</option>
+  <option value="textarea">📄 Textarea (Multi-line)</option>
+  <option value="radio">◉ Radio Buttons</option>
+  <option value="checkbox-group">☑️ Checkbox Group</option>
+  <option value="rating">⭐ Rating</option>
+</select>
 
     <label style={{ display: "block", marginTop: "12px", marginBottom: "8px", fontWeight: "500", fontSize: "0.9rem" }}>
       Supervisor Field Label
@@ -1689,40 +1778,56 @@ const handleSelectSubmission = async (submission) => {
   </div>
 )} */}
 {editingId && (
-  <div className="assign-container">
-    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
-      <h4 style={{ margin: 0 }}>Assign Form to Employees</h4>
-      <button
-        type="button"
-        onClick={() => setShowAssignSection(!showAssignSection)}
-        style={{
-          padding: "8px 18px",
-          background: showAssignSection ? "#6c757d" : "#0d6efd",
-          color: "white",
-          border: "none",
-          borderRadius: "8px",
-          cursor: "pointer"
-        }}
-      >
-        {showAssignSection ? "Hide" : "Assign Employees"}
-      </button>
-    </div>
+  <div className="assign-section" style={{ marginTop: "30px", padding: "24px", background: "#f8fafc", borderRadius: "12px", border: "1px solid #e2e8f0" }}>
+    <h3 style={{ marginTop: 0 }}>Assign Form to Employees</h3>
+
+    <button
+      type="button"
+      onClick={() => setShowAssignSection(!showAssignSection)}
+      style={{
+        padding: "10px 20px",
+        background: showAssignSection ? "#6c757d" : "#0d6efd",
+        color: "white",
+        border: "none",
+        borderRadius: "8px",
+        cursor: "pointer",
+        marginBottom: "20px"
+      }}
+    >
+      {showAssignSection ? "Hide Assignment Panel" : "Show Assign Employees"}
+    </button>
 
     {showAssignSection && (
       <>
-        <div style={{ marginBottom: "18px", fontSize: "14.5px", color: "#475569" }}>
-          Total Employees: <strong>{employees.length}</strong> &nbsp;&nbsp; 
-          Already Assigned: <strong style={{ color: "#16a34a" }}>{alreadyAssignedIds.length}</strong>
+        {/* Search Bar */}
+        <div style={{ marginBottom: "16px" }}>
+          <input
+            type="text"
+            placeholder="Search by name or employee ID..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="df-input"
+            style={{ width: "100%", padding: "12px 16px", fontSize: "1rem" }}
+          />
         </div>
 
-        <label style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "16px", cursor: "pointer", fontWeight: "600" }}>
+        <div style={{ marginBottom: "16px", display: "flex", gap: "20px", flexWrap: "wrap", fontSize: "0.95rem" }}>
+          <div><strong>Total:</strong> {employees.length}</div>
+          <div><strong>Already Assigned:</strong> {alreadyAssignedIds.length}</div>
+          <div><strong>Showing:</strong> {filteredEmployees.length}</div>
+        </div>
+
+        {/* Select All Checkbox */}
+        <label style={{ display: "block", marginBottom: "14px", fontWeight: "600", cursor: "pointer" }}>
           <input
             type="checkbox"
-            checked={selectedEmployeeIds.length > 0 && 
-                     selectedEmployeeIds.length === 
-                     employees.filter(emp => !alreadyAssignedIds.includes(String(emp.employee_id || emp.id))).length}
+            checked={
+              filteredEmployees.length > 0 &&
+              selectedEmployeeIds.length ===
+                filteredEmployees.filter(emp => !alreadyAssignedIds.includes(String(emp.employee_id || emp.id))).length
+            }
             onChange={(e) => {
-              const available = employees.filter(emp => 
+              const available = filteredEmployees.filter(emp =>
                 !alreadyAssignedIds.includes(String(emp.employee_id || emp.id))
               );
               if (e.target.checked) {
@@ -1731,77 +1836,86 @@ const handleSelectSubmission = async (submission) => {
                 setSelectedEmployeeIds([]);
               }
             }}
-          />
-          Select All Available Employees
+          /> Select All 
         </label>
 
-        <div className="assign-list">
-          {employees.map((emp) => {
-            const empId = String(emp.employee_id || emp.id || "");
-            const isAlreadyAssigned = alreadyAssignedIds.includes(empId);
+        {/* Employee List */}
+        <div style={{ 
+          maxHeight: "420px", 
+          overflowY: "auto", 
+          border: "1px solid #ddd", 
+          borderRadius: "8px", 
+          padding: "8px",
+          background: "#fff"
+        }}>
+          {filteredEmployees.length === 0 ? (
+            <p style={{ textAlign: "center", color: "#888", padding: "40px 20px" }}>
+              No employees found for "{searchTerm}"
+            </p>
+          ) : (
+            filteredEmployees.map((emp) => {
+              const empId = String(emp.employee_id || emp.id || "");
+              const isAlreadyAssigned = alreadyAssignedIds.includes(empId);
+              const fullName = `${emp.first_name || ""} ${emp.middle_name || ""} ${emp.last_name || ""}`.trim();
+              const displayText = fullName ? `${fullName} (${empId})` : `Employee ${empId}`;
 
-            const fullName = `${emp.first_name || ""} ${emp.middle_name || ""} ${emp.last_name || ""}`.trim();
-            const displayText = fullName ? `${fullName} (${empId})` : `Employee ${empId}`;
+              if (isAlreadyAssigned) return null; // Hide already assigned
 
-            return (
-              <label 
-                key={empId} 
-                className="assign-item"
-                style={{ 
-                  opacity: isAlreadyAssigned ? 0.65 : 1,
-                  background: isAlreadyAssigned ? "#f0fdf4" : "white"
-                }}
-              >
-                <input
-                  type="checkbox"
-                  checked={selectedEmployeeIds.includes(empId)}
-                  disabled={isAlreadyAssigned}
-                  onChange={(e) => {
-                    if (isAlreadyAssigned) return;
-                    if (e.target.checked) {
-                      setSelectedEmployeeIds([...selectedEmployeeIds, empId]);
-                    } else {
-                      setSelectedEmployeeIds(selectedEmployeeIds.filter(id => id !== empId));
-                    }
+              return (
+                <label
+                  key={empId}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    padding: "12px 14px",
+                    margin: "6px 0",
+                    background: "#fff",
+                    borderRadius: "8px",
+                    border: "1px solid #e9ecef",
+                    cursor: "pointer",
+                    transition: "all 0.2s"
                   }}
-                />
-                <span style={{ flex: 1 }}>
-                  {displayText}
-                  {isAlreadyAssigned && (
-                    <span style={{
-                      marginLeft: "12px",
-                      background: "#16a34a",
-                      color: "white",
-                      padding: "4px 11px",
-                      borderRadius: "9999px",
-                      fontSize: "13px",
-                      fontWeight: "500"
-                    }}>
-                      Already Assigned
-                    </span>
-                  )}
-                </span>
-              </label>
-            );
-          })}
+                  onMouseOver={(e) => e.currentTarget.style.background = "#f8fafc"}
+                  onMouseOut={(e) => e.currentTarget.style.background = "#fff"}
+                >
+                  <input
+                    type="checkbox"
+                    checked={selectedEmployeeIds.includes(empId)}
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        setSelectedEmployeeIds([...selectedEmployeeIds, empId]);
+                      } else {
+                        setSelectedEmployeeIds(selectedEmployeeIds.filter(id => id !== empId));
+                      }
+                    }}
+                    style={{ marginRight: "12px", transform: "scale(1.1)" }}
+                  />
+                  <span style={{ fontSize: "1.02rem" }}>{displayText}</span>
+                </label>
+              );
+            })
+          )}
         </div>
 
-        <div style={{ marginTop: "24px", textAlign: "right" }}>
-          <button
-            onClick={handleAssign}
-            disabled={loading || selectedEmployeeIds.length === 0}
-            style={{
-              padding: "13px 34px",
-              background: selectedEmployeeIds.length > 0 ? "#16a34a" : "#94a3b8",
-              color: "white",
-              border: "none",
-              borderRadius: "10px",
-              fontWeight: "600"
-            }}
-          >
-            Assign to {selectedEmployeeIds.length} Employee{selectedEmployeeIds.length !== 1 ? "s" : ""}
-          </button>
-        </div>
+        {/* Assign Button */}
+        <button
+          onClick={handleAssign}
+          disabled={loading || selectedEmployeeIds.length === 0}
+          style={{
+            marginTop: "24px",
+            padding: "14px 32px",
+            width: "100%",
+            background: selectedEmployeeIds.length > 0 ? "#16a34a" : "#94a3b8",
+            color: "white",
+            border: "none",
+            borderRadius: "10px",
+            fontWeight: "600",
+            fontSize: "1.05rem",
+            cursor: selectedEmployeeIds.length > 0 ? "pointer" : "not-allowed"
+          }}
+        >
+          Assign to {selectedEmployeeIds.length} Employee{selectedEmployeeIds.length !== 1 ? "s" : ""}
+        </button>
       </>
     )}
   </div>
@@ -1899,7 +2013,7 @@ const handleSelectSubmission = async (submission) => {
           onClick={() => setActiveTab("self")}
           style={{
             padding: "10px 24px",
-            background: activeTab === "self" ? "#79c42b" : "#f8f9fa",
+            background: activeTab === "self" ? "#16a34a" : "#f8f9fa",
             color: activeTab === "self" ? "#fff" : "#333",
             border: "none",
             borderRadius: "8px",
@@ -1914,7 +2028,7 @@ const handleSelectSubmission = async (submission) => {
           onClick={() => setActiveTab("team")}
           style={{
             padding: "10px 24px",
-            background: activeTab === "team" ? "#79c42b" : "#f8f9fa",
+            background: activeTab === "team" ? "#16a34a" : "#f8f9fa",
             color: activeTab === "team" ? "#fff" : "#333",
             border: "none",
             borderRadius: "8px",
@@ -2117,15 +2231,15 @@ const handleSelectSubmission = async (submission) => {
   </>
 )}
             </div> */}
-            <div className="df-template-grid">
-  {/* ==================== ALL FORMS TAB (Admin/HR Management) ==================== */}
+     <div className="df-template-grid">
+  {/* ==================== ALL FORMS TAB ==================== */}
   {activeTab === "all" && canSeeAllTab && (
     templates.length === 0 ? (
       <p style={{ color: "#666", textAlign: "center", padding: "60px 0", gridColumn: "1 / -1" }}>
         No forms created yet.
       </p>
     ) : (
-      templates.map((t) => {
+      templates.map((t, index) => {
         const activeFrom = t.active_from || t.activeFrom || null;
         const activeTo = t.active_to || t.activeTo || null;
         const fromStr = activeFrom ? new Date(activeFrom).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : "—";
@@ -2133,7 +2247,10 @@ const handleSelectSubmission = async (submission) => {
         const isActive = !activeFrom || !activeTo || (new Date() >= new Date(activeFrom) && new Date() <= new Date(activeTo));
 
         return (
-          <div key={t.id} className="df-template-card">
+          <div 
+            key={`all-${t.id || index}`}   // ← Safe unique key
+            className="df-template-card"
+          >
             <h4>{toTitleCase(t.form_name || t.name || "")}</h4>
             <div style={{
               margin: "14px 0 18px 0",
@@ -2145,10 +2262,9 @@ const handleSelectSubmission = async (submission) => {
               <strong>Active Period:</strong><br />
               {fromStr} — {toStr}<br />
               <span style={{ color: isActive ? "#166534" : "#991b1b", fontWeight: "500" }}>
-                {isActive ? "✅ Currently Active" : "⚠️ Not Active"}
+                {isActive ? " Currently Active" : " Not Active"}
               </span>
             </div>
-
             <div className="df-template-actions">
               <button onClick={() => viewTemplate(t)} className="df-view-btn">Preview</button>
               <button onClick={() => editTemplate(t)} className="df-edit-btn">Edit</button>
@@ -2167,7 +2283,7 @@ const handleSelectSubmission = async (submission) => {
         No forms assigned to you yet.
       </p>
     ) : (
-      selfForms.map((t) => {
+      selfForms.map((t, index) => {
         const activeFrom = t.active_from || t.activeFrom || null;
         const activeTo = t.active_to || t.activeTo || null;
         const fromStr = activeFrom ? new Date(activeFrom).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : "—";
@@ -2175,7 +2291,9 @@ const handleSelectSubmission = async (submission) => {
         const isActive = !activeFrom || !activeTo || (new Date() >= new Date(activeFrom) && new Date() <= new Date(activeTo));
 
         return (
-          <div key={t.id} className="df-template-card">
+          <div 
+key={`self-${t.id}-${t.employee_id || t.assigned_to || index}`}            className="df-template-card"
+          >
             <h4>{toTitleCase(t.form_name || t.name || "")}</h4>
             <div style={{
               margin: "14px 0 18px 0",
@@ -2185,13 +2303,11 @@ const handleSelectSubmission = async (submission) => {
               border: `1px solid ${isActive ? "#86efac" : "#fecaca"}`,
             }}>
               <strong>Active Period:</strong><br />
-              {fromStr} — {toStr}
-              <br />
+              {fromStr} — {toStr}<br />
               <span style={{ color: isActive ? "#166534" : "#991b1b", fontWeight: "500" }}>
-                {isActive ? "✅ Currently Active" : "⚠️ Not Active"}
+                {isActive ? " Currently Active" : " Not Active"}
               </span>
             </div>
-
             <button
               onClick={() => fillTemplate(t)}
               className="df-fill-btn"
@@ -2209,12 +2325,12 @@ const handleSelectSubmission = async (submission) => {
   {/* ==================== TEAM TAB (Supervisor) ==================== */}
   {activeTab === "team" && (
     teamSubmissions.length === 0 ? (
-      <p style={{ 
-        color: "#666", 
-        textAlign: "center", 
-        padding: "60px 0", 
+      <p style={{
+        color: "#666",
+        textAlign: "center",
+        padding: "60px 0",
         gridColumn: "1 / -1",
-        fontSize: "16px" 
+        fontSize: "16px"
       }}>
         No team submissions to review yet.
       </p>
@@ -2246,7 +2362,10 @@ const handleSelectSubmission = async (submission) => {
           (new Date() >= new Date(group.active_from) && new Date() <= new Date(group.active_to));
 
         return (
-          <div key={formId} className="df-template-card">
+          <div 
+            key={`team-${formId}`}   // ← Safe key for group
+            className="df-template-card"
+          >
             <h4>{group.formName}</h4>
             <div style={{
               margin: "14px 0 18px 0",
@@ -2258,7 +2377,7 @@ const handleSelectSubmission = async (submission) => {
               <strong>Active Period:</strong><br />
               {fromStr} — {toStr}<br />
               <span style={{ color: isActive ? "#166534" : "#991b1b", fontWeight: "500" }}>
-                {isActive ? "✅ Currently Active" : "⚠️ Not Active"}
+                {isActive ? " Currently Active" : " Not Active"}
               </span>
             </div>
             <p style={{ color: "#666", marginBottom: "16px" }}>
@@ -2267,7 +2386,7 @@ const handleSelectSubmission = async (submission) => {
             <div>
               {group.submissions.map((sub, idx) => (
                 <div
-                  key={idx}
+                  key={`sub-${sub.form_id || sub.formId || formId}-${sub.employee_id || sub.employeeId || idx}`}  // ← Safe key for submissions
                   onClick={(e) => {
                     e.stopPropagation();
                     handleSelectSubmission(sub);
@@ -2286,10 +2405,8 @@ const handleSelectSubmission = async (submission) => {
                   <strong>
                     {sub.employee_name || `Employee ${sub.employee_id || sub.employeeId || "Unknown"}`}
                   </strong>
-                 
                 </div>
               ))}
-             
             </div>
           </div>
         );
@@ -2336,7 +2453,7 @@ const handleSelectSubmission = async (submission) => {
                     <label>
   {field.label}
   {field.required && <span className="required"> *</span>}
-  {field.isSupervisor && <span style={{ fontSize: '13px', color: '#64748b' }}> (Supervisor)</span>}
+  {field.isSupervisor && <span style={{ fontSize: '13px', color: '#2563eb' }}> (Supervisor)</span>}
 </label>
                     {renderField(field, true)}
                   </div>
@@ -2412,9 +2529,13 @@ const handleSelectSubmission = async (submission) => {
                       <div key={field.fieldId} className="df-form-group">
                         <label>
                           {field.label}
-                          {field.required && " *"}
-                          {field.isSupervisor && " (Supervisor Feedback)"}
-                          {isReadOnly && (isReviewMode || viewingSubmission) && " (Read Only)"}
+{field.required && (
+  <span style={{ color: "red" }}> *</span>
+)}{field.isSupervisor && (
+  <span style={{ color: "#2563eb", fontWeight: "600" }}>
+    {" "} (Supervisor)
+  </span>
+)}                          {isReadOnly && (isReviewMode || viewingSubmission) && " (Read Only)"}
                         </label>
                         {renderField(field, isReadOnly, (id, value) => handleInputChange(field.fieldId, value))}
                       </div>
@@ -2509,141 +2630,177 @@ const handleSelectSubmission = async (submission) => {
   <div className="df-modal-overlay">
     <div className="df-modal df-responses-modal" style={{ maxWidth: "95%", width: "1100px", maxHeight: "90vh" }}>
       <h3>Responses for "{currentFormTitle}"</h3>
+      
+      <div style={{ marginBottom: "15px", fontSize: "0.95rem", color: "#475569" }}>
+        Total Assigned: <strong>{currentResponses.length}</strong> | 
+        Submitted: <strong style={{color: "#16a34a", fontWeight: "600"}}>
+          {currentResponses.filter(r => r.status === "submitted").length}
+        </strong> | 
+        Pending: <strong style={{color: "#ef4444"}}>
+          {currentResponses.filter(r => r.status === "not_submitted").length}
+        </strong>
+      </div>
 
       {currentResponses.length === 0 ? (
-        <p>No responses submitted yet for this form.</p>
+        <p>No employees assigned to this form yet.</p>
       ) : (
         <div style={{ overflow: "auto", maxHeight: "70vh" }}>
+          
           {currentResponses.map((resp, index) => {
+            const reviewedById = resp.metadata?.__reviewed_by;
+
+            let reviewedByName = "";
+            if (reviewedById) {
+              const supervisor = employees.find(
+                emp => String(emp.employee_id || emp.id) === String(reviewedById)
+              );
+              reviewedByName = supervisor
+                ? `${supervisor.first_name || ""} ${supervisor.middle_name || ""} ${supervisor.last_name || ""}`.trim()
+                : `Supervisor ${reviewedById}`;
+            }
+
             const isExpanded = expandedResponses.has(index);
+            const isNotSubmitted = resp.status === "not_submitted";
 
             return (
               <div
                 key={index}
                 style={{
                   marginBottom: "20px",
-                  border: "1px solid #dee2e6",
+                  border: isNotSubmitted ? "1px solid #dee2e6" : "1px solid #4ade80",   // Green border for submitted
                   borderRadius: "10px",
                   overflow: "hidden",
-                  backgroundColor: "#fff"
+                  backgroundColor: isNotSubmitted ? "#fef2f2" : "#f0fdf4",             // Light green background for submitted
                 }}
               >
                 {/* Header */}
                 <div
-                  onClick={() => toggleResponse(index)}
+                  onClick={() => !isNotSubmitted && toggleResponse(index)}
                   style={{
                     padding: "16px 20px",
-                    backgroundColor: "#f8f9fa",
-                    cursor: "pointer",
+                    backgroundColor: isNotSubmitted ? "#fee2e2" : "#ecfdf5",           // Soft green header
+                    cursor: isNotSubmitted ? "default" : "pointer",
                     display: "flex",
                     justifyContent: "space-between",
                     alignItems: "center",
-                    userSelect: "none"
                   }}
                 >
                   <div>
-                    <strong style={{ fontSize: "1.1rem" }}>
-                      Employee: {resp.employeeDisplay || `Employee ${resp.employee_id || resp.employeeId || "Unknown"}`}
+                    <strong style={{ fontSize: "1.12rem", color: "#1e2937" }}>
+                      Employee:{" "}
+                      {`${resp.employee_first_name || ""} 
+                       ${resp.employee_middle_name || ""} 
+                       ${resp.employee_last_name || ""}`.trim()
+                       || ` ${resp.employee_id || "Unknown"}`}
                     </strong>
+
+                    {reviewedByName && (
+                      <div style={{ marginTop: "6px", fontSize: "0.95rem", color: "#475569" }}>
+                        Supervisor: <strong>{reviewedByName}</strong>
+                      </div>
+                    )}
                   </div>
-                  <div style={{ display: "flex", alignItems: "center", gap: "15px" }}>
-                    <span style={{ color: "#555", fontSize: "0.92rem" }}>
-                      Submitted: {new Date(resp.submitted_at || resp.submittedAt || resp.created_at || Date.now()).toLocaleString()}
-                    </span>
-                    <span style={{ 
-                      fontSize: "1.5rem", 
-                      transition: "transform 0.3s ease",
-                      transform: isExpanded ? "rotate(180deg)" : "rotate(0deg)"
-                    }}>
-                      ▼
-                    </span>
-                  </div>
+
+                  {!isNotSubmitted && (
+                    <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
+                      <span style={{ color: "#555", fontSize: "0.93rem" }}>
+                        Submitted: {formatSubmittedTime(resp.submitted_at)}
+                      </span>
+                      <span style={{ fontSize: "1.55rem", transition: "transform 0.3s ease", transform: isExpanded ? "rotate(180deg)" : "rotate(0deg)" }}>
+                        ▼
+                      </span>
+                    </div>
+                  )}
                 </div>
 
-                {/* Expanded Content - Clean Table */}
-                {isExpanded && (
+                {/* Content - Only show for submitted responses */}
+                {!isNotSubmitted && isExpanded && (
                   <div style={{ padding: "20px" }}>
                     <table style={{ width: "100%", borderCollapse: "collapse" }}>
                       <thead>
                         <tr style={{ backgroundColor: "#f1f3f5" }}>
-                          <th style={{ 
-                            padding: "14px 16px", 
-                            textAlign: "left", 
-                            borderBottom: "2px solid #cbd5e1",
-                            fontWeight: "600",
-                            color: "#334155",
-                            width: "45%"
-                          }}>
-                            Field
-                          </th>
-                          <th style={{ 
-                            padding: "14px 16px", 
-                            textAlign: "left", 
-                            borderBottom: "2px solid #cbd5e1",
-                            fontWeight: "600",
-                            color: "#334155"
-                          }}>
-                            Response
-                          </th>
+                          <th style={{ padding: "14px 16px", textAlign: "left", borderBottom: "2px solid #cbd5e1" }}>Field</th>
+                          <th style={{ padding: "14px 16px", textAlign: "left", borderBottom: "2px solid #cbd5e1" }}>Response</th>
                         </tr>
                       </thead>
                       <tbody>
                         {Object.entries(resp.readableAnswers || {}).map(([fieldName, response], i) => (
                           <tr key={i} style={{ borderBottom: "1px solid #e2e8f0" }}>
-                            <td style={{ 
-                              padding: "14px 16px", 
-                              fontWeight: "500", 
-                              verticalAlign: "top",
-                              color: "#1e2937"
-                            }}>
-                              {fieldName}
-                            </td>
-                            <td style={{ 
-                              padding: "14px 16px", 
-                              verticalAlign: "top",
-                              backgroundColor: "#f8fafc",
-                              color: "#0f172a",
-                              whiteSpace: "pre-wrap",
-                              lineHeight: "1.5"
-                            }}>
-                              {Array.isArray(response) 
-                                ? response.join(", ") 
-                                : response === "" || response === null || response === undefined 
-                                  ? <em style={{ color: "#94a3b8" }}>— No response —</em> 
-                                  : response}
+                            <td style={{ padding: "14px 16px", fontWeight: "500" }}>{fieldName}</td>
+                            <td style={{ padding: "14px 16px", backgroundColor: "#f8fafc", whiteSpace: "pre-wrap" }}>
+                              {Array.isArray(response) ? response.join(", ") : response || "—"}
                             </td>
                           </tr>
                         ))}
                       </tbody>
                     </table>
 
-                    {/* Metadata */}
                     {resp.metadata && Object.keys(resp.metadata).length > 0 && (
-                      <div style={{ marginTop: "20px", padding: "16px", backgroundColor: "#fefce8", borderRadius: "8px", border: "1px solid #fde047" }}>
-                        <strong style={{ color: "#854d0e" }}>Additional Information:</strong>
-                        <ul style={{ margin: "10px 0 0 20px", padding: 0, listStyleType: "disc", color: "#713f12" }}>
-                          {/* {Object.entries(resp.metadata).map(([key, value]) => (
-                            <li key={key} style={{ marginBottom: "4px" }}>
-                              {key.replace(/^__/, "")}: {value || "—"}
-                            </li>
-                          ))} */}
-                          {Object.entries(resp.metadata).map(([key, value]) => {
-  let displayValue = value;
+                      <div style={{
+                        marginTop: "20px",
+                        padding: "16px",
+                        backgroundColor: "#fff8e1",
+                        borderRadius: "8px",
+                        border: "1px solid #f0ad4e"
+                      }}>
+                        <strong style={{ color: "#854d0e", display: "block", marginBottom: "12px" }}>
+                          Additional Information:
+                        </strong>
+                        <ul style={{ margin: "0 0 0 20px", padding: 0, listStyleType: "disc", color: "#713f12" }}>
+                          {Object.entries(resp.metadata)
+                            .filter(([metaKey]) => {
+                              const key = metaKey.toLowerCase().replace(/^__/, "");
+                              return !(
+                                key === "orgid" || key === "org_id" ||
+                                key === "formid" || key === "form_id" ||
+                                key === "isreview" || key === "is_review"
+                              );
+                            })
+                            .map(([metaKey, metaValue]) => {
+                              let displayKey = metaKey.replace(/^__/, "").replace(/_/g, " ");
+                              let displayValue = metaValue;
 
-  // 👉 Check if it's submitted_at (or any date field)
-  if (key.toLowerCase().includes("submitted") && value) {
-    displayValue = new Date(value).toLocaleDateString(); // ✅ only date
-  }
+                              if (metaKey.toLowerCase().includes("submitted_at") || 
+                                  metaKey.toLowerCase().includes("reviewed_at") || 
+                                  metaKey.toLowerCase().includes("created_at")) {
+                                displayValue = metaValue
+                                  ? new Date(metaValue).toLocaleString("en-IN", {
+                                      timeZone: "Asia/Kolkata",
+                                      day: "2-digit", month: "short", year: "numeric",
+                                      hour: "2-digit", minute: "2-digit", hour12: true,
+                                    })
+                                  : "—";
+                              } else if (metaKey === "__submitted_by") {
+                                const empId = String(metaValue);
+                                const employee = employees.find(emp => String(emp.employee_id || emp.id) === empId);
+                                displayValue = employee
+                                  ? `${employee.first_name || ""} ${employee.middle_name || ""} ${employee.last_name || ""}`.trim() || `Employee ${empId}`
+                                  : `Employee ${empId}`;
+                                displayKey = "Submitted By";
+                              } else if (metaKey === "__reviewed_by") {
+                                const supervisorId = String(metaValue);
+                                let supervisor = employees.find(emp => String(emp.employee_id || emp.id) === supervisorId);
+                                displayValue = supervisor
+                                  ? `${supervisor.first_name || ""} ${supervisor.middle_name || ""} ${supervisor.last_name || ""}`.trim() || `Supervisor ${supervisorId}`
+                                  : `Supervisor ${supervisorId}`;
+                                displayKey = "Reviewed By";
+                              }
 
-  return (
-    <li key={key} style={{ marginBottom: "4px" }}>
-      {key.replace(/^__/, "")}: {displayValue || "—"}
-    </li>
-  );
-})}
+                              return (
+                                <li key={metaKey} style={{ marginBottom: "6px" }}>
+                                  <strong>{toTitleCase(displayKey)}:</strong> {displayValue || "—"}
+                                </li>
+                              );
+                            })}
                         </ul>
                       </div>
                     )}
+                  </div>
+                )}
+
+                {isNotSubmitted && (
+                  <div style={{  textAlign: "center", color: "#666" }}>
+                    This employee has not submitted the form yet.
                   </div>
                 )}
               </div>
@@ -2665,8 +2822,7 @@ const handleSelectSubmission = async (submission) => {
             border: "none",
             borderRadius: "8px",
             cursor: "pointer",
-            fontSize: "1rem",
-            fontWeight: "500"
+            fontSize: "1rem"
           }}
         >
           Close

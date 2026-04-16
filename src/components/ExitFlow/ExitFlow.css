@@ -4810,3 +4810,40 @@
     align-items: flex-start !important;
   }
 }
+
+/* Ensure stars are always yellow when active */
+.text-yellow-400 {
+  color: #fbbf24 !important;   /* Bright yellow */
+}
+
+.text-gray-300 {
+  color: #d1d5db !important;
+}
+
+.text-yellow-200 {
+  color: #fde68c !important;
+}
+
+/* Optional: Make stars even more prominent */
+.star-rating button {
+  transition: all 0.2s ease;
+}
+
+.star-rating button:hover {
+  transform: scale(1.15);
+  filter: brightness(1.1);
+}
+/* Clean stars - remove any possible box */
+.star-rating button {
+
+  background: none !important;
+  border: none !important;
+  margin: 0 !important;
+  box-shadow: none !important;
+  line-height: 1;
+  gap: 10px;
+}
+
+.star-rating button:focus {
+  outline: none;
+}

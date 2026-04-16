@@ -71,7 +71,7 @@
 
 /* Left: Add Form Fields */
 .df-field-builder {
-  background: #f0f9ff;
+  background: rgba(0, 0, 0, 0.1);
   padding: 24px;
   border-radius: 14px;
 }
@@ -203,10 +203,13 @@
 }
 
 /* Input Styling */
-.df-input,
-select,
+.df-input
+{
+    width: 100%;
+
+}
+.df-input,select,
 textarea {
-  width: 100%;
   padding: 14px 16px;
   border: 2px solid #cbd5e1;
   border-radius: 10px;

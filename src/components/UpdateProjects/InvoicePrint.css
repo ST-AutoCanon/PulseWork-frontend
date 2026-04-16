@@ -117,7 +117,7 @@
   color: #fff;
   border: 2px solid #7e7e7e;
   padding: 8px;
-  text-align: right;
+  text-align: center;
 }
 
 .in-print-table td {
@@ -126,7 +126,6 @@
   text-align: right;
 }
 
-.in-print-table th:nth-child(2),
 .in-print-table td:nth-child(2) {
   max-width: 300px;
   text-align: left;

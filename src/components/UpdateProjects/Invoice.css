@@ -255,7 +255,6 @@
 .line-item-row {
   display: flex;
   align-items: center;
-  flex-wrap: wrap;
   gap: 1%;
   padding-bottom: 10px;
 }
@@ -299,6 +298,24 @@
 
 .add-line-item-btn:hover {
   background-color: #79c42b;
+}
+
+.remove-line-item-btn {
+  background: #dc2626;
+  color: #fff;
+  border: none;
+  border-radius: 50%;
+  margin-top: 60%;
+  width: 28px;
+  height: 28px;
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.remove-line-item-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
 }
 
 .invoice-summary {

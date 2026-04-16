@@ -18,9 +18,7 @@ const InvoiceTemplate = React.forwardRef((props, ref) => {
     .toLowerCase();
   const isOrg32 = Number(orgId) === 32;
   const isCreditNote =
-    normalizedType === "credit note" ||
-    normalizedType === "credit_note" ||
-    normalizedType === "creditnote";
+    normalizedType === "credit note" || normalizedType === "credit";
   const isQuotation = normalizedType === "quotation";
   const isPO = normalizedType === "purchase order" || normalizedType === "po";
 
@@ -283,7 +281,7 @@ const InvoiceTemplate = React.forwardRef((props, ref) => {
           <tr>
             <th>S.No</th>
             <th>Item/Service Description</th>
-            {isOrg32 && <th>Part Number</th>}
+            {isOrg32 && <th>Part No</th>}
             <th>HSN/SAC</th>
             <th>Amount</th>
             <th>Quantity</th>
@@ -427,15 +425,15 @@ const InvoiceTemplate = React.forwardRef((props, ref) => {
                   {Number(roundOff ? roundOffValue : 0).toLocaleString("en-IN")}
                 </div>
               </div>
+            </div>
+
+            <div className="emp-amounts-section">
               <div className="emp-total-block">
                 <div className="emp-bold">Total</div>
                 <div className="emp-bold">
                   ₹ {Number(displayTotal || grossTotal).toLocaleString("en-IN")}
                 </div>
               </div>
-            </div>
-
-            <div className="emp-amounts-section">
               <div className="emp-total-block">
                 <div>Advance</div>
                 <div>₹ {Number(advance || 0).toLocaleString("en-IN")}</div>

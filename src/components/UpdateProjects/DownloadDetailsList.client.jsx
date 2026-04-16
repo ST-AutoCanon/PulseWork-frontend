@@ -9,6 +9,8 @@ import InvoiceTemplate from "./InvoiceTemplate.client";
 import DownloadForm from "./DownloadForm.client";
 import { FiEye, FiDownload } from "react-icons/fi";
 import { MdOutlineEdit } from "react-icons/md";
+import { Country } from "country-state-city";
+import Modal from "../Modal/Modal.client";
 
 const formatDateIST = (dateString, withTime = false) => {
   try {
@@ -77,6 +79,14 @@ const normalizeLineItems = (items) => {
   }));
 };
 
+const getCountryDisplayName = (value) => {
+  const code = String(value || "").trim();
+  if (!code) return "—";
+
+  const match = Country.getCountryByCode(code);
+  return match?.name || code;
+};
+
 const DownloadDetailsList = ({ refreshKey, customers = [] }) => {
   const { user } = useAuth();
   const [records, setRecords] = useState([]);
@@ -88,10 +98,16 @@ const DownloadDetailsList = ({ refreshKey, customers = [] }) => {
     useState("Tax Invoice");
   const [redownloadInvoiceNumber, setRedownloadInvoiceNumber] = useState("");
   const [pendingRedownloadId, setPendingRedownloadId] = useState(null);
-
+  const [successNotice, setSuccessNotice] = useState({
+    isVisible: false,
+    title: "Success",
+    message: "",
+  });
   const [editingRecord, setEditingRecord] = useState(null);
   const [showEditModal, setShowEditModal] = useState(false);
-
+  const closeSuccessNotice = () => {
+    setSuccessNotice({ isVisible: false, title: "Success", message: "" });
+  };
   const printRef = useRef(null);
 
   const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
@@ -247,7 +263,7 @@ const DownloadDetailsList = ({ refreshKey, customers = [] }) => {
       contact: record.contact || "",
       companyGst: record.companyGst || "",
 
-      country: record.country || "IN",
+      country: record.country || "",
       state: record.state || "",
 
       invoiceDate: record.invoiceDate || "",
@@ -353,6 +369,12 @@ const DownloadDetailsList = ({ refreshKey, customers = [] }) => {
 
       setShowEditModal(false);
       setEditingRecord(null);
+
+      setSuccessNotice({
+        isVisible: true,
+        title: "Success",
+        message: "Download details updated successfully.",
+      });
     } catch (err) {
       console.error("Edit download details failed:", err);
       setError(err.message || "Failed to update");
@@ -554,7 +576,8 @@ const DownloadDetailsList = ({ refreshKey, customers = [] }) => {
                               <strong>GSTIN:</strong> {r.companyGst ?? "—"}
                             </li>
                             <li>
-                              <strong>Country:</strong> {r.country ?? "—"}
+                              <strong>Country:</strong>{" "}
+                              {getCountryDisplayName(r.country)}
                             </li>
                             <li>
                               <strong>State:</strong> {r.state ?? "—"}
@@ -657,7 +680,22 @@ const DownloadDetailsList = ({ refreshKey, customers = [] }) => {
           </div>
         </div>
       )}
-
+      {successNotice.isVisible && (
+        <Modal
+          isVisible={successNotice.isVisible}
+          title={successNotice.title}
+          onClose={closeSuccessNotice}
+          buttons={[
+            {
+              label: "OK",
+              className: "confirm-btn",
+              onClick: closeSuccessNotice,
+            },
+          ]}
+        >
+          <p>{successNotice.message}</p>
+        </Modal>
+      )}
       <div style={{ position: "absolute", top: "-10000px", left: "-10000px" }}>
         <div ref={printRef}>
           <InvoiceTemplate

@@ -445,8 +445,6 @@ const DownloadForm = ({
 
   const toLabel = isCreditNote ? "Return From" : "To";
   const detailsHeading = isCreditNote ? "Return Details" : "Invoice Details";
-  const referenceDateLabel = isCreditNote ? "Invoice Date" : "Reference Date";
-  const referenceIdLabel = isCreditNote ? "Invoice No" : "Reference ID";
   const displayFinalTotal = roundOff
     ? finalTotalAmount
     : toNumber(totalIncludingTax);
@@ -638,7 +636,7 @@ const DownloadForm = ({
         </div>
 
         <div className="download-form-group">
-          <label>{referenceDateLabel}:</label>
+          <label>Reference Date:</label>
           <input
             type="date"
             value={referenceDate}
@@ -647,7 +645,7 @@ const DownloadForm = ({
         </div>
 
         <div className="download-form-group">
-          <label>{referenceIdLabel}:</label>
+          <label>Reference Id:</label>
           <input
             type="text"
             value={referenceId}

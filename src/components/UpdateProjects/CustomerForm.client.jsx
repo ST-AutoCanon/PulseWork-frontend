@@ -229,7 +229,7 @@ const CustomerForm = ({ onClose, onSuccess, initialData = null }) => {
         <div className="download-form-group">
           <label>POC Contact</label>
           <input
-            type="text"
+            type="number"
             name="project_poc_contact"
             value={formData.project_poc_contact}
             onChange={handleChange}

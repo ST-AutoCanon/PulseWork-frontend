@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef, useMemo } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import "./DownloadDetailsList.css";
 import { useAuth } from "../../context/AuthProvider.client";
 import jsPDF from "jspdf";
@@ -105,9 +105,11 @@ const DownloadDetailsList = ({ refreshKey, customers = [] }) => {
   });
   const [editingRecord, setEditingRecord] = useState(null);
   const [showEditModal, setShowEditModal] = useState(false);
+
   const closeSuccessNotice = () => {
     setSuccessNotice({ isVisible: false, title: "Success", message: "" });
   };
+
   const printRef = useRef(null);
 
   const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
@@ -168,52 +170,17 @@ const DownloadDetailsList = ({ refreshKey, customers = [] }) => {
       prev.includes(id) ? prev.filter((r) => r !== id) : [...prev, id],
     );
 
-  const findCustomerForRecord = useMemo(() => {
-    return (record) => {
-      const targetName = String(record?.toName || record?.to || "")
-        .trim()
-        .toLowerCase();
-      const targetGst = String(record?.companyGst || "")
-        .trim()
-        .toLowerCase();
-      const targetContact = String(record?.contact || "")
-        .trim()
-        .toLowerCase();
-
-      return (
-        customers.find((c) => {
-          const name = String(c.company_name || "")
-            .trim()
-            .toLowerCase();
-          const gst = String(c.company_gst || "")
-            .trim()
-            .toLowerCase();
-          const contact = String(c.project_poc_contact || "")
-            .trim()
-            .toLowerCase();
-
-          return (
-            (targetName && name === targetName) ||
-            (targetGst && gst === targetGst) ||
-            (targetContact && contact === targetContact)
-          );
-        }) || null
-      );
-    };
-  }, [customers]);
-
   const buildDownloadDetails = (record) => {
-    const matchedCustomer = findCustomerForRecord(record);
     const lineItems = Array.isArray(record.lineItems) ? record.lineItems : [];
 
     return {
-      selectedCustomerId: matchedCustomer?.id ? String(matchedCustomer.id) : "",
-      to: record.toName || record.to || matchedCustomer?.company_name || "",
-      address: record.address || matchedCustomer?.company_address || "",
-      companyGst: record.companyGst || matchedCustomer?.company_gst || "",
-      contact: record.contact || matchedCustomer?.project_poc_contact || "",
-      country: matchedCustomer?.country || "",
-      state: record.state || matchedCustomer?.state || "",
+      selectedCustomerId: "",
+      to: record.toName || record.to || "",
+      address: record.address || "",
+      companyGst: record.companyGst || "",
+      contact: record.contact || "",
+      country: record.country || "",
+      state: record.state || "",
       invoiceDate: record.invoiceDate,
       referenceDate: record.referenceDate,
       referenceId: record.referenceId,
@@ -248,24 +215,19 @@ const DownloadDetailsList = ({ refreshKey, customers = [] }) => {
   };
 
   const handleEdit = (record) => {
-    const matchedCustomer = findCustomerForRecord(record);
     const normalizedType = normalizeInvoiceTypeKey(record.invoiceType);
 
     setEditingRecord({
       id: record.id,
       invoiceType: normalizedType,
       invoiceNumber: record.invoiceNumber,
-
-      selectedCustomerId: matchedCustomer?.id ? String(matchedCustomer.id) : "",
-
+      selectedCustomerId: "",
       to: record.toName || record.to || "",
       address: record.address || "",
       contact: record.contact || "",
       companyGst: record.companyGst || "",
-
       country: record.country || "",
       state: record.state || "",
-
       invoiceDate: record.invoiceDate || "",
       referenceDate: record.referenceDate || "",
       referenceId: record.referenceId || "",
@@ -311,8 +273,6 @@ const DownloadDetailsList = ({ refreshKey, customers = [] }) => {
               payload.invoiceType || editingRecord.invoiceType,
             ),
             invoiceNumber: editingRecord.invoiceNumber,
-            selectedCustomerId:
-              payload.selectedCustomerId || editingRecord.selectedCustomerId,
             to: payload.to,
             address: payload.address,
             contact: payload.contact,
@@ -680,6 +640,7 @@ const DownloadDetailsList = ({ refreshKey, customers = [] }) => {
           </div>
         </div>
       )}
+
       {successNotice.isVisible && (
         <Modal
           isVisible={successNotice.isVisible}
@@ -696,6 +657,7 @@ const DownloadDetailsList = ({ refreshKey, customers = [] }) => {
           <p>{successNotice.message}</p>
         </Modal>
       )}
+
       <div style={{ position: "absolute", top: "-10000px", left: "-10000px" }}>
         <div ref={printRef}>
           <InvoiceTemplate

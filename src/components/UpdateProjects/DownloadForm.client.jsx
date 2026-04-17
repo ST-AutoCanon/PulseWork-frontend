@@ -15,7 +15,7 @@ const toNumber = (v) => {
 
 const emptyLineItem = () => ({
   description: "",
-  partNumber: "", // ✅ NEW
+  partNumber: "",
   hsnSac: "",
   quantity: 1,
   rate: 0,
@@ -26,7 +26,7 @@ const normalizeItems = (items) => {
   if (!Array.isArray(items) || items.length === 0) return [emptyLineItem()];
   return items.map((item) => ({
     description: item?.description || "",
-    partNumber: item?.partNumber || "", // ✅ NEW
+    partNumber: item?.partNumber || "",
     hsnSac: item?.hsnSac || item?.hsn || "",
     quantity: item?.quantity ?? 1,
     rate: item?.rate ?? 0,
@@ -213,7 +213,8 @@ const DownloadForm = ({
     const initialCountry = source.country || "";
     const initialState = source.state || "";
 
-    setSelectedCustomerId(source.selectedCustomerId || "");
+    setSelectedCustomerId("");
+    setCustomerSearch("");
 
     setTo(initialTo);
     setAddress(initialAddress);
@@ -239,56 +240,7 @@ const DownloadForm = ({
       Number(source.finalTotalAmount || source.totalIncludingTax || 0),
     );
     setTerms(source.terms || "");
-
-    if (customers.length > 0) {
-      const match =
-        (source.selectedCustomerId &&
-          customers.find(
-            (c) => String(c.id) === String(source.selectedCustomerId),
-          )) ||
-        customers.find((c) => {
-          const name = String(c.company_name || "")
-            .trim()
-            .toLowerCase();
-          const gst = String(c.company_gst || "")
-            .trim()
-            .toLowerCase();
-          const pan = String(c.company_pan || "")
-            .trim()
-            .toLowerCase();
-          const contact = String(c.project_poc_contact || "")
-            .trim()
-            .toLowerCase();
-
-          return (
-            (initialTo && name === String(initialTo).trim().toLowerCase()) ||
-            (initialGst && gst === String(initialGst).trim().toLowerCase()) ||
-            (initialContact &&
-              contact === String(initialContact).trim().toLowerCase()) ||
-            (initialAddress &&
-              String(c.company_address || "")
-                .trim()
-                .toLowerCase() ===
-                String(initialAddress).trim().toLowerCase()) ||
-            (pan &&
-              pan ===
-                String(source.company_pan || "")
-                  .trim()
-                  .toLowerCase())
-          );
-        });
-
-      if (match) {
-        setSelectedCustomerId(String(match.id));
-        setCustomerSearch(match.company_name || initialTo || "");
-        applyCustomer(match);
-      } else {
-        setCustomerSearch(initialTo);
-      }
-    } else {
-      setCustomerSearch(initialTo);
-    }
-  }, [initialData, selectedProject, customers]);
+  }, [initialData, selectedProject]);
 
   useEffect(() => {
     if (!initialData && selectedProject && customers.length) {
@@ -396,7 +348,7 @@ const DownloadForm = ({
     const payload = {
       invoiceType: invoiceTypeKey,
       invoiceTypeLabel: currentInvoiceType,
-      selectedCustomerId: selectedCustomerId || null,
+      selectedCustomerId: isEditMode ? null : selectedCustomerId || null,
       to: to || null,
       address: address || null,
       contact: contact || null,
@@ -414,7 +366,7 @@ const DownloadForm = ({
       finalTotalAmount: toNumber(finalTotalAmount),
       lineItems: (lineItems || []).map((li) => ({
         description: li.description || "",
-        partNumber: li.partNumber || "", // ✅ NEW
+        partNumber: li.partNumber || "",
         hsnSac: li.hsnSac || "",
         quantity: toNumber(li.quantity),
         rate: toNumber(li.rate),

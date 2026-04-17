@@ -582,7 +582,7 @@ const InvoiceTemplate = React.forwardRef((props, ref) => {
         </div>
       )}
 
-      {!isOrg32 && !isOrg1 && (
+      {!isOrg32 && (
         <div className="invoice-print-placeholder">
           No print template configured for this organization.
         </div>

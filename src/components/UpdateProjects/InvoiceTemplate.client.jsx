@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import "./InvoiceTemplate.css";
+import "./InvoicePrint.css";
 import { numberToWords } from "./numberToWords.client";
 import { FiPhone, FiMail, FiMapPin } from "react-icons/fi";
 
@@ -66,7 +66,9 @@ const InvoiceTemplate = React.forwardRef((props, ref) => {
     0,
   );
 
-  const grossTotal = subtotalAmount + totalGST;
+  const effectiveGstAmount = Number(gstAmount || totalGST || 0);
+
+  const grossTotal = subtotalAmount + effectiveGstAmount;
   const roundOffValue = Number(roundOffAmount || 0);
   const displayTotal = Number(
     finalTotalAmount ?? totalIncludingTax ?? grossTotal,
@@ -89,6 +91,8 @@ const InvoiceTemplate = React.forwardRef((props, ref) => {
     : invoiceType
       ? invoiceType.toUpperCase()
       : "INVOICE";
+
+  const lineItemColumnCount = isOrg32 ? 7 : 6;
 
   return (
     <div ref={ref} className={`emp-inv-container ${isOrg32 ? "org-32" : ""}`}>
@@ -286,42 +290,26 @@ const InvoiceTemplate = React.forwardRef((props, ref) => {
             <th>Amount</th>
             <th>Quantity</th>
             <th>Sub total</th>
-            <th>GST ({gst}%)</th>
-            <th>Total</th>
           </tr>
         </thead>
         <tbody>
-          {parsedLineItems.map((item, idx) => {
-            const lineGST = (Number(item.total || 0) * Number(gst || 0)) / 100;
-            const lineGross = Number(item.total || 0) + lineGST;
-            return (
-              <tr key={idx}>
-                <td>{idx + 1}</td>
-                <td>{item.description || ""}</td>
-                {isOrg32 && <td>{item.partNumber || ""}</td>}
-                <td>{item.hsnSac || ""}</td>
-                <td>₹ {Number(item.rate || 0).toLocaleString("en-IN")}</td>
-                <td>{item.quantity || ""}</td>
-                <td>₹ {Number(item.total || 0).toLocaleString("en-IN")}</td>
-                <td>₹ {Number(lineGST.toFixed(2)).toLocaleString("en-IN")}</td>
-                <td>
-                  ₹ {Number(lineGross.toFixed(2)).toLocaleString("en-IN")}
-                </td>
-              </tr>
-            );
-          })}
+          {parsedLineItems.map((item, idx) => (
+            <tr key={idx}>
+              <td>{idx + 1}</td>
+              <td>{item.description || ""}</td>
+              {isOrg32 && <td>{item.partNumber || ""}</td>}
+              <td>{item.hsnSac || ""}</td>
+              <td>₹ {Number(item.rate || 0).toLocaleString("en-IN")}</td>
+              <td>{item.quantity || ""}</td>
+              <td>₹ {Number(item.total || 0).toLocaleString("en-IN")}</td>
+            </tr>
+          ))}
 
           {emptyRows.map((_, index) => (
             <tr key={`empty-${index}`}>
-              <td>&nbsp;</td>
-              <td>&nbsp;</td>
-              {isOrg32 && <td>&nbsp;</td>}
-              <td>&nbsp;</td>
-              <td>&nbsp;</td>
-              <td>&nbsp;</td>
-              <td>&nbsp;</td>
-              <td>&nbsp;</td>
-              <td>&nbsp;</td>
+              {Array.from({ length: lineItemColumnCount }).map((__, colIdx) => (
+                <td key={`empty-${index}-${colIdx}`}>&nbsp;</td>
+              ))}
             </tr>
           ))}
 
@@ -342,14 +330,6 @@ const InvoiceTemplate = React.forwardRef((props, ref) => {
               <strong>
                 ₹ {Number(subtotalAmount).toLocaleString("en-IN")}
               </strong>
-            </td>
-            <td>
-              <strong>
-                ₹ {Number(totalGST.toFixed(2)).toLocaleString("en-IN")}
-              </strong>
-            </td>
-            <td>
-              <strong>₹ {Number(grossTotal).toLocaleString("en-IN")}</strong>
             </td>
           </tr>
         </tbody>
@@ -419,10 +399,9 @@ const InvoiceTemplate = React.forwardRef((props, ref) => {
                 <div>₹ {Number(subtotalAmount).toLocaleString("en-IN")}</div>
               </div>
               <div className="emp-total-block">
-                <div>Round Off</div>
+                <div>GST</div>
                 <div>
-                  ₹{" "}
-                  {Number(roundOff ? roundOffValue : 0).toLocaleString("en-IN")}
+                  ₹ {Number(effectiveGstAmount).toLocaleString("en-IN")}
                 </div>
               </div>
             </div>
@@ -431,7 +410,14 @@ const InvoiceTemplate = React.forwardRef((props, ref) => {
               <div className="emp-total-block">
                 <div className="emp-bold">Total</div>
                 <div className="emp-bold">
-                  ₹ {Number(displayTotal || grossTotal).toLocaleString("en-IN")}
+                  ₹ {Number(grossTotal).toLocaleString("en-IN")}
+                </div>
+              </div>
+              <div className="emp-total-block">
+                <div>Round Off</div>
+                <div>
+                  ₹{" "}
+                  {Number(roundOff ? roundOffValue : 0).toLocaleString("en-IN")}
                 </div>
               </div>
               <div className="emp-total-block">
@@ -442,8 +428,8 @@ const InvoiceTemplate = React.forwardRef((props, ref) => {
 
             <div className="emp-amounts-section">
               <div className="emp-total-block">
-                <div>Payable Amount</div>
-                <div>
+                <div className="emp-bold">Payable Amount</div>
+                <div className="emp-bold">
                   ₹ {Number(displayTotal || grossTotal).toLocaleString("en-IN")}
                 </div>
               </div>
@@ -549,51 +535,57 @@ const InvoiceTemplate = React.forwardRef((props, ref) => {
           </div>
         </footer>
       ) : (
-        <>
-          <footer className="emp-inv-footer">
-            <div className="emp-footer-partition">
-              <h4>Bank Details</h4>
-              <div className="emp-bank-details">
-                <div className="emp-qr-code">
-                  <img src="/images/upi-qr-code.png" alt="UPI QR Code" />
-                </div>
-                <div>
-                  <p>
-                    Name: HDFC BANK, BELGAUM
-                    <br />
-                    Account No: 50200089573214
-                    <br />
-                    IFSC code: HDFC0000253
-                    <br />
-                    Account holder&apos;s name: Sukalpa Tech Solutions Pvt Ltd
-                  </p>
-                </div>
+        <footer className="emp-inv-footer">
+          <div className="emp-footer-partition">
+            <h4>Bank Details</h4>
+            <div className="emp-bank-details">
+              <div className="emp-qr-code">
+                <img src="/images/upi-qr-code.png" alt="UPI QR Code" />
+              </div>
+              <div>
+                <p>
+                  Name: HDFC BANK, BELGAUM
+                  <br />
+                  Account No: 50200089573214
+                  <br />
+                  IFSC code: HDFC0000253
+                  <br />
+                  Account holder&apos;s name: Sukalpa Tech Solutions Pvt Ltd
+                </p>
               </div>
             </div>
-
-            <div className="emp-seal-signs">
-              <p>For: Sukalpa Tech Solutions Pvt Ltd</p>
-              {withSeal ? (
-                <div className="emp-seal">
-                  <img src="/images/seal.png" alt="SEAL" />
-                </div>
-              ) : (
-                <div className="emp-no-seal" />
-              )}
-              <strong>
-                <p className="emp-authorized">Authorized Signatory</p>
-              </strong>
-            </div>
-          </footer>
-
-          <div className="emp-note">
-            <p>
-              Note: We are a registered MSME under the MSMED Act. As per Section
-              15, kindly ensure payment within 45 days from the invoice date.
-            </p>
-            <p>Timely payment supports small businesses like ours.</p>
           </div>
-        </>
+
+          <div className="emp-seal-signs">
+            <p>For: Sukalpa Tech Solutions Pvt Ltd</p>
+            {withSeal ? (
+              <div className="emp-seal">
+                <img src="/images/seal.png" alt="SEAL" />
+              </div>
+            ) : (
+              <div className="emp-no-seal" />
+            )}
+            <strong>
+              <p className="emp-authorized">Authorized Signatory</p>
+            </strong>
+          </div>
+        </footer>
+      )}
+
+      {!isOrg32 && (
+        <div className="emp-note">
+          <p>
+            Note: We are a registered MSME under the MSMED Act. As per Section
+            15, kindly ensure payment within 45 days from the invoice date.
+          </p>
+          <p>Timely payment supports small businesses like ours.</p>
+        </div>
+      )}
+
+      {!isOrg32 && !isOrg1 && (
+        <div className="invoice-print-placeholder">
+          No print template configured for this organization.
+        </div>
       )}
     </div>
   );

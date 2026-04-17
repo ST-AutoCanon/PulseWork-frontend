@@ -177,6 +177,8 @@ const InvoicePrint = React.forwardRef(({ invoiceData = {}, orgId }, ref) => {
 
   const headerTitle = invoiceType ? invoiceType.toUpperCase() : "INVOICE";
 
+  const lineItemColumnCount = isOrg32 ? 7 : 6;
+
   return (
     <div
       ref={ref}
@@ -289,15 +291,11 @@ const InvoicePrint = React.forwardRef(({ invoiceData = {}, orgId }, ref) => {
               <th>Amount</th>
               <th>Quantity</th>
               <th>Sub total</th>
-              <th>GST ({gst}%)</th>
-              <th>Total</th>
             </tr>
           </thead>
           <tbody>
             {parsedLineItems.map((item, idx) => {
               const lineTotal = safeNumber(item.total);
-              const lineGST = (lineTotal * gst) / 100;
-              const lineGross = lineTotal + lineGST;
               return (
                 <tr key={idx}>
                   <td>{idx + 1}</td>
@@ -307,23 +305,17 @@ const InvoicePrint = React.forwardRef(({ invoiceData = {}, orgId }, ref) => {
                   <td>{fmtINR(item.rate)}</td>
                   <td>{item.quantity}</td>
                   <td>{fmtINR(lineTotal)}</td>
-                  <td>{fmtINR(Number(lineGST.toFixed(2)))}</td>
-                  <td>{fmtINR(Number(lineGross.toFixed(2)))}</td>
                 </tr>
               );
             })}
 
             {emptyRows.map((_, index) => (
               <tr key={`empty-${index}`}>
-                <td>&nbsp;</td>
-                <td>&nbsp;</td>
-                {isOrg32 && <td>&nbsp;</td>}
-                <td>&nbsp;</td>
-                <td>&nbsp;</td>
-                <td>&nbsp;</td>
-                <td>&nbsp;</td>
-                <td>&nbsp;</td>
-                <td>&nbsp;</td>
+                {Array.from({ length: lineItemColumnCount }).map(
+                  (__, colIdx) => (
+                    <td key={`empty-${index}-${colIdx}`}>&nbsp;</td>
+                  ),
+                )}
               </tr>
             ))}
 
@@ -342,12 +334,6 @@ const InvoicePrint = React.forwardRef(({ invoiceData = {}, orgId }, ref) => {
               </td>
               <td>
                 <strong>{fmtINR(subtotalAmount)}</strong>
-              </td>
-              <td>
-                <strong>{fmtINR(effectiveGstAmount)}</strong>
-              </td>
-              <td>
-                <strong>{fmtINR(grossTotal)}</strong>
               </td>
             </tr>
           </tbody>
@@ -414,15 +400,19 @@ const InvoicePrint = React.forwardRef(({ invoiceData = {}, orgId }, ref) => {
                   <p>{fmtINR(subtotalAmount)}</p>
                 </div>
                 <div className="total-block">
-                  <p>Round Off</p>
-                  <p>{fmtINR(roundOff ? computedRoundOff : 0)}</p>
+                  <p>GST</p>
+                  <p>{fmtINR(effectiveGstAmount)}</p>
                 </div>
               </div>
 
               <div className="amounts-section">
                 <div className="total-block">
                   <p className="bold">Total</p>
-                  <p className="bold">{fmtINR(displayTotal || grossTotal)}</p>
+                  <p className="bold">{fmtINR(grossTotal)}</p>
+                </div>
+                <div className="total-block">
+                  <p>Round Off</p>
+                  <p>{fmtINR(roundOff ? computedRoundOff : 0)}</p>
                 </div>
                 <div className="total-block">
                   <p>Advance</p>
@@ -432,8 +422,8 @@ const InvoicePrint = React.forwardRef(({ invoiceData = {}, orgId }, ref) => {
 
               <div className="amounts-section">
                 <div className="total-block">
-                  <p>Payable Amount</p>
-                  <p>{fmtINR(displayTotal || grossTotal)}</p>
+                  <p className="bold">Payable Amount</p>
+                  <p className="bold">{fmtINR(displayTotal || grossTotal)}</p>
                 </div>
               </div>
             </div>

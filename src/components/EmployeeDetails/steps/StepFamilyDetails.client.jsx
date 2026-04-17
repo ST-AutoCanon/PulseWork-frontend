@@ -84,7 +84,9 @@ export default function StepFamilyDetails({ data, onChange }) {
               type="date"
               name="marriage_date"
               max={today}
-              value={data.marriage_date ? data.marriage_date.split("T")[0] : ""}
+              value={
+                data.marriage_date ? data.marriage_date.split("T")[0] : null
+              }
               onChange={(e) => onChange("marriage_date", e.target.value)}
               required
             />
@@ -105,7 +107,7 @@ export default function StepFamilyDetails({ data, onChange }) {
             <input
               type="date"
               name="spouse_dob"
-              value={data.spouse_dob ? data.spouse_dob.split("T")[0] : ""}
+              value={data.spouse_dob ? data.spouse_dob.split("T")[0] : null}
               onChange={(e) => onChange("spouse_dob", e.target.value)}
               required
             />
@@ -141,7 +143,7 @@ export default function StepFamilyDetails({ data, onChange }) {
                   value={
                     data[`child${i}_dob`]
                       ? data[`child${i}_dob`].split("T")[0]
-                      : ""
+                      : null
                   }
                   onChange={(e) => onChange(`child${i}_dob`, e.target.value)}
                 />

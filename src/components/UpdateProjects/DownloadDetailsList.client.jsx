@@ -545,7 +545,7 @@ const DownloadDetailsList = ({ refreshKey, customers = [] }) => {
                             <li>
                               <strong>
                                 {rowType === "credit"
-                                  ? "Invoice No:"
+                                  ? "Invoice:"
                                   : rowType === "po"
                                     ? "Reference:"
                                     : "Reference:"}
@@ -555,24 +555,12 @@ const DownloadDetailsList = ({ refreshKey, customers = [] }) => {
                                 ? ` on ${formatDateIST(r.referenceDate)}`
                                 : ""}
                             </li>
+
                             <li>
-                              <strong>
-                                {rowType === "credit"
-                                  ? "Invoice Date:"
-                                  : "Place of Supply:"}
-                              </strong>{" "}
-                              {rowType === "credit"
-                                ? r.invoiceDate
-                                  ? formatDateIST(r.invoiceDate)
-                                  : "—"
-                                : (r.placeOfSupply ?? "—")}
+                              <strong>Place of Supply:</strong>{" "}
+                              {r.placeOfSupply ?? "—"}
                             </li>
-                            {rowType !== "credit" && (
-                              <li>
-                                <strong>Place of Supply:</strong>{" "}
-                                {r.placeOfSupply ?? "—"}
-                              </li>
-                            )}
+
                             <li>
                               <strong>With Seal:</strong>{" "}
                               {r.withSeal ? "Yes" : "No"}

@@ -258,11 +258,12 @@ const ProjectsDashboard = () => {
       );
       if (!response.ok) throw new Error("Failed to fetch invoice number");
       const data = await response.json();
-      if (data && data.invoiceNo) {
-        setInvoiceNumberDirect(data.invoiceNo);
-      }
+      const nextNo = data?.invoiceNo || "";
+      if (nextNo) setInvoiceNumberDirect(nextNo);
+      return nextNo;
     } catch (error) {
       console.error("Error fetching invoice number:", error);
+      return "";
     }
   };
 
@@ -293,7 +294,7 @@ const ProjectsDashboard = () => {
     if (!printRef.current) return;
 
     try {
-      await fetchInvoiceSequence();
+      const currentInvoiceNo = await fetchInvoiceSequence();
 
       const canvas = await html2canvas(printRef.current, { scale: 2 });
       const imgData = canvas.toDataURL("image/png");
@@ -302,25 +303,35 @@ const ProjectsDashboard = () => {
         unit: "pt",
         format: "a4",
       });
+
       const pdfWidth = pdf.internal.pageSize.getWidth();
       const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
       pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
 
-      const filename = `${invoiceNumberDirect}.pdf`;
-      pdf.save(filename);
+      pdf.save(`${currentInvoiceNo || invoiceNumberDirect || "invoice"}.pdf`);
 
-      await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/download-details`, {
-        method: "POST",
-        credentials: "include",
-        headers: buildHeaders(),
-        body: JSON.stringify({
-          invoiceType: invoiceTypeKey,
-          invoiceNumber: invoiceNumberDirect,
-          downloadDetails,
-        }),
-      });
+      const resp = await fetch(
+        `${process.env.NEXT_PUBLIC_BACKEND_URL}/download-details`,
+        {
+          method: "POST",
+          credentials: "include",
+          headers: buildHeaders(),
+          body: JSON.stringify({
+            invoiceType: invoiceTypeKey,
+            invoiceNumber: currentInvoiceNo || invoiceNumberDirect,
+            downloadDetails,
+          }),
+        },
+      );
+
+      if (!resp.ok) {
+        throw new Error(`Download save failed (${resp.status})`);
+      }
 
       await updateInvoiceNumber();
+      const nextInvoiceNo = await fetchInvoiceSequence();
+      if (nextInvoiceNo) setInvoiceNumberDirect(nextInvoiceNo);
+
       setDownloadDetailsRefreshKey((prev) => prev + 1);
     } catch (error) {
       console.error("Error generating PDF", error);

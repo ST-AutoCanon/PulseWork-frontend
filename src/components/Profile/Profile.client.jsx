@@ -516,9 +516,14 @@ const Profile = ({ onClose, notificationId = null }) => {
               <div className="field-row assets-row">
                 <span className="field-label">Assigned Assets</span>
                 <span className="field-value assets-list">
-                  {assignedAssets.length > 0
-                    ? assignedAssets.map((a) => a.asset_code).join(", ")
-                    : "None"}
+                 {assignedAssets.length > 0
+  ? assignedAssets
+      .map(
+        (a) =>
+          `${a.asset_code} (${a.status === "Returned" ? "Returned" : "Assigned"})`
+      )
+      .join(", ")
+  : "None"}
                 </span>
               </div>
             </div>

@@ -1,7 +1,5 @@
 
 
-
-
 "use client";
 import React, { useState, useEffect , useMemo} from "react";
 import "./DynamicFormBuilder.css";
@@ -83,23 +81,41 @@ const [editingSupervisorIndex, setEditingSupervisorIndex] = useState(null);
 const [supervisorPlaceholder, setSupervisorPlaceholder] = useState("");
 
 const isFormActive = (from, to) => {
+  if (!from && !to) return true;
+
   const now = new Date();
 
-  let fromDate = null;
-  let toDate = null;
+  // Normalize dates to start/end of day in local time (IST)
+  const normalizeToStartOfDay = (dateStr) => {
+    if (!dateStr) return null;
+    const d = new Date(dateStr);
+    d.setHours(0, 0, 0, 0);
+    return d;
+  };
 
-  if (from) {
-    fromDate = new Date(from);
-    fromDate.setHours(0, 0, 0, 0);
+  const normalizeToEndOfDay = (dateStr) => {
+    if (!dateStr) return null;
+    const d = new Date(dateStr);
+    d.setHours(23, 59, 59, 999);
+    return d;
+  };
+
+  const fromDate = normalizeToStartOfDay(from);
+  const toDate = normalizeToEndOfDay(to);
+
+  // Case 1: Both from and to are set
+  if (fromDate && toDate) {
+    return now >= fromDate && now <= toDate;
   }
 
-  if (to) {
-    toDate = new Date(to);
-    toDate.setHours(23, 59, 59, 999);
+  // Case 2: Only from is set (active from that day onwards)
+  if (fromDate) {
+    return now >= fromDate;
   }
 
-  if ((fromDate && now < fromDate) || (toDate && now > toDate)) {
-    return false;
+  // Case 3: Only to is set (active until that day)
+  if (toDate) {
+    return now <= toDate;
   }
 
   return true;
@@ -727,66 +743,96 @@ if (formType === 'employee_supervisor' && !fields.some(f => f.supervisorFields &
       setLoading(false);
     }
   };
-  const fillTemplate = async (template) => {
-    try {
-      setLoading(true);
-      const res = await fetch(`${BACKEND_URL}/api/forms/${template.id}`, {
-        method: "GET",
-        credentials: "include",
-        headers: getHeaders(),
-      });
-      if (!res.ok) throw new Error("Failed to fetch form");
-      const json = await res.json();
-      let form = json.data || json;
-      if (typeof form.form_json === 'string') {
-        try {
-          form.form_json = JSON.parse(form.form_json);
-        } catch (e) {
-          form.form_json = [];
-        }
+ const fillTemplate = async (template) => {
+  try {
+    setLoading(true);
+    setError(null);
+
+    const res = await fetch(`${BACKEND_URL}/api/forms/${template.id}`, {
+      method: "GET",
+      credentials: "include",
+      headers: getHeaders(),
+    });
+
+    if (!res.ok) throw new Error("Failed to load form");
+
+    const json = await res.json();
+    let form = json.data || json;
+
+    if (typeof form.form_json === 'string') {
+      try {
+        form.form_json = JSON.parse(form.form_json);
+      } catch (e) {
+        form.form_json = [];
       }
-      const now = new Date();
-      const fromDate = form.active_from ? new Date(form.active_from) : null;
-      const toDate = form.active_to ? new Date(form.active_to) : null;
-      if ((fromDate && now < fromDate) || (toDate && now > toDate)) {
-        setError("This form is not active at this time.");
-        setSelectedTemplate(null);
-        setFillMode(false);
-        return;
-      }
-      setSelectedTemplate(form);
-      setViewMode(false);
-      setFillMode(true);
-      setFormData({});
-      setIsReviewMode(false);
-      setTeamSubmissions([]);
-      setSelectedSubmission(null);
-      setHasSubmitted(false);
-      setSubmissionData(null);
-      setViewingSubmission(false);
-      const responseRes = await fetch(`${BACKEND_URL}/api/forms/${template.id}/responses`, {
-        method: "GET",
-        credentials: "include",
-        headers: getHeaders(),
-      });
-      if (responseRes.ok) {
-        const respJson = await responseRes.json();
-        let rawResponses = Array.isArray(respJson) ? respJson : respJson.data || respJson.responses || [];
-        const userSubmission = rawResponses.find(r =>
-          String(r.employee_id || r.employeeId) === String(currentEmployeeId)
-        );
-        if (userSubmission) {
-          setHasSubmitted(true);
-          setSubmissionData(userSubmission);
-        }
-      }
-    } catch (err) {
-      console.error("Fill template error:", err);
-      setError("Failed to load form");
-    } finally {
-      setLoading(false);
     }
-  };
+
+    // ==================== CRITICAL FIX ====================
+    // Use dates from the template list (card) if backend doesn't return them
+    if (!form.active_from && template.active_from) {
+      form.active_from = template.active_from;
+    }
+    if (!form.active_to && template.active_to) {
+      form.active_to = template.active_to;
+    }
+
+    console.log("=== FILL TEMPLATE DATE FIX ===");
+    console.log("Template (card) dates:", {
+      active_from: template.active_from,
+      active_to: template.active_to
+    });
+    console.log("Form (fetched) dates:", {
+      active_from: form.active_from,
+      active_to: form.active_to
+    });
+
+    const isCurrentlyActive = isFormActive(form.active_from, form.active_to);
+
+    if (!isCurrentlyActive) {
+      showAlert(
+        `This form is not active at this time.\n\nActive From: ${form.active_from || "Not Set"}\nActive To: ${form.active_to || "Not Set"}`,
+        "Form Not Active",
+        "warning"
+      );
+      setSelectedTemplate(null);
+      setFillMode(false);
+      return;
+    }
+
+    setSelectedTemplate(form);
+    setViewMode(false);
+    setFillMode(true);
+    setFormData({});
+    setIsReviewMode(false);
+    setHasSubmitted(false);
+    setSubmissionData(null);
+    setViewingSubmission(false);
+
+    // Check if user already submitted
+    const responseRes = await fetch(`${BACKEND_URL}/api/forms/${template.id}/responses`, {
+      method: "GET",
+      credentials: "include",
+      headers: getHeaders(),
+    });
+
+    if (responseRes.ok) {
+      const respJson = await responseRes.json();
+      let rawResponses = Array.isArray(respJson) ? respJson : respJson.data || respJson.responses || [];
+      const userSubmission = rawResponses.find(r =>
+        String(r.employee_id || r.employeeId) === String(currentEmployeeId)
+      );
+      if (userSubmission) {
+        setHasSubmitted(true);
+        setSubmissionData(userSubmission);
+      }
+    }
+  } catch (err) {
+    console.error("Fill template error:", err);
+    showAlert("Failed to load the form. Please try again.", "Error", "error");
+  } finally {
+    setLoading(false);
+  }
+};
 const handleSelectSubmission = async (submission) => {
   console.log("Selected submission:", submission);
 
@@ -1774,13 +1820,50 @@ const handleAssign = async () => {
                   <option value="rating">⭐ Rating</option>
                 </select>
                 <label style={{ display: "block", marginTop: "12px", marginBottom: "8px", fontWeight: "500", fontSize: "0.9rem" }}>
-                  Employee Field Label
-                </label>
-                <input placeholder="e.g., Your Name" value={fieldLabel} onChange={(e) => setFieldLabel(e.target.value)} className="df-input" />
-                <label style={{ display: "block", marginTop: "12px", marginBottom: "8px", fontWeight: "500", fontSize: "0.9rem" }}>
-                  Employee Placeholder (optional)
-                </label>
-                <input placeholder="e.g., Enter your full name" value={fieldPlaceholder} onChange={(e) => setFieldPlaceholder(e.target.value)} className="df-input" />
+  Employee Field Label
+</label>
+<input 
+  placeholder="e.g., Your Name" 
+  value={fieldLabel} 
+  onChange={(e) => setFieldLabel(e.target.value)} 
+  className="df-input" 
+/>
+
+<label style={{ display: "block", marginTop: "12px", marginBottom: "8px", fontWeight: "500", fontSize: "0.9rem" }}>
+  Employee Placeholder (optional)
+</label>
+<input 
+  placeholder="e.g., Enter your full name" 
+  value={fieldPlaceholder} 
+  onChange={(e) => setFieldPlaceholder(e.target.value)} 
+  className="df-input" 
+/>
+
+{/* NEW: Required Checkbox for Employee Field */}
+<div style={{ marginTop: "12px" }}>
+  <label style={{ display: "flex", alignItems: "center", gap: "8px", fontWeight: "500" }}>
+    <input 
+      type="checkbox" 
+      checked={fieldRequired} 
+      onChange={(e) => setFieldRequired(e.target.checked)} 
+    />
+    Required Field
+  </label>
+</div>
+
+{showOptions && (
+  <div style={{ marginTop: "12px" }}>
+    <label style={{ display: "block", marginBottom: "8px", fontWeight: "500", fontSize: "0.9rem" }}>
+      Employee Options (comma separated)
+    </label>
+    <input 
+      placeholder="e.g., Option 1, Option 2, Option 3" 
+      value={optionsInput} 
+      onChange={(e) => setOptionsInput(e.target.value)} 
+      className="df-input" 
+    />
+  </div>
+)}
                 {showOptions && (
                   <div style={{ marginTop: "12px" }}>
                     <label style={{ display: "block", marginBottom: "8px", fontWeight: "500", fontSize: "0.9rem" }}>
@@ -2331,8 +2414,10 @@ const isActive = isFormActive(activeFrom, activeTo);        return (
       const activeTo = t.active_to || t.activeTo || null;
       const fromStr = activeFrom ? new Date(activeFrom).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : "—";
       const toStr = activeTo ? new Date(activeTo).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : "—";
-      const isActive = isFormActive(activeFrom, activeTo);
-
+const isActive = isFormActive(
+  t.active_from || t.activeFrom, 
+  t.active_to || t.activeTo
+);
       return (
         <div key={`all-${t.id || index}`} className="df-template-card">
           <button
@@ -2385,50 +2470,70 @@ const isActive = isFormActive(activeFrom, activeTo);        return (
 )}
 
   {/* ==================== SELF FORMS TAB ==================== */}
-  {activeTab === "self" && (
-    selfForms.length === 0 ? (
-      <p style={{ color: "#666", textAlign: "center", padding: "60px 0", gridColumn: "1 / -1" }}>
-        No forms assigned to you yet.
-      </p>
-    ) : (
-      selfForms.map((t, index) => {
-        const activeFrom = t.active_from || t.activeFrom || null;
-        const activeTo = t.active_to || t.activeTo || null;
-        const fromStr = activeFrom ? new Date(activeFrom).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : "—";
-        const toStr = activeTo ? new Date(activeTo).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : "—";
-const isActive = isFormActive(activeFrom, activeTo);
-        return (
-          <div 
-key={`self-${t.id}-${t.employee_id || t.assigned_to || index}`}            className="df-template-card"
-          >
-            <h4>{toTitleCase(t.form_name || t.name || "")}</h4>
-            <div style={{
-              margin: "14px 0 18px 0",
-              padding: "12px 14px",
-              background: isActive ? "#f0fdf4" : "#fef2f2",
-              borderRadius: "10px",
-              border: `1px solid ${isActive ? "#86efac" : "#fecaca"}`,
-            }}>
-              <strong>Active Period:</strong><br />
-              {fromStr} — {toStr}<br />
-              <span style={{ color: isActive ? "#166534" : "#991b1b", fontWeight: "500" }}>
-                {isActive ? " Currently Active" : " Not Active"}
-              </span>
-            </div>
-            <button
-              onClick={() => fillTemplate(t)}
-              className="df-fill-btn"
-              disabled={!isActive}
-              style={{ opacity: isActive ? 1 : 0.65, width: "100%" }}
-            >
-              {isActive ? "Fill Form" : "Not Active Now"}
-            </button>
-          </div>
-        );
-      })
-    )
-  )}
+{/* ==================== SELF FORMS TAB (Fixed for Same Day) ==================== */}
+{activeTab === "self" && (
+  selfForms.length === 0 ? (
+    <p style={{ color: "#666", textAlign: "center", padding: "60px 0", gridColumn: "1 / -1" }}>
+      No forms assigned to you yet.
+    </p>
+  ) : (
+    selfForms.map((t, index) => {
+      const formActiveFrom = t.active_from || t.activeFrom || null;
+      const formActiveTo = t.active_to || t.activeTo || null;
 
+      const fromStr = formActiveFrom
+        ? new Date(formActiveFrom).toLocaleDateString('en-GB', { 
+            day: '2-digit', month: 'short', year: 'numeric' 
+          })
+        : "—";
+
+      const toStr = formActiveTo
+        ? new Date(formActiveTo).toLocaleDateString('en-GB', { 
+            day: '2-digit', month: 'short', year: 'numeric' 
+          })
+        : "—";
+
+      const isActive = isFormActive(formActiveFrom, formActiveTo);
+
+      return (
+        <div
+          key={`self-${t.id}-${index}`}
+          className="df-template-card"
+        >
+          <h4>{toTitleCase(t.form_name || t.name || "")}</h4>
+          <div style={{
+            margin: "14px 0 18px 0",
+            padding: "12px 14px",
+            background: isActive ? "#f0fdf4" : "#fef2f2",
+            borderRadius: "10px",
+            border: `1px solid ${isActive ? "#86efac" : "#fecaca"}`,
+          }}>
+            <strong>Active Period:</strong><br />
+            {fromStr} — {toStr}<br />
+            <span style={{ 
+              color: isActive ? "#166534" : "#991b1b", 
+              fontWeight: "500" 
+            }}>
+              {isActive ? "Currently Active" : "Not Active Now"}
+            </span>
+          </div>
+          <button
+            onClick={() => fillTemplate(t)}
+            className="df-fill-btn"
+            disabled={!isActive}
+            style={{
+              opacity: isActive ? 1 : 0.65,
+              width: "100%",
+              cursor: isActive ? "pointer" : "not-allowed"
+            }}
+          >
+            {isActive ? "Fill Form" : "Not Active Now"}
+          </button>
+        </div>
+      );
+    })
+  )
+)}
   {/* ==================== TEAM TAB (Supervisor) ==================== */}
   {activeTab === "team" && (
     teamSubmissions.length === 0 ? (
@@ -2465,8 +2570,7 @@ key={`self-${t.id}-${t.employee_id || t.assigned_to || index}`}            class
         const toStr = group.active_to
           ? new Date(group.active_to).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
           : "—";
-const isActive = isFormActive(activeFrom, activeTo);
-
+const isActive = isFormActive(group.active_from, group.active_to);
         return (
           <div 
             key={`team-${formId}`}   // ← Safe key for group

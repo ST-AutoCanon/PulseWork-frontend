@@ -203,13 +203,10 @@
 }
 
 /* Input Styling */
-.df-input
-{
-    width: 100%;
-
-}
-.df-input,select,
+.df-input,
+select,
 textarea {
+  width: 100%;
   padding: 14px 16px;
   border: 2px solid #cbd5e1;
   border-radius: 10px;

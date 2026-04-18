@@ -79,6 +79,8 @@ const InvoiceTemplate = React.forwardRef((props, ref) => {
       ? (Number(gstAmount) / 2).toFixed(2)
       : (totalGST / 2).toFixed(2);
 
+  const gstDisplayAmount = Number(gstAmount || totalGST || 0);
+
   const fixedRows = 6;
   const emptyRowCount = fixedRows - parsedLineItems.length;
   const emptyRows =
@@ -401,14 +403,11 @@ const InvoiceTemplate = React.forwardRef((props, ref) => {
                 <div>₹ {Number(subtotalAmount).toLocaleString("en-IN")}</div>
               </div>
 
-              {/* ✅ ADD THIS */}
               <div className="emp-total-block">
                 <div>GST</div>
                 <div>
                   ₹{" "}
-                  {Number((gstAmount || totalGST).toFixed(2)).toLocaleString(
-                    "en-IN",
-                  )}
+                  {Number(gstDisplayAmount.toFixed(2)).toLocaleString("en-IN")}
                 </div>
               </div>
             </div>

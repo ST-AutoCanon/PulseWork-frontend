@@ -1114,23 +1114,25 @@ const renderField = (field, isPreview = true, onChange = null) => {
         </div>
       );
 
-    case "select":
-      return (
-        <select
-          className="df-input"
-          disabled={isDisabled}
-          value={currentValue || ""}
-          onChange={(e) => handleChange(e.target.value)}
-          required={field.required && !isDisabled}
+   case "select":
+  return (
+    <select
+      className="df-input"
+      disabled={isDisabled}           // This will now be false in preview
+      value={currentValue || ""}
+      onChange={(e) => handleChange(e.target.value)}
+    >
+      <option value="">-- Select {field.label || "option"} --</option>
+      {(field.options || []).map((opt, i) => (
+        <option 
+          key={opt.value || i} 
+          value={opt.value || opt.label}
         >
-          <option value="">-- Select {field.label} --</option>
-          {field.options?.map((opt) => (
-            <option key={opt.value} value={opt.value}>
-              {opt.label}
-            </option>
-          ))}
-        </select>
-      );
+          {opt.label || opt.value}
+        </option>
+      ))}
+    </select>
+  );
 
     case "radio":
       return (
@@ -1840,16 +1842,7 @@ const handleAssign = async () => {
 />
 
 {/* NEW: Required Checkbox for Employee Field */}
-<div style={{ marginTop: "12px" }}>
-  <label style={{ display: "flex", alignItems: "center", gap: "8px", fontWeight: "500" }}>
-    <input 
-      type="checkbox" 
-      checked={fieldRequired} 
-      onChange={(e) => setFieldRequired(e.target.checked)} 
-    />
-    Required Field
-  </label>
-</div>
+
 
 {showOptions && (
   <div style={{ marginTop: "12px" }}>
@@ -1864,7 +1857,16 @@ const handleAssign = async () => {
     />
   </div>
 )}
-               
+          <div style={{ marginTop: "12px" }}>
+  <label style={{ display: "flex", alignItems: "center", gap: "8px", fontWeight: "500" }}>
+    <input 
+      type="checkbox" 
+      checked={fieldRequired} 
+      onChange={(e) => setFieldRequired(e.target.checked)} 
+    />
+    Required Field
+  </label>
+</div>     
                 
                 {formType === 'employee_supervisor' && (
   <div style={{ marginTop: "20px" }}>
@@ -2633,62 +2635,63 @@ const isActive = isFormActive(group.active_from, group.active_to);
         )}
         {/* Preview Mode */}
 {/* Preview Mode - FIXED for Multiple Supervisor Fields + Placeholder */}
+{/* Preview Mode - FIXED: Dropdowns are now clickable */}
 {viewMode && selectedTemplate && (
   <div className="df-preview">
     <h3>{toTitleCase(selectedTemplate.form_name)} (Preview)</h3>
+    
+    <div className="df-preview-notice" style={{
+      background: "#e0f2fe",
+      color: "#0369a1",
+      padding: "12px 16px",
+      borderRadius: "8px",
+      marginBottom: "20px",
+      fontSize: "0.95rem"
+    }}>
+      This is a preview. You can interact with fields (dropdowns, radio, etc.) to see how the form will look.
+    </div>
+
     <form className={`df-form df-grid-layout df-grid-${selectedTemplate.layout || "one"}`}>
       {(() => {
-        let fieldsToShow = [];
         let formJson = selectedTemplate.form_json;
-
         if (typeof formJson === 'string') {
-          try {
-            formJson = JSON.parse(formJson);
-          } catch (e) {
-            formJson = [];
-          }
+          try { formJson = JSON.parse(formJson); } catch (e) { formJson = []; }
         }
 
-        if (selectedTemplate.form_type === 'employee_supervisor') {
-          fieldsToShow = (formJson || []).flatMap(f => {
-            if (!f.employee) return [];
+        const fieldsToShow = [];
 
-            const result = [{
+        (formJson || []).forEach(f => {
+          // Employee Field
+          if (f.employee) {
+            fieldsToShow.push({
               ...f.employee,
+              fieldId: f.id,
               isSupervisor: false,
-              fieldId: f.id
-            }];
+              readOnly: false   // ← Important: Allow interaction in preview
+            });
+          } 
+          // Backward compatibility
+          else if (f.label && f.type) {
+            fieldsToShow.push({
+              ...f,
+              fieldId: f.id || `field_${Date.now()}`,
+              isSupervisor: false,
+              readOnly: false
+            });
+          }
 
-            // Multiple Supervisor Fields
-            if (f.supervisorFields && Array.isArray(f.supervisorFields) && f.supervisorFields.length > 0) {
-              f.supervisorFields.forEach((sup, idx) => {
-                result.push({
-                  ...sup,
-                  isSupervisor: true,
-                  fieldId: `${f.id}_sup_${idx}`
-                });
-              });
-            } 
-            // Backward compatibility
-            else if (f.supervisor) {
-              result.push({
-                ...f.supervisor,
+          // Supervisor Fields (Multiple)
+          if (f.supervisorFields && Array.isArray(f.supervisorFields)) {
+            f.supervisorFields.forEach((sup, idx) => {
+              fieldsToShow.push({
+                ...sup,
+                fieldId: `${f.id}_sup_${idx}`,
                 isSupervisor: true,
-                fieldId: f.id + '_sup'
+                readOnly: false
               });
-            }
-
-            return result;
-          });
-        } else {
-          fieldsToShow = (formJson || []).map(f => {
-            if (f.employee) {
-              return { ...f.employee, isSupervisor: false, fieldId: f.id };
-            } else {
-              return { ...f, isSupervisor: false, fieldId: f.id };
-            }
-          });
-        }
+            });
+          }
+        });
 
         return fieldsToShow.map((field) => (
           <div key={field.fieldId} className="df-form-group">
@@ -2701,17 +2704,19 @@ const isActive = isFormActive(group.active_from, group.active_to);
                 </span>
               )}
             </label>
-            {renderField(field, true)}
+            {/* Pass false so dropdown is NOT disabled in preview */}
+            {renderField(field, false)}
           </div>
         ));
       })()}
     </form>
-    <button 
-      className="df-submit-btn" 
+
+    <button
+      className="df-submit-btn"
       onClick={() => setViewMode(false)}
-      style={{ marginTop: "20px" }}
+      style={{ marginTop: "25px" }}
     >
-      Back to Builder
+      Back to Form Management
     </button>
   </div>
 )}

@@ -1864,14 +1864,7 @@ const handleAssign = async () => {
     />
   </div>
 )}
-                {showOptions && (
-                  <div style={{ marginTop: "12px" }}>
-                    <label style={{ display: "block", marginBottom: "8px", fontWeight: "500", fontSize: "0.9rem" }}>
-                      Employee Options (comma separated)
-                    </label>
-                    <input placeholder="e.g., Option 1, Option 2, Option 3" value={optionsInput} onChange={(e) => setOptionsInput(e.target.value)} className="df-input" />
-                  </div>
-                )}
+               
                 
                 {formType === 'employee_supervisor' && (
   <div style={{ marginTop: "20px" }}>

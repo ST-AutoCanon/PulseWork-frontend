@@ -51,7 +51,7 @@ const StepFour = ({
                   onChange={(e) =>
                     handleTopLevelFinanceChange(
                       "project_amount",
-                      e.target.value
+                      e.target.value,
                     )
                   }
                   readOnly={!editable}
@@ -68,7 +68,7 @@ const StepFour = ({
                       onChange={(e) =>
                         handleTopLevelFinanceChange(
                           "tds_percentage",
-                          e.target.value
+                          e.target.value,
                         )
                       }
                       readOnly={!editable}
@@ -95,7 +95,7 @@ const StepFour = ({
                       onChange={(e) =>
                         handleTopLevelFinanceChange(
                           "gst_percentage",
-                          e.target.value
+                          e.target.value,
                         )
                       }
                       readOnly={!editable}
@@ -154,34 +154,61 @@ const StepFour = ({
                 <tbody>
                   {Array.isArray(formData.financialDetails) &&
                     formData.financialDetails.map((finance, index) => {
+                      const projectAmountNum =
+                        Number(formData.project_amount) || 0;
                       const mActualAmountNum =
                         Number(finance.m_actual_amount) || 0;
-                      const mTdsAmountRaw = finance.m_tds_amount;
+
                       const mTdsAmountNum =
-                        mTdsAmountRaw === "" ||
-                        mTdsAmountRaw === null ||
-                        typeof mTdsAmountRaw === "undefined"
-                          ? NaN
-                          : Number(mTdsAmountRaw);
+                        finance.m_tds_amount === "" ||
+                        finance.m_tds_amount === null ||
+                        typeof finance.m_tds_amount === "undefined"
+                          ? null
+                          : Number(finance.m_tds_amount);
 
-                      const hasTdsAmount = !Number.isNaN(mTdsAmountNum);
+                      const mGstAmountNum =
+                        finance.m_gst_amount === "" ||
+                        finance.m_gst_amount === null ||
+                        typeof finance.m_gst_amount === "undefined"
+                          ? null
+                          : Number(finance.m_gst_amount);
 
-                      const derivedTdsPercentage =
-                        hasTdsAmount && mActualAmountNum > 0
-                          ? (mTdsAmountNum / mActualAmountNum) * 100
-                          : null;
+                      const displayActualPercentage =
+                        projectAmountNum > 0 && mActualAmountNum > 0
+                          ? Number(
+                              (
+                                (mActualAmountNum / projectAmountNum) *
+                                100
+                              ).toFixed(2),
+                            )
+                          : (finance.m_actual_percentage ?? "");
 
                       const displayTdsPercentage =
-                        derivedTdsPercentage !== null
-                          ? Number(derivedTdsPercentage.toFixed(2))
-                          : finance.m_tds_percentage ?? "";
+                        mActualAmountNum > 0 && mTdsAmountNum !== null
+                          ? Number(
+                              (
+                                (mTdsAmountNum / mActualAmountNum) *
+                                100
+                              ).toFixed(2),
+                            )
+                          : (finance.m_tds_percentage ?? "");
+
+                      const displayGstPercentage =
+                        mActualAmountNum > 0 && mGstAmountNum !== null
+                          ? Number(
+                              (
+                                (mGstAmountNum / mActualAmountNum) *
+                                100
+                              ).toFixed(2),
+                            )
+                          : (finance.m_gst_percentage ?? "");
 
                       return (
                         <tr
                           key={index}
                           style={{
                             backgroundColor: statusBg(
-                              formData.milestones?.[index]?.status
+                              formData.milestones?.[index]?.status,
                             ),
                           }}
                         >
@@ -200,7 +227,7 @@ const StepFour = ({
                                 <input
                                   type="number"
                                   name="m_actual_percentage"
-                                  value={finance.m_actual_percentage ?? ""}
+                                  value={displayActualPercentage}
                                   onChange={(e) =>
                                     handleFinanceChange(index, e)
                                   }
@@ -251,7 +278,7 @@ const StepFour = ({
                                 <input
                                   type="number"
                                   name="m_gst_percentage"
-                                  value={finance.m_gst_percentage ?? ""}
+                                  value={displayGstPercentage}
                                   onChange={(e) =>
                                     handleFinanceChange(index, e)
                                   }
@@ -323,7 +350,7 @@ const StepFour = ({
                               finance.status === "Received"
                                 ? acc + parseFloat(finance.m_total_amount || 0)
                                 : acc,
-                            0
+                            0,
                           )}
                         </strong>
                       </span>{" "}
@@ -340,7 +367,7 @@ const StepFour = ({
                                   ? acc +
                                     parseFloat(finance.m_total_amount || 0)
                                   : acc,
-                              0
+                              0,
                             )
                           ).toFixed(2)}
                         </strong>

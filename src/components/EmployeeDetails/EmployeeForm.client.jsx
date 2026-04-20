@@ -112,6 +112,9 @@ export default function EmployeeForm({
     supervisor_id: "",
     salary: "",
     experience: sanitizedInitialData.experience,
+    total_experience_months: sanitizedInitialData.total_experience_months ?? 0,
+    total_experience_text: sanitizedInitialData.total_experience_text ?? "0",
+    other_docs: sanitizedInitialData.other_docs,
     other_docs: sanitizedInitialData.other_docs,
     resume: null,
 

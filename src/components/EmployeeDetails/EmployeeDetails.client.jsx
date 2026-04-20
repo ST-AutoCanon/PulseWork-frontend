@@ -16,6 +16,7 @@ import Modal from "../Modal/Modal.client";
 import EmployeeForm from "./EmployeeForm.client";
 import "./EmployeeDetails.css";
 import { useAuth } from "../../context/AuthProvider.client";
+import * as XLSX from "xlsx";
 
 function toUrlArray(maybe) {
   if (!maybe) return [];
@@ -279,6 +280,141 @@ function DocsPopup({ sections, onOpen, onDownload, onClose }) {
       </div>
     </div>
   );
+}
+
+function safeExcelValue(value) {
+  if (value == null) return "";
+  if (Array.isArray(value)) {
+    return value
+      .map((v) => (typeof v === "object" ? JSON.stringify(v) : String(v ?? "")))
+      .filter(Boolean)
+      .join("\n");
+  }
+  if (typeof value === "object") return JSON.stringify(value);
+  return String(value);
+}
+
+function toExperienceText(expList) {
+  if (!Array.isArray(expList) || expList.length === 0) return "";
+  return expList
+    .map((exp, idx) => {
+      const role = exp.role || exp.designation || exp.title || "—";
+      const start = exp.start_date ? formatSafeMonthYear(exp.start_date) : "—";
+      const end = exp.end_date ? formatSafeMonthYear(exp.end_date) : "Present";
+      const company = exp.company ? exp.company : `Experience ${idx + 1}`;
+      return `${company} | ${role} | ${start} - ${end}`;
+    })
+    .join("\n");
+}
+
+function buildEmployeeExcelRow(emp) {
+  return {
+    "Emp ID": emp.employee_id ?? "",
+    "Emp Name": emp.name ?? "",
+    Email: emp.email ?? "",
+    DOB: emp.dob ? format(new Date(emp.dob), "dd/MM/yyyy") : "",
+    "Phone Number": emp.phone_number ?? "",
+    Status: emp.status ?? "",
+    "HR Final LWD": emp.hr_final_lwd
+      ? format(new Date(emp.hr_final_lwd), "dd/MM/yyyy")
+      : "",
+    "Joining Date": emp.joining_date
+      ? format(new Date(emp.joining_date), "dd/MM/yyyy")
+      : "",
+
+    "Alternate Email": emp.alternate_email ?? "",
+    "Alternate Mobile": emp.alternate_number ?? "",
+    Address: emp.address ?? "",
+    Gender: emp.gender ?? "",
+    "Blood Group": emp.blood_group ?? "",
+    "Emergency Name": emp.emergency_name ?? "",
+    "Emergency Contact Person": emp.emergency_contact_person ?? "",
+    "Emergency Number": emp.emergency_number ?? "",
+
+    "Employee ID": emp.employee_id ?? "",
+    "Aadhaar No": emp.aadhaar_number ?? "",
+    "PAN No": emp.pan_number ?? "",
+    "Passport No": emp.passport_number ?? "",
+    "Driving License": emp.driving_license_number ?? "",
+    "Voter ID": emp.voter_id ?? "",
+    UAN: emp.uan_number ?? "",
+    PF: emp.pf_number ?? "",
+    ESI: emp.esi_number ?? "",
+
+    "Father Name": emp.father_name ?? "",
+    "Father DOB": emp.father_dob
+      ? format(new Date(emp.father_dob), "dd/MM/yyyy")
+      : "",
+    "Mother Name": emp.mother_name ?? "",
+    "Mother DOB": emp.mother_dob
+      ? format(new Date(emp.mother_dob), "dd/MM/yyyy")
+      : "",
+    "Marital Status": emp.marital_status ?? "",
+    "Spouse Name": emp.spouse_name ?? "",
+    "Spouse DOB": emp.spouse_dob
+      ? format(new Date(emp.spouse_dob), "dd/MM/yyyy")
+      : "",
+    "Child 1": emp.child1_name ?? "",
+    "Child 1 DOB": emp.child1_dob
+      ? format(new Date(emp.child1_dob), "dd/MM/yyyy")
+      : "",
+    "Child 2": emp.child2_name ?? "",
+    "Child 2 DOB": emp.child2_dob
+      ? format(new Date(emp.child2_dob), "dd/MM/yyyy")
+      : "",
+    "Child 3": emp.child3_name ?? "",
+    "Child 3 DOB": emp.child3_dob
+      ? format(new Date(emp.child3_dob), "dd/MM/yyyy")
+      : "",
+
+    "10th Institution": emp.tenth_institution ?? "",
+    "10th Year": emp.tenth_year ?? "",
+    "10th Board": emp.tenth_board ?? "",
+    "10th Score": emp.tenth_score ?? "",
+    "12th Institution": emp.twelfth_institution ?? "",
+    "12th Year": emp.twelfth_year ?? "",
+    "12th Board": emp.twelfth_board ?? "",
+    "12th Score": emp.twelfth_score ?? "",
+    "UG Institution": emp.ug_institution ?? "",
+    "UG Year": emp.ug_year ?? "",
+    "UG Board": emp.ug_board ?? "",
+    "UG Score": emp.ug_score ?? "",
+    "PG Institution": emp.pg_institution ?? "",
+    "PG Year": emp.pg_year ?? "",
+    "PG Board": emp.pg_board ?? "",
+    "PG Score": emp.pg_score ?? "",
+
+    "Employee Type": emp.employee_type ?? "",
+    Department: emp.department ?? "",
+    Position: emp.position ?? "",
+    Role: emp.role ?? "",
+    Supervisor: emp.supervisor_name ?? "",
+    Salary: emp.salary ?? "",
+
+    "Total Experience Months": emp.total_experience_months ?? "",
+    "Total Experience Text": emp.total_experience_text ?? "",
+    "Experience Summary": toExperienceText(emp.experience),
+    "Additional Certifications": safeExcelValue(emp.additional_certs),
+    "Other Docs": safeExcelValue(emp.other_docs),
+    "Resume URL": safeExcelValue(emp.resume_url),
+
+    "Photo URL": safeExcelValue(emp.photo_url),
+    "Aadhaar Doc URL": safeExcelValue(emp.aadhaar_doc_url),
+    "PAN Doc URL": safeExcelValue(emp.pan_doc_url),
+    "Passport Doc URL": safeExcelValue(emp.passport_doc_url),
+    "Driving License Doc URL": safeExcelValue(emp.driving_license_doc_url),
+    "Voter ID Doc URL": safeExcelValue(emp.voter_id_doc_url),
+    "Spouse Gov Doc URL": safeExcelValue(emp.spouse_gov_doc_url),
+    "Father Gov Doc URL": safeExcelValue(emp.father_gov_doc_url),
+    "Mother Gov Doc URL": safeExcelValue(emp.mother_gov_doc_url),
+    "Child1 Gov Doc URL": safeExcelValue(emp.child1_gov_doc_url),
+    "Child2 Gov Doc URL": safeExcelValue(emp.child2_gov_doc_url),
+    "Child3 Gov Doc URL": safeExcelValue(emp.child3_gov_doc_url),
+    "10th Cert URL": safeExcelValue(emp.tenth_cert_url),
+    "12th Cert URL": safeExcelValue(emp.twelfth_cert_url),
+    "UG Cert URL": safeExcelValue(emp.ug_cert_url),
+    "PG Cert URL": safeExcelValue(emp.pg_cert_url),
+  };
 }
 
 export default function EmployeeDetails() {
@@ -704,6 +840,38 @@ export default function EmployeeDetails() {
     fetchEmployees();
   };
 
+  const handleExportExcel = () => {
+    if (!employees.length) {
+      showAlert("No employee data to export.");
+      return;
+    }
+
+    const rows = employees.map(buildEmployeeExcelRow);
+    const ws = XLSX.utils.json_to_sheet(rows);
+
+    // Optional: make header row bold/visible by keeping default Excel formatting
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Employees");
+
+    const excelBuffer = XLSX.write(wb, {
+      bookType: "xlsx",
+      type: "array",
+    });
+
+    const blob = new Blob([excelBuffer], {
+      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    });
+
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `employee_details_${format(new Date(), "yyyyMMdd_HHmmss")}.xlsx`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <div className="employee-details-container">
       <h2>Employee Details</h2>
@@ -999,6 +1167,8 @@ export default function EmployeeDetails() {
                                   </dl>
                                 )}
                               </dd>
+                              <dt>Total Experience:</dt>
+                              <dd>{emp.total_experience_text}</dd>
                             </dl>,
                           )
                         }
@@ -1060,6 +1230,17 @@ export default function EmployeeDetails() {
           </table>
         </div>
       )}
+
+      <div className="employee-table-footer">
+        <button
+          type="button"
+          className="export-employee-button"
+          onClick={handleExportExcel}
+          disabled={!employees.length}
+        >
+          Export to Excel
+        </button>
+      </div>
 
       {popupVisible && (
         <CustomPopup title={popupTitle} onClose={closePopup}>

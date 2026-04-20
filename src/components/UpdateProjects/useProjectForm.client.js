@@ -10,6 +10,45 @@ import {
   formatDate,
 } from "./utils.client";
 
+const normalizeFinancialRow = (row, projectAmount) => {
+  const actualAmount = Number(row?.m_actual_amount) || 0;
+
+  const tdsAmount =
+    row?.m_tds_amount === "" ||
+    row?.m_tds_amount === null ||
+    typeof row?.m_tds_amount === "undefined"
+      ? null
+      : Number(row.m_tds_amount);
+
+  const gstAmount =
+    row?.m_gst_amount === "" ||
+    row?.m_gst_amount === null ||
+    typeof row?.m_gst_amount === "undefined"
+      ? null
+      : Number(row.m_gst_amount);
+
+  return {
+    ...row,
+    m_actual_percentage:
+      projectAmount > 0 && actualAmount > 0
+        ? ((actualAmount / projectAmount) * 100).toFixed(2)
+        : (row?.m_actual_percentage ?? ""),
+    m_tds_percentage:
+      actualAmount > 0 && tdsAmount !== null
+        ? ((tdsAmount / actualAmount) * 100).toFixed(2)
+        : (row?.m_tds_percentage ?? ""),
+    m_gst_percentage:
+      actualAmount > 0 && gstAmount !== null
+        ? ((gstAmount / actualAmount) * 100).toFixed(2)
+        : (row?.m_gst_percentage ?? ""),
+    m_total_amount: (
+      actualAmount -
+      (tdsAmount || 0) +
+      (gstAmount || 0)
+    ).toFixed(2),
+  };
+};
+
 export default function useProjectForm({
   projectData,
   onClose,
@@ -447,35 +486,54 @@ export default function useProjectForm({
     const updatedDetails = [...(formData.financialDetails || [])];
     const finance = { ...(updatedDetails[index] || {}), [name]: value };
 
-    const projectAmount = parseFloat(formData.project_amount || 0) || 0;
+    const projectAmount = Number(formData.project_amount) || 0;
 
-    if (finance.m_actual_percentage) {
+    const actualPercentage =
+      finance.m_actual_percentage === "" ||
+      finance.m_actual_percentage === null ||
+      typeof finance.m_actual_percentage === "undefined"
+        ? null
+        : Number(finance.m_actual_percentage);
+
+    const tdsPercentage =
+      finance.m_tds_percentage === "" ||
+      finance.m_tds_percentage === null ||
+      typeof finance.m_tds_percentage === "undefined"
+        ? null
+        : Number(finance.m_tds_percentage);
+
+    const gstPercentage =
+      finance.m_gst_percentage === "" ||
+      finance.m_gst_percentage === null ||
+      typeof finance.m_gst_percentage === "undefined"
+        ? null
+        : Number(finance.m_gst_percentage);
+
+    if (actualPercentage !== null) {
       finance.m_actual_amount = (
-        (projectAmount * parseFloat(finance.m_actual_percentage)) /
+        (projectAmount * actualPercentage) /
         100
       ).toFixed(2);
     }
 
-    if (finance.m_tds_percentage) {
+    if (tdsPercentage !== null) {
       finance.m_tds_amount = (
-        (parseFloat(finance.m_actual_amount || 0) *
-          parseFloat(finance.m_tds_percentage)) /
+        (Number(finance.m_actual_amount || 0) * tdsPercentage) /
         100
       ).toFixed(2);
     }
 
-    if (finance.m_gst_percentage) {
+    if (gstPercentage !== null) {
       finance.m_gst_amount = (
-        (parseFloat(finance.m_actual_amount || 0) *
-          parseFloat(finance.m_gst_percentage)) /
+        (Number(finance.m_actual_amount || 0) * gstPercentage) /
         100
       ).toFixed(2);
     }
 
     finance.m_total_amount = (
-      parseFloat(finance.m_actual_amount || 0) -
-      parseFloat(finance.m_tds_amount || 0) +
-      parseFloat(finance.m_gst_amount || 0)
+      Number(finance.m_actual_amount || 0) -
+      Number(finance.m_tds_amount || 0) +
+      Number(finance.m_gst_amount || 0)
     ).toFixed(2);
 
     updatedDetails[index] = finance;
@@ -483,54 +541,35 @@ export default function useProjectForm({
   };
 
   useEffect(() => {
-    if (formData.project_amount) {
-      const projectAmount = parseFloat(formData.project_amount) || 0;
+    const projectAmount = Number(formData.project_amount) || 0;
+    if (!projectAmount) return;
 
-      const updatedFinancialDetails = (formData.financialDetails || []).map(
-        (detail) => {
-          let actualAmount = parseFloat(detail.m_actual_amount) || 0;
-          let tdsAmount = parseFloat(detail.m_tds_amount) || 0;
-          let gstAmount = parseFloat(detail.m_gst_amount) || 0;
-
-          let updatedDetail = { ...detail };
-          if (
-            (!detail.m_actual_percentage ||
-              detail.m_actual_percentage === "") &&
-            detail.m_actual_amount
-          ) {
-            const recalculatedPercentage = projectAmount
-              ? ((actualAmount / projectAmount) * 100).toFixed(2)
-              : "0";
-            updatedDetail.m_actual_percentage = recalculatedPercentage;
-          }
-
-          if (
-            (!detail.m_tds_percentage || detail.m_tds_percentage === "") &&
-            detail.m_tds_amount &&
-            actualAmount
-          ) {
-            const recalculatedTdsPercentage = actualAmount
-              ? ((tdsAmount / actualAmount) * 100).toFixed(2)
-              : "0";
-            updatedDetail.m_tds_percentage = recalculatedTdsPercentage;
-          }
-
-          updatedDetail.m_total_amount = (
-            actualAmount -
-            tdsAmount +
-            gstAmount
-          ).toFixed(2);
-
-          return updatedDetail;
-        },
+    setFormData((prev) => {
+      const rows = Array.isArray(prev.financialDetails)
+        ? prev.financialDetails
+        : [];
+      const normalizedRows = rows.map((row) =>
+        normalizeFinancialRow(row, projectAmount),
       );
 
-      setFormData((prev) => ({
+      const hasChanged = normalizedRows.some((row, index) => {
+        const oldRow = rows[index] || {};
+        return (
+          row.m_actual_percentage !== oldRow.m_actual_percentage ||
+          row.m_tds_percentage !== oldRow.m_tds_percentage ||
+          row.m_gst_percentage !== oldRow.m_gst_percentage ||
+          row.m_total_amount !== oldRow.m_total_amount
+        );
+      });
+
+      if (!hasChanged) return prev;
+
+      return {
         ...prev,
-        financialDetails: updatedFinancialDetails,
-      }));
-    }
-  }, [formData.project_amount]);
+        financialDetails: normalizedRows,
+      };
+    });
+  }, [formData.project_amount, formData.financialDetails]);
 
   const addMilestone = () => {
     const newMilestone = {

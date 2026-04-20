@@ -115,9 +115,22 @@ export default function SelfTable({ leaveRequests, onEdit, onCancel }) {
   const buildAttachmentUrl = useCallback((attachment, leave) => {
     if (!attachment) return null;
 
+    if (attachment.url && typeof attachment.url === "string") {
+      return attachment.url;
+    }
+
     if (attachment.file_path && /^https?:\/\//i.test(attachment.file_path)) {
       return attachment.file_path;
     }
+
+    if (attachment.id) {
+      const orgQuery =
+        leave && (leave.orgId || leave.org_id)
+          ? `?orgId=${encodeURIComponent(leave.orgId || leave.org_id)}`
+          : "";
+      return `/attachments/${encodeURIComponent(attachment.id)}${orgQuery}`;
+    }
+
     if (attachment.file_path && attachment.file_path.startsWith("/")) {
       const orgQuery =
         leave && (leave.orgId || leave.org_id)
@@ -125,14 +138,16 @@ export default function SelfTable({ leaveRequests, onEdit, onCancel }) {
           : "";
       return `${attachment.file_path}${orgQuery}`;
     }
-    if (attachment.id) {
-      const orgQuery =
-        leave && (leave.orgId || leave.org_id)
-          ? `?orgId=${encodeURIComponent(leave.orgId || leave.org_id)}`
-          : "";
-      return `/attachments/${attachment.id}${orgQuery}`;
+
+    if (attachment.file_path && typeof attachment.file_path === "string") {
+      const trimmed = attachment.file_path.trim();
+      if (/^\/{1,2}/.test(trimmed) || /^https?:\/\//i.test(trimmed)) {
+        return trimmed;
+      }
+      const normalized = trimmed.replace(/\\/g, "/").replace(/^\/+/, "");
+      return normalized ? `/${normalized}` : null;
     }
-    if (attachment.file_path) return attachment.file_path;
+
     return null;
   }, []);
 

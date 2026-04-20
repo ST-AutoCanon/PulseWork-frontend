@@ -53,6 +53,8 @@ export default function EmployeeFormEmployee({
 
   const [formData, setFormData] = useState({
     ...sanitizedInitialData,
+    total_experience_months: sanitizedInitialData.total_experience_months ?? 0,
+    total_experience_text: sanitizedInitialData.total_experience_text ?? "0",
   });
 
   const [loading, setLoading] = useState(false);
@@ -151,7 +153,7 @@ export default function EmployeeFormEmployee({
         fd.append(`additional_certs[${idx}][year]`, cert.year || "");
         fd.append(
           `additional_certs[${idx}][institution]`,
-          cert.institution || ""
+          cert.institution || "",
         );
         if (Array.isArray(cert.file)) {
           cert.file.forEach((f) => {
@@ -162,7 +164,7 @@ export default function EmployeeFormEmployee({
           fd.append(
             `additional_certs[${idx}][file]`,
             cert.file,
-            cert.file.name
+            cert.file.name,
           );
         }
       });

@@ -195,6 +195,18 @@ export default function StepProfessional({ data, onChange, departments = [] }) {
   const years = Math.floor(totalMonths / 12);
   const months = totalMonths % 12;
 
+  useEffect(() => {
+    const experienceText =
+      years > 0 || months > 0
+        ? `${years > 0 ? `${years} yr${years > 1 ? "s" : ""}` : ""}${
+            years > 0 && months > 0 ? " " : ""
+          }${months > 0 ? `${months} mo${months > 1 ? "s" : ""}` : ""}`
+        : "0";
+
+    onChange("total_experience_months", totalMonths);
+    onChange("total_experience_text", experienceText);
+  }, [totalMonths, years, months, onChange]);
+
   return (
     <div className="step-professional">
       <div className="step-personal">

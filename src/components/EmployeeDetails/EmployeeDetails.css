@@ -407,7 +407,9 @@
   border-radius: 5px;
   font-size: small;
   font-weight: bold;
-  transition: background-color 0.3s ease, transform 0.1s ease,
+  transition:
+    background-color 0.3s ease,
+    transform 0.1s ease,
     box-shadow 0.3s ease;
 }
 .actions button:nth-child(2),
@@ -513,7 +515,9 @@
   font-size: x-large;
   border: none;
   border-radius: 5px;
-  transition: background-color 0.3s ease, transform 0.1s ease,
+  transition:
+    background-color 0.3s ease,
+    transform 0.1s ease,
     box-shadow 0.3s ease;
 }
 
@@ -522,7 +526,9 @@
   font-size: x-large;
   border: none;
   border-radius: 5px;
-  transition: background-color 0.3s ease, transform 0.1s ease,
+  transition:
+    background-color 0.3s ease,
+    transform 0.1s ease,
     box-shadow 0.3s ease;
 }
 
@@ -583,7 +589,9 @@
   color: white;
   border: none;
   cursor: pointer;
-  transition: background-color 0.3s ease, transform 0.1s ease,
+  transition:
+    background-color 0.3s ease,
+    transform 0.1s ease,
     box-shadow 0.3s ease;
 }
 
@@ -724,6 +732,27 @@
 }
 .ed-tab-panel {
   padding: 8px 4px;
+}
+
+.employee-table-footer {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 12px;
+}
+
+.export-employee-button {
+  padding: 10px 16px;
+  border: none;
+  border-radius: 8px;
+  background: #68a822;
+  color: #fff;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.export-employee-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 @keyframes popupFadeIn {

@@ -52,7 +52,7 @@ const MonthlyScheduleTable = ({
           : [];
 
       const currentExists = source.some(
-        (row) => row.month_year === currentMonthYear
+        (row) => row.month_year === currentMonthYear,
       );
 
       if (!currentExists) {
@@ -66,36 +66,57 @@ const MonthlyScheduleTable = ({
 
       const seeded = source.map((raw) => {
         const id = raw.id ?? null;
-        const m_actual_amount = raw.m_actual_amount ?? 0;
+
+        const m_actual_amount = Number(raw.m_actual_amount || 0);
+
+        const rawTdsAmount =
+          raw.m_tds_amount === "" ||
+          raw.m_tds_amount === null ||
+          typeof raw.m_tds_amount === "undefined"
+            ? null
+            : Number(raw.m_tds_amount);
+
+        const rawGstAmount =
+          raw.m_gst_amount === "" ||
+          raw.m_gst_amount === null ||
+          typeof raw.m_gst_amount === "undefined"
+            ? null
+            : Number(raw.m_gst_amount);
 
         const m_tds_percentage =
-          raw.m_tds_percentage != null
-            ? raw.m_tds_percentage
-            : m_actual_amount
-            ? (Number(raw.m_tds_amount || 0) / m_actual_amount) * 100
-            : 0;
+          m_actual_amount > 0 && rawTdsAmount !== null
+            ? Number(((rawTdsAmount / m_actual_amount) * 100).toFixed(2))
+            : raw.m_tds_percentage != null
+              ? Number(raw.m_tds_percentage)
+              : 0;
 
         const m_tds_amount =
-          raw.m_tds_amount != null
-            ? raw.m_tds_amount
-            : (m_actual_amount * (m_tds_percentage || 0)) / 100;
+          rawTdsAmount !== null
+            ? rawTdsAmount
+            : m_actual_amount > 0
+              ? Number(((m_actual_amount * m_tds_percentage) / 100).toFixed(2))
+              : 0;
 
         const m_gst_percentage =
-          raw.m_gst_percentage != null
-            ? raw.m_gst_percentage
-            : m_actual_amount
-            ? (Number(raw.m_gst_amount || 0) / m_actual_amount) * 100
-            : 0;
+          m_actual_amount > 0 && rawGstAmount !== null
+            ? Number(((rawGstAmount / m_actual_amount) * 100).toFixed(2))
+            : raw.m_gst_percentage != null
+              ? Number(raw.m_gst_percentage)
+              : 0;
 
         const m_gst_amount =
-          raw.m_gst_amount != null
-            ? raw.m_gst_amount
-            : (m_actual_amount * (m_gst_percentage || 0)) / 100;
+          rawGstAmount !== null
+            ? rawGstAmount
+            : m_actual_amount > 0
+              ? Number(((m_actual_amount * m_gst_percentage) / 100).toFixed(2))
+              : 0;
 
         const m_total_amount =
           raw.m_total_amount != null
-            ? raw.m_total_amount
-            : m_actual_amount + (m_gst_amount || 0) - (m_tds_amount || 0);
+            ? Number(raw.m_total_amount)
+            : Number(
+                (m_actual_amount + m_gst_amount - m_tds_amount).toFixed(2),
+              );
 
         return {
           id,
@@ -127,7 +148,7 @@ const MonthlyScheduleTable = ({
       onFinancialDetailsChange?.(
         financialDetails,
         service_description,
-        employeeId
+        employeeId,
       );
     }
   }, [
@@ -144,7 +165,10 @@ const MonthlyScheduleTable = ({
         const tdsPerc = Number(r.m_tds_percentage || 0);
         const gstPerc = Number(r.m_gst_percentage || 0);
 
-        const m_tds_amount = (m_actual_amount * tdsPerc) / 100;
+        const m_tds_amount =
+          r.m_tds_amount != null && r.m_tds_percentage === 0
+            ? Number(r.m_tds_amount) // keep backend value
+            : (m_actual_amount * tdsPerc) / 100;
         const m_gst_amount = (m_actual_amount * gstPerc) / 100;
         const m_total_amount = m_actual_amount + m_gst_amount - m_tds_amount;
 
@@ -155,7 +179,7 @@ const MonthlyScheduleTable = ({
           m_gst_amount,
           m_total_amount,
         };
-      })
+      }),
     );
   }, [monthlyFixedAmount]);
 
@@ -209,7 +233,7 @@ const MonthlyScheduleTable = ({
               onMonthlyFixedAmountChange?.(
                 amt,
                 service_description,
-                employeeId
+                employeeId,
               );
             }}
             readOnly={!editable}
@@ -266,7 +290,7 @@ const MonthlyScheduleTable = ({
                     handleInputChange(
                       idx,
                       "service_description",
-                      e.target.value
+                      e.target.value,
                     )
                   }
                   readOnly={!editable}

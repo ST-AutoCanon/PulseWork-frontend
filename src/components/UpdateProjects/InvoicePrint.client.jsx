@@ -157,11 +157,13 @@ const InvoicePrint = React.forwardRef(({ invoiceData = {}, orgId }, ref) => {
           )
         : 0;
 
-  const displayTotal = roundOff
+  const totalBeforeAdvance = roundOff
     ? Number(
         ((totalBeforeRoundOff || grossTotal) + computedRoundOff).toFixed(2),
       )
     : Number((totalIncludingTax || grossTotal).toFixed(2));
+
+  const finalPayableAmount = Number((totalBeforeAdvance - advance).toFixed(2));
 
   const halfGSTRate =
     gst && Number(gst) > 0 ? (Number(gst) / 2).toFixed(2) : "0.00";
@@ -378,7 +380,7 @@ const InvoicePrint = React.forwardRef(({ invoiceData = {}, orgId }, ref) => {
               <strong>Order Amount in words</strong>
             </p>
             <div className="amount-in-words-text">
-              {numberToWords(Math.round(displayTotal || grossTotal))}
+              {numberToWords(Math.round(finalPayableAmount || 0))}
             </div>
 
             <p className="amount-in-words">
@@ -408,7 +410,7 @@ const InvoicePrint = React.forwardRef(({ invoiceData = {}, orgId }, ref) => {
               <div className="amounts-section">
                 <div className="total-block">
                   <p className="bold">Total</p>
-                  <p className="bold">{fmtINR(grossTotal)}</p>
+                  <p className="bold">{fmtINR(totalBeforeAdvance)}</p>
                 </div>
                 <div className="total-block">
                   <p>Round Off</p>
@@ -423,7 +425,7 @@ const InvoicePrint = React.forwardRef(({ invoiceData = {}, orgId }, ref) => {
               <div className="amounts-section">
                 <div className="total-block">
                   <p className="bold">Payable Amount</p>
-                  <p className="bold">{fmtINR(displayTotal || grossTotal)}</p>
+                  <p className="bold">{fmtINR(finalPayableAmount)}</p>
                 </div>
               </div>
             </div>

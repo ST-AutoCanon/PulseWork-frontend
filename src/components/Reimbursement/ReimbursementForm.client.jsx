@@ -25,8 +25,6 @@ const ReimbursementForm = (props) => {
     editingId,
     setShowForm,
     participants = [],
-    reimbursements = [],
-    parseInvoicesFromClaim = null,
   } = props;
 
   const { user } = useAuth();
@@ -57,12 +55,7 @@ const ReimbursementForm = (props) => {
   const formRef = useRef(null);
   const modalContentRef = useRef(null);
 
-  const {
-    cleanedInvoices,
-    hasEmptyInvoice,
-    duplicateInvoice,
-    duplicateAcrossReimbursements,
-  } = useMemo(() => {
+  const { cleanedInvoices, hasEmptyInvoice, duplicateInvoice } = useMemo(() => {
     const ct = formData.claim_type;
     const raw = [];
 
@@ -105,50 +98,20 @@ const ReimbursementForm = (props) => {
       seen.add(k);
     }
 
-    // Check for duplicates across existing reimbursements
-    let dupAcross = null;
-    if (typeof parseInvoicesFromClaim === "function") {
-      const existingMap = {};
-      (reimbursements || []).forEach((claim) => {
-        if (!claim || !claim.id) return;
-        if (editingId && String(claim.id) === String(editingId)) return;
-        const invs = parseInvoicesFromClaim(claim);
-        invs.forEach((inv) => {
-          existingMap[inv.toLowerCase()] = claim.id;
-        });
-      });
-
-      for (const inv of cleaned) {
-        if (inv && existingMap[inv.toLowerCase()]) {
-          dupAcross = { invoice: inv, claimId: existingMap[inv.toLowerCase()] };
-          break;
-        }
-      }
-    }
-
     const nonEmpty = cleaned.filter(Boolean);
 
     return {
       cleanedInvoices: nonEmpty,
       hasEmptyInvoice: hasEmpty,
       duplicateInvoice: dup,
-      duplicateAcrossReimbursements: dupAcross,
     };
-  }, [
-    formData.invoices,
-    formData.claim_rows,
-    formData.claim_type,
-    reimbursements,
-    parseInvoicesFromClaim,
-    editingId,
-  ]);
+  }, [formData.invoices, formData.claim_rows, formData.claim_type]);
 
   let invoicesValid;
   if (cleanedInvoices.length === 0) {
     invoicesValid = !hasEmptyInvoice;
   } else {
-    invoicesValid =
-      !hasEmptyInvoice && !duplicateInvoice && !duplicateAcrossReimbursements;
+    invoicesValid = !hasEmptyInvoice && !duplicateInvoice;
   }
 
   const initialSelectionForChild = useMemo(() => {
@@ -186,28 +149,6 @@ const ReimbursementForm = (props) => {
 
     const formEl = formRef.current;
     if (!formEl) return;
-
-    // Check for duplicates across existing reimbursements first
-    if (duplicateAcrossReimbursements) {
-      const { invoice, claimId } = duplicateAcrossReimbursements;
-      const input = formEl.querySelector(".invoice-input");
-      if (input) {
-        input.setCustomValidity(
-          `Duplicate invoice detected: "${invoice}" is already used in reimbursement ID ${claimId}. Please use a unique invoice number.`,
-        );
-        input.reportValidity?.();
-        input.focus?.();
-        setTimeout(() => input.setCustomValidity(""), 2000);
-      }
-      return;
-    }
-
-    // Show alert for other validation errors too
-    if (hasEmptyInvoice) {
-      alert(
-        "Invoice / Bill Number is required. Please add at least one invoice.",
-      );
-    }
 
     if (duplicateInvoice || hasEmptyInvoice) {
       const ct = formData.claim_type;

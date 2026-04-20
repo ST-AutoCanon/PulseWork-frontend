@@ -2394,8 +2394,6 @@ const Reimbursement = () => {
           setParticipants={setParticipants}
           setFormData={setFormData}
           participants={participants}
-          reimbursements={reimbursements}
-          parseInvoicesFromClaim={parseInvoicesFromClaim}
         />
       )}
 

@@ -53,10 +53,10 @@ export default function StepProfessionalEmployee({
           json && json.data && Array.isArray(json.data.history)
             ? json.data.history
             : Array.isArray(json.data)
-            ? json.data
-            : Array.isArray(json)
-            ? json
-            : [];
+              ? json.data
+              : Array.isArray(json)
+                ? json
+                : [];
 
         if (!entries.length) {
           setPrevSupervisor(null);
@@ -121,7 +121,7 @@ export default function StepProfessionalEmployee({
     }
     const deptParam = data.department_id || "";
     const url = `${BASE_URL}/positions?role=${encodeURIComponent(
-      data.role
+      data.role,
     )}&department_id=${encodeURIComponent(deptParam)}`;
     fetch(url, {
       credentials: "include",
@@ -142,7 +142,7 @@ export default function StepProfessionalEmployee({
     }
     const deptParam = data.department_id || "";
     const url = `${BASE_URL}/positions/supervisors?position=${encodeURIComponent(
-      data.position
+      data.position,
     )}&department_id=${encodeURIComponent(deptParam)}`;
     fetch(url, {
       credentials: "include",
@@ -157,6 +157,35 @@ export default function StepProfessionalEmployee({
   }, [data.position, data.department_id, API_KEY, BASE_URL]);
 
   const expList = Array.isArray(data.experience) ? data.experience : [];
+
+  const totalMonths = expList.reduce((sum, exp) => {
+    if (exp.start_date && exp.end_date) {
+      const start = new Date(exp.start_date);
+      const end = new Date(exp.end_date);
+      if (end > start) {
+        const months =
+          (end.getFullYear() - start.getFullYear()) * 12 +
+          (end.getMonth() - start.getMonth());
+        return sum + months;
+      }
+    }
+    return sum;
+  }, 0);
+
+  const years = Math.floor(totalMonths / 12);
+  const months = totalMonths % 12;
+
+  useEffect(() => {
+    const experienceText =
+      years > 0 || months > 0
+        ? `${years > 0 ? `${years} yr${years > 1 ? "s" : ""}` : ""}${
+            years > 0 && months > 0 ? " " : ""
+          }${months > 0 ? `${months} mo${months > 1 ? "s" : ""}` : ""}`
+        : "0";
+
+    onChange("total_experience_months", totalMonths);
+    onChange("total_experience_text", experienceText);
+  }, [totalMonths, years, months, onChange]);
 
   const updateExperience = (idx, field, value) => {
     const newList = [...expList];
@@ -175,23 +204,6 @@ export default function StepProfessionalEmployee({
     const newList = expList.filter((_, i) => i !== idx);
     onChange("experience", newList);
   };
-
-  const totalMonths = expList.reduce((sum, exp) => {
-    if (exp.start_date && exp.end_date) {
-      const start = new Date(exp.start_date);
-      const end = new Date(exp.end_date);
-      if (end > start) {
-        const months =
-          (end.getFullYear() - start.getFullYear()) * 12 +
-          (end.getMonth() - start.getMonth());
-        return sum + months;
-      }
-    }
-    return sum;
-  }, 0);
-
-  const years = Math.floor(totalMonths / 12);
-  const months = totalMonths % 12;
 
   return (
     <div className="step-professional">
@@ -354,6 +366,7 @@ export default function StepProfessionalEmployee({
         </button>
         <div className="total-experience" style={{ marginLeft: 12 }}>
           <strong>
+            Total Experience:{" "}
             {years > 0 && `${years} yr${years > 1 ? "s" : ""} `}
             {months > 0 && `${months} mo${months > 1 ? "s" : ""}`}
             {years === 0 && months === 0 && "0"}
@@ -368,7 +381,7 @@ export default function StepProfessionalEmployee({
               Company Name
               <input
                 type="text"
-                value={exp.company}
+                value={exp.company || ""}
                 onChange={(e) =>
                   updateExperience(idx, "company", e.target.value)
                 }
@@ -379,7 +392,7 @@ export default function StepProfessionalEmployee({
               Role / Designation
               <input
                 type="text"
-                value={exp.role}
+                value={exp.role || ""}
                 onChange={(e) => updateExperience(idx, "role", e.target.value)}
               />
             </label>

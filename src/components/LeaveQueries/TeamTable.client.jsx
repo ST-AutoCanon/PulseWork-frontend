@@ -260,6 +260,7 @@ export default function TeamTable({
       for (const url of candidates) {
         try {
           const res = await fetch(url, {
+            method: "GET",
             credentials: "include",
             headers: buildHeaders(),
           });
@@ -298,35 +299,16 @@ export default function TeamTable({
   const openFileInNewTab = async (file) => {
     if (!file) return;
 
-    const attachmentId = file.id || file.attachment_id || file.file_id || null;
-    let url = "";
-    if (attachmentId) {
-      const base = API_BASE.replace(/\/$/, "");
-      url = `${base}/attachments/${encodeURIComponent(attachmentId)}`;
-    } else {
-      url = file.url || file.file_url || file.file_path || "";
-      if (!/^https?:\/\//i.test(url) && API_BASE) {
-        url = `${API_BASE.replace(/\/$/, "")}/${String(url).replace(/^\//, "")}`;
-      }
-    }
+    const attachmentId = file.id || file.attachment_id;
+    const base = API_BASE.replace(/\/$/, "");
 
-    if (!url) {
-      console.error("[openFileInNewTab] no url for file", file);
-      return;
-    }
+    const orgId = user?.orgId || user?.org_id || user?.raw?.org_id || "";
+
+    const url = `${base}/attachments/${encodeURIComponent(attachmentId)}${
+      orgId ? `?orgId=${encodeURIComponent(orgId)}` : ""
+    }`;
 
     try {
-      try {
-        const headRes = await fetch(url, {
-          method: "HEAD",
-          credentials: "include",
-        });
-        if (headRes.ok) {
-          window.open(url, "_blank", "noopener,noreferrer");
-          return;
-        }
-      } catch (e) {}
-
       const res = await fetch(url, {
         method: "GET",
         credentials: "include",
@@ -334,53 +316,20 @@ export default function TeamTable({
       });
 
       if (!res.ok) {
-        let json = null;
-        try {
-          json = await res.json();
-        } catch (e) {}
-        const serverMsg =
-          (json && (json.message || json.error)) ||
-          `Failed to fetch file (HTTP ${res.status})`;
-        console.warn(
-          "[openFileInNewTab] server responded non-ok",
-          res.status,
-          serverMsg,
-        );
-        alert(serverMsg);
+        alert("Failed to fetch attachment");
         return;
       }
 
-      const arrayBuffer = await res.arrayBuffer();
-      const serverContentType = res.headers.get("Content-Type") || "";
-      const knownMime =
-        file.mime_type ||
-        file.mime ||
-        serverContentType ||
-        "application/octet-stream";
-      const blob = new Blob([arrayBuffer], { type: knownMime });
+      const blob = await res.blob();
       const objectUrl = URL.createObjectURL(blob);
+      window.open(objectUrl, "_blank");
 
-      const a = document.createElement("a");
-      a.href = objectUrl;
-      a.target = "_blank";
-      a.rel = "noopener noreferrer";
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      setTimeout(
-        () => {
-          try {
-            URL.revokeObjectURL(objectUrl);
-          } catch (e) {}
-        },
-        2 * 60 * 1000,
-      );
+      setTimeout(() => URL.revokeObjectURL(objectUrl), 60000);
     } catch (err) {
-      console.error("[openFileInNewTab] error:", err);
-      alert("Could not open attachment. See console for details.");
+      console.error(err);
+      alert("Error opening attachment");
     }
   };
-
   const getRemainingForLeave = async (leave) => {
     try {
       if (typeof loadLeaveBalance === "function") {

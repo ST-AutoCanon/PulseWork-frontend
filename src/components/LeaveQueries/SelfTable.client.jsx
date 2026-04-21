@@ -335,12 +335,25 @@ export default function SelfTable({ leaveRequests, onEdit, onCancel }) {
             headers: { ...buildHeaders(), ...extraHeaders },
             responseType: "blob",
           });
+
+          // Validate that the blob is not HTML content (error page)
+          const contentType = (
+            resp.headers["content-type"] || ""
+          ).toLowerCase();
+          if (contentType.includes("text/html")) {
+            console.warn(
+              `Received HTML instead of file from ${url}. Status: ${resp.status}`,
+            );
+            return { ok: false, status: resp.status, err: "HTML response" };
+          }
+
           return {
             ok: true,
             blob: resp.data,
-            contentType: resp.headers["content-type"],
+            contentType: contentType,
           };
         } catch (err) {
+          console.warn(`Failed to fetch blob from ${url}:`, err?.message);
           return { ok: false, status: err?.response?.status || null, err };
         }
       };
@@ -361,10 +374,13 @@ export default function SelfTable({ leaveRequests, onEdit, onCancel }) {
             leave?.employee_id ||
             leave?.employeeId;
 
+          const attempts = [];
+
           const attUrl =
             fileOrAtt.url || fileOrAtt.file_url || fileOrAtt.filePath || null;
           if (attUrl && /^https?:\/\//i.test(String(attUrl))) {
             const r = await tryFetchBlob(attUrl);
+            attempts.push({ method: "direct URL", ok: r.ok });
             if (r.ok)
               return {
                 id: attachId,
@@ -375,8 +391,13 @@ export default function SelfTable({ leaveRequests, onEdit, onCancel }) {
           }
 
           if (attachId) {
-            const serveUrl = `${absBase}/attachments/${encodeURIComponent(attachId)}${leave?.orgId ? `?orgId=${encodeURIComponent(leave.orgId)}` : ""}`;
+            const serveUrl = `${absBase}/attachments/${encodeURIComponent(attachId)}${leave?.orgId || leave?.org_id ? `?orgId=${encodeURIComponent(leave.orgId || leave.org_id)}` : ""}`;
             const r2 = await tryFetchBlob(serveUrl);
+            attempts.push({
+              method: "attachment ID endpoint",
+              ok: r2.ok,
+              url: serveUrl,
+            });
             if (r2.ok)
               return {
                 id: attachId,
@@ -392,6 +413,11 @@ export default function SelfTable({ leaveRequests, onEdit, onCancel }) {
               ? `${absBase}${fp}`
               : `${absBase}/${fp}`;
             const r3 = await tryFetchBlob(candidatePath);
+            attempts.push({
+              method: "file path",
+              ok: r3.ok,
+              path: candidatePath,
+            });
             if (r3.ok)
               return {
                 id: attachId,
@@ -410,6 +436,11 @@ export default function SelfTable({ leaveRequests, onEdit, onCancel }) {
             if (year && month && empForPath) {
               const legacyUrl = `${absBase}/employee/leave/${encodeURIComponent(year)}/${encodeURIComponent(month)}/${encodeURIComponent(empForPath)}/${encodeURIComponent(filename)}`;
               const r4 = await tryFetchBlob(legacyUrl);
+              attempts.push({
+                method: "legacy path",
+                ok: r4.ok,
+                path: legacyUrl,
+              });
               if (r4.ok)
                 return {
                   id: attachId,
@@ -441,6 +472,7 @@ export default function SelfTable({ leaveRequests, onEdit, onCancel }) {
               if (meta) {
                 if (meta.url && /^https?:\/\//i.test(meta.url)) {
                   const rM = await tryFetchBlob(meta.url);
+                  attempts.push({ method: "metadata URL", ok: rM.ok });
                   if (rM.ok)
                     return {
                       id: meta.id || attachId,
@@ -454,6 +486,7 @@ export default function SelfTable({ leaveRequests, onEdit, onCancel }) {
                     ? `${absBase}${meta.file_path}`
                     : `${absBase}/${meta.file_path}`;
                   const rM2 = await tryFetchBlob(candidatePath);
+                  attempts.push({ method: "metadata file path", ok: rM2.ok });
                   if (rM2.ok)
                     return {
                       id: meta.id || attachId,
@@ -464,13 +497,14 @@ export default function SelfTable({ leaveRequests, onEdit, onCancel }) {
                 }
               }
             }
-          } catch (metaErr) {}
+          } catch (metaErr) {
+            console.warn("Failed to fetch metadata:", metaErr?.message);
+          }
 
-          console.warn(
-            "All attempts failed for attachment:",
-            filename,
+          console.warn("All attempts failed for attachment:", filename, {
             fileOrAtt,
-          );
+            attempts,
+          });
           return null;
         }),
       );

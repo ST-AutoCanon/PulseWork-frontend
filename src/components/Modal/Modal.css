@@ -8,7 +8,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 1000;
+  z-index: 9999;
+  overflow: hidden;
 }
 
 .ac-modal-content {
@@ -22,6 +23,7 @@
   border: 8px solid #00468c;
   display: flex;
   flex-direction: column;
+  z-index: 10000;
 }
 
 .ac-modal-header {
@@ -220,4 +222,39 @@
 .no-url {
   font-size: 0.875rem;
   color: #9ca3af;
+}
+
+/* Ensure modal overlay covers entire viewport and prevents background interaction */
+body:has(> .ac-modal-overlay) {
+  overflow: hidden !important;
+}
+
+.ac-modal-overlay::before {
+  content: "";
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 9998;
+}
+
+/* Ensure no elements can appear above modal */
+.ac-modal-overlay * {
+  position: relative;
+}
+
+/* Additional safety: isolate modal content from page */
+html.modal-open,
+body.modal-open {
+  overflow: hidden;
+}
+
+/* Prevent page scrolling when modal is visible */
+@supports selector(:has(*)) {
+  body:has(.ac-modal-overlay) {
+    overflow-y: hidden !important;
+    overflow-x: hidden !important;
+  }
 }

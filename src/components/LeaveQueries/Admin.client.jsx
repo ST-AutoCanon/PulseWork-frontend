@@ -1263,8 +1263,7 @@ export default function Admin({ openPolicyId = null }) {
           json = await res.json();
         } catch (e) {}
         const serverMsg =
-          (json && (json.message || json.error)) ||
-          `Failed to fetch file (HTTP ${res.status})`;
+          (json && (json.message || json.error)) || `Failed to fetch file`;
         showAlert(serverMsg);
         return;
       }

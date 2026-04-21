@@ -3,10 +3,6 @@
   font-family: Arial, sans-serif;
 }
 
-/* ===============================
-   Admin Toggle Tabs (All / Self)
-================================= */
-
 .admin-toggle-tabs {
   position: relative;
   display: inline-flex;

@@ -107,7 +107,7 @@ const ProjectsDashboard = () => {
   const [invoiceSequence, setInvoiceSequence] = useState(1);
   const [downloadDetails, setDownloadDetails] = useState({});
   const [downloadDetailsRefreshKey, setDownloadDetailsRefreshKey] = useState(0);
-
+  const [downloadFormInitialData, setDownloadFormInitialData] = useState(null);
   const [customerNotice, setCustomerNotice] = useState({
     isVisible: false,
     message: "",
@@ -131,6 +131,13 @@ const ProjectsDashboard = () => {
     (normalizedRole === "Manager" || normalizedRole === "Financial Manager");
 
   const canAccessGeneralTemplates = isAdmin || isFinanceManager;
+
+  const openDownloadForm = (initialData = null) => {
+    setSelectedProject(null);
+    setDownloadFormInitialData(initialData);
+    setShowTemplatePreview(false);
+    setShowDownloadForm(true);
+  };
 
   const buildHeaders = () => {
     const headers = {
@@ -461,9 +468,55 @@ const ProjectsDashboard = () => {
     return false;
   });
 
+  const handleCancelDownloadRecord = async (record) => {
+    try {
+      const headers = {
+        "Content-Type": "application/json",
+        "x-api-key": process.env.NEXT_PUBLIC_API_KEY,
+      };
+
+      if (employeeId) headers["x-employee-id"] = String(employeeId);
+
+      const orgId =
+        user?.orgId ||
+        user?.raw?.org_id ||
+        user?.org_id ||
+        user?.organization_id;
+
+      if (orgId) headers["x-org-id"] = orgId;
+
+      const resp = await fetch(
+        `${process.env.NEXT_PUBLIC_BACKEND_URL}/download-details/${record.id}/cancel`,
+        {
+          method: "PATCH",
+          credentials: "include",
+          headers,
+        },
+      );
+
+      if (!resp.ok) throw new Error(`Cancel failed (${resp.status})`);
+
+      setDownloadDetailsRefreshKey((prev) => prev + 1);
+
+      setCustomerNotice({
+        isVisible: true,
+        title: "Success",
+        message: "Record cancelled successfully.",
+      });
+    } catch (err) {
+      console.error("Cancel failed:", err);
+      setCustomerNotice({
+        isVisible: true,
+        title: "Error",
+        message: err.message || "Failed to cancel record.",
+      });
+    }
+  };
+
   const handleDownloadFormSubmit = (formData) => {
     setDownloadDetails(formData);
     setShowDownloadForm(false);
+    setDownloadFormInitialData(null);
   };
 
   return (
@@ -637,10 +690,7 @@ const ProjectsDashboard = () => {
                 </select>
                 <button
                   className="download-form-button"
-                  onClick={() => {
-                    setShowTemplatePreview(false);
-                    setShowDownloadForm(true);
-                  }}
+                  onClick={() => openDownloadForm(null)}
                 >
                   Add Details
                 </button>
@@ -676,6 +726,8 @@ const ProjectsDashboard = () => {
               <DownloadDetailsList
                 refreshKey={downloadDetailsRefreshKey}
                 customers={customers}
+                onDuplicate={(record) => openDownloadForm(record)}
+                onCancelRecord={handleCancelDownloadRecord}
               />
             </div>
           )}
@@ -709,9 +761,13 @@ const ProjectsDashboard = () => {
           <div className="pj-modal-content">
             <DownloadForm
               onSubmit={handleDownloadFormSubmit}
-              onCancel={() => setShowDownloadForm(false)}
+              onCancel={() => {
+                setShowDownloadForm(false);
+                setDownloadFormInitialData(null);
+              }}
               customers={customers}
               selectedProject={selectedProject}
+              initialData={downloadFormInitialData}
               invoiceType={selectedInvoiceType}
             />
           </div>

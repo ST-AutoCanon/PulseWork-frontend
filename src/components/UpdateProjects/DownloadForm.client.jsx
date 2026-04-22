@@ -3,6 +3,8 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { FiSearch, FiX, FiChevronDown } from "react-icons/fi";
 import { Country, State } from "country-state-city";
+import Select from "react-select";
+import currencyCodes from "currency-codes";
 import "./DownloadForm.css";
 import { useAuth } from "../../context/AuthProvider.client";
 
@@ -89,6 +91,18 @@ const DownloadForm = ({
 
   const [countries, setCountries] = useState([]);
   const [states, setStates] = useState([]);
+
+  const currencyOptions = useMemo(() => {
+    return currencyCodes.codes().map((code) => {
+      const info = currencyCodes.code(code);
+      return {
+        value: info.code,
+        label: `${info.code} - ${info.currency}`,
+      };
+    });
+  }, []);
+
+  const [currency, setCurrency] = useState("INR");
 
   const [to, setTo] = useState("");
   const [address, setAddress] = useState("");
@@ -212,6 +226,7 @@ const DownloadForm = ({
     const initialContact = source.contact || source.project_poc_contact || "";
     const initialCountry = source.country || "";
     const initialState = source.state || "";
+    const initialCurrency = source.currency || "INR";
 
     setSelectedCustomerId("");
     setCustomerSearch("");
@@ -222,6 +237,7 @@ const DownloadForm = ({
     setContact(initialContact);
     setCountry(initialCountry);
     setState(initialState);
+    setCurrency(initialCurrency);
     setInvoiceDate(source.invoiceDate || "");
     setReferenceDate(source.referenceDate || "");
     setReferenceId(source.referenceId || "");
@@ -348,6 +364,7 @@ const DownloadForm = ({
     const payload = {
       invoiceType: invoiceTypeKey,
       invoiceTypeLabel: currentInvoiceType,
+      currency: currency || "INR",
       selectedCustomerId: isEditMode ? null : selectedCustomerId || null,
       to: to || null,
       address: address || null,
@@ -611,6 +628,18 @@ const DownloadForm = ({
             type="text"
             value={placeOfSupply}
             onChange={(e) => setPlaceOfSupply(e.target.value)}
+          />
+        </div>
+
+        <div className="download-form-group">
+          <label>Currency:</label>
+          <Select
+            classNamePrefix="currency-select"
+            options={currencyOptions}
+            value={currencyOptions.find((o) => o.value === currency) || null}
+            onChange={(selected) => setCurrency(selected?.value || "")}
+            isClearable
+            placeholder="Select Currency"
           />
         </div>
       </div>

@@ -11,6 +11,7 @@ import { FiEye, FiDownload } from "react-icons/fi";
 import { MdOutlineEdit } from "react-icons/md";
 import { Country } from "country-state-city";
 import Modal from "../Modal/Modal.client";
+import { FiMoreVertical } from "react-icons/fi";
 
 const formatDateIST = (dateString, withTime = false) => {
   try {
@@ -87,7 +88,12 @@ const getCountryDisplayName = (value) => {
   return match?.name || code;
 };
 
-const DownloadDetailsList = ({ refreshKey, customers = [] }) => {
+const DownloadDetailsList = ({
+  refreshKey,
+  customers = [],
+  onDuplicate,
+  onCancelRecord,
+}) => {
   const { user } = useAuth();
   const [records, setRecords] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -105,11 +111,13 @@ const DownloadDetailsList = ({ refreshKey, customers = [] }) => {
   });
   const [editingRecord, setEditingRecord] = useState(null);
   const [showEditModal, setShowEditModal] = useState(false);
-
+  const [openMenuId, setOpenMenuId] = useState(null);
   const closeSuccessNotice = () => {
     setSuccessNotice({ isVisible: false, title: "Success", message: "" });
   };
-
+  const [viewTemplateRecord, setViewTemplateRecord] = useState(null);
+  const [showViewTemplateModal, setShowViewTemplateModal] = useState(false);
+  const [pendingCancelRecord, setPendingCancelRecord] = useState(null);
   const printRef = useRef(null);
 
   const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
@@ -174,6 +182,9 @@ const DownloadDetailsList = ({ refreshKey, customers = [] }) => {
     const lineItems = Array.isArray(record.lineItems) ? record.lineItems : [];
 
     return {
+      invoiceNumber: record.invoiceNumber || "",
+      invoiceType: record.invoiceType || "tax",
+      isCancelled: Boolean(record.isCancelled),
       selectedCustomerId: "",
       to: record.toName || record.to || "",
       address: record.address || "",
@@ -181,6 +192,7 @@ const DownloadDetailsList = ({ refreshKey, customers = [] }) => {
       contact: record.contact || "",
       country: record.country || "",
       state: record.state || "",
+      currency: record.currency || "",
       invoiceDate: record.invoiceDate,
       referenceDate: record.referenceDate,
       referenceId: record.referenceId,
@@ -214,6 +226,15 @@ const DownloadDetailsList = ({ refreshKey, customers = [] }) => {
     setPendingRedownloadId(record.id ?? `${Date.now()}`);
   };
 
+  const handleViewTemplate = (record) => {
+    const details = buildDownloadDetails(record);
+    setViewTemplateRecord({
+      ...details,
+      isCancelled: Boolean(record.isCancelled),
+    });
+    setShowViewTemplateModal(true);
+  };
+
   const handleEdit = (record) => {
     const normalizedType = normalizeInvoiceTypeKey(record.invoiceType);
 
@@ -228,6 +249,7 @@ const DownloadDetailsList = ({ refreshKey, customers = [] }) => {
       companyGst: record.companyGst || "",
       country: record.country || "",
       state: record.state || "",
+      currency: record.currency || "",
       invoiceDate: record.invoiceDate || "",
       referenceDate: record.referenceDate || "",
       referenceId: record.referenceId || "",
@@ -279,6 +301,7 @@ const DownloadDetailsList = ({ refreshKey, customers = [] }) => {
             companyGst: payload.companyGst,
             country: payload.country,
             state: payload.state,
+            currency: payload.currency,
             invoiceDate: payload.invoiceDate,
             referenceDate: payload.referenceDate,
             referenceId: payload.referenceId,
@@ -413,7 +436,7 @@ const DownloadDetailsList = ({ refreshKey, customers = [] }) => {
 
               return (
                 <React.Fragment key={r.id ?? `${idx}-${r.invoiceNumber || ""}`}>
-                  <tr>
+                  <tr className={r.isCancelled ? "cancelled-row" : ""}>
                     <td>{idx + 1}</td>
                     <td>{r.invoiceNumber ?? "—"}</td>
                     <td>{typeLabel}</td>
@@ -454,6 +477,53 @@ const DownloadDetailsList = ({ refreshKey, customers = [] }) => {
                         >
                           <FiDownload />
                         </button>
+                        <button
+                          className="d-icon-btn"
+                          onClick={() =>
+                            setOpenMenuId((prev) =>
+                              prev === r.id ? null : r.id,
+                            )
+                          }
+                        >
+                          <FiMoreVertical />
+                        </button>
+
+                        {openMenuId === r.id && (
+                          <div className="d-dropdown">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                onDuplicate?.(r);
+                                setOpenMenuId(null);
+                              }}
+                              className="d-dropdown-item"
+                            >
+                              Duplicate
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => {
+                                handleViewTemplate(r);
+                                setOpenMenuId(null);
+                              }}
+                              className="d-dropdown-item"
+                            >
+                              View Template
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setPendingCancelRecord(r);
+                                setOpenMenuId(null);
+                              }}
+                              className="d-dropdown-item cancel"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -566,6 +636,10 @@ const DownloadDetailsList = ({ refreshKey, customers = [] }) => {
                               {r.withSeal ? "Yes" : "No"}
                             </li>
                             <li>
+                              <strong>Currency:</strong>
+                              {r.currency || "—"}
+                            </li>
+                            <li>
                               <strong>Sub Total:</strong>{" "}
                               {safeNumber(r.subTotal).toFixed(2)}
                             </li>
@@ -643,6 +717,66 @@ const DownloadDetailsList = ({ refreshKey, customers = [] }) => {
           ]}
         >
           <p>{successNotice.message}</p>
+        </Modal>
+      )}
+
+      {showViewTemplateModal && viewTemplateRecord && (
+        <div className="pj-modal">
+          <div className="pj-modal-content" style={{ maxWidth: "1100px" }}>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                backgroundColor: "#00468c",
+              }}
+            >
+              <h3 className="preview">Template Preview</h3>
+              <button
+                type="button"
+                className="pj-close-button"
+                onClick={() => {
+                  setShowViewTemplateModal(false);
+                  setViewTemplateRecord(null);
+                }}
+              >
+                X
+              </button>
+            </div>
+
+            <InvoiceTemplate
+              invoiceType={normalizeInvoiceTypeLabel(
+                viewTemplateRecord.invoiceType,
+              )}
+              invoiceNumber={viewTemplateRecord.invoiceNumber || ""}
+              downloadDetails={viewTemplateRecord}
+              orgId={orgId}
+            />
+          </div>
+        </div>
+      )}
+
+      {pendingCancelRecord && (
+        <Modal
+          isVisible={true}
+          title="Confirm Cancel"
+          onClose={() => setPendingCancelRecord(null)}
+          buttons={[
+            {
+              label: "No",
+              className: "confirm-btn",
+              onClick: () => setPendingCancelRecord(null),
+            },
+            {
+              label: "Yes, Cancel",
+              className: "confirm-btn",
+              onClick: async () => {
+                await onCancelRecord?.(pendingCancelRecord);
+                setPendingCancelRecord(null);
+              },
+            },
+          ]}
+        >
+          <p>Are you sure you want to cancel this record?</p>
         </Modal>
       )}
 

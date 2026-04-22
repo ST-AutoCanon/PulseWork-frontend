@@ -137,6 +137,9 @@
 .emp-inv-table td:nth-child(3) {
   text-align: center;
 }
+.emp-inv-table td {
+  width: 160px;
+}
 
 .emp-totals-row {
   font-weight: bold;
@@ -464,4 +467,17 @@
 .org32-footer-icon {
   font-size: 18px;
   flex: 0 0 auto;
+}
+
+.cancelled-watermark {
+  position: absolute;
+  top: 45%;
+  left: 50%;
+  transform: translate(-50%, -50%) rotate(-30deg);
+  font-size: 72px;
+  font-weight: 800;
+  color: rgba(255, 0, 0, 0.18);
+  pointer-events: none;
+  z-index: 9999;
+  white-space: nowrap;
 }

@@ -44,6 +44,8 @@ const InvoiceTemplate = React.forwardRef((props, ref) => {
     roundOffAmount,
     finalTotalAmount,
     terms,
+    isCancelled,
+    currency,
   } = downloadDetails;
 
   const parsedLineItems =
@@ -94,6 +96,7 @@ const InvoiceTemplate = React.forwardRef((props, ref) => {
 
   return (
     <div ref={ref} className={`emp-inv-container ${isOrg32 ? "org-32" : ""}`}>
+      {isCancelled && <div className="cancelled-watermark">CANCELLED</div>}
       {isOrg32 ? (
         <header className="org32-header">
           <div className="org32-gst-line">GST Reg. No. : 29CRGPG2296B1ZU</div>
@@ -284,6 +287,7 @@ const InvoiceTemplate = React.forwardRef((props, ref) => {
             <th>S.No</th>
             <th>Item/Service Description</th>
             {isOrg32 && <th>Part No</th>}
+            <th>Currency</th>
             <th>HSN/SAC</th>
             <th>Amount</th>
             <th>Quantity</th>
@@ -297,10 +301,11 @@ const InvoiceTemplate = React.forwardRef((props, ref) => {
                 <td>{idx + 1}</td>
                 <td>{item.description || ""}</td>
                 {isOrg32 && <td>{item.partNumber || ""}</td>}
+                <td>{currency || ""}</td>
                 <td>{item.hsnSac || ""}</td>
-                <td>₹ {Number(item.rate || 0).toLocaleString("en-IN")}</td>
+                <td>{Number(item.rate || 0).toLocaleString("en-IN")}</td>
                 <td>{item.quantity || ""}</td>
-                <td>₹ {Number(item.total || 0).toLocaleString("en-IN")}</td>
+                <td>{Number(item.total || 0).toLocaleString("en-IN")}</td>
               </tr>
             );
           })}
@@ -310,6 +315,7 @@ const InvoiceTemplate = React.forwardRef((props, ref) => {
               <td>&nbsp;</td>
               <td>&nbsp;</td>
               {isOrg32 && <td>&nbsp;</td>}
+              <td>&nbsp;</td>
               <td>&nbsp;</td>
               <td>&nbsp;</td>
               <td>&nbsp;</td>
@@ -324,16 +330,15 @@ const InvoiceTemplate = React.forwardRef((props, ref) => {
             </td>
             {isOrg32 && <td></td>}
             <td></td>
+            <td></td>
             <td>
-              <strong>₹ {Number(totals.amount).toLocaleString("en-IN")}</strong>
+              <strong>{Number(totals.amount).toLocaleString("en-IN")}</strong>
             </td>
             <td>
               <strong>{totals.quantity}</strong>
             </td>
             <td>
-              <strong>
-                ₹ {Number(subtotalAmount).toLocaleString("en-IN")}
-              </strong>
+              <strong>{Number(subtotalAmount).toLocaleString("en-IN")}</strong>
             </td>
           </tr>
         </tbody>
@@ -352,23 +357,23 @@ const InvoiceTemplate = React.forwardRef((props, ref) => {
             <>
               <div className="emp-tax-box-body">
                 <p className="emp-tax-label">CGST</p>
-                <p>₹ {Number(subtotalAmount || 0).toLocaleString("en-IN")}</p>
+                <p>{Number(subtotalAmount || 0).toLocaleString("en-IN")}</p>
                 <p>{halfGSTRate}%</p>
-                <p>₹ {Number(halfGSTAmount).toLocaleString("en-IN")}</p>
+                <p>{Number(halfGSTAmount).toLocaleString("en-IN")}</p>
               </div>
               <div className="emp-tax-box-body">
                 <p className="emp-tax-label">SGST</p>
-                <p>₹ {Number(subtotalAmount || 0).toLocaleString("en-IN")}</p>
+                <p>{Number(subtotalAmount || 0).toLocaleString("en-IN")}</p>
                 <p>{halfGSTRate}%</p>
-                <p>₹ {Number(halfGSTAmount).toLocaleString("en-IN")}</p>
+                <p>{Number(halfGSTAmount).toLocaleString("en-IN")}</p>
               </div>
             </>
           ) : (
             <div className="emp-tax-box-body">
               <p className="emp-tax-label">IGST</p>
-              <p>₹ {Number(subtotalAmount || 0).toLocaleString("en-IN")}</p>
+              <p>{Number(subtotalAmount || 0).toLocaleString("en-IN")}</p>
               <p>{gst}%</p>
-              <p>₹ {Number(gstAmount || 0).toLocaleString("en-IN")}</p>
+              <p>{Number(gstAmount || 0).toLocaleString("en-IN")}</p>
             </div>
           )}
 
@@ -400,13 +405,12 @@ const InvoiceTemplate = React.forwardRef((props, ref) => {
             <div className="emp-amounts-section">
               <div className="emp-total-block">
                 <div>Sub Total</div>
-                <div>₹ {Number(subtotalAmount).toLocaleString("en-IN")}</div>
+                <div>{Number(subtotalAmount).toLocaleString("en-IN")}</div>
               </div>
 
               <div className="emp-total-block">
                 <div>GST</div>
                 <div>
-                  ₹{" "}
                   {Number(gstDisplayAmount.toFixed(2)).toLocaleString("en-IN")}
                 </div>
               </div>
@@ -416,19 +420,18 @@ const InvoiceTemplate = React.forwardRef((props, ref) => {
               <div className="emp-total-block">
                 <div className="emp-bold">Total</div>
                 <div className="emp-bold">
-                  ₹ {Number(grossTotal).toLocaleString("en-IN")}
+                  {Number(grossTotal).toLocaleString("en-IN")}
                 </div>
               </div>
               <div className="emp-total-block">
                 <div>Round Off</div>
                 <div>
-                  ₹{" "}
                   {Number(roundOff ? roundOffValue : 0).toLocaleString("en-IN")}
                 </div>
               </div>
               <div className="emp-total-block">
                 <div>Advance</div>
-                <div>₹ {Number(advance || 0).toLocaleString("en-IN")}</div>
+                <div>{Number(advance || 0).toLocaleString("en-IN")}</div>
               </div>
             </div>
 
@@ -436,7 +439,7 @@ const InvoiceTemplate = React.forwardRef((props, ref) => {
               <div className="emp-total-block">
                 <div className="emp-bold">Payable Amount</div>
                 <div className="emp-bold">
-                  ₹ {Number(displayTotal || grossTotal).toLocaleString("en-IN")}
+                  {Number(displayTotal || grossTotal).toLocaleString("en-IN")}
                 </div>
               </div>
             </div>

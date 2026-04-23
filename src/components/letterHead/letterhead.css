@@ -496,7 +496,30 @@
   font-style: italic;
 }
 /* PDF PAGE */
+.letterhead-live-preview-box p,
+.letterhead-live-preview-box div {
+  white-space: normal;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  word-break: break-word;
+}
 
+.annexure-break {
+  height: 1px;
+  width: 100%;
+}
+.annexure-table {
+  page-break-inside: avoid;
+  break-inside: avoid;
+}
+
+.annexure-table tr {
+  page-break-inside: avoid;
+}
+.annexure-table {
+  page-break-inside: avoid;
+  break-inside: avoid;
+}
 .pdf-page {
 
   position: relative;
@@ -584,6 +607,15 @@
   opacity: 0.08;
 
   z-index: 0;
+}
+.ql-editor {
+  white-space: normal !important;
+  word-break: break-word !important;
+  overflow-wrap: break-word !important;
+}
+
+.ql-editor p {
+  margin-bottom: 10px;
 }
 /* Save Button */
 .letterhead-btn-save {

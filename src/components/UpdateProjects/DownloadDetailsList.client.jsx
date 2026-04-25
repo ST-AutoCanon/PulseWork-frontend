@@ -119,7 +119,9 @@ const DownloadDetailsList = ({
   const [showViewTemplateModal, setShowViewTemplateModal] = useState(false);
   const [pendingCancelRecord, setPendingCancelRecord] = useState(null);
   const printRef = useRef(null);
-
+  const [filterInvoiceType, setFilterInvoiceType] = useState("All");
+  const [filterInvoiceNumber, setFilterInvoiceNumber] = useState("");
+  const [filterToValue, setFilterToValue] = useState("");
   const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
   const API_KEY = process.env.NEXT_PUBLIC_API_KEY;
 
@@ -405,9 +407,66 @@ const DownloadDetailsList = ({
   if (loading) return <p>Loading download records…</p>;
   if (error) return <p style={{ color: "red" }}>Error: {error}</p>;
 
+  const filteredRecords = records.filter((r) => {
+    const typeLabel = normalizeInvoiceTypeLabel(r.invoiceType);
+    const invoiceNo = String(r.invoiceNumber || "").toLowerCase();
+    const toValue = String(r.toName || r.to || "").toLowerCase();
+
+    const matchesType =
+      filterInvoiceType === "All" || typeLabel === filterInvoiceType;
+
+    const matchesInvoiceNo = invoiceNo.includes(
+      filterInvoiceNumber.trim().toLowerCase(),
+    );
+
+    const matchesToValue = toValue.includes(filterToValue.trim().toLowerCase());
+
+    return matchesType && matchesInvoiceNo && matchesToValue;
+  });
+
   return (
     <div className="download-details-container">
       <h2>Download Details</h2>
+
+      <div className="download-filters">
+        <select
+          value={filterInvoiceType}
+          onChange={(e) => setFilterInvoiceType(e.target.value)}
+        >
+          <option value="All">All Types</option>
+          <option value="Tax Invoice">Tax Invoice</option>
+          <option value="Proforma Invoice">Proforma Invoice</option>
+          <option value="Quotation">Quotation</option>
+          <option value="Purchase Order">Purchase Order</option>
+          <option value="Credit Note">Credit Note</option>
+        </select>
+
+        <input
+          type="text"
+          placeholder="Search invoice no."
+          value={filterInvoiceNumber}
+          onChange={(e) => setFilterInvoiceNumber(e.target.value)}
+        />
+
+        <input
+          type="text"
+          placeholder="Search customer / to"
+          value={filterToValue}
+          onChange={(e) => setFilterToValue(e.target.value)}
+        />
+
+        <button
+          type="button"
+          className="download-form-button"
+          onClick={() => {
+            setFilterInvoiceType("All");
+            setFilterInvoiceNumber("");
+            setFilterToValue("");
+          }}
+        >
+          Clear
+        </button>
+      </div>
 
       {records.length === 0 ? (
         <p>No download records found.</p>
@@ -428,7 +487,7 @@ const DownloadDetailsList = ({
           </thead>
 
           <tbody>
-            {records.map((r, idx) => {
+            {filteredRecords.map((r, idx) => {
               const totalInc = safeNumber(r.totalIncludingTax);
               const lineItems = Array.isArray(r.lineItems) ? r.lineItems : [];
               const rowType = normalizeInvoiceTypeKey(r.invoiceType);

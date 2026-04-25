@@ -30,8 +30,8 @@ const ORG32_FOOTER = {
 
 const fmtINR = (value) => {
   const n = Number(value || 0);
-  if (!Number.isFinite(n)) return "₹ 0.00";
-  return `₹ ${n.toLocaleString("en-IN", {
+  if (!Number.isFinite(n)) return "0.00";
+  return `${n.toLocaleString("en-IN", {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   })}`;
@@ -93,6 +93,7 @@ const InvoicePrint = React.forwardRef(({ invoiceData = {}, orgId }, ref) => {
     invoiceDate = "",
     referenceId = "",
     referenceDate = "",
+    currency = "",
     totalExcludingTax: rawTotalExcl = 0,
     gstAmount: rawGstAmount = 0,
     terms = "",
@@ -103,6 +104,7 @@ const InvoicePrint = React.forwardRef(({ invoiceData = {}, orgId }, ref) => {
     roundOffAmount: rawRoundOffAmount = 0,
     advance: rawAdvance = 0,
     project = {},
+    isCancelled = false,
   } = invoiceData;
 
   const gst = safeNumber(rawGst);
@@ -179,13 +181,14 @@ const InvoicePrint = React.forwardRef(({ invoiceData = {}, orgId }, ref) => {
 
   const headerTitle = invoiceType ? invoiceType.toUpperCase() : "INVOICE";
 
-  const lineItemColumnCount = isOrg32 ? 7 : 6;
+  const lineItemColumnCount = isOrg32 ? 8 : 7;
 
   return (
     <div
       ref={ref}
       className={`invoice-print-container ${isOrg32 ? "org-32" : "org-1"}`}
     >
+      {isCancelled && <div className="cancelled-watermark">CANCELLED</div>}
       {isOrg32 ? (
         <header className="invoice-print-header org32-header">
           <div className="org32-gst-text">{ORG32_HEADER.gstText}</div>
@@ -289,6 +292,7 @@ const InvoicePrint = React.forwardRef(({ invoiceData = {}, orgId }, ref) => {
               <th>S.No</th>
               <th>Item/Service Description</th>
               {isOrg32 && <th>Parts Number</th>}
+              <th>Currency</th>
               <th>HSN/SAC</th>
               <th>Amount</th>
               <th>Quantity</th>
@@ -303,6 +307,7 @@ const InvoicePrint = React.forwardRef(({ invoiceData = {}, orgId }, ref) => {
                   <td>{idx + 1}</td>
                   <td>{item.description || "—"}</td>
                   {isOrg32 && <td>{item.partNumber || "—"}</td>}
+                  <td>{currency}</td>
                   <td>{item.hsnSac || "—"}</td>
                   <td>{fmtINR(item.rate)}</td>
                   <td>{item.quantity}</td>
@@ -327,6 +332,7 @@ const InvoicePrint = React.forwardRef(({ invoiceData = {}, orgId }, ref) => {
                 <strong>Totals</strong>
               </td>
               {isOrg32 && <td></td>}
+              <td></td>
               <td></td>
               <td>
                 <strong>{fmtINR(totals.amount)}</strong>

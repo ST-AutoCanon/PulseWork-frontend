@@ -166,3 +166,24 @@
   color: #fff;
   margin-left: 2%;
 }
+
+.download-filters {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin: 12px 0 16px;
+  align-items: center;
+}
+
+.download-filters select,
+.download-filters input {
+  min-width: 180px;
+  padding: 8px 10px;
+  border: 1px solid #d0d7de;
+  border-radius: 6px;
+  outline: none;
+}
+
+.download-filters button {
+  padding: 8px 14px;
+}

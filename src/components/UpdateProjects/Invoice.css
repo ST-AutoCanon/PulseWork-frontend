@@ -783,6 +783,58 @@
   width: 15px !important;
 }
 
+.invoice-menu-wrap {
+  position: relative;
+  display: inline-block;
+}
+
+.d-dropdown {
+  position: absolute;
+  right: 0;
+  top: 30px;
+  min-width: 140px;
+  background: #fff;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  z-index: 50;
+  overflow: hidden;
+}
+
+.d-dropdown-item {
+  width: 100%;
+  padding: 10px 12px;
+  background: #fff;
+  border: 0;
+  text-align: left;
+  cursor: pointer;
+}
+
+.d-dropdown-item:hover {
+  background: #f5f5f5;
+}
+
+.d-dropdown-item.cancel {
+  color: #b91c1c;
+}
+
+.cancelled-row {
+  background-color: #ffe6e6; /* light red */
+}
+
+.cancelled-row:hover {
+  background-color: #ffd6d6; /* slightly darker on hover */
+}
+
+.cancelled-row td {
+  background-color: #f9b6b6;
+}
+
+.preview {
+  color: #fff;
+  margin-left: 2%;
+}
+
 @media (max-width: 520px) {
   .templates-modal {
     width: 98%;

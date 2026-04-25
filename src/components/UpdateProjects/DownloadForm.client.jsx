@@ -92,15 +92,10 @@ const DownloadForm = ({
   const [countries, setCountries] = useState([]);
   const [states, setStates] = useState([]);
 
-  const currencyOptions = useMemo(() => {
-    return currencyCodes.codes().map((code) => {
-      const info = currencyCodes.code(code);
-      return {
-        value: info.code,
-        label: `${info.code} - ${info.currency}`,
-      };
-    });
-  }, []);
+  const options = currencyCodes.data.map((c) => ({
+    value: c.code,
+    label: `${c.code} - ${c.currency}`,
+  }));
 
   const [currency, setCurrency] = useState("INR");
 
@@ -634,12 +629,10 @@ const DownloadForm = ({
         <div className="download-form-group">
           <label>Currency:</label>
           <Select
-            classNamePrefix="currency-select"
-            options={currencyOptions}
-            value={currencyOptions.find((o) => o.value === currency) || null}
-            onChange={(selected) => setCurrency(selected?.value || "")}
-            isClearable
-            placeholder="Select Currency"
+            className="currency-select"
+            options={options}
+            value={options.find((o) => o.value === currency)}
+            onChange={(selected) => setCurrency(selected.value)}
           />
         </div>
       </div>

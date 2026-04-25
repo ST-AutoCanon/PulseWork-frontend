@@ -503,3 +503,16 @@
   font-size: 14px;
   color: #666;
 }
+
+.cancelled-watermark {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) rotate(-30deg);
+  font-size: 72px;
+  font-weight: 800;
+  color: rgba(255, 0, 0, 0.18);
+  pointer-events: none;
+  z-index: 9999;
+  white-space: nowrap;
+}

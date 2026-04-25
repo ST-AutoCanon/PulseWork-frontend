@@ -10,10 +10,12 @@ import {
   MdOutlineKeyboardBackspace,
   MdOutlineEdit,
 } from "react-icons/md";
-import { FiDownload, FiEye } from "react-icons/fi";
+import { FiDownload, FiEye, FiMoreVertical } from "react-icons/fi";
 import { GrStatusGood } from "react-icons/gr";
 import Modal from "../Modal/Modal.client";
 import { useAuth } from "../../context/AuthProvider.client";
+import Select from "react-select";
+import currencyCodes from "currency-codes";
 
 const protectedImageCache = new Map();
 
@@ -74,7 +76,9 @@ const Invoice = ({ onBack, project }) => {
   const [invoiceType, setInvoiceType] = useState("tax");
   const [selectedInvoice, setSelectedInvoice] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-
+  const [openMenuId, setOpenMenuId] = useState(null);
+  const [showPreviewModal, setShowPreviewModal] = useState(false);
+  const [pendingCancelInvoice, setPendingCancelInvoice] = useState(null);
   const [terms, setTerms] = useState(
     `1) Payment Terms:
   a) Initial Invoice: 15% of the total cost
@@ -121,9 +125,12 @@ const Invoice = ({ onBack, project }) => {
   const [tdsAmount, setTdsAmount] = useState("");
   const [showSealModal, setShowSealModal] = useState(false);
   const [withSeal, setWithSeal] = useState(false);
-
+  const options = currencyCodes.data.map((c) => ({
+    value: c.code,
+    label: `${c.code} - ${c.currency}`,
+  }));
   const [activeTab, setActiveTab] = useState("tax");
-
+  const [currency, setCurrency] = useState("INR");
   const [alertModal, setAlertModal] = useState({
     isVisible: false,
     title: "",
@@ -428,12 +435,91 @@ const Invoice = ({ onBack, project }) => {
     resetFormFields();
   };
 
+  const normalizeLineItems = (items) => {
+    if (!Array.isArray(items)) return [];
+    return items.map((item) => ({
+      description: item?.description || "",
+      partNumber: item?.partNumber || item?.part_number || "",
+      hsnSac: item?.hsnSac || item?.hsn || "",
+      quantity: item?.quantity ?? 1,
+      rate: item?.rate ?? 0,
+      total: item?.total ?? 0,
+    }));
+  };
+
+  const handleDuplicateInvoice = (invoice) => {
+    setEditingInvoiceId(null);
+
+    setInvoiceType(invoice.invoiceType || "tax");
+    setInvoiceDate(
+      invoice.invoiceDate
+        ? new Date(invoice.invoiceDate).toISOString().split("T")[0]
+        : "",
+    );
+    setInvoiceNo(""); // keep this new
+    setReferenceId(invoice.referenceId || "");
+    setReferenceDate(
+      invoice.referenceDate ? invoice.referenceDate.split("T")[0] : "",
+    );
+    setCurrency(invoice.currency || "INR");
+
+    let parsedItems = invoice.lineItems || [];
+    if (typeof parsedItems === "string") {
+      try {
+        parsedItems = JSON.parse(parsedItems);
+      } catch {
+        parsedItems = [];
+      }
+    }
+
+    setLineItems(
+      Array.isArray(parsedItems) && parsedItems.length
+        ? normalizeLineItems(parsedItems)
+        : [createEmptyLineItem()],
+    );
+
+    setGST(invoice.gst ?? "18");
+    setSubTotal(invoice.subTotal ?? 0);
+    setAdvance(invoice.advance ?? 0);
+    setGSTAmount(invoice.gstAmount ?? 0);
+    setTotalExcludingTax(invoice.totalExcludingTax ?? 0);
+
+    const preRoundTotal =
+      invoice.totalBeforeRoundOff ??
+      invoice.totalIncludingTax ??
+      invoice.totalAmount ??
+      0;
+
+    setTotalIncludingTax(preRoundTotal);
+    setRoundOff(Boolean(invoice.roundOff));
+    setRoundOffAmount(invoice.roundOffAmount ?? 0);
+    setFinalTotalAmount(invoice.totalIncludingTax ?? invoice.totalAmount ?? 0);
+    setTotalBeforeRoundOff(preRoundTotal);
+    setTotalAmount(invoice.totalAmount ?? 0);
+    setTerms(invoice.terms ?? "");
+
+    setShowInvoiceForm(true);
+    setOpenMenuId(null);
+  };
+
+  const handleViewTemplate = (invoice) => {
+    setSelectedInvoice(invoice);
+    setShowPreviewModal(true);
+    setOpenMenuId(null);
+  };
+
+  const handleCancelInvoiceRequest = (invoice) => {
+    setPendingCancelInvoice(invoice);
+    setOpenMenuId(null);
+  };
+
   const resetFormFields = () => {
     setInvoiceType("tax");
     setInvoiceDate("");
     setInvoiceNo("");
     setReferenceId("");
     setReferenceDate("");
+    setCurrency("INR");
     setLineItems([
       {
         description: "",
@@ -482,6 +568,7 @@ const Invoice = ({ onBack, project }) => {
       invoiceNo,
       referenceId,
       referenceDate,
+      currency,
       terms,
       lineItems: lineItems.map((item) => ({
         description: item.description || "",
@@ -569,6 +656,7 @@ const Invoice = ({ onBack, project }) => {
     setReferenceDate(
       invoice.referenceDate ? invoice.referenceDate.split("T")[0] : "",
     );
+    setCurrency(invoice.currency || "INR");
 
     if (invoice.lineItems) {
       let parsedItems = invoice.lineItems;
@@ -896,7 +984,10 @@ const Invoice = ({ onBack, project }) => {
             </thead>
             <tbody>
               {filteredInvoices.map((inv) => (
-                <tr key={inv.id}>
+                <tr
+                  key={inv.id}
+                  className={inv.isCancelled ? "cancelled-row" : ""}
+                >
                   <td>{inv.invoiceNo}</td>
                   <td>
                     {inv.invoiceDate
@@ -1014,7 +1105,10 @@ const Invoice = ({ onBack, project }) => {
                       />
                       <FiEye
                         className="in-view-icon"
-                        onClick={() => setSelectedInvoice(inv)}
+                        onClick={() => {
+                          setSelectedInvoice(inv);
+                          setShowPreviewModal(true);
+                        }}
                       />
                     </div>
                   </td>
@@ -1028,6 +1122,42 @@ const Invoice = ({ onBack, project }) => {
                         className="in-download-icon"
                         onClick={() => handleDownloadClick(inv)}
                       />
+
+                      <div className="invoice-menu-wrap">
+                        <button
+                          type="button"
+                          className="d-icon-btn"
+                          onClick={() =>
+                            setOpenMenuId((prev) =>
+                              prev === inv.id ? null : inv.id,
+                            )
+                          }
+                          aria-label="More actions"
+                          title="More actions"
+                        >
+                          <FiMoreVertical />
+                        </button>
+
+                        {openMenuId === inv.id && (
+                          <div className="d-dropdown">
+                            <button
+                              type="button"
+                              className="d-dropdown-item"
+                              onClick={() => handleDuplicateInvoice(inv)}
+                            >
+                              Duplicate
+                            </button>
+
+                            <button
+                              type="button"
+                              className="d-dropdown-item cancel"
+                              onClick={() => handleCancelInvoiceRequest(inv)}
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </td>
                 </tr>
@@ -1200,6 +1330,14 @@ const Invoice = ({ onBack, project }) => {
                       type="date"
                       value={referenceDate}
                       onChange={(e) => setReferenceDate(e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <label>Currency</label>
+                    <Select
+                      options={options}
+                      value={options.find((o) => o.value === currency)}
+                      onChange={(selected) => setCurrency(selected.value)}
                     />
                   </div>
                 </div>
@@ -1444,7 +1582,87 @@ const Invoice = ({ onBack, project }) => {
           </div>
         </div>
       )}
+      {showPreviewModal && selectedInvoice && (
+        <div className="pj-modal">
+          <div className="pj-modal-content" style={{ maxWidth: "1100px" }}>
+            <div className="invoice-header">
+              <h2>Template Preview</h2>
+              <MdOutlineCancel
+                onClick={() => setShowPreviewModal(false)}
+                className="invoice-close-btn"
+              />
+            </div>
 
+            <InvoicePrint
+              invoiceData={{
+                ...selectedInvoice,
+                project,
+                withSeal,
+              }}
+              orgId={orgId}
+            />
+          </div>
+        </div>
+      )}
+
+      {pendingCancelInvoice && (
+        <Modal
+          isVisible={true}
+          title="Confirm Cancel"
+          onClose={() => setPendingCancelInvoice(null)}
+          buttons={[
+            {
+              label: "No",
+              className: "confirm-btn",
+              onClick: () => setPendingCancelInvoice(null),
+            },
+            {
+              label: "Yes, Cancel",
+              className: "confirm-btn",
+              onClick: async () => {
+                try {
+                  const resp = await fetch(
+                    `${BACKEND_URL}/invoice/${pendingCancelInvoice.id}/cancel`,
+                    {
+                      method: "PATCH",
+                      credentials: "include",
+                      headers: buildHeaders(),
+                      body: JSON.stringify({ isCancelled: true }),
+                    },
+                  );
+
+                  if (!resp.ok)
+                    throw new Error(`Cancel failed (${resp.status})`);
+
+                  const result = await resp.json();
+
+                  setInvoiceList((prev) =>
+                    prev.map((inv) =>
+                      inv.id === pendingCancelInvoice.id
+                        ? { ...inv, isCancelled: true }
+                        : inv,
+                    ),
+                  );
+
+                  setSelectedInvoice((prev) =>
+                    prev && prev.id === pendingCancelInvoice.id
+                      ? { ...prev, isCancelled: true }
+                      : prev,
+                  );
+
+                  setPendingCancelInvoice(null);
+                  showAlert("Invoice cancelled successfully.");
+                } catch (err) {
+                  console.error(err);
+                  showAlert("Failed to cancel invoice.");
+                }
+              },
+            },
+          ]}
+        >
+          <p>Are you sure you want to cancel this invoice?</p>
+        </Modal>
+      )}
       <Modal
         isVisible={alertModal.isVisible}
         title={alertModal.title}

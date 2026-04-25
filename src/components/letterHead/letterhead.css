@@ -468,6 +468,19 @@
   overflow-wrap: break-word;
 }
 
+.letterhead-live-preview-box table {
+  width: 100%;
+  border-collapse: collapse;
+  border-spacing: 0;
+}
+
+.letterhead-live-preview-box th,
+.letterhead-live-preview-box td {
+  border: 1px solid #cbd5e1;
+  padding: 8px;
+  text-align: left;
+}
+
 /* Placeholder styling in preview */
 .letterhead-placeholder-missing {
   color: #ef4444;

@@ -81,7 +81,33 @@ const LetterHead = () => {
     <h2 style="font-weight: bold;">Introduction</h2>
     <p>We are pleased to provide the bank details for [Recipient Name], who joined our organization on [Date of Appointment].</p>
     <h2 style="font-weight: bold;">Bank Details</h2>
-    <p>Please update the following details in your records.</p>
+    <p>Please find the details below for your records.</p>
+    <table style="width:100%; border-collapse: collapse; border:1px solid #000; margin-bottom: 16px;">
+      <tr>
+        <th style="border:1px solid #000; padding:8px; text-align:left;">Field</th>
+        <th style="border:1px solid #000; padding:8px; text-align:left;">Value</th>
+      </tr>
+      <tr>
+        <td style="border:1px solid #000; padding:8px;">Full Name</td>
+        <td style="border:1px solid #000; padding:8px;">[Full Name]</td>
+      </tr>
+      <tr>
+        <td style="border:1px solid #000; padding:8px;">Employee ID</td>
+        <td style="border:1px solid #000; padding:8px;">[Employee ID]</td>
+      </tr>
+      <tr>
+        <td style="border:1px solid #000; padding:8px;">Date of Birth</td>
+        <td style="border:1px solid #000; padding:8px;">[Date of Birth]</td>
+      </tr>
+      <tr>
+        <td style="border:1px solid #000; padding:8px;">Contact Number</td>
+        <td style="border:1px solid #000; padding:8px;">[Contact Number]</td>
+      </tr>
+      <tr>
+        <td style="border:1px solid #000; padding:8px;">Residential Address</td>
+        <td style="border:1px solid #000; padding:8px;">[Residential Address]</td>
+      </tr>
+    </table>
     <p>Regards,</p>
   `;
 

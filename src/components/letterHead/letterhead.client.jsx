@@ -78,6 +78,8 @@ const LetterheadClient = () => {
 
     // HR Fields
     "employee id": "employee_id",
+    "full name": "employee_name",
+    "full_name": "employee_name",
     "authorized signatory name": "authorized_signatory_name",
 
     // Letter fields
@@ -142,11 +144,6 @@ const LetterheadClient = () => {
       setSelectedTemplate(selected);
      let content = selected.content || '';
 
-// ✅ Append Annexure FIRST
-if (selected.letter_type === "Offer Letter") {
-  content += getAnnexureTableHtml();
-}
-
 // ✅ Set full content
 setQuillContent(content);
 setLetterName(selected.letter_type || '');
@@ -198,11 +195,15 @@ setEditingId(null);
     Object.keys(data).forEach(key => {
       const cleanKey = key.trim().replace(/\s+/g, ' ').toLowerCase();
       normalizedData[cleanKey] = data[key];
+      normalizedData[cleanKey.replace(/ /g, '_')] = data[key];
     });
 
     return cleanedHtml.replace(/\[([^\]]+)\]/g, (match, placeholder) => {
       const cleanPlaceholder = placeholder.trim().replace(/\s+/g, ' ').toLowerCase();
       let value = normalizedData[cleanPlaceholder];
+      if (value === undefined) {
+        value = normalizedData[cleanPlaceholder.replace(/ /g, '_')];
+      }
 
       if (cleanPlaceholder.includes("date") && value) {
         try {
@@ -214,15 +215,19 @@ setEditingId(null);
         } catch {}
       }
 
-      return value && value.trim() !== '' 
-        ? value 
+      return value !== undefined && value !== null && `${value}`.trim() !== ''
+        ? value
         : `<span class="letterhead-placeholder-missing">${match}</span>`;
     });
   };
 
   const livePreviewHtml = useMemo(() => {
-    return replacePlaceholders(quillContent, formData);
-  }, [quillContent, formData]);
+    let html = replacePlaceholders(quillContent, formData);
+    if (selectedTemplate?.letter_type === "Offer Letter") {
+      html += replacePlaceholders(getAnnexureTableHtml(), formData);
+    }
+    return html;
+  }, [quillContent, formData, selectedTemplate]);
 
   const resetForm = () => {
     setSelectedTemplate(null);
@@ -246,8 +251,16 @@ setEditingId(null);
     setEditingId(letter.id);
     setIsEditing(true);
 
+    let initialContent = letter.raw_content || template.content || '';
+    setQuillContent(initialContent);
+
+    let contentForMatches = initialContent;
+    if (template.letter_type === "Offer Letter") {
+      contentForMatches += getAnnexureTableHtml();
+    }
+
     const regex = /\[([^\]]+)\]/g;
-    const matches = [...(template.content || '').matchAll(regex)];
+    const matches = [...contentForMatches.matchAll(regex)];
 
     const restoredFormData = {};
 
@@ -257,7 +270,7 @@ setEditingId(null);
     });
 
     Object.keys(letter).forEach(dbKey => {
-      if (['id', 'body', 'created_at', 'template_name', 'letterhead_code'].includes(dbKey)) return;
+      if (['id', 'body', 'raw_content', 'created_at', 'template_name', 'letterhead_code'].includes(dbKey)) return;
 
       const dbNormalized = dbKey.toLowerCase().replace(/_/g, ' ').trim();
       const matchedField = Object.keys(restoredFormData).find(field =>
@@ -272,7 +285,7 @@ setEditingId(null);
     });
 
     setFormData(restoredFormData);
-    setQuillContent(template.content || letter.body || '');
+
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -293,6 +306,7 @@ setEditingId(null);
         letter_type: selectedTemplate.letter_type,
         template_name: letterName.trim(),
         body: livePreviewHtml,
+        raw_content: quillContent,
         subject: formData["Subject"] || formData["subject"] || selectedTemplate.letter_type,
       };
 
@@ -339,74 +353,43 @@ const generatePDF = async (download = false, savedLetter = null) => {
     ? savedLetter.body
     : livePreviewHtml;
 
-
-// 🔍 LOG 1 — Raw HTML check
-console.log(
-  "Initial annexure occurrences:",
-  (contentHtml.match(/Annexure-I/gi) || []).length
-);
-
-
-// ✅ Remove ANY annexure table (even if class missing)
-contentHtml = contentHtml.replace(
-  /<div class="annexure-break">[\s\S]*?<\/table>/gi,
-  ''
-);
-
-
-// ✅ EXTRA CLEAN — remove Annexure table by heading text
-contentHtml = contentHtml.replace(
-  /<table[\s\S]*?Annexure-I[\s\S]*?<\/table>/gi,
-  ''
-);
-
-
-// 🔍 LOG 2 — After cleaning
-console.log(
-  "After cleaning annexure occurrences:",
-  (contentHtml.match(/Annexure-I/gi) || []).length
-);
-
-
-// Detect letter type
-const letterType =
-  savedLetter?.letter_type ||
-  selectedTemplate?.letter_type;
-
-
-// 🔍 LOG 3
-console.log("Letter Type:", letterType);
-
-
-// ✅ Append ONE annexure only
-if (letterType === "Offer Letter") {
-
-  const annexureHtml =
-    getAnnexureTableHtml();
-
-  console.log(
-    "Appending annexure once"
-  );
-
-  contentHtml += annexureHtml;
-
-}
-
-
-// 🔍 LOG 4 — Final verification
-console.log(
-  "Final annexure count:",
-  (contentHtml.match(/Annexure-I/gi) || []).length
-);
     if (!contentHtml) {
       showAlert("No content available");
       return;
     }
 
 
+    const pdfStyles = `
+      <style>
+        table, th, td {
+          border: 1px solid #2b2b2b !important;
+          border-collapse: collapse !important;
+          border-spacing: 0 !important;
+        }
+
+        table {
+          width: 100% !important;
+          page-break-inside: auto !important;
+          break-inside: auto !important;
+        }
+
+        th, td {
+          padding: 5px !important;
+          text-align: left !important;
+          vertical-align: top !important;
+        }
+
+        .ql-editor table,
+        .letterhead-live-preview-box table {
+          table-layout: fixed !important;
+          width: 100% !important;
+        }
+      </style>
+    `;
+
     const tempDiv = document.createElement("div");
 
-    tempDiv.innerHTML = contentHtml;
+    tempDiv.innerHTML = pdfStyles + contentHtml;
 
     tempDiv.style.width = "794px";
     tempDiv.style.padding = "40px";
@@ -656,12 +639,15 @@ console.log(
 };
 
   const placeholderFields = useMemo(() => {
-    if (!selectedTemplate?.content) return [];
-    const textOnly = selectedTemplate.content.replace(/<[^>]*>/g, '');
+    if (!quillContent) return [];
+    let textOnly = quillContent.replace(/<[^>]*>/g, '');
+    if (selectedTemplate?.letter_type === "Offer Letter") {
+      textOnly += getAnnexureTableHtml().replace(/<[^>]*>/g, '');
+    }
     const regex = /\[([^\]]+)\]/g;
     const matches = [...textOnly.matchAll(regex)];
     return [...new Set(matches.map(m => m[1].trim()))].sort();
-  }, [selectedTemplate]);
+  }, [quillContent, selectedTemplate]);
 
   if (loading) return <div className="letterhead-no-template">Loading letter templates...</div>;
 
@@ -689,6 +675,7 @@ console.log(
                 const lowerField = field.toLowerCase();
                 const isDateField = lowerField.includes("date");
                 const isEmailField = lowerField.includes("email") || lowerField.includes("mail");
+                const isTitleField = lowerField.includes("title");
 
                 const niceLabel = field
                   .replace(/_/g, ' ')
@@ -697,12 +684,24 @@ console.log(
                 return (
                   <div key={field} className="letterhead-form-group">
                     <label>{niceLabel}</label>
-                    <input
-                      type={isDateField ? "date" : isEmailField ? "email" : "text"}
-                      value={formData[field] || ''}
-                      onChange={(e) => handleFieldChange(field, e.target.value)}
-                      placeholder={`Enter ${niceLabel}`}
-                    />
+                    {isTitleField ? (
+                      <select
+                        value={formData[field] || ''}
+                        onChange={(e) => handleFieldChange(field, e.target.value)}
+                      >
+                        <option value="">Select Title</option>
+                        <option value="Mr">Mr</option>
+                        <option value="Mrs">Mrs</option>
+                        <option value="Ms">Ms</option>
+                      </select>
+                    ) : (
+                      <input
+                        type={isDateField ? "date" : isEmailField ? "email" : "text"}
+                        value={formData[field] || ''}
+                        onChange={(e) => handleFieldChange(field, e.target.value)}
+                        placeholder={`Enter ${niceLabel}`}
+                      />
+                    )}
                     {errors[field] && <span style={{ color: "red", fontSize: "12px" }}>{errors[field]}</span>}
                   </div>
                 );

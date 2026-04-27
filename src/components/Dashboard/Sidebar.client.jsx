@@ -14,6 +14,7 @@ import LeaveQueries from "../LeaveQueries/Admin.client";
 import LeaveRequest from "../LeaveQueries/LeaveRequest.client";
 import Profile from "../Profile/Profile.client";
 import MyDashboard from "../MyDashboard/MyDashboard.client";
+import AttendanceRegularisation from "../AttendanceRegularisation/AttendanceRegularisation.client";
 import MyEmpDashboard from "../MyEmpDashboard/MyEmpDashboard.client";
 import PayrollSummary from "../PayrollSummary/PayrollSummary.client";
 import TemplateBuilder from "../TemplateBuilder/TemplateBuilder.client";
@@ -77,12 +78,27 @@ const Sidebar = ({ setActiveContent }) => {
     () => ({
       Admin: [
         { label: "Dashboard", path: "/dashboard", icon: "MdOutlineDashboard" },
+        {
+          label: "Attendance Regularisation",
+          path: "/attendanceRegularisation",
+          icon: "MdOutlineEventAvailable",
+        },
       ],
       Manager: [
         { label: "Dashboard", path: "/dashboard", icon: "MdOutlineDashboard" },
+        {
+          label: "Attendance Regularisation",
+          path: "/attendanceRegularisation",
+          icon: "MdOutlineEventAvailable",
+        },
       ],
       Employee: [
         { label: "Dashboard", path: "/dashboard", icon: "MdOutlineDashboard" },
+        {
+          label: "Attendance Regularisation",
+          path: "/attendanceRegularisation",
+          icon: "MdOutlineEventAvailable",
+        },
       ],
       SuperAdmin: [
         {
@@ -112,8 +128,8 @@ const Sidebar = ({ setActiveContent }) => {
       "/payrollSummary": () => <PayrollSummary />,
       "/messenger": () => <Chat />,
       "/EmployeeLogin": () => <EmployeeLogin />,
-       "/Formify": () => <DynamicFormBuilder />,
-
+      "/Formify": () => <DynamicFormBuilder />,
+      "/AttendanceRegularisation": () => <AttendanceRegularisation />,
       "/reimbursement": (role) => {
         if (role === "Admin") return <RbAdmin />;
         if (role === "Manager") return <RbTeamLead />;

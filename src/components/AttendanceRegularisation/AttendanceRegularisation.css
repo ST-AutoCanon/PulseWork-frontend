@@ -1,0 +1,159 @@
+.ar-page {
+  padding: 20px;
+}
+
+.ar-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  align-items: center;
+  margin-bottom: 18px;
+  flex-wrap: wrap;
+}
+
+.ar-title {
+  margin: 0;
+  font-size: 1.4rem;
+  font-weight: 700;
+}
+
+.ar-subtitle {
+  margin: 6px 0 0;
+  color: #666;
+}
+
+.ar-tabs {
+  display: inline-flex;
+  gap: 6px;
+  background: #f4f4f4;
+  padding: 6px;
+  border-radius: 14px;
+  margin-bottom: 18px;
+}
+
+.ar-tab {
+  border: none;
+  background: transparent;
+  padding: 10px 16px;
+  border-radius: 10px;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.ar-tab.active {
+  background: #fff;
+  color: #1f4db8;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.ar-primary-btn,
+.ar-search-btn,
+.ar-update-btn {
+  border: none;
+  border-radius: 12px;
+  padding: 10px 14px;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.ar-primary-btn {
+  background: #6cb72d;
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ar-filter-row {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 18px;
+  align-items: center;
+}
+
+.ar-input,
+.ar-search-input,
+.ar-table-input,
+.ar-status-select {
+  min-width: 160px;
+  padding: 10px 12px;
+  border: 1px solid #d9d9d9;
+  border-radius: 10px;
+  outline: none;
+  background: #fff;
+}
+
+.ar-search-input {
+  min-width: 240px;
+  flex: 1;
+}
+
+.ar-search-btn {
+  background: #1f4db8;
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ar-error {
+  color: #b91c1c;
+  margin: 10px 0 14px;
+  font-weight: 500;
+}
+
+.ar-self-card,
+.ar-table-card {
+  background: #fff;
+  border: 1px solid #e7e7e7;
+  border-radius: 16px;
+  padding: 16px;
+}
+
+.ar-table-title {
+  margin: 0 0 12px;
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+
+.ar-empty {
+  margin: 0;
+  color: #666;
+}
+
+.ar-table-wrap {
+  overflow-x: auto;
+}
+
+.ar-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.ar-table th,
+.ar-table td {
+  border-bottom: 1px solid #eee;
+  padding: 12px 10px;
+  text-align: left;
+  vertical-align: top;
+  font-size: 0.95rem;
+}
+
+.ar-table th {
+  background: #f8f9fb;
+  font-weight: 700;
+}
+
+.ar-update-btn {
+  background: #edf2ff;
+  color: #1f4db8;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 42px;
+}
+
+.ar-table-input {
+  min-width: 160px;
+}

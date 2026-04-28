@@ -4809,41 +4809,27 @@
     text-align: left !important;
     align-items: flex-start !important;
   }
-}
-
-/* Ensure stars are always yellow when active */
-.text-yellow-400 {
-  color: #fbbf24 !important;   /* Bright yellow */
-}
-
-.text-gray-300 {
-  color: #d1d5db !important;
-}
-
-.text-yellow-200 {
-  color: #fde68c !important;
-}
-
-/* Optional: Make stars even more prominent */
-.star-rating button {
+}/* Search Input - Right side of h2 */
+.exf-search-input {
+  width: 280px;
+  padding: 10px 16px 10px 40px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 14px;
+  background-color: white;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%239ca3af'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M21 21l-6-6m2-5a7 7 0 01-14 0 7 7 0 0114 0z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: 14px center;
+  background-size: 18px;
   transition: all 0.2s ease;
 }
 
-.star-rating button:hover {
-  transform: scale(1.15);
-  filter: brightness(1.1);
-}
-/* Clean stars - remove any possible box */
-.star-rating button {
-
-  background: none !important;
-  border: none !important;
-  margin: 0 !important;
-  box-shadow: none !important;
-  line-height: 1;
-  gap: 10px;
-}
-
-.star-rating button:focus {
+.exf-search-input:focus {
   outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+}
+
+.exf-search-input::placeholder {
+  color: #9ca3af;
 }

@@ -8,8 +8,8 @@ import "./ExitFlow.css";
 import { createPortal } from "react-dom";
 import Modal from "../Modal/Modal.client";
 import ClearanceModal from "./ClearanceModal.jsx";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faStar } from "@fortawesome/free-solid-svg-icons";
+import { FaRegStar, FaStar } from "react-icons/fa";
+
 export default function ExitFlow() {
   const { user } = useAuth();
   const employeeId = user?.employeeId ?? user?.employee_id ?? user?.id ?? null;
@@ -60,9 +60,9 @@ export default function ExitFlow() {
   const [clearanceActiveTab, setClearanceActiveTab] = useState("kt");
   const [ktPlans, setKtPlans] = useState([]);
   const [assets, setAssets] = useState([]);
-  const [editableFinalLwd, setEditableFinalLwd] = useState("");   // For editing at clearance stage
   const roleLower = role?.toLowerCase() || "";
   const isAdmin = roleLower === "admin";
+  const [searchTerm, setSearchTerm] = useState("");
   const isHr = roleLower === "hr" || roleLower === "human resource" || roleLower === "hr admin";
   // HR users who are not also admins should have extra checks before finalizing
   const isHrOnly = isHr && !isAdmin;
@@ -89,12 +89,15 @@ export default function ExitFlow() {
     name: "",
     returnDate: "",
   });
-  // NEW: HR Evaluation - Only for All tab + Clearance stage
-// Replace the old 4-rating state with this simple one
-const [overallRating, setOverallRating] = useState(0);   // 1 to 5
-const [hrComments, setHrComments] = useState("");
   const [exitCompleted, setExitCompleted] = useState(false);
   const [showClearanceModal, setShowClearanceModal] = useState(false);
+  const [hrRatings, setHrRatings] = useState({
+  kt_rating: "",
+  asset_rating: "",
+  overall_rating: "",
+});
+const [hrRating, setHrRating] = useState("");
+const [hrEvaluationComments, setHrEvaluationComments] = useState("");
   useEffect(() => {
     if (isAdmin && activeTab !== "all") {
       setActiveTab("all");
@@ -112,7 +115,6 @@ useEffect(() => {
     setErrorMessage("");
     try {
       await fetchSelfRequest();
-      // await fetchAllTeamRequests(); ← REMOVED HERE
       await fetchTeamMembers();
     } catch (err) {
       setErrorMessage("Failed to load exit information.");
@@ -122,27 +124,7 @@ useEffect(() => {
   };
   init();
 }, [employeeId, orgId]);
-// 🔥 RESTORE HR RATING & COMMENTS WHEN OPENING CLEARANCE
-useEffect(() => {
-  if (selectedRequest?.type === "clearance" && activeTab === "all" && (isHr || isAdmin)) {
-    setOverallRating(selectedRequest.overall_rating || 0);
-    setHrComments(selectedRequest.hr_comments || "");
-  } else {
-    // Reset when modal is closed or different type
-    setOverallRating(0);
-    setHrComments("");
-  }
-}, [selectedRequest, activeTab, isHr, isAdmin]);
-// Auto-fill editableFinalLwd when clearance review modal opens
-// Auto-fill editableFinalLwd when clearance review opens
-useEffect(() => {
-  if (selectedRequest?.type === "clearance") {
-    const cleanDate = getCleanDate(selectedRequest.final_lwd);
-    setEditableFinalLwd(cleanDate);
-  } else {
-    setEditableFinalLwd("");
-  }
-}, [selectedRequest]);
+
 // NEW: Fetch team/all requests when relevant tab is active
 useEffect(() => {
   if (activeTab === "team" || activeTab === "all") {
@@ -170,55 +152,6 @@ useEffect(() => {
       console.error("[SELF] Fetch failed:", err.message);
     }
   };
- const handleUpdateFinalLwd = async () => {
-  if (!editableFinalLwd || !selectedRequest?.id) {
-    showAlert("Please select a valid Last Working Day", "Error", "warning");
-    return;
-  }
-
-  setLoading(true);
-  try {
-    const res = await axios.put(
-      `${BACKEND_URL}/api/clearance/update-final-lwd`,   // ← CHANGED TO /clearance/
-      {
-        exitId: selectedRequest.id,
-        finalLwd: editableFinalLwd,
-      },
-      {
-        headers: {
-          "x-api-key": API_KEY,
-          "x-employee-id": employeeId,
-          "x-org-id": orgId,
-        },
-        withCredentials: true,
-      }
-    );
-
-    if (res.data?.success) {
-      showAlert("Last Working Day updated successfully!", "Success", "success");
-      
-      // Refresh data
-      await fetchAllTeamRequests();
-      if (selectedRequest?.id) {
-        await fetchClearanceItems(selectedRequest.id);
-      }
-      
-      // Update local state
-      setSelectedRequest(prev => ({ ...prev, final_lwd: editableFinalLwd }));
-      setEditableFinalLwd("");   // clear the input after success
-    }
-
-  } catch (err) {
-    console.error("Update LWD Error:", err.response?.data || err.message);
-    showAlert(
-      err.response?.data?.error || "Failed to update LWD. Please try again.", 
-      "Error", 
-      "error"
-    );
-  } finally {
-    setLoading(false);
-  }
-};
   const fetchClearanceItems = async (exitId) => {
     if (!exitId) return;
     try {
@@ -281,7 +214,7 @@ useEffect(() => {
       setLoadingTeamMembers(false);
     }
   };
- const fetchAllTeamRequests = async () => {
+  const fetchAllTeamRequests = async () => {
   try {
     let url;
     if (activeTab === "all") {
@@ -289,9 +222,8 @@ useEffect(() => {
     } else if (activeTab === "team") {
       url = `${BACKEND_URL}/api/exit/my-team/all`;
     } else {
-      return;
+      return; // not a team/all tab → skip
     }
-
     const res = await axios.get(url, {
       headers: {
         "x-api-key": API_KEY,
@@ -300,65 +232,26 @@ useEffect(() => {
       },
       withCredentials: true,
     });
-
-    const rawRequests = res.data?.data || res.data || [];
-
-    console.log("[TEAM REQUESTS] Raw response received:", rawRequests.length, "items");
-
-    // 🔥 PARSE HR RATING & COMMENTS FOR FRONTEND
-    const processedRequests = rawRequests.map((req) => {
-      let overallRating = 0;
-      let hrComments = "";
-
-      // Parse hr_ratings (which is stored as JSON in DB)
-      if (req.hr_ratings) {
-        try {
-          const parsed = typeof req.hr_ratings === "string" 
-            ? JSON.parse(req.hr_ratings) 
-            : req.hr_ratings;
-          overallRating = parsed?.overall || 0;
-        } catch (e) {
-          console.warn(`Failed to parse hr_ratings for exit ID ${req.id}`, e);
-        }
-      }
-
-      // Get hr_evaluation_comments
-      if (req.hr_evaluation_comments) {
-        hrComments = req.hr_evaluation_comments;
-      }
-
-      return {
-        ...req,
-        overall_rating: overallRating,      // ← This is what your useEffect looks for
-        hr_comments: hrComments             // ← This is what your useEffect looks for
-      };
-    });
-
-    console.log("[TEAM REQUESTS] Processed with HR data:", 
-      processedRequests.map(r => ({
-        id: r.id,
-        overall_rating: r.overall_rating,
-        hr_comments_length: r.hr_comments?.length || 0
-      }))
-    );
-
-    // Use processed data everywhere
-    setAllTeamRequests(processedRequests);
-
-    // Filter pending data using processedRequests
+    const requests = res.data?.data || res.data || [];
+    console.log("[TEAM REQUESTS] Raw response:", res.data);
+    console.log("[TEAM REQUESTS] Total count:", requests.length);
+    console.log("[TEAM REQUESTS] All statuses:", requests.map(r => ({ id: r.id, emp_id: r.employee_id, supervisor_status: r.supervisor_status, hr_status: r.hr_status, withdrawal_supervisor_status: r.withdrawal_supervisor_status, withdrawal_hr_status: r.withdrawal_hr_status })));
+    setAllTeamRequests(requests);
+    // Filter pending data based on role
     const effectiveRole = role?.toLowerCase() === "manager" ? "supervisor" : role?.toLowerCase();
-
     let filteredPendingNormal = [];
     let filteredPendingWithdraw = [];
 
     if (isHr || isAdmin) {
-      filteredPendingNormal = processedRequests.filter(r =>
+      // HR/Admin sees requests where HR still needs to act
+      filteredPendingNormal = requests.filter(r =>
         !r.final_outcome &&
         !r.withdrawal_requested_at &&
         (r.hr_status === "PENDING" || !r.hr_status)
       );
     } else {
-      filteredPendingNormal = processedRequests.filter(r =>
+      // Supervisor / others see only their own pending
+      filteredPendingNormal = requests.filter(r =>
         !r.final_outcome &&
         !r.withdrawal_requested_at &&
         !["APPROVED", "REJECTED"].includes(r.supervisor_status || "") &&
@@ -366,70 +259,31 @@ useEffect(() => {
       );
     }
 
-    filteredPendingWithdraw = processedRequests.filter(r =>
+    // Show withdrawals that are not finally resolved
+    filteredPendingWithdraw = requests.filter(r =>
       r.withdrawal_requested_at &&
       !["APPROVED", "REJECTED"].includes(r.withdrawal_supervisor_status || "") &&
       !["APPROVED", "REJECTED"].includes(r.withdrawal_hr_status || "")
     );
-
+    console.log("[TEAM REQUESTS] Effective role:", effectiveRole);
+    console.log("[TEAM REQUESTS] Filtered pending normal:", filteredPendingNormal.length, "items");
+    console.log("[TEAM REQUESTS] Filtered pending withdraw:", filteredPendingWithdraw.length, "items");
+    console.log("[TEAM REQUESTS] Effective role:", effectiveRole);
+    console.log("[TEAM REQUESTS] Filtered pending normal:", filteredPendingNormal.length, "items");
+    console.log("[TEAM REQUESTS] Filtered pending withdraw:", filteredPendingWithdraw.length, "items");
+    if (filteredPendingNormal.length > 0) {
+      console.log("[TEAM REQUESTS] First pending normal:", filteredPendingNormal[0]);
+    }
     setPendingData({
       normal: filteredPendingNormal,
       withdraw: filteredPendingWithdraw,
     });
-
-    setResignedClearance(processedRequests.filter(r => r.final_outcome === "RESIGNED"));
-
+    setResignedClearance(requests.filter(r => r.final_outcome === "RESIGNED"));
   } catch (err) {
     console.error("[TEAM REQUESTS FETCH ERROR]", err.response?.data || err.message);
   }
 };
-  // const fetchAllTeamRequests = async () => {
-  // try {
-  // const url =
-  // role === "hr" || role === "admin" || isAdmin
-  // ? `${BACKEND_URL}/api/exit/all`
-  // : `${BACKEND_URL}/api/exit/my-team/all`;
-  // console.log("[TEAM REQUESTS] Fetching from:", url);
-  // console.log("[TEAM REQUESTS] Current role:", role);
-  // const res = await axios.get(url, {
-  // headers: {
-  // "x-api-key": API_KEY,
-  // "x-employee-id": employeeId,
-  // "x-org-id": orgId,
-  // },
-  // withCredentials: true,
-  // });
-  // const requests = res.data?.data || res.data || [];
-  // console.log("[TEAM REQUESTS] Raw response:", res.data);
-  // console.log("[TEAM REQUESTS] Total count:", requests.length);
-  // console.log("[TEAM REQUESTS] All statuses:", requests.map(r => ({ id: r.id, emp_id: r.employee_id, supervisor_status: r.supervisor_status, hr_status: r.hr_status, withdrawal_supervisor_status: r.withdrawal_supervisor_status, withdrawal_hr_status: r.withdrawal_hr_status })));
-  // setAllTeamRequests(requests);
-  // // Filter pending data based on role
-  // const effectiveRole = role?.toLowerCase() === "manager" ? "supervisor" : role?.toLowerCase();
-  // let filteredPendingNormal = [];
-  // let filteredPendingWithdraw = [];
-  // if (effectiveRole === "supervisor") {
-  // filteredPendingNormal = requests.filter(r => r.supervisor_status === "PENDING" && !r.withdrawal_requested_at);
-  // filteredPendingWithdraw = requests.filter(r => r.withdrawal_requested_at && r.withdrawal_supervisor_status === "PENDING");
-  // } else if (effectiveRole === "hr" || effectiveRole === "admin") {
-  // filteredPendingNormal = requests.filter(r => r.hr_status === "PENDING" && !r.withdrawal_requested_at);
-  // filteredPendingWithdraw = requests.filter(r => r.withdrawal_requested_at && r.withdrawal_hr_status === "PENDING");
-  // }
-  // console.log("[TEAM REQUESTS] Effective role:", effectiveRole);
-  // console.log("[TEAM REQUESTS] Filtered pending normal:", filteredPendingNormal.length, "items");
-  // console.log("[TEAM REQUESTS] Filtered pending withdraw:", filteredPendingWithdraw.length, "items");
-  // if (filteredPendingNormal.length > 0) {
-  // console.log("[TEAM REQUESTS] First pending normal:", filteredPendingNormal[0]);
-  // }
-  // setPendingData({
-  // normal: filteredPendingNormal,
-  // withdraw: filteredPendingWithdraw,
-  // });
-  // setResignedClearance(requests.filter(r => r.final_outcome === "RESIGNED"));
-  // } catch (err) {
-  // console.error("[TEAM REQUESTS FETCH ERROR]", err.response?.data || err.message);
-  // }
-  // };
+ 
   useEffect(() => {
     if (selectedRequest?.type === "clearance" && selectedRequest?.id) {
       fetchClearanceItems(selectedRequest.id);
@@ -678,22 +532,6 @@ useEffect(() => {
       setLoading(false);
     }
   };
-  // Safe date formatter for <input type="date"> to avoid timezone shift
-const getCleanDate = (dateString) => {
-  if (!dateString) return "";
-  
-  // Handle both "2026-04-15" and "2026-04-15T00:00:00" formats
-  const date = new Date(dateString);
-  
-  if (isNaN(date.getTime())) return "";
-  
-  // Return YYYY-MM-DD format without timezone shift
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  
-  return `${year}-${month}-${day}`;
-};
   const handleAddAsset = async () => {
     if (!newAssetForm.name.trim() || !newAssetForm.returnDate) {
       return setErrorMessage("Asset name and return date are required");
@@ -754,66 +592,96 @@ const getCleanDate = (dateString) => {
       setLoading(false);
     }
   };
-const handleFinalizeExit = async () => {
-  setLoading(true);
-  setErrorMessage("");
-
-  try {
-    const exitId = selectedRequest?.id || selfRequest?.id;
-    if (!exitId) throw new Error("No exit request selected");
-
-    // Validation - Only for HR/Admin in All tab
-    if (activeTab === "all" && (isHr || isAdmin)) {
-      if (overallRating === 0) {
-        setErrorMessage("Please provide overall rating before finalizing");
-        setLoading(false);
-        return;
-      }
-      if (!hrComments.trim()) {
-        setErrorMessage("HR final comments are required before finalizing");
-        setLoading(false);
-        return;
-      }
-    }
-
-    const payload = {
-      exitId,
-      overallRating: (activeTab === "all" && (isHr || isAdmin)) ? overallRating : null,
-      hrComments: (activeTab === "all" && (isHr || isAdmin)) ? hrComments : null,
-    };
-
-    const res = await axios.post(
-      `${BACKEND_URL}/api/clearance/finalize`,
-      payload,
-      {
-        headers: {
-          "x-api-key": API_KEY,
-          "x-employee-id": employeeId,
-          "x-org-id": orgId,
-        },
-        withCredentials: true,
-      }
-    );
-
-    if (res.data?.success) {
-      showAlert("Exit finalized successfully!", "Success", "success");
-      setSelectedRequest(null);
-      
-      // Reset states
-      setOverallRating(0);
-      setHrComments("");
-      
-      await fetchAllTeamRequests();
-      await fetchSelfRequest();
-    }
-  } catch (err) {
-    const msg = err.response?.data?.error || err.message || "Failed to finalize exit";
-    setErrorMessage(msg);
-    showAlert(msg, "Error", "error");
-  } finally {
-    setLoading(false);
+// ✅ Replace ALL previous selectedRequest useEffects with this one (only one should remain)
+// ✅ FINAL FIXED useEffect - Put this as the only selectedRequest useEffect
+useEffect(() => {
+  if (!selectedRequest) {
+    setFinalLwd("");
+    setHrRating("");
+    setHrEvaluationComments("");
+    setRecommendedLwd("");
+    setLeavePolicy("");
+    return;
   }
-};
+
+  console.log("[CLEARANCE DEBUG] selectedRequest received:", {
+    id: selectedRequest.id,
+    type: selectedRequest.type,
+    final_outcome: selectedRequest.final_outcome,
+    final_lwd: selectedRequest.final_lwd,
+    hr_final_lwd: selectedRequest.hr_final_lwd,
+    proposed_lwd: selectedRequest.proposed_lwd,
+    hr_rating: selectedRequest.hr_rating,
+    hr_evaluation_comments: selectedRequest.hr_evaluation_comments
+  });
+
+  if (selectedRequest.type === "clearance" || selectedRequest.final_outcome === "RESIGNED") {
+    
+    // FIXED: Extract only YYYY-MM-DD part for date input
+    let finalLwdValue = "";
+    if (selectedRequest.final_lwd) {
+      finalLwdValue = selectedRequest.final_lwd.split('T')[0];           // remove time if present
+    } else if (selectedRequest.hr_final_lwd) {
+      finalLwdValue = selectedRequest.hr_final_lwd.split('T')[0];
+    } else if (selectedRequest.proposed_lwd) {
+      finalLwdValue = selectedRequest.proposed_lwd.split('T')[0];
+    }
+
+    const ratingValue = selectedRequest.hr_rating || "";
+    const commentsValue = selectedRequest.hr_evaluation_comments || selectedRequest.hr_comments || "";
+
+    console.log("[CLEARANCE DEBUG] Final values being set:", { 
+      finalLwd: finalLwdValue, 
+      rating: ratingValue, 
+      comments: commentsValue 
+    });
+
+    setTimeout(() => {
+      setFinalLwd(finalLwdValue);
+      setHrRating(ratingValue);
+      setHrEvaluationComments(commentsValue);
+    }, 100);
+  } else {
+    setFinalLwd("");
+    setHrRating("");
+    setHrEvaluationComments("");
+    setRecommendedLwd("");
+    setLeavePolicy("");
+  }
+}, [selectedRequest]);   // Important: only depend on selectedRequest
+  const handleFinalizeExit = async () => {
+    setLoading(true);
+    setErrorMessage("");
+    try {
+      const exitId = selectedRequest?.id || selfRequest?.id;
+      if (!exitId) throw new Error("No exit request selected");
+      const res = await axios.post(
+        `${BACKEND_URL}/api/clearance/finalize`,
+        { exitId },
+        {
+          headers: {
+            "x-api-key": API_KEY,
+            "x-employee-id": employeeId,
+            "x-org-id": orgId,
+          },
+          withCredentials: true,
+        }
+      );
+      if (res.data?.success) {
+        showAlert("Exit finalized successfully!");
+        setSelectedRequest(null);
+        await fetchSelfRequest();
+        await fetchAllTeamRequests();
+      } else {
+        throw new Error(res.data?.error || "Finalize failed - no success response");
+      }
+    } catch (err) {
+      setErrorMessage(err.response?.data?.error || err.message || "Failed to finalize exit");
+      showAlert("Finalize failed: " + (err.response?.data?.error || "Check console"));
+    } finally {
+      setLoading(false);
+    }
+  };
   const handleApply = async () => {
   // ── Reset previous global error (optional)
   setErrorMessage("");
@@ -952,19 +820,13 @@ const handleReviewAction = async (reviewType, action) => {
       } else {
         // all tab → use real role
         const effectiveRole = role?.toLowerCase() === "manager" ? "supervisor" : role?.toLowerCase();
-        if (effectiveRole === "hr" || effectiveRole === "admin") {
+        if (effectiveRole === "hr") {
           endpoint = `${BACKEND_URL}/api/exit/hr/withdraw/final`;
         } else if (effectiveRole === "supervisor") {
           endpoint = `${BACKEND_URL}/api/exit/supervisor/withdraw`;
         }
         methodPayload = { ...payload, status: action };
-        if (!endpoint) {
-          throw new Error(`No withdrawal endpoint configured for role: ${effectiveRole}`);
-        }
       }
-    }
-    if (!endpoint) {
-      throw new Error(`No endpoint configured for reviewType: ${reviewType}`);
     }
     const res = await axios.post(endpoint, methodPayload, {
       headers: {
@@ -992,109 +854,68 @@ const handleReviewAction = async (reviewType, action) => {
     setLoading(false);
   }
 };
-// const handleReviewAction = async (reviewType, action) => {
-// if (!selectedRequest) return;
-// // Validate action early
-// const validActionsNormal = ["APPROVED", "REJECTED"];
-// const validActionsWithdraw = ["APPROVED", "REJECTED"];
-// if (
-// (reviewType === "normal" && !validActionsNormal.includes(action)) ||
-// (reviewType === "withdrawal" && !validActionsWithdraw.includes(action))
-// ) {
-// showAlert(`Invalid action: ${action}. Only APPROVED or REJECTED allowed.`, "Error", "error");
-// return;
-// }
-// setLoading(true);
-// setErrorMessage("");
-// try {
-// const payload = {
-// exitId: selectedRequest.id,
-// comment: reviewComment || null,
-// };
-// let endpoint = "";
-// let methodPayload = payload;
-// const effectiveRole = role?.toLowerCase() === "manager" ? "supervisor" : role?.toLowerCase();
-// if (reviewType === "normal") {
-// if (effectiveRole === "hr" || effectiveRole === "admin") {
-// if (action === "APPROVED") {
-// if (!finalLwd) {
-// setErrorMessage("Final Last Working Day is required to approve resignation");
-// setLoading(false);
-// return;
-// }
-// if (!leavePolicy) {
-// setErrorMessage("Please select a leave policy");
-// setLoading(false);
-// return;
-// }
-// endpoint = `${BACKEND_URL}/api/exit/hr/final-approve`;
-// methodPayload = { ...payload, finalLwd, leavePolicy };
-// } else if (action === "REJECTED") {
-// endpoint = `${BACKEND_URL}/api/exit/hr/action`;
-// methodPayload = { ...payload, status: "REJECTED" };
-// }
-// } else if (effectiveRole === "supervisor") {
-// endpoint = `${BACKEND_URL}/api/exit/supervisor/action`;
-// methodPayload = {
-// ...payload,
-// status: action, // now validated: only APPROVED/REJECTED
-// recommendedLwd: recommendedLwd || null,
-// };
-// } else {
-// throw new Error(`Unauthorized role for normal resignation review`);
-// }
-// } else if (reviewType === "withdrawal") {
-// if (effectiveRole === "hr") {
-// endpoint = `${BACKEND_URL}/api/exit/hr/withdraw/final`;
-// methodPayload = { ...payload, status: action };
-// } else if (effectiveRole === "supervisor") {
-// endpoint = `${BACKEND_URL}/api/exit/supervisor/withdraw`;
-// methodPayload = { ...payload, status: action };
-// } else {
-// throw new Error(`Unauthorized role for withdrawal review`);
-// }
-// } else {
-// throw new Error(`Unknown review type: ${reviewType}`);
-// }
-// } else {
-// throw new Error(`Unknown review type: ${reviewType}`);
-// }
-// } else {
-// throw new Error(`Unknown review type: ${reviewType}`);
-// }
-// const res = await axios.post(endpoint, methodPayload, {
-// headers: {
-// "x-api-key": API_KEY,
-// "x-employee-id": employeeId,
-// "x-org-id": orgId,
-// },
-// withCredentials: true,
-// });
-// if (res.data?.success) {
-// showAlert("Action completed successfully", "Success", "success");
-// setSelectedRequest(null);
-// setReviewComment("");
-// setRecommendedLwd("");
-// setFinalLwd("");
-// setLeavePolicy("");
-// await fetchAllTeamRequests();
-// await fetchSelfRequest();
-// } else {
-// throw new Error(res.data?.error || "Backend did not confirm success");
-// }
-// } catch (err) {
-// const msg =
-// err.response?.data?.error ||
-// err.message ||
-// "Failed to process review";
-// setErrorMessage(msg);
-// showAlert(msg, "Error", "error");
-// } finally {
-// setLoading(false);
-// }
-// };
+
+const handleSaveFinalEvaluation = async () => {
+  try {
+    setLoading(true);
+
+    await axios.put(
+      `${BACKEND_URL}/api/exit/hr-final-evaluation/${selectedRequest.id}`,
+      {
+        final_lwd: finalLwd,
+  hr_rating: hrRating,
+        hr_evaluation_comments: hrEvaluationComments,
+      },
+      {
+        headers: {
+          "x-api-key": API_KEY,
+          "x-employee-id": employeeId,
+          "x-org-id": orgId,
+        },
+        withCredentials: true,
+      }
+    );
+
+    showAlert("Final HR evaluation saved successfully");
+
+    setSelectedRequest(null);
+    setFinalLwd("");
+    setHrRating("");
+    setHrEvaluationComments("");
+    setReviewComment("");
+
+    await fetchAllTeamRequests();
+    await fetchSelfRequest();
+
+  } catch (error) {
+    console.error(error);
+    showAlert(
+      error.response?.data?.message || "Failed to save HR evaluation"
+    );
+  } finally {
+    setLoading(false);
+  }
+};
   const hasTeam = teamMembers.length > 0;
   const isHrOrAdmin = role === "hr" || role === "admin" || isAdmin;
+
+  // Add this before return
+const filteredAllTeamRequests = allTeamRequests.filter((req) => {
+  if (!searchTerm.trim()) return true;
+
+  const term = searchTerm.toLowerCase().trim();
+
+  return (
+    (req.employee_name || "").toLowerCase().includes(term) ||
+    (req.employee_id || "").toLowerCase().includes(term) ||
+    (req.reason || "").toLowerCase().includes(term) ||
+    (req.withdrawal_reason || "").toLowerCase().includes(term) ||
+    (req.supervisor_status || "").toLowerCase().includes(term) ||
+    (req.hr_status || "").toLowerCase().includes(term) ||
+    (req.final_outcome || "").toLowerCase().includes(term) ||
+    (req.withdrawal_supervisor_status || "").toLowerCase().includes(term)
+  );
+});
   return (
     <>
           <div className="exf-container">
@@ -1530,8 +1351,21 @@ const handleReviewAction = async (reviewType, action) => {
                 </div>
               ) : (
                 <>
-                  <div className="exf-team-panel">
-                    <h2 className="exf-panel-title mb-4">Exit & Withdrawal Requests from My Team</h2>
+                 <div className="exf-team-panel">
+  <div className="flex justify-between items-center mb-4">
+    <h2 className="exf-panel-title">Exit & Withdrawal Requests from My Team</h2>
+    
+    <div className="relative w-72">
+      <input
+        type="text"
+        placeholder="Search by Name, Emp ID or Status..."
+        className="exf-search-input"
+        value={searchTerm}
+        onChange={(e) => setSearchTerm(e.target.value)}
+      />
+     
+    </div>
+  </div>
                     {allTeamRequests.length === 0 ? (
                       <div className="exf-empty-state">
                         No exit or withdrawal requests submitted by your team members yet.
@@ -1552,7 +1386,7 @@ const handleReviewAction = async (reviewType, action) => {
                             </tr>
                           </thead>
                           <tbody>
-                            {allTeamRequests.map((req) => {
+                            {filteredAllTeamRequests.map((req) => {
                               const isWithdrawal = !!req.withdrawal_requested_at;
                               const isFullyWithdrawn =
                                 isWithdrawal &&
@@ -1683,188 +1517,8 @@ const handleReviewAction = async (reviewType, action) => {
                       </div>
                     )}
                   </div>
-                  <div className="exf-team-panel">
-                    <h2 className="exf-panel-title mb-4">Pending Resignations </h2>
-                    {pendingData.normal.length === 0 ? (
-                      <div className="exf-empty-state">
-                        No pending resignation requests
-                      </div>
-                    ) : (
-                      <div className="exf-team-panel">
-  {pendingData.normal.length === 0 ? (
-    <div className="exf-empty-state">
-      No pending resignation requests
-    </div>
-  ) : (
-    <div className="exf-table-container">
-      <table className="exf-table">
-        <thead>
-          <tr>
-            <th>Emp ID</th>
-            <th>Name</th> {/* ← this was missing */}
-            <th>Reason</th>
-            <th>Proposed LWD</th>
-            <th>Applied On</th>
-            <th className="text-center">Action</th>
-          </tr>
-        </thead>
-        <tbody>
-          {pendingData.normal.map((req) => {
-            const isWithdrawal = !!req.withdrawal_requested_at;
-            const isFullyWithdrawn =
-              isWithdrawal &&
-              req.withdrawal_supervisor_status === "APPROVED" &&
-              req.withdrawal_hr_status === "APPROVED";
-            return (
-              <tr key={req.id}>
-                <td className="font-medium">{req.employee_id}</td>
-                <td>
-                  {req.employee_name || "—"} {/* ← render it here */}
-                </td>
-                <td className="max-w-xs">
-                  <div className="reason-tooltip-wrapper">
-                    <span className="reason-truncated">
-                      {req.reason}
-                      {req.reason === "Other" && req.other_reason && ` (${req.other_reason})`}
-                    </span>
-                    <div className="reason-tooltip">
-                      <strong>Reason:</strong><br />
-                      {req.reason || "Not specified"}
-                      {req.reason === "Other" && req.other_reason && (
-                        <>
-                          <br />
-                          <strong>Other:</strong> {req.other_reason}
-                        </>
-                      )}
-                      {req.comment && (
-                        <>
-                          <br /><br />
-                          <strong>Comment:</strong><br />
-                          {req.comment}
-                        </>
-                      )}
-                    </div>
-                  </div>
-                </td>
-                <td>
-                  {req.proposed_lwd
-                    ? new Date(req.proposed_lwd).toLocaleDateString()
-                    : "—"}
-                </td>
-                <td>{new Date(req.applied_at).toLocaleDateString()}</td>
-                <td className="text-center">
-                  {isFullyWithdrawn ? (
-                    <span className="text-green-600 font-medium">Completed</span>
-                  ) : (
-                    <button
-                      className="exf-btn-review"
-                      onClick={() =>
-                        setSelectedRequest({
-                          ...req,
-                          type: isWithdrawal
-                            ? "withdrawal"
-                            : req.final_outcome === "RESIGNED"
-                            ? "clearance"
-                            : "normal",
-                        })
-                      }
-                      disabled={loading}
-                    >
-                      Review
-                    </button>
-                  )}
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
-    </div>
-  )}
-</div>
-                      // <div className="exf-table-container">
-                      // <table className="exf-table">
-                      // <thead>
-                      // <tr>
-                      // <th>Emp ID</th>
-                      // <th>Reason</th>
-                      // <th>Proposed LWD</th>
-                      // <th>Applied On</th>
-                      // <th className="text-center">Action</th>
-                      // </tr>
-                      // </thead>
-                      // <tbody>
-                      // {pendingData.normal.map((req) => {
-                      // const isWithdrawal = !!req.withdrawal_requested_at;
-                      // const isFullyWithdrawn =
-                      // isWithdrawal &&
-                      // req.withdrawal_supervisor_status === "APPROVED" &&
-                      // req.withdrawal_hr_status === "APPROVED";
-                      // return (
-                      // <tr key={req.id}>
-                      // <td className="font-medium">{req.employee_id}</td>
-                      // <td className="max-w-xs">
-                      // <div className="reason-tooltip-wrapper">
-                      // <span className="reason-truncated">
-                      // {req.reason}
-                      // {req.reason === "Other" && req.other_reason && ` (${req.other_reason})`}
-                      // </span>
-                      // <div className="reason-tooltip">
-                      // <strong>Reason:</strong><br />
-                      // {req.reason || "Not specified"}
-                      // {req.reason === "Other" && req.other_reason && (
-                      // <>
-                      // <br />
-                      // <strong>Other:</strong> {req.other_reason}
-                      // </>
-                      // )}
-                      // {req.comment && (
-                      // <>
-                      // <br /><br />
-                      // <strong>Comment:</strong><br />
-                      // {req.comment}
-                      // </>
-                      // )}
-                      // </div>
-                      // </div>
-                      // </td>
-                      // <td>
-                      // {req.proposed_lwd
-                      // ? new Date(req.proposed_lwd).toLocaleDateString()
-                      // : "—"}
-                      // </td>
-                      // <td>{new Date(req.applied_at).toLocaleDateString()}</td>
-                      // <td className="text-center">
-                      // {isFullyWithdrawn ? (
-                      // <span className="text-green-600 font-medium">Completed</span>
-                      // ) : (
-                      // <button
-                      // className="exf-btn-review"
-                      // onClick={() =>
-                      // setSelectedRequest({
-                      // ...req,
-                      // type: isWithdrawal
-                      // ? "withdrawal"
-                      // : req.final_outcome === "RESIGNED"
-                      // ? "clearance"
-                      // : "normal",
-                      // })
-                      // }
-                      // disabled={loading}
-                      // >
-                      // Review
-                      // </button>
-                      // )}
-                      // </td>
-                      // </tr>
-                      // );
-                      // })}
-                      // </tbody>
-                      // </table>
-                      // </div>
-                    )}
-                  </div>
-                  <div className="exf-team-panel">
+             
+                  {/* <div className="exf-team-panel">
                     <h2 className="exf-panel-title mb-4">Pending Withdrawal Requests </h2>
                     {pendingData.withdraw.length === 0 ? (
                       <div className="exf-empty-state">
@@ -1930,7 +1584,7 @@ const handleReviewAction = async (reviewType, action) => {
                         </table>
                       </div>
                     )}
-                  </div>
+                  </div> */}
                 </>
               )}
             </div>
@@ -1938,9 +1592,22 @@ const handleReviewAction = async (reviewType, action) => {
           {activeTab === "all" && (role === "hr" || role === "admin" || isAdmin) && (
             <div className="exf-team-view space-y-8">
               <div className="exf-team-panel">
-                <h2 className="exf-panel-title mb-4">
-                  Employees Exit & Withdrawal Requests
-                </h2>
+  <div className="flex justify-between items-center mb-4">
+    <h2 className="exf-panel-title">
+      Employees Exit & Withdrawal Requests
+    </h2>
+    
+    <div className="relative w-72">
+      <input
+        type="text"
+        placeholder="Search by Name, Emp ID or Status..."
+        className="exf-search-input"
+        value={searchTerm}
+        onChange={(e) => setSearchTerm(e.target.value)}
+      />
+    
+    </div>
+  </div>
                 {allTeamRequests.length === 0 ? (
                   <div className="exf-empty-state">
                     No exit or withdrawal requests found across the organization.
@@ -1961,7 +1628,7 @@ const handleReviewAction = async (reviewType, action) => {
                         </tr>
                       </thead>
                       <tbody>
-                        {allTeamRequests.map((req) => {
+                        {filteredAllTeamRequests.map((req) => {
                           const isWithdrawal = !!req.withdrawal_requested_at;
                           const isFullyWithdrawn =
                             isWithdrawal &&
@@ -2081,21 +1748,44 @@ const handleReviewAction = async (reviewType, action) => {
                                     Awaiting Supervisor
                                   </span>
                                 ) : (
-                                  <button
-                                    className="exf-btn exf-btn-primary exf-btn-sm"
-                                    onClick={() =>
-                                      setSelectedRequest({
-                                        ...req,
-                                        type: isWithdrawal
-                                          ? "withdrawal"
-                                          : req.final_outcome === "RESIGNED"
-                                          ? "clearance"
-                                          : "normal",
-                                      })
-                                    }
-                                  >
-                                    Review
-                                  </button>
+      <button
+  className="exf-btn exf-btn-primary exf-btn-sm"
+onClick={() => {
+  const isWithdrawal = !!req.withdrawal_requested_at;
+  const isResigned = req.final_outcome === "RESIGNED";
+
+  let requestType = "normal";
+  if (isWithdrawal) requestType = "withdrawal";
+  else if (isResigned) requestType = "clearance";
+
+  const newSelected = { ...req, type: requestType };
+
+  setSelectedRequest(newSelected);
+
+  // Immediate set for clearance (helps with timing)
+  if (isResigned) {
+  const finalLwdValue = req.final_lwd || req.hr_final_lwd || req.proposed_lwd || "";
+  const ratingValue = req.hr_rating || "";
+  const commentsValue = req.hr_evaluation_comments || req.hr_comments || "";
+
+  console.log("[REVIEW BUTTON] Directly setting:", { finalLwdValue, ratingValue, commentsValue });
+
+  setFinalLwd(finalLwdValue);
+  setHrRating(ratingValue);
+  setHrEvaluationComments(commentsValue);
+  } else {
+    setFinalLwd("");
+    setHrRating("");
+    setHrEvaluationComments("");
+    setRecommendedLwd("");
+    setLeavePolicy("");
+  }
+
+  setReviewComment("");
+}}
+>
+  Review
+</button>
                                 )}
                               </td>
                             </tr>
@@ -2106,7 +1796,7 @@ const handleReviewAction = async (reviewType, action) => {
                   </div>
                 )}
               </div>
-              <div className="exf-team-panel mt-8">
+              {/* <div className="exf-team-panel mt-8">
                 <h2 className="exf-panel-title mb-4">Pending Resignations Requests</h2>
                 {pendingData.normal.length === 0 ? (
                   <div className="exf-empty-state">
@@ -2192,8 +1882,8 @@ const handleReviewAction = async (reviewType, action) => {
                     </table>
                   </div>
                 )}
-              </div>
-              <div className="exf-team-panel mt-8 border-t pt-6">
+              </div> */}
+              {/* <div className="exf-team-panel mt-8 border-t pt-6">
                 <h2 className="exf-panel-title mb-3">
                   Withdrawal Requests
                 </h2>
@@ -2286,15 +1976,16 @@ const handleReviewAction = async (reviewType, action) => {
                     </div>
                   );
                 })()}
-              </div>
+              </div> */}
             </div>
           )}
         </div>
         {/* Review Modal */}
+               {/* ==================== FIXED REVIEW MODAL ==================== */}
         {selectedRequest && (
           <div className="exf-modal-backdrop">
             <div className="exf-modal-content">
-              {/* Header / Title */}
+              {/* Header */}
               <div className="modal-header">
                 <h3 className="modal-title">
                   {selectedRequest.type === "normal"
@@ -2303,11 +1994,26 @@ const handleReviewAction = async (reviewType, action) => {
                     ? "Withdrawal Review"
                     : "Clearance Review"}
                 </h3>
+                <button 
+                  className="modal-close-btn"
+                  onClick={() => {
+                    setSelectedRequest(null);
+                    setReviewComment("");
+                    setRecommendedLwd("");
+                    setFinalLwd("");
+                    setLeavePolicy("");
+                    setHrRating("");
+                    setHrEvaluationComments("");
+                  }}
+                >
+                  ×
+                </button>
               </div>
+
               {/* Supervisor Pending Warning */}
               {selectedRequest.type === "normal" &&
                 selectedRequest.supervisor_status === "PENDING" &&
-                activeTab === "all" && (
+                activeTab === "all" && !isAdmin && (
                   <div className="pending-warning">
                     <p className="warning-text">
                       <strong>Supervisor Status:</strong> Pending
@@ -2317,391 +2023,443 @@ const handleReviewAction = async (reviewType, action) => {
                     </p>
                   </div>
                 )}
-              {/* Main Content */}
+
               <div className="modal-body">
                 {/* Employee Info */}
                 <div className="info-card employee-info">
                   <div className="info-label">Employee</div>
-                  <div className="info-value">{selectedRequest.employee_id}</div>
+                  <div className="info-value">
+                    {selectedRequest.employee_name || selectedRequest.employee_id || "—"}
+                  </div>
                 </div>
-                {/* Final LWD & Leave Policy (HR/Admin only) */}
-                {selectedRequest?.type === "normal" && (isHr || isAdmin) && (
-                  <div className="hr-decision-section">
-                    {/* Final LWD */}
-                    {(isAdmin || activeTab !== "all" || selectedRequest.supervisor_status !== "PENDING") && (
-                      <div className="info-card decision-card">
-                        <label className="decision-label">
-                          Set Final Last Working Day <span className="required">*</span>
-                        </label>
-                        <input
-                          type="date"
-                          className="date-input"
-                          value={finalLwd}
-                          onChange={(e) => setFinalLwd(e.target.value)}
-                          min={new Date().toISOString().split("T")[0]}
-                          required
-                        />
-                        <p className="helper-text">
-                          This will become the employee's official last working day upon final approval.
-                        </p>
-                      </div>
-                    )}
-                    {/* Leave Policy */}
-                    {(isAdmin || activeTab !== "all" || selectedRequest.supervisor_status !== "PENDING") && (
-                      <div className="info-card decision-card">
-                        <label className="decision-label">
-                          Leave Encashment / Adjustment Policy <span className="required">*</span>
-                        </label>
-                        <div className="radio-group">
-                          <label className="radio-label">
-                            <input
-                              type="radio"
-                              name="leavePolicy"
-                              value="all"
-                              checked={leavePolicy === "all"}
-                              onChange={(e) => setLeavePolicy(e.target.value)}
-                              required
-                            />
-                            <span>Allow all eligible leaves</span>
-                          </label>
-                          <label className="radio-label">
-                            <input
-                              type="radio"
-                              name="leavePolicy"
-                              value="sick_only"
-                              checked={leavePolicy === "sick_only"}
-                              onChange={(e) => setLeavePolicy(e.target.value)}
-                            />
-                            <span>Allow only sick & casual leaves</span>
-                          </label>
-                          <label className="radio-label">
-                            <input
-                              type="radio"
-                              name="leavePolicy"
-                              value="none"
-                              checked={leavePolicy === "none"}
-                              onChange={(e) => setLeavePolicy(e.target.value)}
-                            />
-                            <span>No leaves allowed</span>
-                          </label>
-                        </div>
-                        <p className="helper-text italic">
-                          This setting will be used for final leave settlement calculation.
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                )}
-                {/* Reason + Additional Comments */}
-                {selectedRequest.type !== "clearance" && (
-                  <div className="reason-section">
-                    {/* Reason */}
-                    <div className="info-card reason-card">
-                      <div className="info-label">
-                        {selectedRequest.type === "withdrawal" ? "Withdrawal Reason" : "Resignation Reason"}
-                      </div>
-                      <div className="reason-content">
-                        {selectedRequest.type === "withdrawal"
-                          ? selectedRequest.withdrawal_reason || "—"
-                          : (
-                            <>
-                              {selectedRequest.reason || "—"}
-                              {selectedRequest.reason === "Other" && selectedRequest.other_reason && (
-                                <span className="other-reason">({selectedRequest.other_reason})</span>
-                              )}
-                            </>
-                          )}
-                      </div>
-                    </div>
-                    {/* Additional Comments */}
-                    {selectedRequest?.employee_comment && selectedRequest.type !== "withdrawal" && (
-                      <div className="info-card comment-card">
-                        <div className="info-label">Additional Comments</div>
-                        <div className="comment-content whitespace-pre-wrap">
-                          {selectedRequest.employee_comment}
-                        </div>
-                      </div>
-                    )}
-                    {/* Proposed LWD */}
-                    <div className="info-card small-info">
-                      <div className="info-label">Proposed LWD</div>
-                      <div className="info-value">
-                        {selectedRequest?.proposed_lwd
-                          ? new Date(selectedRequest.proposed_lwd).toLocaleDateString("en-GB", {
-                              day: "2-digit",
-                              month: "short",
-                              year: "numeric",
-                            })
-                          : "—"}
-                      </div>
-                    </div>
-                  </div>
-                )}
-                {/* Edit Last Working Day - HR/Admin Only in All Tab */}
-{/* Edit Last Working Day - HR/Admin Only in All Tab */}
-{/* Edit Last Working Day - HR/Admin Only in All Tab */}
-{/* Edit Last Working Day - HR/Admin Only in All Tab */}
-{selectedRequest.type === "clearance" && activeTab === "all" && (isHr || isAdmin) && (
- <div className="info-card mt-6">
-  <h4 className="section-title mb-3">Edit Last Working Day</h4>
 
-  <div className="flex gap-3 items-center">
-    <div>
-      <label className="block text-sm font-medium mb-1">
+                {/* NORMAL RESIGNATION REVIEW */}
+                {selectedRequest.type === "normal" && (
+                  <>
+                    {/* Reason + Comments + Proposed LWD */}
+                    <div className="reason-section">
+                      <div className="info-card reason-card">
+                        <div className="info-label">Resignation Reason</div>
+                        <div className="reason-content">
+                          {selectedRequest.reason || "—"}
+                          {selectedRequest.reason === "Other" && selectedRequest.other_reason && 
+                            ` (${selectedRequest.other_reason})`}
+                        </div>
+                      </div>
+
+                      {selectedRequest.employee_comment && (
+                        <div className="info-card comment-card">
+                          <div className="info-label">Additional Comments</div>
+                          <div className="comment-content whitespace-pre-wrap">
+                            {selectedRequest.employee_comment}
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="info-card small-info">
+                        <div className="info-label">Proposed LWD</div>
+                        <div className="info-value">
+                          {selectedRequest.proposed_lwd 
+                            ? new Date(selectedRequest.proposed_lwd).toLocaleDateString("en-GB", {
+                                day: "2-digit",
+                                month: "short",
+                                year: "numeric",
+                              }) 
+                            : "—"}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Decision Section - Date Field Now Shows Correctly in Team Tab */}
+                 <div className="hr-decision-section">
+
+  {/* Final Last Working Day - Visible only when NOT in Team tab */}
+  {(isSupervisorLike || isHr || isAdmin) && activeTab !== "team" && (
+    <div className="info-card decision-card">
+      <label className="decision-label">
         Final Last Working Day
+        <span className="required">*</span>
       </label>
       <input
         type="date"
-        value={editableFinalLwd || getCleanDate(selectedRequest.final_lwd) || ""}
-        onChange={(e) => setEditableFinalLwd(e.target.value)}
-        className="exf-form-input"
+        className="date-input"
+        value={finalLwd}
+        onChange={(e) => setFinalLwd(e.target.value)}
         min={new Date().toISOString().split("T")[0]}
       />
+      <p className="helper-text">
+        This will become the official last working day
+      </p>
     </div>
+  )}
 
-    <button
-      onClick={handleUpdateFinalLwd}
-      disabled={loading || !editableFinalLwd}
-      className="btn btn-secondary px-6 py-2 text-sm mt-6"
-    >
-      {loading ? "Updating..." : "Save New LWD"}
-    </button>
-  </div>
+  {/* Leave Policy - Only visible in All Employees tab for HR/Admin */}
+  {(isHr || isAdmin) && activeTab === "all" && (
+    <div className="info-card decision-card">
+      <label className="decision-label">
+        Leave Encashment / Adjustment Policy <span className="required">*</span>
+      </label>
+      <div className="radio-group">
+        <label className="radio-label">
+          <input
+            type="radio"
+            name="leavePolicy"
+            value="all"
+            checked={leavePolicy === "all"}
+            onChange={(e) => setLeavePolicy(e.target.value)}
+          />
+          <span>Allow all eligible leaves</span>
+        </label>
+        <label className="radio-label">
+          <input
+            type="radio"
+            name="leavePolicy"
+            value="sick_only"
+            checked={leavePolicy === "sick_only"}
+            onChange={(e) => setLeavePolicy(e.target.value)}
+          />
+          <span>Allow only sick &amp; casual leaves</span>
+        </label>
+        <label className="radio-label">
+          <input
+            type="radio"
+            name="leavePolicy"
+            value="none"
+            checked={leavePolicy === "none"}
+            onChange={(e) => setLeavePolicy(e.target.value)}
+          />
+          <span>No leaves allowed</span>
+        </label>
+      </div>
+      <p className="helper-text italic">
+        This setting will be used for final leave settlement calculation.
+      </p>
+    </div>
+  )}
+
 </div>
-)}
+                  </>
+                )}
 
-                                {/* Clearance Section */}
-                                {/* Clearance Section */}
-                {selectedRequest.type === "clearance" && (
-                  <div className="clearance-section">
-
-                    {/* KT Plans */}
-                    <div className="section-block">
-                      <h4 className="section-title">Knowledge Transfer Plans</h4>
-                      {ktPlans.length === 0 ? (
-                        <p className="empty-text">No KT plans added yet.</p>
-                      ) : (
-                        <div className="cards-grid">
-                          {ktPlans.map((kt) => (
-                            <div key={kt.id} className="clearance-card">
-                              <h5 className="card-title">{kt.title}</h5>
-                              <p className="card-description">{kt.description}</p>
-                              {kt.attached_files?.length > 0 && (
-                                <div className="files-list">
-                                  <div className="files-title">Uploaded files:</div>
-                                  {kt.attached_files.map((file, idx) => {
-                                    const fileName = file.split("/").pop();
-                                    return (
-                                      <div key={idx} className="exit-clearance-attachment-row">
-                                        <span className="exit-clearance-attachment-name">{fileName}</span>
-                                        <div className="exit-clearance-attachment-actions">
-                                          <button
-                                            className="exit-clearance-attachment-btn exit-clearance-attachment-view"
-                                            onClick={() => window.open(getFileUrl(file), "_blank")}
-                                          >
-                                            View
-                                          </button>
-                                          <button
-                                            className="exit-clearance-attachment-btn exit-clearance-attachment-download"
-                                            onClick={() => downloadFile(file, fileName)}
-                                          >
-                                            Download
-                                          </button>
-                                        </div>
-                                      </div>
-                                    );
-                                  })}
-                                </div>
-                              )}
-                              <div className="status-row">
-                                <span className="status-label">Status:</span>
-                                <span className="status-value">{kt.status || "Pending"}</span>
-                              </div>
-                              <div className="approval-group">
-                                {["supervisor", "manager"].includes(role) && (
-                                  <label className="checkbox-label">
-                                    <input
-                                      type="checkbox"
-                                      checked={kt.supervisor_approved || false}
-                                      onChange={(e) => handleApproveItem(kt.id, e.target.checked, "KT")}
-                                      disabled={loading}
-                                    />
-                                    <span>Supervisor Approved</span>
-                                  </label>
-                                )}
-                                {isHrOrAdmin && (
-                                  <label className="checkbox-label">
-                                    <input
-                                      type="checkbox"
-                                      checked={kt.hr_approved || false}
-                                      onChange={(e) => handleApproveItem(kt.id, e.target.checked, "KT")}
-                                      disabled={loading || (isHrOnly && !kt.supervisor_approved)}
-                                    />
-                                    <span>HR/Admin Approved</span>
-                                  </label>
-                                )}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Assets */}
-                    <div className="section-block">
-                      <h4 className="section-title">Assets</h4>
-                      {assets.length === 0 ? (
-                        <p className="empty-text">No assets added yet.</p>
-                      ) : (
-                        <div className="cards-grid">
-                          {assets.map((asset) => (
-                            <div key={asset.id} className="clearance-card">
-                              <h5 className="card-title">{asset.title}</h5>
-                              <p className="card-description">
-                                Planned Return: {asset.planned_date ? new Date(asset.planned_date).toLocaleDateString() : "—"}
-                              </p>
-                              <div className="approval-group">
-                                {["supervisor", "manager"].includes(role) && (
-                                  <label className="checkbox-label">
-                                    <input
-                                      type="checkbox"
-                                      checked={asset.supervisor_approved || false}
-                                      onChange={(e) => handleApproveItem(asset.id, e.target.checked, "ASSET")}
-                                      disabled={loading}
-                                    />
-                                    <span>Supervisor Approved</span>
-                                  </label>
-                                )}
-                                {isHrOrAdmin && (
-                                  <label className="checkbox-label">
-                                    <input
-                                      type="checkbox"
-                                      checked={asset.hr_approved || false}
-                                      onChange={(e) => handleApproveItem(asset.id, e.target.checked, "ASSET")}
-                                      disabled={loading || (isHrOnly && !asset.supervisor_approved)}
-                                    />
-                                    <span>HR/Admin Approved</span>
-                                  </label>
-                                )}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-
-                    {/* HR FINAL EVALUATION - ONLY IN "ALL EMPLOYEES" TAB */}
-                   {/* HR Final Evaluation - Only in All Employees Tab */}
-{/* HR Final Evaluation - Only in All Employees Tab */}
-{/* HR Final Evaluation - Star Rating */}
-{/* HR Final Evaluation - Only in All Employees Tab for Clearance */}
-{/* HR Final Evaluation - Clean Stars + Persisted Data */}
-{activeTab === "all" && (isHr || isAdmin) && selectedRequest?.type === "clearance" && (
-  <div className="info-card mt-8 border-t pt-6">
-    <h4 className="section-title mb-4">HR Final Evaluation Before Finalizing Exit</h4>
-    
-    {/* Clean Star Rating - No Boxes */}
-    <div className="mb-6">
-      <label className="block text-sm font-medium mb-3">
-        Overall Rating <span className="text-red-500">*</span>
-      </label>
-      
-      <div className="star-rating flex gap-3 text-6xl">
-        {[1, 2, 3, 4, 5].map((star) => (
-          <button
-            key={star}
-            type="button"
-            onClick={() => setOverallRating(star)}
-            className={`transition-all duration-200 hover:scale-110 focus:outline-none ${
-              overallRating >= star 
-                ? "text-yellow-400" 
-                : "text-gray-300 hover:text-yellow-200"
-            }`}
-          >
-            ★
-          </button>
-        ))}
-      </div>
-
-      <div className="mt-3 text-sm font-medium text-gray-700">
-        {overallRating ? `${overallRating} out of 5` : "Click on stars to rate"}
-      </div>
-    </div>
-
-    {/* HR Comments */}
-    <div>
-      <label className="block text-sm font-medium mb-2">
-        HR Final Comments / Remarks <span className="text-red-500">*</span>
-      </label>
-      <textarea
-        rows={4}
-        value={hrComments}
-        onChange={(e) => setHrComments(e.target.value)}
-        placeholder="Final remarks, observations, or recommendations before closing the exit process..."
-        className="exf-form-textarea w-full"
-      />
-    </div>
-  </div>
-)}
-
-                    {/* Finalize Button */}
-                    {isHrOrAdmin && (
-                      <div className="finalize-wrapper mt-8">
-                        {selectedRequest.clearance_completed_at ? (
-                          <div className="success-banner">
-                            <div className="success-title">✓ Exit Flow Cleared & Finalized</div>
-                            <p className="success-text">This employee's exit process is fully completed.</p>
-                          </div>
-                        ) : (
-                          <button
-                            className={`finalize-btn ${!loading && 
-                              !ktPlans.some(kt => !kt.hr_approved) && 
-                              !assets.some(a => !a.hr_approved) ? "" : "disabled"}`}
-                            onClick={handleFinalizeExit}
-                            disabled={loading}
-                          >
-                            {loading ? "Finalizing..." : "Finalize Exit & Clearance"}
-                          </button>
-                        )}
+                {/* WITHDRAWAL REVIEW */}
+                {selectedRequest.type === "withdrawal" && (
+                  <div className="reason-section">
+                    <div className="info-card reason-card">
+                      <div className="info-label">Withdrawal Reason</div>
+                      <div className="reason-content">
+                        {selectedRequest.withdrawal_reason || "Not provided"}
                       </div>
-                    )}
-
+                    </div>
                   </div>
                 )}
 
-                {/* NEW: HR Evaluation - Only visible in "All" tab for Resigned Employees */}
+                {/* CLEARANCE REVIEW - Only for HR/Admin */}
+               {/* ==================== CLEARANCE REVIEW - FIXED FOR TEAM + ALL TABS ==================== */}
+{/* ==================== CLEARANCE REVIEW - FIXED FOR TEAM TAB (Supervisor) vs ALL TAB (HR) ==================== */}
+{selectedRequest.type === "clearance" && (
+  <div className="clearance-section">
 
+    {/* KT Plans */}
+    <div className="section-block">
+      <div className="flex justify-between items-center mb-4">
+        <h4 className="section-title">Knowledge Transfer Plans</h4>
+        
+        {/* Add KT Button - ONLY visible to the employee themselves (not for supervisor review) */}
+        {selectedRequest.employee_id === employeeId && (
+          <button
+            onClick={() => setShowAddKTModal(true)}
+            className="btn btn-primary text-sm px-4 py-1"
+          >
+            + Add KT Plan
+          </button>
+        )}
+      </div>
+
+      {ktPlans.length === 0 ? (
+        <p className="empty-text text-gray-500">No KT plans added yet.</p>
+      ) : (
+        <div className="cards-grid">
+          {ktPlans.map((kt) => (
+            <div key={kt.id} className="clearance-card p-4 border rounded-lg">
+              <h5 className="card-title font-semibold">{kt.title}</h5>
+              <p className="card-description text-gray-600 mt-1">{kt.description}</p>
+
+              {kt.attached_files?.length > 0 && (
+                <div className="files-list mt-3">
+                  <div className="text-sm font-medium mb-1">Attached Files:</div>
+                  {kt.attached_files.map((file, idx) => {
+                    const fileName = file.split("/").pop() || file;
+                    return (
+                      <div key={idx} className="exit-clearance-attachment-row flex justify-between items-center py-1">
+                        <span className="text-sm">{fileName}</span>
+                      <div className="exf-clearance-file-actions">
+  <button
+    className="exf-clearance-file-btn exf-clearance-file-btn--view"
+    onClick={() => window.open(getFileUrl(file), "_blank")}
+  >
+    View
+  </button>
+
+  <button
+    className="exf-clearance-file-btn exf-clearance-file-btn--download"
+    onClick={() => downloadFile(file)}
+  >
+    Download
+  </button>
+</div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              <div className="status-row mt-3">
+                <span className="status-label">Status:</span>
+                <span className="status-value font-medium">{kt.status || "Pending"}</span>
               </div>
+
+              {/* Approval Checkboxes */}
+              <div className="approval-group mt-4 flex flex-col gap-3">
+                {/* Supervisor Approval - Always visible in review (editable by supervisor in Team tab) */}
+                <label className="checkbox-label flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={!!kt.supervisor_approved}
+                    onChange={(e) => handleApproveItem(kt.id, e.target.checked, "KT")}
+                    disabled={loading || activeTab !== "team"}
+                    className="w-4 h-4"
+                  />
+                  <span className="font-medium">Supervisor Approved</span>
+                </label>
+
+                {/* HR Approval - Only for HR in All tab */}
+                {(isHr || isAdmin) && activeTab === "all" && (
+                  <label className="checkbox-label flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={!!kt.hr_approved}
+                      onChange={(e) => handleApproveItem(kt.id, e.target.checked, "KT")}
+                      disabled={loading || (isHrOnly && !kt.supervisor_approved)}
+                      className="w-4 h-4"
+                    />
+                    <span className="font-medium">HR Approved</span>
+                  </label>
+                )}
+              </div>
+
+              {/* Edit KT Button - ONLY for the employee themselves */}
+              {selectedRequest.employee_id === employeeId && (
+                <button
+                  onClick={() => startEditKt(kt)}
+                  className="text-blue-600 hover:text-blue-800 text-sm mt-3 underline"
+                >
+                  ✏️ Edit KT Plan
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+
+    {/* Assets Section */}
+    <div className="section-block mt-8">
+      <h4 className="section-title">Assets</h4>
+      {assets.length === 0 ? (
+        <p className="empty-text text-gray-500">No assets added yet.</p>
+      ) : (
+        <div className="cards-grid">
+          {assets.map((asset) => (
+            <div key={asset.id} className="clearance-card p-4 border rounded-lg">
+              <h5 className="card-title font-semibold">{asset.title}</h5>
+              <p className="card-description mt-1">
+                Planned Return: {asset.planned_date ? new Date(asset.planned_date).toLocaleDateString("en-IN") : "—"}
+              </p>
+
+              <div className="approval-group mt-4 flex flex-col gap-3">
+                <label className="checkbox-label flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={!!asset.supervisor_approved}
+                    onChange={(e) => handleApproveItem(asset.id, e.target.checked, "ASSET")}
+                    disabled={loading || activeTab !== "team"}
+                    className="w-4 h-4"
+                  />
+                  <span className="font-medium">Supervisor Approved</span>
+                </label>
+
+                {(isHr || isAdmin) && activeTab === "all" && (
+                  <label className="checkbox-label flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={!!asset.hr_approved}
+                      onChange={(e) => handleApproveItem(asset.id, e.target.checked, "ASSET")}
+                      disabled={loading || (isHrOnly && !asset.supervisor_approved)}
+                      className="w-4 h-4"
+                    />
+                    <span className="font-medium">HR Approved</span>
+                  </label>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+
+    {/* HR Final Evaluation + Finalize - ONLY visible to HR/Admin in All Employees tab */}
+    {(isHr || isAdmin) && activeTab === "all" && (
+      <>
+        <div className="final-evaluation-section mt-10 pt-6 border-t border-gray-200">
+          <h4 className="section-title">HR Final Evaluation</h4>
+
+          <div className="info-card decision-card">
+            <label className="decision-label">Final Last Working Day <span className="required">*</span></label>
+            <input
+              type="date"
+              className="date-input"
+              value={finalLwd || ""}
+              onChange={(e) => setFinalLwd(e.target.value)}
+            />
+          </div>
+
+          {/* 5 Star Rating */}
+       <div className="info-card decision-card">
+  <label className="decision-label">
+    Employee Exit Rating <span className="required">*</span>
+  </label>
+
+  <div
+    style={{
+      display: "flex",
+      gap: "6px",
+      marginTop: "10px",
+      alignItems: "center",
+    }}
+  >
+    {[1, 2, 3, 4, 5].map((star) => (
+      <span
+        key={star}
+        onClick={() => setHrRating(star.toString())}
+        style={{
+          cursor: "pointer",
+          fontSize: "24px",
+          lineHeight: "1",
+          display: "flex",
+          alignItems: "center",
+          transition: "all 0.2s ease",
+        }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.transform = "scale(1.08)";
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.transform = "scale(1)";
+        }}
+      >
+        {Number(hrRating) >= star ? (
+          <FaStar
+            style={{
+              color: "#fbbf24",
+              filter: "drop-shadow(0 1px 2px rgba(0,0,0,0.08))",
+            }}
+          />
+        ) : (
+          <FaRegStar
+            style={{
+              color: "#d1d5db",
+            }}
+          />
+        )}
+      </span>
+    ))}
+  </div>
+
+  {hrRating && (
+    <p
+      style={{
+        fontSize: "13px",
+        color: "#6b7280",
+        marginTop: "10px",
+        fontWeight: "500",
+      }}
+    >
+      Selected: {hrRating} star{parseInt(hrRating) > 1 ? "s" : ""}
+    </p>
+  )}
+
+  {!hrRating && (
+    <p
+      style={{
+        fontSize: "12px",
+        color: "#9ca3af",
+        marginTop: "8px",
+      }}
+    >
+      Click to rate (1 = Poor, 5 = Excellent)
+    </p>
+  )}
+</div>
+
+          <div className="info-card decision-card">
+            <label className="decision-label">HR Final Comments</label>
+            <textarea
+              className="review-textarea"
+              rows={5}
+              placeholder="Add final remarks about the exit process..."
+              value={hrEvaluationComments || ""}
+              onChange={(e) => setHrEvaluationComments(e.target.value)}
+            />
+          </div>
+
+          <button
+            className="btn btn-primary mt-4"
+            onClick={handleSaveFinalEvaluation}
+            disabled={loading || !finalLwd || !hrRating}
+          >
+            {loading ? "Saving..." : "Save Final Evaluation"}
+          </button>
+        </div>
+
+        <div className="finalize-wrapper mt-6">
+          {selectedRequest.clearance_completed_at ? (
+            <div className="success-banner p-4 bg-green-50 border border-green-200 rounded-lg">
+              <div className="text-green-700 font-semibold">✓ Exit Flow Completed</div>
+            </div>
+          ) : (
+            <button
+              className="finalize-btn btn btn-success w-full"
+              onClick={handleFinalizeExit}
+              disabled={loading}
+            >
+              {loading ? "Finalizing..." : "Finalize Exit & Clearance"}
+            </button>
+          )}
+        </div>
+      </>
+    )}
+  </div>
+)}
+              </div>
+
               {/* Action Buttons */}
               <div className="modal-footer">
                 <button
                   className="btn btn-secondary"
-    onClick={() => {
-  setSelectedRequest(null);
-  setLeavePolicy("");
-  setFinalLwd("");
-  setReviewComment("");
-  setRecommendedLwd("");
-  setOverallRating(0);
-  setHrComments("");
-  setEditableFinalLwd("");
-}}
+                  onClick={() => {
+                    setSelectedRequest(null);
+                    setReviewComment("");
+                    setRecommendedLwd("");
+                    setFinalLwd("");
+                    setLeavePolicy("");
+                    setHrRating("");
+                    setHrEvaluationComments("");
+                  }}
                 >
                   Cancel
                 </button>
+
                 {selectedRequest.type === "normal" && (
                   <div className="action-buttons">
-                    {/* Show warning only in "all" tab when supervisor hasn't acted yet */}
-                    {activeTab === "all" &&
-                     selectedRequest.supervisor_status === "PENDING" &&
-                     !isAdmin && (
-                      <div className="warning-message mb-3 text-yellow-700">
-                        This request is still pending supervisor review.<br/>
-                        You can view details, but final approval requires supervisor action first.
-                      </div>
-                    )}
-                    {/* In team tab → always show buttons (action will go to supervisor endpoint) */}
-                    {/* In all tab → show only if user is allowed to act at this stage */}
                     {(activeTab === "team" ||
                       isAdmin ||
                       (isHrOrAdmin && selectedRequest.supervisor_status !== "PENDING") ||
@@ -2711,26 +2469,23 @@ const handleReviewAction = async (reviewType, action) => {
                           className="btn btn-success"
                           onClick={() => handleReviewAction("normal", "APPROVED")}
                           disabled={loading ||
-                            (activeTab !== "team" && isHr && !isAdmin && (!finalLwd || !leavePolicy))
+                            ((isHr || isAdmin) && activeTab === "all" && (!finalLwd || !leavePolicy))
                           }
                         >
-                          {activeTab === "team"
-                            ? "Approve "
-                            : (role === "hr" || role === "admin" || isAdmin)
-                              ? "Final Approve"
-                              : "Approve"}
+                          {activeTab === "team" ? "Approve" : "Final Approve"}
                         </button>
                         <button
                           className="btn btn-danger"
                           onClick={() => handleReviewAction("normal", "REJECTED")}
                           disabled={loading}
                         >
-                          {activeTab === "team" ? "Reject " : "Reject"}
+                          Reject
                         </button>
                       </>
                     )}
                   </div>
                 )}
+
                 {selectedRequest.type === "withdrawal" && (
                   <div className="action-buttons">
                     <button
@@ -2738,14 +2493,14 @@ const handleReviewAction = async (reviewType, action) => {
                       onClick={() => handleReviewAction("withdrawal", "APPROVED")}
                       disabled={loading}
                     >
-                      {activeTab === "team" ? "Approve Withdrawal " : "Approve Withdrawal"}
+                      Approve Withdrawal
                     </button>
                     <button
                       className="btn btn-danger"
                       onClick={() => handleReviewAction("withdrawal", "REJECTED")}
                       disabled={loading}
                     >
-                      {activeTab === "team" ? "Reject Withdrawal " : "Reject Withdrawal"}
+                      Reject Withdrawal
                     </button>
                   </div>
                 )}

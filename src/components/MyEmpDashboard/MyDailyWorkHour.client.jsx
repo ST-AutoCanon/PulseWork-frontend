@@ -224,15 +224,19 @@ export default function MyDailyWorkHour() {
         <h3>My daily work hours</h3>
 
         <div className="work-hour-view-options">
-          {["Daily", "Current-Month", "Monthly"].map((option) => (
-            <button
-              key={option}
-              className={view === option ? "active" : ""}
-              onClick={() => setView(option)}
-            >
-              {option === "Monthly" ? "Prev-Month" : option}
-            </button>
-          ))}
+{["Daily", "Weekly", "Monthly"].map((option) => (
+  <button
+    key={option}
+    className={view === option ? "active" : ""}
+    onClick={() => setView(option)}
+  >
+    {option === "Weekly"
+      ? "Current-Month"
+      : option === "Monthly"
+      ? "Prev-Month"
+      : option}
+  </button>
+))}
         </div>
 
         <div className="work-hour-legend">

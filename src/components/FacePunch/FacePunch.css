@@ -141,3 +141,90 @@
     transform: none;
   }
 }
+/* Replace your mobile section with this cleaner responsive version */
+
+@media (max-width: 768px) {
+  .face-punch-container {
+    width: 95%;
+    max-width: 420px;
+    height: auto;
+    aspect-ratio: 4 / 3;
+    margin: 120px auto 0;
+    border-radius: 14px;
+    overflow: hidden;
+  }
+
+  .face-punch-container video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 14px;
+  }
+
+  .overlay-canvas {
+    width: 100%;
+    height: 100%;
+    border-radius: 14px;
+  }
+
+  .employee-info-message {
+    margin-top: 14px;
+    padding: 0 16px;
+    font-size: 15px;
+    font-weight: 600;
+    text-align: center;
+    line-height: 1.5;
+  }
+
+  .cooldown-message,
+  .status-message {
+    width: 90%;
+    max-width: 320px;
+    margin: 14px auto;
+    padding: 10px 14px;
+    font-size: 13px;
+    border-radius: 10px;
+    text-align: center;
+  }
+
+  #scanButton {
+    position: relative;
+    display: block;
+    margin: 20px auto 0;
+    padding: 12px 24px;
+    font-size: 14px;
+    border-radius: 10px;
+    transform: none;
+    left: auto;
+    bottom: auto;
+  }
+
+  #scanButton:hover,
+  #scanButton:active {
+    transform: scale(1.02);
+  }
+}
+
+@media (max-width: 480px) {
+  .face-punch-container {
+    width: 94%;
+    margin-top: 100px;
+    aspect-ratio: 4 / 3;
+  }
+
+  .employee-info-message {
+    font-size: 14px;
+  }
+
+  .cooldown-message,
+  .status-message {
+    font-size: 12px;
+    padding: 9px 12px;
+  }
+
+  #scanButton {
+    width: 90%;
+    max-width: 280px;
+    font-size: 14px;
+  }
+}

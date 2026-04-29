@@ -594,6 +594,66 @@ useEffect(() => {
   };
 // ✅ Replace ALL previous selectedRequest useEffects with this one (only one should remain)
 // ✅ FINAL FIXED useEffect - Put this as the only selectedRequest useEffect
+// useEffect(() => {
+//   if (!selectedRequest) {
+//     setFinalLwd("");
+//     setHrRating("");
+//     setHrEvaluationComments("");
+//     setRecommendedLwd("");
+//     setLeavePolicy("");
+//     return;
+//   }
+
+//   console.log("[CLEARANCE DEBUG] selectedRequest received:", {
+//     id: selectedRequest.id,
+//     type: selectedRequest.type,
+//     final_outcome: selectedRequest.final_outcome,
+//     final_lwd: selectedRequest.final_lwd,
+//     hr_final_lwd: selectedRequest.hr_final_lwd,
+//     proposed_lwd: selectedRequest.proposed_lwd,
+//     hr_rating: selectedRequest.hr_rating,
+//     hr_evaluation_comments: selectedRequest.hr_evaluation_comments
+//   });
+
+//   if (selectedRequest.type === "clearance" || selectedRequest.final_outcome === "RESIGNED") {
+    
+//     // FIXED: Extract only YYYY-MM-DD part for date input
+//     let finalLwdValue = "";
+
+// // Prefer hr_final_lwd first, then final_lwd as fallback
+// if (selectedRequest.hr_final_lwd) {
+//   finalLwdValue = selectedRequest.hr_final_lwd.split('T')[0];
+// } else if (selectedRequest.final_lwd) {
+//   finalLwdValue = selectedRequest.final_lwd.split('T')[0];
+// } else if (selectedRequest.proposed_lwd) {
+//   finalLwdValue = selectedRequest.proposed_lwd.split('T')[0];
+// }
+
+//     const ratingValue = selectedRequest.hr_rating || "";
+//     const commentsValue = selectedRequest.hr_evaluation_comments || selectedRequest.hr_comments || "";
+
+//     console.log("[CLEARANCE DEBUG] Final values being set:", { 
+//       finalLwd: finalLwdValue, 
+//       rating: ratingValue, 
+//       comments: commentsValue 
+//     });
+
+//     setTimeout(() => {
+//       setFinalLwd(finalLwdValue);
+//       setHrRating(ratingValue);
+//       setHrEvaluationComments(commentsValue);
+//     }, 100);
+//   } else {
+//     setFinalLwd("");
+//     setHrRating("");
+//     setHrEvaluationComments("");
+//     setRecommendedLwd("");
+//     setLeavePolicy("");
+//   }
+// }, [selectedRequest]);   
+
+// Replace the entire date extraction block inside the useEffect with this:
+
 useEffect(() => {
   if (!selectedRequest) {
     setFinalLwd("");
@@ -611,24 +671,39 @@ useEffect(() => {
     final_lwd: selectedRequest.final_lwd,
     hr_final_lwd: selectedRequest.hr_final_lwd,
     proposed_lwd: selectedRequest.proposed_lwd,
-    hr_rating: selectedRequest.hr_rating,
-    hr_evaluation_comments: selectedRequest.hr_evaluation_comments
   });
 
   if (selectedRequest.type === "clearance" || selectedRequest.final_outcome === "RESIGNED") {
     
-    // FIXED: Extract only YYYY-MM-DD part for date input
     let finalLwdValue = "";
-    if (selectedRequest.final_lwd) {
-      finalLwdValue = selectedRequest.final_lwd.split('T')[0];           // remove time if present
-    } else if (selectedRequest.hr_final_lwd) {
-      finalLwdValue = selectedRequest.hr_final_lwd.split('T')[0];
+
+    // Helper function to safely extract YYYY-MM-DD without timezone shift
+    const extractDateOnly = (dateStr) => {
+      if (!dateStr) return "";
+      
+      // Method 1: Use Date object and format manually (most reliable)
+      const date = new Date(dateStr);
+      if (isNaN(date.getTime())) return "";
+
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      
+      return `${year}-${month}-${day}`;
+    };
+
+    // Priority: hr_final_lwd → final_lwd → proposed_lwd
+    if (selectedRequest.hr_final_lwd) {
+      finalLwdValue = extractDateOnly(selectedRequest.hr_final_lwd);
+    } else if (selectedRequest.final_lwd) {
+      finalLwdValue = extractDateOnly(selectedRequest.final_lwd);
     } else if (selectedRequest.proposed_lwd) {
-      finalLwdValue = selectedRequest.proposed_lwd.split('T')[0];
+      finalLwdValue = extractDateOnly(selectedRequest.proposed_lwd);
     }
 
     const ratingValue = selectedRequest.hr_rating || "";
-    const commentsValue = selectedRequest.hr_evaluation_comments || selectedRequest.hr_comments || "";
+    const commentsValue = selectedRequest.hr_evaluation_comments || 
+                         selectedRequest.hr_comments || "";
 
     console.log("[CLEARANCE DEBUG] Final values being set:", { 
       finalLwd: finalLwdValue, 
@@ -636,11 +711,13 @@ useEffect(() => {
       comments: commentsValue 
     });
 
+    // Use setTimeout to avoid React batching issues with modal
     setTimeout(() => {
       setFinalLwd(finalLwdValue);
       setHrRating(ratingValue);
       setHrEvaluationComments(commentsValue);
-    }, 100);
+    }, 50);
+
   } else {
     setFinalLwd("");
     setHrRating("");
@@ -648,7 +725,7 @@ useEffect(() => {
     setRecommendedLwd("");
     setLeavePolicy("");
   }
-}, [selectedRequest]);   // Important: only depend on selectedRequest
+}, [selectedRequest]);
   const handleFinalizeExit = async () => {
     setLoading(true);
     setErrorMessage("");
@@ -797,8 +874,13 @@ const handleReviewAction = async (reviewType, action) => {
               setLoading(false);
               return;
             }
-            endpoint = `${BACKEND_URL}/api/exit/hr/final-approve`;
-            methodPayload = { ...payload, finalLwd, leavePolicy };
+         endpoint = `${BACKEND_URL}/api/exit/hr/final-approve`;
+
+methodPayload = {
+  ...payload,
+  hr_final_lwd: finalLwd,
+  leavePolicy
+};
           } else {
             endpoint = `${BACKEND_URL}/api/exit/hr/action`;
             methodPayload = { ...payload, status: "REJECTED" };
@@ -861,11 +943,11 @@ const handleSaveFinalEvaluation = async () => {
 
     await axios.put(
       `${BACKEND_URL}/api/exit/hr-final-evaluation/${selectedRequest.id}`,
-      {
-        final_lwd: finalLwd,
-  hr_rating: hrRating,
-        hr_evaluation_comments: hrEvaluationComments,
-      },
+     {
+    hr_final_lwd: finalLwd,
+    hr_rating: hrRating,                    // ← Make sure this is sent
+    hr_evaluation_comments: hrEvaluationComments,
+  },
       {
         headers: {
           "x-api-key": API_KEY,
@@ -1125,8 +1207,8 @@ const filteredAllTeamRequests = allTeamRequests.filter((req) => {
                             Your resignation is final. Contact HR if needed.
                             <br />
                             <strong>Last Working Day:</strong>{" "}
-                            {selfRequest.final_lwd
-                              ? new Date(selfRequest.final_lwd).toLocaleDateString()
+                            {selfRequest.hr_final_lwd
+                              ? new Date(selfRequest.hr_final_lwd).toLocaleDateString()
                               : selfRequest.proposed_lwd
                               ? new Date(selfRequest.proposed_lwd).toLocaleDateString()
                               : "To be confirmed"}
@@ -1764,7 +1846,7 @@ onClick={() => {
 
   // Immediate set for clearance (helps with timing)
   if (isResigned) {
-  const finalLwdValue = req.final_lwd || req.hr_final_lwd || req.proposed_lwd || "";
+const finalLwdValue = req.hr_final_lwd || req.final_lwd || req.proposed_lwd || "";
   const ratingValue = req.hr_rating || "";
   const commentsValue = req.hr_evaluation_comments || req.hr_comments || "";
 

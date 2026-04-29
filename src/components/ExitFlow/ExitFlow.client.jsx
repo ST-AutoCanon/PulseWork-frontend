@@ -2403,11 +2403,10 @@ const finalLwdValue = req.hr_final_lwd || req.final_lwd || req.proposed_lwd || "
 
              <div className="status-row mt-3">
   <span className="status-label">Status:</span>
- <span className="status-value font-medium">
-  {(kt.status || "Pending")
-    .replace(/_/g, " ")
-    .replace(/\b\w/g, (char) => char.toUpperCase())}
-</span>
+  <span className="status-value font-medium">
+    {kt.status?.trim() || "Pending"}
+    
+  </span>
 </div>
 
 {/* Completed Date */}

@@ -521,9 +521,9 @@
   height: 1px;
   width: 100%;
 }
-.annexure-table {
-  page-break-inside: avoid;
-  break-inside: avoid;
+.annexure-table td,
+.annexure-table th {
+  box-sizing: border-box;
 }
 
 .annexure-table tr {
@@ -711,6 +711,20 @@
   position: relative;
   z-index: 2;
 }
+.offer-main-title {
+  font-size: 72px !important;
+  font-weight: 700;
+  display: block;
+  text-align: center;
+  line-height: 1.2;
+}
+.letterhead-live-preview-box h1,
+.letterhead-live-preview-box h2,
+.letterhead-live-preview-box h3,
+.letterhead-live-preview-box strong {
+  font-size: inherit !important;
+}
+
 /* Responsive Design */
 @media (max-width: 1150px) {
   .letterhead-content {

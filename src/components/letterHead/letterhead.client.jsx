@@ -360,42 +360,53 @@ const generatePDF = async (download = false, savedLetter = null) => {
 
 
     const pdfStyles = `
-      <style>
-        table, th, td {
-          border: 1px solid #2b2b2b !important;
-          border-collapse: collapse !important;
-          border-spacing: 0 !important;
-        }
+<style>
 
-        table {
-          width: 100% !important;
-          page-break-inside: auto !important;
-          break-inside: auto !important;
-        }
+/* ONLY affect OUTER tables */
+.pdf-outer-wrapper > table {
+  width: 100% !important;
+  border-collapse: collapse !important;
+  table-layout: fixed !important;
+}
 
-        th, td {
-          padding: 5px !important;
-          text-align: left !important;
-          vertical-align: top !important;
-        }
+/* OUTER table cells only */
+.pdf-outer-wrapper > table > thead > tr > th,
+.pdf-outer-wrapper > table > tbody > tr > td {
+  border: 1px solid #2b2b2b !important;
+  padding: 5px !important;
+  text-align: left !important;
+  vertical-align: top !important;
+}
 
-        .ql-editor table,
-        .letterhead-live-preview-box table {
-          table-layout: fixed !important;
-          width: 100% !important;
-        }
-      </style>
-    `;
+/* Prevent breaking */
+.pdf-outer-wrapper {
+  page-break-inside: auto !important;
+  break-inside: auto !important;
+}
+
+/* KEEP INNER TABLES SAFE */
+.pdf-outer-wrapper table table {
+  border: none !important;
+  table-layout: auto !important;
+  width: auto !important;
+}
+
+</style>
+`;
 
     const tempDiv = document.createElement("div");
 
-    tempDiv.innerHTML = pdfStyles + contentHtml;
+    tempDiv.innerHTML =
+  pdfStyles +
+  `<div class="pdf-outer-wrapper">
+      ${contentHtml}
+   </div>`;
 
     tempDiv.style.width = "794px";
     tempDiv.style.padding = "40px";
     tempDiv.style.boxSizing = "border-box";
     tempDiv.style.fontFamily = "Arial";
-    tempDiv.style.fontSize = "12px";
+    tempDiv.style.fontSize = "14px";
     tempDiv.style.lineHeight = "1.6";
 
     tempDiv.style.whiteSpace = "normal";

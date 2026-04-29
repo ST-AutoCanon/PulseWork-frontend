@@ -2436,7 +2436,19 @@ const finalLwdValue = req.hr_final_lwd || req.final_lwd || req.proposed_lwd || "
                   />
                   <span className="font-medium">Supervisor Approved</span>
                 </label>
-
+{(kt.actual_completed_date || kt.planned_date || kt.completed_date) && (
+      <div className="status-row mt-2">
+        <span className="status-label">Completed Date:</span>
+        <span className="status-value font-medium">
+          {kt.actual_completed_date 
+            ? new Date(kt.actual_completed_date).toLocaleDateString("en-IN")
+            : kt.planned_date 
+              ? new Date(kt.planned_date).toLocaleDateString("en-IN")
+              : "—"
+          }
+        </span>
+      </div>
+    )}
                 {/* HR Approval - Only for HR in All tab */}
                 {(isHr || isAdmin) && activeTab === "all" && (
                   <label className="checkbox-label flex items-center gap-2 cursor-pointer">

@@ -576,7 +576,6 @@ const CustomTemplateEditor = forwardRef(function CustomTemplateEditor(
       })),
       meta: { savedAt: new Date().toISOString() },
     };
-    if (onSave) onSave(payload);
     return payload;
   }
 

@@ -837,79 +837,181 @@ useEffect(() => {
     setLoading(false);
   }
 };
+// const handleReviewAction = async (reviewType, action) => {
+//   if (!selectedRequest) return;
+//   setLoading(true);
+//   setErrorMessage("");
+//   try {
+//     const payload = {
+//       exitId: selectedRequest.id,
+//       comment: reviewComment || null,
+//     };
+//     let endpoint = "";
+//     let methodPayload = payload;
+//     // ── NEW: Decide approval level based on ACTIVE TAB, not role ───────────────────────
+//     const isTeamTab = activeTab === "team";
+//     if (reviewType === "normal") {
+//       if (isTeamTab) {
+//         // In "My Team" tab → always treat as supervisor action
+//         endpoint = `${BACKEND_URL}/api/exit/supervisor/action`;
+//         methodPayload = {
+//           ...payload,
+//           status: action, // "APPROVED" or "REJECTED"
+//           recommendedLwd: recommendedLwd || null,
+//         };
+//       } else {
+//         // "all" tab (organization-wide view) → use real role
+//         const effectiveRole = role?.toLowerCase() === "manager" ? "supervisor" : role?.toLowerCase();
+//         if (effectiveRole === "hr" || effectiveRole === "admin") {
+//           if (action === "APPROVED") {
+//             if (!finalLwd) {
+//               setErrorMessage("Final Last Working Day is required to approve");
+//               setLoading(false);
+//               return;
+//             }
+//             if (!leavePolicy) {
+//               setErrorMessage("Please select leave policy");
+//               setLoading(false);
+//               return;
+//             }
+//          endpoint = `${BACKEND_URL}/api/exit/hr/final-approve`;
+
+// methodPayload = {
+//   ...payload,
+//   hr_final_lwd: finalLwd,
+//   leavePolicy
+// };
+//           } else {
+//             endpoint = `${BACKEND_URL}/api/exit/hr/action`;
+//             methodPayload = { ...payload, status: "REJECTED" };
+//           }
+//         } else if (effectiveRole === "supervisor") {
+//           endpoint = `${BACKEND_URL}/api/exit/supervisor/action`;
+//           methodPayload = {
+//             ...payload,
+//             status: action,
+//             recommendedLwd: recommendedLwd || null,
+//           };
+//         }
+//       }
+//     } else if (reviewType === "withdrawal") {
+//       if (isTeamTab) {
+//         // In team tab → always supervisor withdrawal action
+//         endpoint = `${BACKEND_URL}/api/exit/supervisor/withdraw`;
+//         methodPayload = { ...payload, status: action };
+//       } else {
+//         // all tab → use real role
+//         const effectiveRole = role?.toLowerCase() === "manager" ? "supervisor" : role?.toLowerCase();
+//         if (effectiveRole === "hr") {
+//           endpoint = `${BACKEND_URL}/api/exit/hr/withdraw/final`;
+//         } else if (effectiveRole === "supervisor") {
+//           endpoint = `${BACKEND_URL}/api/exit/supervisor/withdraw`;
+//         }
+//         methodPayload = { ...payload, status: action };
+//       }
+//     }
+//     const res = await axios.post(endpoint, methodPayload, {
+//       headers: {
+//         "x-api-key": API_KEY,
+//         "x-employee-id": employeeId,
+//         "x-org-id": orgId,
+//       },
+//       withCredentials: true,
+//     });
+//     if (res.data?.success) {
+//       showAlert("Action completed successfully", "Success", "success");
+//       setSelectedRequest(null);
+//       setReviewComment("");
+//       setRecommendedLwd("");
+//       setFinalLwd("");
+//       setLeavePolicy("");
+//       await fetchAllTeamRequests();
+//       await fetchSelfRequest();
+//     }
+//   } catch (err) {
+//     const msg = err.response?.data?.error || err.message || "Failed to process review";
+//     setErrorMessage(msg);
+//     showAlert(msg, "Error", "error");
+//   } finally {
+//     setLoading(false);
+//   }
+// };
 const handleReviewAction = async (reviewType, action) => {
   if (!selectedRequest) return;
+
   setLoading(true);
   setErrorMessage("");
+
   try {
     const payload = {
       exitId: selectedRequest.id,
       comment: reviewComment || null,
     };
+
     let endpoint = "";
-    let methodPayload = payload;
-    // ── NEW: Decide approval level based on ACTIVE TAB, not role ───────────────────────
+    let methodPayload = { ...payload };
+
     const isTeamTab = activeTab === "team";
+    const isAllTab = activeTab === "all";
+
+    const roleLower = role?.toLowerCase() || "";
+    const isHRRole = isHr || isAdmin || roleLower === "hr" || roleLower === "admin";
+
     if (reviewType === "normal") {
       if (isTeamTab) {
-        // In "My Team" tab → always treat as supervisor action
+        // Supervisor / Team Lead action
         endpoint = `${BACKEND_URL}/api/exit/supervisor/action`;
         methodPayload = {
           ...payload,
-          status: action, // "APPROVED" or "REJECTED"
+          status: action,
           recommendedLwd: recommendedLwd || null,
         };
       } else {
-        // "all" tab (organization-wide view) → use real role
-        const effectiveRole = role?.toLowerCase() === "manager" ? "supervisor" : role?.toLowerCase();
-        if (effectiveRole === "hr" || effectiveRole === "admin") {
-          if (action === "APPROVED") {
-            if (!finalLwd) {
-              setErrorMessage("Final Last Working Day is required to approve");
-              setLoading(false);
-              return;
-            }
-            if (!leavePolicy) {
-              setErrorMessage("Please select leave policy");
-              setLoading(false);
-              return;
-            }
-         endpoint = `${BACKEND_URL}/api/exit/hr/final-approve`;
-
-methodPayload = {
-  ...payload,
-  hr_final_lwd: finalLwd,
-  leavePolicy
-};
-          } else {
-            endpoint = `${BACKEND_URL}/api/exit/hr/action`;
-            methodPayload = { ...payload, status: "REJECTED" };
+        // All tab (HR/Admin)
+        if (isHRRole && action === "APPROVED") {
+          if (!finalLwd) {
+            setErrorMessage("Final Last Working Day is required to approve");
+            setLoading(false);
+            return;
           }
-        } else if (effectiveRole === "supervisor") {
-          endpoint = `${BACKEND_URL}/api/exit/supervisor/action`;
+          if (!leavePolicy) {
+            setErrorMessage("Please select leave policy");
+            setLoading(false);
+            return;
+          }
+
+          endpoint = `${BACKEND_URL}/api/exit/hr/final-approve`;
           methodPayload = {
             ...payload,
-            status: action,
-            recommendedLwd: recommendedLwd || null,
+            hr_final_lwd: finalLwd,
+            leavePolicy,
           };
+        } else {
+          endpoint = `${BACKEND_URL}/api/exit/hr/action`;
+          methodPayload = { ...payload, status: action };
         }
       }
-    } else if (reviewType === "withdrawal") {
+    } 
+    else if (reviewType === "withdrawal") {
       if (isTeamTab) {
-        // In team tab → always supervisor withdrawal action
+        // Supervisor action on withdrawal
         endpoint = `${BACKEND_URL}/api/exit/supervisor/withdraw`;
         methodPayload = { ...payload, status: action };
       } else {
-        // all tab → use real role
-        const effectiveRole = role?.toLowerCase() === "manager" ? "supervisor" : role?.toLowerCase();
-        if (effectiveRole === "hr") {
+        // ALL TAB → HR/Admin final withdrawal approval
+        if (isHRRole) {
           endpoint = `${BACKEND_URL}/api/exit/hr/withdraw/final`;
-        } else if (effectiveRole === "supervisor") {
+        } else {
           endpoint = `${BACKEND_URL}/api/exit/supervisor/withdraw`;
         }
         methodPayload = { ...payload, status: action };
       }
     }
+
+    if (!endpoint) {
+      throw new Error("Invalid action configuration");
+    }
+
     const res = await axios.post(endpoint, methodPayload, {
       headers: {
         "x-api-key": API_KEY,
@@ -918,6 +1020,7 @@ methodPayload = {
       },
       withCredentials: true,
     });
+
     if (res.data?.success) {
       showAlert("Action completed successfully", "Success", "success");
       setSelectedRequest(null);
@@ -925,18 +1028,21 @@ methodPayload = {
       setRecommendedLwd("");
       setFinalLwd("");
       setLeavePolicy("");
+      setHrRating("");
+      setHrEvaluationComments("");
+
       await fetchAllTeamRequests();
       await fetchSelfRequest();
     }
   } catch (err) {
-    const msg = err.response?.data?.error || err.message || "Failed to process review";
+    const msg = err.response?.data?.error || err.response?.data?.message || err.message || "Failed to process review";
+    console.error("[handleReviewAction] Error:", err.response?.data || err);
     setErrorMessage(msg);
     showAlert(msg, "Error", "error");
   } finally {
     setLoading(false);
   }
 };
-
 const handleSaveFinalEvaluation = async () => {
   try {
     setLoading(true);
@@ -2313,7 +2419,19 @@ const finalLwdValue = req.hr_final_lwd || req.final_lwd || req.proposed_lwd || "
                   />
                   <span className="font-medium">Supervisor Approved</span>
                 </label>
-
+{(kt.actual_completed_date || kt.planned_date || kt.completed_date) && (
+      <div className="status-row mt-2">
+        <span className="status-label">Completed Date:</span>
+        <span className="status-value font-medium">
+          {kt.actual_completed_date 
+            ? new Date(kt.actual_completed_date).toLocaleDateString("en-IN")
+            : kt.planned_date 
+              ? new Date(kt.planned_date).toLocaleDateString("en-IN")
+              : "—"
+          }
+        </span>
+      </div>
+    )}
                 {/* HR Approval - Only for HR in All tab */}
                 {(isHr || isAdmin) && activeTab === "all" && (
                   <label className="checkbox-label flex items-center gap-2 cursor-pointer">

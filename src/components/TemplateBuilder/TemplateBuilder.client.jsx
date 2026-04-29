@@ -1175,7 +1175,7 @@ export default function TemplateBuilder() {
       html: html || null,
       css: css || null,
       thumbnail_url: thumbnail_url || null,
-      layout: layoutToPersist,
+      layout: null,
     };
 
     try {
@@ -1245,30 +1245,19 @@ export default function TemplateBuilder() {
         }
       });
 
+      // Reset category filter to "all" so newly saved template is visible
+      setSelectedSavedCategory("all");
+
       if (orgId) {
         try {
-          const refreshed = await fetchSavedTemplates(orgId);
-          const idToFind = normalized?.id || data?.id;
-          const found = Array.isArray(refreshed)
-            ? refreshed.find((t) => String(t.id) === String(idToFind))
-            : null;
-          if (found) {
-            setAppMode("saved");
-            await openSavedTemplate(found);
-            return;
-          }
+          await fetchSavedTemplates(orgId);
         } catch (e) {
-          console.warn("Opening saved template after refresh failed", e);
+          console.warn("Failed to refresh saved templates after save", e);
         }
       }
 
+      // Switch to saved view to show the newly saved template in the list
       setAppMode("saved");
-      try {
-        await openSavedTemplate(normalized);
-      } catch (e) {
-        console.warn("openSavedTemplate failed for newly saved template", e);
-        if (orgId) fetchSavedTemplates(orgId);
-      }
     } catch (err) {
       console.error("save failed", err);
       showError("Save failed: " + (err.message || "error"));
@@ -1345,10 +1334,10 @@ export default function TemplateBuilder() {
   function openSavePrompt() {
     const stamp = new Date().toLocaleString();
     setSaveName(`Template ${stamp}`);
-    if (mode === "scratch") {
+    if (mode === "scratch" || mode === "basic") {
       const r = getActiveEditorRef();
-      if (r && r.current && r.current.saveTemplate) {
-        const data = r.current.saveTemplate();
+      if (r && r.current && r.current.getData) {
+        const data = r.current.getData();
         setCurrentPayload(data);
       } else {
         showError("Editor not ready. Please try again.");
@@ -1680,16 +1669,23 @@ export default function TemplateBuilder() {
       } catch (err) {
         console.error("getData/getHtml failed", err);
         showError("Failed to read data from editor.");
-      } finally {
         setSaveModalOpen(false);
+        return;
       }
     }
 
-    if (!data) return;
+    if (!data) {
+      setSaveModalOpen(false);
+      return;
+    }
+
     data.meta = { ...(data.meta || {}), name: saveName };
 
-    handleCustomSave(data);
-    setSaveModalOpen(false);
+    try {
+      await handleCustomSave(data);
+    } finally {
+      setSaveModalOpen(false);
+    }
   }
 
   function onHeaderLoad(e) {

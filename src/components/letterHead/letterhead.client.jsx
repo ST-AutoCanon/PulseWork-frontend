@@ -341,7 +341,29 @@ setEditingId(null);
       setSaving(false);
     }
   };
+const isCanvasSliceEmpty = (canvas) => {
+  const ctx = canvas.getContext("2d");
+  const { width, height } = canvas;
 
+  try {
+    const imageData = ctx.getImageData(0, 0, width, height).data;
+
+    for (let i = 0; i < imageData.length; i += 4) {
+      const r = imageData[i];
+      const g = imageData[i + 1];
+      const b = imageData[i + 2];
+
+      // if pixel is NOT white → content exists
+      if (!(r > 240 && g > 240 && b > 240)) {
+        return false;
+      }
+    }
+
+    return true; // fully empty
+  } catch (e) {
+    return false; // fail safe → don't skip
+  }
+};
 const generatePDF = async (download = false, savedLetter = null) => {
 
   setGenerating(true);
@@ -349,27 +371,23 @@ const generatePDF = async (download = false, savedLetter = null) => {
   try {
 
     let contentHtml =
-  savedLetter
-    ? savedLetter.body
-    : livePreviewHtml;
+      savedLetter
+        ? savedLetter.body
+        : livePreviewHtml;
 
     if (!contentHtml) {
       showAlert("No content available");
       return;
     }
 
-
     const pdfStyles = `
 <style>
-
-/* ONLY affect OUTER tables */
 .pdf-outer-wrapper > table {
   width: 100% !important;
   border-collapse: collapse !important;
   table-layout: fixed !important;
 }
 
-/* OUTER table cells only */
 .pdf-outer-wrapper > table > thead > tr > th,
 .pdf-outer-wrapper > table > tbody > tr > td {
   border: 1px solid #2b2b2b !important;
@@ -378,187 +396,195 @@ const generatePDF = async (download = false, savedLetter = null) => {
   vertical-align: top !important;
 }
 
-/* Prevent breaking */
 .pdf-outer-wrapper {
   page-break-inside: auto !important;
   break-inside: auto !important;
 }
 
-/* KEEP INNER TABLES SAFE */
 .pdf-outer-wrapper table table {
   border: none !important;
   table-layout: auto !important;
   width: auto !important;
 }
-
 </style>
 `;
 
     const tempDiv = document.createElement("div");
 
     tempDiv.innerHTML =
-  pdfStyles +
-  `<div class="pdf-outer-wrapper">
-      ${contentHtml}
-   </div>`;
+      pdfStyles +
+      `<div class="pdf-outer-wrapper">
+        ${contentHtml}
+      </div>`;
 
     tempDiv.style.width = "794px";
     tempDiv.style.padding = "40px";
     tempDiv.style.boxSizing = "border-box";
     tempDiv.style.fontFamily = "Arial";
-    tempDiv.style.fontSize = "14px";
+    tempDiv.style.fontSize = "12px";
     tempDiv.style.lineHeight = "1.6";
-
-    tempDiv.style.whiteSpace = "normal";
-    tempDiv.style.wordWrap = "break-word";
-    tempDiv.style.overflowWrap = "break-word";
-    tempDiv.style.wordBreak = "break-word";
-
-    tempDiv.style.pageBreakInside = "avoid";
-    tempDiv.style.breakInside = "avoid";
-
     tempDiv.style.position = "absolute";
     tempDiv.style.left = "-9999px";
-
     tempDiv.style.background = "#ffffff";
 
     document.body.appendChild(tempDiv);
 
     await new Promise(r => setTimeout(r, 400));
 
+    // Annexure detection
+    const annexureElement = tempDiv.querySelector(".annexure-break");
+    let annexureOffsetPx = annexureElement ? annexureElement.offsetTop : null;
 
-    // ✅ Detect Annexure Start Position
-    const annexureElement =
-      tempDiv.querySelector(".annexure-break");
+    const fullCanvas = await html2canvas(tempDiv, {
+      scale: 2,
+      useCORS: true,
+      backgroundColor: "#ffffff"
+    });
 
-    let annexureOffsetPx = null;
-
-    if (annexureElement) {
-
-      annexureOffsetPx =
-        annexureElement.offsetTop;
-
-    }
-
-
-    const fullCanvas =
-      await html2canvas(tempDiv, {
-        scale: 2,
-        useCORS: true,
-        backgroundColor: "#ffffff"
-      });
-
-
-    // Convert DOM px → canvas px
-    if (annexureOffsetPx) {
-
-      annexureOffsetPx =
-        annexureOffsetPx * 2;
-
-    }
+    if (annexureOffsetPx) annexureOffsetPx *= 2;
 
     document.body.removeChild(tempDiv);
 
+    const pdf = new jsPDF("p", "mm", "a4");
 
-    const pdf =
-      new jsPDF("p", "mm", "a4");
-
-    const pageWidth =
-      pdf.internal.pageSize.getWidth();
-
-    const pageHeight =
-      pdf.internal.pageSize.getHeight();
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    const pageHeight = pdf.internal.pageSize.getHeight();
 
     const headerHeight = 45;
     const footerHeight = 60;
 
-    const usableHeight =
-      pageHeight - headerHeight - footerHeight;
+    const usableHeight = pageHeight - headerHeight - footerHeight;
 
-    const imgWidth =
-      pageWidth - 20;
+    const imgWidth = pageWidth - 20;
 
     const pageCanvasHeight =
-      usableHeight *
-      (fullCanvas.width / imgWidth);
-
+      usableHeight * (fullCanvas.width / imgWidth);
 
     let renderedHeight = 0;
     let pageNumber = 0;
 
+    // ✅ Safe break finder
+    const findSafeBreakPoint = (canvas, startY, maxHeight) => {
+      try {
+        const ctx = canvas.getContext("2d");
+        if (!ctx) return maxHeight;
 
+        const width = canvas.width;
+
+        for (let y = startY + maxHeight; y > startY; y -= 10) {
+          if (y <= 0 || y >= canvas.height) continue;
+
+          const imageData = ctx.getImageData(0, y, width, 5).data;
+
+          let isWhite = true;
+
+          for (let i = 0; i < imageData.length; i += 4) {
+            const r = imageData[i];
+            const g = imageData[i + 1];
+            const b = imageData[i + 2];
+
+            if (!(r > 240 && g > 240 && b > 240)) {
+              isWhite = false;
+              break;
+            }
+          }
+
+          if (isWhite) return y - startY;
+        }
+
+        return maxHeight;
+
+      } catch {
+        return maxHeight;
+      }
+    };
+
+    // ✅ Empty slice checker
+    const isCanvasSliceEmpty = (canvas) => {
+      try {
+        const ctx = canvas.getContext("2d");
+        if (!ctx) return false;
+
+        const data = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+
+        for (let i = 0; i < data.length; i += 4) {
+          if (!(data[i] > 240 && data[i+1] > 240 && data[i+2] > 240)) {
+            return false;
+          }
+        }
+        return true;
+      } catch {
+        return false;
+      }
+    };
+
+    // 🔥 MAIN LOOP
     while (renderedHeight < fullCanvas.height) {
 
-      if (pageNumber > 0)
-        pdf.addPage();
-
-      await drawHeader(
-        pdf,
-        extractedOrgId || 1
+      let maxSliceHeight = Math.min(
+        pageCanvasHeight,
+        fullCanvas.height - renderedHeight
       );
 
+      let sliceHeight = findSafeBreakPoint(
+        fullCanvas,
+        renderedHeight,
+        maxSliceHeight
+      );
 
-      const pageCanvas =
-        document.createElement("canvas");
+      if (!sliceHeight || sliceHeight < 50) {
+        sliceHeight = maxSliceHeight;
+      }
 
-      const context =
-        pageCanvas.getContext("2d");
-
-      pageCanvas.width =
-        fullCanvas.width;
-
-
-      let sliceHeight =
-        Math.min(
-          pageCanvasHeight,
-          fullCanvas.height - renderedHeight
-        );
-
-
-      // 🔥 Force Annexure to Start on New Page
+      // Annexure page break
       if (
         annexureOffsetPx !== null &&
         renderedHeight < annexureOffsetPx &&
         renderedHeight + sliceHeight > annexureOffsetPx
       ) {
-
-        sliceHeight =
-          annexureOffsetPx - renderedHeight;
-
-        if (sliceHeight <= 0) {
-
-          sliceHeight =
-            pageCanvasHeight;
-
-        }
-
+        sliceHeight = annexureOffsetPx - renderedHeight;
       }
 
+      if (renderedHeight + sliceHeight > fullCanvas.height) {
+        sliceHeight = fullCanvas.height - renderedHeight;
+      }
 
-      pageCanvas.height =
-        sliceHeight;
+      // Create slice
+      const pageCanvas = document.createElement("canvas");
+      const context = pageCanvas.getContext("2d");
 
+      pageCanvas.width = fullCanvas.width;
+      pageCanvas.height = sliceHeight;
 
       context.drawImage(
         fullCanvas,
         0,
         renderedHeight,
         fullCanvas.width,
-        pageCanvas.height,
+        sliceHeight,
         0,
         0,
         fullCanvas.width,
-        pageCanvas.height
+        sliceHeight
       );
 
+      // 🚨 SKIP EMPTY PAGE
+      if (isCanvasSliceEmpty(pageCanvas)) {
+        renderedHeight += sliceHeight;
+        continue;
+      }
 
-      const imgData =
-        pageCanvas.toDataURL("image/png");
+      // ✅ Add page only if needed
+      if (pageNumber > 0) {
+        pdf.addPage();
+      }
+
+      await drawHeader(pdf, extractedOrgId || 1);
+
+      const imgData = pageCanvas.toDataURL("image/png");
 
       const imgHeight =
-        (pageCanvas.height * imgWidth) /
-        pageCanvas.width;
-
+        (sliceHeight * imgWidth) / fullCanvas.width;
 
       pdf.addImage(
         imgData,
@@ -569,30 +595,17 @@ const generatePDF = async (download = false, savedLetter = null) => {
         imgHeight
       );
 
-
-      await drawWatermark(
-        pdf,
-        extractedOrgId || 1
-      );
-
+      await drawWatermark(pdf, extractedOrgId || 1);
 
       renderedHeight += sliceHeight;
-
       pageNumber++;
-
     }
 
-
-    const totalPages =
-      pdf.getNumberOfPages();
-
+    const totalPages = pdf.getNumberOfPages();
 
     for (let i = 1; i <= totalPages; i++) {
-
       pdf.setPage(i);
-
       pdf.setFont("helvetica", "normal");
-
       pdf.setFontSize(10);
 
       await drawFooter(
@@ -601,52 +614,26 @@ const generatePDF = async (download = false, savedLetter = null) => {
         i,
         totalPages
       );
-
     }
-
 
     const filename =
       savedLetter
         ? `${savedLetter.template_name || 'letter'}.pdf`
         : `${letterName || "letter"}.pdf`;
 
-
     if (download) {
-
       pdf.save(filename);
-
-    }
-    else {
-
-      const blob =
-        pdf.output("blob");
-
-      window.open(
-        URL.createObjectURL(blob),
-        "_blank"
-      );
-
+    } else {
+      const blob = pdf.output("blob");
+      window.open(URL.createObjectURL(blob), "_blank");
     }
 
-  }
-  catch (error) {
-
-    console.error(
-      "PDF Error:",
-      error
-    );
-
-    showAlert(
-      "PDF generation failed"
-    );
-
-  }
-  finally {
-
+  } catch (error) {
+    console.error("PDF Error:", error);
+    showAlert("PDF generation failed");
+  } finally {
     setGenerating(false);
-
   }
-
 };
 
   const placeholderFields = useMemo(() => {

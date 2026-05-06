@@ -35,6 +35,12 @@ function formatDateOnly(value) {
   });
 }
 
+function formatSelectedDates(value) {
+  const dates = parseSelectedDates(value);
+  if (!dates.length) return "-";
+  return dates.map((d) => formatDateOnly(d)).join(", ");
+}
+
 function normalizeText(value) {
   return String(value || "")
     .trim()
@@ -68,6 +74,84 @@ function isSuccessfulResponse(res) {
   );
 }
 
+function getRowId(row) {
+  return row?.id || row?.leave_id || row?.request_id || null;
+}
+
+function getApiErrorMessage(err, fallback = "Something went wrong.") {
+  const data = err?.response?.data;
+
+  if (typeof data === "string" && data.trim()) return data;
+  if (data?.message) return data.message;
+  if (data?.error) return data.error;
+  if (Array.isArray(data?.errors) && data.errors.length > 0) {
+    const first = data.errors[0];
+    if (typeof first === "string") return first;
+    if (first?.message) return first.message;
+  }
+
+  return err?.message || fallback;
+}
+
+function normalizeRowForUi(row) {
+  const selectedDates = parseSelectedDates(
+    row?.selected_dates ?? row?.selectedDates ?? row?.selected_dates_json,
+  );
+
+  return {
+    ...row,
+    selectedDates,
+    selected_dates: selectedDates,
+    selected_dates_json: JSON.stringify(selectedDates || []),
+  };
+}
+
+function mergeRowsWithOverrides(rows, overrides) {
+  return (rows || []).map((row) => {
+    const rowId = getRowId(row);
+    const override = rowId != null ? overrides[String(rowId)] : null;
+    return normalizeRowForUi({
+      ...row,
+      ...(override || {}),
+    });
+  });
+}
+
+function buildCreatePayload(payload) {
+  return {
+    regularisationType: payload.regularisationType,
+    regularisation_type: payload.regularisationType,
+    selectedDates: payload.selectedDates,
+    selected_dates: payload.selectedDates,
+    selected_dates_json: JSON.stringify(payload.selectedDates || []),
+    comment: payload.comment,
+    primaryDate: payload.primaryDate || payload.selectedDates?.[0] || null,
+    primary_date: payload.primaryDate || payload.selectedDates?.[0] || null,
+    status: "Pending",
+  };
+}
+
+function buildUpdatePayload(payload, row) {
+  const rowStatus = String(row?.status || "Pending").trim() || "Pending";
+
+  return {
+    id: getRowId(row),
+    status: rowStatus,
+    regularisationType: payload.regularisationType,
+    regularisation_type: payload.regularisationType,
+    selectedDates: payload.selectedDates,
+    selected_dates: payload.selectedDates,
+    selected_dates_json: JSON.stringify(payload.selectedDates || []),
+    comment: payload.comment,
+    primaryDate: payload.primaryDate || payload.selectedDates?.[0] || null,
+    primary_date: payload.primaryDate || payload.selectedDates?.[0] || null,
+    employeeId: row?.employee_id || row?.employeeId || undefined,
+    employee_id: row?.employee_id || row?.employeeId || undefined,
+    orgId: row?.org_id || row?.orgId || undefined,
+    org_id: row?.org_id || row?.orgId || undefined,
+  };
+}
+
 export default function AttendanceRegularisation() {
   const { user } = useAuth();
 
@@ -93,13 +177,16 @@ export default function AttendanceRegularisation() {
   const approverName = getApproverName(user);
 
   const isAdmin = role === "admin";
-  const canShowTabs =
-    role === "hr" || role === "manager" || role === "supervisor";
+  const isHr = role === "hr";
+  const isManagerOrSupervisor = role === "manager" || role === "supervisor";
+  const canShowTabs = isHr || isManagerOrSupervisor;
 
   const [viewMode, setViewMode] = useState(isAdmin ? "all" : "self");
   const [selfRequests, setSelfRequests] = useState([]);
   const [teamRequests, setTeamRequests] = useState([]);
   const [allRequests, setAllRequests] = useState([]);
+
+  const [rowOverrides, setRowOverrides] = useState({});
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -146,15 +233,6 @@ export default function AttendanceRegularisation() {
     [BACKEND_URL],
   );
 
-  const updateCandidates = useMemo(
-    () => [
-      (id) => `${BACKEND_URL}/api/leave-regularisation/${id}`,
-      (id) => `${BACKEND_URL}/api/leave-regularisation/update/${id}`,
-      (id) => `${BACKEND_URL}/api/leave-regularisation/${id}/status`,
-    ],
-    [BACKEND_URL],
-  );
-
   const createEndpoint = `${BACKEND_URL}/api/leave-regularisation/submit`;
 
   const closeAlert = () =>
@@ -166,6 +244,11 @@ export default function AttendanceRegularisation() {
       title,
       message,
     });
+  };
+
+  const closeModal = () => {
+    setModalOpen(false);
+    setEditingRow(null);
   };
 
   const fetchWithFallback = async (urls, config = {}) => {
@@ -222,6 +305,40 @@ export default function AttendanceRegularisation() {
     return Array.isArray(rows) ? rows : [];
   };
 
+  const refreshRowsForUiAfterEdit = (rowId, payload, row) => {
+    const key = String(rowId);
+
+    const nextOverride = normalizeRowForUi({
+      ...(row || {}),
+      id: rowId,
+      status: row?.status || "Pending",
+      regularisationType: payload.regularisationType,
+      regularisation_type: payload.regularisationType,
+      selectedDates: payload.selectedDates,
+      selected_dates: payload.selectedDates,
+      selected_dates_json: JSON.stringify(payload.selectedDates || []),
+      comment: payload.comment,
+      primaryDate: payload.primaryDate || payload.selectedDates?.[0] || null,
+      primary_date: payload.primaryDate || payload.selectedDates?.[0] || null,
+    });
+
+    setRowOverrides((prev) => ({
+      ...prev,
+      [key]: nextOverride,
+    }));
+  };
+
+  const refreshRowsForUiAfterCreate = (createdRow) => {
+    const rowId = getRowId(createdRow);
+    if (!rowId) return;
+
+    const key = String(rowId);
+    setRowOverrides((prev) => ({
+      ...prev,
+      [key]: normalizeRowForUi(createdRow),
+    }));
+  };
+
   const fetchRequests = async () => {
     try {
       setLoading(true);
@@ -229,11 +346,23 @@ export default function AttendanceRegularisation() {
 
       if (isAdmin) {
         await fetchAllRequests();
-      } else if (canShowTabs) {
-        await Promise.all([fetchSelfRequests(), fetchTeamRequests()]);
-      } else {
-        await fetchSelfRequests();
+        return;
       }
+
+      if (canShowTabs) {
+        if (viewMode === "team") {
+          if (isHr) {
+            await fetchAllRequests();
+          } else {
+            await fetchTeamRequests();
+          }
+        } else {
+          await fetchSelfRequests();
+        }
+        return;
+      }
+
+      await fetchSelfRequests();
     } catch (err) {
       console.error("fetchRequests error:", err);
       setError(
@@ -248,13 +377,48 @@ export default function AttendanceRegularisation() {
   useEffect(() => {
     fetchRequests();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [employeeId, orgId]);
+  }, [employeeId, orgId, viewMode, role]);
+
+  const selfRequestsUi = useMemo(
+    () => mergeRowsWithOverrides(selfRequests, rowOverrides),
+    [selfRequests, rowOverrides],
+  );
+
+  const teamRequestsUi = useMemo(() => {
+    const merged = mergeRowsWithOverrides(teamRequests, rowOverrides);
+    if (isManagerOrSupervisor) {
+      return merged.filter((row) => {
+        const rowEmployeeId =
+          row?.employee_id ?? row?.employeeId ?? row?.employeeID ?? "";
+        return String(rowEmployeeId) !== String(employeeId || "");
+      });
+    }
+    return merged;
+  }, [teamRequests, rowOverrides, isManagerOrSupervisor, employeeId]);
+
+  const allRequestsUi = useMemo(
+    () => mergeRowsWithOverrides(allRequests, rowOverrides),
+    [allRequests, rowOverrides],
+  );
 
   const activeRows = useMemo(() => {
-    if (isAdmin) return allRequests;
-    if (canShowTabs && viewMode === "team") return teamRequests;
-    return selfRequests;
-  }, [isAdmin, canShowTabs, viewMode, allRequests, teamRequests, selfRequests]);
+    if (isAdmin) return allRequestsUi;
+
+    if (canShowTabs && viewMode === "team") {
+      if (isHr) return allRequestsUi;
+      return teamRequestsUi;
+    }
+
+    return selfRequestsUi;
+  }, [
+    isAdmin,
+    canShowTabs,
+    viewMode,
+    isHr,
+    allRequestsUi,
+    teamRequestsUi,
+    selfRequestsUi,
+  ]);
 
   const filteredRows = useMemo(() => {
     const s = normalizeText(search);
@@ -271,7 +435,7 @@ export default function AttendanceRegularisation() {
       if (fromDate && rowDate && rowDate < fromDate) return false;
       if (toDate && rowDate && rowDate > toDate) return false;
 
-      if (s) {
+      if (s && (isAdmin || (canShowTabs && viewMode === "team"))) {
         const empName = normalizeText(
           r.employee_name || r.employeeName || r.full_name || r.name || "",
         );
@@ -285,7 +449,16 @@ export default function AttendanceRegularisation() {
 
       return true;
     });
-  }, [activeRows, statusFilter, fromDate, toDate, search]);
+  }, [
+    activeRows,
+    statusFilter,
+    fromDate,
+    toDate,
+    search,
+    isAdmin,
+    canShowTabs,
+    viewMode,
+  ]);
 
   const handleOpenCreate = () => {
     setEditingRow(null);
@@ -312,12 +485,7 @@ export default function AttendanceRegularisation() {
       setModalLoading(true);
       setError("");
 
-      const body = {
-        regularisationType: payload.regularisationType,
-        selectedDates: payload.selectedDates,
-        comment: payload.comment,
-        primaryDate: payload.primaryDate || payload.selectedDates?.[0] || null,
-      };
+      const body = buildCreatePayload(payload);
 
       const res = await axios.post(createEndpoint, body, {
         headers,
@@ -325,20 +493,23 @@ export default function AttendanceRegularisation() {
       });
 
       if (isSuccessfulResponse(res)) {
-        setModalOpen(false);
-        setEditingRow(null);
+        const createdRow = res.data?.data || res.data || null;
+        if (createdRow) refreshRowsForUiAfterCreate(createdRow);
+
+        closeModal();
         showAlert(
           res.data?.message || "Regularisation request submitted successfully.",
           "Success",
         );
         await fetchRequests();
       } else {
-        setError(res.data?.message || "Submission failed.");
-        showAlert(res.data?.message || "Submission failed.", "Error");
+        const msg = res.data?.message || "Submission failed.";
+        setError(msg);
+        showAlert(msg, "Error");
       }
     } catch (err) {
       console.error("Submit error:", err);
-      const msg = err.response?.data?.message || "Submission failed.";
+      const msg = getApiErrorMessage(err, "Submission failed.");
       setError(msg);
       showAlert(msg, "Error");
     } finally {
@@ -346,9 +517,81 @@ export default function AttendanceRegularisation() {
     }
   };
 
+  const handleSubmitEdit = async (row, payload) => {
+    try {
+      const rowId = getRowId(row);
+      if (!rowId) {
+        setError("Missing request id.");
+        return;
+      }
+
+      setModalLoading(true);
+      setError("");
+
+      const body = buildUpdatePayload(payload, row);
+
+      const updateUrl = `${BACKEND_URL}/api/leave-regularisation/${rowId}`;
+      const res = await axios.put(updateUrl, body, {
+        headers,
+        withCredentials: true,
+      });
+
+      if (isSuccessfulResponse(res)) {
+        refreshRowsForUiAfterEdit(rowId, payload, row);
+
+        setDrafts((prev) => {
+          const next = { ...prev };
+          delete next[rowId];
+          return next;
+        });
+
+        closeModal();
+        showAlert(
+          res.data?.message || "Regularisation request updated successfully.",
+          "Success",
+        );
+        await fetchRequests();
+        return;
+      }
+
+      const msg = res.data?.message || "Update failed.";
+      setError(msg);
+      showAlert(msg, "Error");
+    } catch (err) {
+      console.error("Edit submit error:", err);
+      const msg = getApiErrorMessage(
+        err,
+        "Failed to update regularisation request.",
+      );
+      setError(msg);
+      showAlert(msg, "Error");
+    } finally {
+      setModalLoading(false);
+    }
+  };
+
+  const handleModalSubmit = async (payload) => {
+    if (editingRow) {
+      await handleSubmitEdit(editingRow, payload);
+      return;
+    }
+
+    await handleSubmitCreate(payload);
+  };
+
+  const modalInitialDates = useMemo(() => {
+    if (!editingRow) return [];
+    return parseSelectedDates(editingRow.selected_dates);
+  }, [editingRow]);
+
+  const modalInitialReason = editingRow?.regularisation_type || "";
+  const modalInitialComment = editingRow?.comment || "";
+  const modalDefaultDate =
+    editingRow?.primary_date || modalInitialDates?.[0] || null;
+
   const handleUpdateRow = async (row) => {
     try {
-      const rowId = row?.id || row?.leave_id || row?.request_id || null;
+      const rowId = getRowId(row);
       if (!rowId) {
         setError("Missing request id.");
         return;
@@ -375,45 +618,36 @@ export default function AttendanceRegularisation() {
         approver_employee_id: employeeId || "",
       };
 
-      let lastErr = null;
+      const updateUrl = `${BACKEND_URL}/api/leave-regularisation/${rowId}`;
+      const res = await axios.put(updateUrl, body, {
+        headers,
+        withCredentials: true,
+      });
 
-      for (const makeUrl of updateCandidates) {
-        try {
-          const res = await axios.put(makeUrl(rowId), body, {
-            headers,
-            withCredentials: true,
-          });
+      if (isSuccessfulResponse(res)) {
+        setDrafts((prev) => {
+          const next = { ...prev };
+          delete next[rowId];
+          return next;
+        });
 
-          if (isSuccessfulResponse(res)) {
-            setDrafts((prev) => {
-              const next = { ...prev };
-              delete next[rowId];
-              return next;
-            });
-
-            showAlert(
-              res.data?.message ||
-                "Regularisation request updated successfully.",
-              "Success",
-            );
-            await fetchRequests();
-            return;
-          }
-
-          lastErr = new Error(res.data?.message || "Update failed.");
-        } catch (err) {
-          lastErr = err;
-          if (err?.response?.status === 404) continue;
-        }
+        showAlert(
+          res.data?.message || "Regularisation request updated successfully.",
+          "Success",
+        );
+        await fetchRequests();
+        return;
       }
 
-      throw lastErr || new Error("Update endpoint not available.");
+      const msg = res.data?.message || "Update failed.";
+      setError(msg);
+      showAlert(msg, "Error");
     } catch (err) {
       console.error("Update error:", err);
-      const msg =
-        err.response?.data?.message ||
-        err.message ||
-        "Failed to update regularisation request.";
+      const msg = getApiErrorMessage(
+        err,
+        "Failed to update regularisation request.",
+      );
       setError(msg);
       showAlert(msg, "Error");
     } finally {
@@ -421,15 +655,55 @@ export default function AttendanceRegularisation() {
     }
   };
 
-  const modalInitialDates = useMemo(() => {
-    if (!editingRow) return [];
-    return parseSelectedDates(editingRow.selected_dates);
-  }, [editingRow]);
+  const renderFilters = ({ showSearch = false } = {}) => (
+    <div className="ar-filter-row">
+      <select
+        className="ar-input"
+        value={statusFilter}
+        onChange={(e) => setStatusFilter(e.target.value)}
+      >
+        <option value="Pending">Pending</option>
+        <option value="">All Status</option>
+        <option value="Approved">Approved</option>
+        <option value="Rejected">Rejected</option>
+      </select>
 
-  const modalInitialReason = editingRow?.regularisation_type || "";
-  const modalInitialComment = editingRow?.comment || "";
-  const modalDefaultDate =
-    editingRow?.primary_date || modalInitialDates?.[0] || null;
+      <input
+        className="ar-input"
+        type="date"
+        value={fromDate}
+        onChange={(e) => setFromDate(e.target.value)}
+      />
+
+      <input
+        className="ar-input"
+        type="date"
+        value={toDate}
+        onChange={(e) => setToDate(e.target.value)}
+      />
+
+      {showSearch ? (
+        <>
+          <input
+            className="ar-search-input"
+            type="text"
+            placeholder="Search employee name, ID, reason, comments..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+
+          <button
+            type="button"
+            className="ar-search-btn"
+            onClick={fetchRequests}
+            disabled={loading}
+          >
+            <MdSearch /> Search
+          </button>
+        </>
+      ) : null}
+    </div>
+  );
 
   const renderSelfFlow = () => (
     <section className="ar-self-card">
@@ -452,6 +726,8 @@ export default function AttendanceRegularisation() {
           </button>
         </div>
       ) : null}
+
+      {renderFilters({ showSearch: false })}
 
       {error ? <div className="ar-error">{error}</div> : null}
 
@@ -477,17 +753,21 @@ export default function AttendanceRegularisation() {
               <tbody>
                 {filteredRows.map((row, idx) => {
                   const selectedDates = parseSelectedDates(row.selected_dates);
-                  const rowDate =
-                    selectedDates[0] || row.primary_date || row.created_at;
+                  const datesText = formatSelectedDates(selectedDates);
+                  const approverText = row.approver_comments || "-";
 
                   return (
                     <tr key={row.id || idx}>
                       <td>{idx + 1}</td>
                       <td>{row.regularisation_type || "-"}</td>
-                      <td>{formatDateOnly(rowDate)}</td>
+                      <td className="ar-tooltip-cell" title={datesText}>
+                        {datesText}
+                      </td>
                       <td>{row.status || "Pending"}</td>
                       <td>{row.comment || "-"}</td>
-                      <td>{row.approver_comments || "-"}</td>
+                      <td className="ar-tooltip-cell" title={approverText}>
+                        {approverText}
+                      </td>
                       <td>
                         <button
                           type="button"
@@ -511,55 +791,15 @@ export default function AttendanceRegularisation() {
 
   const renderTeamOrAdminTable = () => (
     <>
-      <div className="ar-filter-row">
-        <select
-          className="ar-input"
-          value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
-        >
-          <option value="Pending">Pending</option>
-          <option value="">All Status</option>
-          <option value="Approved">Approved</option>
-          <option value="Rejected">Rejected</option>
-        </select>
-
-        <input
-          className="ar-input"
-          type="date"
-          value={fromDate}
-          onChange={(e) => setFromDate(e.target.value)}
-        />
-
-        <input
-          className="ar-input"
-          type="date"
-          value={toDate}
-          onChange={(e) => setToDate(e.target.value)}
-        />
-
-        <input
-          className="ar-search-input"
-          type="text"
-          placeholder="Search employee name, ID, reason, comments..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
-
-        <button
-          type="button"
-          className="ar-search-btn"
-          onClick={fetchRequests}
-          disabled={loading}
-        >
-          <MdSearch /> Search
-        </button>
-      </div>
+      {renderFilters({ showSearch: true })}
 
       <div className="ar-table-card">
         <h3 className="ar-table-title">
           {isAdmin
             ? "All Employees Attendance Regularisation"
-            : "Team Attendance Regularisation"}
+            : isHr && viewMode === "team"
+              ? "All Employees Attendance Regularisation"
+              : "Team Attendance Regularisation"}
         </h3>
 
         {filteredRows.length === 0 ? (
@@ -584,6 +824,7 @@ export default function AttendanceRegularisation() {
               <tbody>
                 {filteredRows.map((row, idx) => {
                   const selectedDates = parseSelectedDates(row.selected_dates);
+                  const datesText = formatSelectedDates(selectedDates);
                   const draft = drafts[row.id] || {};
                   const empName =
                     row.employee_name ||
@@ -591,13 +832,14 @@ export default function AttendanceRegularisation() {
                     row.full_name ||
                     row.name ||
                     "-";
-                  const rowDate =
-                    selectedDates[0] || row.primary_date || row.created_at;
 
                   const currentStatus = draft.status || row.status || "Pending";
                   const currentComment = draft.comment ?? row.comment ?? "";
                   const currentApproverComments =
                     draft.approver_comments ?? row.approver_comments ?? "";
+                  const statusLocked =
+                    (isAdmin || isManagerOrSupervisor) &&
+                    String(row.status || "").toLowerCase() !== "pending";
 
                   return (
                     <tr key={row.id || idx}>
@@ -605,7 +847,9 @@ export default function AttendanceRegularisation() {
                       <td>{empName}</td>
                       <td>{row.employee_id || "-"}</td>
                       <td>{row.regularisation_type || "-"}</td>
-                      <td>{formatDateOnly(rowDate)}</td>
+                      <td className="ar-tooltip-cell" title={datesText}>
+                        {datesText}
+                      </td>
                       <td>
                         <select
                           className="ar-status-select"
@@ -616,6 +860,12 @@ export default function AttendanceRegularisation() {
                               "status",
                               e.target.value,
                             )
+                          }
+                          disabled={statusLocked}
+                          title={
+                            statusLocked
+                              ? "Status locked after update"
+                              : "Change status"
                           }
                         >
                           <option value="Pending">Pending</option>
@@ -640,9 +890,12 @@ export default function AttendanceRegularisation() {
                         />
                       </td>
                       <td>{approverName}</td>
-                      <td>
+                      <td
+                        className="ar-tooltip-cell"
+                        title={currentApproverComments || "-"}
+                      >
                         <input
-                          className="ar-table-input"
+                          className="ar-table-input ar-approver-input"
                           type="text"
                           value={currentApproverComments}
                           onChange={(e) =>
@@ -712,28 +965,7 @@ export default function AttendanceRegularisation() {
           </div>
 
           {viewMode === "self" ? (
-            <>
-              {renderSelfFlow()}
-              <LeaveRegularisationModal
-                isOpen={modalOpen}
-                onClose={() => {
-                  setModalOpen(false);
-                  setEditingRow(null);
-                }}
-                onSubmit={handleSubmitCreate}
-                loading={modalLoading}
-                title={
-                  editingRow
-                    ? "Edit Attendance Regularisation"
-                    : "Attendance Regularisation"
-                }
-                subtitle="Select a reason, choose eligible date(s), add your comment, and submit."
-                initialReason={modalInitialReason}
-                initialDates={modalInitialDates}
-                initialComment={modalInitialComment}
-                defaultDate={modalDefaultDate}
-              />
-            </>
+            renderSelfFlow()
           ) : (
             <>
               <div className="ar-header">
@@ -748,51 +980,28 @@ export default function AttendanceRegularisation() {
               {renderTeamOrAdminTable()}
             </>
           )}
-
-          <LeaveRegularisationModal
-            isOpen={modalOpen}
-            onClose={() => {
-              setModalOpen(false);
-              setEditingRow(null);
-            }}
-            onSubmit={handleSubmitCreate}
-            loading={modalLoading}
-            title={
-              editingRow
-                ? "Edit Attendance Regularisation"
-                : "Attendance Regularisation"
-            }
-            subtitle="Select a reason, choose eligible date(s), add your comment, and submit."
-            initialReason={modalInitialReason}
-            initialDates={modalInitialDates}
-            initialComment={modalInitialComment}
-            defaultDate={modalDefaultDate}
-          />
         </>
       ) : (
-        <>
-          {renderSelfFlow()}
-          <LeaveRegularisationModal
-            isOpen={modalOpen}
-            onClose={() => {
-              setModalOpen(false);
-              setEditingRow(null);
-            }}
-            onSubmit={handleSubmitCreate}
-            loading={modalLoading}
-            title={
-              editingRow
-                ? "Edit Attendance Regularisation"
-                : "Attendance Regularisation"
-            }
-            subtitle="Select a reason, choose eligible date(s), add your comment, and submit."
-            initialReason={modalInitialReason}
-            initialDates={modalInitialDates}
-            initialComment={modalInitialComment}
-            defaultDate={modalDefaultDate}
-          />
-        </>
+        renderSelfFlow()
       )}
+
+      <LeaveRegularisationModal
+        isOpen={modalOpen}
+        onClose={closeModal}
+        onSubmit={handleModalSubmit}
+        loading={modalLoading}
+        title={
+          editingRow
+            ? "Edit Attendance Regularisation"
+            : "Attendance Regularisation"
+        }
+        subtitle="Select a reason, choose eligible date(s), add your comment, and submit."
+        initialReason={modalInitialReason}
+        initialDates={modalInitialDates}
+        initialComment={modalInitialComment}
+        defaultDate={modalDefaultDate}
+        submitLabel={editingRow ? "Update Request" : "Submit Request"}
+      />
 
       <Modal
         isVisible={alertModal.isVisible}

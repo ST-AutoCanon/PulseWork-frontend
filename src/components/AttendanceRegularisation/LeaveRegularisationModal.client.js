@@ -99,6 +99,7 @@ export default function LeaveRegularisationModal({
     null;
 
   const todayKey = useMemo(() => toDateKey(new Date()), []);
+
   const [weekStart, setWeekStart] = useState(() =>
     startOfWeekMonday(defaultDate ? new Date(defaultDate) : new Date()),
   );
@@ -113,6 +114,7 @@ export default function LeaveRegularisationModal({
 
   useEffect(() => {
     if (!isOpen) return;
+
     const baseDate = defaultDate ? new Date(defaultDate) : new Date();
     setWeekStart(startOfWeekMonday(baseDate));
     setSelectedReason(initialReason || "");
@@ -126,6 +128,7 @@ export default function LeaveRegularisationModal({
     const onKeyDown = (e) => {
       if (e.key === "Escape" && isOpen) onClose?.();
     };
+
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [isOpen, onClose]);
@@ -317,7 +320,9 @@ export default function LeaveRegularisationModal({
               {REASONS.map((item) => (
                 <label
                   key={item.value}
-                  className={`lr-radio-card ${selectedReason === item.value ? "active" : ""}`}
+                  className={`lr-radio-card ${
+                    selectedReason === item.value ? "active" : ""
+                  }`}
                 >
                   <input
                     type="radio"
@@ -425,7 +430,7 @@ export default function LeaveRegularisationModal({
                 <label className="lr-section-label">Selected Option</label>
                 <div className="lr-summary-value">{selectedReasonLabel}</div>
 
-                <label className="lr-section-label" style={{ marginTop: 10 }}>
+                <label className="lr-section-label lr-top-space">
                   Selected Dates
                 </label>
                 <div className="lr-selected-dates">

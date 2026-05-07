@@ -36,6 +36,7 @@ export default function A4Preview({
   onFooterChange = null,
   initialHeaderProps = null,
   initialFooterProps = null,
+  bodyHtml = null,
 }) {
   const resolvedHeaderProp = headerUrl ?? previewHeaderUrl ?? null;
   const resolvedFooterProp = footerUrl ?? previewFooterUrl ?? null;
@@ -751,6 +752,13 @@ export default function A4Preview({
   const resolvedFooter = resolveImgSrc(resolvedFooterProp);
   const resolvedWatermark = resolveImgSrc(resolvedWatermarkProp);
 
+  const htmlOnlyPreview =
+    Boolean(bodyHtml) &&
+    !resolvedHeader &&
+    !resolvedFooter &&
+    !resolvedWatermark &&
+    (!Array.isArray(bodyBoxes) || bodyBoxes.length === 0);
+
   const headerPct = Number(String(headerHeightPct).replace("%", "")) || 15;
   const footerPct = Number(String(footerHeightPct).replace("%", "")) || 10;
   const bodyPct = Math.max(2, 100 - headerPct - footerPct);
@@ -846,20 +854,37 @@ export default function A4Preview({
   }, [localWatermark, w, h, editable]);
 
   return (
-    <div className={styles.previewArea}>
+    <div className={styles.previewArea} style={{ overflow: "hidden" }}>
       <div
         id="a4-preview"
         className={styles.a4}
-        style={{ width: w + "px", height: h + "px" }}
+        style={{ width: w + "px", height: h + "px", overflow: "hidden" }}
         ref={previewRef}
       >
         <div
           className={styles.paperInner}
           style={{
+            position: "relative",
             background: pageStyle?.background || "transparent",
             gridTemplateRows,
           }}
         >
+          {htmlOnlyPreview && (
+            <div
+              style={{
+                position: "absolute",
+                inset: 0,
+                width: "100%",
+                height: "100%",
+                overflow: "hidden",
+                pointerEvents: "none",
+                userSelect: "none",
+                zIndex: 0,
+              }}
+              dangerouslySetInnerHTML={{ __html: bodyHtml }}
+            />
+          )}
+
           <div
             className={styles.headerSlot}
             ref={headerSlotRef}
@@ -1004,6 +1029,20 @@ export default function A4Preview({
                   </>
                 )}
               </div>
+            )}
+
+            {!htmlOnlyPreview && bodyHtml && (
+              <div
+                style={{
+                  position: "relative",
+                  width: "100%",
+                  height: "100%",
+                  overflow: "hidden",
+                  pointerEvents: "none",
+                  userSelect: "none",
+                }}
+                dangerouslySetInnerHTML={{ __html: bodyHtml }}
+              />
             )}
 
             {Array.isArray(bodyBoxes) &&

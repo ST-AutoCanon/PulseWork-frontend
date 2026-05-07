@@ -30,23 +30,36 @@ export default function SidebarPanel(props) {
   } = props;
 
   function Thumb({ t }) {
-    if (!t) return <div className={styles.placeholderIcon}>T</div>;
-
-    if (t.thumbnail) {
-      if (t.origin === "saved") {
-        return (
-          <ProtectedImg
-            src={t.thumbnail}
-            apiKey={process.env.NEXT_PUBLIC_API_KEY}
-            alt={t.name}
-            className={styles.thumbImg}
-          />
-        );
-      }
-      return <img src={t.thumbnail} alt={t.name} className={styles.thumbImg} />;
+    if (!t) {
+      return (
+        <div className={styles.thumb}>
+          <div className={styles.placeholderIcon}>T</div>
+        </div>
+      );
     }
 
-    return <div className={styles.placeholderIcon}>T</div>;
+    if (t.thumbnail) {
+      return (
+        <div className={styles.thumb}>
+          {t.origin === "saved" ? (
+            <ProtectedImg
+              src={t.thumbnail}
+              apiKey={process.env.NEXT_PUBLIC_API_KEY}
+              alt={t.name}
+              className={styles.thumbImg}
+            />
+          ) : (
+            <img src={t.thumbnail} alt={t.name} className={styles.thumbImg} />
+          )}
+        </div>
+      );
+    }
+
+    return (
+      <div className={styles.thumb}>
+        <div className={styles.placeholderIcon}>T</div>
+      </div>
+    );
   }
 
   return (
@@ -132,20 +145,91 @@ export default function SidebarPanel(props) {
         <div className={styles.templatesWrap}>
           <h4 className={styles.sectionTitle}>Saved templates</h4>
 
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search saved templates..."
+            className={styles.search}
+          />
+
+          <div className={styles.chips}>
+            {SAVED_CATEGORIES.map((category) => (
+              <button
+                key={category.key}
+                type="button"
+                className={`${styles.chip} ${
+                  selectedSavedCategory === category.key
+                    ? styles.chipActive
+                    : ""
+                }`}
+                onClick={() => setSelectedSavedCategory(category.key)}
+              >
+                {category.label}
+              </button>
+            ))}
+          </div>
+
+          {loading && <div className={styles.loading}>Loading…</div>}
+          {!loading && filteredSaved.length === 0 && (
+            <div className={styles.empty}>No saved templates found.</div>
+          )}
+
           <div className={styles.grid}>
             {filteredSaved.map((t) => (
               <div key={t.id} className={styles.card}>
-                <div onClick={() => extra.openSavedTemplate?.(t)}>
+                <button
+                  type="button"
+                  className={styles.cardBody}
+                  onClick={() => extra.openSavedTemplate?.(t)}
+                >
                   <Thumb t={t} />
-                  <div>{t.name}</div>
-                </div>
+                  <div className={styles.meta}>
+                    <div className={styles.title}>{t.name}</div>
+                    {(t.category || t.origin) && (
+                      <div className={styles.subtitle}>
+                        {String(t.category || t.origin)}
+                      </div>
+                    )}
+                  </div>
+                </button>
 
-                <div style={{ display: "flex", gap: 6 }}>
-                  <button onClick={() => extra.editSavedTemplate?.(t)}>
-                    Edit
+                <div className={styles.cardActions}>
+                  <button
+                    type="button"
+                    className={styles.iconBtn}
+                    title={`Edit ${t.name}`}
+                    aria-label={`Edit ${t.name}`}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      extra.editSavedTemplate?.(t);
+                    }}
+                  >
+                    <svg viewBox="0 0 20 20" fill="none" width="16" height="16">
+                      <path
+                        d="M4 14.5V17h2.5l7.54-7.54-2.5-2.5L4 14.5Zm11.04-7.04a1.12 1.12 0 0 0 0-1.58l-1.92-1.92a1.12 1.12 0 0 0-1.58 0l-1.4 1.4 3.5 3.5 1.4-1.4Z"
+                        fill="currentColor"
+                      />
+                    </svg>
                   </button>
-                  <button onClick={() => extra.deleteSavedTemplate?.(t)}>
-                    Delete
+                  <button
+                    type="button"
+                    className={styles.iconBtn}
+                    title={`Delete ${t.name}`}
+                    aria-label={`Delete ${t.name}`}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      extra.deleteSavedTemplate?.(t);
+                    }}
+                  >
+                    <svg viewBox="0 0 20 20" fill="none" width="16" height="16">
+                      <path
+                        d="M6 7h8m-7 0v8a1 1 0 0 0 1 1h4a1 1 0 0 0 1-1V7m-6 0V5a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v2"
+                        stroke="currentColor"
+                        strokeWidth="1.5"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
                   </button>
                 </div>
               </div>

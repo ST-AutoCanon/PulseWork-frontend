@@ -66,7 +66,7 @@
 }
 
 .search {
-  width: 100%;
+  width: 90%;
   padding: 8px 10px;
   margin-bottom: 10px;
   border-radius: 10px;
@@ -119,7 +119,6 @@
 }
 
 .card {
-  width: 100%;
   display: flex;
   gap: 10px;
   align-items: center;
@@ -128,7 +127,7 @@
   border-radius: 10px;
   border: 1px solid #e6e9eb;
   background: linear-gradient(180deg, #fff, #fbfdff);
-  cursor: pointer;
+  cursor: default;
   text-align: left;
 }
 
@@ -137,8 +136,26 @@
   box-shadow: 0 12px 30px rgba(2, 6, 23, 0.06);
 }
 
+.cardBody {
+  display: flex;
+  flex: 1;
+  gap: 10px;
+  align-items: center;
+  padding: 0;
+  border: none;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+
+.cardBody:hover {
+  opacity: 0.95;
+}
+
 .thumb {
   width: 55px;
+  height: 45px;
+  min-height: 45px;
   border-radius: 8px;
   background: #ffffff;
   display: flex;
@@ -149,10 +166,16 @@
   flex-shrink: 0;
 }
 
+.thumbImg {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
 .thumb img {
   width: 100%;
-  height: auto;
-  object-fit: contain;
+  height: 100%;
+  object-fit: cover;
 }
 
 .placeholderIcon {
@@ -384,6 +407,30 @@
   display: flex;
   gap: 8px;
   align-items: center;
+}
+.iconBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border: 1px solid #e6e9eb;
+  border-radius: 8px;
+  background: white;
+  color: #0f6679;
+  cursor: pointer;
+  transition:
+    background 120ms ease,
+    transform 120ms ease,
+    border-color 120ms ease;
+}
+.iconBtn:hover {
+  background: #eff6ff;
+  border-color: #b9d8ff;
+}
+.iconBtn:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.18);
 }
 .smallBtn {
   padding: 6px 8px;

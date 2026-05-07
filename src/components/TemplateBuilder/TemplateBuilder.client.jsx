@@ -308,6 +308,7 @@ export default function TemplateBuilder() {
   const [watermarkFile, setWatermarkFile] = useState(null);
   const [savedModalVisible, setSavedModalVisible] = useState(false);
   const [saveModalOpen, setSaveModalOpen] = useState(false);
+  const [showA4Preview, setShowA4Preview] = useState(false);
   const [saveName, setSaveName] = useState("");
   const [headerHeight, setHeaderHeight] = useState(0);
   const [footerHeight, setFooterHeight] = useState(0);
@@ -421,7 +422,9 @@ export default function TemplateBuilder() {
     if (parsedOrg) fetchSavedTemplates(parsedOrg);
   }, [orgId]);
 
-  function handlePreviewA4() {}
+  function handlePreviewA4() {
+    setShowA4Preview(true);
+  }
 
   useEffect(() => {
     if (!watermarkFile) {
@@ -829,6 +832,7 @@ export default function TemplateBuilder() {
             hPct: "60%",
             opacity: 0.12,
           },
+        html: normalized.html || null,
       });
 
       setAppMode("view");
@@ -1009,13 +1013,13 @@ export default function TemplateBuilder() {
         footerBlobUrl = null;
       }
 
-      // ✅ FINAL STATE (CLEAN)
       setViewingTemplate({
         name: template.name,
         headerUrl: headerBlobUrl,
         footerUrl: footerBlobUrl,
         watermarkUrl: watermarkBlobUrl,
         watermarkProps: watermarkPlacementProps,
+        html: template.html || null,
       });
 
       // Set heights for viewing
@@ -1893,6 +1897,7 @@ export default function TemplateBuilder() {
                   width={794}
                   headerHeightPct={headerHeight}
                   footerHeightPct={footerHeight}
+                  bodyHtml={mode === "view" ? viewingTemplate?.html : null}
                   initialHeaderProps={viewingTemplate?.meta?.headerProps}
                   initialFooterProps={viewingTemplate?.meta?.footerProps}
                 />
@@ -2029,6 +2034,49 @@ export default function TemplateBuilder() {
           </p>
         </Modal>
       )}
+
+      <Modal
+        isVisible={showA4Preview}
+        title="A4 Preview"
+        onClose={() => setShowA4Preview(false)}
+        buttons={[
+          {
+            label: "Close",
+            onClick: () => setShowA4Preview(false),
+            className: "ac-modal-btn",
+          },
+        ]}
+        customClass="a4-preview-modal"
+      >
+        <div
+          style={{ width: "100%", display: "flex", justifyContent: "center" }}
+        >
+          <A4Preview
+            headerUrl={
+              mode === "view" ? viewingTemplate?.headerUrl : previewHeaderUrl
+            }
+            footerUrl={
+              mode === "view" ? viewingTemplate?.footerUrl : previewFooterUrl
+            }
+            watermarkUrl={
+              mode === "view"
+                ? viewingTemplate?.watermarkUrl
+                : previewWatermarkUrl
+            }
+            watermarkProps={
+              mode === "view"
+                ? (viewingTemplate?.watermarkProps ?? watermarkProps)
+                : watermarkProps
+            }
+            width={600}
+            pageStyle={{ background: "white" }}
+            headerHeightPct={HEADER_HEIGHT_PCT}
+            footerHeightPct={FOOTER_HEIGHT_PCT}
+            bodyHtml={mode === "view" ? viewingTemplate?.html : null}
+          />
+        </div>
+      </Modal>
+
       <Modal
         isVisible={modalConfig.isVisible}
         title={modalConfig.title}

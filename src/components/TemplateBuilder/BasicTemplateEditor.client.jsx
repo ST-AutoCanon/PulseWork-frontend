@@ -8,7 +8,6 @@ import React, {
   useImperativeHandle,
 } from "react";
 import styles from "./CustomTemplateEditor.module.css";
-import { PRESET_FIELDS } from "./templatePresets";
 
 function ensureDataField(el, prefix = "field") {
   if (!el || !el.setAttribute) return;

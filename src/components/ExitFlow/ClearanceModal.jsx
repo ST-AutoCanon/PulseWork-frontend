@@ -242,13 +242,25 @@ export default function ClearanceModal({
                           </div>
                           <p className="exf-clearance-item-description">{kt.description}</p>
                           {/* Show cleaned dates */}
-                          <p style={{ marginTop: "0.5rem", fontSize: "0.9rem", color: "#4b5563" }}>
-                            {kt.actual_completed_date
-                              ? `Completed: ${cleanDateForInput(kt.actual_completed_date)}`
-                              : kt.planned_date
-                              ? `Planned: ${cleanDateForInput(kt.planned_date)}`
-                              : ""}
-                          </p>
+                         <p style={{ marginTop: "0.5rem", fontSize: "0.9rem", color: "#4b5563" }}>
+  {kt.status === "completed"
+    ? `Completed Date: ${
+        cleanDateForInput(
+          kt.actual_completed_date ||
+          kt.completed_date ||
+          kt.completedDate
+        )
+      }`
+    : kt.planned_date
+    ? `completed Date: ${cleanDateForInput(kt.planned_date)}`
+    : ""}
+</p>
+
+<div style={{ marginTop: "0.3rem" }}>
+  <span className={`exf-status-badge ${getStatusColor(kt.status)}`}>
+    {kt.status?.replace("_", " ").toUpperCase()}
+  </span>
+</div>
                           <div className="exf-approvals mt-3 flex flex-col gap-2 text-sm">
                             <label className="flex items-center gap-2">
                               <input

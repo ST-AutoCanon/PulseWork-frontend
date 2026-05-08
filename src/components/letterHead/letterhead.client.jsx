@@ -380,8 +380,34 @@ const generatePDF = async (download = false, savedLetter = null) => {
       return;
     }
 
-    const pdfStyles = `
+  const pdfStyles = `
 <style>
+
+.pdf-outer-wrapper {
+  width: 100% !important;
+  word-wrap: break-word !important;
+  overflow-wrap: break-word !important;
+  word-break: break-word !important;
+  white-space: normal !important;
+  page-break-inside: auto !important;
+  break-inside: auto !important;
+}
+
+/* Paragraph Fix */
+.pdf-outer-wrapper p,
+.pdf-outer-wrapper span,
+.pdf-outer-wrapper div,
+.pdf-outer-wrapper td,
+.pdf-outer-wrapper th,
+.pdf-outer-wrapper li {
+  word-wrap: break-word !important;
+  overflow-wrap: break-word !important;
+  word-break: break-word !important;
+  white-space: normal !important;
+  max-width: 100% !important;
+}
+
+/* Table Fix */
 .pdf-outer-wrapper > table {
   width: 100% !important;
   border-collapse: collapse !important;
@@ -396,16 +422,12 @@ const generatePDF = async (download = false, savedLetter = null) => {
   vertical-align: top !important;
 }
 
-.pdf-outer-wrapper {
-  page-break-inside: auto !important;
-  break-inside: auto !important;
-}
-
 .pdf-outer-wrapper table table {
   border: none !important;
   table-layout: auto !important;
   width: auto !important;
 }
+
 </style>
 `;
 
@@ -423,6 +445,9 @@ const generatePDF = async (download = false, savedLetter = null) => {
     tempDiv.style.fontFamily = "Arial";
     tempDiv.style.fontSize = "12px";
     tempDiv.style.lineHeight = "1.6";
+    tempDiv.style.wordWrap = "break-word";
+tempDiv.style.overflowWrap = "break-word";
+tempDiv.style.whiteSpace = "normal";
     tempDiv.style.position = "absolute";
     tempDiv.style.left = "-9999px";
     tempDiv.style.background = "#ffffff";
@@ -674,6 +699,13 @@ const generatePDF = async (download = false, savedLetter = null) => {
                 const isDateField = lowerField.includes("date");
                 const isEmailField = lowerField.includes("email") || lowerField.includes("mail");
                 const isTitleField = lowerField.includes("title");
+                
+
+  const isGenderField =
+  lowerField.includes("gender_pronoun");
+
+const isGenderPossessiveField =
+  lowerField.includes("gender_possessive");
 
                 const niceLabel = field
                   .replace(/_/g, ' ')
@@ -683,23 +715,49 @@ const generatePDF = async (download = false, savedLetter = null) => {
                   <div key={field} className="letterhead-form-group">
                     <label>{niceLabel}</label>
                     {isTitleField ? (
-                      <select
-                        value={formData[field] || ''}
-                        onChange={(e) => handleFieldChange(field, e.target.value)}
-                      >
-                        <option value="">Select Title</option>
-                        <option value="Mr">Mr</option>
-                        <option value="Mrs">Mrs</option>
-                        <option value="Ms">Ms</option>
-                      </select>
-                    ) : (
-                      <input
-                        type={isDateField ? "date" : isEmailField ? "email" : "text"}
-                        value={formData[field] || ''}
-                        onChange={(e) => handleFieldChange(field, e.target.value)}
-                        placeholder={`Enter ${niceLabel}`}
-                      />
-                    )}
+
+  <select
+    value={formData[field] || ''}
+    onChange={(e) => handleFieldChange(field, e.target.value)}
+  >
+    <option value="">Select Title</option>
+    <option value="Mr">Mr</option>
+    <option value="Mrs">Mrs</option>
+    <option value="Ms">Ms</option>
+  </select>
+
+) : isGenderField ? (
+
+  <select
+    value={formData[field] || ''}
+    onChange={(e) => handleFieldChange(field, e.target.value)}
+  >
+    <option value="">Select</option>
+    <option value="He">He</option>
+    <option value="She">She</option>
+  </select>
+
+) : isGenderPossessiveField ? (
+
+  <select
+    value={formData[field] || ''}
+    onChange={(e) => handleFieldChange(field, e.target.value)}
+  >
+    <option value="">Select</option>
+    <option value="his">his</option>
+    <option value="her">her</option>
+  </select>
+
+) : (
+
+  <input
+    type={isDateField ? "date" : isEmailField ? "email" : "text"}
+    value={formData[field] || ''}
+    onChange={(e) => handleFieldChange(field, e.target.value)}
+    placeholder={`Enter ${niceLabel}`}
+  />
+
+)}
                     {errors[field] && <span style={{ color: "red", fontSize: "12px" }}>{errors[field]}</span>}
                   </div>
                 );

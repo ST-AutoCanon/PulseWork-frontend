@@ -1,6 +1,3 @@
-/* ========================================================================== 
-   CLEARANCE MODAL FOR EMPLOYEE
-========================================================================== */
 
 /* Clearance Modal Backdrop */
 .exf-clearance-modal-backdrop {
@@ -583,4 +580,27 @@
 .required-star {
   color: #dc2626; /* red */
   margin-left: 2px;
+}
+.exf-status-badge {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+/* Status Colors */
+.exf-status-badge.pending {
+  background-color: #fef3c7;
+  color: #92400e;
+}
+
+.exf-status-badge.in-progress {
+  background-color: #dbeafe;
+  color: #1e40af;
+}
+
+.exf-status-badge.completed {
+  background-color: #dcfce7;
+  color: #166534;
 }

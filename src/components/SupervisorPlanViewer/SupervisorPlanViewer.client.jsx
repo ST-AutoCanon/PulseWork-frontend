@@ -558,15 +558,21 @@ const SupervisorPlanViewer = () => {
       return;
     }
     try {
-      const updateData = {
-        sup_status: task.sup_status || "incomplete",
-        sup_comment: task.sup_comment || "",
-        sup_review_status: effectiveReviewStatus || "pending",
-        replacement_task: task.replacement_task || null,
-        star_rating: task.star_rating || 0,
-        project_id: task.project_id,
-        project_name: task.project_name,
-      };
+     const updateData = {
+  sup_status: task.sup_status || "incomplete",
+  sup_comment: task.sup_comment || "",
+  sup_review_status: effectiveReviewStatus || "pending",
+  replacement_task: task.replacement_task || null,
+  star_rating: task.star_rating || 0,
+
+  project_id: task.project_id,
+  project_name: task.project_name,
+
+  employee_id: task.employee_id,
+  supervisor_id: task.supervisor_id,   // ← ADD THIS
+
+  action_by: supervisorId,
+};
       if (task.sup_status === "re-work") {
         let taskDate = new Date(task.task_date || new Date());
         taskDate.setHours(0, 0, 0, 0);
@@ -595,6 +601,7 @@ const SupervisorPlanViewer = () => {
           sup_review_status: "pending",
           star_rating: 0,
           parent_task_id: task.task_id,
+          action_by: supervisorId,        // ← ADD THIS
         };
         const response = await axios.post(
           `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/weekly_task_supervisor`,

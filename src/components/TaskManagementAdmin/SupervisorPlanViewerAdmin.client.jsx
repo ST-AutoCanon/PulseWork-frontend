@@ -478,6 +478,7 @@ const SupervisorPlanViewerAdmin = () => {
         star_rating: task.star_rating || 0,
         project_id: task.project_id,
         project_name: task.project_name,
+        action_by: supervisorId,           // ← ADD THIS
       };
 
       if (task.sup_status === "re-work") {
@@ -503,6 +504,7 @@ const SupervisorPlanViewerAdmin = () => {
           sup_review_status: "pending",
           star_rating: 0,
           parent_task_id: task.task_id,
+          action_by: supervisorId,         // ← ADD THIS too
         };
 
         const response = await axios.post(
@@ -1217,6 +1219,18 @@ const SupervisorPlanViewerAdmin = () => {
                               </div>
                             </div>
                             <div className="supervisor-plan-admin-task-body">
+                              <div className="supervisor-plan-admin-supervisor">
+  <strong>Supervisor:</strong>{" "}
+  {task.supervisor_name
+    ? `${task.supervisor_name} (${task.supervisor_id})`
+    : "-"}
+</div>
+                              <div className="supervisor-plan-admin-action-by">
+  <strong>Updated By:</strong>{" "}
+  {task.action_by_name
+    ? `${task.action_by_name} (${task.action_by})`
+    : "-"}
+</div>
                               <p>
                                 <strong>Emp-Update:</strong>{" "}
                                 {task.emp_comment || "-"}

@@ -621,3 +621,15 @@
 .supervisor-plan-task-date-regular {
   background: transparent;
 }
+
+.supervisor-plan-admin-action-by {
+  margin-top: 8px;
+  font-size: 13px;
+  color: #555;
+}
+.supervisor-plan-admin-supervisor,
+.supervisor-plan-admin-action-by {
+  margin-top: 6px;
+  font-size: 13px;
+  color: #555;
+}

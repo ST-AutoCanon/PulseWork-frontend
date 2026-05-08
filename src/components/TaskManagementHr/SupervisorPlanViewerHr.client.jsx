@@ -820,6 +820,19 @@ const SupervisorPlanViewerHr = () => {
                             </div>
 
                             <div className="supervisor-plan-hr-review-section">
+                              <p>
+  <strong>Supervisor:</strong>{" "}
+  {task.supervisor_id
+    ? `${task.supervisor_id} - ${task.supervisor_name || "Unknown"}`
+    : "—"}
+</p>
+
+<p>
+  <strong>Action By:</strong>{" "}
+  {task.action_by
+    ? `${task.action_by} - ${task.action_by_name || "Unknown"}`
+    : "—"}
+</p>
                               <div
                                 className="review-status-line"
                                 style={{

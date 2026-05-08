@@ -180,15 +180,23 @@ export default function ClearanceModal({
       setIsSavingAsset(false);
     }
   };
+const getStatusColor = (status) => {
+  switch (status?.toLowerCase()) {
+    case "pending":
+      return "pending";
 
-  const getStatusColor = (status) => {
-    switch (status?.toLowerCase()) {
-      case "pending": return "pending";
-      case "completed": return "completed";
-      case "in-progress": return "in-progress";
-      default: return "pending";
-    }
-  };
+    case "completed":
+      return "completed";
+
+    case "in_progress":
+    case "in-progress":
+      return "in-progress";
+
+    default:
+      return "pending";
+  }
+};
+  
 
   return (
     <>

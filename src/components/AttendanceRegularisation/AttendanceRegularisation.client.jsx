@@ -12,6 +12,14 @@ import LeaveRegularisationModal from "./LeaveRegularisationModal.client";
 import Modal from "../Modal/Modal.client";
 import "./AttendanceRegularisation.css";
 
+const PAGE_SIZE = 10;
+
+const REGULARISATION_TYPE_LABELS = {
+  missed_punch_out: "Missed Punch Out",
+  late_login: "Late Login",
+  missed_apply_leave: "Missed Apply Leave / Missed Punch In",
+};
+
 function parseSelectedDates(value) {
   if (!value) return [];
   if (Array.isArray(value)) return value;
@@ -39,6 +47,21 @@ function formatSelectedDates(value) {
   const dates = parseSelectedDates(value);
   if (!dates.length) return "-";
   return dates.map((d) => formatDateOnly(d)).join(", ");
+}
+
+function formatRegularisationType(value) {
+  if (!value) return "-";
+
+  const key = String(value).trim().toLowerCase();
+  if (REGULARISATION_TYPE_LABELS[key]) {
+    return REGULARISATION_TYPE_LABELS[key];
+  }
+
+  return String(value)
+    .replace(/[_-]+/g, " ")
+    .trim()
+    .replace(/\s+/g, " ")
+    .replace(/\b\w/g, (ch) => ch.toUpperCase());
 }
 
 function normalizeText(value) {
@@ -195,6 +218,12 @@ export default function AttendanceRegularisation() {
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
   const [search, setSearch] = useState("");
+
+  const [pagination, setPagination] = useState({
+    self: 1,
+    team: 1,
+    all: 1,
+  });
 
   const [modalOpen, setModalOpen] = useState(false);
   const [modalLoading, setModalLoading] = useState(false);
@@ -425,8 +454,9 @@ export default function AttendanceRegularisation() {
 
     return (activeRows || []).filter((r) => {
       const rowStatus = String(r.status || "").toLowerCase();
-      if (statusFilter && rowStatus !== statusFilter.toLowerCase())
+      if (statusFilter && rowStatus !== statusFilter.toLowerCase()) {
         return false;
+      }
 
       const selectedDates = parseSelectedDates(r.selected_dates);
       const primary = String(r.primary_date || "").slice(0, 10);
@@ -459,6 +489,93 @@ export default function AttendanceRegularisation() {
     canShowTabs,
     viewMode,
   ]);
+
+  const currentViewKey = useMemo(() => {
+    if (isAdmin) return "all";
+    if (canShowTabs && viewMode === "team") {
+      return isHr ? "all" : "team";
+    }
+    return "self";
+  }, [isAdmin, canShowTabs, viewMode, isHr]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredRows.length / PAGE_SIZE));
+  const currentPage = Math.min(pagination[currentViewKey] || 1, totalPages);
+
+  const paginatedRows = useMemo(() => {
+    const start = (currentPage - 1) * PAGE_SIZE;
+    return filteredRows.slice(start, start + PAGE_SIZE);
+  }, [filteredRows, currentPage]);
+
+  useEffect(() => {
+    setPagination((prev) => {
+      const current = prev[currentViewKey] || 1;
+      if (current === 1) return prev;
+      return {
+        ...prev,
+        [currentViewKey]: 1,
+      };
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [statusFilter, fromDate, toDate, search]);
+
+  useEffect(() => {
+    setPagination((prev) => {
+      const current = prev[currentViewKey] || 1;
+      if (current <= totalPages) return prev;
+
+      return {
+        ...prev,
+        [currentViewKey]: totalPages,
+      };
+    });
+  }, [currentViewKey, totalPages]);
+
+  const goToPage = (page) => {
+    const safe = Math.max(1, Math.min(page, totalPages));
+    setPagination((prev) => ({
+      ...prev,
+      [currentViewKey]: safe,
+    }));
+  };
+
+  const renderPagination = () => {
+    if (filteredRows.length === 0) return null;
+
+    const startItem = (currentPage - 1) * PAGE_SIZE + 1;
+    const endItem = Math.min(currentPage * PAGE_SIZE, filteredRows.length);
+
+    return (
+      <div className="ar-pagination">
+        <div className="ar-pagination-info">
+          Showing {startItem}-{endItem} of {filteredRows.length}
+        </div>
+
+        <div className="ar-pagination-controls">
+          <button
+            type="button"
+            className="ar-page-btn"
+            onClick={() => goToPage(currentPage - 1)}
+            disabled={currentPage === 1}
+          >
+            Prev
+          </button>
+
+          <span className="ar-page-label">
+            Page {currentPage} of {totalPages}
+          </span>
+
+          <button
+            type="button"
+            className="ar-page-btn"
+            onClick={() => goToPage(currentPage + 1)}
+            disabled={currentPage === totalPages}
+          >
+            Next
+          </button>
+        </div>
+      </div>
+    );
+  };
 
   const handleOpenCreate = () => {
     setEditingRow(null);
@@ -737,53 +854,61 @@ export default function AttendanceRegularisation() {
         {filteredRows.length === 0 ? (
           <p className="ar-empty">No requests found.</p>
         ) : (
-          <div className="ar-table-wrap">
-            <table className="ar-table">
-              <thead>
-                <tr>
-                  <th>Sl No</th>
-                  <th>Regularisation Type</th>
-                  <th>Date</th>
-                  <th>Status</th>
-                  <th>Comment</th>
-                  <th>Approver Comments</th>
-                  <th>Action</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredRows.map((row, idx) => {
-                  const selectedDates = parseSelectedDates(row.selected_dates);
-                  const datesText = formatSelectedDates(selectedDates);
-                  const approverText = row.approver_comments || "-";
+          <>
+            <div className="ar-table-wrap">
+              <table className="ar-table">
+                <thead>
+                  <tr>
+                    <th>Sl No</th>
+                    <th>Regularisation Type</th>
+                    <th>Date</th>
+                    <th>Status</th>
+                    <th>Comment</th>
+                    <th>Approver Comments</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {paginatedRows.map((row, idx) => {
+                    const selectedDates = parseSelectedDates(
+                      row.selected_dates,
+                    );
+                    const datesText = formatSelectedDates(selectedDates);
+                    const approverText = row.approver_comments || "-";
 
-                  return (
-                    <tr key={row.id || idx}>
-                      <td>{idx + 1}</td>
-                      <td>{row.regularisation_type || "-"}</td>
-                      <td className="ar-tooltip-cell" title={datesText}>
-                        {datesText}
-                      </td>
-                      <td>{row.status || "Pending"}</td>
-                      <td>{row.comment || "-"}</td>
-                      <td className="ar-tooltip-cell" title={approverText}>
-                        {approverText}
-                      </td>
-                      <td>
-                        <button
-                          type="button"
-                          className="ar-update-btn"
-                          onClick={() => handleEdit(row)}
-                          title="Edit request"
-                        >
-                          <MdOutlineUpdate />
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+                    return (
+                      <tr key={row.id || idx}>
+                        <td>{(currentPage - 1) * PAGE_SIZE + idx + 1}</td>
+                        <td>
+                          {formatRegularisationType(row.regularisation_type)}
+                        </td>
+                        <td className="ar-tooltip-cell" title={datesText}>
+                          {datesText}
+                        </td>
+                        <td>{row.status || "Pending"}</td>
+                        <td>{row.comment || "-"}</td>
+                        <td className="ar-tooltip-cell" title={approverText}>
+                          {approverText}
+                        </td>
+                        <td>
+                          <button
+                            type="button"
+                            className="ar-update-btn"
+                            onClick={() => handleEdit(row)}
+                            title="Edit request"
+                          >
+                            <MdOutlineUpdate />
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            {renderPagination()}
+          </>
         )}
       </div>
     </section>
@@ -805,125 +930,134 @@ export default function AttendanceRegularisation() {
         {filteredRows.length === 0 ? (
           <p className="ar-empty">No requests found.</p>
         ) : (
-          <div className="ar-table-wrap">
-            <table className="ar-table">
-              <thead>
-                <tr>
-                  <th>Sl No</th>
-                  <th>Emp Name</th>
-                  <th>Emp ID</th>
-                  <th>Regularisation Type</th>
-                  <th>Date</th>
-                  <th>Status</th>
-                  <th>Comment</th>
-                  <th>Approver Name</th>
-                  <th>Approver Comments</th>
-                  <th>Update</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredRows.map((row, idx) => {
-                  const selectedDates = parseSelectedDates(row.selected_dates);
-                  const datesText = formatSelectedDates(selectedDates);
-                  const draft = drafts[row.id] || {};
-                  const empName =
-                    row.employee_name ||
-                    row.employeeName ||
-                    row.full_name ||
-                    row.name ||
-                    "-";
+          <>
+            <div className="ar-table-wrap">
+              <table className="ar-table">
+                <thead>
+                  <tr>
+                    <th>Sl No</th>
+                    <th>Emp Name</th>
+                    <th>Emp ID</th>
+                    <th>Regularisation Type</th>
+                    <th>Date</th>
+                    <th>Status</th>
+                    <th>Comment</th>
+                    <th>Approver Name</th>
+                    <th>Approver Comments</th>
+                    <th>Update</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {paginatedRows.map((row, idx) => {
+                    const selectedDates = parseSelectedDates(
+                      row.selected_dates,
+                    );
+                    const datesText = formatSelectedDates(selectedDates);
+                    const draft = drafts[row.id] || {};
+                    const empName =
+                      row.employee_name ||
+                      row.employeeName ||
+                      row.full_name ||
+                      row.name ||
+                      "-";
 
-                  const currentStatus = draft.status || row.status || "Pending";
-                  const currentComment = draft.comment ?? row.comment ?? "";
-                  const currentApproverComments =
-                    draft.approver_comments ?? row.approver_comments ?? "";
-                  const statusLocked =
-                    (isAdmin || isManagerOrSupervisor) &&
-                    String(row.status || "").toLowerCase() !== "pending";
+                    const currentStatus =
+                      draft.status || row.status || "Pending";
+                    const currentComment = draft.comment ?? row.comment ?? "";
+                    const currentApproverComments =
+                      draft.approver_comments ?? row.approver_comments ?? "";
+                    const statusLocked =
+                      (isAdmin || isManagerOrSupervisor) &&
+                      String(row.status || "").toLowerCase() !== "pending";
 
-                  return (
-                    <tr key={row.id || idx}>
-                      <td>{idx + 1}</td>
-                      <td>{empName}</td>
-                      <td>{row.employee_id || "-"}</td>
-                      <td>{row.regularisation_type || "-"}</td>
-                      <td className="ar-tooltip-cell" title={datesText}>
-                        {datesText}
-                      </td>
-                      <td>
-                        <select
-                          className="ar-status-select"
-                          value={currentStatus}
-                          onChange={(e) =>
-                            handleRowDraftChange(
-                              row.id,
-                              "status",
-                              e.target.value,
-                            )
-                          }
-                          disabled={statusLocked}
-                          title={
-                            statusLocked
-                              ? "Status locked after update"
-                              : "Change status"
-                          }
+                    return (
+                      <tr key={row.id || idx}>
+                        <td>{(currentPage - 1) * PAGE_SIZE + idx + 1}</td>
+                        <td>{empName}</td>
+                        <td>{row.employee_id || "-"}</td>
+                        <td>
+                          {formatRegularisationType(row.regularisation_type)}
+                        </td>
+                        <td className="ar-tooltip-cell" title={datesText}>
+                          {datesText}
+                        </td>
+                        <td>
+                          <select
+                            className="ar-status-select"
+                            value={currentStatus}
+                            onChange={(e) =>
+                              handleRowDraftChange(
+                                row.id,
+                                "status",
+                                e.target.value,
+                              )
+                            }
+                            disabled={statusLocked}
+                            title={
+                              statusLocked
+                                ? "Status locked after update"
+                                : "Change status"
+                            }
+                          >
+                            <option value="Pending">Pending</option>
+                            <option value="Approved">Approved</option>
+                            <option value="Rejected">Rejected</option>
+                          </select>
+                        </td>
+                        <td>
+                          <input
+                            className="ar-table-input"
+                            type="text"
+                            value={currentComment}
+                            onChange={(e) =>
+                              handleRowDraftChange(
+                                row.id,
+                                "comment",
+                                e.target.value,
+                              )
+                            }
+                            placeholder="Comment"
+                            disabled
+                          />
+                        </td>
+                        <td>{approverName}</td>
+                        <td
+                          className="ar-tooltip-cell"
+                          title={currentApproverComments || "-"}
                         >
-                          <option value="Pending">Pending</option>
-                          <option value="Approved">Approved</option>
-                          <option value="Rejected">Rejected</option>
-                        </select>
-                      </td>
-                      <td>
-                        <input
-                          className="ar-table-input"
-                          type="text"
-                          value={currentComment}
-                          onChange={(e) =>
-                            handleRowDraftChange(
-                              row.id,
-                              "comment",
-                              e.target.value,
-                            )
-                          }
-                          placeholder="Comment"
-                          disabled
-                        />
-                      </td>
-                      <td>{approverName}</td>
-                      <td
-                        className="ar-tooltip-cell"
-                        title={currentApproverComments || "-"}
-                      >
-                        <input
-                          className="ar-table-input ar-approver-input"
-                          type="text"
-                          value={currentApproverComments}
-                          onChange={(e) =>
-                            handleRowDraftChange(
-                              row.id,
-                              "approver_comments",
-                              e.target.value,
-                            )
-                          }
-                          placeholder="Approver comments"
-                        />
-                      </td>
-                      <td>
-                        <button
-                          type="button"
-                          className="ar-update-btn"
-                          onClick={() => handleUpdateRow(row)}
-                          title="Update status"
-                        >
-                          <MdOutlineUpdate />
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+                          <input
+                            className="ar-table-input ar-approver-input"
+                            type="text"
+                            value={currentApproverComments}
+                            onChange={(e) =>
+                              handleRowDraftChange(
+                                row.id,
+                                "approver_comments",
+                                e.target.value,
+                              )
+                            }
+                            placeholder="Approver comments"
+                          />
+                        </td>
+                        <td>
+                          <button
+                            type="button"
+                            className="ar-update-btn"
+                            onClick={() => handleUpdateRow(row)}
+                            title="Update status"
+                          >
+                            <MdOutlineUpdate />
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            {renderPagination()}
+          </>
         )}
       </div>
     </>

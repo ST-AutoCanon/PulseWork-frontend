@@ -1,5 +1,5 @@
 .ar-page {
-  padding: 10px;
+  padding: 20px;
 }
 
 .ar-header {
@@ -48,7 +48,8 @@
 
 .ar-primary-btn,
 .ar-search-btn,
-.ar-update-btn {
+.ar-update-btn,
+.ar-page-btn {
   border: none;
   border-radius: 12px;
   padding: 10px 14px;
@@ -153,7 +154,6 @@
   font-weight: 700;
 }
 
-/* Keep action buttons centered and stable */
 .ar-table td:last-child,
 .ar-table th:last-child {
   text-align: center;
@@ -188,7 +188,7 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  cursor: help;
+  cursor: default;
 }
 
 /* Self table column sizing */
@@ -278,7 +278,6 @@
   width: 76px;
 }
 
-/* Better wrapping for long text in date/comment cells */
 .ar-table td:nth-child(3),
 .ar-table td:nth-child(5),
 .ar-table td:nth-child(6),
@@ -286,12 +285,54 @@
   line-height: 1.4;
 }
 
-/* Freeze locked status dropdown visually */
 .ar-status-select:disabled {
   background: #f3f4f6;
   color: #6b7280;
   cursor: not-allowed;
   opacity: 1;
+}
+
+/* Pagination */
+.ar-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid #ececec;
+  flex-wrap: wrap;
+}
+
+.ar-pagination-info {
+  color: #475569;
+  font-size: 0.92rem;
+  font-weight: 600;
+}
+
+.ar-pagination-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ar-page-btn {
+  background: #edf2ff;
+  color: #1f4db8;
+  min-width: 80px;
+}
+
+.ar-page-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.ar-page-label {
+  font-size: 0.92rem;
+  color: #334155;
+  font-weight: 700;
+  min-width: 110px;
+  text-align: center;
 }
 
 @media (max-width: 860px) {
@@ -350,5 +391,18 @@
 
   .ar-tooltip-cell {
     max-width: 140px;
+  }
+
+  .ar-pagination {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .ar-pagination-controls {
+    justify-content: space-between;
+  }
+
+  .ar-page-btn {
+    min-width: 72px;
   }
 }

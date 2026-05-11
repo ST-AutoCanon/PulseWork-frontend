@@ -81,7 +81,9 @@ const LetterheadClient = () => {
     "full name": "employee_name",
     "full_name": "employee_name",
     "authorized signatory name": "authorized_signatory_name",
-
+// Designations
+"employee designation": "employee_designation",
+"authority designation": "authority_designation",
     // Letter fields
     "subject purpose": "subject_purpose",
     "details message body": "details_message_body",
@@ -387,10 +389,18 @@ const generatePDF = async (download = false, savedLetter = null) => {
   width: 100% !important;
   word-wrap: break-word !important;
   overflow-wrap: break-word !important;
-  word-break: break-word !important;
+  word-break: keep-all !important;
   white-space: normal !important;
   page-break-inside: auto !important;
   break-inside: auto !important;
+  hyphens: none !important;
+}
+
+/* Missing placeholder styling */
+.letterhead-placeholder-missing,
+.pdf-outer-wrapper .letterhead-placeholder-missing {
+  color: red !important;
+  font-weight: bold !important;
 }
 
 /* Paragraph Fix */
@@ -402,9 +412,10 @@ const generatePDF = async (download = false, savedLetter = null) => {
 .pdf-outer-wrapper li {
   word-wrap: break-word !important;
   overflow-wrap: break-word !important;
-  word-break: break-word !important;
+  word-break: keep-all !important;
   white-space: normal !important;
   max-width: 100% !important;
+  hyphens: none !important;
 }
 
 /* Table Fix */
@@ -439,6 +450,16 @@ const generatePDF = async (download = false, savedLetter = null) => {
         ${contentHtml}
       </div>`;
 
+    const replaceHyphensInText = (node) => {
+      if (node.nodeType === Node.TEXT_NODE) {
+        node.textContent = node.textContent.replace(/-/g, '\u2011');
+      } else {
+        node.childNodes.forEach(replaceHyphensInText);
+      }
+    };
+
+    replaceHyphensInText(tempDiv);
+
     tempDiv.style.width = "794px";
     tempDiv.style.padding = "40px";
     tempDiv.style.boxSizing = "border-box";
@@ -451,6 +472,7 @@ tempDiv.style.whiteSpace = "normal";
     tempDiv.style.position = "absolute";
     tempDiv.style.left = "-9999px";
     tempDiv.style.background = "#ffffff";
+    tempDiv.style.hyphens = "none";
 
     document.body.appendChild(tempDiv);
 
@@ -702,10 +724,11 @@ tempDiv.style.whiteSpace = "normal";
                 
 
   const isGenderField =
-  lowerField.includes("gender_pronoun");
-
+  lowerField === "gender_pronoun";
+const isGenderPronounLowerField =
+  lowerField === "gender_pronoun_lower";
 const isGenderPossessiveField =
-  lowerField.includes("gender_possessive");
+  lowerField === "gender_possessive";
 
                 const niceLabel = field
                   .replace(/_/g, ' ')
@@ -735,6 +758,17 @@ const isGenderPossessiveField =
     <option value="">Select</option>
     <option value="He">He</option>
     <option value="She">She</option>
+  </select>
+
+) : isGenderPronounLowerField ? (
+
+  <select
+    value={formData[field] || ''}
+    onChange={(e) => handleFieldChange(field, e.target.value)}
+  >
+    <option value="">Select</option>
+    <option value="he">he</option>
+    <option value="she">she</option>
   </select>
 
 ) : isGenderPossessiveField ? (

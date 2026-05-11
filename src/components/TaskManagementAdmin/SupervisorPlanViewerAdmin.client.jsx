@@ -497,6 +497,8 @@ const SupervisorPlanViewerAdmin = () => {
           project_name: task.project_name,
           task_name: newTaskName,
           employee_id: task.employee_id,
+            supervisor_id: supervisorId,
+
           emp_status: "not started",
           sup_status: "incomplete",
           emp_comment: null,

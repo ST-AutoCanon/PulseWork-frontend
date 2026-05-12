@@ -217,8 +217,14 @@ setEditingId(null);
         } catch {}
       }
 
+      const noBreakKeys = ['employee_designation', 'recipient_department'];
+      const placeholderKey = cleanPlaceholder.replace(/\s+/g, '_');
+      if (value && noBreakKeys.includes(placeholderKey)) {
+        value = `${value}`.replace(/\s+/g, '\u00A0');
+      }
+
       return value !== undefined && value !== null && `${value}`.trim() !== ''
-        ? value
+        ? `<span class="letterhead-placeholder-value">${value}</span>`
         : `<span class="letterhead-placeholder-missing">${match}</span>`;
     });
   };
@@ -388,12 +394,18 @@ const generatePDF = async (download = false, savedLetter = null) => {
 .pdf-outer-wrapper {
   width: 100% !important;
   word-wrap: break-word !important;
-  overflow-wrap: break-word !important;
-  word-break: keep-all !important;
+  overflow-wrap: anywhere !important;
+  word-break: normal !important;
   white-space: normal !important;
   page-break-inside: auto !important;
   break-inside: auto !important;
   hyphens: none !important;
+}
+.pdf-outer-wrapper span.letterhead-placeholder-value {
+  display: inline !important;
+  white-space: normal !important;
+  word-break: normal !important;
+  overflow-wrap: anywhere !important;
 }
 
 /* Missing placeholder styling */
@@ -411,22 +423,24 @@ const generatePDF = async (download = false, savedLetter = null) => {
 .pdf-outer-wrapper th,
 .pdf-outer-wrapper li {
   word-wrap: break-word !important;
-  overflow-wrap: break-word !important;
-  word-break: keep-all !important;
+  overflow-wrap: anywhere !important;
+  word-break: normal !important;
   white-space: normal !important;
   max-width: 100% !important;
   hyphens: none !important;
 }
 
 /* Table Fix */
-.pdf-outer-wrapper > table {
+.pdf-outer-wrapper table {
   width: 100% !important;
   border-collapse: collapse !important;
+  border-spacing: 0 !important;
   table-layout: fixed !important;
+  border: 1px solid #2b2b2b !important;
 }
 
-.pdf-outer-wrapper > table > thead > tr > th,
-.pdf-outer-wrapper > table > tbody > tr > td {
+.pdf-outer-wrapper th,
+.pdf-outer-wrapper td {
   border: 1px solid #2b2b2b !important;
   padding: 5px !important;
   text-align: left !important;
@@ -467,14 +481,29 @@ const generatePDF = async (download = false, savedLetter = null) => {
     tempDiv.style.fontSize = "12px";
     tempDiv.style.lineHeight = "1.6";
     tempDiv.style.wordWrap = "break-word";
-tempDiv.style.overflowWrap = "break-word";
-tempDiv.style.whiteSpace = "normal";
+    tempDiv.style.overflowWrap = "anywhere";
+    tempDiv.style.whiteSpace = "normal";
     tempDiv.style.position = "absolute";
     tempDiv.style.left = "-9999px";
     tempDiv.style.background = "#ffffff";
     tempDiv.style.hyphens = "none";
 
     document.body.appendChild(tempDiv);
+
+    const pdfTables = tempDiv.querySelectorAll("table");
+    pdfTables.forEach(table => {
+      table.style.borderCollapse = "collapse";
+      table.style.borderSpacing = "0";
+      table.style.border = "1px solid #2b2b2b";
+      table.style.width = "100%";
+      const cells = table.querySelectorAll("th, td");
+      cells.forEach(cell => {
+        cell.style.border = "1px solid #2b2b2b";
+        cell.style.padding = "5px";
+        cell.style.textAlign = "left";
+        cell.style.verticalAlign = "top";
+      });
+    });
 
     await new Promise(r => setTimeout(r, 400));
 
@@ -731,8 +760,16 @@ const isGenderPossessiveField =
   lowerField === "gender_possessive";
 
                 const niceLabel = field
-                  .replace(/_/g, ' ')
-                  .replace(/\b\w/g, l => l.toUpperCase());
+  .replace(/_/g, ' ')
+  .replace(/\bctc\b/gi, 'CTC')
+  .replace(/\bhra\b/gi, 'HRA')
+  .replace(/\bpf\b/gi, 'PF')
+  .replace(/\besi\b/gi, 'ESI')
+  .replace(/\bpt\b/gi, 'PT')
+  .replace(/\bgstin\b/gi, 'GSTIN')
+  .replace(/\bcin\b/gi, 'CIN')
+  .replace(/\bid\b/gi, 'ID')
+  .replace(/\b\w/g, l => l.toUpperCase());
 
                 return (
                   <div key={field} className="letterhead-form-group">

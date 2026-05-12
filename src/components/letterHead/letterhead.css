@@ -465,7 +465,13 @@
   color: #1f2937;
   white-space: pre-wrap;
   word-wrap: break-word;
-  overflow-wrap: break-word;
+  overflow-wrap: anywhere;
+}
+.letterhead-live-preview-box span.letterhead-placeholder-value {
+  display: inline;
+  white-space: normal;
+  word-break: normal;
+  overflow-wrap: anywhere;
 }
 
 .letterhead-live-preview-box table {
@@ -513,8 +519,8 @@
 .letterhead-live-preview-box div {
   white-space: normal;
   word-wrap: break-word;
-  overflow-wrap: break-word;
-  word-break: break-word;
+  overflow-wrap: anywhere;
+  word-break: normal;
 }
 
 .annexure-break {

@@ -12,6 +12,12 @@
   box-sizing: border-box;
 }
 
+.lr-day.frozen {
+  opacity: 0.45;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
 .lr-modal {
   width: min(860px, 100%);
   max-height: calc(100vh - 48px);
@@ -497,3 +503,4 @@
     font-size: 12px;
   }
 }
+

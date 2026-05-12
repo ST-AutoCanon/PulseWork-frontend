@@ -66,6 +66,48 @@ function addDays(date, days) {
   return d;
 }
 
+function normalizeDateList(value) {
+  if (!value) return [];
+
+  if (Array.isArray(value)) {
+    return value.map((v) => String(v).slice(0, 10)).filter(Boolean);
+  }
+
+  if (typeof value === "string") {
+    try {
+      const parsed = JSON.parse(value);
+      if (Array.isArray(parsed)) {
+        return parsed.map((v) => String(v).slice(0, 10)).filter(Boolean);
+      }
+    } catch {
+      const single = String(value).slice(0, 10);
+      return single ? [single] : [];
+    }
+  }
+
+  return [];
+}
+
+function getRequestDates(request) {
+  return normalizeDateList(
+    request?.selected_dates ??
+      request?.selectedDates ??
+      request?.selected_dates_json,
+  );
+}
+
+function isRejectedStatus(status) {
+  return (
+    String(status || "")
+      .trim()
+      .toLowerCase() === "rejected"
+  );
+}
+
+function getRequestKey(request) {
+  return request?.id || request?.request_id || request?.leave_id || null;
+}
+
 export default function LeaveRegularisationModal({
   isOpen,
   onClose,
@@ -77,6 +119,8 @@ export default function LeaveRegularisationModal({
   initialDates = [],
   initialComment = "",
   defaultDate = null,
+  existingRequests = [],
+  excludeRequestId = null,
 }) {
   const { user } = useAuth();
 
@@ -100,12 +144,37 @@ export default function LeaveRegularisationModal({
 
   const todayKey = useMemo(() => toDateKey(new Date()), []);
 
+  const frozenDates = useMemo(() => {
+    const set = new Set();
+    const excludeKey =
+      excludeRequestId != null ? String(excludeRequestId) : null;
+
+    for (const request of existingRequests || []) {
+      const requestKey = getRequestKey(request);
+      if (
+        excludeKey &&
+        requestKey != null &&
+        String(requestKey) === excludeKey
+      ) {
+        continue;
+      }
+
+      if (isRejectedStatus(request?.status)) continue;
+
+      for (const dateKey of getRequestDates(request)) {
+        set.add(dateKey);
+      }
+    }
+
+    return set;
+  }, [existingRequests, excludeRequestId]);
+
   const [weekStart, setWeekStart] = useState(() =>
     startOfWeekMonday(defaultDate ? new Date(defaultDate) : new Date()),
   );
   const [selectedReason, setSelectedReason] = useState(initialReason);
   const [selectedDates, setSelectedDates] = useState(
-    () => new Set(initialDates || []),
+    () => new Set(normalizeDateList(initialDates)),
   );
   const [eligibleDates, setEligibleDates] = useState(() => new Set());
   const [comment, setComment] = useState(initialComment);
@@ -118,7 +187,7 @@ export default function LeaveRegularisationModal({
     const baseDate = defaultDate ? new Date(defaultDate) : new Date();
     setWeekStart(startOfWeekMonday(baseDate));
     setSelectedReason(initialReason || "");
-    setSelectedDates(new Set(initialDates || []));
+    setSelectedDates(new Set(normalizeDateList(initialDates)));
     setEligibleDates(new Set());
     setComment(initialComment || "");
     setErrors({});
@@ -170,13 +239,15 @@ export default function LeaveRegularisationModal({
           data?.data?.eligibleDates ||
           (Array.isArray(data) ? data : []);
 
-        const nextSet = new Set((dates || []).map((d) => String(d)));
+        const nextSet = new Set(
+          (dates || []).map((d) => String(d).slice(0, 10)),
+        );
         setEligibleDates(nextSet);
 
         setSelectedDates((prev) => {
           const next = new Set();
           for (const d of prev) {
-            if (nextSet.has(d)) next.add(d);
+            if (nextSet.has(d) && !frozenDates.has(d)) next.add(d);
           }
           return next;
         });
@@ -204,6 +275,7 @@ export default function LeaveRegularisationModal({
     orgId,
     BACKEND_URL,
     API_KEY,
+    frozenDates,
   ]);
 
   const weekDays = useMemo(() => {
@@ -214,6 +286,7 @@ export default function LeaveRegularisationModal({
       const date = addDays(weekStart, i);
       const key = toDateKey(date);
       const isFuture = key > todayKey;
+      const isFrozen = frozenDates.has(key);
 
       cells.push({
         key,
@@ -224,7 +297,9 @@ export default function LeaveRegularisationModal({
           isFuture ||
           !selectedReason ||
           fetchingDates ||
-          !eligibleDates.has(key),
+          !eligibleDates.has(key) ||
+          isFrozen,
+        frozen: isFrozen,
         eligible: eligibleDates.has(key),
         selected: selectedDates.has(key),
         isToday: key === todayKey,
@@ -239,12 +314,14 @@ export default function LeaveRegularisationModal({
     fetchingDates,
     eligibleDates,
     selectedDates,
+    frozenDates,
   ]);
 
   const canGoNext = toDateKey(addDays(weekStart, 7)) <= todayKey;
 
   const toggleDate = (dateKey) => {
     if (!eligibleDates.has(dateKey)) return;
+    if (frozenDates.has(dateKey)) return;
 
     setSelectedDates((prev) => {
       const next = new Set(prev);
@@ -395,15 +472,18 @@ export default function LeaveRegularisationModal({
                     "lr-day",
                     cell.selected ? "selected" : "",
                     cell.disabled ? "disabled" : "",
+                    cell.frozen ? "frozen" : "",
                     cell.isToday ? "today" : "",
                     cell.eligible ? "eligible" : "",
                   ].join(" ")}
                   title={
-                    !selectedReason
-                      ? "Select a reason first"
-                      : cell.eligible
-                        ? "Eligible"
-                        : "Not eligible"
+                    cell.frozen
+                      ? "Already used and not rejected"
+                      : !selectedReason
+                        ? "Select a reason first"
+                        : cell.eligible
+                          ? "Eligible"
+                          : "Not eligible"
                   }
                 >
                   <input

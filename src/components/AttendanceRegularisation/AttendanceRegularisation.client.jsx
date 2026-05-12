@@ -175,6 +175,35 @@ function buildUpdatePayload(payload, row) {
   };
 }
 
+function getDisplayApproverName(row, fallbackName = "") {
+  const candidates = [
+    row?.approver_name,
+    row?.approverName,
+    row?.approved_by,
+    row?.approvedBy,
+    row?.approver_employee_name,
+    row?.approverEmployeeName,
+    row?.approver_full_name,
+    row?.approverFullName,
+  ];
+
+  const found = candidates.find(
+    (v) => typeof v === "string" && v.trim() && v.trim() !== "-",
+  );
+
+  if (found) return found;
+
+  const status = String(row?.status || "")
+    .trim()
+    .toLowerCase();
+
+  if (status !== "pending" && fallbackName) {
+    return fallbackName;
+  }
+
+  return "-";
+}
+
 export default function AttendanceRegularisation() {
   const { user } = useAuth();
 
@@ -742,6 +771,22 @@ export default function AttendanceRegularisation() {
       });
 
       if (isSuccessfulResponse(res)) {
+        setRowOverrides((prev) => ({
+          ...prev,
+          [String(rowId)]: normalizeRowForUi({
+            ...(row || {}),
+            id: rowId,
+            status,
+            approver_comments: approverComments,
+            approver_name:
+              row?.approver_name || row?.approverName || approverName || null,
+            approverName:
+              row?.approverName || row?.approver_name || approverName || null,
+            approver_employee_id: employeeId || null,
+            approverEmployeeId: employeeId || null,
+          }),
+        }));
+
         setDrafts((prev) => {
           const next = { ...prev };
           delete next[rowId];
@@ -1020,7 +1065,7 @@ export default function AttendanceRegularisation() {
                             disabled
                           />
                         </td>
-                        <td>{approverName}</td>
+                        <td>{getDisplayApproverName(row, approverName)}</td>
                         <td
                           className="ar-tooltip-cell"
                           title={currentApproverComments || "-"}
@@ -1118,7 +1163,6 @@ export default function AttendanceRegularisation() {
       ) : (
         renderSelfFlow()
       )}
-
       <LeaveRegularisationModal
         isOpen={modalOpen}
         onClose={closeModal}
@@ -1134,7 +1178,8 @@ export default function AttendanceRegularisation() {
         initialDates={modalInitialDates}
         initialComment={modalInitialComment}
         defaultDate={modalDefaultDate}
-        submitLabel={editingRow ? "Update Request" : "Submit Request"}
+        existingRequests={selfRequestsUi}
+        excludeRequestId={editingRow?.id || null}
       />
 
       <Modal

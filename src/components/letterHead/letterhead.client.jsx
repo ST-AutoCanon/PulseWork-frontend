@@ -781,9 +781,9 @@ const isGenderPossessiveField =
     onChange={(e) => handleFieldChange(field, e.target.value)}
   >
     <option value="">Select Title</option>
-    <option value="Mr">Mr</option>
-    <option value="Mrs">Mrs</option>
-    <option value="Ms">Ms</option>
+    <option value="Mr.">Mr.</option>
+    <option value="Mrs.">Mrs.</option>
+    <option value="Ms.">Ms.</option>
   </select>
 
 ) : isGenderField ? (

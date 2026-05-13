@@ -180,7 +180,6 @@ export const SUB_OPTIONS = {
     { key: "created_at", label: "Created At" },
     { key: "updated_at", label: "Updated At" },
   ],
-
   tasks_employee: [
     { key: "week_id", label: "Week ID" },
     { key: "task_date", label: "Task Date" },
@@ -191,6 +190,13 @@ export const SUB_OPTIONS = {
     { key: "replacement_task", label: "Replacement Task" },
     { key: "employee_id", label: "Employee ID" },
     { key: "employee_name", label: "Employee Name" },
+
+    { key: "supervisor_id", label: "Supervisor ID" },
+    { key: "supervisor_name", label: "Supervisor Name" },
+
+    { key: "action_by", label: "Action By ID" },
+    { key: "action_by_name", label: "Action By Name" },
+
     { key: "emp_status", label: "Employee Status" },
     { key: "emp_comment", label: "Employee Comment" },
     { key: "sup_status", label: "Supervisor Status" },

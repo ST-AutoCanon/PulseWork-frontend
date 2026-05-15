@@ -200,14 +200,21 @@ const EmployeeQuery = () => {
     if (!employeeId) return;
     if (!BACKEND_URL) return;
 
-    const socket = io(process.env.NEXT_PUBLIC_BACKEND_URL, {
+    const SOCKET_URL = BACKEND_URL.replace("/api", "");
+
+    const socket = io(SOCKET_URL, {
+      transports: ["websocket", "polling"],
       path: "/api/socket.io",
+
+      query: {
+        userId: employeeId,
+      },
+
       auth: {
-        apiKey: process.env.NEXT_PUBLIC_API_KEY,
+        apiKey: API_KEY,
         userId: employeeId,
         ...(orgId ? { orgId } : {}),
       },
-      query: { userId: employeeId },
     });
 
     socketRef.current = socket;

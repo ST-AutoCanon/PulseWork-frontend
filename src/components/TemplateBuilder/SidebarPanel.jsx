@@ -184,7 +184,9 @@ export default function SidebarPanel(props) {
                 >
                   <Thumb t={t} />
                   <div className={styles.meta}>
-                    <div className={styles.title}>{t.name}</div>
+                    <div className={styles.title} title={t.name}>
+                      {t.name}
+                    </div>
                     {(t.category || t.origin) && (
                       <div className={styles.subtitle}>
                         {String(t.category || t.origin)}
@@ -551,8 +553,10 @@ export default function SidebarPanel(props) {
           onPreviewChange={uploadProps.handlePreviewChange}
           headerFile={uploadProps.headerFile}
           setHeaderFile={uploadProps.setHeaderFile}
+          headerUrlProp={uploadProps.previewHeaderUrl}
           footerFile={uploadProps.footerFile}
           setFooterFile={uploadProps.setFooterFile}
+          footerUrlProp={uploadProps.previewFooterUrl}
         />
       )}
 

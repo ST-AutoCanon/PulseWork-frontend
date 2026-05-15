@@ -103,7 +103,6 @@ export default function EmployeeForm({
     pg_score: "",
     pg_cert: sanitizedInitialData.pg_cert,
     additional_certs: sanitizedInitialData.additional_certs,
-    domain: "",
     employee_type: "",
     joining_date: null,
     role: "",

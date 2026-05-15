@@ -73,15 +73,11 @@ function findPreviousSupervisor(entries = []) {
   };
 }
 
-function formatDate(iso) {
-  if (!iso) return "";
-  return iso.split("T")[0];
-}
-
 export default function StepProfessional({ data, onChange, departments = [] }) {
   const [roleOptions, setRoleOptions] = useState([]);
   const [positionsList, setPositionsList] = useState([]);
   const [supervisorsList, setSupervisorsList] = useState([]);
+  const [subOrgOptions, setSubOrgOptions] = useState([]);
   const [prevSupervisor, setPrevSupervisor] = useState(null);
   const [historyFetched, setHistoryFetched] = useState(false);
 
@@ -92,6 +88,29 @@ export default function StepProfessional({ data, onChange, departments = [] }) {
     user?.organizationId ??
     user?.organization_id ??
     null;
+
+  useEffect(() => {
+    if (!orgId) {
+      setSubOrgOptions([]);
+      return;
+    }
+
+    const url = `${BASE_URL}/sub-orgs`;
+    (async () => {
+      const items = await fetchAndExtract(url, orgId, (j) => j.data || []);
+      setSubOrgOptions(items);
+
+      if (
+        items.length === 1 &&
+        !data.sub_org_id &&
+        !data.sub_org &&
+        !data.subOrgId
+      ) {
+        onChange("sub_org_id", String(items[0].id));
+        onChange("sub_org_name", items[0].name);
+      }
+    })();
+  }, [orgId]);
 
   useEffect(() => {
     if (!data.employee_id) {
@@ -132,7 +151,9 @@ export default function StepProfessional({ data, onChange, departments = [] }) {
       return;
     }
     const deptParam = data.department_id || "";
-    const url = `${BASE_URL}/positions?role=${encodeURIComponent(data.role)}&department_id=${deptParam}`;
+    const url = `${BASE_URL}/positions?role=${encodeURIComponent(
+      data.role,
+    )}&department_id=${deptParam}`;
 
     (async () => {
       const items = await fetchAndExtract(url, orgId, (j) => j.data || []);
@@ -146,7 +167,9 @@ export default function StepProfessional({ data, onChange, departments = [] }) {
       return;
     }
     const deptParam = data.department_id || "";
-    const url = `${BASE_URL}/positions/supervisors?position=${encodeURIComponent(data.position)}&department_id=${deptParam}`;
+    const url = `${BASE_URL}/positions/supervisors?position=${encodeURIComponent(
+      data.position,
+    )}&department_id=${deptParam}`;
 
     (async () => {
       const items = await fetchAndExtract(url, orgId, (j) => j.data || []);
@@ -207,8 +230,42 @@ export default function StepProfessional({ data, onChange, departments = [] }) {
     onChange("total_experience_text", experienceText);
   }, [totalMonths, years, months, onChange]);
 
+  const selectedSubOrgId = String(
+    data.sub_org_id ?? data.sub_org ?? data.subOrgId ?? "",
+  );
+
   return (
     <div className="step-professional">
+      <div className="sub-org-section">
+        <span className="sub-org-label">Sub Org</span>
+        <span className="required">*</span>
+        <div className="sub-org-radio-group">
+          {subOrgOptions.length ? (
+            subOrgOptions.map((item) => {
+              const value = String(item.id);
+              const checked = selectedSubOrgId === value;
+
+              return (
+                <label key={item.id} className="sub-org-radio-item">
+                  <input
+                    type="radio"
+                    name="sub_org_id"
+                    value={value}
+                    checked={checked}
+                    onChange={() => {
+                      onChange("sub_org_id", value);
+                      onChange("sub_org_name", item.name);
+                    }}
+                  />
+                  <span>{item.name}</span>
+                </label>
+              );
+            })
+          ) : (
+            <small>No sub orgs available.</small>
+          )}
+        </div>
+      </div>
       <div className="step-personal">
         <label>
           Employee Type<span className="required">*</span>

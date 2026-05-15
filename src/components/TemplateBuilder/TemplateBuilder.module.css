@@ -146,6 +146,7 @@
   background: transparent;
   text-align: left;
   cursor: pointer;
+  min-width: 0;
 }
 
 .cardBody:hover {
@@ -186,17 +187,24 @@
 .meta {
   display: flex;
   flex-direction: column;
+  min-width: 0;
 }
 
 .title {
   font-size: 13px;
   font-weight: 700;
   color: #0f6679;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .subtitle {
   font-size: 12px;
   color: #6b7280;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .editorPanel {
@@ -407,6 +415,7 @@
   display: flex;
   gap: 8px;
   align-items: center;
+  flex-shrink: 0;
 }
 .iconBtn {
   display: inline-flex;

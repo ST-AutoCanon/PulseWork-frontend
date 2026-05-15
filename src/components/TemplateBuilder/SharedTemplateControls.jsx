@@ -20,9 +20,16 @@ export default function SharedTemplateControls({
   onPreviewChange,
   headerFile,
   setHeaderFile,
+  headerUrlProp,
   footerFile,
   setFooterFile,
+  footerUrlProp,
 }) {
+  console.log("SharedTemplateControls props:", {
+    headerUrlProp,
+    footerUrlProp,
+    watermarkUrlProp,
+  });
   const fileInputRef = externalFileInputRef || useRef(null);
   const fileInputHeaderRef = useRef(null);
   const fileInputFooterRef = useRef(null);
@@ -149,6 +156,10 @@ export default function SharedTemplateControls({
                 Remove
               </button>
             </>
+          ) : headerUrlProp ? (
+            <div style={{ fontSize: 13, color: "#10b981" }}>
+              ✓ Header loaded (click to replace)
+            </div>
           ) : (
             <div style={{ fontSize: 13, color: "#64748b" }}>
               Choose an image for header
@@ -179,6 +190,10 @@ export default function SharedTemplateControls({
                 Remove
               </button>
             </>
+          ) : footerUrlProp ? (
+            <div style={{ fontSize: 13, color: "#10b981" }}>
+              ✓ Footer loaded (click to replace)
+            </div>
           ) : (
             <div style={{ fontSize: 13, color: "#64748b" }}>
               Choose an image for footer

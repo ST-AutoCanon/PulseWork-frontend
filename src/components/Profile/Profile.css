@@ -85,7 +85,9 @@
   font-weight: bold;
   color: var(--teal-light);
   cursor: pointer;
-  transition: background 0.2s, color 0.2s;
+  transition:
+    background 0.2s,
+    color 0.2s;
 }
 .tab-btn.active {
   background: var(--green-light);

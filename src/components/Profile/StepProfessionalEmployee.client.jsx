@@ -24,9 +24,11 @@ export default function StepProfessionalEmployee({
   departments = [],
 }) {
   const { user } = useAuth();
+
   const [roleOptions, setRoleOptions] = useState([]);
   const [positionsList, setPositionsList] = useState([]);
   const [supervisorsList, setSupervisorsList] = useState([]);
+  const [subOrgOptions, setSubOrgOptions] = useState([]);
   const [prevSupervisor, setPrevSupervisor] = useState(null);
   const [historyFetched, setHistoryFetched] = useState(false);
 
@@ -36,11 +38,27 @@ export default function StepProfessionalEmployee({
   const isReadOnly = (name) => READ_ONLY_FIELDS.includes(name);
 
   useEffect(() => {
+    fetch(`${BASE_URL}/sub-orgs`, {
+      credentials: "include",
+      headers: { "x-api-key": API_KEY ?? "" },
+    })
+      .then((res) => res.json())
+      .then((json) => {
+        setSubOrgOptions(json.data || []);
+      })
+      .catch((err) => {
+        console.error("Failed to load sub orgs:", err);
+        setSubOrgOptions([]);
+      });
+  }, [API_KEY, BASE_URL]);
+
+  useEffect(() => {
     if (!data.employee_id) {
       setPrevSupervisor(null);
       setHistoryFetched(false);
       return;
     }
+
     setHistoryFetched(false);
 
     fetch(`${BASE_URL}/supervisor/history/${data.employee_id}`, {
@@ -71,13 +89,18 @@ export default function StepProfessionalEmployee({
         });
 
         let currentIndex = entries.findIndex((e) => e.end_date === null);
+
         if (currentIndex === -1) currentIndex = entries.length - 1;
 
         const currentSupId = entries[currentIndex]?.supervisor_id;
+
         let prev = null;
+
         for (let i = currentIndex - 1; i >= 0; i--) {
           const e = entries[i];
+
           if (!e) continue;
+
           if (!currentSupId || e.supervisor_id !== currentSupId) {
             prev = e;
             break;
@@ -91,6 +114,7 @@ export default function StepProfessionalEmployee({
             end_date: prev.end_date ? prev.end_date.split("T")[0] : null,
           };
         }
+
         setPrevSupervisor(prev);
         setHistoryFetched(true);
       })
@@ -119,10 +143,13 @@ export default function StepProfessionalEmployee({
       setPositionsList([]);
       return;
     }
+
     const deptParam = data.department_id || "";
+
     const url = `${BASE_URL}/positions?role=${encodeURIComponent(
       data.role,
     )}&department_id=${encodeURIComponent(deptParam)}`;
+
     fetch(url, {
       credentials: "include",
       headers: { "x-api-key": API_KEY ?? "" },
@@ -140,10 +167,13 @@ export default function StepProfessionalEmployee({
       setSupervisorsList([]);
       return;
     }
+
     const deptParam = data.department_id || "";
+
     const url = `${BASE_URL}/positions/supervisors?position=${encodeURIComponent(
       data.position,
     )}&department_id=${encodeURIComponent(deptParam)}`;
+
     fetch(url, {
       credentials: "include",
       headers: { "x-api-key": API_KEY ?? "" },
@@ -162,13 +192,16 @@ export default function StepProfessionalEmployee({
     if (exp.start_date && exp.end_date) {
       const start = new Date(exp.start_date);
       const end = new Date(exp.end_date);
+
       if (end > start) {
         const months =
           (end.getFullYear() - start.getFullYear()) * 12 +
           (end.getMonth() - start.getMonth());
+
         return sum + months;
       }
     }
+
     return sum;
   }, 0);
 
@@ -196,7 +229,13 @@ export default function StepProfessionalEmployee({
   const addExperience = () => {
     onChange("experience", [
       ...expList,
-      { company: "", role: "", start_date: "", end_date: "", doc: null },
+      {
+        company: "",
+        role: "",
+        start_date: "",
+        end_date: "",
+        doc: null,
+      },
     ]);
   };
 
@@ -205,8 +244,43 @@ export default function StepProfessionalEmployee({
     onChange("experience", newList);
   };
 
+  const selectedSubOrgId = String(
+    data.sub_org_id ?? data.sub_org ?? data.subOrgId ?? "",
+  );
+
   return (
     <div className="step-professional">
+      <div className="sub-org-section">
+        <span className="sub-org-label">Sub Org</span>
+        <span className="required">*</span>
+
+        <div className="sub-org-radio-group">
+          {subOrgOptions.length ? (
+            subOrgOptions.map((item) => {
+              const value = String(item.id);
+              const checked = selectedSubOrgId === value;
+
+              return (
+                <label key={item.id} className="sub-org-radio-item">
+                  <input
+                    type="radio"
+                    name="sub_org_id"
+                    value={value}
+                    checked={checked}
+                    disabled
+                    readOnly
+                  />
+
+                  <span>{item.name}</span>
+                </label>
+              );
+            })
+          ) : (
+            <small>No sub orgs available.</small>
+          )}
+        </div>
+      </div>
+
       <div className="step-personal">
         <label>
           Employee Type<span className="required">*</span>
@@ -251,6 +325,7 @@ export default function StepProfessionalEmployee({
             disabled={isReadOnly("role")}
           >
             <option value="">Select</option>
+
             {roleOptions.map((r) => (
               <option key={r.id} value={r.name}>
                 {r.name}
@@ -272,6 +347,7 @@ export default function StepProfessionalEmployee({
             disabled={isReadOnly("department_id")}
           >
             <option value="">Select</option>
+
             {departments.map((d) => (
               <option key={d.id} value={d.id}>
                 {d.name}
@@ -292,6 +368,7 @@ export default function StepProfessionalEmployee({
             disabled={isReadOnly("position")}
           >
             <option value="">Select</option>
+
             {positionsList.map((p, idx) => (
               <option key={idx} value={typeof p === "string" ? p : p.name || p}>
                 {typeof p === "string" ? p : p.name || p}
@@ -337,6 +414,7 @@ export default function StepProfessionalEmployee({
             disabled={isReadOnly("supervisor_id")}
           >
             <option value="">Select</option>
+
             {supervisorsList.map((s) => (
               <option key={s.employee_id} value={s.employee_id}>
                 {s.name}-{s.position}({s.department})
@@ -364,6 +442,7 @@ export default function StepProfessionalEmployee({
         <button type="button" className="pj-next-btn" onClick={addExperience}>
           + Add Experience
         </button>
+
         <div className="total-experience" style={{ marginLeft: 12 }}>
           <strong>
             Total Experience:{" "}

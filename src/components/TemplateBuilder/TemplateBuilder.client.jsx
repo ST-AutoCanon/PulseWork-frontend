@@ -77,7 +77,7 @@ function inferCategory(entry) {
 
 const protectedImageCache = new Map();
 
-async function fetchProtectedImage(src, apiKey) {
+async function fetchProtectedImage(src, apiKey, employeeId) {
   if (!src) return null;
   if (src.startsWith("blob:") || src.startsWith("data:")) return src;
 
@@ -88,7 +88,10 @@ async function fetchProtectedImage(src, apiKey) {
     const res = await fetch(src, {
       method: "GET",
       credentials: "include",
-      headers: { "x-api-key": apiKey || "", "x-employee-id": employeeId || "" },
+      headers: {
+        "x-api-key": apiKey || "",
+        "x-employee-id": employeeId || "",
+      },
     });
     if (!res.ok) {
       throw new Error(`Image fetch failed (${res.status})`);
@@ -103,7 +106,12 @@ async function fetchProtectedImage(src, apiKey) {
   }
 }
 
-async function replaceUploadUrlsInHtml(html = "", apiKey, backendBase) {
+async function replaceUploadUrlsInHtml(
+  html = "",
+  apiKey,
+  backendBase,
+  employeeId,
+) {
   if (!html) return html;
   if (!backendBase) {
     console.warn(
@@ -146,6 +154,7 @@ async function resolveTemplateProtectedAssets(
   template = {},
   apiKey,
   backendBase,
+  employeeId,
 ) {
   if (!template) return template;
 
@@ -164,6 +173,8 @@ async function resolveTemplateProtectedAssets(
     "sealUrl",
     "qr_url",
     "seal_url",
+    "header",
+    "footer",
   ];
 
   await Promise.all(
@@ -196,7 +207,12 @@ async function resolveTemplateProtectedAssets(
     typeof t.html === "string" &&
     /\/api\/orgs\/\d+\/uploads\//.test(t.html)
   ) {
-    t.html = await replaceUploadUrlsInHtml(t.html, apiKey, backendBase);
+    t.html = await replaceUploadUrlsInHtml(
+      t.html,
+      apiKey,
+      backendBase,
+      employeeId,
+    );
   }
 
   if (t.grapesJson && typeof t.grapesJson === "object") {
@@ -462,7 +478,7 @@ export default function TemplateBuilder() {
       setPreviewWatermarkUrl(null);
     }
 
-    if (newMode !== "view") {
+    if (newMode !== "view" && newMode !== "saved") {
       setViewingTemplate(null);
     }
 
@@ -618,14 +634,27 @@ export default function TemplateBuilder() {
 
     const resolved =
       template.origin === "saved"
-        ? await resolveTemplateProtectedAssets(template, API_KEY, BACKEND_URL)
+        ? await resolveTemplateProtectedAssets(
+            template,
+            API_KEY,
+            BACKEND_URL,
+            employeeId,
+          )
         : template;
 
     const header =
-      resolved.header_url || resolved.headerUrl || resolved.header || null;
+      resolved.header_url ||
+      resolved.headerUrl ||
+      resolved.grapesJson?.headerUrl ||
+      resolved.header ||
+      null;
 
     const footer =
-      resolved.footer_url || resolved.footerUrl || resolved.footer || null;
+      resolved.footer_url ||
+      resolved.footerUrl ||
+      resolved.grapesJson?.footerUrl ||
+      resolved.footer ||
+      null;
 
     setPreviewHeaderUrl(header || null);
     setPreviewFooterUrl(footer || null);
@@ -755,6 +784,16 @@ export default function TemplateBuilder() {
         resolved.footerUrl,
         resolved.footer,
         resolved._footerBlob,
+        resolved.imageUrl,
+        resolved.cleanedUrl,
+        resolved.thumbnail,
+        entry.footer_url,
+        entry.footerUrl,
+        entry.footer,
+        resolved.grapesJson?.footerUrl,
+        resolved.meta?.uploads?.footer,
+        entry.grapesJson?.footerUrl,
+        entry.meta?.uploads?.footer,
       ];
 
       let headerRaw =
@@ -762,6 +801,8 @@ export default function TemplateBuilder() {
 
       let footerRaw =
         footerCandidates.find((x) => typeof x === "string" && x) || null;
+
+      console.log("headerRaw:", headerRaw, "footerRaw:", footerRaw);
 
       let watermarkUrl = null;
       let watermarkPlacementProps = null;
@@ -800,6 +841,15 @@ export default function TemplateBuilder() {
         ? await ensureBlobUrl(watermarkUrl)
         : null;
 
+      console.log(
+        "headerUrlResolved:",
+        headerUrlResolved,
+        "footerUrlResolved:",
+        footerUrlResolved,
+        "watermarkUrlResolved:",
+        watermarkUrlResolved,
+      );
+
       let finalHeaderUrl = headerUrlResolved;
       let finalFooterUrl = footerUrlResolved;
 
@@ -818,6 +868,12 @@ export default function TemplateBuilder() {
       ) {
         finalFooterUrl = null;
       }
+
+      console.log("Setting viewingTemplate with:", {
+        finalHeaderUrl,
+        finalFooterUrl,
+        watermarkUrlResolved,
+      });
 
       setViewingTemplate({
         name: normalized.name || normalized.meta?.name || "",
@@ -919,6 +975,7 @@ export default function TemplateBuilder() {
           template,
           API_KEY,
           BACKEND_URL,
+          employeeId,
         );
       } catch (e) {
         console.warn(
@@ -932,6 +989,7 @@ export default function TemplateBuilder() {
         resolved.header_url,
         resolved.headerUrl,
         resolved.header,
+        resolved.grapesJson?.headerUrl,
         resolved.meta?.uploads?.header,
         resolved.thumbnail,
       ].filter(Boolean);
@@ -941,20 +999,25 @@ export default function TemplateBuilder() {
         resolved.footer_url,
         resolved.footerUrl,
         resolved.footer,
+        resolved.grapesJson?.footerUrl,
         resolved.meta?.uploads?.footer,
       ].filter(Boolean);
 
       // ✅ WATERMARK
       let watermarkUrl =
-        resolved.meta?.uploads?.watermark || resolved.meta?.watermark || null;
+        resolved.grapesJson?.watermark?.url ||
+        resolved.meta?.uploads?.watermark ||
+        resolved.meta?.watermark ||
+        null;
 
-      let watermarkPlacementProps = resolved.meta?.watermarkPlacement || {
-        xPct: "50%",
-        yPct: "50%",
-        wPct: "60%",
-        hPct: "60%",
-        opacity: 0.12,
-      };
+      let watermarkPlacementProps = resolved.grapesJson?.watermark ||
+        resolved.meta?.watermarkPlacement || {
+          xPct: "50%",
+          yPct: "50%",
+          wPct: "60%",
+          hPct: "60%",
+          opacity: 0.12,
+        };
 
       let rawHeader = headerCandidates[0] || null;
       let rawFooter = footerCandidates[0] || null;
@@ -1260,8 +1323,12 @@ export default function TemplateBuilder() {
         }
       }
 
-      // Switch to saved view to show the newly saved template in the list
-      setAppMode("saved");
+      try {
+        await openSavedTemplate(normalized);
+      } catch (err) {
+        console.warn("Failed to open newly saved template", err);
+        setAppMode("saved");
+      }
     } catch (err) {
       console.error("save failed", err);
       showError("Save failed: " + (err.message || "error"));
@@ -1357,17 +1424,22 @@ export default function TemplateBuilder() {
     if (!entry) return;
     let resolved = null;
 
+    console.log("editSavedTemplate original entry:", entry);
+
     try {
       try {
         resolved = await resolveTemplateProtectedAssets(
           entry,
           API_KEY,
           BACKEND_URL,
+          employeeId,
         );
       } catch (e) {
         console.warn("resolveTemplateProtectedAssets failed", e);
         resolved = entry;
       }
+
+      console.log("editSavedTemplate resolved object:", resolved);
 
       const cat = entry.category || inferCategory(entry);
       const isUpload =
@@ -1380,25 +1452,117 @@ export default function TemplateBuilder() {
             resolved.header_url,
             resolved.headerUrl,
             resolved.header,
+            resolved.grapesJson?.headerUrl,
+            resolved.meta?.uploads?.header,
+            resolved.thumbnail,
             resolved._headerBlob,
             resolved.imageUrl,
             resolved.cleanedUrl,
-            resolved.thumbnail,
-          ];
+            entry.header_url,
+            entry.headerUrl,
+            entry.header,
+            entry.grapesJson?.headerUrl,
+            entry.meta?.uploads?.header,
+          ].filter(Boolean);
+
           const footerCandidates = [
             resolved.footer_url,
             resolved.footerUrl,
             resolved.footer,
+            resolved.grapesJson?.footerUrl,
+            resolved.meta?.uploads?.footer,
             resolved._footerBlob,
-          ];
+          ].filter(Boolean);
 
-          const headerRaw =
-            headerCandidates.find((x) => typeof x === "string" && x) || null;
-          const footerRaw =
-            footerCandidates.find((x) => typeof x === "string" && x) || null;
+          let rawHeader = headerCandidates[0] || null;
+          let rawFooter = footerCandidates[0] || null;
 
-          setPreviewHeaderUrl(headerRaw);
-          setPreviewFooterUrl(footerRaw);
+          // fallback: scan object for images
+          function collectUploadStrings(obj, out = new Set()) {
+            if (!obj) return out;
+
+            if (typeof obj === "string") {
+              if (
+                /\/api\/orgs\/\d+\/uploads\//.test(obj) ||
+                /\.(png|jpe?g|svg|gif|webp)$/i.test(obj)
+              ) {
+                out.add(obj);
+              }
+              return out;
+            }
+
+            if (Array.isArray(obj)) {
+              obj.forEach((v) => collectUploadStrings(v, out));
+              return out;
+            }
+
+            if (typeof obj === "object") {
+              Object.values(obj).forEach((v) => collectUploadStrings(v, out));
+            }
+
+            return out;
+          }
+
+          if (!rawHeader || !rawFooter) {
+            const found = Array.from(collectUploadStrings(resolved));
+
+            if (!rawHeader && found.length >= 1) rawHeader = found[0];
+            if (!rawFooter && found.length >= 2) rawFooter = found[1];
+          }
+
+          async function ensureBlobUrl(src) {
+            if (!src) return null;
+
+            if (
+              src.startsWith("blob:") ||
+              src.startsWith("data:") ||
+              /^https?:\/\//i.test(src)
+            ) {
+              return src;
+            }
+
+            if (
+              !src.startsWith("/api/") &&
+              /^[^\/\\]+\.(png|jpe?g|svg|gif|webp)$/i.test(src)
+            ) {
+              if (BACKEND_URL && orgId) {
+                src = `${BACKEND_URL.replace(/\/$/, "")}/api/orgs/${orgId}/uploads/${src}`;
+              }
+            }
+
+            if (src.startsWith("/api/") && BACKEND_URL) {
+              src = `${BACKEND_URL.replace(/\/$/, "")}${src}`;
+            }
+
+            try {
+              const blobUrl = await fetchProtectedImage(
+                src,
+                API_KEY,
+                employeeId,
+              );
+              return blobUrl || src;
+            } catch (e) {
+              console.warn(
+                "editSavedTemplate.ensureBlobUrl failed for",
+                src,
+                e,
+              );
+              return src;
+            }
+          }
+
+          const headerUrlResolved = await ensureBlobUrl(rawHeader);
+          const footerUrlResolved = await ensureBlobUrl(rawFooter);
+
+          console.log("editSavedTemplate resolved URLs:", {
+            rawHeader,
+            rawFooter,
+            headerUrlResolved,
+            footerUrlResolved,
+          });
+
+          setPreviewHeaderUrl(headerUrlResolved);
+          setPreviewFooterUrl(footerUrlResolved);
 
           let watermarkUrl = null;
           let watermarkPlacementProps = null;
@@ -1428,11 +1592,23 @@ export default function TemplateBuilder() {
               };
           }
 
-          setPreviewWatermarkUrl(watermarkUrl);
+          const watermarkUrlResolved = watermarkUrl
+            ? await ensureBlobUrl(watermarkUrl)
+            : null;
+
+          setPreviewHeaderUrl(finalHeaderUrl);
+          setPreviewFooterUrl(finalFooterUrl);
+          setPreviewWatermarkUrl(watermarkUrlResolved);
           if (watermarkPlacementProps)
             setWatermarkProps(watermarkPlacementProps);
 
-          setAppMode("upload");
+          if (watermarkUrlResolved) {
+            setWatermarkEnabled(true);
+          }
+
+          setViewingTemplate(null);
+          setShowSavedPane(false);
+          setMode("upload");
           return;
         } catch (err) {
           console.warn(
@@ -1629,12 +1805,12 @@ export default function TemplateBuilder() {
           }
         });
 
-        setAppMode("saved");
         try {
           await openSavedTemplate(normalized);
         } catch (e) {
           console.warn("openSavedTemplate failed for newly saved template", e);
-          if (orgId) fetchSavedTemplates(orgId);
+          if (orgId) await fetchSavedTemplates(orgId);
+          setAppMode("saved");
         }
 
         // Clear files
@@ -1907,7 +2083,7 @@ export default function TemplateBuilder() {
         </main>
       )}
 
-      {(mode === "basic" || mode === "upload") && (
+      {mode === "upload" && (
         <EditorPanel
           styles={styles}
           mode={mode}

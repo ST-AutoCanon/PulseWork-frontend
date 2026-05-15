@@ -750,6 +750,39 @@
   font-weight: 600;
 }
 
+.sub-org-section {
+  display: flex;
+}
+
+.sub-org-label {
+  margin-left: 2%;
+}
+
+.sub-org-radio-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-left: 2%;
+}
+
+.sub-org-radio-group label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: 8px;
+  cursor: pointer;
+  margin: 0;
+  font-weight: bold;
+}
+
+.sub-org-radio-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border-radius: 10px;
+  cursor: pointer;
+}
+
 .export-employee-button:disabled {
   opacity: 0.6;
   cursor: not-allowed;

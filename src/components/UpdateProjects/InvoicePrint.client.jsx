@@ -129,9 +129,14 @@ const InvoicePrint = React.forwardRef(({ invoiceData = {}, orgId }, ref) => {
 
   const totals = parsedLineItems.reduce(
     (acc, item) => {
-      acc.quantity += safeNumber(item.quantity);
-      acc.amount += safeNumber(item.rate);
-      acc.total += safeNumber(item.total);
+      const qty = safeNumber(item.quantity);
+      const rate = safeNumber(item.rate);
+      const lineTotal = safeNumber(item.total) || qty * rate;
+
+      acc.quantity += qty;
+      acc.amount += lineTotal;
+      acc.total += lineTotal;
+
       return acc;
     },
     { quantity: 0, amount: 0, total: 0 },
@@ -145,27 +150,15 @@ const InvoicePrint = React.forwardRef(({ invoiceData = {}, orgId }, ref) => {
   );
 
   const effectiveGstAmount = gstAmount || Number(totalGSTFromLines.toFixed(2));
-  const grossTotal = subtotalAmount + effectiveGstAmount;
+  const roundOffValue = roundOff ? safeNumber(rawRoundOffAmount) : 0;
 
-  const computedRoundOff =
-    roundOff && Number.isFinite(roundOffAmount)
-      ? roundOffAmount
-      : roundOff
-        ? Number(
-            (
-              Math.round(totalBeforeRoundOff || grossTotal) -
-              (totalBeforeRoundOff || grossTotal)
-            ).toFixed(2),
-          )
-        : 0;
+  const totalAmountBeforeAdvance = Number(
+    (subtotalAmount + effectiveGstAmount + roundOffValue).toFixed(2),
+  );
 
-  const totalBeforeAdvance = roundOff
-    ? Number(
-        ((totalBeforeRoundOff || grossTotal) + computedRoundOff).toFixed(2),
-      )
-    : Number((totalIncludingTax || grossTotal).toFixed(2));
-
-  const finalPayableAmount = Number((totalBeforeAdvance - advance).toFixed(2));
+  const finalPayableAmount = Number(
+    (totalAmountBeforeAdvance - advance).toFixed(2),
+  );
 
   const halfGSTRate =
     gst && Number(gst) > 0 ? (Number(gst) / 2).toFixed(2) : "0.00";
@@ -188,7 +181,9 @@ const InvoicePrint = React.forwardRef(({ invoiceData = {}, orgId }, ref) => {
       ref={ref}
       className={`invoice-print-container ${isOrg32 ? "org-32" : "org-1"}`}
     >
-      {isCancelled && <div className="cancelled-watermark">CANCELLED</div>}
+      {Boolean(isCancelled) && (
+        <div className="cancelled-watermark">CANCELLED</div>
+      )}
       {isOrg32 ? (
         <header className="invoice-print-header org32-header">
           <div className="org32-gst-text">{ORG32_HEADER.gstText}</div>
@@ -416,11 +411,11 @@ const InvoicePrint = React.forwardRef(({ invoiceData = {}, orgId }, ref) => {
               <div className="amounts-section">
                 <div className="total-block">
                   <p className="bold">Total</p>
-                  <p className="bold">{fmtINR(totalBeforeAdvance)}</p>
+                  <p className="bold">{fmtINR(totalAmountBeforeAdvance)}</p>
                 </div>
                 <div className="total-block">
                   <p>Round Off</p>
-                  <p>{fmtINR(roundOff ? computedRoundOff : 0)}</p>
+                  <p>{fmtINR(roundOffValue)}</p>
                 </div>
                 <div className="total-block">
                   <p>Advance</p>

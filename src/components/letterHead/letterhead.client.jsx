@@ -24,7 +24,7 @@ import { drawHeader, drawFooter, drawWatermark } from "./header";
 import { useAuth } from "../../context/AuthProvider.client";
 import Modal from "../Modal/Modal.client";
 import { getAnnexureTableHtml } from "./../../utils/annexureTable";
-
+import { getAvinyaQuotationHtml } from "./../../utils/avinyaquotation";
 const LetterheadClient = () => {
   const { user } = useAuth();
   
@@ -230,12 +230,18 @@ setEditingId(null);
   };
 
   const livePreviewHtml = useMemo(() => {
-    let html = replacePlaceholders(quillContent, formData);
-    if (selectedTemplate?.letter_type === "Offer Letter") {
-      html += replacePlaceholders(getAnnexureTableHtml(), formData);
-    }
-    return html;
-  }, [quillContent, formData, selectedTemplate]);
+  let html = replacePlaceholders(quillContent, formData);
+
+  if (selectedTemplate?.letter_type === "Offer Letter") {
+    html += replacePlaceholders(getAnnexureTableHtml(), formData);
+  }
+
+  if (selectedTemplate?.letter_type === "Quotation") {
+    html += replacePlaceholders(getAvinyaQuotationHtml(), formData);
+  }
+
+  return html;
+}, [quillContent, formData, selectedTemplate]);
 
   const resetForm = () => {
     setSelectedTemplate(null);
@@ -263,9 +269,14 @@ setEditingId(null);
     setQuillContent(initialContent);
 
     let contentForMatches = initialContent;
-    if (template.letter_type === "Offer Letter") {
-      contentForMatches += getAnnexureTableHtml();
-    }
+
+if (template.letter_type === "Offer Letter") {
+  contentForMatches += getAnnexureTableHtml();
+}
+
+if (template.letter_type === "Quotation") {
+  contentForMatches += getAvinyaQuotationHtml();
+}
 
     const regex = /\[([^\]]+)\]/g;
     const matches = [...contentForMatches.matchAll(regex)];
@@ -713,15 +724,23 @@ const generatePDF = async (download = false, savedLetter = null) => {
 };
 
   const placeholderFields = useMemo(() => {
-    if (!quillContent) return [];
-    let textOnly = quillContent.replace(/<[^>]*>/g, '');
-    if (selectedTemplate?.letter_type === "Offer Letter") {
-      textOnly += getAnnexureTableHtml().replace(/<[^>]*>/g, '');
-    }
-    const regex = /\[([^\]]+)\]/g;
-    const matches = [...textOnly.matchAll(regex)];
-    return [...new Set(matches.map(m => m[1].trim()))].sort();
-  }, [quillContent, selectedTemplate]);
+  if (!quillContent) return [];
+
+  let textOnly = quillContent.replace(/<[^>]*>/g, '');
+
+  if (selectedTemplate?.letter_type === "Offer Letter") {
+    textOnly += getAnnexureTableHtml().replace(/<[^>]*>/g, '');
+  }
+
+  if (selectedTemplate?.letter_type === "Quotation") {
+    textOnly += getAvinyaQuotationHtml().replace(/<[^>]*>/g, '');
+  }
+
+  const regex = /\[([^\]]+)\]/g;
+  const matches = [...textOnly.matchAll(regex)];
+
+  return [...new Set(matches.map(m => m[1].trim()))].sort();
+}, [quillContent, selectedTemplate]);
 
   if (loading) return <div className="letterhead-no-template">Loading letter templates...</div>;
 

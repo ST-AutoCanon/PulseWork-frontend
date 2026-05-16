@@ -825,35 +825,256 @@ for (const item of loadedIcons) {
    ADDRESS FOR NON-AVINYA ONLY
 ========================================= */
 
-if (parseInt(orgId) !== 32) {
+/* =========================================
+   SUKALPA FOOTER DESIGN
+========================================= */
+
+if (parseInt(orgId) === 1) {
+
+  /* ==================== GREEN LINE ==================== */
+
+  const greenLineY = footerBaseY - 8;
+
+  doc.setDrawColor(0, 128, 0);
+
+  doc.setLineWidth(0.7);
+
+  doc.line(
+    lineStartX,
+    greenLineY,
+    solidEndX,
+    greenLineY
+  );
+
+  doc.setLineCap(1);
+
+  doc.setLineDashPattern(
+    [0.6, 1.2],
+    0
+  );
+
+  doc.line(
+    solidEndX,
+    greenLineY,
+    lineEndX,
+    greenLineY
+  );
+
+  doc.setLineDashPattern([], 0);
+
+  doc.setLineCap(0);
+
+  /* ==================== BLUE LINE ==================== */
+
+  const blueLineY = footerBaseY - 6;
+
+  doc.setDrawColor(0, 70, 140);
+
+  doc.setLineWidth(0.8);
+
+  doc.line(
+    lineStartX,
+    blueLineY,
+    lineEndX,
+    blueLineY
+  );
+
+  /* ==================== CONTACT SECTION ==================== */
+
+  const items = [
+
+    {
+      icon: EMAIL_ICON_BASE64,
+      text: "admin@sukalpatechsolutions.com"
+    },
+
+    {
+      icon: WEBSITE_ICON_BASE64,
+      text: "https://sukalpatechsolutions.com"
+    },
+
+    {
+      icon: PHONE_ICON_BASE64,
+      text: "+91 831 406 9203"
+    }
+
+  ];
+
+  const loadedIcons = items.map((item) => ({
+    ...item,
+    image: item.icon
+  }));
+
+  let totalWidth = 0;
+
+  loadedIcons.forEach((item) => {
+
+    const textWidth =
+      doc.getTextWidth(item.text);
+
+    totalWidth +=
+      iconSize +
+      iconTextGap +
+      textWidth +
+      spacing;
+
+  });
+
+  totalWidth -= spacing;
+
+  let currentX =
+    (pageWidth - totalWidth) / 2;
+
+  for (const item of loadedIcons) {
+
+    /* ICON */
+
+    if (
+      item.image &&
+      item.image.startsWith("data:image")
+    ) {
+
+      doc.addImage(
+        item.image,
+        "PNG",
+        currentX,
+        contactY - iconSize / 2 + 0.8,
+        iconSize,
+        iconSize
+      );
+
+    } else {
+
+      console.warn(
+        "Invalid icon:",
+        item.text
+      );
+    }
+
+    /* TEXT */
+
+    doc.setFontSize(textSize);
+
+    doc.setTextColor(0, 0, 0);
+
+    doc.text(
+      item.text,
+      currentX + iconSize + iconTextGap,
+      contactY + 2.8
+    );
+
+    currentX +=
+      iconSize +
+      iconTextGap +
+      doc.getTextWidth(item.text) +
+      spacing;
+  }
+
+  /* ==================== ADDRESS ==================== */
 
   doc.setFontSize(8);
 
   doc.text(
-    config.companyName +
-      " | " +
-      config.address,
+    "Sukalpa Tech Solutions Pvt Ltd. | #71, Bauxite Road, Sarathi Nagar, Belagavi -591108",
     pageWidth / 2,
     footerBaseY + 10,
     { align: "center" }
+  );
+}
+
+/* =========================================
+   AVINYA FOOTER DESIGN
+========================================= */
+
+else if (parseInt(orgId) === 32) {
+
+  const footerBoxY = footerBaseY - 4;
+
+  const footerBoxHeight = 18;
+
+  /* FULL WIDTH BLUE BACKGROUND */
+
+  doc.setFillColor(0, 122, 204);
+
+  doc.rect(
+    0,
+    footerBoxY,
+    pageWidth,
+    footerBoxHeight,
+    "F"
+  );
+
+  /* LOCATION ICON */
+
+  const iconX = 8;
+
+  const iconY = footerBoxY + 6;
+
+  if (LOCATION_ICON_BASE64) {
+
+    doc.addImage(
+      LOCATION_ICON_BASE64,
+      "PNG",
+      iconX,
+      iconY,
+      6,
+      6
+    );
+  }
+
+  /* ADDRESS TEXT */
+
+  doc.setFont(
+    "helvetica",
+    "bold"
+  );
+
+  doc.setFontSize(10);
+
+  doc.setTextColor(
+    255,
+    255,
+    255
+  );
+
+  doc.text(
+    config.address,
+    18,
+    footerBoxY + 11
+  );
+
+  /* PAGE NUMBER */
+
+  doc.setFont(
+    "helvetica",
+    "bold"
+  );
+
+  doc.setFontSize(9);
+
+  doc.text(
+    `Page ${pageNumber} of ${totalPages}`,
+    pageWidth - 8,
+    footerBoxY + 11,
+    { align: "right" }
   );
 }
       
 
   /* ==================== ADDRESS ==================== */
 
-if (parseInt(orgId) !== 32) {
+// if (parseInt(orgId) !== 32) {
 
-  doc.setFontSize(8);
+//   doc.setFontSize(8);
 
-  doc.text(
-    config.companyName + " | " + config.address,
-    pageWidth / 2,
-    footerBaseY + 10,
-    { align: "center" }
-  );
+//   doc.text(
+//     config.companyName + " | " + config.address,
+//     pageWidth / 2,
+//     footerBaseY + 10,
+//     { align: "center" }
+//   );
 
-}
+// }
 
     /* ==================== PAGE NUMBER ==================== */
     doc.setFontSize(8);

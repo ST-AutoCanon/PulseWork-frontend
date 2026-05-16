@@ -46,30 +46,31 @@ export const getAvinyaQuotationHtml = () => {
      MAIN TABLE
   ========================= */
 
-  #quotation-table {
-    width: 100%;
-    border-collapse: collapse;
-    table-layout: fixed;
-    font-family: Arial, sans-serif;
-    font-size: 11px;
-  }
+ #quotation-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  font-family: Arial, sans-serif;
+  font-size: 10px;
+}
 
   #quotation-table th,
-  #quotation-table td {
-    border: 1px solid #000;
-    padding: 8px 6px;
-    text-align: center;
-    vertical-align: middle;
-    word-wrap: break-word;
-  }
+#quotation-table td {
+  border: 1px solid #000;
+  padding: 4px 4px;
+  text-align: center;
+  vertical-align: middle;
+  word-wrap: break-word;
+  line-height: 1.2;
+}
 
-  #quotation-table th {
-    background: #f2f2f2;
-    font-weight: bold;
-    font-size: 11px;
-    white-space: normal;
-  }
-
+ #quotation-table th {
+  background: #f2f2f2;
+  font-weight: bold;
+  font-size: 10px;
+  white-space: normal;
+  line-height: 1.1;
+}
   #quotation-table td.description {
     text-align: left;
     padding-left: 10px;
@@ -120,12 +121,11 @@ export const getAvinyaQuotationHtml = () => {
   /* =========================
      TERMS SECTION
   ========================= */
-
-  .terms-section {
-    margin-top: 20px;
-    font-size: 13px;
-    line-height: 1.8;
-  }
+.terms-section {
+  margin-top: 12px;
+  font-size: 11px;
+  line-height: 1.5;
+}
 
   .terms-section ol {
     margin-top: 8px;
@@ -133,8 +133,8 @@ export const getAvinyaQuotationHtml = () => {
   }
 
   .terms-section li {
-    margin-bottom: 6px;
-  }
+  margin-bottom: 3px;
+}
 
 </style>
 

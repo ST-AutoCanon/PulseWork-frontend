@@ -513,7 +513,7 @@ const Vendors = () => {
             onChange={handleSearchChange}
             className="search-input"
           />
-          <i className="fas fa-search search-icon"></i>
+          <i className="fas fa-search vendor-search-icon"></i>
         </div>
         <button className="add-vendor-btn" onClick={togglePopup}>
           Add Vendor

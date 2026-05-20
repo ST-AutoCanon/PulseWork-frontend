@@ -162,6 +162,7 @@ export const SUB_OPTIONS = {
     { key: "punchout_time", label: "Punch Out Time" },
     { key: "punchout_device", label: "Punch Out Device" },
     { key: "punchout_location", label: "Punch Out Location" },
+    { key: "total_login_hours", label: "Total Login Hours" },
     { key: "punchmode", label: "Punch Mode" },
     { key: "created_at", label: "Created At" },
   ],

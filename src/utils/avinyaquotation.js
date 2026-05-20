@@ -348,7 +348,7 @@ export const getAvinyaQuotationHtml = () => {
 
 </ol>
 
-<br>
+<div class="note-section">
 
 <strong>Note:</strong>
 
@@ -361,12 +361,15 @@ export const getAvinyaQuotationHtml = () => {
 
 </ol>
 
-<br><br>
+</div>
+
+<div style="margin-top:6px; line-height:1.2;">
 
 Thanking you,<br><br>
 
 <strong>Avinya Motors</strong>
 
+</div>
 </div>
 
 </div>

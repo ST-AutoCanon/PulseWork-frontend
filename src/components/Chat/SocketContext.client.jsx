@@ -27,7 +27,7 @@ export function SocketProvider({ children }) {
       user?.Org_id ??
       user?.raw?.Org_id ??
       null,
-    [user]
+    [user],
   );
 
   const BACKEND_URL = useMemo(() => {
@@ -69,8 +69,12 @@ export function SocketProvider({ children }) {
     if (socketPathEnv) socketPath = socketPathEnv;
 
     const sock = io(socketUrl, {
-      path: "/api/socket.io",
-      auth: { userId, orgId, apiKey: process.env.NEXT_PUBLIC_API_KEY },
+      path: socketPath,
+      auth: {
+        userId,
+        orgId,
+        apiKey: process.env.NEXT_PUBLIC_API_KEY,
+      },
       reconnectionAttempts: 5,
       timeout: 20000,
       autoConnect: true,

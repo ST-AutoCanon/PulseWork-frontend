@@ -237,7 +237,8 @@ const EmployeeQuery = () => {
     socket.on("disconnect", onDisconnect);
     socket.on("connect_error", onConnectError);
 
-    socket.on("newMessage", (msg) => {
+    /*old*/
+    /*socket.on("newMessage", (msg) => {
       setMessages((prev) => {
         const sameMessage = prev.some(
           (m) =>
@@ -250,13 +251,36 @@ const EmployeeQuery = () => {
         return sameMessage ? prev : [...prev, msg];
       });
       fetchEmpQueries();
+    });*/
+    /*new*/
+    socket.on("newMessage", (msg) => {
+      // only append if this thread is open
+      if (String(selectedThreadIdRef.current) !== String(msg.thread_id)) {
+        fetchEmpQueries();
+        return;
+      }
+
+      setMessages((prev) => {
+        const exists = prev.some(
+          (m) =>
+            String(m.id) === String(msg.id) ||
+            (String(m.thread_id) === String(msg.thread_id) &&
+              String(m.created_at) === String(msg.created_at) &&
+              String(m.sender_id) === String(msg.sender_id)),
+        );
+
+        if (exists) return prev;
+
+        return [...prev, msg];
+      });
+
+      fetchEmpQueries();
     });
 
     socket.on("messageAck", (msg) => {
       setMessages((prev) => {
-        const alreadyExists = prev.some(
-          (m) => String(m.id) === String(msg.id) || m.message === msg.message,
-        );
+        const alreadyExists = prev.some((m) => String(m.id) === String(msg.id));
+
         return alreadyExists ? prev : [...prev, msg];
       });
     });
@@ -366,7 +390,7 @@ const EmployeeQuery = () => {
       return;
     }
 
-    if (attachmentFile) {
+    /* if (attachmentFile) {
       const formData = new FormData();
       formData.append("attachment", attachmentFile);
       formData.append("sender_id", employeeId);
@@ -390,6 +414,74 @@ const EmployeeQuery = () => {
         console.error("attachment send error:", err);
         showAlert("Failed to send attachment. Please try again.");
       }
+      return;
+    }*/
+
+    if (attachmentFile) {
+      const formData = new FormData();
+
+      formData.append("attachment", attachmentFile);
+      formData.append("sender_id", employeeId);
+      formData.append("sender_role", userRole);
+      formData.append(
+        "recipient_id",
+        selectedQuery.sender_id || selectedQuery.recipient_id,
+      );
+      formData.append("sender_name", name);
+
+      // send actual text only if present
+      if (inputMessage?.trim()) {
+        formData.append("message", inputMessage.trim());
+      }
+
+      try {
+        const headers = buildHeaders({
+          "Content-Type": "multipart/form-data",
+        });
+
+        const res = await axios.post(
+          `${BACKEND_URL}/threads/${selectedQuery.id}/messages`,
+          formData,
+          {
+            withCredentials: true,
+            headers,
+          },
+        );
+
+        const savedMessage =
+          res.data?.data?.message || res.data?.data || res.data;
+
+        if (savedMessage) {
+          const cleanMessage = {
+            ...savedMessage,
+            message:
+              savedMessage.message &&
+              savedMessage.message !== "*" &&
+              savedMessage.message !== "/"
+                ? savedMessage.message
+                : "",
+          };
+
+          // optimistic UI update
+          setMessages((prev) => {
+            const exists = prev.some(
+              (m) => String(m.id) === String(cleanMessage.id),
+            );
+
+            return exists ? prev : [...prev, cleanMessage];
+          });
+        }
+
+        setInputMessage("");
+        setAttachmentFile(null);
+        setAttachmentName("");
+
+        fetchEmpQueries();
+      } catch (err) {
+        console.error("attachment send error:", err);
+        showAlert("Failed to send attachment. Please try again.");
+      }
+
       return;
     }
 
@@ -528,6 +620,7 @@ const EmployeeQuery = () => {
           q.id === threadToClose ? { ...q, status: "closed" } : q,
         ),
       );
+      setSelectedQuery((prev) => (prev ? { ...prev, status: "closed" } : prev));
     } catch (err) {
       console.error("Error closing thread:", err);
       showAlert("Failed to close thread. Please try again.");
@@ -593,6 +686,26 @@ const EmployeeQuery = () => {
   const mobileBackToList = () => {
     setSelectedQuery(null);
     setMessages([]);
+  };
+
+  const reopenThread = async () => {
+    if (!selectedQuery) return;
+
+    try {
+      const headers = buildHeaders({ "Content-Type": "application/json" });
+      await axios.put(
+        `${BACKEND_URL}/threads/${selectedQuery.id}/reopen`,
+        { sender_id: employeeId },
+        { withCredentials: true, headers },
+      );
+
+      setSelectedQuery((prev) => (prev ? { ...prev, status: "open" } : prev));
+      fetchEmpQueries();
+      showAlert("Thread reopened.");
+    } catch (err) {
+      console.error("reopenThread error:", err);
+      showAlert("Failed to reopen thread.");
+    }
   };
 
   return (
@@ -815,28 +928,41 @@ const EmployeeQuery = () => {
                       </div>
                     </div>
 
-                    <button
-                      className="mobile-end-btn"
-                      onClick={() => openFeedbackModal(selectedQuery.id)}
-                      aria-label="End Query"
-                      title="End Query"
-                      disabled={selectedQuery.status === "closed"}
-                    >
-                      <TbMessageOff className="close-thread-icon" />
-                    </button>
+                    {selectedQuery.status === "pending_close" && (
+                      <button
+                        className="mobile-end-btn"
+                        onClick={() => openFeedbackModal(selectedQuery.id)}
+                        aria-label="End Query"
+                        title="End Query"
+                      >
+                        <TbMessageOff className="close-thread-icon" />
+                      </button>
+                    )}
                   </div>
                 )}
 
                 <div className="emp-chat-header">
                   <div className="end">
-                    <button
-                      className="close-thread-button"
-                      onClick={() => openFeedbackModal(selectedQuery.id)}
-                      disabled={selectedQuery.status === "closed"}
-                    >
-                      <TbMessageOff className="close-thread-icon" /> End Query
-                    </button>
+                    {selectedQuery.status === "pending_close" && (
+                      <>
+                        <button
+                          className="close-thread-button"
+                          onClick={() => openFeedbackModal(selectedQuery.id)}
+                        >
+                          <TbMessageOff className="close-thread-icon" /> Close
+                          Query
+                        </button>
+
+                        <button
+                          onClick={reopenThread}
+                          className="close-thread-button"
+                        >
+                          Not resolved
+                        </button>
+                      </>
+                    )}
                   </div>
+
                   <div>
                     <p>
                       {selectedQuery.created_at
@@ -879,7 +1005,12 @@ const EmployeeQuery = () => {
                         </p>
                       </div>
                       <div className="emp-message">
-                        <p className="message-text">{message.message}</p>
+                        {/* <p className="message-text">{message.message}</p>*/}
+                        {message.message &&
+                          message.message !== "*" &&
+                          message.message !== "/" && (
+                            <p className="message-text">{message.message}</p>
+                          )}
                         {message.attachment_url && (
                           <button
                             className="emp-attachment"
@@ -902,6 +1033,15 @@ const EmployeeQuery = () => {
                     </div>
                   ))}
                 </div>
+
+                {selectedQuery?.status === "pending_close" && (
+                  <div className="query-close-banner">
+                    <p>
+                      The receiver has marked this query as resolved. Is it good
+                      to close?
+                    </p>
+                  </div>
+                )}
 
                 <div className="emp-chat-input">
                   <div className="input-container">

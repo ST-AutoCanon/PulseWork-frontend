@@ -55,7 +55,7 @@ const AdminQuery = () => {
   const socketRef = useRef(null);
   const selectedThreadIdRef = useRef(null);
   const [attachmentFile, setAttachmentFile] = useState(null);
-
+  const [showResolveModal, setShowResolveModal] = useState(false);
   const messageIdsRef = useRef(new Set());
 
   const [alertModal, setAlertModal] = useState({
@@ -259,7 +259,7 @@ const AdminQuery = () => {
 
     const socketConnected = socketRef.current && socketRef.current.connected;
 
-    if (attachmentFile) {
+    /* if (attachmentFile) {
       const form = new FormData();
       form.append("attachment", attachmentFile);
       form.append("sender_id", employeeId);
@@ -301,6 +301,71 @@ const AdminQuery = () => {
         console.error("attachment send error:", err);
         showAlert("Failed to send attachment");
       }
+      return;
+    }*/
+    if (attachmentFile) {
+      const form = new FormData();
+
+      form.append("attachment", attachmentFile);
+      form.append("sender_id", employeeId);
+      form.append("sender_role", userRole);
+      form.append("recipient_id", selectedQuery.sender_id);
+      form.append("message", newMessage);
+
+      try {
+        const headers = {
+          "x-api-key": API_KEY,
+          ...(employeeId ? { "x-employee-id": employeeId } : {}),
+          ...(orgId ? { "x-org-id": orgId } : {}),
+        };
+
+        const res = await axios.post(
+          `${BACKEND_URL}/threads/${selectedQuery.id}/messages`,
+          form,
+          {
+            withCredentials: true,
+            headers,
+          },
+        );
+
+        const savedMessage =
+          res.data?.data?.message || res.data?.data || res.data;
+
+        // instantly show in sender UI
+        if (savedMessage) {
+          addIfNotExists(savedMessage);
+        }
+
+        // realtime update to others
+        if (socketRef.current?.connected && savedMessage) {
+          socketRef.current.emit(
+            "sendQueryMessage",
+            {
+              thread_id: selectedQuery.id,
+              sender_id: employeeId,
+              sender_role: userRole,
+              recipient_id: selectedQuery.sender_id,
+              sender_name: name,
+              message: savedMessage.message || "",
+              attachment_url: savedMessage.attachment_url || null,
+              created_at: savedMessage.created_at,
+              id: savedMessage.id,
+            },
+            (resp) => {
+              console.log("attachment socket emit response:", resp);
+            },
+          );
+        }
+
+        setNewMessage("");
+        clearAttachmentInput();
+
+        fetchQueries({ silent: true });
+      } catch (err) {
+        console.error("attachment send error:", err);
+        showAlert("Failed to send attachment");
+      }
+
       return;
     }
 
@@ -351,6 +416,35 @@ const AdminQuery = () => {
         console.error("REST send failed:", err);
         showAlert("Failed to send message. Please try again.");
       }
+    }
+  };
+
+  const requestCloseThread = async () => {
+    if (!selectedQuery) return;
+
+    try {
+      const headers = {
+        "x-api-key": API_KEY,
+        ...(employeeId ? { "x-employee-id": employeeId } : {}),
+        ...(orgId ? { "x-org-id": orgId } : {}),
+        ...(userRole ? { "x-role": userRole } : {}),
+        "Content-Type": "application/json",
+      };
+
+      await axios.put(
+        `${BACKEND_URL}/threads/${selectedQuery.id}/request-close`,
+        {},
+        { withCredentials: true, headers },
+      );
+
+      setSelectedQuery((prev) =>
+        prev ? { ...prev, status: "pending_close" } : prev,
+      );
+      fetchQueries({ silent: true });
+      showAlert("Query marked as resolved. Waiting for sender approval.");
+    } catch (err) {
+      console.error("requestCloseThread error:", err);
+      showAlert("Failed to request close.");
     }
   };
 
@@ -565,6 +659,19 @@ const AdminQuery = () => {
             ) : (
               <>
                 <div className="chat-header">
+                  <div className="end">
+                    {selectedQuery.status !== "closed" && (
+                      <button
+                        className="close-thread-button"
+                        onClick={requestCloseThread}
+                        disabled={selectedQuery.status === "pending_close"}
+                      >
+                        {selectedQuery.status === "pending_close"
+                          ? "Waiting for approval"
+                          : "Is the query resolved?"}
+                      </button>
+                    )}
+                  </div>
                   <p>
                     {selectedQuery.created_at
                       ? new Date(selectedQuery.created_at).toLocaleString(

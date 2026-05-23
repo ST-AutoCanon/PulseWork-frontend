@@ -68,7 +68,14 @@ const EmployeeQuery = () => {
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
   const [feedback, setFeedback] = useState("");
   const [threadToClose, setThreadToClose] = useState(null);
+  const isAdmin = typeof userRole === "string" && /admin/i.test(userRole);
+  const isThreadSender =
+    selectedQuery &&
+    String(selectedQuery.thread_sender_id) === String(employeeId);
 
+  const isThreadReceiver =
+    selectedQuery &&
+    String(selectedQuery.thread_recipient_id) === String(employeeId);
   const selectedThreadIdRef = useRef(null);
 
   const [isMobile, setIsMobile] = useState(
@@ -695,7 +702,7 @@ const EmployeeQuery = () => {
       const headers = buildHeaders({ "Content-Type": "application/json" });
       await axios.put(
         `${BACKEND_URL}/threads/${selectedQuery.id}/reopen`,
-        { sender_id: employeeId },
+        { sender_id: employeeId, sender_role: userRole },
         { withCredentials: true, headers },
       );
 
@@ -705,6 +712,35 @@ const EmployeeQuery = () => {
     } catch (err) {
       console.error("reopenThread error:", err);
       showAlert("Failed to reopen thread.");
+    }
+  };
+
+  const requestCloseThread = async () => {
+    if (!selectedQuery) return;
+
+    try {
+      const headers = buildHeaders({ "Content-Type": "application/json" });
+
+      await axios.put(
+        `${BACKEND_URL}/threads/${selectedQuery.id}/request-close`,
+        {},
+        { withCredentials: true, headers },
+      );
+
+      setSelectedQuery((prev) =>
+        prev ? { ...prev, status: "pending_close" } : prev,
+      );
+
+      setQueries((prev) =>
+        prev.map((q) =>
+          q.id === selectedQuery.id ? { ...q, status: "pending_close" } : q,
+        ),
+      );
+
+      showAlert("Query marked as resolved. Waiting for sender approval.");
+    } catch (err) {
+      console.error("requestCloseThread error:", err);
+      showAlert("Failed to request close.");
     }
   };
 
@@ -928,39 +964,54 @@ const EmployeeQuery = () => {
                       </div>
                     </div>
 
-                    {selectedQuery.status === "pending_close" && (
-                      <button
-                        className="mobile-end-btn"
-                        onClick={() => openFeedbackModal(selectedQuery.id)}
-                        aria-label="End Query"
-                        title="End Query"
-                      >
-                        <TbMessageOff className="close-thread-icon" />
-                      </button>
-                    )}
+                    {selectedQuery.status !== "closed" &&
+                      (isThreadReceiver || isAdmin) &&
+                      selectedQuery.status !== "pending_close" && (
+                        <button
+                          className="mobile-end-btn"
+                          onClick={requestCloseThread}
+                          aria-label="End Query"
+                          title="End Query"
+                        >
+                          <TbMessageOff className="close-thread-icon" />
+                        </button>
+                      )}
                   </div>
                 )}
 
                 <div className="emp-chat-header">
                   <div className="end">
-                    {selectedQuery.status === "pending_close" && (
-                      <>
+                    {selectedQuery.status !== "closed" &&
+                      (isThreadReceiver || isAdmin) &&
+                      selectedQuery.status !== "pending_close" && (
                         <button
                           className="close-thread-button"
-                          onClick={() => openFeedbackModal(selectedQuery.id)}
+                          onClick={requestCloseThread}
                         >
-                          <TbMessageOff className="close-thread-icon" /> Close
-                          Query
+                          <TbMessageOff className="close-thread-icon" /> Is the
+                          query resolved?
                         </button>
+                      )}
 
-                        <button
-                          onClick={reopenThread}
-                          className="close-thread-button"
-                        >
-                          Not resolved
-                        </button>
-                      </>
-                    )}
+                    {selectedQuery.status === "pending_close" &&
+                      isThreadSender && (
+                        <>
+                          <button
+                            className="close-thread-button"
+                            onClick={() => openFeedbackModal(selectedQuery.id)}
+                          >
+                            <TbMessageOff className="close-thread-icon" /> Close
+                            Query
+                          </button>
+
+                          <button
+                            onClick={reopenThread}
+                            className="close-thread-button"
+                          >
+                            Not resolved
+                          </button>
+                        </>
+                      )}
                   </div>
 
                   <div>

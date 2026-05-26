@@ -72,7 +72,11 @@ const EmployeeQuery = () => {
   const isThreadSender =
     selectedQuery &&
     String(selectedQuery.thread_sender_id) === String(employeeId);
-
+  const counterpartId = selectedQuery
+    ? String(selectedQuery.thread_sender_id) === String(employeeId)
+      ? selectedQuery.thread_recipient_id
+      : selectedQuery.thread_sender_id
+    : null;
   const isThreadReceiver =
     selectedQuery &&
     String(selectedQuery.thread_recipient_id) === String(employeeId);
@@ -430,10 +434,7 @@ const EmployeeQuery = () => {
       formData.append("attachment", attachmentFile);
       formData.append("sender_id", employeeId);
       formData.append("sender_role", userRole);
-      formData.append(
-        "recipient_id",
-        selectedQuery.sender_id || selectedQuery.recipient_id,
-      );
+      formData.append("recipient_id", counterpartId);
       formData.append("sender_name", name);
 
       // send actual text only if present
@@ -501,7 +502,7 @@ const EmployeeQuery = () => {
       thread_id: selectedQuery.id,
       sender_id: employeeId,
       sender_role: userRole,
-      recipient_id: selectedQuery.recipient_id,
+      recipient_id: counterpartId,
       sender_name: name,
       message: inputMessage,
     };
@@ -1096,14 +1097,15 @@ const EmployeeQuery = () => {
                   ))}
                 </div>
 
-                {selectedQuery?.status === "pending_close" && (
-                  <div className="query-close-banner">
-                    <p>
-                      The receiver has marked this query as resolved. Is it good
-                      to close?
-                    </p>
-                  </div>
-                )}
+                {selectedQuery?.status === "pending_close" &&
+                  isThreadSender && (
+                    <div className="query-close-banner">
+                      <p>
+                        The receiver has marked this query as resolved. Is it
+                        good to close?
+                      </p>
+                    </div>
+                  )}
 
                 <div className="emp-chat-input">
                   <div className="input-container">

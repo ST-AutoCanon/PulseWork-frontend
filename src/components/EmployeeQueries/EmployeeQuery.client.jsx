@@ -965,13 +965,21 @@ const EmployeeQuery = () => {
                     </div>
 
                     {selectedQuery.status !== "closed" &&
-                      (isThreadReceiver || isAdmin) &&
-                      selectedQuery.status !== "pending_close" && (
+                      (isThreadReceiver || isAdmin) && (
                         <button
                           className="mobile-end-btn"
                           onClick={requestCloseThread}
-                          aria-label="End Query"
-                          title="End Query"
+                          disabled={selectedQuery.status === "pending_close"}
+                          aria-label={
+                            selectedQuery.status === "pending_close"
+                              ? "Waiting for approval"
+                              : "End Query"
+                          }
+                          title={
+                            selectedQuery.status === "pending_close"
+                              ? "Waiting for approval"
+                              : "End Query"
+                          }
                         >
                           <TbMessageOff className="close-thread-icon" />
                         </button>
@@ -982,14 +990,17 @@ const EmployeeQuery = () => {
                 <div className="emp-chat-header">
                   <div className="end">
                     {selectedQuery.status !== "closed" &&
-                      (isThreadReceiver || isAdmin) &&
-                      selectedQuery.status !== "pending_close" && (
+                      (isThreadReceiver || isAdmin) && (
                         <button
                           className="close-thread-button"
                           onClick={requestCloseThread}
+                          disabled={selectedQuery.status === "pending_close"}
                         >
-                          <TbMessageOff className="close-thread-icon" /> Is the
-                          query resolved?
+                          <TbMessageOff className="close-thread-icon" />
+
+                          {selectedQuery.status === "pending_close"
+                            ? "Waiting for approval"
+                            : "Is the query resolved?"}
                         </button>
                       )}
 

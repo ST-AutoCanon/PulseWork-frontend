@@ -867,10 +867,6 @@ compensation-select-incentives {
 
 
 
-
-
-
-
 /* Prevent layout shift when switching percentage ↔ amount */
 .compensation-form-group {
   min-height: 90px;                    /* adjust based on your tallest variant */

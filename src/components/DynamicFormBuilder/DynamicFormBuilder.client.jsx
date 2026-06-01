@@ -1,5 +1,6 @@
 
 
+
 "use client";
 import React, { useState, useEffect , useMemo} from "react";
 import "./DynamicFormBuilder.css";
@@ -17,19 +18,99 @@ import { FiDownload } from "react-icons/fi";export default function DynamicFormB
     user?.raw?.orgId ??
     user?.Org_id ??
     user?.raw?.Org_id ??
+    (typeof window !== "undefined" ? window.__ORG_ID : null) ??
     null;
-  const currentEmployeeId = user?.employeeId ?? user?.id ?? null;
-  const getHeaders = (extra = {}) => {
+  const currentEmployeeId =
+    user?.employeeId ??
+    user?.employee_id ??
+    user?.id ??
+    user?.empId ??
+    user?.emp_id ??
+    user?.raw?.employeeId ??
+    user?.raw?.employee_id ??
+    user?.raw?.id ??
+    user?.raw?.empId ??
+    user?.raw?.emp_id ??
+    (typeof window !== "undefined" ? window.__EMPLOYEE_ID : null) ??
+    null;
+  const getHeaders = (extra = {}, omitContentType = false) => {
     const base = {
-      "Content-Type": "application/json",
       "x-api-key": API_KEY || "",
       ...extra,
     };
+    if (!omitContentType) base["Content-Type"] = "application/json";
     if (orgId) base["x-org-id"] = String(orgId);
     if (currentEmployeeId) base["x-employee-id"] = String(currentEmployeeId);
     return base;
   };
-  // ─── States ────────────────────────────────────────────────
+
+
+
+const renderResponseValue = (response, fieldType = null) => {
+  if (response === undefined || response === null || response === "") return "—";
+
+  // Checkbox handling
+  if (fieldType === "checkbox" || typeof response === "boolean") {
+    return response === true || response === "true" ? 
+      <strong style={{ color: "#16a34a" }}>✅ Yes / Checked</strong> : 
+      <span style={{ color: "#ef4444" }}>❌ No / Unchecked</span>;
+  }
+
+  // File handling
+  if (Array.isArray(response)) {
+    const isFileArray = response.some(item => 
+      item && typeof item === "object" && (item.originalname || item.name || item.filename)
+    );
+
+    if (isFileArray) {
+      return (
+        <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+          {response.map((file, index) => {
+            const url = getFileUrl(file);
+            const name = file?.originalname || file?.name || file?.filename || `File ${index + 1}`;
+            return (
+              <div key={index} style={{ display: "flex", gap: "12px", alignItems: "center", flexWrap: "wrap" }}>
+                <span>📎 {name}</span>
+                {url && (
+                  <>
+                    <button type="button" onClick={() => viewFile(file)} style={{ color: "#2563eb", background: "none", border: "none", padding: 0, cursor: "pointer", textDecoration: "underline" }}>
+                      View
+                    </button>
+                    <button type="button" onClick={() => downloadFile(file, name)} style={{ border: "none", background: "transparent", color: "#16a34a", textDecoration: "underline", cursor: "pointer" }}>
+                      Download
+                    </button>
+                  </>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      );
+    }
+    return response.join(", ");
+  }
+
+  // Single file object
+  if (response && typeof response === "object" && (response.originalname || response.name || response.filename)) {
+    const url = getFileUrl(response);
+    const name = response.originalname || response.name || response.filename || "File";
+    return (
+      <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
+        <span>📎 {name}</span>
+        {url && (
+          <>
+            <button type="button" onClick={() => viewFile(response)} style={{ color: "#2563eb", background: "none", border: "none", padding: 0, cursor: "pointer", textDecoration: "underline" }}>
+              View
+            </button>
+            <button type="button" onClick={() => downloadFile(response, name)} style={{ border: "none", background: "none", color: "#16a34a", cursor: "pointer" }}>Download</button>
+          </>
+        )}
+      </div>
+    );
+  }
+
+  return String(response);
+};
   const [formName, setFormName] = useState("");
   const [fields, setFields] = useState([]);
   const [fieldType, setFieldType] = useState("text");
@@ -47,6 +128,9 @@ import { FiDownload } from "react-icons/fi";export default function DynamicFormB
   const [fillMode, setFillMode] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState(null);
   const [formData, setFormData] = useState({});
+  const [formResponses, setFormResponses] = useState([]);
+  const [feedbackRequests, setFeedbackRequests] = useState([]);
+  const [othersFeedbackContext, setOthersFeedbackContext] = useState(null);
   const [isReviewMode, setIsReviewMode] = useState(false);
   const [selectedSubmission, setSelectedSubmission] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -79,6 +163,12 @@ import { FiDownload } from "react-icons/fi";export default function DynamicFormB
   const [supervisorFieldsList, setSupervisorFieldsList] = useState([]); // multiple supervisor fields
 const [editingSupervisorIndex, setEditingSupervisorIndex] = useState(null);
 const [supervisorPlaceholder, setSupervisorPlaceholder] = useState("");
+const [isDraft, setIsDraft] = useState(false);
+const [draftId, setDraftId] = useState(null); // to track draft record if needed
+
+const [fieldReferenceFile, setFieldReferenceFile] = useState(null);
+const [fieldNeedsOthersFeedback, setFieldNeedsOthersFeedback] = useState(false);
+const [fillSectionTab, setFillSectionTab] = useState("main");
 
 const isFormActive = (from, to) => {
   if (!from && !to) return true;
@@ -324,6 +414,22 @@ useEffect(() => {
  // Improved data fetching with proper dependencies
 useEffect(() => {
   if (!orgId) return;
+  // fetch feedback requests for current user
+  const fetchFeedbackRequests = async () => {
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/forms/feedback-requests`, {
+        method: 'GET',
+        credentials: 'include',
+        headers: getHeaders(),
+      });
+      if (!res.ok) throw new Error('Failed to fetch feedback requests');
+      const json = await res.json();
+      setFeedbackRequests(json.data || []);
+    } catch (err) {
+      console.error('Failed to fetch feedback requests:', err);
+      setFeedbackRequests([]);
+    }
+  };
 
   fetchForms();
   fetchSelfForms();
@@ -331,7 +437,8 @@ useEffect(() => {
   if (isSupervisor || isHR) {
     fetchTeamSubmissions();
   }
-}, [orgId, isSupervisor, isHR]);   // Removed canBuildForms to avoid unnecessary re-renders
+  fetchFeedbackRequests();
+}, [orgId, currentEmployeeId, isSupervisor, isHR]);   // Removed canBuildForms to avoid unnecessary re-renders
 // Refetch team submissions when coming back from review mode
 useEffect(() => {
   if (!fillMode && !viewMode && isSupervisor) {
@@ -379,6 +486,21 @@ useEffect(() => {
     if (Array.isArray(json.forms)) return json.forms;
     return [];
   };
+
+  const hasOthersFeedbackField = (template) => {
+    if (!template) return false;
+    let formJson = template.form_json || [];
+    if (typeof formJson === "string") {
+      try {
+        formJson = JSON.parse(formJson);
+      } catch (e) {
+        formJson = [];
+      }
+    }
+    return Array.isArray(formJson) && formJson.some((f) => f.employee?.needsOthersFeedback === true);
+  };
+
+  const otherForms = selfForms.filter(hasOthersFeedbackField);
   // Load already assigned employees when form is being edited
 // Fetch already assigned employees when editing a form
 useEffect(() => {
@@ -454,6 +576,8 @@ const filteredEmployees = employees.filter((emp) => {
         setOptionsInput("");
       }
 
+      setFieldNeedsOthersFeedback(field.employee?.needsOthersFeedback === true);
+
       // === Supervisor Fields Handling (Multiple Support) ===
       if (field.supervisorFields && Array.isArray(field.supervisorFields) && field.supervisorFields.length > 0) {
         setHasSupervisorFeedback(true);
@@ -507,71 +631,154 @@ const toggleResponse = (index) => {
     }
     return newSet;
   });
-};    const addOrUpdateField = () => {
-      const trimmed = fieldLabel.trim();
-      if (!trimmed) {
-        showAlert("Field label is required.");
-        return;
-      }
+};  
 
-      let employeeConfig = {
-        label: trimmed,
-        type: fieldType,
-        required: fieldRequired,
-        placeholder: fieldPlaceholder.trim() || undefined,
-      };
+// const addOrUpdateField = () => {
+//       const trimmed = fieldLabel.trim();
+//       if (!trimmed) {
+//         showAlert("Field label is required.");
+//         return;
+//       }
 
-      if (showOptions) {
-        const opts = optionsInput
-          .split(",")
-          .map((o) => o.trim())
-          .filter(Boolean)
-          .map((label) => ({ label, value: label.toLowerCase().replace(/\s+/g, "-") }));
+//      let employeeConfig = {
+//   label: trimmed,
+//   type: fieldType,
+//   required: fieldRequired,
+//   placeholder: fieldPlaceholder.trim() || undefined,
+// };
 
-        if (opts.length === 0) {
-          showAlert("Please provide at least one option for the employee field.");
-          return;
-        }
-        employeeConfig.options = opts;
-      }
+// // Add this for file type
+// if (fieldType === "file") {
+//   employeeConfig.accept = ".pdf,.doc,.docx,.jpg,.jpeg,.png";
+//   employeeConfig.multiple = false; // change to true if you want multiple files
+// }
 
-      // === Multiple Supervisor Fields ===
-      let supervisorFields = [];
-      if (formType === 'employee_supervisor' && hasSupervisorFeedback) {
-        if (supervisorFieldsList.length === 0) {
-          showAlert("Please add at least one supervisor feedback field.");
-          return;
-        }
-        supervisorFields = [...supervisorFieldsList];
-      }
+//       if (showOptions) {
+//         const opts = optionsInput
+//           .split(",")
+//           .map((o) => o.trim())
+//           .filter(Boolean)
+//           .map((label) => ({ label, value: label.toLowerCase().replace(/\s+/g, "-") }));
 
-      const newField = {
-        id: editingFieldId || Date.now().toString(),
-        employee: employeeConfig,
-        supervisorFields: supervisorFields.length > 0 ? supervisorFields : undefined,
-      };
+//         if (opts.length === 0) {
+//           showAlert("Please provide at least one option for the employee field.");
+//           return;
+//         }
+//         employeeConfig.options = opts;
+//       }
 
-      if (editingFieldId) {
-        setFields(fields.map((f) => (f.id === editingFieldId ? newField : f)));
-      } else {
-        setFields([...fields, newField]);
-      }
+//       // === Multiple Supervisor Fields ===
+//       let supervisorFields = [];
+//       if (formType === 'employee_supervisor' && hasSupervisorFeedback) {
+//         if (supervisorFieldsList.length === 0) {
+//           showAlert("Please add at least one supervisor feedback field.");
+//           return;
+//         }
+//         supervisorFields = [...supervisorFieldsList];
+//       }
 
-      // Reset everything
-      setFieldLabel("");
-      setFieldType("text");
-      setFieldRequired(false);
-      setFieldPlaceholder("");
-      setOptionsInput("");
-      setHasSupervisorFeedback(false);
-      setSupervisorFieldsList([]);
-      setSupervisorLabel("");
-      setSupervisorType("text");
-      setSupervisorRequired(false);
-      setSupervisorVisibleToEmployee(true);
-      setSupervisorOptionsInput("");
-      setEditingFieldId(null);
-    };
+//       const newField = {
+//         id: editingFieldId || Date.now().toString(),
+//         employee: employeeConfig,
+//         supervisorFields: supervisorFields.length > 0 ? supervisorFields : undefined,
+//       };
+
+//       if (editingFieldId) {
+//         setFields(fields.map((f) => (f.id === editingFieldId ? newField : f)));
+//       } else {
+//         setFields([...fields, newField]);
+//       }
+
+//       // Reset everything
+//       setFieldLabel("");
+//       setFieldType("text");
+//       setFieldRequired(false);
+//       setFieldPlaceholder("");
+//       setOptionsInput("");
+//       setHasSupervisorFeedback(false);
+//       setSupervisorFieldsList([]);
+//       setSupervisorLabel("");
+//       setSupervisorType("text");
+//       setSupervisorRequired(false);
+//       setSupervisorVisibleToEmployee(true);
+//       setSupervisorOptionsInput("");
+//       setEditingFieldId(null);
+//     };
+
+const addOrUpdateField = () => {
+  const trimmed = fieldLabel.trim();
+  if (!trimmed) {
+    showAlert("Field label is required.");
+    return;
+  }
+
+  let employeeConfig = {
+    label: trimmed,
+    type: fieldType,
+    required: fieldRequired,
+    placeholder: fieldPlaceholder.trim() || undefined,
+    referenceFile: fieldReferenceFile || undefined,
+    ...(fieldNeedsOthersFeedback ? { needsOthersFeedback: true } : {}),
+  };
+
+  // File specific settings
+  if (fieldType === "file") {
+    employeeConfig.accept = ".pdf,.doc,.docx,.jpg,.jpeg,.png";
+    employeeConfig.multiple = false;
+  }
+
+  if (showOptions) {
+    const opts = optionsInput
+      .split(",")
+      .map((o) => o.trim())
+      .filter(Boolean)
+      .map((label) => ({ label, value: label.toLowerCase().replace(/\s+/g, "-") }));
+
+    if (opts.length === 0) {
+      showAlert("Please provide at least one option for the employee field.");
+      return;
+    }
+    employeeConfig.options = opts;
+  }
+
+  let supervisorFields = [];
+  if (formType === 'employee_supervisor' && hasSupervisorFeedback) {
+    if (supervisorFieldsList.length === 0) {
+      showAlert("Please add at least one supervisor feedback field.");
+      return;
+    }
+    supervisorFields = [...supervisorFieldsList];
+  }
+
+  const newField = {
+    id: editingFieldId || Date.now().toString(),
+    employee: employeeConfig,
+    supervisorFields: supervisorFields.length > 0 ? supervisorFields : undefined,
+  };
+
+  if (editingFieldId) {
+    setFields(fields.map((f) => (f.id === editingFieldId ? newField : f)));
+  } else {
+    setFields([...fields, newField]);
+  }
+
+  // Reset
+  setFieldLabel("");
+  setFieldType("text");
+  setFieldRequired(false);
+  setFieldPlaceholder("");
+  setFieldReferenceFile(null);     // Reset reference file
+  setOptionsInput("");
+  setFieldNeedsOthersFeedback(false);
+  setHasSupervisorFeedback(false);
+  setSupervisorFieldsList([]);
+  setSupervisorLabel("");
+  setSupervisorType("text");
+  setSupervisorRequired(false);
+  setSupervisorVisibleToEmployee(true);
+  setSupervisorOptionsInput("");
+  setEditingFieldId(null);
+};
   const deleteField = (id) => {
     setFields(fields.filter((f) => f.id !== id));
     if (editingFieldId === id) setEditingFieldId(null);
@@ -602,21 +809,65 @@ if (formType === 'employee_supervisor' && !fields.some(f => f.supervisorFields &
       ? `${BACKEND_URL}/api/forms/${editingId}`
       : `${BACKEND_URL}/api/forms`;
 
-    const payload = {
-      form_name: formName.trim(),
-      form_json: fields,
-      layout: layoutMode,
-      active_from: activeFrom || null,
-      active_to: activeTo || null,
-      form_type: formType,
-    };
+    const referenceFiles = [];
+    const formJsonForSave = fields.map((field) => {
+      const fieldKey = field.id || field.fieldId || "";
+      const cloned = { ...field };
 
-    const res = await fetch(url, {
+      const maybeAddFile = (file, location) => {
+        if (!(file instanceof File) || !fieldKey) return;
+        referenceFiles.push({ fieldKey, file });
+        if (location === "top") {
+          cloned.referenceFile = { name: file.name };
+        } else if (location === "employee") {
+          cloned.employee = { ...cloned.employee, referenceFile: { name: file.name } };
+        } else if (location === "supervisor") {
+          cloned.supervisor = { ...cloned.supervisor, referenceFile: { name: file.name } };
+        }
+      };
+
+      maybeAddFile(field.referenceFile, "top");
+      maybeAddFile(field.employee?.referenceFile, "employee");
+      maybeAddFile(field.supervisor?.referenceFile, "supervisor");
+
+      return cloned;
+    });
+
+    const requestOptions = {
       method,
       credentials: "include",
-      headers: getHeaders(),
-      body: JSON.stringify(payload),
-    });
+      headers: {},
+    };
+
+    if (referenceFiles.length > 0) {
+      const formData = new FormData();
+      formData.append("form_name", formName.trim());
+      formData.append("form_json", JSON.stringify(formJsonForSave));
+      formData.append("layout", layoutMode);
+      formData.append("active_from", activeFrom || "");
+      formData.append("active_to", activeTo || "");
+      formData.append("form_type", formType);
+
+      referenceFiles.forEach(({ fieldKey, file }) => {
+        if (!fieldKey) return;
+        formData.append(`referenceFile_${fieldKey}`, file);
+      });
+
+      requestOptions.headers = getHeaders({}, true);
+      requestOptions.body = formData;
+    } else {
+      requestOptions.headers = getHeaders();
+      requestOptions.body = JSON.stringify({
+        form_name: formName.trim(),
+        form_json: formJsonForSave,
+        layout: layoutMode,
+        active_from: activeFrom || null,
+        active_to: activeTo || null,
+        form_type: formType,
+      });
+    }
+
+    const res = await fetch(url, requestOptions);
 
     if (!res.ok) throw new Error("Failed to save form");
 
@@ -715,100 +966,273 @@ if (formType === 'employee_supervisor' && !fields.some(f => f.supervisorFields &
     }
   };
   const viewTemplate = async (template) => {
-    try {
-      setLoading(true);
-      const res = await fetch(`${BACKEND_URL}/api/forms/${template.id}`, {
-        method: "GET",
-        credentials: "include",
-        headers: getHeaders(),
-      });
-      if (!res.ok) throw new Error("Failed to fetch form");
-      const json = await res.json();
-      let form = json.data || json;
-      if (typeof form.form_json === 'string') {
-        try {
-          form.form_json = JSON.parse(form.form_json);
-        } catch (e) {
-          form.form_json = [];
-        }
-      }
-      setSelectedTemplate(form);
-      setViewMode(true);
-      setFillMode(false);
-      setIsReviewMode(false);
-    } catch (err) {
-      console.error(err);
-      setError("Failed to load form");
-    } finally {
-      setLoading(false);
-    }
-  };
- const fillTemplate = async (template) => {
   try {
     setLoading(true);
-    setError(null);
-
     const res = await fetch(`${BACKEND_URL}/api/forms/${template.id}`, {
       method: "GET",
       credentials: "include",
       headers: getHeaders(),
+      cache: 'no-store',
     });
-
-    if (!res.ok) throw new Error("Failed to load form");
-
+    if (!res.ok) throw new Error("Failed to fetch form");
+    
     const json = await res.json();
     let form = json.data || json;
 
     if (typeof form.form_json === 'string') {
-      try {
-        form.form_json = JSON.parse(form.form_json);
-      } catch (e) {
-        form.form_json = [];
+      form.form_json = JSON.parse(form.form_json);
+    }
+
+    setSelectedTemplate(form);
+    setViewMode(true);
+    setFillMode(false);
+    setIsReviewMode(false);
+  } catch (err) {
+    console.error(err);
+    showAlert("Failed to load preview", "Error", "error");
+  } finally {
+    setLoading(false);
+  }
+};
+  // const viewTemplate = async (template) => {
+  //   try {
+  //     setLoading(true);
+  //     const res = await fetch(`${BACKEND_URL}/api/forms/${template.id}`, {
+  //       method: "GET",
+  //       credentials: "include",
+  //       headers: getHeaders(),
+  //     });
+  //     if (!res.ok) throw new Error("Failed to fetch form");
+  //     const json = await res.json();
+  //     let form = json.data || json;
+  //     if (typeof form.form_json === 'string') {
+  //       try {
+  //         form.form_json = JSON.parse(form.form_json);
+  //       } catch (e) {
+  //         form.form_json = [];
+  //       }
+  //     }
+  //     setSelectedTemplate(form);
+  //     setViewMode(true);
+  //     setFillMode(false);
+  //     setIsReviewMode(false);
+  //   } catch (err) {
+  //     console.error(err);
+  //     setError("Failed to load form");
+  //   } finally {
+  //     setLoading(false);
+  //   }
+  // };
+//  const fillTemplate = async (template) => {
+//   try {
+//     setLoading(true);
+//     setError(null);
+
+//     const res = await fetch(`${BACKEND_URL}/api/forms/${template.id}`, {
+//       method: "GET",
+//       credentials: "include",
+//       headers: getHeaders(),
+//     });
+
+//     if (!res.ok) throw new Error("Failed to load form");
+
+//     const json = await res.json();
+//     let form = json.data || json;
+
+//     if (typeof form.form_json === 'string') {
+//       try {
+//         form.form_json = JSON.parse(form.form_json);
+//       } catch (e) {
+//         form.form_json = [];
+//       }
+//     }
+
+//     // ==================== CRITICAL FIX ====================
+//     // Use dates from the template list (card) if backend doesn't return them
+//     if (!form.active_from && template.active_from) {
+//       form.active_from = template.active_from;
+//     }
+//     if (!form.active_to && template.active_to) {
+//       form.active_to = template.active_to;
+//     }
+
+//     console.log("=== FILL TEMPLATE DATE FIX ===");
+//     console.log("Template (card) dates:", {
+//       active_from: template.active_from,
+//       active_to: template.active_to
+//     });
+//     console.log("Form (fetched) dates:", {
+//       active_from: form.active_from,
+//       active_to: form.active_to
+//     });
+
+//     const isCurrentlyActive = isFormActive(form.active_from, form.active_to);
+
+//     if (!isCurrentlyActive) {
+//       showAlert(
+//         `This form is not active at this time.\n\nActive From: ${form.active_from || "Not Set"}\nActive To: ${form.active_to || "Not Set"}`,
+//         "Form Not Active",
+//         "warning"
+//       );
+//       setSelectedTemplate(null);
+//       setFillMode(false);
+//       return;
+//     }
+
+//     setSelectedTemplate(form);
+//     setViewMode(false);
+//     setFillMode(true);
+//     setFormData({});
+//     setIsReviewMode(false);
+//     setHasSubmitted(false);
+//     setSubmissionData(null);
+//     setViewingSubmission(false);
+
+//     // Check if user already submitted
+//     const responseRes = await fetch(`${BACKEND_URL}/api/forms/${template.id}/responses`, {
+//       method: "GET",
+//       credentials: "include",
+//       headers: getHeaders(),
+//     });
+
+//     if (responseRes.ok) {
+//       const respJson = await responseRes.json();
+//       let rawResponses = Array.isArray(respJson) ? respJson : respJson.data || respJson.responses || [];
+//       const userSubmission = rawResponses.find(r =>
+//         String(r.employee_id || r.employeeId) === String(currentEmployeeId)
+//       );
+//       if (userSubmission) {
+//         setHasSubmitted(true);
+//         setSubmissionData(userSubmission);
+//       }
+//     }
+//   } catch (err) {
+//     console.error("Fill template error:", err);
+//     showAlert("Failed to load the form. Please try again.", "Error", "error");
+//   } finally {
+//     setLoading(false);
+//   }
+// };
+
+// const fillTemplate = async (template) => {
+//   try {
+//     setLoading(true);
+//     setError(null);
+
+//     // 1. Fetch Form Template
+//     const formRes = await fetch(`${BACKEND_URL}/api/forms/${template.id}`, {
+//       method: "GET",
+//       credentials: "include",
+//       headers: getHeaders(),
+//     });
+
+//     if (!formRes.ok) throw new Error("Failed to load form");
+
+//     const formJson = await formRes.json();
+//     let form = formJson.data || formJson;
+
+//     if (typeof form.form_json === 'string') {
+//       try { form.form_json = JSON.parse(form.form_json); } catch (e) { form.form_json = []; }
+//     }
+
+//     // Date fallback
+//     if (!form.active_from && template.active_from) form.active_from = template.active_from;
+//     if (!form.active_to && template.active_to) form.active_to = template.active_to;
+
+//     if (!isFormActive(form.active_from, form.active_to)) {
+//       showAlert("This form is not active at this time.", "Form Not Active", "warning");
+//       return;
+//     }
+
+//     setSelectedTemplate(form);
+//     setViewMode(false);
+//     setFillMode(true);
+//     setIsReviewMode(false);
+//     setViewingSubmission(false);
+
+//     // 2. LOAD DRAFT OR SUBMITTED RESPONSE
+//     const responseRes = await fetch(`${BACKEND_URL}/api/forms/${template.id}/responses`, {
+//       method: "GET",
+//       credentials: "include",
+//       headers: getHeaders(),
+//     });
+
+//     if (responseRes.ok) {
+//       const respJson = await responseRes.json();
+//       let rawResponses = Array.isArray(respJson) 
+//         ? respJson 
+//         : respJson.data || respJson.responses || respJson || [];
+
+//       const userResponse = rawResponses.find(r => 
+//         String(r.employee_id || r.employeeId) === String(currentEmployeeId)
+//       );
+
+//       if (userResponse?.response_json) {
+//         const data = userResponse.response_json;
+
+//         setFormData(data);
+//         setSubmissionData(userResponse);
+
+//         const isSubmitted = userResponse.status === 'submitted' || 
+//                            data.__is_draft === false;
+
+//         setHasSubmitted(isSubmitted);
+//         setIsDraft(!isSubmitted);
+
+//         console.log("✅ Loaded Draft:", !isSubmitted, "Data keys:", Object.keys(data));
+//       } else {
+//         setFormData({});
+//         setHasSubmitted(false);
+//         setIsDraft(false);
+//       }
+//     }
+
+//   } catch (err) {
+//     console.error("Fill template error:", err);
+//     showAlert("Failed to load form data", "Error", "error");
+//   } finally {
+//     setLoading(false);
+//   }
+// };
+const fillTemplate = async (template) => {
+  try {
+    setLoading(true);
+    setError(null);
+
+    // 🔥 ALWAYS FETCH THE LATEST FORM VERSION FROM BACKEND
+    const formRes = await fetch(`${BACKEND_URL}/api/forms/${template.id}`, {
+      method: "GET",
+      credentials: "include",
+      headers: getHeaders(),
+      cache: 'no-store',           // Important: Don't use browser cache
+    });
+
+    if (!formRes.ok) throw new Error("Failed to load latest form");
+
+    const formJson = await formRes.json();
+    let form = formJson.data || formJson;
+
+    // Parse form_json if it's string
+    if (typeof form.form_json === 'string') {
+      try { 
+        form.form_json = JSON.parse(form.form_json); 
+      } catch (e) { 
+        form.form_json = []; 
       }
-    }
-
-    // ==================== CRITICAL FIX ====================
-    // Use dates from the template list (card) if backend doesn't return them
-    if (!form.active_from && template.active_from) {
-      form.active_from = template.active_from;
-    }
-    if (!form.active_to && template.active_to) {
-      form.active_to = template.active_to;
-    }
-
-    console.log("=== FILL TEMPLATE DATE FIX ===");
-    console.log("Template (card) dates:", {
-      active_from: template.active_from,
-      active_to: template.active_to
-    });
-    console.log("Form (fetched) dates:", {
-      active_from: form.active_from,
-      active_to: form.active_to
-    });
-
-    const isCurrentlyActive = isFormActive(form.active_from, form.active_to);
-
-    if (!isCurrentlyActive) {
-      showAlert(
-        `This form is not active at this time.\n\nActive From: ${form.active_from || "Not Set"}\nActive To: ${form.active_to || "Not Set"}`,
-        "Form Not Active",
-        "warning"
-      );
-      setSelectedTemplate(null);
-      setFillMode(false);
-      return;
     }
 
     setSelectedTemplate(form);
     setViewMode(false);
     setFillMode(true);
-    setFormData({});
     setIsReviewMode(false);
-    setHasSubmitted(false);
-    setSubmissionData(null);
     setViewingSubmission(false);
+    setFormData({});
 
-    // Check if user already submitted
+    if (!template.openOthersFeedbackMode) {
+      setOthersFeedbackContext(null);
+    }
+
+    // Load user's previous response / draft
     const responseRes = await fetch(`${BACKEND_URL}/api/forms/${template.id}/responses`, {
       method: "GET",
       credentials: "include",
@@ -817,18 +1241,93 @@ if (formType === 'employee_supervisor' && !fields.some(f => f.supervisorFields &
 
     if (responseRes.ok) {
       const respJson = await responseRes.json();
-      let rawResponses = Array.isArray(respJson) ? respJson : respJson.data || respJson.responses || [];
-      const userSubmission = rawResponses.find(r =>
+      let rawResponses = Array.isArray(respJson) 
+        ? respJson 
+        : respJson.data || respJson.responses || [];
+
+      setFormResponses(rawResponses || []);
+
+      const userResponse = rawResponses.find(r => 
         String(r.employee_id || r.employeeId) === String(currentEmployeeId)
       );
-      if (userSubmission) {
-        setHasSubmitted(true);
-        setSubmissionData(userSubmission);
+
+      if (userResponse?.response_json) {
+        setFormData(userResponse.response_json);
+        setSubmissionData(userResponse);
+
+        const isSubmitted = userResponse.status === 'submitted' || 
+                           userResponse.response_json.__is_draft === false;
+
+        setHasSubmitted(isSubmitted);
+        setIsDraft(!isSubmitted);
+      } else {
+        setHasSubmitted(false);
+        setIsDraft(false);
       }
     }
+
+    showAlert("✅ Loaded latest form version", "", "success");
+
   } catch (err) {
     console.error("Fill template error:", err);
-    showAlert("Failed to load the form. Please try again.", "Error", "error");
+    showAlert("Failed to load the latest form version. Please try again.", "Error", "error");
+  } finally {
+    setLoading(false);
+  }
+};
+
+// Open a form as a recipient to provide "others" feedback for a specific requester
+const openOthersFeedback = (req) => {
+  try {
+    if (!req || !req.form_id) return;
+    const requesterName = `${req.requester_first_name || ''} ${req.requester_last_name || ''}`.trim() || `Employee ${req.requester_id}`;
+    const fieldId = req.fieldId || `${req.form_id}_others_feedback`;
+    setOthersFeedbackContext({ 
+      requesterEmployeeId: req.requester_id,
+      requesterName,
+      fieldId,
+      fieldLabel: req.fieldLabel || fieldId,
+      requestReason: req.fieldValue || null,
+      feedbackKey: `${fieldId}_others_feedback_from_${req.requester_id}`,
+      sourceLabel: req.sourceLabel || 'Requested Feedback',
+    });
+    // Open the form in fill mode using special feedback mode
+    fillTemplate({ id: req.form_id, form_name: req.form_name, openOthersFeedbackMode: true });
+  } catch (err) {
+    console.error('openOthersFeedback error:', err);
+  }
+};
+
+const saveDraft = async () => {
+  if (!selectedTemplate?.id) return;
+
+  setLoading(true);
+  try {
+    const responsePayload = {
+      ...formData,
+      __submitted_by: currentEmployeeId,
+      __saved_at: new Date().toISOString(),
+      __is_draft: true,
+    };
+
+    const res = await fetch(`${BACKEND_URL}/api/forms/${selectedTemplate.id}/submit`, {
+      method: "POST",
+      credentials: "include",
+      headers: getHeaders(),
+      body: JSON.stringify({
+        response_json: responsePayload,
+        isDraft: true,
+      }),
+    });
+
+    if (!res.ok) throw new Error("Failed to save draft");
+
+    showAlert("✅ Draft saved successfully! You can continue later.", "Draft Saved", "success");
+    setIsDraft(true);
+
+  } catch (err) {
+    console.error("Draft save error:", err);
+    showAlert("Failed to save draft", "Error", "error");
   } finally {
     setLoading(false);
   }
@@ -919,50 +1418,244 @@ const handleSelectSubmission = async (submission) => {
     }
     return isValid;
   };
-  const submitFilledForm = async () => {
-    if (!selectedTemplate?.id) return;
-    if (!validateForm()) return;
-    setLoading(true);
-    try {
-      const responsePayload = {
-        ...formData,
-        __submitted_by: currentEmployeeId,
-        __submitted_at: new Date().toISOString(),
-      };
-      if (isReviewMode) {
-        responsePayload.__reviewed_by = currentEmployeeId;
-        responsePayload.__reviewed_employee = selectedSubmission?.employee_id || selectedSubmission?.employeeId || null;
-        responsePayload.__is_review = true;
-      }
-      const res = await fetch(`${BACKEND_URL}/api/forms/${selectedTemplate.id}/submit`, {
-        method: "POST",
-        credentials: "include",
-        headers: getHeaders(),
-        body: JSON.stringify({
-          response_json: responsePayload,
-          isReview: isReviewMode,
-          reviewedEmployeeId: selectedSubmission?.employee_id || selectedSubmission?.employeeId,
-        }),
-      });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.message || "Submission failed");
-      }
-      showAlert(isReviewMode ? "Review submitted successfully!" : "Form submitted successfully!", "Success", "success");
-      setHasSubmitted(true);
-      setSubmissionData({ response_json: responsePayload });
-      setFillMode(false);
-      setIsReviewMode(false);
-      setTeamSubmissions([]);
-      setSelectedSubmission(null);
-      setFormData({});
-    } catch (err) {
-      console.error("Submit error:", err);
-      showAlert("Failed to submit: " + err.message, "Error", "error");
-    } finally {
-      setLoading(false);
+  // const submitFilledForm = async () => {
+  //   if (!selectedTemplate?.id) return;
+  //   if (!validateForm()) return;
+  //   setLoading(true);
+  //   try {
+  //     const responsePayload = {
+  //       ...formData,
+  //       __submitted_by: currentEmployeeId,
+  //       __submitted_at: new Date().toISOString(),
+  //     };
+  //     if (isReviewMode) {
+  //       responsePayload.__reviewed_by = currentEmployeeId;
+  //       responsePayload.__reviewed_employee = selectedSubmission?.employee_id || selectedSubmission?.employeeId || null;
+  //       responsePayload.__is_review = true;
+  //     }
+  //     const res = await fetch(`${BACKEND_URL}/api/forms/${selectedTemplate.id}/submit`, {
+  //       method: "POST",
+  //       credentials: "include",
+  //       headers: getHeaders(),
+  //       body: JSON.stringify({
+  //         response_json: responsePayload,
+  //         isReview: isReviewMode,
+  //         reviewedEmployeeId: selectedSubmission?.employee_id || selectedSubmission?.employeeId,
+  //       }),
+  //     });
+  //     if (!res.ok) {
+  //       const err = await res.json().catch(() => ({}));
+  //       throw new Error(err.message || "Submission failed");
+  //     }
+  //     showAlert(isReviewMode ? "Review submitted successfully!" : "Form submitted successfully!", "Success", "success");
+  //     setHasSubmitted(true);
+  //     setSubmissionData({ response_json: responsePayload });
+  //     setFillMode(false);
+  //     setIsReviewMode(false);
+  //     setTeamSubmissions([]);
+  //     setSelectedSubmission(null);
+  //     setFormData({});
+  //   } catch (err) {
+  //     console.error("Submit error:", err);
+  //     showAlert("Failed to submit: " + err.message, "Error", "error");
+  //   } finally {
+  //     setLoading(false);
+  //   }
+  // };
+//   const submitFilledForm = async () => {
+//   if (!selectedTemplate?.id) return;
+//   if (!validateForm()) return;
+
+//   setLoading(true);
+//   try {
+//     const responsePayload = {
+//       ...formData,
+//       __submitted_by: currentEmployeeId,
+//       __submitted_at: new Date().toISOString(),
+//       __is_draft: false,
+//     };
+
+//     const res = await fetch(`${BACKEND_URL}/api/forms/${selectedTemplate.id}/submit`, {
+//       method: "POST",
+//       credentials: "include",
+//       headers: getHeaders(),
+//       body: JSON.stringify({
+//         response_json: responsePayload,
+//         isDraft: false,
+//         isReview: isReviewMode,
+//         reviewedEmployeeId: selectedSubmission?.employee_id || selectedSubmission?.employeeId,
+//       }),
+//     });
+
+//     if (!res.ok) throw new Error("Submission failed");
+
+//     showAlert(
+//       isReviewMode ? "Review submitted successfully!" : "Form submitted successfully!", 
+//       "Success", 
+//       "success"
+//     );
+
+//     setHasSubmitted(true);
+//     setIsDraft(false);
+//     setSubmissionData({ response_json: responsePayload });
+//     setFillMode(false); // or keep open to show success
+
+//   } catch (err) {
+//     console.error("Submit error:", err);
+//     showAlert("Failed to submit: " + err.message, "Error", "error");
+//   } finally {
+//     setLoading(false);
+//   }
+// };
+// Replace both functions with these:
+
+const submitFormWithFiles = async (isDraft = false) => {
+  if (!selectedTemplate?.id) return;
+  if (!validateForm()) return;
+
+  setLoading(true);
+
+  try {
+    const formDataToSend = new FormData();
+
+    const responsePayload = {
+      ...formData,
+      __submitted_by: currentEmployeeId,
+      __last_updated: new Date().toISOString(),
+    };
+
+    if (isDraft) {
+      responsePayload.__is_draft = true;
+      responsePayload.__saved_at = new Date().toISOString();
+      responsePayload.__saved_by = currentEmployeeId;
+    } else {
+      responsePayload.__is_draft = false;
+      responsePayload.__submitted_at = new Date().toISOString();
     }
-  };
+
+    if (isReviewMode) {
+      responsePayload.__reviewed_by = currentEmployeeId;
+      responsePayload.__reviewed_employee = selectedSubmission?.employee_id || selectedSubmission?.employeeId;
+      responsePayload.__is_review = true;
+    }
+
+    formDataToSend.append("response_json", JSON.stringify(responsePayload));
+    formDataToSend.append("isDraft", String(isDraft));
+    formDataToSend.append("isReview", String(isReviewMode));
+
+    if (isReviewMode && selectedSubmission) {
+      formDataToSend.append("reviewedEmployeeId", selectedSubmission.employee_id || selectedSubmission.employeeId);
+    }
+
+    // Append Files
+    Object.keys(formData).forEach(key => {
+      const value = formData[key];
+      if (value && Array.isArray(value) && value[0] instanceof File) {
+        value.forEach(file => {
+          formDataToSend.append(key, file);
+        });
+      }
+    });
+
+    const resolvedOrgId = orgId || (typeof window !== "undefined" ? window.__ORG_ID : "") || "unknown";
+    const resolvedEmployeeId = currentEmployeeId || (typeof window !== "undefined" ? window.__EMPLOYEE_ID : "") || "unknown";
+
+    if (!resolvedOrgId || !resolvedEmployeeId) {
+      throw new Error(
+        "Missing employee or organization ID. Please refresh and login again before submitting."
+      );
+    }
+
+    // If we are in 'others feedback' context, POST only the feedback entries to the dedicated endpoint
+    if (othersFeedbackContext && othersFeedbackContext.requesterEmployeeId) {
+      const requesterId = String(othersFeedbackContext.requesterEmployeeId);
+      const suffix = `_others_feedback_from_${requesterId}`;
+      const feedbackEntries = {};
+      Object.keys(formData).forEach(k => {
+        if (typeof k === 'string' && k.endsWith(suffix)) {
+          const base = k.replace(new RegExp(suffix + `$`), '');
+          feedbackEntries[base] = formData[k];
+        }
+      });
+
+      const postBody = {
+        requesterEmployeeId: requesterId,
+        feedbackEntries,
+      };
+
+      const res = await fetch(`${BACKEND_URL}/api/forms/${selectedTemplate.id}/others-feedback`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': API_KEY || '',
+          'x-org-id': resolvedOrgId,
+          'x-employee-id': resolvedEmployeeId,
+        },
+        body: JSON.stringify(postBody),
+      });
+
+      if (!res.ok) throw new Error('Feedback submission failed');
+
+      showAlert('✅ Feedback submitted successfully!', 'Success', 'success');
+      setOthersFeedbackContext(null);
+      setFillMode(false);
+
+      // Refresh feedback requests list
+      try {
+        const frRes = await fetch(`${BACKEND_URL}/api/forms/feedback-requests`, {
+          method: 'GET',
+          credentials: 'include',
+          headers: getHeaders(),
+        });
+        if (frRes.ok) {
+          const jf = await frRes.json();
+          setFeedbackRequests(jf.data || []);
+        }
+      } catch (e) {
+        // ignore
+      }
+
+      return;
+    }
+
+    const res = await fetch(`${BACKEND_URL}/api/forms/${selectedTemplate.id}/submit`, {
+      method: "POST",
+      credentials: "include",
+      headers: {
+        "x-api-key": API_KEY || "",
+        "x-org-id": resolvedOrgId,
+        "x-employee-id": resolvedEmployeeId,
+      },
+      body: formDataToSend,
+    });
+
+    if (!res.ok) throw new Error("Submission failed");
+
+    showAlert(
+      isDraft ? "✅ Draft saved successfully! You can continue later." : 
+      isReviewMode ? "Review submitted successfully!" : "✅ Form submitted successfully!", 
+      "Success", 
+      "success"
+    );
+
+    setHasSubmitted(!isDraft);
+    setIsDraft(isDraft);
+
+    if (!isDraft) {
+      setFillMode(false);
+    }
+
+  } catch (err) {
+    console.error("Submit error:", err);
+    showAlert("Failed to submit: " + err.message, "Error", "error");
+  } finally {
+    setLoading(false);
+  }
+};
+
+
+const submitFilledForm = () => submitFormWithFiles(false);
  const addOrUpdateSupervisorField = () => {
   if (!supervisorLabel.trim()) {
     showAlert("Supervisor field label is required");
@@ -989,7 +1682,10 @@ const handleSelectSubmission = async (submission) => {
         value: label.toLowerCase().replace(/\s+/g, "-")
       }));
   }
-
+if (supervisorType === "file") {
+  newSupField.accept = ".pdf,.doc,.docx,.jpg,.jpeg,.png";
+  newSupField.multiple = false;
+}
   if (editingSupervisorIndex !== null) {
     const updated = [...supervisorFieldsList];
     updated[editingSupervisorIndex] = newSupField;
@@ -1025,11 +1721,133 @@ const deleteSupervisorField = (index) => {
   setSupervisorFieldsList(prev => prev.filter((_, i) => i !== index));
   if (editingSupervisorIndex === index) setEditingSupervisorIndex(null);
 };
+// ==================== IMPROVED FILE PATH HELPERS ====================
+
+const normalizeFilePath = (raw) => {
+  if (!raw) return null;
+
+  if (typeof raw === "string") {
+    let str = raw.replace(/\\/g, "/").trim();
+    if (str.startsWith("http")) return str;
+    // Take only the filename part
+    return str.split("/").pop();
+  }
+
+  if (typeof raw === "object") {
+    return normalizeFilePath(
+      raw.filename || 
+      raw.originalname || 
+      raw.path || 
+      raw.file_url || 
+      raw.name
+    );
+  }
+
+  return String(raw);
+};
+
+const getFileUrl = (file) => {
+  if (!file) return null;
+
+  // Local file during form fill
+  if (file instanceof File) {
+    return URL.createObjectURL(file);
+  }
+
+  const filename = normalizeFilePath(file);
+  if (!filename) return null;
+
+  if (filename.startsWith("http")) return filename;
+
+  const base = BACKEND_URL ? BACKEND_URL.replace(/\/+$/, "") : "";
+  const org = orgId || 1;
+
+  return `${base}/api/forms/download/${org}/${encodeURIComponent(filename)}`;
+};
+// 3. Keep the latest viewFile and downloadFile (with headers)
+const viewFile = async (file) => {
+  const url = getFileUrl(file);
+  if (!url) {
+    showAlert("Cannot generate file URL", "Error", "error");
+    return;
+  }
+
+  try {
+    const newWindow = window.open("", "_blank");
+    if (!newWindow) {
+      showAlert("Please allow popups", "Warning", "warning");
+      return;
+    }
+
+    newWindow.document.write(`<h3 style="text-align:center;margin-top:100px;">Loading...</h3>`);
+
+    const res = await fetch(url, {
+      credentials: "include",
+      headers: getHeaders()
+    });
+
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+    const blob = await res.blob();
+    const blobUrl = URL.createObjectURL(blob);
+    const contentType = res.headers.get("content-type") || "";
+    const fileName = file?.originalname || file?.name || file?.filename || "file";
+
+    if (contentType.includes("pdf")) {
+      newWindow.document.write(`
+        <!DOCTYPE html><html><head><title>${fileName}</title>
+        <style>body,iframe{margin:0;padding:0;width:100%;height:100vh;border:none;}</style></head>
+        <body><iframe src="${blobUrl}"></iframe></body></html>
+      `);
+    } else if (contentType.startsWith("image/")) {
+      newWindow.document.write(`
+        <!DOCTYPE html><html><head><title>${fileName}</title>
+        <style>body{margin:0;padding:0;display:flex;justify-content:center;align-items:center;background:#111;}
+               img{max-width:100%;max-height:100vh;}</style></head>
+        <body><img src="${blobUrl}" alt="${fileName}"/></body></html>
+      `);
+    } else {
+      newWindow.location.href = blobUrl;
+    }
+
+    newWindow.document.close();
+    setTimeout(() => URL.revokeObjectURL(blobUrl), 120000);
+  } catch (err) {
+    console.error(err);
+    showAlert("Failed to preview. Opening directly...", "Info");
+    window.open(url, "_blank");
+  }
+};
+
+const downloadFile = (file, suggestedName = null) => {
+  const url = getFileUrl(file);
+  if (!url) {
+    showAlert("Cannot download file", "Error", "error");
+    return;
+  }
+
+  fetch(url, { credentials: "include", headers: getHeaders() })
+    .then(res => {
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return res.blob();
+    })
+    .then(blob => {
+      const blobUrl = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = blobUrl;
+      a.download = suggestedName || file?.originalname || file?.name || "file";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(blobUrl);
+    })
+    .catch(() => window.open(url, "_blank"));
+};
+
 const renderField = (field, isPreview = true, onChange = null) => {
   const fieldKey = field.fieldId || field.id;
   const isDisabled = isPreview || field.readOnly || false;
 
-  // Use passed onChange or fallback to default
   const handleChange = (value) => {
     if (onChange) {
       onChange(fieldKey, value);
@@ -1039,186 +1857,770 @@ const renderField = (field, isPreview = true, onChange = null) => {
   };
 
   const currentValue = formData[fieldKey];
+	const handleKeyDown = (e) => {
+		if (e.key !== "Enter") return;
+		// Allow newlines in textarea
+		if (e.target && e.target.tagName === "TEXTAREA") return;
+		if (e.shiftKey || e.ctrlKey || e.altKey) return;
+		try {
+			e.preventDefault();
+			const formEl = e.target.closest && e.target.closest('form');
+			if (!formEl) return;
+			const focusableSelector = 'input:not([type=hidden]):not([disabled]), select:not([disabled]), textarea:not([disabled]), button:not([disabled])';
+			const focusables = Array.from(formEl.querySelectorAll(focusableSelector)).filter(el => el.offsetParent !== null);
+			const idx = focusables.indexOf(e.target);
+			if (idx >= 0 && idx < focusables.length - 1) {
+				const next = focusables[idx + 1];
+				next.focus();
+				if (typeof next.select === 'function') next.select();
+			}
+		} catch (err) {
+			// silent
+		}
+	};
+  const feedbackRequestKey = `${fieldKey}_feedback_request_to`;
+  const selectedFeedbackEmployeeId = formData[feedbackRequestKey] || "";
+  const selectedFeedbackEmployee = employees.find(
+    (emp) => String(emp.employee_id || emp.id) === String(selectedFeedbackEmployeeId)
+  );
+
+  const renderFeedbackRequester = () => {
+    if (!field.needsOthersFeedback || isDisabled) return null;
+
+    return (
+      <div style={{ marginTop: "16px", padding: "14px 16px", background: "#eff6ff", border: "1px solid #bfdbfe", borderRadius: "10px" }}>
+        <label style={{ display: "block", fontWeight: "600", marginBottom: "8px" }}>
+          Select employee for feedback
+        </label>
+        <select
+          className="df-input"
+          value={selectedFeedbackEmployeeId}
+          onChange={(e) => handleInputChange(feedbackRequestKey, e.target.value)}
+        >
+          <option value="">-- Select employee --</option>
+          {employees
+            .filter((emp) => String(emp.employee_id || emp.id) !== String(currentEmployeeId))
+            .map((emp) => {
+              const fullName = `${emp.first_name || ""} ${emp.middle_name || ""} ${emp.last_name || ""}`.trim();
+              return (
+                <option key={emp.employee_id || emp.id} value={emp.employee_id || emp.id}>
+                  {fullName || `Employee ${emp.employee_id || emp.id}`}
+                </option>
+              );
+            })}
+        </select>
+        {selectedFeedbackEmployeeId && (
+          <small style={{ display: "block", marginTop: "10px", color: "#0f172a" }}>
+            Feedback requested from {selectedFeedbackEmployee ? `${selectedFeedbackEmployee.first_name || ""} ${selectedFeedbackEmployee.last_name || ""}`.trim() : selectedFeedbackEmployeeId}. They will submit their feedback separately.
+          </small>
+        )}
+      </div>
+    );
+  };
+
+  // Common Reference File Component
+  const ReferenceFile = () => {
+    const referenceFile = field.referenceFile || field.employee?.referenceFile || field.supervisor?.referenceFile;
+    if (!referenceFile) return null;
+    const url = getFileUrl(referenceFile);
+    const fileName = referenceFile.name || referenceFile.originalname || referenceFile.filename || "Reference File";
+    return (
+      <div style={{
+        margin: "10px 0 12px 0",
+        padding: "12px 14px",
+        background: "#f0f9ff",
+        border: "1px solid #bae6fd",
+        borderRadius: "8px"
+      }}>
+        <strong style={{ color: "#0369a1", display: "block", marginBottom: "6px" }}>
+          📋 Sample Reference:
+        </strong>
+        <div style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
+          <span>📎 {fileName}</span>
+          {url && (
+            <>
+              <button
+                type="button"
+                onClick={() => viewFile(referenceFile)}
+                style={{ border: "none", background: "transparent", color: "#2563eb", textDecoration: "underline", cursor: "pointer", padding: 0 }}
+              >
+                View
+              </button>
+              <button
+                type="button"
+                onClick={() => downloadFile(referenceFile, fileName)}
+                style={{ border: "none", background: "transparent", color: "#16a34a", textDecoration: "underline", cursor: "pointer" }}
+              >
+                Download
+              </button>
+            </>
+          )}
+        </div>
+      </div>
+    );
+  };
 
   switch (field.type) {
     case "text":
     case "email":
     case "number":
       return (
-        <input
-          type={field.type}
-          placeholder={field.placeholder || ""}
-          className="df-input"
-          disabled={isDisabled}
-          value={currentValue || ""}
-          onChange={(e) => handleChange(e.target.value)}
-          required={field.required && !isDisabled}
-        />
+        <div className="df-form-group">
+          {/* <label>
+            {field.label}
+            {field.required && <span style={{ color: "red" }}> *</span>}
+          </label> */}
+          <ReferenceFile />
+          <input
+            type={field.type}
+            placeholder={field.placeholder || ""}
+            className="df-input"
+            disabled={isDisabled}
+            value={currentValue || ""}
+						onChange={(e) => handleChange(e.target.value)}
+						onKeyDown={handleKeyDown}
+            required={field.required && !isDisabled}
+          />
+          {renderFeedbackRequester()}
+        </div>
       );
 
     case "textarea":
       return (
-        <textarea
-          placeholder={field.placeholder || ""}
-          className="df-input"
-          disabled={isDisabled}
-          value={currentValue || ""}
-          onChange={(e) => handleChange(e.target.value)}
-          rows={4}
-          required={field.required && !isDisabled}
-        />
+        <div className="df-form-group">
+          {/* <label>
+            {field.label}
+            {field.required && <span style={{ color: "red" }}> *</span>}
+          </label> */}
+          <ReferenceFile />
+          <textarea
+            placeholder={field.placeholder || ""}
+            className="df-input"
+            disabled={isDisabled}
+            value={currentValue || ""}
+            onChange={(e) => handleChange(e.target.value)}
+            rows={4}
+            required={field.required && !isDisabled}
+          />
+          {renderFeedbackRequester()}
+        </div>
       );
 
     case "date":
       return (
-        <input
-          type="date"
-          className="df-input"
-          disabled={isDisabled}
-          value={currentValue || ""}
-          onChange={(e) => handleChange(e.target.value)}
-          required={field.required && !isDisabled}
-        />
+        <div className="df-form-group">
+          {/* <label>
+            {field.label}
+            {field.required && <span style={{ color: "red" }}> *</span>}
+          </label> */}
+          <ReferenceFile />
+          <input
+            type="date"
+            className="df-input"
+            disabled={isDisabled}
+            value={currentValue || ""}
+						onChange={(e) => handleChange(e.target.value)}
+						onKeyDown={handleKeyDown}
+            required={field.required && !isDisabled}
+          />
+          {renderFeedbackRequester()}
+        </div>
       );
 
     case "daterange":
       const rangeValue = currentValue || { start: "", end: "" };
       return (
-        <div className="df-date-range" style={{ display: "flex", gap: "12px", alignItems: "center", flexWrap: "wrap" }}>
-          <div style={{ flex: 1 }}>
-            <label style={{ fontSize: "0.85rem", color: "#666", display: "block", marginBottom: "4px" }}>Start Date</label>
-            <input
-              type="date"
-              className="df-input"
-              disabled={isDisabled}
-              value={rangeValue.start || ""}
-              onChange={(e) => {
-                const newRange = { ...(rangeValue || {}), start: e.target.value };
-                handleChange(newRange);
-              }}
-            />
+        <div className="df-form-group">
+          {/* <label>
+            {field.label}
+            {field.required && <span style={{ color: "red" }}> *</span>}
+          </label> */}
+          <ReferenceFile />
+          <div style={{ display: "flex", gap: "12px", flexWrap: "wrap" }}>
+            <div style={{ flex: 1 }}>
+							<input type="date" className="df-input" disabled={isDisabled} value={rangeValue.start || ""} onChange={(e) => handleChange({ ...rangeValue, start: e.target.value })} onKeyDown={handleKeyDown} />
+            </div>
+            <div style={{ flex: 1 }}>
+							<input type="date" className="df-input" disabled={isDisabled} value={rangeValue.end || ""} onChange={(e) => handleChange({ ...rangeValue, end: e.target.value })} onKeyDown={handleKeyDown} />
+            </div>
           </div>
-          <div style={{ flex: 1 }}>
-            <label style={{ fontSize: "0.85rem", color: "#666", display: "block", marginBottom: "4px" }}>End Date</label>
-            <input
-              type="date"
-              className="df-input"
-              disabled={isDisabled}
-              value={rangeValue.end || ""}
-              onChange={(e) => {
-                const newRange = { ...(rangeValue || {}), end: e.target.value };
-                handleChange(newRange);
-              }}
-            />
-          </div>
+          {renderFeedbackRequester()}
         </div>
       );
 
-   case "select":
-  return (
-    <select
-      className="df-input"
-      disabled={isDisabled}           // This will now be false in preview
-      value={currentValue || ""}
-      onChange={(e) => handleChange(e.target.value)}
-    >
-      <option value="">-- Select {field.label || "option"} --</option>
-      {(field.options || []).map((opt, i) => (
-        <option 
-          key={opt.value || i} 
-          value={opt.value || opt.label}
-        >
-          {opt.label || opt.value}
-        </option>
-      ))}
-    </select>
-  );
+    case "select":
+      return (
+        <div className="df-form-group">
+          {/* <label>
+            {field.label}
+            {field.required && <span style={{ color: "red" }}> *</span>}
+          </label> */}
+          <ReferenceFile />
+		  <select className="df-input" disabled={isDisabled} value={currentValue || ""} onChange={(e) => handleChange(e.target.value)} onKeyDown={handleKeyDown}>
+            <option value="">-- Select --</option>
+            {(field.options || []).map((opt, i) => (
+              <option key={i} value={opt.value}>{opt.label}</option>
+            ))}
+          </select>
+          {renderFeedbackRequester()}
+        </div>
+      );
 
     case "radio":
       return (
-        <div className="df-radio-group">
-          {field.options?.map((opt) => (
-            <label key={opt.value} className="df-radio-label">
-              <input
-                type="radio"
-                name={fieldKey}                    // Important for grouping
-                value={opt.value}
-                checked={currentValue === opt.value}
-                disabled={isDisabled}
-                onChange={(e) => handleChange(e.target.value)}
-                required={field.required && !isDisabled}
-              />
-              {opt.label}
-            </label>
-          ))}
-        </div>
-      );
-
-    // FIXED: Checkbox Group - Works for both Employee & Supervisor fields
-    case "checkbox-group":
-      const selectedValues = Array.isArray(currentValue) ? currentValue : [];
-
-      return (
-        <div className="df-checkbox-group">
-          {field.options?.map((opt) => {
-            const isChecked = selectedValues.includes(opt.value);
-
-            return (
-              <label key={opt.value} className="df-checkbox-label">
+        <div className="df-form-group">
+          {/* <label>
+            {field.label}
+            {field.required && <span style={{ color: "red" }}> *</span>}
+          </label> */}
+          <ReferenceFile />
+          <div className="df-radio-group">
+            {(field.options || []).map((opt, index) => (
+              <label key={opt.value ?? index} className="df-radio-label">
                 <input
-                  type="checkbox"
-                  value={opt.value}
-                  checked={isChecked}
+                  type="radio"
+                  name={fieldKey}
+                  value={opt.value ?? opt.label}
+                  checked={String(currentValue) === String(opt.value ?? opt.label)}
                   disabled={isDisabled}
-                  onChange={(e) => {
-                    let updated;
-                    if (e.target.checked) {
-                      updated = [...selectedValues, opt.value];        // Add
-                    } else {
-                      updated = selectedValues.filter((v) => v !== opt.value); // Remove
-                    }
-                    handleChange(updated);
-                  }}
+									onChange={(e) => handleChange(e.target.value)}
+									onKeyDown={handleKeyDown}
+                  required={field.required && !isDisabled}
                 />
-                {opt.label}
+                {opt.label ?? opt.value}
               </label>
-            );
-          })}
+            ))}
+          </div>
+          {renderFeedbackRequester()}
         </div>
       );
+
+    case "checkbox-group":
+      {
+        const selectedValues = Array.isArray(currentValue) ? currentValue : [];
+        return (
+          <div className="df-form-group">
+            {/* <label>
+              {field.label}
+              {field.required && <span style={{ color: "red" }}> *</span>}
+            </label> */}
+            <ReferenceFile />
+            <div className="df-checkbox-group">
+              {(field.options || []).map((opt, index) => {
+                const value = opt.value ?? opt.label;
+                const isChecked = selectedValues.includes(value);
+                return (
+                  <label key={value ?? index} className="df-checkbox-label">
+                    <input
+                      type="checkbox"
+                      value={value}
+                      checked={isChecked}
+                      disabled={isDisabled}
+											onChange={(e) => {
+                        const updated = e.target.checked
+                          ? [...selectedValues, value]
+                          : selectedValues.filter((v) => v !== value);
+                        handleChange(updated);
+                      }}
+											onKeyDown={handleKeyDown}
+                    />
+                    {opt.label ?? opt.value}
+                  </label>
+                );
+              })}
+            </div>
+            {renderFeedbackRequester()}
+          </div>
+        );
+      }
 
     case "checkbox":
       return (
-        <input
-          type="checkbox"
-          disabled={isDisabled}
-          checked={!!currentValue}
-          onChange={(e) => handleChange(e.target.checked)}
-        />
+        <div className="df-form-group">
+          {/* <label>
+            {field.label}
+            {field.required && <span style={{ color: "red" }}> *</span>}
+          </label> */}
+          <ReferenceFile />
+          <input
+            type="checkbox"
+            disabled={isDisabled}
+            checked={!!currentValue}
+						onChange={(e) => handleChange(e.target.checked)}
+						onKeyDown={handleKeyDown}
+          />
+          {renderFeedbackRequester()}
+        </div>
       );
 
     case "rating":
-      const currentRating = Number(currentValue) || 0;
+      {
+        const currentRating = Number(currentValue) || 0;
+        return (
+          <div className="df-form-group">
+            {/* <label>
+              {field.label}
+              {field.required && <span style={{ color: "red" }}> *</span>}
+            </label> */}
+            <ReferenceFile />
+            <div className="df-rating-container" style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+              {[1, 2, 3, 4, 5].map((star) => (
+                <span
+                  key={star}
+									className={`df-star ${currentRating >= star ? "filled" : ""} ${isDisabled ? "disabled" : ""}`}
+									role="button"
+									tabIndex={isDisabled ? -1 : 0}
+									onClick={() => {
+										if (isDisabled) return;
+										const newVal = currentRating === star ? 0 : star;
+										handleChange(newVal);
+									}}
+									onKeyDown={(e) => {
+										if (isDisabled) return;
+										if (e.key === "Enter" || e.key === " ") {
+											e.preventDefault();
+											const newVal = currentRating === star ? 0 : star;
+											handleChange(newVal);
+										}
+									}}
+									style={{ cursor: isDisabled ? "default" : "pointer", fontSize: "1.7rem", color: currentRating >= star ? "#f59e0b" : "#cbd5e1" }}
+                >
+                  ★
+                </span>
+              ))}
+							{currentRating > 0 && (
+								<>
+									<span className="df-rating-value">({currentRating})</span>
+									{!isDisabled && (
+										<button
+											type="button"
+											onClick={() => handleChange(0)}
+											style={{ marginLeft: "12px", background: "transparent", border: "1px solid #e5e7eb", padding: "6px 10px", borderRadius: "6px", cursor: "pointer" }}
+										>
+											Clear
+										</button>
+									)}
+								</>
+							)}
+            </div>
+            {renderFeedbackRequester()}
+          </div>
+        );
+      }
+
+    case "file":
       return (
-        <div className="df-rating-container">
-          {[1, 2, 3, 4, 5].map((star) => (
-            <span
-              key={star}
-              className={`df-star ${currentRating >= star ? "filled" : ""} ${isDisabled ? "disabled" : ""}`}
-              onClick={() => !isDisabled && handleChange(star)}
-              style={{ cursor: isDisabled ? "default" : "pointer", fontSize: "2rem" }}
-            >
-              ★
-            </span>
-          ))}
-          {currentRating > 0 && <span className="df-rating-value">({currentRating})</span>}
+        <div className="df-form-group">
+          {/* <label>
+            {field.label}
+            {field.required && <span style={{ color: "red" }}> *</span>}
+          </label> */}
+          <ReferenceFile />
+          <input
+            type="file"
+            className="df-input"
+            disabled={isDisabled}
+            accept={field.accept || ".pdf,.doc,.docx,.jpg,.jpeg,.png"}
+            multiple={field.multiple || false}
+            onChange={(e) => handleChange(Array.from(e.target.files || []))}
+            required={field.required && !isDisabled}
+          />
+          <small style={{ color: "#666", fontSize: "0.82rem", display: "block", marginTop: "4px" }}>
+            PDF, JPG, PNG, DOC, DOCX (Max 10MB)
+          </small>
+
+          {Array.isArray(currentValue) && currentValue.length > 0 && (
+            <div style={{ marginTop: "10px" }}>
+              <strong>Your Attached Files:</strong>
+              {currentValue.map((file, idx) => {
+                const url = getFileUrl(file);
+                const name = file?.originalname || file?.name || `File ${idx + 1}`;
+                return (
+                  <div key={idx} style={{ marginTop: "6px", padding: "8px", background: "#f0fdf4", borderRadius: "6px", display: "flex", justifyContent: "space-between" }}>
+                    <span>📎 {name}</span>
+                    {url && (
+                      <div style={{ display: "flex", gap: "12px" }}>
+                        <button type="button" onClick={() => viewFile(file)} style={{ color: "#2563eb", background: "none", border: "none", padding: 0, cursor: "pointer", textDecoration: "underline" }}>View</button>
+                        <button type="button" onClick={() => downloadFile(file, name)}>Download</button>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+          {renderFeedbackRequester()}
         </div>
       );
 
     default:
-      return <em>Unsupported field type: {field.type}</em>;
+      return (
+        <div className="df-form-group">
+          <label>{field.label}</label>
+          <ReferenceFile />
+          <em>Unsupported field type: {field.type}</em>
+        </div>
+      );
   }
 };
+// const renderField = (field, isPreview = true, onChange = null) => {
+//   const fieldKey = field.fieldId || field.id;
+//   const isDisabled = isPreview || field.readOnly || false;
+
+//   // Use passed onChange or fallback to default
+//   const handleChange = (value) => {
+//     if (onChange) {
+//       onChange(fieldKey, value);
+//     } else {
+//       handleInputChange(fieldKey, value);
+//     }
+//   };
+
+//   const currentValue = formData[fieldKey];
+
+//   switch (field.type) {
+//     case "text":
+//     case "email":
+//     case "number":
+//       return (
+//         <input
+//           type={field.type}
+//           placeholder={field.placeholder || ""}
+//           className="df-input"
+//           disabled={isDisabled}
+//           value={currentValue || ""}
+//           onChange={(e) => handleChange(e.target.value)}
+//           required={field.required && !isDisabled}
+//         />
+//       );
+
+//     case "textarea":
+//       return (
+//         <textarea
+//           placeholder={field.placeholder || ""}
+//           className="df-input"
+//           disabled={isDisabled}
+//           value={currentValue || ""}
+//           onChange={(e) => handleChange(e.target.value)}
+//           rows={4}
+//           required={field.required && !isDisabled}
+//         />
+//       );
+
+//     case "date":
+//       return (
+//         <input
+//           type="date"
+//           className="df-input"
+//           disabled={isDisabled}
+//           value={currentValue || ""}
+//           onChange={(e) => handleChange(e.target.value)}
+//           required={field.required && !isDisabled}
+//         />
+//       );
+
+//     case "daterange":
+//       const rangeValue = currentValue || { start: "", end: "" };
+//       return (
+//         <div className="df-date-range" style={{ display: "flex", gap: "12px", alignItems: "center", flexWrap: "wrap" }}>
+//           <div style={{ flex: 1 }}>
+//             <label style={{ fontSize: "0.85rem", color: "#666", display: "block", marginBottom: "4px" }}>Start Date</label>
+//             <input
+//               type="date"
+//               className="df-input"
+//               disabled={isDisabled}
+//               value={rangeValue.start || ""}
+//               onChange={(e) => {
+//                 const newRange = { ...(rangeValue || {}), start: e.target.value };
+//                 handleChange(newRange);
+//               }}
+//             />
+//           </div>
+//           <div style={{ flex: 1 }}>
+//             <label style={{ fontSize: "0.85rem", color: "#666", display: "block", marginBottom: "4px" }}>End Date</label>
+//             <input
+//               type="date"
+//               className="df-input"
+//               disabled={isDisabled}
+//               value={rangeValue.end || ""}
+//               onChange={(e) => {
+//                 const newRange = { ...(rangeValue || {}), end: e.target.value };
+//                 handleChange(newRange);
+//               }}
+//             />
+//           </div>
+//         </div>
+//       );
+
+//    case "select":
+//   return (
+//     <select
+//       className="df-input"
+//       disabled={isDisabled}           // This will now be false in preview
+//       value={currentValue || ""}
+//       onChange={(e) => handleChange(e.target.value)}
+//     >
+//       <option value="">-- Select {field.label || "option"} --</option>
+//       {(field.options || []).map((opt, i) => (
+//         <option 
+//           key={opt.value || i} 
+//           value={opt.value || opt.label}
+//         >
+//           {opt.label || opt.value}
+//         </option>
+//       ))}
+//     </select>
+//   );
+
+//     case "radio":
+//       return (
+//         <div className="df-radio-group">
+//           {field.options?.map((opt) => (
+//             <label key={opt.value} className="df-radio-label">
+//               <input
+//                 type="radio"
+//                 name={fieldKey}                    // Important for grouping
+//                 value={opt.value}
+//                 checked={currentValue === opt.value}
+//                 disabled={isDisabled}
+//                 onChange={(e) => handleChange(e.target.value)}
+//                 required={field.required && !isDisabled}
+//               />
+//               {opt.label}
+//             </label>
+//           ))}
+//         </div>
+//       );
+
+//     // FIXED: Checkbox Group - Works for both Employee & Supervisor fields
+//     case "checkbox-group":
+//       const selectedValues = Array.isArray(currentValue) ? currentValue : [];
+
+//       return (
+//         <div className="df-checkbox-group">
+//           {field.options?.map((opt) => {
+//             const isChecked = selectedValues.includes(opt.value);
+
+//             return (
+//               <label key={opt.value} className="df-checkbox-label">
+//                 <input
+//                   type="checkbox"
+//                   value={opt.value}
+//                   checked={isChecked}
+//                   disabled={isDisabled}
+//                   onChange={(e) => {
+//                     let updated;
+//                     if (e.target.checked) {
+//                       updated = [...selectedValues, opt.value];        // Add
+//                     } else {
+//                       updated = selectedValues.filter((v) => v !== opt.value); // Remove
+//                     }
+//                     handleChange(updated);
+//                   }}
+//                 />
+//                 {opt.label}
+//               </label>
+//             );
+//           })}
+//         </div>
+//       );
+
+//     case "checkbox":
+//       return (
+//         <input
+//           type="checkbox"
+//           disabled={isDisabled}
+//           checked={!!currentValue}
+//           onChange={(e) => handleChange(e.target.checked)}
+//         />
+//       );
+
+//     case "rating":
+//       const currentRating = Number(currentValue) || 0;
+//       return (
+//         <div className="df-rating-container">
+//           {[1, 2, 3, 4, 5].map((star) => (
+//             <span
+//               key={star}
+//               className={`df-star ${currentRating >= star ? "filled" : ""} ${isDisabled ? "disabled" : ""}`}
+//               onClick={() => !isDisabled && handleChange(star)}
+//               style={{ cursor: isDisabled ? "default" : "pointer", fontSize: "2rem" }}
+//             >
+//               ★
+//             </span>
+//           ))}
+//           {currentRating > 0 && <span className="df-rating-value">({currentRating})</span>}
+//         </div>
+//       );
+//       case "file":
+//   return (
+//     <div>
+//       <input
+//         type="file"
+//         className="df-input"
+//         disabled={isDisabled}
+//         accept={field.accept || ".pdf,.doc,.docx,.jpg,.jpeg,.png"}
+//         multiple={field.multiple || false}
+//         onChange={(e) => {
+//           const files = Array.from(e.target.files || []);
+//           handleChange(files);
+//         }}
+//         required={field.required && !isDisabled}
+//       />
+//       <small style={{ color: "#666", fontSize: "0.82rem", display: "block", marginTop: "4px" }}>
+//         PDF, JPG, PNG, DOC, DOCX (Max 10MB)
+//       </small>
+
+//       {/* Show Uploaded Files */}
+//       {Array.isArray(currentValue) && currentValue.length > 0 && (
+//         <div style={{ marginTop: "10px" }}>
+//           <strong style={{ fontSize: "0.85rem", color: "#166534" }}>Attached Files:</strong>
+//           {currentValue.map((file, idx) => {
+//             const url = getFileUrl(file);
+//             const name = file?.originalname || file?.name || file?.filename || `File ${idx + 1}`;
+
+//             return (
+//               <div
+//                 key={idx}
+//                 style={{
+//                   marginTop: "6px",
+//                   padding: "8px 10px",
+//                   background: "#f0fdf4",
+//                   borderRadius: "6px",
+//                   fontSize: "0.85rem",
+//                   display: "flex",
+//                   justifyContent: "space-between",
+//                   alignItems: "center"
+//                 }}
+//               >
+//                 <span>📎 {name}</span>
+//                 {url && (
+//                   <div style={{ display: "flex", gap: "12px" }}>
+//                     <a
+//                       href={url}
+//                       target="_blank"
+//                       rel="noopener noreferrer"
+//                       style={{ color: "#2563eb", textDecoration: "underline", fontSize: "0.82rem" }}
+//                     >
+//                       View
+//                     </a>
+//                     <button
+//                       type="button"
+//                       onClick={() => downloadFile(file, name)}
+//                       style={{
+//                         border: "none",
+//                         background: "transparent",
+//                         color: "#16a34a",
+//                         textDecoration: "underline",
+//                         cursor: "pointer",
+//                         fontSize: "0.82rem",
+//                         padding: 0
+//                       }}
+//                     >
+//                       Download
+//                     </button>
+//                   </div>
+//                 )}
+//               </div>
+//             );
+//           })}
+//         </div>
+//       )}
+//     </div>
+//   );
+// //  case "file":
+// //   return (
+// //     <div>
+// //       <input
+// //         type="file"
+// //         className="df-input"
+// //         disabled={isDisabled}
+// //         accept={field.accept || ".pdf,.doc,.docx,.jpg,.jpeg,.png"}
+// //         multiple={field.multiple || false}
+// //         onChange={(e) => {
+// //           const files = Array.from(e.target.files || []);
+// //           handleChange(files);
+// //         }}
+// //         required={field.required && !isDisabled}
+// //       />
+// //       <small style={{ color: "#666", fontSize: "0.82rem", display: "block", marginTop: "4px" }}>
+// //         PDF, JPG, PNG, DOC, DOCX (Max 10MB)
+// //       </small>
+
+// //       {/* Show Uploaded Files with View/Download */}
+// //       {Array.isArray(currentValue) && currentValue.length > 0 && (
+// //         <div style={{ marginTop: "10px" }}>
+// //           <strong style={{ fontSize: "0.85rem", color: "#166534" }}>Attached Files:</strong>
+// //           {currentValue.map((file, idx) => {
+// //             const url = getFileUrl(file);
+// //             const name = file?.originalname || file?.name || file?.filename || `File ${idx + 1}`;
+// //             return (
+// //               <div key={idx} style={{
+// //                 marginTop: "6px",
+// //                 padding: "8px 10px",
+// //                 background: "#f0fdf4",
+// //                 borderRadius: "6px",
+// //                 fontSize: "0.85rem",
+// //                 display: "flex",
+// //                 justifyContent: "space-between",
+// //                 alignItems: "center"
+// //               }}>
+// //                 <span>📎 {name}</span>
+// //                 <div>
+// //                   {url && (
+// //                     <>
+// //                       <a href={url} target="_blank" rel="noopener noreferrer" 
+// //                          style={{ marginRight: "12px", color: "#2563eb", textDecoration: "underline" }}>
+// //                         View
+// //                       </a>
+// //                       <a href={url} download style={{ color: "#16a34a", textDecoration: "underline" }}>
+// //                         Download
+// //                       </a>
+// //                     </>
+// //                   )}
+// //                 </div>
+// //               </div>
+// //             );
+// //           })}
+// //         </div>
+// //       )}
+// //     </div>
+// //   );
+// // case "file":
+// //   return (
+// //     <div>
+// //       <input
+// //         type="file"
+// //         className="df-input"
+// //         disabled={isDisabled}
+// //         accept={field.accept || ".pdf,.doc,.docx,.jpg,.jpeg,.png"}
+// //         multiple={field.multiple || false}
+// //         onChange={(e) => {
+// //           const files = Array.from(e.target.files || []);
+// //           handleChange(files);
+// //         }}
+// //         required={field.required && !isDisabled}
+// //       />
+// //       <small style={{ color: "#666", fontSize: "0.8rem", display: "block", marginTop: "4px" }}>
+// //         Max 10MB • PDF, JPG, PNG, DOC, DOCX
+// //       </small>
+
+// //       {/* Show previously uploaded files */}
+// //       {Array.isArray(currentValue) && currentValue.length > 0 && (
+// //         <div style={{ marginTop: "8px", fontSize: "0.85rem" }}>
+// //           {currentValue.map((file, i) => (
+// //             <div key={i} style={{ color: "#16a34a" }}>
+// //               ✓ {file.originalname || file.name}
+// //             </div>
+// //           ))}
+// //         </div>
+// //       )}
+// //     </div>
+// //   );
+//     default:
+//       return <em>Unsupported field type: {field.type}</em>;
+//   }
+// };
 // ==================== DOWNLOAD FORM RESPONSES AS EXCEL (with Supervisor Label) ====================
 // const downloadFormResponsesAsExcel = async (form) => {
 //   try {
@@ -1446,7 +2848,40 @@ const getFieldHeaders = (form) => {
   return headers;
 };
 
-// ==================== HELPER: Get Field Values ====================
+// // ==================== HELPER: Get Field Values ====================
+// const getFieldValues = (responseJson, form) => {
+//   let formJson = form.form_json;
+//   if (typeof formJson === 'string') {
+//     try { formJson = JSON.parse(formJson); } catch (e) { formJson = []; }
+//   }
+
+//   const values = [];
+
+//   (formJson || []).forEach((f) => {
+//     // Employee field
+//     if (f.employee) {
+//       const key = f.id;
+//       let val = responseJson[key];
+//       if (Array.isArray(val)) val = val.join(", ");
+//       else if (val && typeof val === "object") val = JSON.stringify(val);
+//       values.push(val ?? "—");
+//     }
+
+//     // Multiple supervisor fields
+//     if (f.supervisorFields && Array.isArray(f.supervisorFields)) {
+//       f.supervisorFields.forEach((sup, idx) => {
+//         const key = `${f.id}_sup_${idx}`;
+//         let val = responseJson[key];
+//         if (Array.isArray(val)) val = val.join(", ");
+//         else if (val && typeof val === "object") val = JSON.stringify(val);
+//         values.push(val ?? "—");
+//       });
+//     }
+//   });
+
+//   return values;
+// };
+// ==================== HELPER: Get Field Values (Fixed for Files) ====================
 const getFieldValues = (responseJson, form) => {
   let formJson = form.form_json;
   if (typeof formJson === 'string') {
@@ -1460,8 +2895,23 @@ const getFieldValues = (responseJson, form) => {
     if (f.employee) {
       const key = f.id;
       let val = responseJson[key];
-      if (Array.isArray(val)) val = val.join(", ");
-      else if (val && typeof val === "object") val = JSON.stringify(val);
+
+      // 🔥 FIXED: Handle File Attachments
+      if (Array.isArray(val) && val.length > 0) {
+        const firstItem = val[0];
+        if (firstItem && typeof firstItem === "object" && 
+            (firstItem.originalname || firstItem.filename || firstItem.name)) {
+          val = val.map(file => 
+            file.originalname || file.filename || file.name || "File"
+          ).join(", ");
+        } else {
+          val = val.join(", ");
+        }
+      } 
+      else if (val && typeof val === "object") {
+        val = JSON.stringify(val);
+      }
+
       values.push(val ?? "—");
     }
 
@@ -1470,8 +2920,21 @@ const getFieldValues = (responseJson, form) => {
       f.supervisorFields.forEach((sup, idx) => {
         const key = `${f.id}_sup_${idx}`;
         let val = responseJson[key];
-        if (Array.isArray(val)) val = val.join(", ");
-        else if (val && typeof val === "object") val = JSON.stringify(val);
+
+        if (Array.isArray(val) && val.length > 0) {
+          const firstItem = val[0];
+          if (firstItem && typeof firstItem === "object" && 
+              (firstItem.originalname || firstItem.filename)) {
+            val = val.map(file => 
+              file.originalname || file.filename || file.name || "File"
+            ).join(", ");
+          } else {
+            val = val.join(", ");
+          }
+        } else if (val && typeof val === "object") {
+          val = JSON.stringify(val);
+        }
+
         values.push(val ?? "—");
       });
     }
@@ -1479,7 +2942,6 @@ const getFieldValues = (responseJson, form) => {
 
   return values;
 };
-
  const viewResponses = async (formId, formName) => {
   try {
     setLoading(true);
@@ -1531,47 +2993,51 @@ const getFieldValues = (responseJson, form) => {
     });
 
     // Build final list: All assigned employees + their submission status
-   const fieldMetaMap = (() => {
-  let formJsonData = form.form_json;
-  if (typeof formJsonData === 'string') {
-    try { formJsonData = JSON.parse(formJsonData); } catch (e) { formJsonData = []; }
-  }
+    const fieldMetaMap = (() => {
+      let formJsonData = form.form_json;
+      if (typeof formJsonData === 'string') {
+        try { formJsonData = JSON.parse(formJsonData); } catch (e) { formJsonData = []; }
+      }
 
-  const map = {};
-
-  (formJsonData || []).forEach(f => {
-    if (!f.employee) return;
-
-    // Employee Field
-    map[String(f.id)] = { 
-      label: f.employee.label || f.id, 
-      visibleTo: "employee" 
-    };
-
-    // Multiple Supervisor Fields
-    if (f.supervisorFields && Array.isArray(f.supervisorFields)) {
-      f.supervisorFields.forEach((sup, idx) => {
-        const supKey = `${f.id}_sup_${idx}`;
-        map[supKey] = { 
-          label: sup.label || `Supervisor Field ${idx + 1}`, 
-          visibleTo: "supervisor" 
-        };
-      });
-    } 
-    // Backward compatibility for old single supervisor
-    else if (f.supervisor) {
-      const supKey = `${f.id}_sup`;
-      map[supKey] = { 
-        label: f.supervisor.label || "Supervisor Feedback", 
-        visibleTo: "supervisor" 
+      const map = {};
+      const addField = (field, id, visibleTo = 'both') => {
+        if (!id) return;
+        const fieldType = field?.type || field?.employee?.type || null;
+        const label = field?.label || field?.employee?.label || field?.name || id;
+        map[String(id)] = { label, visibleTo, type: fieldType };
       };
-    }
-  });
 
-  return map;
-})();
+      (formJsonData || []).forEach(f => {
+        if (f.employee) {
+          addField(f.employee, f.id, 'employee');
+        } else {
+          addField(f, f.id || f.fieldId || f.name, 'both');
+        }
 
+        if (f.supervisorFields && Array.isArray(f.supervisorFields)) {
+          f.supervisorFields.forEach((sup, idx) => {
+            const supKey = `${f.id}_sup_${idx}`;
+            addField(sup, supKey, 'supervisor');
+          });
+        } else if (f.supervisor) {
+          const supKey = `${f.id}_sup`;
+          addField(f.supervisor, supKey, 'supervisor');
+        }
+      });
 
+      return map;
+    })();
+
+    const getEmployeeName = (employeeId) => {
+      const emp = (employees || []).find(
+        (e) => String(e.employee_id || e.id) === String(employeeId)
+      );
+      if (!emp) return null;
+      return [emp.first_name, emp.middle_name, emp.last_name]
+        .filter(Boolean)
+        .join(" ")
+        .trim() || null;
+    };
 
     const formattedResponses = assignedEmployees.map((emp) => {
       const empId = String(emp.employee_id || emp.id || "");
@@ -1581,34 +3047,88 @@ const getFieldValues = (responseJson, form) => {
         || `Employee ${empId}`;
 
       if (submittedResp) {
-        // Already submitted
         const responseJson = submittedResp.response_json || {};
-        const readable = {};
+        const readable = [];
         const meta = {};
+
+        const getFieldInfoForResponseKey = (key) => {
+          const normalizedKey = String(key);
+          let fieldInfo = fieldMetaMap[normalizedKey] || { label: normalizedKey, visibleTo: 'both', type: null };
+          let label = fieldInfo.label;
+
+          const feedbackMatch = normalizedKey.match(/^(.*)_others_feedback_from_(\d+)$/);
+          if (feedbackMatch) {
+            const baseKey = feedbackMatch[1];
+            const fromEmployeeId = feedbackMatch[2];
+            const baseInfo = fieldMetaMap[baseKey];
+            const sourceName = getEmployeeName(fromEmployeeId) || `Employee ${fromEmployeeId}`;
+            if (baseInfo) {
+              label = `${baseInfo.label} (Feedback from ${sourceName})`;
+              fieldInfo.type = baseInfo.type || fieldInfo.type;
+            } else {
+              label = `${label} (Feedback from ${sourceName})`;
+            }
+          } else if (/(_feedback_request_to)$/.test(normalizedKey)) {
+            const baseKey = normalizedKey.replace(/_feedback_request_to$/, "");
+            const baseInfo = fieldMetaMap[baseKey];
+            if (baseInfo) {
+              label = `${baseInfo.label} (Requested To)`;
+            } else {
+              label = `${label} (Requested To)`;
+            }
+          }
+
+          return { ...fieldInfo, label };
+        };
 
         Object.keys(responseJson).forEach((key) => {
           if (String(key).startsWith("__")) {
             meta[key] = responseJson[key];
             return;
           }
-          const fieldInfo = fieldMetaMap[String(key)] || { label: key, visibleTo: "both" };
-          let label = fieldInfo.label;
-          if (fieldInfo.visibleTo === "supervisor") label = `${label} (Supervisor only)`;
 
-          let answer = responseJson[key];
-          if (answer && typeof answer === "object" && !Array.isArray(answer)) {
-            if (answer.start || answer.end) {
-              answer = `${answer.start || "—"} to ${answer.end || "—"}`;
-            } else {
-              answer = JSON.stringify(answer);
+          if (/(_feedback_request_to)$/.test(String(key))) {
+            const baseKey = String(key).replace(/_feedback_request_to$/, "");
+            const requestValue = responseJson[baseKey];
+            const requestedToId = String(responseJson[key]);
+            const requestedToName = getEmployeeName(requestedToId) || requestedToId;
+            const requestLabel = fieldMetaMap[baseKey]?.label || baseKey;
+            readable.push({
+              key,
+              label: `${requestLabel} (Requested To)`,
+              response: requestedToName,
+              type: null,
+            });
+            if (requestValue !== undefined && requestValue !== null && requestValue !== "") {
+              readable.push({
+                key: `${key}_reason`,
+                label: `${requestLabel} (Request Reason)`,
+                response: requestValue,
+                type: null,
+              });
             }
-          } else if (Array.isArray(answer)) {
-            answer = answer.join(", ");
-          } else if (answer === "" || answer === null || answer === undefined) {
-            answer = "No answer";
+            return;
           }
 
-          readable[label] = answer;
+          const fieldInfo = getFieldInfoForResponseKey(key);
+          let answer = responseJson[key];
+
+          if (Array.isArray(answer)) {
+            // Keep arrays as arrays for renderResponseValue to handle
+          } else if (answer && typeof answer === "object") {
+            if (answer.start && answer.end) {
+              answer = `${answer.start} to ${answer.end}`;
+            }
+          } else if (answer === "" || answer === null || answer === undefined) {
+            answer = "—";
+          }
+
+          readable.push({
+            key,
+            label: fieldInfo.label,
+            response: answer,
+            type: fieldInfo.type || null,
+          });
         });
 
         return {
@@ -1617,18 +3137,31 @@ const getFieldValues = (responseJson, form) => {
           status: "submitted",
           readableAnswers: readable,
           metadata: meta,
+          requestedFeedback: Object.keys(responseJson)
+            .filter((k) => /_feedback_request_to$/.test(k))
+            .map((k) => {
+              const baseKey = k.replace(/_feedback_request_to$/, "");
+              const requestValue = responseJson[baseKey];
+              const requestedToId = String(responseJson[k]);
+              return {
+                fieldId: baseKey,
+                fieldLabel: fieldMetaMap[baseKey]?.label || baseKey,
+                requestedToId,
+                requestedToName: getEmployeeName(requestedToId) || requestedToId,
+                requestValue,
+              };
+            }),
           submitted_at: submittedResp.submitted_at || submittedResp.created_at,
         };
       } else {
-        // Not submitted yet
         return {
           employee_id: empId,
           employeeDisplay: fullName,
           status: "not_submitted",
-          readableAnswers: {},
+          readableAnswers: [],
           metadata: {
             __status: "Not Submitted Yet",
-            __submitted_at: null
+            __submitted_at: null,
           },
         };
       }
@@ -1820,6 +3353,7 @@ const handleAssign = async () => {
                   <option value="checkbox-group">☑️ Checkbox Group</option>
                   <option value="checkbox">☐ Single Checkbox</option>
                   <option value="rating">⭐ Rating</option>
+                  <option value="file">📎 Attachment</option>   {/* ← ADD THIS */}
                 </select>
                 <label style={{ display: "block", marginTop: "12px", marginBottom: "8px", fontWeight: "500", fontSize: "0.9rem" }}>
   Employee Field Label
@@ -1840,6 +3374,24 @@ const handleAssign = async () => {
   onChange={(e) => setFieldPlaceholder(e.target.value)} 
   className="df-input" 
 />
+
+{(fieldType === "text" || fieldType === "textarea") && (
+  <div style={{ marginTop: "14px" }}>
+    <label style={{ display: "flex", alignItems: "center", gap: "8px", fontWeight: "500" }}>
+      <input 
+        type="checkbox" 
+        checked={fieldNeedsOthersFeedback} 
+        onChange={(e) => setFieldNeedsOthersFeedback(e.target.checked)} 
+      />
+      Needs Feedback from Others
+    </label>
+    {fieldNeedsOthersFeedback && (
+      <small style={{ display: "block", marginTop: "8px", color: "#475569" }}>
+        Let the employee request feedback from another selected coworker and open an Others Feedback tab.
+      </small>
+    )}
+  </div>
+)}
 
 {/* NEW: Required Checkbox for Employee Field */}
 
@@ -1866,7 +3418,27 @@ const handleAssign = async () => {
     />
     Required Field
   </label>
-</div>     
+</div>   
+{/* Reference File - Available for ALL field types */}
+<div style={{ marginTop: "16px" }}>
+  <label style={{ display: "block", marginBottom: "8px", fontWeight: "500", color: "#1e40af" }}>
+    📎 Reference File (Sample / Format for User)
+  </label>
+  <input
+    type="file"
+    accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
+    onChange={(e) => {
+      if (e.target.files?.[0]) {
+        setFieldReferenceFile(e.target.files[0]);
+      }
+    }}
+  />
+  {fieldReferenceFile && (
+    <small style={{ color: "green", display: "block", marginTop: "4px" }}>
+      ✓ {fieldReferenceFile.name}
+    </small>
+  )}
+</div>  
                 
                 {formType === 'employee_supervisor' && (
   <div style={{ marginTop: "20px" }}>
@@ -2077,7 +3649,11 @@ const handleAssign = async () => {
   <strong>{f.employee.label}</strong>
   <span style={{ color: "#666", marginLeft: "8px" }}>({f.employee.type})</span>
   {f.employee.required && <span style={{ color: "#dc3545", marginLeft: "4px" }}>*</span>}
-  
+  {f.employee.needsOthersFeedback && (
+    <span style={{ color: "#0f766e", marginLeft: "12px", fontWeight: "600" }}>
+      + Others Feedback
+    </span>
+  )}
   {f.supervisorFields && f.supervisorFields.length > 0 && (
     <span style={{ color: "#856404", marginLeft: "12px", fontWeight: "600" }}>
       + {f.supervisorFields.length} Supervisor Field{f.supervisorFields.length > 1 ? 's' : ''}
@@ -2296,42 +3872,77 @@ const handleAssign = async () => {
               {canBuildForms ? "Form Management" : isSupervisor ? "My Forms & Team" : "My Assigned Forms"}
             </h3>
            
-{(isSupervisor || canBuildForms) && (
+{(isSupervisor || canBuildForms || feedbackRequests.length > 0) && (
   <div className="df-tabs" style={{ marginBottom: "25px", display: "flex", gap: "12px" }}>
-    
-    {/* Show Self & Team tabs only for HR and Supervisors (not pure Admin) */}
+    {/* Show Self tab for non-admin employees and HR */}
     {(!isAdmin || isHR) && (
-      <>
-        <button
-          onClick={() => setActiveTab("self")}
-          style={{
-            padding: "10px 24px",
-            background: activeTab === "self" ? "#16a34a" : "#f8f9fa",
-            color: activeTab === "self" ? "#fff" : "#333",
-            border: "none",
-            borderRadius: "8px",
-            cursor: "pointer",
-            fontWeight: activeTab === "self" ? "600" : "500"
-          }}
-        >
-          Self Forms
-        </button>
+      <button
+        onClick={() => setActiveTab("self")}
+        style={{
+          padding: "10px 24px",
+          background: activeTab === "self" ? "#16a34a" : "#f8f9fa",
+          color: activeTab === "self" ? "#fff" : "#333",
+          border: "none",
+          borderRadius: "8px",
+          cursor: "pointer",
+          fontWeight: activeTab === "self" ? "600" : "500"
+        }}
+      >
+        Self Forms
+      </button>
+    )}
 
-        <button
-          onClick={() => setActiveTab("team")}
-          style={{
-            padding: "10px 24px",
-            background: activeTab === "team" ? "#16a34a" : "#f8f9fa",
-            color: activeTab === "team" ? "#fff" : "#333",
-            border: "none",
-            borderRadius: "8px",
-            cursor: "pointer",
-            fontWeight: activeTab === "team" ? "600" : "500"
-          }}
-        >
-          Team Forms
-        </button>
-      </>
+    {/* Show Team tab ONLY if supervisor */}
+    {isSupervisor && myTeamEmployeeIds.length > 0 && (
+      <button
+        onClick={() => setActiveTab("team")}
+        style={{
+          padding: "10px 24px",
+          background: activeTab === "team" ? "#16a34a" : "#f8f9fa",
+          color: activeTab === "team" ? "#fff" : "#333",
+          border: "none",
+          borderRadius: "8px",
+          cursor: "pointer",
+          fontWeight: activeTab === "team" ? "600" : "500"
+        }}
+      >
+        Team Forms
+      </button>
+    )}
+
+    {otherForms.length > 0 && (
+      <button
+        onClick={() => setActiveTab("others")}
+        style={{
+          padding: "10px 24px",
+          background: activeTab === "others" ? "#16a34a" : "#f8f9fa",
+          color: activeTab === "others" ? "#fff" : "#333",
+          border: "none",
+          borderRadius: "8px",
+          cursor: "pointer",
+          fontWeight: activeTab === "others" ? "600" : "500"
+        }}
+      >
+        Others
+      </button>
+    )}
+
+    {/* Show Feedback Requests tab ONLY if they have feedback requests */}
+    {feedbackRequests.length > 0 && (
+      <button
+        onClick={() => setActiveTab("feedbackRequests")}
+        style={{
+          padding: "10px 24px",
+          background: activeTab === "feedbackRequests" ? "#16a34a" : "#f8f9fa",
+          color: activeTab === "feedbackRequests" ? "#fff" : "#333",
+          border: "none",
+          borderRadius: "8px",
+          cursor: "pointer",
+          fontWeight: activeTab === "feedbackRequests" ? "600" : "500"
+        }}
+      >
+        Feedback Requests ({feedbackRequests.length})
+      </button>
     )}
 
     {/* All Forms tab - Always visible for Admin & HR */}
@@ -2353,7 +3964,7 @@ const handleAssign = async () => {
     )}
   </div>
 )}
-          
+
      <div className="df-template-grid">
   {/* ==================== ALL FORMS TAB ==================== */}
   {/* {activeTab === "all" && canSeeAllTab && (
@@ -2450,14 +4061,30 @@ const isActive = isFormActive(
             </span>
           </div>
 
-          <div className="df-template-actions" style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
-            <button onClick={() => viewTemplate(t)} className="df-view-btn">Preview</button>
-            <button onClick={() => editTemplate(t)} className="df-edit-btn">Edit</button>
-            <button onClick={() => viewResponses(t.id, t.form_name)} className="df-view-btn">Responses</button>
-            
-            {/* New Download Excel Button */}
-            
-          </div>
+          <div
+  className="df-template-actions"
+  style={{
+    display: "flex",
+    gap: "8px",
+    flexWrap: "nowrap",
+    alignItems: "center"
+  }}
+>
+  <button onClick={() => viewTemplate(t)} className="df-view-btn">
+    Preview
+  </button>
+
+  <button onClick={() => editTemplate(t)} className="df-edit-btn">
+    Edit
+  </button>
+
+  <button
+    onClick={() => viewResponses(t.id, t.form_name)}
+    className="df-view-btn"
+  >
+    Responses
+  </button>
+</div>
         </div>
       );
     })
@@ -2529,6 +4156,110 @@ const isActive = isFormActive(
     })
   )
 )}
+
+{/* Feedback Requests Tab */}
+{activeTab === "feedbackRequests" && (
+  feedbackRequests.length === 0 ? (
+    <p style={{ color: "#666", textAlign: "center", padding: "60px 0", gridColumn: "1 / -1" }}>
+      No feedback requests at the moment.
+    </p>
+  ) : (
+    feedbackRequests.map((req, idx) => (
+      <div key={`fb-${req.form_id}-${req.requester_id}-${idx}`} className="df-template-card">
+        <h4>{toTitleCase(req.form_name || `Form ${req.form_id}`)}</h4>
+        <div style={{ margin: "8px 0 12px 0", color: "#444" }}>
+          <div>
+            <strong>Requested by: </strong>
+            {req.requester_first_name || req.requester_id} {req.requester_last_name || ""}
+          </div>
+          <div>
+            <strong>Field: </strong>
+            {req.fieldLabel || req.fieldId}
+          </div>
+          <div style={{ marginTop: "8px", color: "#475569", whiteSpace: "pre-wrap" }}>
+            <strong>Reason: </strong>
+            {req.fieldValue || req.requestReason || "No explanation provided."}
+          </div>
+        </div>
+        <div className="df-template-actions">
+          <button onClick={() => openOthersFeedback(req)} className="df-fill-btn">Provide Feedback</button>
+        </div>
+      </div>
+    ))
+  )
+)}
+  {/* ==================== OTHERS TAB ==================== */}
+  {activeTab === "others" && (
+    otherForms.length === 0 ? (
+      <p style={{
+        color: "#666",
+        textAlign: "center",
+        padding: "60px 0",
+        gridColumn: "1 / -1"
+      }}>
+        No forms requiring other feedback are available yet.
+      </p>
+    ) : (
+      otherForms.map((t, index) => {
+        const formActiveFrom = t.active_from || t.activeFrom || null;
+        const formActiveTo = t.active_to || t.activeTo || null;
+
+        const fromStr = formActiveFrom
+          ? new Date(formActiveFrom).toLocaleDateString('en-GB', { 
+              day: '2-digit', month: 'short', year: 'numeric' 
+            })
+          : "—";
+
+        const toStr = formActiveTo
+          ? new Date(formActiveTo).toLocaleDateString('en-GB', { 
+              day: '2-digit', month: 'short', year: 'numeric' 
+            })
+          : "—";
+
+        const isActive = isFormActive(formActiveFrom, formActiveTo);
+
+        return (
+          <div
+            key={`others-${t.id}-${index}`}
+            className="df-template-card"
+          >
+            <h4>{toTitleCase(t.form_name || t.name || "")}</h4>
+            <div style={{
+              margin: "14px 0 18px 0",
+              padding: "12px 14px",
+              background: isActive ? "#f0fdf4" : "#fef2f2",
+              borderRadius: "10px",
+              border: `1px solid ${isActive ? "#86efac" : "#fecaca"}`,
+            }}>
+              <strong>Active Period:</strong><br />
+              {fromStr} — {toStr}<br />
+              <span style={{ 
+                color: isActive ? "#166534" : "#991b1b", 
+                fontWeight: "500" 
+              }}>
+                {isActive ? "Currently Active" : "Not Active Now"}
+              </span>
+            </div>
+            <p style={{ color: "#475569", marginBottom: "16px" }}>
+              This form can request feedback from a selected coworker and keeps other-feedback responses separate from your own answers.
+            </p>
+            <button
+              onClick={() => fillTemplate(t)}
+              className="df-fill-btn"
+              disabled={!isActive}
+              style={{
+                opacity: isActive ? 1 : 0.65,
+                width: "100%",
+                cursor: isActive ? "pointer" : "not-allowed"
+              }}
+            >
+              {isActive ? "Fill Form" : "Not Active Now"}
+            </button>
+          </div>
+        );
+      })
+    )
+  )}
   {/* ==================== TEAM TAB (Supervisor) ==================== */}
   {activeTab === "team" && (
     teamSubmissions.length === 0 ? (
@@ -2802,33 +4533,120 @@ const isActive = isFormActive(group.active_from, group.active_to);
             // Backward compatibility for old single supervisor
            
       
-                  return fieldsToRender.map((field) => {
-                    const isReadOnly = field.readOnly || false;
-                    return (
-                      <div key={field.fieldId} className="df-form-group">
-                        <label>
-                          {field.label}
-{field.required && (
-  <span style={{ color: "red" }}> *</span>
-)}{field.isSupervisor && (
-  <span style={{ color: "#2563eb", fontWeight: "600" }}>
-    {" "} (Supervisor)
-  </span>
-)}                          {isReadOnly && (isReviewMode || viewingSubmission) && " (Read Only)"}
-                        </label>
-{renderField(
-  field, 
-  isReadOnly, 
-  (id, value) => handleInputChange(id, value)   // Use 'id' instead of hardcoding field.fieldId
-)}                      </div>
-                    );
-                  });
+                  const isOthersOnlyMode = Boolean(
+                    othersFeedbackContext &&
+                    othersFeedbackContext.requesterEmployeeId &&
+                    !isReviewMode &&
+                    !viewingSubmission
+                  );
+
+                  const feedbackRequesterName = othersFeedbackContext?.requesterName || "Selected colleague";
+                  const feedbackFieldKey = othersFeedbackContext?.feedbackKey;
+                  const feedbackLabel = othersFeedbackContext?.sourceLabel || "Requested Feedback";
+
+                  return (
+                    <>
+                      {isOthersOnlyMode ? (
+                        <div style={{ display: "grid", gap: "20px" }}>
+                          <div style={{ color: "#475569", marginBottom: "12px" }}>
+                            <strong>Others Feedback</strong> — submit your feedback separately for {feedbackRequesterName}. The main form fields are not shown here.
+                          </div>
+                          <div style={{ padding: "12px 14px", background: "#eef2ff", border: "1px solid #c7d2fe", borderRadius: "10px" }}>
+                            <div style={{ fontWeight: 600, marginBottom: "8px", color: "#0f172a" }}>
+                              Request context
+                            </div>
+                            <div style={{ marginBottom: "6px", color: "#334155" }}>
+                              <strong>Field:</strong> {othersFeedbackContext?.fieldLabel || feedbackLabel}
+                            </div>
+                            <div style={{ color: "#475569", whiteSpace: "pre-wrap" }}>
+                              {othersFeedbackContext?.requestReason || "No explanation was provided by the requester."}
+                            </div>
+                          </div>
+                          <div className="df-form-group">
+                            <label>
+                              Feedback for {feedbackRequesterName}
+                              <span style={{ color: "#2563eb", fontWeight: "600", marginLeft: "8px" }}>
+                                ({feedbackLabel})
+                              </span>
+                            </label>
+                            <textarea
+                              placeholder={`Enter feedback for ${feedbackRequesterName}`}
+                              className="df-input"
+                              rows={6}
+                              value={formData[feedbackFieldKey] || ""}
+                              onChange={(e) => handleInputChange(feedbackFieldKey, e.target.value)}
+                            />
+                          </div>
+                        </div>
+                      ) : (
+                        fieldsToRender.map((field) => {
+                          const isReadOnly = field.readOnly || false;
+                          return (
+                            <div key={field.fieldId} className="df-form-group">
+                              <label>
+                                {field.label}
+                                {field.required && (
+                                  <span style={{ color: "red" }}> *</span>
+                                )}
+                                {field.isSupervisor && (
+                                  <span style={{ color: "#2563eb", fontWeight: "600" }}>
+                                    {" "} (Supervisor)
+                                  </span>
+                                )}
+                                {isReadOnly && (isReviewMode || viewingSubmission) && " (Read Only)"}
+                              </label>
+                              {renderField(
+                                field,
+                                isReadOnly,
+                                (id, value) => handleInputChange(id, value)
+                              )}
+                            </div>
+                          );
+                        })
+                      )}
+                    </>
+                  );
                 })()}
-                {!viewingSubmission && (
-                  <button type="submit" className="df-submit-btn">
-                    {isReviewMode ? "Submit Review" : "Submit Response"}
-                  </button>
-                )}
+  {!viewingSubmission && (
+  <div style={{ 
+    display: "flex", 
+    gap: "16px", 
+    marginTop: "30px", 
+    justifyContent: "center",
+    flexWrap: "wrap"
+  }}>
+    
+    {/* Save Draft Button - Always available until final submit */}
+    <button 
+      type="button"
+      onClick={saveDraft}
+      className="df-submit-btn"
+      style={{ 
+        background: "#f59e0b", 
+        color: "white",
+        padding: "14px 32px",
+        minWidth: "180px"
+      }}
+      disabled={loading}
+    >
+      💾 Save Draft
+    </button>
+
+    {/* Final Submit Button */}
+    <button 
+      type="submit" 
+      className="df-submit-btn"
+      style={{ 
+        padding: "14px 32px",
+        minWidth: "180px",
+        background: "#16a34a"
+      }}
+      disabled={loading}
+    >
+      ✅ {isReviewMode ? "Submit Review" : "Final Submit"}
+    </button>
+  </div>
+)}
               </form>
             )}
         <button className="df-back-btn" onClick={() => {
@@ -2838,6 +4656,7 @@ const isActive = isFormActive(group.active_from, group.active_to);
   setSelectedSubmission(null);
   setFormData({});
   setHasSubmitted(false);
+  setFillSectionTab("main");
   setSubmissionData(null);
   // Do NOT clear teamSubmissions here
 }}>
@@ -2935,26 +4754,34 @@ const isActive = isFormActive(group.active_from, group.active_to);
       </div>
 
       {/* Content */}
-      {!isNotSubmitted && isExpanded && (
-        <div style={{ padding: "20px" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse" }}>
-            <thead>
-              <tr style={{ backgroundColor: "#f1f3f5" }}>
-                <th style={{ padding: "14px 16px", textAlign: "left", borderBottom: "2px solid #cbd5e1" }}>Field</th>
-                <th style={{ padding: "14px 16px", textAlign: "left", borderBottom: "2px solid #cbd5e1" }}>Response</th>
-              </tr>
-            </thead>
-            <tbody>
-              {Object.entries(resp.readableAnswers || {}).map(([fieldName, response], i) => (
-                <tr key={i} style={{ borderBottom: "1px solid #e2e8f0" }}>
-                  <td style={{ padding: "14px 16px", fontWeight: "500" }}>{fieldName}</td>
-                  <td style={{ padding: "14px 16px", backgroundColor: "#f8fafc", whiteSpace: "pre-wrap" }}>
-                    {Array.isArray(response) ? response.join(", ") : response || "—"}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+  {/* Content */}
+{!isNotSubmitted && isExpanded && (
+  <div style={{ padding: "20px" }}>
+    <table style={{ width: "100%", borderCollapse: "collapse" }}>
+      <thead>
+        <tr style={{ backgroundColor: "#f1f3f5" }}>
+          <th style={{ padding: "14px 16px", textAlign: "left", borderBottom: "2px solid #cbd5e1" }}>Field</th>
+          <th style={{ padding: "14px 16px", textAlign: "left", borderBottom: "2px solid #cbd5e1" }}>Response</th>
+        </tr>
+      </thead>
+      <tbody>
+        {(resp.readableAnswers || []).map((answerItem, i) => {
+          const response = answerItem.response;
+          const fieldType = answerItem.type || null;
+
+          return (
+            <tr key={i} style={{ borderBottom: "1px solid #e2e8f0" }}>
+              <td style={{ padding: "14px 16px", fontWeight: "500", verticalAlign: "top" }}>
+                {answerItem.label}
+              </td>
+              <td style={{ padding: "14px 16px", backgroundColor: "#f8fafc", verticalAlign: "top" }}>
+                {renderResponseValue(response, fieldType)}
+              </td>
+            </tr>
+          );
+        })}
+      </tbody>
+    </table>
 
           {/* Metadata */}
           {resp.metadata && Object.keys(resp.metadata).length > 0 && (
@@ -2970,16 +4797,23 @@ const isActive = isFormActive(group.active_from, group.active_to);
               </strong>
               <ul style={{ margin: "0 0 0 20px", padding: 0, listStyleType: "disc", color: "#713f12" }}>
                 {Object.entries(resp.metadata)
-                  .filter(([metaKey]) => {
-                    const key = metaKey.toLowerCase().replace(/^__/, "");
-                    return !(
-                      key === "orgid" || key === "org_id" ||
-                      key === "formid" || key === "form_id" ||
-                      key === "isreview" || key === "is_review"||
-                          key === "reviewed_employee" || key === "reviewedemployee"||   // ✅ ADD THIS
-key === "reviewed_at" || key === "reviewedat"
-                    );
-                  })
+                 .filter(([metaKey]) => {
+  const key = metaKey.toLowerCase().replace(/^__/, "");
+  return !(
+    key === "orgid" || key === "org_id" ||
+    key === "formid" || key === "form_id" ||
+    key === "isreview" || key === "is_review" ||
+    key === "reviewed_employee" || key === "reviewedemployee" ||
+    key === "reviewed_at" || key === "reviewedat" ||
+
+    // Hide draft fields
+    key === "isdraft" || key === "is_draft" ||
+
+    // Hide last updated fields
+    key === "lastupdated" || key === "last_updated" ||
+    key === "updatedat" || key === "updated_at"
+  );
+})
                   .map(([metaKey, metaValue]) => {
                     let displayKey = metaKey.replace(/^__/, "").replace(/_/g, " ");
                     let displayValue = metaValue;

@@ -1255,18 +1255,17 @@ const fillTemplate = async (template) => {
         setFormData(userResponse.response_json);
         setSubmissionData(userResponse);
 
-        const isSubmitted = userResponse.status === 'submitted' || 
-                           userResponse.response_json.__is_draft === false;
+        // Check if form is a draft - if __is_draft is true, it's always a draft
+        const isDraft = userResponse.response_json.__is_draft === true;
+        const isSubmitted = !isDraft;
 
         setHasSubmitted(isSubmitted);
-        setIsDraft(!isSubmitted);
+        setIsDraft(isDraft);
       } else {
         setHasSubmitted(false);
         setIsDraft(false);
       }
     }
-
-    showAlert("✅ Loaded latest form version", "", "success");
 
   } catch (err) {
     console.error("Fill template error:", err);
@@ -1276,18 +1275,30 @@ const fillTemplate = async (template) => {
   }
 };
 
+const formatRequesterDisplay = (requesterId, requesterFirstName, requesterLastName) => {
+  const requesterName = `${requesterFirstName || ''} ${requesterLastName || ''}`.trim();
+  if (requesterId && requesterName) {
+    return `${requesterId} — ${requesterName}`;
+  }
+  if (requesterName) {
+    return requesterName;
+  }
+  return requesterId || "Unknown requester";
+};
+
 // Open a form as a recipient to provide "others" feedback for a specific requester
 const openOthersFeedback = (req) => {
   try {
     if (!req || !req.form_id) return;
-    const requesterName = `${req.requester_first_name || ''} ${req.requester_last_name || ''}`.trim() || `Employee ${req.requester_id}`;
+    const requesterName = formatRequesterDisplay(req.requester_id, req.requester_first_name, req.requester_last_name);
     const fieldId = req.fieldId || `${req.form_id}_others_feedback`;
     setOthersFeedbackContext({ 
       requesterEmployeeId: req.requester_id,
       requesterName,
       fieldId,
-      fieldLabel: req.fieldLabel || fieldId,
-      requestReason: req.fieldValue || null,
+      fieldLabel: req.fieldLabel || "Requested Feedback",
+      requestContext: req.requestContext || req.fieldValue || null,
+      requestReason: req.requestReason || null,
       feedbackKey: `${fieldId}_others_feedback_from_${req.requester_id}`,
       sourceLabel: req.sourceLabel || 'Requested Feedback',
     });
@@ -1298,39 +1309,11 @@ const openOthersFeedback = (req) => {
   }
 };
 
-const saveDraft = async () => {
+const saveDraft = async (e) => {
+  e?.preventDefault();
+  e?.stopPropagation();
   if (!selectedTemplate?.id) return;
-
-  setLoading(true);
-  try {
-    const responsePayload = {
-      ...formData,
-      __submitted_by: currentEmployeeId,
-      __saved_at: new Date().toISOString(),
-      __is_draft: true,
-    };
-
-    const res = await fetch(`${BACKEND_URL}/api/forms/${selectedTemplate.id}/submit`, {
-      method: "POST",
-      credentials: "include",
-      headers: getHeaders(),
-      body: JSON.stringify({
-        response_json: responsePayload,
-        isDraft: true,
-      }),
-    });
-
-    if (!res.ok) throw new Error("Failed to save draft");
-
-    showAlert("✅ Draft saved successfully! You can continue later.", "Draft Saved", "success");
-    setIsDraft(true);
-
-  } catch (err) {
-    console.error("Draft save error:", err);
-    showAlert("Failed to save draft", "Error", "error");
-  } finally {
-    setLoading(false);
-  }
+  return submitFormWithFiles(true);
 };
 const handleSelectSubmission = async (submission) => {
   console.log("Selected submission:", submission);
@@ -1511,7 +1494,26 @@ const handleSelectSubmission = async (submission) => {
 
 const submitFormWithFiles = async (isDraft = false) => {
   if (!selectedTemplate?.id) return;
-  if (!validateForm()) return;
+
+  const isOthersOnlyMode = Boolean(
+    othersFeedbackContext &&
+    othersFeedbackContext.requesterEmployeeId &&
+    !isReviewMode &&
+    !viewingSubmission
+  );
+
+  if (!isDraft) {
+    if (isOthersOnlyMode) {
+      const feedbackKey = othersFeedbackContext?.feedbackKey;
+      const feedbackValue = formData[feedbackKey];
+      if (feedbackValue === undefined || feedbackValue === null || String(feedbackValue).trim() === "") {
+        showAlert("Please provide feedback before submitting.", "error");
+        return;
+      }
+    } else if (!validateForm()) {
+      return;
+    }
+  }
 
   setLoading(true);
 
@@ -4170,16 +4172,20 @@ const isActive = isFormActive(
         <div style={{ margin: "8px 0 12px 0", color: "#444" }}>
           <div>
             <strong>Requested by: </strong>
-            {req.requester_first_name || req.requester_id} {req.requester_last_name || ""}
+            {formatRequesterDisplay(req.requester_id, req.requester_first_name, req.requester_last_name)}
           </div>
-          <div>
+          {/* <div>
             <strong>Field: </strong>
-            {req.fieldLabel || req.fieldId}
-          </div>
+            {req.fieldLabel || "Requested Feedback"}
+          </div> */}
           <div style={{ marginTop: "8px", color: "#475569", whiteSpace: "pre-wrap" }}>
-            <strong>Reason: </strong>
-            {req.fieldValue || req.requestReason || "No explanation provided."}
+            <strong>Context: </strong>
+            {req.requestContext || req.fieldValue || "No context available."}
           </div>
+          {/* <div style={{ marginTop: "8px", color: "#475569", whiteSpace: "pre-wrap" }}>
+            <strong>Details: </strong>
+            {req.requestReason || "No additional details provided."}
+          </div> */}
         </div>
         <div className="df-template-actions">
           <button onClick={() => openOthersFeedback(req)} className="df-fill-btn">Provide Feedback</button>
@@ -4555,12 +4561,21 @@ const isActive = isFormActive(group.active_from, group.active_to);
                             <div style={{ fontWeight: 600, marginBottom: "8px", color: "#0f172a" }}>
                               Request context
                             </div>
-                            <div style={{ marginBottom: "6px", color: "#334155" }}>
+                            {/* <div style={{ marginBottom: "6px", color: "#334155" }}>
                               <strong>Field:</strong> {othersFeedbackContext?.fieldLabel || feedbackLabel}
+                            </div> */}
+                              <div style={{ marginBottom: "6px", color: "#334155" }}>
+                              <strong>Requested by:</strong> {othersFeedbackContext?.requesterName || "Unknown requester"}
                             </div>
-                            <div style={{ color: "#475569", whiteSpace: "pre-wrap" }}>
-                              {othersFeedbackContext?.requestReason || "No explanation was provided by the requester."}
+                            {/* <div style={{ marginBottom: "6px", color: "#334155" }}>
+                              <strong>Field:</strong> {othersFeedbackContext?.fieldLabel || feedbackLabel}
+                            </div> */}
+                            <div style={{ marginBottom: "6px", color: "#334155" }}>
+                              <strong>Current value:</strong> {othersFeedbackContext?.requestContext || "—"}
                             </div>
+                            {/* <div style={{ color: "#475569", whiteSpace: "pre-wrap" }}>
+                              {othersFeedbackContext?.requestReason || "No additional details were provided by the requester."}
+                            </div> */}
                           </div>
                           <div className="df-form-group">
                             <label>
@@ -4615,36 +4630,65 @@ const isActive = isFormActive(group.active_from, group.active_to);
     justifyContent: "center",
     flexWrap: "wrap"
   }}>
-    
-    {/* Save Draft Button - Always available until final submit */}
-    <button 
-      type="button"
-      onClick={saveDraft}
-      className="df-submit-btn"
-      style={{ 
-        background: "#f59e0b", 
-        color: "white",
-        padding: "14px 32px",
-        minWidth: "180px"
-      }}
-      disabled={loading}
-    >
-      💾 Save Draft
-    </button>
+    {(() => {
+      const isOthersOnlyMode = Boolean(
+        othersFeedbackContext &&
+        othersFeedbackContext.requesterEmployeeId &&
+        !isReviewMode &&
+        !viewingSubmission
+      );
 
-    {/* Final Submit Button */}
-    <button 
-      type="submit" 
-      className="df-submit-btn"
-      style={{ 
-        padding: "14px 32px",
-        minWidth: "180px",
-        background: "#16a34a"
-      }}
-      disabled={loading}
-    >
-      ✅ {isReviewMode ? "Submit Review" : "Final Submit"}
-    </button>
+      if (isOthersOnlyMode) {
+        return (
+          <button 
+            type="submit" 
+            className="df-submit-btn"
+            style={{ 
+              padding: "14px 32px",
+              minWidth: "200px",
+              background: "#16a34a"
+            }}
+            disabled={loading}
+          >
+            ✅ Submit Feedback
+          </button>
+        );
+      }
+
+      return (
+        <>
+          {/* Save Draft Button - Always available until final submit */}
+          <button 
+            type="button"
+            onClick={saveDraft}
+            className="df-submit-btn"
+            style={{ 
+              background: "#f59e0b", 
+              color: "white",
+              padding: "14px 32px",
+              minWidth: "180px"
+            }}
+            disabled={loading}
+          >
+            💾 Save Draft
+          </button>
+
+          {/* Final Submit Button */}
+          <button 
+            type="submit" 
+            className="df-submit-btn"
+            style={{ 
+              padding: "14px 32px",
+              minWidth: "180px",
+              background: "#16a34a"
+            }}
+            disabled={loading}
+          >
+            ✅ {isReviewMode ? "Submit Review" : "Final Submit"}
+          </button>
+        </>
+      );
+    })()}
   </div>
 )}
               </form>

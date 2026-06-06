@@ -120,7 +120,13 @@ export default function PolicyModal({
         value: "",
         carryForward: "",
         advanceNoticeDays: "",
-        ...(key === "earned" ? { workingDays: "", earnedLeaves: "" } : {}),
+        ...(key === "earned"
+          ? {
+              workingDays: "",
+              earnedLeaves: "",
+              earnedCreditMethod: "attendance",
+            }
+          : {}),
       };
       return acc;
     }, {}),
@@ -363,6 +369,7 @@ export default function PolicyModal({
         advanceNoticeDays: s.advance_notice_days ?? "",
         workingDays: s.working_days ?? "",
         earnedLeaves: s.earned_leaves ?? "",
+        earnedCreditMethod: s.earned_credit_method ?? "attendance",
       };
       return acc;
     }, {});
@@ -471,6 +478,9 @@ export default function PolicyModal({
           ? {
               working_days: Number(config.earned.workingDays) || 0,
               earned_leaves: Number(config.earned.earnedLeaves) || 0,
+              earned_credit_method: String(
+                config.earned.earnedCreditMethod || "attendance",
+              ).toLowerCase(),
             }
           : { value: Number(config[key].value) || 0 }),
         carry_forward: Number(config[key].carryForward) || 0,
@@ -870,6 +880,20 @@ export default function PolicyModal({
                     <>
                       {key === "earned" ? (
                         <>
+                          <select
+                            value={form.config.earned.earnedCreditMethod}
+                            onChange={(e) =>
+                              updateConfig("earned", {
+                                earnedCreditMethod: e.target.value,
+                              })
+                            }
+                            required
+                          >
+                            <option value="attendance">
+                              As per Attendance
+                            </option>
+                            <option value="policy">As per Policy</option>
+                          </select>
                           <input
                             type="number"
                             placeholder="Worked days"
@@ -1049,6 +1073,12 @@ export default function PolicyModal({
                       ? ` • Gender ${ls.gender}`
                       : "";
                   if ((ls.type || "").toLowerCase() === "earned") {
+                    const methodLabel =
+                      String(
+                        ls.earned_credit_method || "attendance",
+                      ).toLowerCase() === "policy"
+                        ? "As per Policy"
+                        : "As per Attendance";
                     return (
                       <li key={ls.type + idx} className="policy-setting-item">
                         <span className="setting-name">Earned</span>
@@ -1057,8 +1087,7 @@ export default function PolicyModal({
                           {ls.working_days ?? "—"}
                         </span>
                         <span className="setting-meta">
-                          CF {ls.carry_forward ?? 0}
-                          {notice}
+                          {methodLabel} • CF {ls.carry_forward ?? 0}
                           {genderLabel}
                         </span>
                       </li>

@@ -580,7 +580,7 @@ if (otherAllowances < 0) {
 }
 
 // Now add Other back to gross
-grossSalary += otherAllowances;
+grossSalary += otherAllowances + fixedDeductions;
 
 
   lopDeduction = parseFloat(
@@ -589,30 +589,19 @@ grossSalary += otherAllowances;
 
   // ONLY employee-side deductions are subtracted for net salary (take-home pay)
   // Employer PF and Gratuity are employer costs — they are NOT deducted from employee's pay
-let employeeDeductions = 0;
-
-if (planData.pfEmployeeIncludeInCtc === true) {
-  employeeDeductions += employeePF;
-}
-
-if (planData.esicEmployeeIncludeInCtc === true) {
-  employeeDeductions += esic;
-}
-
-if (planData.insuranceEmployeeIncludeInCtc === true) {
-  employeeDeductions += insurance;
-}
-
-if (planData.professionalTaxIncludeInCtc === true) {
-  employeeDeductions += professionalTax;
-}
-
-// Always deduct these
-employeeDeductions += tds;
-employeeDeductions += advanceRecovery;
-employeeDeductions += lopDeduction;
+const employeeDeductions =
+  employeePF +
+  employerPF +
+  esic +
+  gratuity +
+  professionalTax +
+  insurance +
+  tds +
+  advanceRecovery +
+  lopDeduction;
 
 const netSalary = grossSalary - employeeDeductions;
+
 
   const salaryDetails = {
     basicSalary: basicSalary,

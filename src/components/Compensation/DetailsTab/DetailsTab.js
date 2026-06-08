@@ -114,7 +114,7 @@ const DetailsTab = ({
   }
 
   const planData = selectedEmployee.plan_data || {};
-  const monthlyCTC = selectedEmployee.ctc / 12;
+  // const monthlyCTC = selectedEmployee.ctc / 12;
   const salaryDetails = calculateSalaryDetails(
     selectedEmployee.ctc,
     planData,
@@ -815,28 +815,81 @@ const DetailsTab = ({
   const getAmountForTab = (comp, tab) =>
     tab === "yearly" ? comp.yearly || 0 : comp.monthly || 0;
 
-  const filteredEarnings = components.filter((comp) => {
-  if (comp.category !== "Earnings") return false;
+    // ====================== NEW CALCULATION LOGIC (with Debug Logs) ======================
+  const monthlyCTC = parseFloat(selectedEmployee.ctc || 0) / 12;
 
-  const amount = parseFloat(getAmountForTab(comp, activeTab) || 0);
-  return amount > 0;
-});
+  console.log("=== DetailsTab Debug ===");
+  console.log("Selected Employee CTC:", selectedEmployee.ctc);
+  console.log("Monthly CTC:", monthlyCTC);
+  console.log("Active Tab:", activeTab);
+
+  // Gross is always full Monthly CTC
+  const grossAmount = monthlyCTC;
+
+  // All components that reduce Net Salary
+  const allDeductionsForNet = components.filter((comp) => {
+    if (!comp.isDeduction) return false;
+    const amount = parseFloat(getAmountForTab(comp, activeTab) || 0);
+    return amount > 0;
+  });
+
+  const totalDeductions = allDeductionsForNet.reduce((sum, comp) => {
+    return sum + parseFloat(getAmountForTab(comp, activeTab) || 0);
+  }, 0);
+
+  const netAmount = Math.max(0, grossAmount - totalDeductions);
+
+  console.log("Gross Amount (should be 41666.67):", grossAmount);
+  console.log("Total Deductions:", totalDeductions);
+  console.log("Net Amount:", netAmount);
+  console.log("All Deductions Count:", allDeductionsForNet.length);
+  console.log("Components labels:", components.map(c => c.label));
+  // ==================================================================
+
+
+  // Filtered Earnings (only positive earnings)
+  const filteredEarnings = components.filter((comp) => {
+    if (comp.category !== "Earnings") return false;
+    const amount = parseFloat(getAmountForTab(comp, activeTab) || 0);
+    return amount > 0;
+  });
+
+  // Employee Deductions (shown under Deductions section)
+  const employeeDeductions = components.filter((comp) => {
+    if (!comp.isDeduction) return false;
+    if (comp.label === "Employer PF" || comp.label === "Gratuity") return false;
+    const amount = parseFloat(getAmountForTab(comp, activeTab) || 0);
+    return amount > 0 && comp.deductedFromNet !== false;
+  });
+
+  // Employer Contributions (separate section)
+  const employerContributions = components.filter((comp) => {
+    if (comp.label !== "Employer PF" && comp.label !== "Gratuity") return false;
+    const amount = parseFloat(getAmountForTab(comp, activeTab) || 0);
+    return amount > 0;
+  });
+  // ==================================================================
 
 
  const deductedComponents = components.filter((comp) => {
   const amount = parseFloat(getAmountForTab(comp, activeTab) || 0);
 
-  // 🔥 TDS → show ONLY if > 0
+  // Hide LOP completely when in yearly view
+  if (comp.label === "LOP Deduction" && activeTab === "yearly") {
+    return false;
+  }
+
+  // TDS → show ONLY if > 0
   if (comp.label === "TDS") {
     return amount > 0;
   }
 
-  // 🔥 LOP Deduction → show ONLY if > 0
+  // LOP Deduction → show ONLY if > 0   (but already blocked above for yearly)
   if (comp.label === "LOP Deduction") {
     return amount > 0;
   }
 
-  // 🔥 Incentives → show ONLY if > 0
+  // Incentives → show ONLY if > 0
   if (comp.label === "Incentives") {
     return amount > 0;
   }
@@ -958,8 +1011,9 @@ const DetailsTab = ({
   const netMonthly = calculateDisplayedNet("monthly");
   const netYearly = calculateDisplayedNet("yearly");
 
-  const renderAmount = (item, tab) => {
+   const renderAmount = (item, tab) => {
     const amount = getAmountForTab(item, tab);
+    console.log(`Rendering ${item.label} for ${tab}:`, amount); // Debug log
     if (amount != null && amount >= 0) {
       return `₹${parseFloat(amount).toLocaleString(undefined, {
         minimumFractionDigits: 2,
@@ -968,7 +1022,6 @@ const DetailsTab = ({
     }
     return "N/A";
   };
-
   return (
     <div className="sb-details-tab">
       <div className="sb-details-tab-header">
@@ -1041,65 +1094,47 @@ const DetailsTab = ({
                 </th>
               </tr>
             </thead>
-            <tbody className="sb-details-table-body-wrapper">
+                        <tbody className="sb-details-table-body-wrapper">
+              {/* Earnings Section */}
               <tr className="sb-details-section-header">
-                <td colSpan="3" className="sb-details-section-title">
-                  Earnings
-                </td>
+                <td colSpan="3" className="sb-details-section-title">Earnings</td>
               </tr>
               {filteredEarnings.map((item, index) => (
-                <tr
-                  key={`earnings-${index}`}
-                  className="sb-details-earnings-row"
-                >
-                  <td className="sb-details-table-cell sb-details-align-left">
-                    {item.label}
-                  </td>
-                  <td className="sb-details-table-cell sb-details-align-left">
-                    {item.planDetail}
-                  </td>
+                <tr key={`earnings-${index}`} className="sb-details-earnings-row">
+                  <td className="sb-details-table-cell sb-details-align-left">{item.label}</td>
+                  <td className="sb-details-table-cell sb-details-align-left">{item.planDetail}</td>
                   <td className="sb-details-table-cell sb-details-align-right">
                     {renderAmount(item, activeTab)}
                   </td>
                 </tr>
               ))}
+
+              {/* Employee Deductions */}
               <tr className="sb-details-section-header">
-                <td colSpan="3" className="sb-details-section-title">
-                  Deductions
-                </td>
+                <td colSpan="3" className="sb-details-section-title">Deductions (Employee)</td>
               </tr>
-              {deductedComponents.map((item, index) => (
-                <tr
-                  key={`deductions-${index}`}
-                  className="sb-details-deduction-row"
-                >
-                  <td className="sb-details-table-cell sb-details-align-left">
-                    {item.label}
-                  </td>
-                  <td className="sb-details-table-cell sb-details-align-left">
-                    {item.planDetail}
-                  </td>
+              {employeeDeductions.map((item, index) => (
+                <tr key={`emp-ded-${index}`} className="sb-details-deduction-row">
+                  <td className="sb-details-table-cell sb-details-align-left">{item.label}</td>
+                  <td className="sb-details-table-cell sb-details-align-left">{item.planDetail}</td>
                   <td className="sb-details-table-cell sb-details-align-right">
                     {renderAmount(item, activeTab)}
                   </td>
                 </tr>
               ))}
-              {employerComponents.length > 0 && (
+
+              {/* Employer Contributions */}
+              {employerContributions.length > 0 && (
                 <>
                   <tr className="sb-details-section-header">
-                    <td colSpan="3" className="sb-details-section-title">
-                      Other Employer Contributions
-                    </td>
+                    <td colSpan="3" className="sb-details-section-title">Employer Contributions</td>
                   </tr>
-                  {employerComponents.map((item, index) => (
-                    <tr
-                      key={`employer-contrib-${index}`}
-                      className="sb-details-deduction-row"
-                    >
+                  {employerContributions.map((item, index) => (
+                    <tr key={`emp-contrib-${index}`} className="sb-details-deduction-row">
+                      <td className="sb-details-table-cell sb-details-align-left">{item.label}</td>
                       <td className="sb-details-table-cell sb-details-align-left">
-                        {item.label}
+                        {item.planDetail} (Employer)
                       </td>
-                      <td className="sb-details-table-cell sb-details-align-left">{`${item.planDetail} (Employer Contribution)`}</td>
                       <td className="sb-details-table-cell sb-details-align-right">
                         {renderAmount(item, activeTab)}
                       </td>
@@ -1107,29 +1142,23 @@ const DetailsTab = ({
                   ))}
                 </>
               )}
+
+              {/* Other Section */}
               <tr className="sb-details-section-header">
-                <td colSpan="3" className="sb-details-section-title">
-                  Other
-                </td>
+                <td colSpan="3" className="sb-details-section-title">Other</td>
               </tr>
               {filteredOther.map((item, index) => (
                 <tr key={`other-${index}`}>
-                  <td className="sb-details-table-cell sb-details-align-left">
-                    {item.label}
-                  </td>
+                  <td className="sb-details-table-cell sb-details-align-left">{item.label}</td>
                   <td className="sb-details-table-cell sb-details-align-left">
                     {Array.isArray(item.planDetail)
-                      ? item.planDetail.map((line, idx) => (
-                          <div key={idx}>{line}</div>
-                        ))
+                      ? item.planDetail.map((line, idx) => <div key={idx}>{line}</div>)
                       : item.planDetail}
                   </td>
                   <td className="sb-details-table-cell sb-details-align-right">
                     {typeof getAmountForTab(item, activeTab) === "number" &&
                     getAmountForTab(item, activeTab) !== null
-                      ? `₹${parseFloat(
-                          getAmountForTab(item, activeTab)
-                        ).toLocaleString(undefined, {
+                      ? `₹${parseFloat(getAmountForTab(item, activeTab)).toLocaleString(undefined, {
                           minimumFractionDigits: 2,
                           maximumFractionDigits: 2,
                         })}`
@@ -1137,40 +1166,31 @@ const DetailsTab = ({
                   </td>
                 </tr>
               ))}
-              <tr className="sb-details-total-row"></tr>
-              <tr className="sb-details-total-row"></tr>
+
+              {/* Totals */}
               <tr className="sb-details-total-row">
                 <td className="sb-details-table-cell sb-details-align-left">
                   <strong>Gross Salary</strong>
                 </td>
-                <td className="sb-details-table-cell sb-details-align-left">
-                  N/A
-                </td>
+                <td className="sb-details-table-cell sb-details-align-left">N/A</td>
                 <td className="sb-details-table-cell sb-details-align-right">
                   <strong>
-                    ₹
-                    {parseFloat(
-                      activeTab === "yearly" ? grossYearly : grossMonthly
-                    ).toLocaleString(undefined, {
+                    ₹{grossAmount.toLocaleString(undefined, {
                       minimumFractionDigits: 2,
                       maximumFractionDigits: 2,
                     })}
                   </strong>
                 </td>
               </tr>
+
               <tr className="sb-details-total-row">
                 <td className="sb-details-table-cell sb-details-align-left">
                   <strong>Net Salary</strong>
                 </td>
-                <td className="sb-details-table-cell sb-details-align-left">
-                  N/A
-                </td>
+                <td className="sb-details-table-cell sb-details-align-left">N/A</td>
                 <td className="sb-details-table-cell sb-details-align-right">
                   <strong>
-                    ₹
-                    {parseFloat(
-                      activeTab === "yearly" ? netYearly : netMonthly
-                    ).toLocaleString(undefined, {
+                    ₹{netAmount.toLocaleString(undefined, {
                       minimumFractionDigits: 2,
                       maximumFractionDigits: 2,
                     })}

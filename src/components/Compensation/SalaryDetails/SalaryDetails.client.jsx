@@ -47,8 +47,8 @@ const SalaryDetails = () => {
   const hasValidCredentials = () => Boolean(meId && orgId);
 
   const isApproved = (empId) => approvedIds.includes(String(empId));
-
   const calculateMonthlyBonusPay = (empCtc, bonusRecords) => {
+    if (!empCtc) return 0;
     const currentDate = new Date();
     const currentYear = currentDate.getFullYear();
     const currentMonthStr = String(currentDate.getMonth() + 1).padStart(2, "0");
@@ -67,71 +67,63 @@ const SalaryDetails = () => {
       let bonusAmount = 0;
       if (bonus.fixed_amount && !isNaN(parseFloat(bonus.fixed_amount))) {
         bonusAmount = parseFloat(bonus.fixed_amount);
-      } else if (
-        bonus.percentage_ctc &&
-        !isNaN(parseFloat(bonus.percentage_ctc))
-      ) {
-        bonusAmount =
-          (parseFloat(bonus.percentage_ctc) / 100) * parseFloat(empCtc || 0);
-      } else if (
-        bonus.percentage_monthly_salary &&
-        !isNaN(parseFloat(bonus.percentage_monthly_salary))
-      ) {
+      } else if (bonus.percentage_ctc && !isNaN(parseFloat(bonus.percentage_ctc))) {
+        bonusAmount = (parseFloat(bonus.percentage_ctc) / 100) * parseFloat(empCtc || 0);
+      } else if (bonus.percentage_monthly_salary && !isNaN(parseFloat(bonus.percentage_monthly_salary))) {
         bonusAmount = parseFloat(bonus.percentage_monthly_salary) * monthlyCTC;
       }
       return sum + bonusAmount;
     }, 0);
   };
 
-  const calculateLocalGrossNet = (
-    salaryDetails,
-    monthlyBonusPay,
-    lopDeduction,
-    planData
-  ) => {
+    // ====================== CONSISTENT GROSS/NET LOGIC (Same as DetailsTab) ======================
+  const calculateLocalGrossNet = (salaryDetails, monthlyBonusPay, lopDeduction, planData) => {
     if (!salaryDetails) {
       return { localGross: 0, localNet: 0 };
     }
-    const monthlyEarningsSum = [
-      salaryDetails.basicSalary || 0,
-      salaryDetails.hra || 0,
-      salaryDetails.ltaAllowance || 0,
-      salaryDetails.otherAllowances || 0,
-      salaryDetails.incentivePay || 0,
-      salaryDetails.overtimePay || 0,
-      salaryDetails.statutoryBonus || 0,
-      monthlyBonusPay,
-    ].reduce((sum, val) => sum + parseFloat(val || 0), 0);
 
-    let monthlyDeductionsSum = 0;
+    const monthlyCTC = parseFloat(salaryDetails.monthlyCTC || salaryDetails.grossSalary || 0);
 
-    monthlyDeductionsSum += parseFloat(salaryDetails.advanceRecovery || 0);
-    monthlyDeductionsSum += parseFloat(salaryDetails.tds || 0);
-    monthlyDeductionsSum += lopDeduction;
+    // Gross is always full Monthly CTC
+    const localGross = monthlyCTC;
 
+    // All deductions that reduce Net Salary
+    let totalDeductions = 0;
+
+    totalDeductions += parseFloat(salaryDetails.advanceRecovery || 0);
+    totalDeductions += parseFloat(salaryDetails.tds || 0);
+    totalDeductions += parseFloat(lopDeduction || 0);
+    totalDeductions += parseFloat(monthlyBonusPay || 0); // Bonus is already in earnings, but we keep logic consistent
+
+    // Employee-side deductions
     if (planData.pfEmployeeIncludeInCtc !== false) {
-      monthlyDeductionsSum += parseFloat(salaryDetails.employeePF || 0);
-    }
-    if (planData.pfEmployerIncludeInCtc !== false) {
-      monthlyDeductionsSum += parseFloat(salaryDetails.employerPF || 0);
+      totalDeductions += parseFloat(salaryDetails.employeePF || 0);
     }
     if (planData.esicEmployeeIncludeInCtc !== false) {
-      monthlyDeductionsSum += parseFloat(salaryDetails.esic || 0);
-    }
-    if (planData.gratuityIncludeInCtc !== false) {
-      monthlyDeductionsSum += parseFloat(salaryDetails.gratuity || 0);
+      totalDeductions += parseFloat(salaryDetails.esic || 0);
     }
     if (planData.professionalTaxIncludeInCtc !== false) {
-      monthlyDeductionsSum += parseFloat(salaryDetails.professionalTax || 0);
+      totalDeductions += parseFloat(salaryDetails.professionalTax || 0);
     }
     if (planData.insuranceEmployeeIncludeInCtc !== false) {
-      monthlyDeductionsSum += parseFloat(salaryDetails.insurance || 0);
+      totalDeductions += parseFloat(salaryDetails.insurance || 0);
     }
 
-    const localGross = monthlyEarningsSum;
-    const localNet = localGross - monthlyDeductionsSum;
+    // Employer contributions that are deducted from Net (as per your createcompensation example)
+    if (planData.pfEmployerIncludeInCtc !== false) {
+      totalDeductions += parseFloat(salaryDetails.employerPF || 0);
+    }
+    if (planData.gratuityIncludeInCtc !== false) {
+      totalDeductions += parseFloat(salaryDetails.gratuity || 0);
+    }
+
+    const localNet = Math.max(0, localGross - totalDeductions);
+
+    console.log(`[calculateLocalGrossNet] Emp: ${salaryDetails.employeeId || 'N/A'} | Gross: ${localGross.toFixed(2)} | Deductions: ${totalDeductions.toFixed(2)} | Net: ${localNet.toFixed(2)}`);
+
     return { localGross, localNet };
   };
+  // ============================================================================================
 
   useEffect(() => {
     const fetchSalaryBreakupData = async () => {

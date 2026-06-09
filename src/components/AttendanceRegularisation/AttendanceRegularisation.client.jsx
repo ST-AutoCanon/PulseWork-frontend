@@ -9,6 +9,7 @@ import {
 } from "react-icons/md";
 import { useAuth } from "../../context/AuthProvider.client";
 import LeaveRegularisationModal from "./LeaveRegularisationModal.client";
+import LoginHourSettingsModal from "./LoginHourSettingsModal.client";
 import Modal from "../Modal/Modal.client";
 import "./AttendanceRegularisation.css";
 
@@ -231,6 +232,7 @@ export default function AttendanceRegularisation() {
   const isAdmin = role === "admin";
   const isHr = role === "hr";
   const isManagerOrSupervisor = role === "manager" || role === "supervisor";
+  const canManageLoginHours = isAdmin;
   const canShowTabs = isHr || isManagerOrSupervisor;
 
   const [viewMode, setViewMode] = useState(isAdmin ? "all" : "self");
@@ -258,6 +260,11 @@ export default function AttendanceRegularisation() {
   const [modalLoading, setModalLoading] = useState(false);
   const [editingRow, setEditingRow] = useState(null);
   const [drafts, setDrafts] = useState({});
+  const [showLoginHourSettingsModal, setShowLoginHourSettingsModal] =
+    useState(false);
+
+  const [lateLoginDates, setLateLoginDates] = useState([]);
+  const [lateLoginLoading, setLateLoginLoading] = useState(false);
 
   const [alertModal, setAlertModal] = useState({
     isVisible: false,
@@ -432,8 +439,29 @@ export default function AttendanceRegularisation() {
     }
   };
 
+  const fetchLateLoginDates = async () => {
+    if (!employeeId || !BACKEND_URL) return;
+
+    try {
+      setLateLoginLoading(true);
+      const response = await axios.get(
+        `${BACKEND_URL}/api/attendance/employee/${employeeId}/late-login-dates`,
+        { withCredentials: true, headers },
+      );
+
+      const dates = response.data?.data?.lateDates || [];
+      setLateLoginDates(dates);
+    } catch (err) {
+      console.error("Failed to fetch late login dates:", err);
+      setLateLoginDates([]);
+    } finally {
+      setLateLoginLoading(false);
+    }
+  };
+
   useEffect(() => {
     fetchRequests();
+    fetchLateLoginDates();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [employeeId, orgId, viewMode, role]);
 
@@ -867,6 +895,137 @@ export default function AttendanceRegularisation() {
     </div>
   );
 
+  const renderLateLoginCalendar = () => {
+    if (isAdmin) return null;
+    if (lateLoginDates.length === 0 && !lateLoginLoading) return null;
+
+    const today = new Date();
+    const currentMonth = today.getMonth();
+    const currentYear = today.getFullYear();
+
+    const getDaysInMonth = (year, month) => {
+      return new Date(year, month + 1, 0).getDate();
+    };
+
+    const getFirstDayOfMonth = (year, month) => {
+      return new Date(year, month, 1).getDay();
+    };
+
+    const daysInMonth = getDaysInMonth(currentYear, currentMonth);
+    const firstDay = getFirstDayOfMonth(currentYear, currentMonth);
+
+    const days = [];
+    for (let i = 0; i < firstDay; i++) {
+      days.push(null);
+    }
+    for (let i = 1; i <= daysInMonth; i++) {
+      days.push(i);
+    }
+
+    const isLateDateOnDay = (day) => {
+      if (!day) return false;
+      const month = String(currentMonth + 1).padStart(2, "0");
+      const dayStr = String(day).padStart(2, "0");
+      const dateKey = `${currentYear}-${month}-${dayStr}`;
+      return lateLoginDates.includes(dateKey);
+    };
+
+    const monthLabel = new Intl.DateTimeFormat("en-US", {
+      month: "long",
+      year: "numeric",
+    }).format(new Date(currentYear, currentMonth));
+
+    return (
+      <div className="ar-table-card" style={{ marginBottom: "24px" }}>
+        <h3 className="ar-table-title">Late Login Dates</h3>
+        {lateLoginLoading ? (
+          <p style={{ textAlign: "center", color: "#6b7280" }}>
+            Loading late login dates...
+          </p>
+        ) : lateLoginDates.length === 0 ? (
+          <p style={{ textAlign: "center", color: "#6b7280" }}>
+            No late login dates found. Great job!
+          </p>
+        ) : (
+          <div style={{ padding: "12px 0" }}>
+            <div
+              style={{
+                fontSize: "14px",
+                fontWeight: "600",
+                marginBottom: "12px",
+                textAlign: "center",
+                color: "#374151",
+              }}
+            >
+              {monthLabel}
+            </div>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(7, 1fr)",
+                gap: "4px",
+              }}
+            >
+              {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day) => (
+                <div
+                  key={day}
+                  style={{
+                    textAlign: "center",
+                    fontSize: "12px",
+                    fontWeight: "600",
+                    color: "#6b7280",
+                    padding: "8px 0",
+                  }}
+                >
+                  {day}
+                </div>
+              ))}
+              {days.map((day, idx) => {
+                const isLateDate = isLateDateOnDay(day);
+                return (
+                  <div
+                    key={idx}
+                    style={{
+                      textAlign: "center",
+                      padding: "8px",
+                      borderRadius: "6px",
+                      backgroundColor: isLateDate ? "#fecaca" : "#f3f4f6",
+                      color: isLateDate ? "#991b1b" : "#6b7280",
+                      fontSize: "13px",
+                      fontWeight: isLateDate ? "600" : "400",
+                      borderLeft: isLateDate ? "3px solid #dc2626" : "none",
+                    }}
+                  >
+                    {day || ""}
+                  </div>
+                );
+              })}
+            </div>
+            <div
+              style={{
+                marginTop: "16px",
+                padding: "12px",
+                backgroundColor: "#fef2f2",
+                borderRadius: "8px",
+                fontSize: "13px",
+                color: "#7c2d12",
+                display: "flex",
+                alignItems: "flex-start",
+                gap: "8px",
+              }}
+            >
+              <span style={{ minWidth: "20px" }}>ℹ️</span>
+              <span>
+                Dates highlighted in red indicate late punch-in records. You can
+                submit late login requests for these dates above.
+              </span>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
   const renderSelfFlow = () => (
     <section className="ar-self-card">
       {!isAdmin ? (
@@ -879,13 +1038,24 @@ export default function AttendanceRegularisation() {
             </p>
           </div>
 
-          <button
-            type="button"
-            className="ar-primary-btn"
-            onClick={handleOpenCreate}
-          >
-            <MdOutlineEventAvailable /> Attendance Regularisation
-          </button>
+          <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
+            {canManageLoginHours ? (
+              <button
+                type="button"
+                className="ar-secondary-btn"
+                onClick={() => setShowLoginHourSettingsModal(true)}
+              >
+                Configure Punch Hours
+              </button>
+            ) : null}
+            <button
+              type="button"
+              className="ar-primary-btn"
+              onClick={handleOpenCreate}
+            >
+              <MdOutlineEventAvailable /> Attendance Regularisation
+            </button>
+          </div>
         </div>
       ) : null}
 
@@ -964,13 +1134,33 @@ export default function AttendanceRegularisation() {
       {renderFilters({ showSearch: true })}
 
       <div className="ar-table-card">
-        <h3 className="ar-table-title">
-          {isAdmin
-            ? "All Employees Attendance Regularisation"
-            : isHr && viewMode === "team"
+        <div
+          className="ar-table-card-header"
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            gap: "12px",
+            flexWrap: "wrap",
+          }}
+        >
+          <h3 className="ar-table-title">
+            {isAdmin
               ? "All Employees Attendance Regularisation"
-              : "Team Attendance Regularisation"}
-        </h3>
+              : isHr && viewMode === "team"
+                ? "All Employees Attendance Regularisation"
+                : "Team Attendance Regularisation"}
+          </h3>
+          {canManageLoginHours ? (
+            <button
+              type="button"
+              className="ar-secondary-btn"
+              onClick={() => setShowLoginHourSettingsModal(true)}
+            >
+              Configure Punch Hours
+            </button>
+          ) : null}
+        </div>
 
         {filteredRows.length === 0 ? (
           <p className="ar-empty">No requests found.</p>
@@ -1180,6 +1370,11 @@ export default function AttendanceRegularisation() {
         defaultDate={modalDefaultDate}
         existingRequests={selfRequestsUi}
         excludeRequestId={editingRow?.id || null}
+      />
+
+      <LoginHourSettingsModal
+        isOpen={showLoginHourSettingsModal}
+        onClose={() => setShowLoginHourSettingsModal(false)}
       />
 
       <Modal

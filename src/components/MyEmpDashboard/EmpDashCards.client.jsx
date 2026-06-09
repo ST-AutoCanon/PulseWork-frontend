@@ -13,7 +13,6 @@ import {
 } from "react-icons/fa";
 import { useAuth } from "../../context/AuthProvider.client";
 
-
 const normalizeDescriptor = (desc) => {
   if (!desc) return null;
 
@@ -76,6 +75,7 @@ export default function EmpDashCards() {
   const [loading, setLoading] = useState(false);
   const [showCamera, setShowCamera] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+  const [lateLoginPopup, setLateLoginPopup] = useState("");
 
   useEffect(() => {
     if (!employeeId) return;
@@ -90,7 +90,7 @@ export default function EmpDashCards() {
         if (employeeId) headers["x-employee-id"] = employeeId;
 
         const url = `${BACKEND_URL}/attendance/employee/${encodeURIComponent(
-          employeeId
+          employeeId,
         )}/latest-punch`;
 
         const response = await axios.get(url, {
@@ -106,8 +106,8 @@ export default function EmpDashCards() {
             time: latestPunch.punchout_time
               ? parseServerTimestampToLocalString(latestPunch.punchout_time)
               : latestPunch.punchin_time
-              ? parseServerTimestampToLocalString(latestPunch.punchin_time)
-              : "NA",
+                ? parseServerTimestampToLocalString(latestPunch.punchin_time)
+                : "NA",
             location:
               latestPunch.punchout_location ||
               latestPunch.punchin_location ||
@@ -172,7 +172,7 @@ export default function EmpDashCards() {
 
           try {
             const res = await fetch(
-              `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json&zoom=18`
+              `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json&zoom=18`,
             );
             const data = await res.json();
             const { road, suburb, town, city, county, state, postcode } =
@@ -206,7 +206,7 @@ export default function EmpDashCards() {
             device: getDeviceType(),
           });
         },
-        { enableHighAccuracy: true, timeout: 20000, maximumAge: 5000 }
+        { enableHighAccuracy: true, timeout: 20000, maximumAge: 5000 },
       );
     });
 
@@ -234,7 +234,7 @@ export default function EmpDashCards() {
       const detection = await faceapi
         .detectSingleFace(
           videoRef.current,
-          new faceapi.TinyFaceDetectorOptions()
+          new faceapi.TinyFaceDetectorOptions(),
         )
         .withFaceLandmarks()
         .withFaceDescriptor();
@@ -251,7 +251,7 @@ export default function EmpDashCards() {
 
     const resp = await axios.get(
       `${BACKEND_URL}/api/face-data/${encodeURIComponent(employeeId)}`,
-      { withCredentials: true, headers }
+      { withCredentials: true, headers },
     );
 
     return resp?.data?.descriptors ?? resp?.data?.data?.descriptors ?? [];
@@ -264,7 +264,7 @@ export default function EmpDashCards() {
 
       const distance = faceapi.euclideanDistance(
         detectionDescriptor,
-        normalized
+        normalized,
       );
 
       console.log("face distance:", distance);
@@ -373,6 +373,10 @@ export default function EmpDashCards() {
         throw new Error(result.message || "Punch failed");
       }
 
+      if (result.lateLogin) {
+        setLateLoginPopup(result.message || "Late login recorded");
+      }
+
       setIsPunchedIn(!isPunchedIn);
       setTimeout(() => {
         (async () => {
@@ -382,9 +386,9 @@ export default function EmpDashCards() {
             if (employeeId) headers["x-employee-id"] = employeeId;
             const resp = await axios.get(
               `${BACKEND_URL}/attendance/employee/${encodeURIComponent(
-                employeeId
+                employeeId,
               )}/latest-punch`,
-              { withCredentials: true, headers }
+              { withCredentials: true, headers },
             );
             const latestPunch = resp.data?.data;
             if (latestPunch) {
@@ -392,8 +396,10 @@ export default function EmpDashCards() {
                 time: latestPunch.punchout_time
                   ? parseServerTimestampToLocalString(latestPunch.punchout_time)
                   : latestPunch.punchin_time
-                  ? parseServerTimestampToLocalString(latestPunch.punchin_time)
-                  : "NA",
+                    ? parseServerTimestampToLocalString(
+                        latestPunch.punchin_time,
+                      )
+                    : "NA",
                 location:
                   latestPunch.punchout_location ||
                   latestPunch.punchin_location ||
@@ -429,6 +435,21 @@ export default function EmpDashCards() {
           </div>
         )}
 
+        {lateLoginPopup && (
+          <div className="late-login-popup-overlay">
+            <div className="late-login-popup">
+              <p>{lateLoginPopup}</p>
+              <button
+                type="button"
+                onClick={() => setLateLoginPopup("")}
+                className="late-login-prompt-button"
+              >
+                OK
+              </button>
+            </div>
+          </div>
+        )}
+
         <button
           className={`emp-card emp-punch-in ${
             isPunchedIn ? "emp-punched-out" : ""
@@ -443,8 +464,8 @@ export default function EmpDashCards() {
                 {loading
                   ? "Verifying..."
                   : isPunchedIn
-                  ? "Punch Out"
-                  : "Punch In"}
+                    ? "Punch Out"
+                    : "Punch In"}
               </span>
             </div>
           </div>

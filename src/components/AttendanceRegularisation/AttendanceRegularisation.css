@@ -47,6 +47,7 @@
 }
 
 .ar-primary-btn,
+.ar-secondary-btn,
 .ar-search-btn,
 .ar-update-btn,
 .ar-page-btn {
@@ -60,6 +61,14 @@
 .ar-primary-btn {
   background: #6cb72d;
   color: #fff;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ar-secondary-btn {
+  background: #eef2ff;
+  color: #3730a3;
   display: inline-flex;
   align-items: center;
   gap: 6px;

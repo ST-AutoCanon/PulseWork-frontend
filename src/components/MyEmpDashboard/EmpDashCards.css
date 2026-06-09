@@ -14,7 +14,9 @@
   padding: 12px;
   border-radius: 8px;
   box-shadow: 0px 3px 5px rgba(0, 0, 0, 0.1);
-  transition: background 0.3s ease-in-out, color 0.3s ease-in-out;
+  transition:
+    background 0.3s ease-in-out,
+    color 0.3s ease-in-out;
   border: none;
 }
 
@@ -220,13 +222,46 @@
   .camera-title {
     font-size: 1.6rem;
   }
-
-  .camera-video {
-    max-height: 260px;
-    border-radius: 14px;
-  }
-
-  .camera-status {
-    font-size: 1rem;
-  }
 }
+
+.late-login-popup-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1500;
+}
+
+.late-login-popup {
+  background: #fff;
+  border-radius: 14px;
+  padding: 24px;
+  max-width: 90%;
+  width: 360px;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.18);
+  text-align: center;
+}
+
+.late-login-popup p {
+  margin: 0 0 18px;
+  color: #222;
+  font-size: 1rem;
+  line-height: 1.5;
+}
+
+.late-login-prompt-button {
+  background: #4caf50;
+  border: none;
+  border-radius: 8px;
+  color: white;
+  cursor: pointer;
+  padding: 10px 20px;
+  font-size: 0.95rem;
+}
+
+.late-login-prompt-button:hover {
+  background: #3b9b42;
+}
+/* cleaned stray duplicated media-query block */

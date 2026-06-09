@@ -2592,7 +2592,51 @@ const getPlanValue = (calcField, formData) => {
 
   return { value: display, basis: basisText };
 };
+// NEW HELPER - Add this after getPlanValue function
+const getIncludedAndExcludedComponents = (formData, salaryDetails, ctcInput) => {
+  const totalCTC = parseFloat(ctcInput) || DEFAULT_CTC;
+  const included = [];
+  const excluded = [];
 
+  const componentConfig = [
+    { key: "basicSalary", label: "Basic Salary", includeKey: null },
+    { key: "hra", label: "HRA", includeKey: null },
+    { key: "ltaAllowance", label: "LTA Allowance", includeKey: null },
+    { key: "otherAllowances", label: "Other Allowance", includeKey: null },
+    { key: "employeePF", label: "Employee PF", includeKey: "pfEmployeeIncludeInCtc" },
+    { key: "employerPF", label: "Employer PF", includeKey: "pfEmployerIncludeInCtc" },
+    { key: "esic", label: "ESIC Employee", includeKey: "esicEmployeeIncludeInCtc" },
+    { key: "insurance", label: "Insurance (Employee)", includeKey: "insuranceEmployeeIncludeInCtc" },
+    { key: "gratuity", label: "Gratuity", includeKey: "gratuityIncludeInCtc" },
+    { key: "professionalTax", label: "Professional Tax", includeKey: "professionalTaxIncludeInCtc" },
+    { key: "variablePay", label: "Variable Pay / Bonus", includeKey: "variablePayIncludeInCtc" },
+    { key: "statutoryBonus", label: "Statutory Bonus", includeKey: "statutoryBonusIncludeInCtc" },
+    { key: "incentivePay", label: "Incentives", includeKey: "incentivesIncludeInCtc" },
+  ];
+
+  componentConfig.forEach(({ key, label, includeKey }) => {
+    const monthlyValue = Number(salaryDetails?.[key]) || 0;
+    if (monthlyValue <= 0) return;
+
+    const annualValue = monthlyValue * 12;
+    const pctOfCtc = (annualValue / totalCTC) * 100;
+
+    const item = {
+      label,
+      monthly: monthlyValue,
+      annual: annualValue,
+      percentage: pctOfCtc,
+    };
+
+    if (includeKey && formData[includeKey] === false) {
+      excluded.push(item);
+    } else {
+      included.push(item);
+    }
+  });
+
+  return { included, excluded };
+};
   const handleStepChange = (step) => {
     const newStep = Math.max(1, Math.min(step, categories.length));
     setCurrentStep(newStep);
@@ -2600,14 +2644,12 @@ const getPlanValue = (calcField, formData) => {
 
 const handleCalculate = () => {
   const annualCTC = parseFloat(ctcInput);
-
   if (!ctcInput || isNaN(annualCTC) || annualCTC <= 0) {
     showAlert("Please enter a valid CTC amount");
     return;
   }
 
   const planDataCopy = { ...formData };
-
   const calculatedDetails = calculateSalaryDetails(
     annualCTC,
     planDataCopy,
@@ -2622,94 +2664,21 @@ const handleCalculate = () => {
     return;
   }
 
-  // compute local gross/net according to include-in-CTC flags (see SalaryDetails)
   const { localGross, localNet } = calculateLocalGrossNet(calculatedDetails, planDataCopy);
   calculatedDetails.localGross = localGross;
   calculatedDetails.localNet = localNet;
 
-  console.log("CTC ALLOCATION - Annual CTC:", annualCTC);
-  console.log("Calculation Bases - basicSalary:", formData.basicSalary);
-  console.log(`Local gross/net computed: ₹${localGross.toFixed(2)} / ₹${localNet.toFixed(2)}`);
-
-  let totalAnnualAllocated = 0;
-
-const componentLog = [];
-
-Object.keys(calculatedDetails).forEach((key) => {
-  // skip the additional localGross/localNet we added
-  if (key === "localGross" || key === "localNet") return;
-
-  const monthlyValue = Number(calculatedDetails[key]) || 0;
-
-  // Skip summary fields
-  if (
-    key === "netSalary" ||
-    key === "grossSalary" ||
-    key === "tds" ||
-    key === "recordBonusPay" ||
-    key === "bonusPay"
-  ) return;
-
-  // exclude items that are not included in CTC
-  const includeMap = {
-    employeePF: 'pfEmployeeIncludeInCtc',
-    employerPF: 'pfEmployerIncludeInCtc',
-    esic: 'esicEmployeeIncludeInCtc',
-    insurance: 'insuranceEmployeeIncludeInCtc',
-    professionalTax: 'professionalTaxIncludeInCtc',
-    gratuity: 'gratuityIncludeInCtc',
-  };
-  const componentConfig = [
-  { key: "basicSalary", label: "Basic Salary" },
-  { key: "hra", label: "HRA" },
-  { key: "ltaAllowance", label: "LTA Allowance" },
-
-  { key: "employeePF", label: "Employee PF" },
-  { key: "employerPF", label: "Employer PF" },
-
-  { key: "esic", label: "ESIC Employee" },
-
-  { key: "gratuity", label: "Gratuity" },
-
-  { key: "professionalTax", label: "Professional Tax" },
-
-  { key: "insurance", label: "Insurance" },
-
-  { key: "incentivePay", label: "Incentive Pay" },
-
-  { key: "overtimePay", label: "Overtime Pay" },
-
-  { key: "statutoryBonus", label: "Statutory Bonus" },
-];
-  if (includeMap[key] && formData[includeMap[key]] === false) {
-    return;
-  }
-
-  if (monthlyValue > 0) {
-    const annualValue = monthlyValue * 12;
-    const pctOfCtc = (annualValue / annualCTC) * 100;
-    componentLog.push(`${key}: ₹${monthlyValue.toFixed(2)}/mo ≈ ₹${annualValue.toFixed(2)}/yr ≈ ${pctOfCtc.toFixed(4)}% CTC`);
-    totalAnnualAllocated += annualValue;
-  }
-});
-
-console.log("Component Allocations:", componentLog);
-
-const totalPct = (totalAnnualAllocated / annualCTC) * 100;
-const roundedTotal = parseFloat(totalPct.toFixed(2));
-const remainingAnnual = annualCTC - totalAnnualAllocated;
-const remainingPct = (remainingAnnual / annualCTC) * 100;
-let remainingPercentage = parseFloat(remainingPct.toFixed(2));
-
-console.log(`Total Allocated Annual: ₹${totalAnnualAllocated.toFixed(2)} (${roundedTotal.toFixed(2)}% of CTC)`);
-console.log(`Remaining Annual: ₹${remainingAnnual.toFixed(2)} (${remainingPercentage.toFixed(2)}% of CTC)`);
-console.log("=====================================\n");
-
-  // UPDATE STATE
-  // ────────────────────────────────────────────────
+  // NEW: Compute included vs excluded
+  const { included, excluded } = getIncludedAndExcludedComponents(
+    formData,
+    calculatedDetails,
+    ctcInput
+  );
 
   setSalaryDetails({
     ...calculatedDetails,
+    _includedComponents: included,
+    _excludedComponents: excluded,
   });
 };
 
@@ -4302,8 +4271,39 @@ ${netDeductionComponents
         })()}
       </tbody>
     </table>
+    {salaryDetails._excludedComponents && salaryDetails._excludedComponents.length > 0 && (
+      <>
+        <h3 style={{ marginTop: "30px", color: "#d32f2f" }}>
+          Components Not Included in CTC
+        </h3>
+        <table className="create-compensation-preview-table" style={{ borderColor: "#ffcdd2" }}>
+          <thead>
+            <tr className="create-header-row" style={{ backgroundColor: "#ffebee" }}>
+              <th>Component</th>
+              <th>Monthly Amount (₹)</th>
+              <th>Annual Amount (₹)</th>
+              <th>% of CTC</th>
+            </tr>
+          </thead>
+          <tbody>
+            {salaryDetails._excludedComponents.map((item, idx) => (
+              <tr key={idx}>
+                <td><strong>{item.label}</strong></td>
+                <td>{item.monthly.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</td>
+                <td>{item.annual.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</td>
+                <td>{item.percentage.toFixed(4)}%</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        <p style={{ fontSize: "0.9rem", color: "#666", marginTop: "8px" }}>
+          These components are <strong>excluded</strong> from CTC calculation as per your settings.
+        </p>
+      </>
+    )}
   </div>
 )}
+ 
               </div>
             </div>
           </div>
@@ -4340,5 +4340,4 @@ ${netDeductionComponents
     </div>
   );
 };
-
 export default CreateCompensation;

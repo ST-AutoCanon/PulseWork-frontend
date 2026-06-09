@@ -114,17 +114,19 @@ const DetailsTab = ({
   }
 
   const planData = selectedEmployee.plan_data || {};
-  // const monthlyCTC = selectedEmployee.ctc / 12;
-  const salaryDetails = calculateSalaryDetails(
-    selectedEmployee.ctc,
-    planData,
-    selectedEmployee.employee_id,
-    overtimeRecords,
-    bonusRecords,
-    advances,
-    employeeIncentiveData,
-    employeeLopData
-  );
+
+const monthlyCTC = parseFloat(selectedEmployee.ctc || 0) / 12;
+
+const salaryDetails = calculateSalaryDetails(
+  selectedEmployee.ctc,
+  planData,
+  selectedEmployee.employee_id,
+  overtimeRecords,
+  bonusRecords,
+  advances,
+  employeeIncentiveData,
+  employeeLopData
+);
 
   const { targetMonthStr, targetYear, windowStart, windowEnd } =
     getPayrollFilter();
@@ -816,7 +818,7 @@ const DetailsTab = ({
     tab === "yearly" ? comp.yearly || 0 : comp.monthly || 0;
 
     // ====================== NEW CALCULATION LOGIC (with Debug Logs) ======================
-  const monthlyCTC = parseFloat(selectedEmployee.ctc || 0) / 12;
+  // const monthlyCTC = parseFloat(selectedEmployee.ctc || 0) / 12;
 
   console.log("=== DetailsTab Debug ===");
   console.log("Selected Employee CTC:", selectedEmployee.ctc);

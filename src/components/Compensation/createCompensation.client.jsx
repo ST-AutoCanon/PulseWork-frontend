@@ -4340,5 +4340,4 @@ ${netDeductionComponents
     </div>
   );
 };
-
 export default CreateCompensation;

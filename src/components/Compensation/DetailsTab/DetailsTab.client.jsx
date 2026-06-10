@@ -6,6 +6,52 @@ import {
   getPayrollFilter,
   getCurrentYearMonth,
 } from "../../../utils/SalaryCalculations";
+// Duplicate of helper present in CreateCompensation for consistent Gross/Net
+const calculateLocalGrossNet = (salaryDetails, planData) => {
+  if (!salaryDetails) return { localGross: 0, localNet: 0 };
+
+  const monthlyEarningsSum = [
+    salaryDetails.basicSalary || 0,
+    salaryDetails.hra || 0,
+    salaryDetails.ltaAllowance || 0,
+    salaryDetails.otherAllowances || 0,
+    salaryDetails.incentivePay || 0,
+    salaryDetails.overtimePay || 0,
+    salaryDetails.statutoryBonus || 0,
+  ].reduce((sum, val) => sum + parseFloat(val || 0), 0);
+
+  const includedComponents = [
+    { value: salaryDetails.employeePF, include: planData.pfEmployeeIncludeInCtc },
+    { value: salaryDetails.employerPF, include: planData.pfEmployerIncludeInCtc },
+    { value: salaryDetails.esic, include: planData.esicEmployeeIncludeInCtc },
+    { value: salaryDetails.gratuity, include: planData.gratuityIncludeInCtc },
+    { value: salaryDetails.professionalTax, include: planData.professionalTaxIncludeInCtc },
+    { value: salaryDetails.insurance, include: planData.insuranceEmployeeIncludeInCtc },
+  ];
+
+  const includedAmount = includedComponents.reduce(
+    (sum, item) => (item.include !== false ? sum + parseFloat(item.value || 0) : sum),
+    0
+  );
+
+  const localGross = monthlyEarningsSum + includedAmount;
+
+  // Only employee-side deductions reduce Net Salary
+  const employeeDeductions = [
+    { value: salaryDetails.employeePF, include: planData.pfEmployeeIncludeInCtc },
+    { value: salaryDetails.esic, include: planData.esicEmployeeIncludeInCtc },
+    { value: salaryDetails.professionalTax, include: planData.professionalTaxIncludeInCtc },
+    { value: salaryDetails.insurance, include: planData.insuranceEmployeeIncludeInCtc },
+  ].reduce(
+    (sum, item) => (item.include !== false ? sum + parseFloat(item.value || 0) : sum),
+    0
+  );
+
+  const localNet = localGross - employeeDeductions;
+
+  return { localGross, localNet };
+};
+
 
 const DetailsTab = ({
   selectedEmployee,
@@ -114,8 +160,8 @@ const DetailsTab = ({
   }
 
   const planData = selectedEmployee.plan_data || {};
-  // const monthlyCTC = selectedEmployee.ctc / 12;
-  const salaryDetails = calculateSalaryDetails(
+
+  const salaryDetailsRaw = calculateSalaryDetails(
     selectedEmployee.ctc,
     planData,
     selectedEmployee.employee_id,
@@ -125,6 +171,19 @@ const DetailsTab = ({
     employeeIncentiveData,
     employeeLopData
   );
+
+  // Apply same Gross/Net logic as CreateCompensation Preview
+  const { localGross, localNet } = calculateLocalGrossNet(salaryDetailsRaw, planData);
+
+  const salaryDetails = {
+    ...salaryDetailsRaw,
+    localGross,
+    localNet,
+  };
+
+  const monthlyCTC = parseFloat(selectedEmployee.ctc || 0) / 12;
+
+
 
   const { targetMonthStr, targetYear, windowStart, windowEnd } =
     getPayrollFilter();
@@ -815,13 +874,25 @@ const DetailsTab = ({
   const getAmountForTab = (comp, tab) =>
     tab === "yearly" ? comp.yearly || 0 : comp.monthly || 0;
 
-    // ====================== NEW CALCULATION LOGIC (with Debug Logs) ======================
-  const monthlyCTC = parseFloat(selectedEmployee.ctc || 0) / 12;
-
+    // ====================== FIXED CALCULATION LOGIC ======================
   console.log("=== DetailsTab Debug ===");
-  console.log("Selected Employee CTC:", selectedEmployee.ctc);
-  console.log("Monthly CTC:", monthlyCTC);
   console.log("Active Tab:", activeTab);
+  console.log("Monthly CTC:", monthlyCTC);
+  console.log("Local Gross (Monthly):", salaryDetails.localGross);
+  console.log("Local Net (Monthly):", salaryDetails.localNet);
+
+  // Scale for Yearly view
+  const displayedGross = activeTab === "yearly" 
+    ? (salaryDetails.localGross || 0) * 12 
+    : (salaryDetails.localGross || 0);
+
+  const displayedNet = activeTab === "yearly" 
+    ? (salaryDetails.localNet || 0) * 12 
+    : (salaryDetails.localNet || 0);
+
+  console.log("Displayed Gross:", displayedGross);
+  console.log("Displayed Net:", displayedNet);
+  // ==================================================================
 
   // Gross is always full Monthly CTC
   const grossAmount = monthlyCTC;
@@ -1167,7 +1238,7 @@ const DetailsTab = ({
                 </tr>
               ))}
 
-              {/* Totals */}
+                            {/* Totals - Clean & Corrected */}
               <tr className="sb-details-total-row">
                 <td className="sb-details-table-cell sb-details-align-left">
                   <strong>Gross Salary</strong>
@@ -1175,7 +1246,7 @@ const DetailsTab = ({
                 <td className="sb-details-table-cell sb-details-align-left">N/A</td>
                 <td className="sb-details-table-cell sb-details-align-right">
                   <strong>
-                    ₹{grossAmount.toLocaleString(undefined, {
+                    ₹{displayedGross.toLocaleString(undefined, {
                       minimumFractionDigits: 2,
                       maximumFractionDigits: 2,
                     })}
@@ -1190,7 +1261,7 @@ const DetailsTab = ({
                 <td className="sb-details-table-cell sb-details-align-left">N/A</td>
                 <td className="sb-details-table-cell sb-details-align-right">
                   <strong>
-                    ₹{netAmount.toLocaleString(undefined, {
+                    ₹{displayedNet.toLocaleString(undefined, {
                       minimumFractionDigits: 2,
                       maximumFractionDigits: 2,
                     })}

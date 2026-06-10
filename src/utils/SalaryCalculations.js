@@ -92,7 +92,9 @@ export const getWorkingDaysInMonth = (year, month) => {
 const formatCalculationBase = (base) => {
   return base ? base.charAt(0).toUpperCase() + base.slice(1) : "Basic";
 };
-
+const includedValue = (value, includeFlag) => {
+  return includeFlag ? Number(value || 0) : 0;
+};
 export const calculateSalaryDetails = (
   ctc,
   planData,
@@ -562,12 +564,15 @@ if (
   // ✅ FORCE OTHER ALLOWANCE AS BALANCING COMPONENT
 
 const fixedDeductions =
-  employeePF +
-  employerPF +
-  esic +
-  insurance +
-  gratuity +
-  professionalTax;
+  includedValue(employeePF, planData.pfEmployeeIncludeInCtc) +
+  includedValue(employerPF, planData.pfEmployerIncludeInCtc) +
+  includedValue(esic, planData.esicEmployeeIncludeInCtc) +
+  includedValue(insurance, planData.insuranceEmployeeIncludeInCtc) +
+  includedValue(gratuity, planData.gratuityIncludeInCtc) +
+  includedValue(
+    professionalTax,
+    planData.professionalTaxIncludeInCtc
+  );
 
 // Monthly CTC should equal full cost
 otherAllowances =
@@ -580,8 +585,15 @@ if (otherAllowances < 0) {
 }
 
 // Now add Other back to gross
-grossSalary += otherAllowances + fixedDeductions;
-
+grossSalary =
+  basicSalary +
+  hra +
+  ltaAllowance +
+  overtimePay +
+  bonusPay +
+  incentivePay +
+  otherAllowances +
+  fixedDeductions;
 
   lopDeduction = parseFloat(
     employeeLopData[employeeId]?.currentMonth?.value || 0
@@ -590,12 +602,30 @@ grossSalary += otherAllowances + fixedDeductions;
   // ONLY employee-side deductions are subtracted for net salary (take-home pay)
   // Employer PF and Gratuity are employer costs — they are NOT deducted from employee's pay
 const employeeDeductions =
-  employeePF +
-  employerPF +
-  esic +
-  gratuity +
-  professionalTax +
-  insurance +
+  includedValue(
+    employeePF,
+    planData.pfEmployeeIncludeInCtc
+  ) +
+  includedValue(
+    employerPF,
+    planData.pfEmployerIncludeInCtc
+  ) +
+  includedValue(
+    esic,
+    planData.esicEmployeeIncludeInCtc
+  ) +
+  includedValue(
+    gratuity,
+    planData.gratuityIncludeInCtc
+  ) +
+  includedValue(
+    professionalTax,
+    planData.professionalTaxIncludeInCtc
+  ) +
+  includedValue(
+    insurance,
+    planData.insuranceEmployeeIncludeInCtc
+  ) +
   tds +
   advanceRecovery +
   lopDeduction;

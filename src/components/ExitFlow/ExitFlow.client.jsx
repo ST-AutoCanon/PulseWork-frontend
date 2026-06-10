@@ -124,7 +124,17 @@ useEffect(() => {
   };
   init();
 }, [employeeId, orgId]);
-
+const [allActiveEmployees, setAllActiveEmployees] = useState([]);
+const [loadingActiveEmployees, setLoadingActiveEmployees] = useState(false);
+const [showDirectExitModal, setShowDirectExitModal] = useState(false);
+const [directExitForm, setDirectExitForm] = useState({
+  employeeId: "",
+  hr_final_lwd: "",
+  hr_rating: "",
+  hr_evaluation_comments: "",
+  reason: "Direct Exit by Organization",
+});
+const [directExitLoading, setDirectExitLoading] = useState(false);
 // NEW: Fetch team/all requests when relevant tab is active
 useEffect(() => {
   if (activeTab === "team" || activeTab === "all") {
@@ -348,6 +358,34 @@ useEffect(() => {
       setLoading(false);
     }
   };
+  const handleDirectExit = async () => {
+  if (!directExitForm.employeeId || !directExitForm.hr_final_lwd || !directExitForm.hr_rating) {
+    showAlert("Please fill all required fields", "Validation Error", "warning");
+    return;
+  }
+
+  setDirectExitLoading(true);
+  try {
+    await axios.post(`${BACKEND_URL}/api/exit/direct-exit`, directExitForm, {
+      headers: {
+        "x-api-key": API_KEY,
+        "x-employee-id": employeeId,
+        "x-org-id": orgId,
+      },
+      withCredentials: true,
+    });
+
+    showAlert("Employee has been directly exited successfully", "Success", "success");
+    setShowDirectExitModal(false);
+    setDirectExitForm({ employeeId: "", hr_final_lwd: "", hr_rating: "", hr_evaluation_comments: "", reason: "Direct Exit by HR" });
+    
+    await fetchAllTeamRequests(); // refresh list
+  } catch (err) {
+    showAlert(err.response?.data?.error || "Failed to perform direct exit", "Error", "error");
+  } finally {
+    setDirectExitLoading(false);
+  }
+};
   const startEditKt = (kt) => {
     setEditingKtId(kt.id);
     setEditKtForm({
@@ -837,6 +875,29 @@ useEffect(() => {
     setLoading(false);
   }
 };
+
+const fetchAllActiveEmployees = async () => {
+  if (!isHr && !isAdmin) return;
+  
+  setLoadingActiveEmployees(true);
+  try {
+    const res = await axios.get(`${BACKEND_URL}/api/exit/all-active-employees`, {
+      headers: {
+        "x-api-key": API_KEY,
+        "x-employee-id": employeeId,
+        "x-org-id": orgId,
+      },
+      withCredentials: true,
+    });
+    setAllActiveEmployees(res.data?.employees || res.data || []);
+  } catch (err) {
+    console.error("Failed to fetch active employees:", err);
+    showAlert("Failed to load active employees", "Error", "error");
+    setAllActiveEmployees([]);
+  } finally {
+    setLoadingActiveEmployees(false);
+  }
+};
 // const handleReviewAction = async (reviewType, action) => {
 //   if (!selectedRequest) return;
 //   setLoading(true);
@@ -1154,6 +1215,7 @@ const filteredAllTeamRequests = allTeamRequests.filter((req) => {
                   {selfRequest.withdrawal_requested_at ? (
                     // ── WITHDRAWAL IN PROGRESS ────────────────────────────────
                     <>
+      
                       <h2 className="exf-title">Withdrawal Request In Progress</h2>
                       <div className="withdrawal-focused-card bg-white p-6 rounded-lg border border-gray-200 shadow-sm">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -1780,11 +1842,14 @@ const filteredAllTeamRequests = allTeamRequests.filter((req) => {
           {activeTab === "all" && (role === "hr" || role === "admin" || isAdmin) && (
             <div className="exf-team-view space-y-8">
               <div className="exf-team-panel">
-  <div className="flex justify-between items-center mb-4">
-    <h2 className="exf-panel-title">
-      Employees Exit & Withdrawal Requests
-    </h2>
-    
+  <div className="exf-header">
+
+  <h2 className="exf-panel-title">
+    Employees Exit & Withdrawal Requests
+  </h2>
+
+  <div className="exf-header-actions">
+
     <div className="relative w-72">
       <input
         type="text"
@@ -1793,9 +1858,23 @@ const filteredAllTeamRequests = allTeamRequests.filter((req) => {
         value={searchTerm}
         onChange={(e) => setSearchTerm(e.target.value)}
       />
-    
     </div>
+
+    {(isHr || isAdmin) && (
+      <button
+        onClick={() => {
+          setShowDirectExitModal(true);
+          fetchAllActiveEmployees();
+        }}
+        className="btn btn-danger px-6 py-2.5 flex items-center gap-2 whitespace-nowrap"
+      >
+         Direct Exit
+      </button>
+    )}
+
   </div>
+
+</div>
                 {allTeamRequests.length === 0 ? (
                   <div className="exf-empty-state">
                     No exit or withdrawal requests found across the organization.
@@ -2919,6 +2998,92 @@ const finalLwdValue = req.hr_final_lwd || req.final_lwd || req.proposed_lwd || "
           onRefresh={() => fetchClearanceItems(selfRequest?.id)}
         />
       </div>
+      {/* Direct Exit Modal */}
+{/* Direct Exit Modal - Active Employees Only */}
+{showDirectExitModal && createPortal(
+  <div className="exf-modal-backdrop">
+    <div className="exf-modal-content" style={{ maxWidth: '520px' }}>
+      <div className="exf-kt-modal-header">
+        <h3 className="exf-kt-modal-title">Direct Exit Employee</h3>
+        <button onClick={() => setShowDirectExitModal(false)} className="exf-kt-modal-close">×</button>
+      </div>
+
+      <div className="exf-kt-modal-body space-y-6">
+        <div>
+          <label className="exf-form-label">Select Employee <span className="text-red-500">*</span></label>
+          <select
+            className="exf-form-select"
+            value={directExitForm.employeeId}
+            onChange={(e) => setDirectExitForm({ ...directExitForm, employeeId: e.target.value })}
+            disabled={loadingActiveEmployees}
+          >
+            <option value="">-- Select Employee --</option>
+            {loadingActiveEmployees ? (
+              <option disabled>Loading active employees...</option>
+            ) : (
+              allActiveEmployees.map(emp => (
+                <option key={emp.employee_id} value={emp.employee_id}>
+                  {emp.first_name} {emp.last_name} ({emp.employee_id})
+                </option>
+              ))
+            )}
+          </select>
+        </div>
+
+        <div>
+          <label className="exf-form-label">Last Working Day <span className="text-red-500">*</span></label>
+          <input
+            type="date"
+            className="exf-form-input"
+            value={directExitForm.hr_final_lwd}
+            onChange={(e) => setDirectExitForm({ ...directExitForm, hr_final_lwd: e.target.value })}
+max={new Date().toISOString().split("T")[0]}          />
+        </div>
+
+        {/* Star Rating */}
+        <div>
+          <label className="exf-form-label">Exit Rating <span className="text-red-500">*</span></label>
+          <div className="flex gap-2 mt-2">
+            {[1,2,3,4,5].map(star => (
+              <span
+                key={star}
+                onClick={() => setDirectExitForm({ ...directExitForm, hr_rating: star.toString() })}
+                className="cursor-pointer text-3xl"
+              >
+                {Number(directExitForm.hr_rating) >= star ? <FaStar color="#fbbf24" /> : <FaRegStar />}
+              </span>
+            ))}
+          </div>
+        </div>
+
+        <div>
+          <label className="exf-form-label">Comments</label>
+          <textarea
+            className="exf-form-textarea"
+            rows={4}
+            value={directExitForm.hr_evaluation_comments}
+            onChange={(e) => setDirectExitForm({ ...directExitForm, hr_evaluation_comments: e.target.value })}
+            placeholder="Final remarks about the exit..."
+          />
+        </div>
+      </div>
+
+      <div className="exf-kt-modal-footer">
+        <button onClick={() => setShowDirectExitModal(false)} className="exf-kt-btn exf-kt-btn--cancel">
+          Cancel
+        </button>
+        <button
+          onClick={handleDirectExit}
+          disabled={directExitLoading || !directExitForm.employeeId || !directExitForm.hr_final_lwd || !directExitForm.hr_rating}
+          className="exf-kt-btn exf-kt-btn--primary bg-red-600 hover:bg-red-700"
+        >
+          {directExitLoading ? "Processing Exit..." : "Confirm Direct Exit"}
+        </button>
+      </div>
+    </div>
+  </div>,
+  document.body
+)}
     </>
   );
 }

@@ -25,61 +25,72 @@ const calculateLocalGrossNet = (salaryDetails, planData) => {
     salaryDetails.statutoryBonus || 0,
   ].reduce((sum, val) => sum + parseFloat(val || 0), 0);
 
-  const pfAmount =
-    planData.pfEmployeeIncludeInCtc !== false
-      ? parseFloat(salaryDetails.employeePF || 0)
-      : 0;
-
-  const ptAmount =
-    planData.professionalTaxIncludeInCtc !== false
-      ? parseFloat(salaryDetails.professionalTax || 0)
-      : 0;
-
   // Components included in Gross if Include In CTC is checked
-const includedComponents = [
-  {
-    value: salaryDetails.employeePF,
-    include: planData.pfEmployeeIncludeInCtc,
-  },
-  {
-    value: salaryDetails.employerPF,
-    include: planData.pfEmployerIncludeInCtc,
-  },
-  {
-    value: salaryDetails.esic,
-    include: planData.esicEmployeeIncludeInCtc,
-  },
-  {
-    value: salaryDetails.gratuity,
-    include: planData.gratuityIncludeInCtc,
-  },
-  {
-    value: salaryDetails.professionalTax,
-    include: planData.professionalTaxIncludeInCtc,
-  },
-  {
-    value: salaryDetails.insurance,
-    include: planData.insuranceEmployeeIncludeInCtc,
-  },
-];
+  const includedComponents = [
+    {
+      value: salaryDetails.employeePF,
+      include: planData.pfEmployeeIncludeInCtc,
+    },
+    {
+      value: salaryDetails.employerPF,
+      include: planData.pfEmployerIncludeInCtc,
+    },
+    {
+      value: salaryDetails.esic,
+      include: planData.esicEmployeeIncludeInCtc,
+    },
+    {
+      value: salaryDetails.gratuity,
+      include: planData.gratuityIncludeInCtc,
+    },
+    {
+      value: salaryDetails.professionalTax,
+      include: planData.professionalTaxIncludeInCtc,
+    },
+    {
+      value: salaryDetails.insurance,
+      include: planData.insuranceEmployeeIncludeInCtc,
+    },
+  ];
 
-const includedAmount = includedComponents.reduce(
-  (sum, item) =>
-    item.include !== false
-      ? sum + parseFloat(item.value || 0)
-      : sum,
-  0
-);
+  const includedAmount = includedComponents.reduce(
+    (sum, item) =>
+      item.include !== false
+        ? sum + parseFloat(item.value || 0)
+        : sum,
+    0
+  );
 
-// Gross = Earnings + Included Components
-const localGross =
-  monthlyEarningsSum +
-  includedAmount;
+  // Gross = Earnings + Included Components
+  const localGross = monthlyEarningsSum + includedAmount;
 
-// Net = Gross - Included Components
-const localNet =
-  localGross -
-  includedAmount;
+  // Net = Gross - Employee-side deductions only (do not subtract employer contributions)
+  const employeeDeductions = [
+    {
+      value: salaryDetails.employeePF,
+      include: planData.pfEmployeeIncludeInCtc,
+    },
+    {
+      value: salaryDetails.esic,
+      include: planData.esicEmployeeIncludeInCtc,
+    },
+    {
+      value: salaryDetails.professionalTax,
+      include: planData.professionalTaxIncludeInCtc,
+    },
+    {
+      value: salaryDetails.insurance,
+      include: planData.insuranceEmployeeIncludeInCtc,
+    },
+  ].reduce(
+    (sum, item) =>
+      item.include !== false
+        ? sum + parseFloat(item.value || 0)
+        : sum,
+    0
+  );
+
+  const localNet = localGross - employeeDeductions;
 
   return {
     localGross,
@@ -3951,7 +3962,7 @@ const handleCalculate = () => {
                   )}
 
                 </div>
-               {salaryDetails && (
+       {salaryDetails && (
   <div className="create-preview-right">
     <h3>Calculated Salary (Monthly)</h3>
     <table className="create-compensation-preview-table">
@@ -3972,168 +3983,94 @@ const handleCalculate = () => {
             professionalTax: 'professionalTaxIncludeInCtc',
             gratuity: 'gratuityIncludeInCtc',
           };
-          const monthlyCTC =
-  (parseFloat(ctcInput) || DEFAULT_CTC) / 12;
-  const componentConfig = [
-  { key: "basicSalary", label: "Basic Salary" },
-  { key: "hra", label: "HRA" },
-  { key: "ltaAllowance", label: "LTA Allowance" },
 
-  { key: "employeePF", label: "Employee PF" },
-  { key: "employerPF", label: "Employer PF" },
+          const monthlyCTC = (parseFloat(ctcInput) || DEFAULT_CTC) / 12;
 
-  { key: "esic", label: "ESIC Employee" },
+          // For Other Allowance Breakdown
+          const componentConfig = [
+            { key: "basicSalary", label: "Basic Salary" },
+            { key: "hra", label: "HRA" },
+            { key: "ltaAllowance", label: "LTA Allowance" },
+            { key: "employeePF", label: "Employee PF" },
+            { key: "employerPF", label: "Employer PF" },
+            { key: "esic", label: "ESIC Employee" },
+            { key: "gratuity", label: "Gratuity" },
+            { key: "professionalTax", label: "Professional Tax" },
+            { key: "insurance", label: "Insurance" },
+            { key: "incentivePay", label: "Incentive Pay" },
+            { key: "overtimePay", label: "Overtime Pay" },
+            { key: "statutoryBonus", label: "Statutory Bonus" },
+          ];
 
-  { key: "gratuity", label: "Gratuity" },
+          const includedComponents = componentConfig.filter(item => {
+            const value = Number(salaryDetails[item.key] || 0);
+            return value > 0;
+          });
 
-  { key: "professionalTax", label: "Professional Tax" },
-
-  { key: "insurance", label: "Insurance" },
-
-  { key: "incentivePay", label: "Incentive Pay" },
-
-  { key: "overtimePay", label: "Overtime Pay" },
-
-  { key: "statutoryBonus", label: "Statutory Bonus" },
-];
-const includedComponents = componentConfig.filter(item => {
-  const value = Number(
-    salaryDetails[item.key] || 0
-  );
-
-  return value > 0;
-});
-
-
-const otherAllowanceBreakdown = `
-CTC ₹${monthlyCTC.toLocaleString("en-IN", {
-  minimumFractionDigits: 2,
-  maximumFractionDigits: 2,
-})}
+          const otherAllowanceBreakdown = `
+CTC ₹${monthlyCTC.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
 
 - (
 ${includedComponents
-  .map(
-    (item) =>
-      `${item.label} ₹${Number(
-        salaryDetails[item.key] || 0
-      ).toLocaleString("en-IN", {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
-      })}`
-  )
+  .map(item => `${item.label} ₹${Number(salaryDetails[item.key] || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`)
   .join("\n+ ")}
 
-= ₹${Number(
-  salaryDetails.otherAllowances || 0
-).toLocaleString("en-IN", {
-  minimumFractionDigits: 2,
-  maximumFractionDigits: 2,
-})}
+= ₹${Number(salaryDetails.otherAllowances || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
 `;
 
-const grossComponents = componentConfig.filter(item => {
-  const value = Number(
-    salaryDetails[item.key] || 0
-  );
-
-  return value > 0;
-});
-const grossBreakdown = `
-${grossComponents
-  .map(
-    item =>
-      `${item.label} ₹${Number(
-        salaryDetails[item.key] || 0
-      ).toLocaleString("en-IN", {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
-      })}`
-  )
+          // Gross Breakdown (All earnings + included components)
+          const grossBreakdown = `
+${includedComponents
+  .map(item => `${item.label} ₹${Number(salaryDetails[item.key] || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`)
   .join("\n+ ")}
 
-+ Other Allowances ₹${Number(
-  salaryDetails.otherAllowances || 0
-).toLocaleString("en-IN", {
-  minimumFractionDigits: 2,
-  maximumFractionDigits: 2,
-})}
-
-= ₹${Number(
-  salaryDetails.localGross || 0
-).toLocaleString("en-IN", {
-  minimumFractionDigits: 2,
-  maximumFractionDigits: 2,
-})}
+= ₹${Number(salaryDetails.localGross || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
 `;
 
+          // FIXED: Dynamic Net Deductions - Only Employee-side + Only if Included in CTC
+          const netDeductionConfig = [
+            { key: "employeePF", label: "Employee PF", includeKey: "pfEmployeeIncludeInCtc" },
+            { key: "esic", label: "ESIC Employee", includeKey: "esicEmployeeIncludeInCtc" },
+            { key: "professionalTax", label: "Professional Tax", includeKey: "professionalTaxIncludeInCtc" },
+            { key: "insurance", label: "Insurance", includeKey: "insuranceEmployeeIncludeInCtc" },
+          ];
 
-const netDeductionComponents = componentConfig.filter(item => {
-  const deductionKeys = [
-    "employeePF",
-    "employerPF",
-    "esic",
-    "gratuity",
-    "professionalTax",
-    "insurance",
-  ];
+          const netDeductionComponents = netDeductionConfig.filter(item => {
+            const value = Number(salaryDetails[item.key] || 0);
+            const isIncluded = !item.includeKey || formData[item.includeKey] !== false;
+            return value > 0 && isIncluded;
+          });
 
-  return (
-    deductionKeys.includes(item.key) &&
-    Number(salaryDetails[item.key] || 0) > 0
-  );
-});
-const netBreakdown = `
-Gross ₹${Number(
-  salaryDetails.localGross || 0
-).toLocaleString("en-IN", {
-  minimumFractionDigits: 2,
-  maximumFractionDigits: 2,
-})}
+          const netBreakdown = `
+Gross ₹${Number(salaryDetails.localGross || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
 
 - (
-${netDeductionComponents
-  .map(
-    item =>
-      `${item.label} ₹${Number(
-        salaryDetails[item.key] || 0
-      ).toLocaleString("en-IN", {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
-      })}`
-  )
-  .join("\n+ ")}
+${netDeductionComponents.length > 0 
+  ? netDeductionComponents
+      .map(item => `${item.label} ₹${Number(salaryDetails[item.key] || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`)
+      .join("\n+ ")
+  : "No employee deductions"
+}
 )
 
-= ₹${Number(
-  salaryDetails.localNet || 0
-).toLocaleString("en-IN", {
-  minimumFractionDigits: 2,
-  maximumFractionDigits: 2,
-})}
+= ₹${Number(salaryDetails.localNet || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
 `;
 
+          // Main entries for table
           const entries = Object.entries(salaryDetails).filter(
             ([key, value]) => {
-              // hide internal metadata and original gross/net rows
-              if (key === "_enhancedPlanDescriptions" || key === "grossSalary" || key === "netSalary") {
-                return false;
-              }
-              if (!shouldDisplayField(key, value, formData)) {
-                return false;
-              }
-              // exclude if include flag unchecked
-              if (includeMap[key] && formData[includeMap[key]] === false) {
-                return false;
-              }
+              if (key === "_enhancedPlanDescriptions" || key === "grossSalary" || key === "netSalary") return false;
+              if (!shouldDisplayField(key, value, formData)) return false;
+              if (includeMap[key] && formData[includeMap[key]] === false) return false;
               return true;
             }
           );
+
           let totalEff = entries.reduce((sum, [key, val]) => {
             const monthlyCalc = Number(val) || 0;
             const annualCalc = monthlyCalc * 12;
-            const totalCTC = parseFloat(ctcInput) || DEFAULT_CTC;
-            return sum + (annualCalc / totalCTC) * 100;
+            const totalCTCVal = parseFloat(ctcInput) || DEFAULT_CTC;
+            return sum + (annualCalc / totalCTCVal) * 100;
           }, 0);
           totalEff = parseFloat(totalEff.toFixed(4));
           if (totalEff > 100) totalEff = 100;
@@ -4143,124 +4080,74 @@ ${netDeductionComponents
               {entries.map(([key, value]) => {
                 const monthlyCalc = Number(value) || 0;
                 const annualCalc = monthlyCalc * 12;
-                const totalCTC = parseFloat(ctcInput) || DEFAULT_CTC;
-                const effPct = (annualCalc / totalCTC) * 100;
+                const totalCTCVal = parseFloat(ctcInput) || DEFAULT_CTC;
+                const effPct = (annualCalc / totalCTCVal) * 100;
 
                 let planText = "-";
                 const mapping = salaryFieldToFormDataMap[key];
                 if (mapping) {
-  const currentType =
-    formData[mapping.type] ||
-    mapping.default?.type ||
-    "percentage";
+                  const currentType = formData[mapping.type] || mapping.default?.type || "percentage";
+                  if (currentType === "amount") {
+                    planText = `₹${monthlyCalc.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/mo ≈ ${effPct.toFixed(4)}% of CTC`;
+                  } else {
+                    planText = `${effPct.toFixed(4)}% of CTC`;
+                    if (key === "hra" && Number(salaryDetails.basicSalary || 0) > 0) {
+                      const hraBasicPct = (Number(value) / Number(salaryDetails.basicSalary || 1)) * 100;
+                      planText += ` (${hraBasicPct.toFixed(4)}% of Basic Salary)`;
+                    }
+                  }
+                }
 
-  if (currentType === "amount") {
-    planText = `₹${monthlyCalc.toLocaleString("en-IN", {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    })}/mo ≈ ${effPct.toFixed(4)}% of CTC`;
-  } else {
-    // percentage entry -> show effective CTC percentage
-
-    planText = `${effPct.toFixed(4)}% of CTC`;
-
-    // Special handling for HRA
-    if (
-      key === "hra" &&
-      Number(salaryDetails.basicSalary || 0) > 0
-    ) {
-      const hraBasicPct =
-        (Number(value) /
-          Number(salaryDetails.basicSalary || 1)) *
-        100;
-
-      planText += ` (${hraBasicPct.toFixed(
-        4
-      )}% of Basic Salary)`;
-    }
-  }
-}
-
-               if (key === "otherAllowances") {
-  planText = (
-    <>
-      {effPct.toFixed(4)}% of CTC
-
-      <div
-        style={{
-          fontSize: "11px",
-          color: "#666",
-          marginTop: "4px",
-          whiteSpace: "pre-line",
-          lineHeight: "16px",
-        }}
-      >
-        {otherAllowanceBreakdown}
-      </div>
-    </>
-  );
-}
+                if (key === "otherAllowances") {
+                  planText = (
+                    <>
+                      {effPct.toFixed(4)}% of CTC
+                      <div style={{ fontSize: "11px", color: "#666", marginTop: "4px", whiteSpace: "pre-line", lineHeight: "16px" }}>
+                        {otherAllowanceBreakdown}
+                      </div>
+                    </>
+                  );
+                }
 
                 return (
                   <tr key={key}>
                     <td>{formatFieldName(key)}</td>
                     <td>
-                      {typeof value === "number"
-                        ? value.toLocaleString("en-IN", {
-                            minimumFractionDigits: 2,
-                            maximumFractionDigits: 2,
-                          })
-                        : value}
+                      {typeof value === "number" ? value.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : value}
                     </td>
                     <td>{planText}</td>
                   </tr>
                 );
               })}
-              {/* insert local gross/net rows before total */}
+
+              {/* Total Gross */}
               {salaryDetails.localGross !== undefined && (
                 <tr>
                   <td>Total Gross</td>
                   <td>{salaryDetails.localGross.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-<td>
-  {((salaryDetails.localGross * 12) /
-    (parseFloat(ctcInput) || DEFAULT_CTC) *
-    100).toFixed(4)}% of CTC
-
-  <div
-    style={{
-      fontSize: "11px",
-      color: "#666",
-      marginTop: "4px",
-      whiteSpace: "pre-line",
-      lineHeight: "16px",
-    }}
-  >
-    {grossBreakdown}
-  </div>
-</td>                </tr>
+                  <td>
+                    {((salaryDetails.localGross * 12) / (parseFloat(ctcInput) || DEFAULT_CTC) * 100).toFixed(4)}% of CTC
+                    <div style={{ fontSize: "11px", color: "#666", marginTop: "4px", whiteSpace: "pre-line", lineHeight: "16px" }}>
+                      {grossBreakdown}
+                    </div>
+                  </td>
+                </tr>
               )}
+
+              {/* Total Net - Now Dynamic */}
               {salaryDetails.localNet !== undefined && (
                 <tr>
                   <td>Total Net</td>
                   <td>{salaryDetails.localNet.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-<td>
-  {((salaryDetails.localNet * 12) /
-    (parseFloat(ctcInput) || DEFAULT_CTC) *
-    100).toFixed(4)}% of CTC
-
-  <div
-    style={{
-      fontSize: "11px",
-      color: "#666",
-      marginTop: "4px",
-      whiteSpace: "pre-line",
-      lineHeight: "16px",
-    }}
-  >
-    {netBreakdown}
-  </div>
-</td>                </tr>
+                  <td>
+                    {((salaryDetails.localNet * 12) / (parseFloat(ctcInput) || DEFAULT_CTC) * 100).toFixed(4)}% of CTC
+                    <div style={{ fontSize: "11px", color: "#666", marginTop: "4px", whiteSpace: "pre-line", lineHeight: "16px" }}>
+                      {netBreakdown}
+                    </div>
+                  </td>
+                </tr>
               )}
+
               <tr>
                 <td><strong>Total</strong></td>
                 <td></td>
@@ -4271,6 +4158,8 @@ ${netDeductionComponents
         })()}
       </tbody>
     </table>
+
+    {/* Excluded Components */}
     {salaryDetails._excludedComponents && salaryDetails._excludedComponents.length > 0 && (
       <>
         <h3 style={{ marginTop: "30px", color: "#d32f2f" }}>
@@ -4340,4 +4229,5 @@ ${netDeductionComponents
     </div>
   );
 };
+
 export default CreateCompensation;

@@ -12,6 +12,23 @@
   padding: 3.5rem 1.5rem;
 }
 
+.exf-team-panel {
+   flex-direction: column;
+   flex-wrap: wrap;
+}
+.exf-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  margin-bottom: 16px;
+}
+
+.exf-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
 .exf-section-title {
   margin-bottom: 1.2rem;
   font-size: 1.8rem;

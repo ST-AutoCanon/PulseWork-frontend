@@ -18,7 +18,7 @@ import AttendanceRegularisation from "../AttendanceRegularisation/AttendanceRegu
 import MyEmpDashboard from "../MyEmpDashboard/MyEmpDashboard.client";
 import PayrollSummary from "../PayrollSummary/PayrollSummary.client";
 import TemplateBuilder from "../TemplateBuilder/TemplateBuilder.client";
-
+import Recruitment from "../Recruitment/RecruitmentFlow.client";
 import Reimbursement from "../Reimbursement/Reimbursement.client";
 import RbAdmin from "../Reimbursement/RbAdmin.client";
 import RbTeamLead from "../Reimbursement/RbTeamLead.client";
@@ -141,6 +141,7 @@ const Sidebar = ({ setActiveContent }) => {
         return <EmployeeQuery />;
       },
       "/TemplateBuilder": () => <TemplateBuilder />,
+      "/RecruitmentFlow": () => <Recruitment />,
       "/letterHead": () => <LetterHead />,
       "/assets": () => <Assets />,
       "/vendors": () => <Vendors />,

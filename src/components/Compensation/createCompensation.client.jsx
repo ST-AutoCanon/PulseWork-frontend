@@ -638,7 +638,32 @@ const validateTotalPercentage = (formData, ctc = DEFAULT_CTC) => {
     components,
   };
 };
+// NEW: Get only CTC-Included Components for Other Allowance calculation
+const getCtcIncludedComponentsForBreakdown = (salaryDetails, formData) => {
+  const config = [
+    { key: "basicSalary", label: "Basic Salary", alwaysIncluded: true },
+    { key: "hra", label: "HRA", alwaysIncluded: true },
+    { key: "ltaAllowance", label: "LTA Allowance", alwaysIncluded: true },
+    { key: "employeePF", label: "Employee PF", includeKey: "pfEmployeeIncludeInCtc" },
+    { key: "professionalTax", label: "Professional Tax", includeKey: "professionalTaxIncludeInCtc" },
+    { key: "gratuity", label: "Gratuity", includeKey: "gratuityIncludeInCtc" },
+    { key: "insurance", label: "Insurance", includeKey: "insuranceEmployeeIncludeInCtc" },
+    { key: "esic", label: "ESIC", includeKey: "esicEmployeeIncludeInCtc" },
+  ];
 
+  return config
+    .map(item => {
+      const amount = Number(salaryDetails[item.key] || 0);
+      const isIncluded = item.alwaysIncluded || 
+                        (!item.includeKey || formData[item.includeKey] !== false);
+      return {
+        label: item.label,
+        amount: amount,
+        show: amount > 0 && isIncluded
+      };
+    })
+    .filter(item => item.show);
+};
 const CreateCompensation = () => {
   const [isPopupOpen, setIsPopupOpen] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
@@ -2308,12 +2333,19 @@ if (
     }
   };
 
-  const handlePreview = () => {
-    setPreviewModal(true);
-    setCtcInput("");
-    setSalaryDetails(null);
-  };
+ const handlePreview = () => {
+  setPreviewConfirmed(false);
+  setPreviewModal(true);
+  setCtcInput("");
+  setSalaryDetails(null);
+  setPreviewAllocation(null);
 
+  // Auto-focus CTC field
+  setTimeout(() => {
+    const input = document.querySelector('.create-compensation-number-input');
+    if (input) input.focus();
+  }, 200);
+};
   const closePreview = () => {
     setPreviewModal(false);
     setCtcInput("");
@@ -2604,6 +2636,48 @@ const getPlanValue = (calcField, formData) => {
   return { value: display, basis: basisText };
 };
 // NEW HELPER - Add this after getPlanValue function
+// NEW HELPERS
+const getEarnings = (salaryDetails) => {
+  const earningsKeys = ["basicSalary", "hra", "ltaAllowance", "otherAllowances", "incentivePay", "overtimePay", "statutoryBonus"];
+  return earningsKeys
+    .map(key => ({
+      label: formatFieldName(key),
+      amount: Number(salaryDetails[key] || 0)
+    }))
+    .filter(item => item.amount > 0);
+};
+
+const getEmployeeDeductions = (salaryDetails, formData) => {
+  const deductionConfig = [
+    { key: "employeePF", label: "Employee PF", includeKey: "pfEmployeeIncludeInCtc" },
+    { key: "esic", label: "ESIC Employee", includeKey: "esicEmployeeIncludeInCtc" },
+    { key: "professionalTax", label: "Professional Tax", includeKey: "professionalTaxIncludeInCtc" },
+    { key: "insurance", label: "Insurance (Employee)", includeKey: "insuranceEmployeeIncludeInCtc" },
+  ];
+
+  return deductionConfig
+    .map(item => ({
+      label: item.label,
+      amount: Number(salaryDetails[item.key] || 0),
+      includedInCtc: !item.includeKey || formData[item.includeKey] !== false
+    }))
+    .filter(item => item.amount > 0 && item.includedInCtc);
+};
+
+const getEmployerContributions = (salaryDetails, formData) => {
+  const employerConfig = [
+    { key: "employerPF", label: "Employer PF", includeKey: "pfEmployerIncludeInCtc" },
+    { key: "gratuity", label: "Gratuity", includeKey: "gratuityIncludeInCtc" },
+  ];
+
+  return employerConfig
+    .map(item => ({
+      label: item.label,
+      amount: Number(salaryDetails[item.key] || 0),
+      includedInCtc: !item.includeKey || formData[item.includeKey] !== false
+    }))
+    .filter(item => item.amount > 0);
+};
 const getIncludedAndExcludedComponents = (formData, salaryDetails, ctcInput) => {
   const totalCTC = parseFloat(ctcInput) || DEFAULT_CTC;
   const included = [];
@@ -2648,10 +2722,19 @@ const getIncludedAndExcludedComponents = (formData, salaryDetails, ctcInput) => 
 
   return { included, excluded };
 };
-  const handleStepChange = (step) => {
-    const newStep = Math.max(1, Math.min(step, categories.length));
-    setCurrentStep(newStep);
-  };
+ const handleStepChange = (step) => {
+  const newStep = Math.max(1, Math.min(step, categories.length));
+
+  // Optional: Light validation before moving forward
+  if (newStep > currentStep) {
+    if (currentStep === 1 && !formData.compensationPlanName.trim()) {
+      showAlert("Please enter Compensation Plan Name before proceeding.");
+      return;
+    }
+  }
+
+  setCurrentStep(newStep);
+};
 
 const handleCalculate = () => {
   const annualCTC = parseFloat(ctcInput);
@@ -2679,7 +2762,7 @@ const handleCalculate = () => {
   calculatedDetails.localGross = localGross;
   calculatedDetails.localNet = localNet;
 
-  // NEW: Compute included vs excluded
+  // Enhanced Included / Excluded
   const { included, excluded } = getIncludedAndExcludedComponents(
     formData,
     calculatedDetails,
@@ -3512,104 +3595,80 @@ const handleCalculate = () => {
     Back
   </button>
 
-  {currentStep < categories.length && (
-   <button
-  className={`compensation-add-button ${
-    ((Number(allocationInfo.exceeds) > 0.3 &&
-      !previewConfirmed) ||
-      (Number(allocationInfo.exceeds) <= 0.3 &&
-        !allocationInfo.isValid))
-      ? "disabled-btn"
-      : ""
-  }`}
-  onClick={handleSubmit}
-  disabled={
-    (Number(allocationInfo.exceeds) > 0.3 &&
-      !previewConfirmed) ||
-    (Number(allocationInfo.exceeds) <= 0.3 &&
-      !allocationInfo.isValid)
-  }
->
-      Next
-    </button>
-  )}
+ {currentStep < categories.length && (
+  <button
+    className="compensation-add-button"
+    onClick={() => handleStepChange(currentStep + 1)}
+    disabled={false}   // Always enabled for Next (validation only on final step)
+  >
+    Next
+  </button>
+)}
 
   {currentStep === categories.length && (
     <>
-      <button
-        className="compensation-preview-button"
-        onClick={handlePreview}
-        disabled={
-          Number(allocationInfo.exceeds) > 0.3 ||
-          !allocationInfo.isValid
-        }
-      >
-        Preview Compensation
-      </button>
+     <button
+  className="compensation-preview-button"
+  onClick={handlePreview}
+  disabled={false}   // Always enabled — user must be able to preview even if exceeds
+>
+  Preview Compensation
+</button>
 
       <button
-        className="compensation-add-button"
-        onClick={handleSubmit}
-        disabled={
-          (Number(allocationInfo.exceeds) > 0.3 &&
-            !previewConfirmed) ||
-          (Number(allocationInfo.exceeds) <= 0.3 &&
-            !allocationInfo.isValid)
-        }
-      >
-        {isEditing
-          ? "Update Compensation"
-          : "Save Compensation"}
-      </button>
+  className="compensation-add-button"
+  onClick={handleSubmit}
+  disabled={
+    Number(allocationInfo.exceeds) > 0.3 && !previewConfirmed
+    // Removed the complex isValid check for better UX
+  }
+>
+  {isEditing ? "Update Compensation" : "Save Compensation"}
+</button>
     </>
   )}
 </div>
 
 {/* Warning Section BELOW Buttons */}
-{(Number(allocationInfo.exceeds) > 0.3 ||
-  Number(allocationInfo.remaining) > 1) && (
+{/* Improved Warning - Preview Always Available */}
+{Number(allocationInfo.exceeds) > 0.3 && (
+  <div className="compensation-warning-container" style={{ borderColor: '#ff9800' }}>
+    <div className="compensation-warning-message">
+      <strong style={{ color: '#d32f2f' }}>
+        ⚠️ Total allocation exceeds 100% by {allocationInfo.exceeds.toFixed(2)}%
+      </strong>
+      <p style={{ margin: '8px 0' }}>
+        You can still preview to see detailed breakdown and calculations.
+      </p>
+    </div>
+
+    <div className="compensation-review-row">
+      <button
+        type="button"
+        className="compensation-preview-btn"
+        onClick={handlePreview}
+      >
+        Open Preview Now
+      </button>
+
+      <label className="compensation-review-checkbox">
+        <input
+          type="checkbox"
+          checked={previewConfirmed}
+          onChange={(e) => setPreviewConfirmed(e.target.checked)}
+        />
+        I have reviewed and want to save anyway
+      </label>
+    </div>
+  </div>
+)}
+
+{Number(allocationInfo.remaining) > 1.0 && Number(allocationInfo.exceeds) <= 0.3 && (
   <div className="compensation-warning-container">
-    {Number(allocationInfo.exceeds) > 0.3 ? (
-      <>
-        <div className="compensation-warning-message">
-          <strong>
-            Total exceeds 100% by {allocationInfo.exceeds}%.
-          </strong>
-
-          <span>
-            Before saving, please preview the compensation plan
-            once and verify the data.
-          </span>
-        </div>
-
-        <div className="compensation-review-row">
-          <button
-            type="button"
-            className="compensation-preview-btn"
-            onClick={() => setPreviewModal(true)}
-          >
-            Preview Plan
-          </button>
-
-          <label className="compensation-review-checkbox">
-            <input
-              type="checkbox"
-              checked={previewConfirmed}
-              onChange={(e) =>
-                setPreviewConfirmed(e.target.checked)
-              }
-            />
-            I have reviewed the data and want to save this
-            compensation plan.
-          </label>
-        </div>
-      </>
-    ) : (
-      <div className="compensation-warning-message">
-        Still {allocationInfo.remaining}% remaining — Fill in
-        Other Allowance or adjust.
-      </div>
-    )}
+    <div className="compensation-warning-message">
+      Still <strong>{allocationInfo.remaining.toFixed(2)}%</strong> remaining — 
+      Consider filling "Other Allowance"
+    </div>
   </div>
 )}
               </div>
@@ -3962,215 +4021,118 @@ const handleCalculate = () => {
                   )}
 
                 </div>
-       {salaryDetails && (
+ {salaryDetails && (
   <div className="create-preview-right">
     <h3>Calculated Salary (Monthly)</h3>
+
+    {/* === EMPLOYEE EARNINGS === */}
     <table className="create-compensation-preview-table">
       <thead>
         <tr className="create-header-row">
+          <th colSpan="3" style={{ backgroundColor: "#e8f5e9" }}>Employee Earnings</th>
+        </tr>
+        <tr className="create-header-row">
           <th>Component</th>
           <th>Amount (₹)</th>
-          <th>Plan Value</th>
+          <th>% of CTC</th>
         </tr>
       </thead>
       <tbody>
-        {(() => {
-          const includeMap = {
-            employeePF: 'pfEmployeeIncludeInCtc',
-            employerPF: 'pfEmployerIncludeInCtc',
-            esic: 'esicEmployeeIncludeInCtc',
-            insurance: 'insuranceEmployeeIncludeInCtc',
-            professionalTax: 'professionalTaxIncludeInCtc',
-            gratuity: 'gratuityIncludeInCtc',
-          };
+        {getEarnings(salaryDetails).map((item, idx) => {
+          const annual = item.amount * 12;
+          const pct = (annual / (parseFloat(ctcInput) || DEFAULT_CTC)) * 100;
+          let amountDisplay = item.amount.toLocaleString("en-IN", { minimumFractionDigits: 2 });
 
-          const monthlyCTC = (parseFloat(ctcInput) || DEFAULT_CTC) / 12;
-
-          // For Other Allowance Breakdown
-          const componentConfig = [
-            { key: "basicSalary", label: "Basic Salary" },
-            { key: "hra", label: "HRA" },
-            { key: "ltaAllowance", label: "LTA Allowance" },
-            { key: "employeePF", label: "Employee PF" },
-            { key: "employerPF", label: "Employer PF" },
-            { key: "esic", label: "ESIC Employee" },
-            { key: "gratuity", label: "Gratuity" },
-            { key: "professionalTax", label: "Professional Tax" },
-            { key: "insurance", label: "Insurance" },
-            { key: "incentivePay", label: "Incentive Pay" },
-            { key: "overtimePay", label: "Overtime Pay" },
-            { key: "statutoryBonus", label: "Statutory Bonus" },
-          ];
-
-          const includedComponents = componentConfig.filter(item => {
-            const value = Number(salaryDetails[item.key] || 0);
-            return value > 0;
-          });
-
-          const otherAllowanceBreakdown = `
-CTC ₹${monthlyCTC.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-
-- (
-${includedComponents
-  .map(item => `${item.label} ₹${Number(salaryDetails[item.key] || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`)
-  .join("\n+ ")}
-
-= ₹${Number(salaryDetails.otherAllowances || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-`;
-
-          // Gross Breakdown (All earnings + included components)
-          const grossBreakdown = `
-${includedComponents
-  .map(item => `${item.label} ₹${Number(salaryDetails[item.key] || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`)
-  .join("\n+ ")}
-
-= ₹${Number(salaryDetails.localGross || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-`;
-
-          // FIXED: Dynamic Net Deductions - Only Employee-side + Only if Included in CTC
-          const netDeductionConfig = [
-            { key: "employeePF", label: "Employee PF", includeKey: "pfEmployeeIncludeInCtc" },
-            { key: "esic", label: "ESIC Employee", includeKey: "esicEmployeeIncludeInCtc" },
-            { key: "professionalTax", label: "Professional Tax", includeKey: "professionalTaxIncludeInCtc" },
-            { key: "insurance", label: "Insurance", includeKey: "insuranceEmployeeIncludeInCtc" },
-          ];
-
-          const netDeductionComponents = netDeductionConfig.filter(item => {
-            const value = Number(salaryDetails[item.key] || 0);
-            const isIncluded = !item.includeKey || formData[item.includeKey] !== false;
-            return value > 0 && isIncluded;
-          });
-
-          const netBreakdown = `
-Gross ₹${Number(salaryDetails.localGross || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-
-- (
-${netDeductionComponents.length > 0 
-  ? netDeductionComponents
-      .map(item => `${item.label} ₹${Number(salaryDetails[item.key] || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`)
-      .join("\n+ ")
-  : "No employee deductions"
-}
-)
-
-= ₹${Number(salaryDetails.localNet || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-`;
-
-          // Main entries for table
-          const entries = Object.entries(salaryDetails).filter(
-            ([key, value]) => {
-              if (key === "_enhancedPlanDescriptions" || key === "grossSalary" || key === "netSalary") return false;
-              if (!shouldDisplayField(key, value, formData)) return false;
-              if (includeMap[key] && formData[includeMap[key]] === false) return false;
-              return true;
-            }
-          );
-
-          let totalEff = entries.reduce((sum, [key, val]) => {
-            const monthlyCalc = Number(val) || 0;
-            const annualCalc = monthlyCalc * 12;
-            const totalCTCVal = parseFloat(ctcInput) || DEFAULT_CTC;
-            return sum + (annualCalc / totalCTCVal) * 100;
-          }, 0);
-          totalEff = parseFloat(totalEff.toFixed(4));
-          if (totalEff > 100) totalEff = 100;
+          if (item.label === "Other Allowances") {
+            const includedComps = getCtcIncludedComponentsForBreakdown(salaryDetails, formData);
+            amountDisplay = (
+              <>
+                {amountDisplay}
+                <div style={{ fontSize: "0.78rem", color: "#555", marginTop: "4px", whiteSpace: "pre-line", lineHeight: "1.35" }}>
+                  CTC - ({includedComps.map(c => c.label).join(" + ")})
+                </div>
+              </>
+            );
+          }
 
           return (
-            <>
-              {entries.map(([key, value]) => {
-                const monthlyCalc = Number(value) || 0;
-                const annualCalc = monthlyCalc * 12;
-                const totalCTCVal = parseFloat(ctcInput) || DEFAULT_CTC;
-                const effPct = (annualCalc / totalCTCVal) * 100;
-
-                let planText = "-";
-                const mapping = salaryFieldToFormDataMap[key];
-                if (mapping) {
-                  const currentType = formData[mapping.type] || mapping.default?.type || "percentage";
-                  if (currentType === "amount") {
-                    planText = `₹${monthlyCalc.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/mo ≈ ${effPct.toFixed(4)}% of CTC`;
-                  } else {
-                    planText = `${effPct.toFixed(4)}% of CTC`;
-                    if (key === "hra" && Number(salaryDetails.basicSalary || 0) > 0) {
-                      const hraBasicPct = (Number(value) / Number(salaryDetails.basicSalary || 1)) * 100;
-                      planText += ` (${hraBasicPct.toFixed(4)}% of Basic Salary)`;
-                    }
-                  }
-                }
-
-                if (key === "otherAllowances") {
-                  planText = (
-                    <>
-                      {effPct.toFixed(4)}% of CTC
-                      <div style={{ fontSize: "11px", color: "#666", marginTop: "4px", whiteSpace: "pre-line", lineHeight: "16px" }}>
-                        {otherAllowanceBreakdown}
-                      </div>
-                    </>
-                  );
-                }
-
-                return (
-                  <tr key={key}>
-                    <td>{formatFieldName(key)}</td>
-                    <td>
-                      {typeof value === "number" ? value.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : value}
-                    </td>
-                    <td>{planText}</td>
-                  </tr>
-                );
-              })}
-
-              {/* Total Gross */}
-              {salaryDetails.localGross !== undefined && (
-                <tr>
-                  <td>Total Gross</td>
-                  <td>{salaryDetails.localGross.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                  <td>
-                    {((salaryDetails.localGross * 12) / (parseFloat(ctcInput) || DEFAULT_CTC) * 100).toFixed(4)}% of CTC
-                    <div style={{ fontSize: "11px", color: "#666", marginTop: "4px", whiteSpace: "pre-line", lineHeight: "16px" }}>
-                      {grossBreakdown}
-                    </div>
-                  </td>
-                </tr>
-              )}
-
-              {/* Total Net - Now Dynamic */}
-              {salaryDetails.localNet !== undefined && (
-                <tr>
-                  <td>Total Net</td>
-                  <td>{salaryDetails.localNet.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                  <td>
-                    {((salaryDetails.localNet * 12) / (parseFloat(ctcInput) || DEFAULT_CTC) * 100).toFixed(4)}% of CTC
-                    <div style={{ fontSize: "11px", color: "#666", marginTop: "4px", whiteSpace: "pre-line", lineHeight: "16px" }}>
-                      {netBreakdown}
-                    </div>
-                  </td>
-                </tr>
-              )}
-
-              <tr>
-                <td><strong>Total</strong></td>
-                <td></td>
-                <td><strong>{totalEff.toFixed(4)}% of CTC</strong></td>
-              </tr>
-            </>
+            <tr key={idx}>
+              <td><strong>{item.label}</strong></td>
+              <td>{amountDisplay}</td>
+              <td>{pct.toFixed(4)}%</td>
+            </tr>
           );
-        })()}
+        })}
+
+        {/* === TOTAL EARNINGS === */}
+        <tr style={{ backgroundColor: "#c8e6c9", fontWeight: "bold" }}>
+          <td><strong>Total Earnings</strong></td>
+          <td>
+            {getEarnings(salaryDetails)
+              .reduce((sum, item) => sum + item.amount, 0)
+              .toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+          </td>
+          <td>—</td>
+        </tr>
       </tbody>
     </table>
 
-    {/* Excluded Components */}
+    {/* === EMPLOYEE DEDUCTIONS (Included in CTC) === */}
+    <table className="create-compensation-preview-table" style={{ marginTop: "20px" }}>
+      <thead>
+        <tr className="create-header-row">
+          <th colSpan="3" style={{ backgroundColor: "#fff3e0" }}>Employee Deductions (Included in CTC)</th>
+        </tr>
+        <tr className="create-header-row">
+          <th>Component</th>
+          <th>Amount (₹)</th>
+          <th>% of CTC</th>
+        </tr>
+      </thead>
+      <tbody>
+        {getEmployeeDeductions(salaryDetails, formData).map((item, idx) => (
+          <tr key={idx}>
+            <td><strong>{item.label}</strong></td>
+            <td>{item.amount.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</td>
+            <td>{((item.amount * 12) / (parseFloat(ctcInput) || DEFAULT_CTC) * 100).toFixed(4)}%</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+
+    {/* === EMPLOYER CONTRIBUTIONS === */}
+    <table className="create-compensation-preview-table" style={{ marginTop: "20px" }}>
+      <thead>
+        <tr className="create-header-row">
+          <th colSpan="3" style={{ backgroundColor: "#e3f2fd" }}>Employer Contributions</th>
+        </tr>
+        <tr className="create-header-row">
+          <th>Component</th>
+          <th>Amount (₹)</th>
+          <th>% of CTC</th>
+        </tr>
+      </thead>
+      <tbody>
+        {getEmployerContributions(salaryDetails, formData).map((item, idx) => (
+          <tr key={idx}>
+            <td><strong>{item.label}</strong></td>
+            <td>{item.amount.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</td>
+            <td>{((item.amount * 12) / (parseFloat(ctcInput) || DEFAULT_CTC) * 100).toFixed(4)}%</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+
+    {/* === COMPONENTS NOT INCLUDED IN CTC === */}
     {salaryDetails._excludedComponents && salaryDetails._excludedComponents.length > 0 && (
       <>
-        <h3 style={{ marginTop: "30px", color: "#d32f2f" }}>
-          Components Not Included in CTC
-        </h3>
+        <h3 style={{ marginTop: "30px", color: "#d32f2f" }}>Components Not Included in CTC</h3>
         <table className="create-compensation-preview-table" style={{ borderColor: "#ffcdd2" }}>
           <thead>
             <tr className="create-header-row" style={{ backgroundColor: "#ffebee" }}>
               <th>Component</th>
-              <th>Monthly Amount (₹)</th>
-              <th>Annual Amount (₹)</th>
+              <th>Monthly (₹)</th>
+              <th>Annual (₹)</th>
               <th>% of CTC</th>
             </tr>
           </thead>
@@ -4185,11 +4147,84 @@ ${netDeductionComponents.length > 0
             ))}
           </tbody>
         </table>
-        <p style={{ fontSize: "0.9rem", color: "#666", marginTop: "8px" }}>
-          These components are <strong>excluded</strong> from CTC calculation as per your settings.
-        </p>
       </>
     )}
+
+    {/* === SUMMARY WITH CLEAR CALCULATIONS === */}
+    <table className="create-compensation-preview-table" style={{ marginTop: "25px", backgroundColor: "#f8f9fa" }}>
+      <thead>
+        <tr className="create-header-row">
+          <th>Summary</th>
+          <th>Amount (₹) + Calculation</th>
+          <th>% of CTC</th>
+        </tr>
+      </thead>
+      <tbody>
+        {/* Original Gross & Net - Kept as is */}
+        <tr>
+          <td><strong>Gross Salary</strong></td>
+          <td>
+            {Number(salaryDetails.localGross || 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+            <div style={{ fontSize: "0.78rem", color: "#555", marginTop: "6px", whiteSpace: "pre-line", lineHeight: "1.4" }}>
+              Total Earnings + Included Deductions
+            </div>
+          </td>
+          <td>{((salaryDetails.localGross * 12) / (parseFloat(ctcInput) || DEFAULT_CTC) * 100).toFixed(4)}%</td>
+        </tr>
+
+        <tr>
+          <td><strong>Net Salary</strong></td>
+          <td>
+            {Number(salaryDetails.localNet || 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+            <div style={{ fontSize: "0.78rem", color: "#555", marginTop: "6px", whiteSpace: "pre-line", lineHeight: "1.4" }}>
+              Gross Salary - Employee Deductions
+            </div>
+          </td>
+          <td>{((salaryDetails.localNet * 12) / (parseFloat(ctcInput) || DEFAULT_CTC) * 100).toFixed(4)}%</td>
+        </tr>
+
+        {/* Final Calculations as per your requirement */}
+        <tr style={{ backgroundColor: "#e8f5e9", fontWeight: "bold" }}>
+          <td><strong>Final Gross Salary</strong></td>
+          <td>
+            {getEarnings(salaryDetails)
+              .reduce((sum, item) => sum + item.amount, 0)
+              .toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+            <div style={{ fontSize: "0.78rem", color: "#555", marginTop: "6px" }}>
+              = Total Earnings
+            </div>
+          </td>
+          <td>—</td>
+        </tr>
+
+        <tr style={{ backgroundColor: "#e8f5e9", fontWeight: "bold" }}>
+          <td><strong>Final Net Salary</strong></td>
+          <td>
+            {(() => {
+              const totalEarnings = getEarnings(salaryDetails).reduce((sum, item) => sum + item.amount, 0);
+              const employeeDeductions = getEmployeeDeductions(salaryDetails, formData).reduce((sum, item) => sum + item.amount, 0);
+              const finalNet = totalEarnings - employeeDeductions;
+              return finalNet.toLocaleString("en-IN", { minimumFractionDigits: 2 });
+            })()}
+            <div style={{ fontSize: "0.78rem", color: "#555", marginTop: "6px", whiteSpace: "pre-line", lineHeight: "1.4" }}>
+              = Total Earnings ₹{getEarnings(salaryDetails)
+                .reduce((sum, item) => sum + item.amount, 0)
+                .toLocaleString("en-IN", { minimumFractionDigits: 2 })} 
+              - (Employee Deductions: ₹{getEmployeeDeductions(salaryDetails, formData)
+                .reduce((sum, item) => sum + item.amount, 0)
+                .toLocaleString("en-IN", { minimumFractionDigits: 2 })})
+            </div>
+          </td>
+          <td>—</td>
+        </tr>
+
+        <tr style={{ fontWeight: "bold", backgroundColor: "#e8f5e9" }}>
+          <td><strong>Total CTC Allocation</strong></td>
+          <td>—</td>
+          <td><strong>100.0000%</strong></td>
+        </tr>
+      </tbody>
+    </table>
   </div>
 )}
  

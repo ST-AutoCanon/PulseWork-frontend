@@ -6,6 +6,52 @@ import {
   getPayrollFilter,
   getCurrentYearMonth,
 } from "../../../utils/SalaryCalculations";
+// Duplicate of helper present in CreateCompensation for consistent Gross/Net
+const calculateLocalGrossNet = (salaryDetails, planData) => {
+  if (!salaryDetails) return { localGross: 0, localNet: 0 };
+
+  const monthlyEarningsSum = [
+    salaryDetails.basicSalary || 0,
+    salaryDetails.hra || 0,
+    salaryDetails.ltaAllowance || 0,
+    salaryDetails.otherAllowances || 0,
+    salaryDetails.incentivePay || 0,
+    salaryDetails.overtimePay || 0,
+    salaryDetails.statutoryBonus || 0,
+  ].reduce((sum, val) => sum + parseFloat(val || 0), 0);
+
+  const includedComponents = [
+    { value: salaryDetails.employeePF, include: planData.pfEmployeeIncludeInCtc },
+    { value: salaryDetails.employerPF, include: planData.pfEmployerIncludeInCtc },
+    { value: salaryDetails.esic, include: planData.esicEmployeeIncludeInCtc },
+    { value: salaryDetails.gratuity, include: planData.gratuityIncludeInCtc },
+    { value: salaryDetails.professionalTax, include: planData.professionalTaxIncludeInCtc },
+    { value: salaryDetails.insurance, include: planData.insuranceEmployeeIncludeInCtc },
+  ];
+
+  const includedAmount = includedComponents.reduce(
+    (sum, item) => (item.include !== false ? sum + parseFloat(item.value || 0) : sum),
+    0
+  );
+
+  const localGross = monthlyEarningsSum + includedAmount;
+
+  // Only employee-side deductions reduce Net Salary
+  const employeeDeductions = [
+    { value: salaryDetails.employeePF, include: planData.pfEmployeeIncludeInCtc },
+    { value: salaryDetails.esic, include: planData.esicEmployeeIncludeInCtc },
+    { value: salaryDetails.professionalTax, include: planData.professionalTaxIncludeInCtc },
+    { value: salaryDetails.insurance, include: planData.insuranceEmployeeIncludeInCtc },
+  ].reduce(
+    (sum, item) => (item.include !== false ? sum + parseFloat(item.value || 0) : sum),
+    0
+  );
+
+  const localNet = localGross - employeeDeductions;
+
+  return { localGross, localNet };
+};
+
 
 const DetailsTab = ({
   selectedEmployee,
@@ -115,18 +161,29 @@ const DetailsTab = ({
 
   const planData = selectedEmployee.plan_data || {};
 
-const monthlyCTC = parseFloat(selectedEmployee.ctc || 0) / 12;
+  const salaryDetailsRaw = calculateSalaryDetails(
+    selectedEmployee.ctc,
+    planData,
+    selectedEmployee.employee_id,
+    overtimeRecords,
+    bonusRecords,
+    advances,
+    employeeIncentiveData,
+    employeeLopData
+  );
 
-const salaryDetails = calculateSalaryDetails(
-  selectedEmployee.ctc,
-  planData,
-  selectedEmployee.employee_id,
-  overtimeRecords,
-  bonusRecords,
-  advances,
-  employeeIncentiveData,
-  employeeLopData
-);
+  // Apply same Gross/Net logic as CreateCompensation Preview
+  const { localGross, localNet } = calculateLocalGrossNet(salaryDetailsRaw, planData);
+
+  const salaryDetails = {
+    ...salaryDetailsRaw,
+    localGross,
+    localNet,
+  };
+
+  const monthlyCTC = parseFloat(selectedEmployee.ctc || 0) / 12;
+
+
 
   const { targetMonthStr, targetYear, windowStart, windowEnd } =
     getPayrollFilter();
@@ -814,16 +871,27 @@ const salaryDetails = calculateSalaryDetails(
     },
   ];
 
-  const getAmountForTab = (comp, tab) =>
+ const getAmountForTab = (comp, tab) =>
     tab === "yearly" ? comp.yearly || 0 : comp.monthly || 0;
-
-    // ====================== NEW CALCULATION LOGIC (with Debug Logs) ======================
-  // const monthlyCTC = parseFloat(selectedEmployee.ctc || 0) / 12;
-
+    // ====================== FIXED CALCULATION LOGIC ======================
   console.log("=== DetailsTab Debug ===");
-  console.log("Selected Employee CTC:", selectedEmployee.ctc);
-  console.log("Monthly CTC:", monthlyCTC);
   console.log("Active Tab:", activeTab);
+  console.log("Monthly CTC:", monthlyCTC);
+  console.log("Local Gross (Monthly):", salaryDetails.localGross);
+  console.log("Local Net (Monthly):", salaryDetails.localNet);
+
+  // Scale for Yearly view
+  const displayedGross = activeTab === "yearly" 
+    ? (salaryDetails.localGross || 0) * 12 
+    : (salaryDetails.localGross || 0);
+
+  const displayedNet = activeTab === "yearly" 
+    ? (salaryDetails.localNet || 0) * 12 
+    : (salaryDetails.localNet || 0);
+
+  console.log("Displayed Gross:", displayedGross);
+  console.log("Displayed Net:", displayedNet);
+  // ==================================================================
 
   // Gross is always full Monthly CTC
   const grossAmount = monthlyCTC;
@@ -849,29 +917,46 @@ const salaryDetails = calculateSalaryDetails(
   // ==================================================================
 
 
-  // Filtered Earnings (only positive earnings)
-  const filteredEarnings = components.filter((comp) => {
+ const filteredEarnings = components.filter((comp) => {
     if (comp.category !== "Earnings") return false;
     const amount = parseFloat(getAmountForTab(comp, activeTab) || 0);
     return amount > 0;
   });
 
-  // Employee Deductions (shown under Deductions section)
-  const employeeDeductions = components.filter((comp) => {
+  const totalEarnings = filteredEarnings.reduce((sum, comp) => {
+    return sum + parseFloat(getAmountForTab(comp, activeTab) || 0);
+  }, 0);
+
+  // 2. Employee Deductions that reduce Net Salary (PF Emp, ESIC, PT, Insurance)
+  const employeeDeductionsForNet = components.filter((comp) => {
     if (!comp.isDeduction) return false;
-    if (comp.label === "Employer PF" || comp.label === "Gratuity") return false;
+    if (!["Employee PF", "ESIC", "Professional Tax", "Insurance"].includes(comp.label)) {
+      return false;
+    }
     const amount = parseFloat(getAmountForTab(comp, activeTab) || 0);
     return amount > 0 && comp.deductedFromNet !== false;
   });
 
-  // Employer Contributions (separate section)
+  const totalEmployeeDeductions = employeeDeductionsForNet.reduce((sum, comp) => {
+    return sum + parseFloat(getAmountForTab(comp, activeTab) || 0);
+  }, 0);
+
+  // Final Calculations (This is what you wanted)
+  const finalGross = totalEarnings;
+  const finalNet = Math.max(0, totalEarnings - totalEmployeeDeductions);
+
+  console.log("Final Gross (Earnings Only):", finalGross);
+  console.log("Final Net (Earnings - Employee Deductions):", finalNet);
+  // ==================================================================
+
+  // Employer Contributions
   const employerContributions = components.filter((comp) => {
     if (comp.label !== "Employer PF" && comp.label !== "Gratuity") return false;
     const amount = parseFloat(getAmountForTab(comp, activeTab) || 0);
     return amount > 0;
   });
-  // ==================================================================
 
+  const filteredOther = components.filter((comp) => comp.category === "Other");
 
  const deductedComponents = components.filter((comp) => {
   const amount = parseFloat(getAmountForTab(comp, activeTab) || 0);
@@ -924,7 +1009,7 @@ const salaryDetails = calculateSalaryDetails(
     );
   });
 
-  const filteredOther = components.filter((comp) => comp.category === "Other");
+  // const filteredOther = components.filter((comp) => comp.category === "Other");
 
   const calculateDisplayedGross = (tab) => {
     const amounts = filteredEarnings.map((comp) => getAmountForTab(comp, tab));
@@ -1013,9 +1098,8 @@ const salaryDetails = calculateSalaryDetails(
   const netMonthly = calculateDisplayedNet("monthly");
   const netYearly = calculateDisplayedNet("yearly");
 
-   const renderAmount = (item, tab) => {
+    const renderAmount = (item, tab) => {
     const amount = getAmountForTab(item, tab);
-    console.log(`Rendering ${item.label} for ${tab}:`, amount); // Debug log
     if (amount != null && amount >= 0) {
       return `₹${parseFloat(amount).toLocaleString(undefined, {
         minimumFractionDigits: 2,
@@ -1115,7 +1199,10 @@ const salaryDetails = calculateSalaryDetails(
               <tr className="sb-details-section-header">
                 <td colSpan="3" className="sb-details-section-title">Deductions (Employee)</td>
               </tr>
-              {employeeDeductions.map((item, index) => (
+              <tr className="sb-details-section-header">
+                <td colSpan="3" className="sb-details-section-title">Deductions (Employee)</td>
+              </tr>
+              {employeeDeductionsForNet.map((item, index) => (
                 <tr key={`emp-ded-${index}`} className="sb-details-deduction-row">
                   <td className="sb-details-table-cell sb-details-align-left">{item.label}</td>
                   <td className="sb-details-table-cell sb-details-align-left">{item.planDetail}</td>
@@ -1169,36 +1256,55 @@ const salaryDetails = calculateSalaryDetails(
                 </tr>
               ))}
 
-              {/* Totals */}
-              <tr className="sb-details-total-row">
-                <td className="sb-details-table-cell sb-details-align-left">
-                  <strong>Gross Salary</strong>
-                </td>
-                <td className="sb-details-table-cell sb-details-align-left">N/A</td>
-                <td className="sb-details-table-cell sb-details-align-right">
-                  <strong>
-                    ₹{grossAmount.toLocaleString(undefined, {
-                      minimumFractionDigits: 2,
-                      maximumFractionDigits: 2,
-                    })}
-                  </strong>
-                </td>
-              </tr>
+                            {/* Totals - Clean & Corrected */}
+                            {/* Totals - Using Preview Logic */}
+                            {/* FINAL TOTALS - Matching Preview Logic */}
+            <tr className="sb-details-total-row">
+              <td className="sb-details-table-cell sb-details-align-left">
+                <strong>Final Gross Salary</strong>
+              </td>
+              <td className="sb-details-table-cell sb-details-align-left">Total Earnings</td>
+              <td className="sb-details-table-cell sb-details-align-right">
+                <strong>
+                  ₹{finalGross.toLocaleString(undefined, {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  })}
+                </strong>
+              </td>
+            </tr>
 
-              <tr className="sb-details-total-row">
+            <tr className="sb-details-total-row">
+              <td className="sb-details-table-cell sb-details-align-left">
+                <strong>Final Net Salary</strong>
+              </td>
+              <td className="sb-details-table-cell sb-details-align-left">
+                Earnings - Employee Deductions
+              </td>
+              <td className="sb-details-table-cell sb-details-align-right">
+                <strong>
+                  ₹{finalNet.toLocaleString(undefined, {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  })}
+                </strong>
+              </td>
+            </tr>          
+            
+                {/* <tr className="sb-details-total-row">
                 <td className="sb-details-table-cell sb-details-align-left">
                   <strong>Net Salary</strong>
                 </td>
                 <td className="sb-details-table-cell sb-details-align-left">N/A</td>
                 <td className="sb-details-table-cell sb-details-align-right">
                   <strong>
-                    ₹{netAmount.toLocaleString(undefined, {
+                    ₹{displayedNet.toLocaleString(undefined, {
                       minimumFractionDigits: 2,
                       maximumFractionDigits: 2,
                     })}
                   </strong>
                 </td>
-              </tr>
+              </tr> */}
             </tbody>
           </table>
         </div>

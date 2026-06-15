@@ -77,51 +77,46 @@ const SalaryDetails = () => {
   };
 
     // ====================== CONSISTENT GROSS/NET LOGIC (Same as DetailsTab) ======================
-  const calculateLocalGrossNet = (salaryDetails, monthlyBonusPay, lopDeduction, planData) => {
+   // ====================== FINAL GROSS/NET LOGIC (Consistent with Preview) ======================
+    // ====================== FINAL GROSS/NET LOGIC (Consistent with Preview & DetailsTab) ======================
+  const calculateLocalGrossNet = (salaryDetails, planData) => {
     if (!salaryDetails) {
       return { localGross: 0, localNet: 0 };
     }
 
-    const monthlyCTC = parseFloat(salaryDetails.monthlyCTC || salaryDetails.grossSalary || 0);
+    // 1. Final Gross = Sum of all Earnings ONLY
+    const earningsSum = [
+      salaryDetails.basicSalary || 0,
+      salaryDetails.hra || 0,
+      salaryDetails.ltaAllowance || 0,
+      salaryDetails.otherAllowances || 0,
+      salaryDetails.incentivePay || 0,
+      salaryDetails.overtimePay || 0,
+      salaryDetails.statutoryBonus || 0,
+    ].reduce((sum, val) => sum + parseFloat(val || 0), 0);
 
-    // Gross is always full Monthly CTC
-    const localGross = monthlyCTC;
+    // 2. ONLY Employee-side deductions that reduce Net Salary
+    let employeeDeductions = 0;
 
-    // All deductions that reduce Net Salary
-    let totalDeductions = 0;
-
-    totalDeductions += parseFloat(salaryDetails.advanceRecovery || 0);
-    totalDeductions += parseFloat(salaryDetails.tds || 0);
-    totalDeductions += parseFloat(lopDeduction || 0);
-    totalDeductions += parseFloat(monthlyBonusPay || 0); // Bonus is already in earnings, but we keep logic consistent
-
-    // Employee-side deductions
     if (planData.pfEmployeeIncludeInCtc !== false) {
-      totalDeductions += parseFloat(salaryDetails.employeePF || 0);
+      employeeDeductions += parseFloat(salaryDetails.employeePF || 0);
     }
     if (planData.esicEmployeeIncludeInCtc !== false) {
-      totalDeductions += parseFloat(salaryDetails.esic || 0);
+      employeeDeductions += parseFloat(salaryDetails.esic || 0);
     }
     if (planData.professionalTaxIncludeInCtc !== false) {
-      totalDeductions += parseFloat(salaryDetails.professionalTax || 0);
+      employeeDeductions += parseFloat(salaryDetails.professionalTax || 0);
     }
     if (planData.insuranceEmployeeIncludeInCtc !== false) {
-      totalDeductions += parseFloat(salaryDetails.insurance || 0);
+      employeeDeductions += parseFloat(salaryDetails.insurance || 0);
     }
 
-    // Employer contributions that are deducted from Net (as per your createcompensation example)
-    if (planData.pfEmployerIncludeInCtc !== false) {
-      totalDeductions += parseFloat(salaryDetails.employerPF || 0);
-    }
-    if (planData.gratuityIncludeInCtc !== false) {
-      totalDeductions += parseFloat(salaryDetails.gratuity || 0);
-    }
+    const finalGross = earningsSum;
+    const finalNet = Math.max(0, earningsSum - employeeDeductions);
 
-    const localNet = Math.max(0, localGross - totalDeductions);
+    console.log(`[SalaryDetails] Final Gross: ${finalGross.toFixed(2)} | Employee Deductions: ${employeeDeductions.toFixed(2)} | Final Net: ${finalNet.toFixed(2)}`);
 
-    console.log(`[calculateLocalGrossNet] Emp: ${salaryDetails.employeeId || 'N/A'} | Gross: ${localGross.toFixed(2)} | Deductions: ${totalDeductions.toFixed(2)} | Net: ${localNet.toFixed(2)}`);
-
-    return { localGross, localNet };
+    return { localGross: finalGross, localNet: finalNet };
   };
   // ============================================================================================
 
@@ -406,19 +401,14 @@ const SalaryDetails = () => {
       }
 
       const monthlyBonusPay = calculateMonthlyBonusPay(emp.ctc, bonusRecords);
-
-      const lopData = employeeLopData[emp.employee_id] || {
-        currentMonth: { days: 0, value: "0.00", currency: "INR" },
-      };
-      const lopDays = parseFloat(lopData.yearly?.days || 0);
+      const lopData = employeeLopData[emp.employee_id] || { yearly: { value: "0.00" } };
       const lopDeduction = parseFloat(lopData.yearly?.value || "0.00");
 
       const { localGross, localNet } = calculateLocalGrossNet(
         salaryDetails,
-        monthlyBonusPay,
-        lopDeduction,
         emp.plan_data
       );
+
 
       return [
         emp.employee_id,
@@ -715,10 +705,8 @@ const SalaryDetails = () => {
             const lopDays = parseFloat(lopData.yearly?.days || 0);
             const lopDeduction = parseFloat(lopData.yearly?.value || "0.00");
 
-            const { localGross, localNet } = calculateLocalGrossNet(
+                      const { localGross, localNet } = calculateLocalGrossNet(
               salaryDetails,
-              monthlyBonusPay,
-              lopDeduction,
               emp.plan_data
             );
 
@@ -959,12 +947,10 @@ const SalaryDetails = () => {
           const lopDeduction = parseFloat(lopData.yearly?.value || "0.00");
           const isSelected = selectedEmployees.has(emp.employee_id);
 
-          const { localGross, localNet } = calculateLocalGrossNet(
-            salaryDetails,
-            monthlyBonusPay,
-            lopDeduction,
-            emp.plan_data
-          );
+                      const { localGross, localNet } = calculateLocalGrossNet(
+              salaryDetails,
+              emp.plan_data
+            );
 
           return (
             <tr
@@ -1202,10 +1188,8 @@ const SalaryDetails = () => {
             employeeLopData
           );
 
-          const { localNet } = calculateLocalGrossNet(
+                   const { localNet } = calculateLocalGrossNet(
             salaryDetails,
-            monthlyBonusPay,
-            lopDeduction,
             emp.plan_data
           );
           const netSalary = localNet > 0 ? localNet : 0;

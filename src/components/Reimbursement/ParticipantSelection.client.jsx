@@ -1,6 +1,12 @@
 "use client";
 
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, {
+  useState,
+  useEffect,
+  useRef,
+  useCallback,
+  useMemo,
+} from "react";
 import axios from "axios";
 import PropTypes from "prop-types";
 import "./ParticipantSelection.css";
@@ -44,12 +50,14 @@ const ParticipantSelection = ({
     user?.raw?.backend ||
     user?.raw?.backendUrl ||
     "";
-  const BACKEND = (() => {
+
+  const BACKEND = useMemo(() => {
     if (!RAW_BACKEND) return "";
-    if (!/^https?:\/\//i.test(RAW_BACKEND))
+    if (!/^https?:\/\//i.test(RAW_BACKEND)) {
       return `http://${RAW_BACKEND}`.replace(/\/$/, "");
+    }
     return RAW_BACKEND.replace(/\/$/, "");
-  })();
+  }, [RAW_BACKEND]);
 
   const apiKey =
     process.env.NEXT_PUBLIC_API_KEY ||
@@ -96,15 +104,17 @@ const ParticipantSelection = ({
   const parentControlsMode = typeof onModeChange === "function";
   const shouldShowInternalModeToggle = !hideModeToggle && !parentControlsMode;
 
-  const employeeEndpoints = [
-    "/reimbursement/employees",
-    "/reimbursements/employees",
-    "/employees",
-    "/employees/list",
-    "/employee/list",
-    "/employees/all",
-    "/api/employees",
-  ].map((p) => (BACKEND ? `${BACKEND}${p}` : p));
+  const employeeEndpoints = useMemo(() => {
+    return [
+      "/reimbursement/employees",
+      "/reimbursements/employees",
+      "/employees",
+      "/employees/list",
+      "/employee/list",
+      "/employees/all",
+      "/api/employees",
+    ].map((p) => (BACKEND ? `${BACKEND}${p}` : p));
+  }, [BACKEND]);
 
   const tryFetchFromCandidate = async (url, params, cancelToken) => {
     try {
@@ -114,10 +124,12 @@ const ParticipantSelection = ({
         headers: buildHeaders(),
         cancelToken,
       });
+
       if (Array.isArray(res.data)) return res.data;
       if (Array.isArray(res.data?.data)) return res.data.data;
       if (Array.isArray(res.data?.employees)) return res.data.employees;
       if (Array.isArray(res.data?.result)) return res.data.result;
+
       return null;
     } catch (err) {
       if (err?.response?.data) {
@@ -127,6 +139,7 @@ const ParticipantSelection = ({
           body?.error ||
           body?.message ||
           null;
+
         if (
           bodyMsg &&
           String(bodyMsg).toLowerCase().includes("missing x-employee-id")
@@ -136,6 +149,7 @@ const ParticipantSelection = ({
           throw e;
         }
       }
+
       if (axios.isCancel(err)) throw err;
       return null;
     }
@@ -148,6 +162,7 @@ const ParticipantSelection = ({
           cancelRef.current.cancel("cancel previous");
         } catch {}
       }
+
       cancelRef.current = axios.CancelToken.source();
       setLoading(true);
       setError(null);
@@ -162,6 +177,7 @@ const ParticipantSelection = ({
 
       try {
         let results = null;
+
         for (const url of employeeEndpoints) {
           try {
             results = await tryFetchFromCandidate(
@@ -169,6 +185,7 @@ const ParticipantSelection = ({
               params,
               cancelRef.current.token,
             );
+
             if (results && results.length) break;
           } catch (err) {
             if (err?.code === "MISSING_X_EMPLOYEE_ID") {
@@ -179,6 +196,7 @@ const ParticipantSelection = ({
               setLoading(false);
               return;
             }
+
             if (axios.isCancel(err)) throw err;
 
             console.warn("endpoint failed:", url, err?.message || err);
@@ -199,6 +217,7 @@ const ParticipantSelection = ({
             r.employee_name ||
             `${r.first_name || ""} ${r.last_name || ""}`.trim() ||
             String(id || "");
+
           return {
             employee_id: id,
             name,
@@ -207,6 +226,7 @@ const ParticipantSelection = ({
             raw: r,
           };
         });
+
         setEmployees(mapped);
         setError(null);
       } catch (err) {
@@ -219,14 +239,16 @@ const ParticipantSelection = ({
         setLoading(false);
       }
     },
-    [departmentId, limit, BACKEND, employeeEndpoints, buildHeaders],
+    [departmentId, limit, employeeEndpoints, buildHeaders],
   );
 
   useEffect(() => {
     if (searchTimer.current) clearTimeout(searchTimer.current);
+
     searchTimer.current = setTimeout(() => {
       fetchEmployees(query);
     }, 260);
+
     return () => {
       if (searchTimer.current) clearTimeout(searchTimer.current);
     };
@@ -249,15 +271,6 @@ const ParticipantSelection = ({
       .filter(Boolean)
       .map(String);
 
-  const areIdSetsEqual = (aArr, bArr) => {
-    const a = selectionIdsFromArray(aArr);
-    const b = selectionIdsFromArray(bArr);
-    if (a.length !== b.length) return false;
-    const aSet = new Set(a);
-    for (const x of b) if (!aSet.has(String(x))) return false;
-    return true;
-  };
-
   useEffect(() => {
     if (!Array.isArray(initialSelection)) return;
 
@@ -278,42 +291,51 @@ const ParticipantSelection = ({
 
   useEffect(() => {
     if (!employees || employees.length === 0) return;
+
     let changed = false;
     const empMap = new Map();
+
     for (const e of employees) {
       if (e && e.employee_id) empMap.set(String(e.employee_id), e.name || "");
     }
+
     const patched = selected.map((s) => {
       const id = String(s.employee_id);
       const realName = empMap.get(id);
+
       if (realName && realName !== s.name) {
         changed = true;
         return { ...s, name: realName };
       }
       return s;
     });
+
     if (changed) setSelected(patched);
-  }, [employees]);
+  }, [employees, selected]);
 
   useEffect(() => {
     if (typeof onModeChange === "function") onModeChange(mode);
-  }, [mode]);
+  }, [mode, onModeChange]);
 
   useEffect(() => {
     if (typeof onSelectionChange === "function") {
       onSelectionChange(selected.slice());
     }
-  }, [selected]);
+  }, [selected, onSelectionChange]);
 
   const handleModeChange = (newMode) => {
     setMode(newMode);
-    if (!parentControlsMode && typeof onModeChange === "function")
+    if (!parentControlsMode && typeof onModeChange === "function") {
       onModeChange(newMode);
-    if (newMode === "single" && selected.length > 1) setSelected([selected[0]]);
+    }
+    if (newMode === "single" && selected.length > 1) {
+      setSelected([selected[0]]);
+    }
   };
 
   const handleSelectSingle = (emp) => {
     if (!emp) return;
+
     const obj = {
       employee_id: emp.employee_id || emp.id || emp.employeeId,
       name:
@@ -321,15 +343,18 @@ const ParticipantSelection = ({
         emp.employee_name ||
         String(emp.employee_id || emp.id || emp.employeeId),
     };
+
     setSelected([obj]);
   };
 
   const handleToggleGroup = (emp) => {
     if (!emp) return;
+
     const empId = emp.employee_id || emp.id || emp.employeeId;
     const existsIndex = selected.findIndex(
       (s) => String(s.employee_id) === String(empId),
     );
+
     if (existsIndex !== -1) {
       setSelected((prev) =>
         prev.filter((p) => String(p.employee_id) !== String(empId)),
@@ -339,9 +364,11 @@ const ParticipantSelection = ({
         employee_id: empId,
         name: emp.name || emp.employee_name || String(empId),
       };
+
       setSelected((prev) => {
-        if (prev.some((p) => String(p.employee_id) === String(empId)))
+        if (prev.some((p) => String(p.employee_id) === String(empId))) {
           return prev;
+        }
         return [...prev, obj];
       });
     }
@@ -354,6 +381,7 @@ const ParticipantSelection = ({
   };
 
   const searchInputRef = useRef(null);
+
   const handleKeyDownSearch = (e) => {
     if (e.key === "Enter") {
       if (employees && employees.length) handleSelectSingle(employees[0]);
@@ -439,6 +467,7 @@ const ParticipantSelection = ({
         aria-label="Employee list"
       >
         {loading && <div className="ps-loading">Loading…</div>}
+
         {!loading && employees.length === 0 && (
           <div className="ps-empty">No employees found</div>
         )}
@@ -447,9 +476,11 @@ const ParticipantSelection = ({
           const empId =
             emp.employee_id || emp.id || emp.employeeId || emp.empId;
           const name = emp.name || String(empId);
+
           const isSelected = selected.some(
             (s) => String(s.employee_id) === String(empId),
           );
+
           return (
             <div
               key={empId}
@@ -466,12 +497,14 @@ const ParticipantSelection = ({
                 <div className="ps-item-name">{name}</div>
                 <div className="ps-item-id">{empId}</div>
               </div>
+
               {emp.position || emp.department_name ? (
                 <div className="ps-item-meta">
-                  {emp.position || ""}{" "}
+                  {emp.position || ""}
                   {emp.department_name ? ` • ${emp.department_name}` : ""}
                 </div>
               ) : null}
+
               <div className={`ps-item-action ${isSelected ? "sel" : ""}`}>
                 {mode === "group"
                   ? isSelected

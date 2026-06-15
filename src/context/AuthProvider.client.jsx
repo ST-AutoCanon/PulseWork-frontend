@@ -199,6 +199,10 @@ export function AuthProvider({ children }) {
           sidebarMenu: body.sidebarMenu ?? [],
           raw: body,
           orgId: org,
+          orgPrefix: pickFirst(
+            safeGet(body, "org_prefix"),
+            safeGet(body, "orgPrefix"),
+          ),
         };
 
         if (res.ok) {
@@ -259,6 +263,10 @@ export function AuthProvider({ children }) {
         sidebarMenu: body.sidebarMenu ?? [],
         raw: body,
         orgId: org,
+        orgPrefix: pickFirst(
+          safeGet(body, "org_prefix"),
+          safeGet(body, "orgPrefix"),
+        ),
       };
 
       if (res.ok) {
@@ -284,6 +292,8 @@ export function AuthProvider({ children }) {
       dashboard: serverUser?.dashboard ?? {},
       sidebarMenu: serverUser?.sidebarMenu ?? [],
       raw: serverUser?.raw ?? {},
+      orgId: serverUser?.orgId ?? null,
+      orgPrefix: serverUser?.orgPrefix ?? null,
     };
 
     setUser(minimalUser);

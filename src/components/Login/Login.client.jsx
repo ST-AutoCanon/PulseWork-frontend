@@ -224,6 +224,7 @@ export default function Login({ onClose }) {
         role: u.role ?? "",
         name: u.name ?? u.dashboard?.name ?? "",
         orgId: u.org_id ?? u.orgId ?? null,
+        orgPrefix: u.org_prefix ?? u.orgPrefix ?? null,
       };
 
       await login(minimalUser);

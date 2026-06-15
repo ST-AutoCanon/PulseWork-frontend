@@ -33,6 +33,7 @@ const ClaimFields = ({
   participants = [],
   employeeOptions = [],
   initialSelectionForChild = [],
+  orgPrefix,
 }) => {
   const [localParticipantMode, setLocalParticipantMode] = useState(
     formData.participant_mode || "single",
@@ -902,7 +903,7 @@ const ClaimFields = ({
           required
         >
           <option value="">Select project</option>
-          <option value="STS CLAIM">STS CLAIM</option>
+          <option value={`${orgPrefix} CLAIM`}>{orgPrefix} CLAIM</option>
           {projects.map((proj, i) => (
             <option key={i} value={proj}>
               {proj}

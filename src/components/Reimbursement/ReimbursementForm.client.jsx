@@ -51,6 +51,9 @@ const ReimbursementForm = (props) => {
     return headers;
   }, [user]);
 
+  const orgPrefix =
+    user?.orgPrefix || user?.raw?.org_prefix || user?.org_prefix || null;
+
   const uid = useMemo(() => Math.random().toString(36).slice(2, 8), []);
   const formRef = useRef(null);
   const modalContentRef = useRef(null);
@@ -259,6 +262,7 @@ const ReimbursementForm = (props) => {
             participants={participants}
             employeeOptions={employeeOptions}
             initialSelectionForChild={initialSelectionForChild}
+            orgPrefix={orgPrefix}
           />
 
           <div className="reimbursement-form-button">

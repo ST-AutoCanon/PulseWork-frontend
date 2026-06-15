@@ -44,6 +44,7 @@ const ProjectCard = ({
   onViewInvoices,
   userRole,
   canRaiseInvoice,
+  orgPrefix,
 }) => {
   const { company, project, startDate, endDate, clientPOC, stsPOC, milestone } =
     projectData;
@@ -73,7 +74,7 @@ const ProjectCard = ({
       <p className="project-value">{formatDate(endDate)}</p>
       <p className="project-label">Client POC</p>
       <p className="project-value">{clientPOC}</p>
-      <p className="project-label">Company POC</p>
+      <p className="project-label">{orgPrefix} POC</p>
       <p className="project-value">{stsPOC}</p>
       <p className="project-label">Milestone Status</p>
       <p className="project-value">Phase {milestone}</p>
@@ -119,6 +120,7 @@ const ProjectsDashboard = () => {
   const dashboardData = user?.dashboardData || user?.dashboard || {};
   const userDepartment = (dashboardData.department || "").toLowerCase();
   const employeeId = user?.employeeId ?? user?.id ?? null;
+  const orgPrefix = user?.orgPrefix ?? null;
   const containerRef = useRef(null);
 
   const normalizedRole = (userRole || "").trim();
@@ -665,6 +667,7 @@ const ProjectsDashboard = () => {
                         onViewInvoices={openInvoiceScreen}
                         userRole={userRole}
                         canRaiseInvoice={canAccessGeneralTemplates}
+                        orgPrefix={orgPrefix}
                       />
                     ))
                 ) : (

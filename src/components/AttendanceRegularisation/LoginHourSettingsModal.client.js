@@ -3,12 +3,11 @@
 import React, { useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import { useAuth } from "../../context/AuthProvider.client";
+import Modal from "../Modal/Modal.client";
 import "./LoginHourSettingsModal.css";
 import {
-  AlertTriangle,
   Bell,
   CalendarDays,
-  CheckCircle2,
   Clock3,
   Gauge,
   Loader2,
@@ -173,8 +172,13 @@ export default function LoginHourSettingsModal({ isOpen, onClose }) {
   const [values, setValues] = useState(DEFAULT_VALUES);
   const [actionRoles, setActionRoles] = useState(DEFAULT_ACTION_ROLES);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
-  const [success, setSuccess] = useState(null);
+
+  const [alertModal, setAlertModal] = useState({
+    isVisible: false,
+    title: "",
+    message: "",
+    type: "info",
+  });
 
   const API_KEY = process.env.NEXT_PUBLIC_API_KEY;
   const BACKEND_URL =
@@ -204,6 +208,28 @@ export default function LoginHourSettingsModal({ isOpen, onClose }) {
     [API_KEY, orgId, employeeId],
   );
 
+  const closeAlert = (closeParent = false) => {
+    setAlertModal({
+      isVisible: false,
+      title: "",
+      message: "",
+      type: "info",
+    });
+
+    if (closeParent) {
+      onClose?.();
+    }
+  };
+
+  const showAlert = (message, title = "Alert", type = "info") => {
+    setAlertModal({
+      isVisible: true,
+      title,
+      message,
+      type,
+    });
+  };
+
   useEffect(() => {
     if (!isOpen || !BACKEND_URL || !orgId) return;
 
@@ -211,8 +237,6 @@ export default function LoginHourSettingsModal({ isOpen, onClose }) {
 
     const fetchConfig = async () => {
       setLoading(true);
-      setError(null);
-      setSuccess(null);
 
       try {
         const response = await axios.get(
@@ -241,9 +265,9 @@ export default function LoginHourSettingsModal({ isOpen, onClose }) {
       } catch (err) {
         console.error("Fetch punch login hours failed:", err);
         if (!cancelled) {
-          setError("Unable to load attendance settings.");
           setValues(DEFAULT_VALUES);
           setActionRoles({ ...DEFAULT_ACTION_ROLES });
+          showAlert("Unable to load attendance settings.", "Error", "error");
         }
       } finally {
         if (!cancelled) setLoading(false);
@@ -318,17 +342,18 @@ export default function LoginHourSettingsModal({ isOpen, onClose }) {
     });
 
   const handleSave = async () => {
-    setError(null);
-    setSuccess(null);
-
     const validationErrors = validateValues();
     if (validationErrors.length > 0) {
-      setError(validationErrors.join(" "));
+      showAlert(validationErrors.join(" "), "Validation Error", "warning");
       return;
     }
 
     if (!BACKEND_URL || !orgId) {
-      setError("Unable to save settings. Missing backend or organization.");
+      showAlert(
+        "Unable to save settings. Missing backend or organization.",
+        "Error",
+        "error",
+      );
       return;
     }
 
@@ -350,16 +375,20 @@ export default function LoginHourSettingsModal({ isOpen, onClose }) {
         late_action_roles: JSON.stringify(selectedActionRoles),
       });
 
-      setSuccess("Attendance settings saved successfully.");
-      setError(null);
+      showAlert(
+        "Attendance settings saved successfully.",
+        "Success",
+        "success",
+      );
     } catch (err) {
       console.error("Save punch login hours failed:", err);
-      setError(
+      showAlert(
         err.response?.data?.message ||
           err.message ||
           "Failed to save attendance settings.",
+        "Error",
+        "error",
       );
-      setSuccess(null);
     } finally {
       setLoading(false);
     }
@@ -452,20 +481,6 @@ export default function LoginHourSettingsModal({ isOpen, onClose }) {
         </div>
 
         <div className="attendance-modal__body">
-          {error ? (
-            <div className="attendance-modal__alert attendance-modal__alert--error">
-              <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0" />
-              <p>{error}</p>
-            </div>
-          ) : null}
-
-          {success ? (
-            <div className="attendance-modal__alert attendance-modal__alert--success">
-              <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0" />
-              <p>{success}</p>
-            </div>
-          ) : null}
-
           <div className="attendance-grid">
             <div className="attendance-stack">
               <div className="summary-grid">
@@ -765,6 +780,20 @@ export default function LoginHourSettingsModal({ isOpen, onClose }) {
           </div>
         </div>
       </div>
+
+      <Modal
+        isVisible={alertModal.isVisible}
+        onClose={() => closeAlert(false)}
+        title={alertModal.title || "Alert"}
+        buttons={[
+          {
+            label: "OK",
+            onClick: () => closeAlert(alertModal.type === "success"),
+          },
+        ]}
+      >
+        <div>{alertModal.message}</div>
+      </Modal>
     </div>
   );
 }

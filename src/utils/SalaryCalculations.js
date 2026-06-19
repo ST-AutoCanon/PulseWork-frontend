@@ -136,18 +136,23 @@ export const calculateSalaryDetails = (
     recordBonusPay = 0,
     statutoryBonus = 0,
     statutoryBonusYearly = 0,
+
     employeePF = 0,
     employerPF = 0,
+
     esic = 0,
+    esicEmployer = 0,
+
+    insurance = 0,
+    insuranceEmployer = 0,
+
     gratuity = 0,
     professionalTax = 0,
     otherAllowances = 0,
     advanceRecovery = 0,
-    insurance = 0,
     grossSalary = 0,
     incentivePay = 0,
     lopDeduction = 0;
-
   if (!planData || typeof planData !== "object") {
     console.warn(
       `Invalid or missing planData for employee ${employeeId}. Using default values.`
@@ -408,9 +413,9 @@ if (
   const medicalBase =
     planData.medicalCalculationBase === "gross" ? grossSalary : basicSalary;
 
-  // ESIC Employee - Fixed is monthly
+   // ==================== ESIC (Employee & Employer) ====================
+  // ESIC Employee
   if (
-    planData.isMedicalApplicable &&
     planData.isESICEmployee &&
     planData.esicEmployeeType === "percentage" &&
     planData.esicEmployeePercentage &&
@@ -419,44 +424,84 @@ if (
     esic = medicalBase * (parseFloat(planData.esicEmployeePercentage) / 100);
     planData.esicEmployeeText = `${
       planData.esicEmployeePercentage
-    }% of ${formatCalculationBase(planData.medicalCalculationBase)}`;
+    }% of ${formatCalculationBase(planData.medicalCalculationBase || "basic")}`;
   } else if (
     planData.esicEmployeeAmount &&
     !isNaN(parseFloat(planData.esicEmployeeAmount))
   ) {
-    esic = parseFloat(planData.esicEmployeeAmount); // Monthly
+    esic = parseFloat(planData.esicEmployeeAmount);
     planData.esicEmployeeText = `₹${planData.esicEmployeeAmount} (Fixed)`;
   } else {
     esic = 0;
-    planData.esicEmployeeText = `Not Applicable`;
-    console.warn(`No ESIC defined for employee ${employeeId}`);
+    planData.esicEmployeeText = "Not Applicable";
   }
 
-  // Insurance Employee - Fixed is monthly
+  // ESIC Employer - FIXED
   if (
-    planData.isMedicalApplicable &&
+    planData.isESICEmployer &&
+    planData.esicEmployerType === "percentage" &&
+    planData.esicEmployerPercentage &&
+    !isNaN(parseFloat(planData.esicEmployerPercentage))
+  ) {
+    esicEmployer = medicalBase * (parseFloat(planData.esicEmployerPercentage) / 100);
+    planData.esicEmployerText = `${
+      planData.esicEmployerPercentage
+    }% of ${formatCalculationBase(planData.medicalCalculationBase || "basic")}`;
+  } else if (
+    planData.esicEmployerAmount &&
+    !isNaN(parseFloat(planData.esicEmployerAmount))
+  ) {
+    esicEmployer = parseFloat(planData.esicEmployerAmount);
+    planData.esicEmployerText = `₹${planData.esicEmployerAmount} (Fixed)`;
+  } else {
+    esicEmployer = 0;
+    planData.esicEmployerText = "Not Applicable";
+  }
+
+  // ==================== Insurance (Employee & Employer) ====================
+  // Insurance Employee
+  if (
     planData.isInsuranceEmployee &&
     planData.insuranceEmployeeType === "percentage" &&
     planData.insuranceEmployeePercentage &&
     !isNaN(parseFloat(planData.insuranceEmployeePercentage))
   ) {
-    insurance =
-      medicalBase * (parseFloat(planData.insuranceEmployeePercentage) / 100);
+    insurance = medicalBase * (parseFloat(planData.insuranceEmployeePercentage) / 100);
     planData.insuranceEmployeeText = `${
       planData.insuranceEmployeePercentage
-    }% of ${formatCalculationBase(planData.medicalCalculationBase)}`;
+    }% of ${formatCalculationBase(planData.medicalCalculationBase || "basic")}`;
   } else if (
     planData.insuranceEmployeeAmount &&
     !isNaN(parseFloat(planData.insuranceEmployeeAmount))
   ) {
-    insurance = parseFloat(planData.insuranceEmployeeAmount); // Monthly
+    insurance = parseFloat(planData.insuranceEmployeeAmount);
     planData.insuranceEmployeeText = `₹${planData.insuranceEmployeeAmount} (Fixed)`;
   } else {
     insurance = 0;
-    planData.insuranceEmployeeText = `Not Applicable`;
-    console.warn(`No insurance defined for employee ${employeeId}`);
+    planData.insuranceEmployeeText = "Not Applicable";
   }
 
+  // Insurance Employer
+  if (
+    planData.isInsuranceEmployer &&
+    planData.insuranceEmployerType === "percentage" &&
+    planData.insuranceEmployerPercentage &&
+    !isNaN(parseFloat(planData.insuranceEmployerPercentage))
+  ) {
+    insuranceEmployer = medicalBase * (parseFloat(planData.insuranceEmployerPercentage) / 100);
+    planData.insuranceEmployerText = `${
+      planData.insuranceEmployerPercentage
+    }% of ${formatCalculationBase(planData.medicalCalculationBase || "basic")}`;
+  } else if (
+    planData.insuranceEmployerAmount &&
+    !isNaN(parseFloat(planData.insuranceEmployerAmount))
+  ) {
+    insuranceEmployer = parseFloat(planData.insuranceEmployerAmount);
+    planData.insuranceEmployerText = `₹${planData.insuranceEmployerAmount} (Fixed)`;
+  } else {
+    insuranceEmployer = 0;
+    planData.insuranceEmployerText = "Not Applicable";
+  }
   // Gratuity - Fixed is annual → monthly provision
   if (
     planData.isGratuityApplicable &&
@@ -565,19 +610,73 @@ if (
 
 const fixedDeductions =
   includedValue(employeePF, planData.pfEmployeeIncludeInCtc) +
+
   includedValue(employerPF, planData.pfEmployerIncludeInCtc) +
+
   includedValue(esic, planData.esicEmployeeIncludeInCtc) +
-  includedValue(insurance, planData.insuranceEmployeeIncludeInCtc) +
-  includedValue(gratuity, planData.gratuityIncludeInCtc) +
+
+  includedValue(
+    esicEmployer,
+    planData.esicEmployerIncludeInCtc
+  ) +
+
+  includedValue(
+    insurance,
+    planData.insuranceEmployeeIncludeInCtc
+  ) +
+
+  includedValue(
+    insuranceEmployer,
+    planData.insuranceEmployerIncludeInCtc
+  ) +
+
+  includedValue(
+    gratuity,
+    planData.gratuityIncludeInCtc
+  ) +
+
   includedValue(
     professionalTax,
     planData.professionalTaxIncludeInCtc
   );
-
 // Monthly CTC should equal full cost
-otherAllowances =
-  monthlyCtc -
-  (grossSalary + fixedDeductions);
+  // ==================== OTHER ALLOWANCE - NEW LOGIC ====================
+  // New Requirement: Other Allowance = Monthly CTC - (Basic + HRA + LTA + Employer Contributions)
+
+  let employerContributionsForBalancing = 
+    employerPF + 
+    gratuity + 
+    insuranceEmployer + 
+    esicEmployer;
+
+  // Calculate Other Allowance as balancing figure
+  if (planData.isOtherAllowance) {
+    const knownFixed = basicSalary + hra + ltaAllowance + employerContributionsForBalancing;
+    
+    otherAllowances = monthlyCtc - knownFixed;
+
+    // Prevent negative value
+    if (otherAllowances < 0) {
+      console.warn(`Other Allowance became negative for employee ${employeeId}. Setting to 0.`);
+      otherAllowances = 0;
+    }
+
+    planData.otherAllowanceText = `Balancing Component (CTC - Basic - HRA - LTA - Employer Contributions)`;
+  } else {
+    otherAllowances = 0;
+  }
+
+  // ==================== RECALCULATE GROSS SALARY ====================
+  grossSalary =
+    basicSalary +
+    hra +
+    ltaAllowance +
+    otherAllowances +
+    overtimePay +
+    bonusPay +
+    incentivePay;
+
+
 
 // Prevent negative
 if (otherAllowances < 0) {
@@ -606,56 +705,74 @@ const employeeDeductions =
     employeePF,
     planData.pfEmployeeIncludeInCtc
   ) +
-  includedValue(
-    employerPF,
-    planData.pfEmployerIncludeInCtc
-  ) +
+
   includedValue(
     esic,
     planData.esicEmployeeIncludeInCtc
   ) +
-  includedValue(
-    gratuity,
-    planData.gratuityIncludeInCtc
-  ) +
-  includedValue(
-    professionalTax,
-    planData.professionalTaxIncludeInCtc
-  ) +
+
   includedValue(
     insurance,
     planData.insuranceEmployeeIncludeInCtc
   ) +
+
+  includedValue(
+    professionalTax,
+    planData.professionalTaxIncludeInCtc
+  ) +
+
   tds +
   advanceRecovery +
   lopDeduction;
-
 const netSalary = grossSalary - employeeDeductions;
 
+const salaryDetails = {
 
-  const salaryDetails = {
-    basicSalary: basicSalary,
-    hra: hra,
-    ltaAllowance: ltaAllowance,
-    overtimePay: overtimePay,
-    recordBonusPay: recordBonusPay,
-    statutoryBonus: statutoryBonus,
-    statutoryBonusYearly: statutoryBonusYearly,
-    bonusPay: bonusPay,
-    employeePF: employeePF,
-    employerPF: employerPF,
-    esic: esic,
-    gratuity: gratuity,
-    professionalTax: professionalTax,
-    otherAllowances: otherAllowances,
-    tds: tds,
-    advanceRecovery: advanceRecovery,
-    insurance: insurance,
-    grossSalary: grossSalary,
-    netSalary: netSalary,
-    incentivePay: incentivePay,
-    lopDeduction: lopDeduction,
-  };
+  basicSalary,
+  hra,
+
+  ltaAllowance,
+
+  overtimePay,
+
+  recordBonusPay,
+
+  statutoryBonus,
+
+  statutoryBonusYearly,
+
+  bonusPay,
+
+  employeePF,
+
+  employerPF,
+
+  esic,
+
+  esicEmployer,
+
+  insurance,
+
+  insuranceEmployer,
+
+  gratuity,
+
+  professionalTax,
+
+  otherAllowances,
+
+  tds,
+
+  advanceRecovery,
+
+  grossSalary,
+
+  netSalary,
+
+  incentivePay,
+
+  lopDeduction,
+};
 
   return salaryDetails;
 };

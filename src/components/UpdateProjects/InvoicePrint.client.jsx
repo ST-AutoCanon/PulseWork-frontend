@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import "./InvoicePrint.css";
 import { numberToWords } from "./numberToWords.client";
 import { FiPhone, FiMail, FiMapPin } from "react-icons/fi";
@@ -26,6 +26,151 @@ const ORG32_FOOTER = {
   accountHolder: "AVINYA MOTORS",
   qrSrc: "/images/qr_avinya.png",
   sealSrc: "/images/avinya_seal.jpeg",
+};
+
+const safeJsonParse = (value, fallback = null) => {
+  if (value == null || value === "") return fallback;
+  if (typeof value === "object") return value;
+  if (typeof value !== "string") return fallback;
+  try {
+    return JSON.parse(value);
+  } catch {
+    return fallback;
+  }
+};
+
+const resolveTemplateAssetUrl = (value, backendBase = "") => {
+  if (!value) return null;
+  const s = String(value).trim();
+  if (!s) return null;
+  if (/^(blob:|data:|https?:\/\/)/i.test(s)) return s;
+  if (
+    s.startsWith("/images/") ||
+    s.startsWith("/static/") ||
+    s.startsWith("/assets/")
+  ) {
+    return s;
+  }
+  const base = String(backendBase || "").replace(/\/$/, "");
+  if (!base) return s;
+  return s.startsWith("/") ? `${base}${s}` : `${base}/${s}`;
+};
+
+const normalizeTemplateRecord = (raw, index = 0, backendBase = "") => {
+  const meta =
+    safeJsonParse(
+      raw?.meta ?? raw?.metadata ?? raw?.config ?? raw?.settings ?? null,
+      {},
+    ) || {};
+  const key = String(
+    raw?.id ??
+      raw?._id ??
+      raw?.templateId ??
+      raw?.template_id ??
+      raw?.name ??
+      raw?.title ??
+      raw?.templateName ??
+      index,
+  );
+
+  return {
+    key,
+    id: raw?.id ?? raw?._id ?? raw?.templateId ?? raw?.template_id ?? key,
+    name:
+      raw?.name ??
+      raw?.title ??
+      raw?.templateName ??
+      meta?.name ??
+      `Template ${index + 1}`,
+    headerUrl: resolveTemplateAssetUrl(
+      raw?.headerUrl ??
+        raw?.header ??
+        raw?.headerImageUrl ??
+        raw?.header_image ??
+        raw?.headerImage ??
+        meta?.headerUrl ??
+        meta?.header ??
+        null,
+      backendBase,
+    ),
+    footerUrl: resolveTemplateAssetUrl(
+      raw?.footerUrl ??
+        raw?.footer ??
+        raw?.footerImageUrl ??
+        raw?.footer_image ??
+        raw?.footerImage ??
+        meta?.footerUrl ??
+        meta?.footer ??
+        null,
+      backendBase,
+    ),
+    watermarkUrl: resolveTemplateAssetUrl(
+      raw?.watermarkUrl ??
+        raw?.watermark ??
+        raw?.watermarkImageUrl ??
+        raw?.watermark_image ??
+        raw?.watermarkImage ??
+        meta?.watermarkUrl ??
+        meta?.watermark ??
+        null,
+      backendBase,
+    ),
+    watermarkProps:
+      meta?.watermarkPlacement ??
+      raw?.watermarkProps ??
+      meta?.watermarkProps ??
+      null,
+    headerProps: meta?.headerProps ?? raw?.headerProps ?? null,
+    footerProps: meta?.footerProps ?? raw?.footerProps ?? null,
+    createdAt:
+      raw?.createdAt ??
+      raw?.created_at ??
+      raw?.updatedAt ??
+      raw?.updated_at ??
+      null,
+  };
+};
+
+const extractTemplateArray = (payload) => {
+  if (!payload) return [];
+  if (Array.isArray(payload)) return payload;
+  if (Array.isArray(payload?.templates)) return payload.templates;
+  if (Array.isArray(payload?.data)) return payload.data;
+  if (Array.isArray(payload?.items)) return payload.items;
+  if (Array.isArray(payload?.result)) return payload.result;
+  if (Array.isArray(payload?.message)) return payload.message;
+  return [];
+};
+
+const fetchSavedTemplates = async ({ backendUrl = "", orgId }) => {
+  const base = String(backendUrl || "").replace(/\/$/, "");
+  const orgPart = encodeURIComponent(String(orgId));
+  const candidates = [`${base}/api/orgs/${org}/templates`].filter(Boolean);
+
+  for (const url of candidates) {
+    try {
+      const resp = await fetch(url, {
+        method: "GET",
+        credentials: "include",
+        headers: { "x-api-key": apiKey || "" },
+      });
+
+      if (!resp.ok) continue;
+
+      const json = await resp.json().catch(() => null);
+      const rawList = extractTemplateArray(json);
+      const normalized = rawList.map((item, index) =>
+        normalizeTemplateRecord(item, index, base),
+      );
+      if (normalized.length > 0) {
+        return normalized;
+      }
+    } catch (error) {
+      // Try the next endpoint candidate.
+    }
+  }
+
+  return [];
 };
 
 const fmtINR = (value) => {
@@ -120,6 +265,94 @@ const InvoicePrint = React.forwardRef(({ invoiceData = {}, orgId }, ref) => {
   const isOrg32 = currentOrgId === ORG_32;
   const isOrg1 = currentOrgId === ORG_1;
 
+  const [savedTemplates, setSavedTemplates] = useState([]);
+  const [selectedTemplateKey, setSelectedTemplateKey] = useState("__default__");
+  const [templatesLoading, setTemplatesLoading] = useState(false);
+  const [templatesError, setTemplatesError] = useState("");
+
+  const templateStorageKey = useMemo(
+    () => (currentOrgId ? `invoice-template-selection:${currentOrgId}` : ""),
+    [currentOrgId],
+  );
+
+  const activeTemplate = useMemo(() => {
+    if (!selectedTemplateKey || selectedTemplateKey === "__default__")
+      return null;
+    return (
+      savedTemplates.find((item) => item.key === selectedTemplateKey) || null
+    );
+  }, [savedTemplates, selectedTemplateKey]);
+
+  const selectedHeaderUrl = activeTemplate?.headerUrl || null;
+  const selectedFooterUrl = activeTemplate?.footerUrl || null;
+  const selectedWatermarkUrl = activeTemplate?.watermarkUrl || null;
+  const selectedWatermarkProps = activeTemplate?.watermarkProps || null;
+  const hasSavedTemplates = savedTemplates.length > 0;
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadTemplates = async () => {
+      if (!currentOrgId) {
+        setSavedTemplates([]);
+        setSelectedTemplateKey("__default__");
+        return;
+      }
+
+      setTemplatesLoading(true);
+      setTemplatesError("");
+
+      try {
+        const templates = await fetchSavedTemplates({
+          backendUrl,
+          apiKey,
+          orgId: currentOrgId,
+        });
+
+        if (cancelled) return;
+
+        setSavedTemplates(templates);
+
+        const storedKey =
+          typeof window !== "undefined"
+            ? window.localStorage.getItem(templateStorageKey)
+            : null;
+
+        const preferredKey =
+          storedKey && templates.some((item) => item.key === storedKey)
+            ? storedKey
+            : templates[0]?.key || "__default__";
+
+        setSelectedTemplateKey(preferredKey);
+      } catch (error) {
+        if (cancelled) return;
+        setSavedTemplates([]);
+        setSelectedTemplateKey("__default__");
+        setTemplatesError(
+          error?.message ||
+            "Unable to load saved templates for this organization.",
+        );
+      } finally {
+        if (!cancelled) setTemplatesLoading(false);
+      }
+    };
+
+    loadTemplates();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [apiKey, backendUrl, currentOrgId, templateStorageKey]);
+
+  useEffect(() => {
+    if (!templateStorageKey || typeof window === "undefined") return;
+    try {
+      window.localStorage.setItem(templateStorageKey, selectedTemplateKey);
+    } catch {
+      // ignore storage errors
+    }
+  }, [selectedTemplateKey, templateStorageKey]);
+
   const titleText =
     invoiceType === "tax"
       ? "Tax Invoice"
@@ -174,18 +407,192 @@ const InvoicePrint = React.forwardRef(({ invoiceData = {}, orgId }, ref) => {
 
   const headerTitle = invoiceType ? invoiceType.toUpperCase() : "INVOICE";
 
+  const handleTemplateSelection = useCallback((event) => {
+    setSelectedTemplateKey(event.target.value);
+  }, []);
+
+  const openTemplateBuilder = useCallback(() => {
+    if (typeof window !== "undefined") {
+      window.location.href = "/TemplateBuilder";
+    }
+  }, []);
+
+  const templateHeaderStyle = useMemo(
+    () => ({
+      width: "100%",
+      height: "100%",
+      objectFit: "contain",
+      display: "block",
+    }),
+    [],
+  );
+
+  const templateFooterStyle = useMemo(
+    () => ({
+      width: "100%",
+      height: "100%",
+      objectFit: "contain",
+      display: "block",
+    }),
+    [],
+  );
+
+  const watermarkStyle = useMemo(() => {
+    if (!selectedWatermarkUrl) return null;
+
+    const pct = (value, fallback) => {
+      const n = Number(String(value ?? fallback).replace("%", ""));
+      return Number.isFinite(n) ? n : fallback;
+    };
+
+    const xPct = pct(selectedWatermarkProps?.xPct, 50);
+    const yPct = pct(selectedWatermarkProps?.yPct, 55);
+    const wPct = pct(selectedWatermarkProps?.wPct, 60);
+    const hPct = pct(selectedWatermarkProps?.hPct, 60);
+    const opacity =
+      typeof selectedWatermarkProps?.opacity === "number"
+        ? selectedWatermarkProps.opacity
+        : 0.12;
+
+    return {
+      position: "absolute",
+      left: `${xPct - wPct / 2}%`,
+      top: `${yPct - hPct / 2}%`,
+      width: `${wPct}%`,
+      height: `${hPct}%`,
+      opacity,
+      pointerEvents: "none",
+      zIndex: 0,
+      objectFit: "contain",
+      userSelect: "none",
+    };
+  }, [selectedWatermarkProps, selectedWatermarkUrl]);
+
   const lineItemColumnCount = isOrg32 ? 8 : 7;
 
   return (
     <div
       ref={ref}
       className={`invoice-print-container ${isOrg32 ? "org-32" : "org-1"}`}
+      style={{ position: "relative" }}
     >
       {Boolean(isCancelled) && (
         <div className="cancelled-watermark">CANCELLED</div>
       )}
-      {isOrg32 ? (
-        <header className="invoice-print-header org32-header">
+
+      {selectedWatermarkUrl && (
+        <img
+          src={selectedWatermarkUrl}
+          alt={activeTemplate?.name || "Watermark"}
+          style={watermarkStyle || undefined}
+        />
+      )}
+
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          gap: "12px",
+          margin: "0 0 12px",
+          padding: "10px 12px",
+          border: "1px solid #e2e8f0",
+          borderRadius: "12px",
+          background: "#fff",
+          position: "relative",
+          zIndex: 1,
+          flexWrap: "wrap",
+        }}
+      >
+        <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+          <span style={{ fontSize: "12px", fontWeight: 700, color: "#475569" }}>
+            Saved templates
+          </span>
+          <select
+            value={selectedTemplateKey}
+            onChange={handleTemplateSelection}
+            disabled={templatesLoading}
+            style={{
+              minWidth: "240px",
+              padding: "8px 10px",
+              borderRadius: "10px",
+              border: "1px solid #cbd5e1",
+              background: "#fff",
+              fontSize: "14px",
+            }}
+          >
+            <option value="__default__">Default invoice layout</option>
+            {savedTemplates.map((template) => (
+              <option key={template.key} value={template.key}>
+                {template.name}
+              </option>
+            ))}
+          </select>
+          <div style={{ fontSize: "12px", color: "#64748b" }}>
+            {templatesLoading
+              ? "Loading saved templates..."
+              : activeTemplate
+                ? `Applying: ${activeTemplate.name}`
+                : "No saved template selected"}
+          </div>
+        </div>
+
+        <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+          <button
+            type="button"
+            onClick={openTemplateBuilder}
+            style={{
+              padding: "9px 14px",
+              borderRadius: "10px",
+              border: "none",
+              background: "#111827",
+              color: "#fff",
+              fontWeight: 600,
+              cursor: "pointer",
+            }}
+          >
+            Build Template
+          </button>
+          {!hasSavedTemplates && !templatesLoading && (
+            <span style={{ fontSize: "12px", color: "#b45309" }}>
+              No saved templates found for this organization.
+            </span>
+          )}
+        </div>
+      </div>
+
+      {templatesError && (
+        <div
+          style={{
+            marginBottom: "12px",
+            padding: "10px 12px",
+            borderRadius: "10px",
+            background: "#fff7ed",
+            color: "#9a3412",
+            border: "1px solid #fdba74",
+            position: "relative",
+            zIndex: 1,
+          }}
+        >
+          {templatesError}
+        </div>
+      )}
+      {selectedHeaderUrl ? (
+        <header
+          className="invoice-print-header"
+          style={{ position: "relative", zIndex: 1 }}
+        >
+          <img
+            src={selectedHeaderUrl}
+            alt={activeTemplate?.name || "Selected template header"}
+            style={templateHeaderStyle}
+          />
+        </header>
+      ) : isOrg32 ? (
+        <header
+          className="invoice-print-header org32-header"
+          style={{ position: "relative", zIndex: 1 }}
+        >
           <div className="org32-gst-text">{ORG32_HEADER.gstText}</div>
           <div className="org32-header-top">
             <div className="org32-left-accent" />
@@ -217,8 +624,11 @@ const InvoicePrint = React.forwardRef(({ invoiceData = {}, orgId }, ref) => {
             </div>
           </div>
         </header>
-      ) : (
-        <header className="invoice-print-header">
+      ) : isOrg1 ? (
+        <header
+          className="invoice-print-header"
+          style={{ position: "relative", zIndex: 1 }}
+        >
           <div className="invoice-logo-section">
             <img src="/images/company-logo.png" alt="Company Logo" />
           </div>
@@ -233,9 +643,19 @@ const InvoicePrint = React.forwardRef(({ invoiceData = {}, orgId }, ref) => {
             <p>PAN: ABICS7525C</p>
           </div>
         </header>
+      ) : (
+        <div
+          className="invoice-print-placeholder"
+          style={{ position: "relative", zIndex: 1 }}
+        >
+          No print template configured for this organization.
+        </div>
       )}
 
-      <div className="invoice-content">
+      <div
+        className="invoice-content"
+        style={{ position: "relative", zIndex: 1 }}
+      >
         <div className="invoice-title-section">
           <div className="invoice-title-block">{titleText.toUpperCase()}</div>
           <div className="bill-header">
@@ -522,7 +942,7 @@ const InvoicePrint = React.forwardRef(({ invoiceData = {}, orgId }, ref) => {
             <span>{ORG32_FOOTER.address}</span>
           </div>
         </footer>
-      ) : (
+      ) : isOrg1 ? (
         <footer className="invoice-footer">
           <div className="footer-partition">
             <strong>
@@ -561,20 +981,14 @@ const InvoicePrint = React.forwardRef(({ invoiceData = {}, orgId }, ref) => {
             </strong>
           </div>
         </footer>
-      )}
+      ) : null}
 
-      {!isOrg32 && (
+      {isOrg1 && (
         <p className="note">
           Note: We are a registered MSME under the MSMED Act. As per Section 15,
           kindly ensure payment within 45 days from the invoice date. <br />
           Timely payment supports small businesses like ours
         </p>
-      )}
-
-      {!isOrg32 && !isOrg1 && (
-        <div className="invoice-print-placeholder">
-          No print template configured for this organization.
-        </div>
       )}
     </div>
   );

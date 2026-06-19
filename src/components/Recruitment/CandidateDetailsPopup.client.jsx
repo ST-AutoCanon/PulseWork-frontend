@@ -22,8 +22,8 @@ function formatDateTime(value) {
 function getDecisionTone(decision = "") {
   const value = String(decision || "").toLowerCase();
 
-  if (value.includes("pass") || value.includes("selected")) return "success";
-  if (value.includes("fail") || value.includes("reject")) return "danger";
+  if (value.includes("selected")) return "success";
+  if (value.includes("reject")) return "danger";
   if (value.includes("hold")) return "warning";
 
   return "neutral";

@@ -148,56 +148,83 @@ export default function InterviewerRecruitmentDashboard() {
       {loading ? (
         <div className="rf-loading">Loading...</div>
       ) : (
-        <div className="pipeline-board">
-          <div className="pipeline-column" style={{ gridColumn: "1 / -1" }}>
-            <div className="pipeline-header">
+        <div className="rf-interviewer-dashboard">
+          <div className="rf-dashboard-header">
+            <div>
               <h3>Assigned Candidates</h3>
-              <span>{candidates.length}</span>
+              <p>{candidates.length} candidate(s) assigned to you</p>
             </div>
 
-            <div className="pipeline-cards">
-              {candidates.length === 0 ? (
-                <div className="pipeline-empty">No assigned candidates</div>
-              ) : (
-                candidates.map((candidate) => {
-                  const latest = getLatestAssessmentForMe(candidate, meId);
+            <div className="rf-dashboard-count">{candidates.length}</div>
+          </div>
 
-                  return (
-                    <div className="candidate-card" key={candidate.id}>
-                      <div className="candidate-card-top">
-                        <div>
-                          <h4>{candidate.name}</h4>
-                          <p>{candidate.applied_position || "—"}</p>
-                        </div>
+          <div className="rf-candidate-grid">
+            {candidates.length === 0 ? (
+              <div className="pipeline-empty" style={{ gridColumn: "1 / -1" }}>
+                No assigned candidates
+              </div>
+            ) : (
+              candidates.map((candidate) => {
+                const latest = getLatestAssessmentForMe(candidate, meId);
+
+                return (
+                  <div className="rf-interviewer-card" key={candidate.id}>
+                    <div className="rf-interviewer-card-header">
+                      <div>
+                        <h4>{candidate.name}</h4>
+                        <p>{candidate.applied_position || "—"}</p>
                       </div>
 
-                      <div className="candidate-card-expanded">
-                        <div className="candidate-meta">
-                          <span>Status: {candidate.status || "—"}</span>
-                          <span>Round: {latest?.round_name || "—"}</span>
-                        </div>
+                      <span className="rf-status-badge">
+                        {candidate.status || "—"}
+                      </span>
+                    </div>
 
-                        <div className="candidate-actions">
-                          <IconActionButton
-                            label="View"
-                            onClick={() => openCandidateDetails(candidate)}
-                          >
-                            <MdVisibility />
-                          </IconActionButton>
+                    <div className="rf-interviewer-info">
+                      <div>
+                        <label>Round</label>
+                        <span>{latest?.round_name || "—"}</span>
+                      </div>
 
-                          <IconActionButton
-                            label="Assessment"
-                            onClick={() => openAssessment(candidate)}
-                          >
-                            <MdAssignment />
-                          </IconActionButton>
-                        </div>
+                      <div>
+                        <label>Decision</label>
+                        <span>{latest?.decision || "Pending"}</span>
+                      </div>
+
+                      <div>
+                        <label>Score</label>
+                        <span>{latest?.score ?? "—"}</span>
+                      </div>
+
+                      <div>
+                        <label>Email</label>
+                        <span>{candidate.email || "—"}</span>
                       </div>
                     </div>
-                  );
-                })
-              )}
-            </div>
+
+                    <div className="rf-interviewer-actions">
+                      <button
+                        type="button"
+                        className="rf-secondary-btn"
+                        onClick={() => openCandidateDetails(candidate)}
+                      >
+                        <MdVisibility />
+                        View Details
+                      </button>
+
+                      <button
+                        type="button"
+                        className="rf-primary-btn"
+                        onClick={() => openAssessment(candidate)}
+                      >
+                        <MdAssignment />
+                        Assessment
+                      </button>
+                    </div>
+                  </div>
+                );
+              })
+            )}
           </div>
         </div>
       )}

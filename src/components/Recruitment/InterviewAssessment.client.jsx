@@ -535,8 +535,6 @@ export default function InterviewAssessment({
                     onChange={handleChange}
                   >
                     <option value="">Select</option>
-                    <option value="Pass">Pass</option>
-                    <option value="Fail">Fail</option>
                     <option value="Hold">Hold</option>
                     <option value="Selected">Selected</option>
                     <option value="Rejected">Rejected</option>

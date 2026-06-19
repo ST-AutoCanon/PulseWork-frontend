@@ -134,6 +134,9 @@ const ProjectsDashboard = () => {
 
   const canAccessGeneralTemplates = isAdmin || isFinanceManager;
 
+  const [selectedTemplateKey, setSelectedTemplateKey] = useState("__default__");
+  const [pdfReady, setPdfReady] = useState(false);
+
   const openDownloadForm = (initialData = null) => {
     setSelectedProject(null);
     setDownloadFormInitialData(initialData);
@@ -305,7 +308,15 @@ const ProjectsDashboard = () => {
     try {
       const currentInvoiceNo = await fetchInvoiceSequence();
 
-      const canvas = await html2canvas(printRef.current, { scale: 2 });
+      if (!pdfReady) {
+        await new Promise((resolve) => setTimeout(resolve, 300));
+      }
+
+      const canvas = await html2canvas(printRef.current, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: "#ffffff",
+      });
       const imgData = canvas.toDataURL("image/png");
       const pdf = new jsPDF({
         orientation: "portrait",
@@ -722,6 +733,8 @@ const ProjectsDashboard = () => {
                     invoiceNumber={invoiceNumberDirect}
                     downloadDetails={downloadDetails}
                     orgId={user?.orgId}
+                    selectedTemplateKey={selectedTemplateKey}
+                    onSelectedTemplateKeyChange={setSelectedTemplateKey}
                   />
                 </div>
               )}
@@ -801,6 +814,10 @@ const ProjectsDashboard = () => {
             invoiceNumber={invoiceNumberDirect}
             downloadDetails={downloadDetails}
             orgId={user?.orgId}
+            showTemplateToolbar={false}
+            selectedTemplateKey={selectedTemplateKey}
+            onSelectedTemplateKeyChange={setSelectedTemplateKey}
+            onTemplateReady={setPdfReady}
           />
         </div>
       </div>

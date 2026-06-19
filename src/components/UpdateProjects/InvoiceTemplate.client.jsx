@@ -1,9 +1,280 @@
 "use client";
 
-import React from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  useRef,
+} from "react";
 import "./InvoiceTemplate.css";
 import { numberToWords } from "./numberToWords.client";
 import { FiPhone, FiMail, FiMapPin } from "react-icons/fi";
+
+const protectedImageCache = new Map();
+
+const safeJsonParse = (value, fallback = null) => {
+  if (value == null || value === "") return fallback;
+  if (typeof value === "object") return value;
+  if (typeof value !== "string") return fallback;
+  try {
+    return JSON.parse(value);
+  } catch {
+    return fallback;
+  }
+};
+
+const pickFirst = (...values) => {
+  for (const value of values) {
+    if (value !== null && value !== undefined && String(value).trim() !== "") {
+      return value;
+    }
+  }
+  return null;
+};
+
+const resolveTemplateAssetUrl = (value, backendBase = "") => {
+  if (!value) return null;
+  const s = String(value).trim();
+  if (!s) return null;
+
+  if (/^(blob:|data:|https?:\/\/)/i.test(s)) return s;
+
+  const base = String(backendBase || "").replace(/\/$/, "");
+  if (!base) return s;
+
+  if (s.startsWith("/api/")) return `${base}${s}`;
+  if (s.startsWith("/")) return `${base}${s}`;
+
+  return `${base}/${s}`;
+};
+
+async function fetchProtectedImage(src, apiKey, employeeId, backendBase = "") {
+  if (!src) return null;
+
+  if (
+    src.startsWith("blob:") ||
+    src.startsWith("data:") ||
+    /^https?:\/\//i.test(src)
+  ) {
+    return src;
+  }
+
+  let resolvedSrc = src;
+  if (resolvedSrc.startsWith("/api/") && backendBase) {
+    resolvedSrc = `${backendBase.replace(/\/$/, "")}${resolvedSrc}`;
+  } else if (!resolvedSrc.startsWith("/api/") && backendBase) {
+    resolvedSrc = resolveTemplateAssetUrl(resolvedSrc, backendBase);
+  }
+
+  const cached = protectedImageCache.get(resolvedSrc);
+  if (cached) return cached;
+
+  try {
+    const res = await fetch(resolvedSrc, {
+      method: "GET",
+      credentials: "include",
+      headers: {
+        "x-api-key": apiKey || "",
+        "x-employee-id": employeeId || "",
+      },
+    });
+
+    if (!res.ok) {
+      console.warn("fetchProtectedImage failed:", resolvedSrc, res.status);
+      return null;
+    }
+
+    const blob = await res.blob();
+    const blobUrl = URL.createObjectURL(blob);
+    protectedImageCache.set(resolvedSrc, blobUrl);
+    return blobUrl;
+  } catch (err) {
+    console.warn(
+      "fetchProtectedImage error:",
+      resolvedSrc,
+      err?.message || err,
+    );
+    return null;
+  }
+}
+
+const extractTemplateArray = (payload) => {
+  if (!payload) return [];
+  if (Array.isArray(payload)) return payload;
+
+  const candidates = [
+    payload?.templates,
+    payload?.data,
+    payload?.items,
+    payload?.result,
+    payload?.message,
+    payload?.records,
+  ];
+
+  for (const candidate of candidates) {
+    if (Array.isArray(candidate)) return candidate;
+  }
+
+  if (
+    payload?.headerUrl ||
+    payload?.footerUrl ||
+    payload?.watermarkUrl ||
+    payload?.header ||
+    payload?.footer ||
+    payload?.grapes_json ||
+    payload?.html
+  ) {
+    return [payload];
+  }
+
+  return [];
+};
+
+const normalizeTemplateRecord = (raw, index = 0, backendBase = "") => {
+  const grapesJson =
+    safeJsonParse(raw?.grapes_json ?? raw?.grapesJson ?? null, null) || {};
+
+  const meta =
+    safeJsonParse(
+      raw?.meta ?? raw?.metadata ?? raw?.config ?? raw?.settings ?? null,
+      {},
+    ) || {};
+
+  const uploads = meta?.uploads || grapesJson?.uploads || {};
+
+  const watermarkPlacement =
+    grapesJson?.watermark || meta?.watermarkPlacement || null;
+
+  const key = String(
+    raw?.id ??
+      raw?._id ??
+      raw?.templateId ??
+      raw?.template_id ??
+      raw?.name ??
+      raw?.title ??
+      raw?.templateName ??
+      index,
+  );
+
+  const headerSource = pickFirst(
+    raw?.headerUrl,
+    raw?.header,
+    raw?.headerImageUrl,
+    raw?.header_image,
+    raw?.headerImage,
+    grapesJson?.headerUrl,
+    grapesJson?.header_url,
+    meta?.headerUrl,
+    meta?.header,
+    uploads?.header,
+  );
+
+  const footerSource = pickFirst(
+    raw?.footerUrl,
+    raw?.footer,
+    raw?.footerImageUrl,
+    raw?.footer_image,
+    raw?.footerImage,
+    grapesJson?.footerUrl,
+    grapesJson?.footer_url,
+    meta?.footerUrl,
+    meta?.footer,
+    uploads?.footer,
+  );
+
+  const watermarkSource = pickFirst(
+    raw?.watermarkUrl,
+    raw?.watermark,
+    raw?.watermarkImageUrl,
+    raw?.watermark_image,
+    raw?.watermarkImage,
+    grapesJson?.watermark?.url,
+    grapesJson?.watermarkUrl,
+    grapesJson?.watermark,
+    meta?.watermarkUrl,
+    meta?.watermark,
+    uploads?.watermark,
+  );
+
+  return {
+    key,
+    id: raw?.id ?? raw?._id ?? raw?.templateId ?? raw?.template_id ?? key,
+    name:
+      raw?.name ??
+      raw?.title ??
+      raw?.templateName ??
+      meta?.name ??
+      `Template ${index + 1}`,
+    headerUrl: resolveTemplateAssetUrl(headerSource, backendBase),
+    footerUrl: resolveTemplateAssetUrl(footerSource, backendBase),
+    watermarkUrl: resolveTemplateAssetUrl(watermarkSource, backendBase),
+    watermarkProps: watermarkPlacement
+      ? {
+          xPct: watermarkPlacement.xPct ?? "50%",
+          yPct: watermarkPlacement.yPct ?? "35%",
+          wPct: watermarkPlacement.wPct ?? "24%",
+          hPct: watermarkPlacement.hPct ?? "16%",
+          opacity:
+            typeof watermarkPlacement.opacity === "number"
+              ? watermarkPlacement.opacity
+              : 0.12,
+        }
+      : null,
+    headerProps: meta?.headerProps ?? raw?.headerProps ?? null,
+    footerProps: meta?.footerProps ?? raw?.footerProps ?? null,
+    createdAt:
+      raw?.createdAt ??
+      raw?.created_at ??
+      raw?.updatedAt ??
+      raw?.updated_at ??
+      null,
+    raw,
+  };
+};
+
+const fetchSavedTemplates = async ({ backendUrl = "", apiKey = "", orgId }) => {
+  const base = String(backendUrl || "").replace(/\/$/, "");
+  const org = encodeURIComponent(String(orgId));
+
+  const candidates = [
+    `${base}/api/orgs/${org}/templates`,
+    `${base}/api/orgs/${org}/templates/list`,
+    `${base}/api/orgs/${org}/document-templates`,
+    `${base}/api/orgs/${org}/document-template`,
+    `${base}/api/templates?orgId=${org}`,
+    `/api/orgs/${org}/templates`,
+    `/api/templates?orgId=${org}`,
+  ].filter(Boolean);
+
+  for (const url of candidates) {
+    try {
+      const resp = await fetch(url, {
+        method: "GET",
+        credentials: "include",
+        headers: {
+          "x-api-key": apiKey || "",
+          "x-org-id": String(orgId),
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (!resp.ok) continue;
+
+      const json = await resp.json().catch(() => null);
+      const rawList = extractTemplateArray(json);
+      const normalized = rawList
+        .map((item, index) => normalizeTemplateRecord(item, index, base))
+        .filter(Boolean);
+
+      if (normalized.length > 0) return normalized;
+    } catch {
+      // next candidate
+    }
+  }
+
+  return [];
+};
 
 const InvoiceTemplate = React.forwardRef((props, ref) => {
   const {
@@ -11,12 +282,20 @@ const InvoiceTemplate = React.forwardRef((props, ref) => {
     invoiceNumber = "",
     downloadDetails = {},
     orgId,
+    showTemplateToolbar = true,
+    selectedTemplateKey: selectedTemplateKeyProp,
+    onSelectedTemplateKeyChange = null,
+    onTemplateReady = null,
+    backendUrl: backendUrlProp = process.env.NEXT_PUBLIC_BACKEND_URL || "",
+    apiKey: apiKeyProp = process.env.NEXT_PUBLIC_API_KEY || "",
   } = props;
+
+  const backendUrl = backendUrlProp || "";
+  const apiKey = apiKeyProp || "";
 
   const normalizedType = String(invoiceType || "")
     .trim()
     .toLowerCase();
-  const isOrg32 = Number(orgId) === 32;
   const isCreditNote =
     normalizedType === "credit note" || normalizedType === "credit";
   const isQuotation = normalizedType === "quotation";
@@ -38,7 +317,6 @@ const InvoiceTemplate = React.forwardRef((props, ref) => {
     gst,
     gstAmount,
     advance,
-    totalExcludingTax,
     totalIncludingTax,
     roundOff,
     roundOffAmount,
@@ -50,6 +328,207 @@ const InvoiceTemplate = React.forwardRef((props, ref) => {
 
   const parsedLineItems =
     Array.isArray(lineItems) && lineItems.length > 0 ? lineItems : [];
+
+  const currentOrgId = Number(orgId);
+  const isOrg32 = currentOrgId === 32;
+  const isOrg1 = currentOrgId === 1;
+
+  const [internalTemplateKey, setInternalTemplateKey] = useState("__default__");
+  const selectedTemplateKey =
+    typeof selectedTemplateKeyProp === "string"
+      ? selectedTemplateKeyProp
+      : internalTemplateKey;
+
+  const [savedTemplates, setSavedTemplates] = useState([]);
+  const [templatesLoading, setTemplatesLoading] = useState(false);
+  const [templatesError, setTemplatesError] = useState("");
+  const [resolvedTemplateAssets, setResolvedTemplateAssets] = useState({
+    headerUrl: null,
+    footerUrl: null,
+    watermarkUrl: null,
+    watermarkProps: null,
+  });
+
+  const [headerLoaded, setHeaderLoaded] = useState(false);
+  const [footerLoaded, setFooterLoaded] = useState(false);
+  const [watermarkLoaded, setWatermarkLoaded] = useState(false);
+
+  const templateStorageKey = useMemo(
+    () => (currentOrgId ? `invoice-template-selection:${currentOrgId}` : ""),
+    [currentOrgId],
+  );
+
+  const activeTemplate = useMemo(() => {
+    if (!selectedTemplateKey || selectedTemplateKey === "__default__") {
+      return null;
+    }
+    return (
+      savedTemplates.find((item) => item.key === selectedTemplateKey) || null
+    );
+  }, [savedTemplates, selectedTemplateKey]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadTemplates = async () => {
+      if (!currentOrgId) {
+        setSavedTemplates([]);
+        if (typeof selectedTemplateKeyProp !== "string") {
+          setInternalTemplateKey("__default__");
+        }
+        return;
+      }
+
+      setTemplatesLoading(true);
+      setTemplatesError("");
+
+      try {
+        const templates = await fetchSavedTemplates({
+          backendUrl,
+          apiKey,
+          orgId: currentOrgId,
+        });
+
+        if (cancelled) return;
+
+        setSavedTemplates(templates);
+
+        if (typeof selectedTemplateKeyProp !== "string") {
+          const storedKey =
+            typeof window !== "undefined" && templateStorageKey
+              ? window.localStorage.getItem(templateStorageKey)
+              : null;
+
+          const preferredKey =
+            storedKey && templates.some((item) => item.key === storedKey)
+              ? storedKey
+              : templates[0]?.key || "__default__";
+
+          setInternalTemplateKey(preferredKey);
+        }
+      } catch (error) {
+        if (cancelled) return;
+        setSavedTemplates([]);
+        if (typeof selectedTemplateKeyProp !== "string") {
+          setInternalTemplateKey("__default__");
+        }
+        setTemplatesError(
+          error?.message || "Unable to load saved templates for this invoice.",
+        );
+      } finally {
+        if (!cancelled) setTemplatesLoading(false);
+      }
+    };
+
+    loadTemplates();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    backendUrl,
+    apiKey,
+    currentOrgId,
+    templateStorageKey,
+    selectedTemplateKeyProp,
+  ]);
+
+  useEffect(() => {
+    if (!templateStorageKey || typeof window === "undefined") return;
+    try {
+      window.localStorage.setItem(templateStorageKey, selectedTemplateKey);
+    } catch {
+      // ignore storage errors
+    }
+  }, [selectedTemplateKey, templateStorageKey]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const resolveAssets = async () => {
+      const tpl = activeTemplate;
+
+      setHeaderLoaded(false);
+      setFooterLoaded(false);
+      setWatermarkLoaded(false);
+
+      if (!tpl) {
+        setResolvedTemplateAssets({
+          headerUrl: null,
+          footerUrl: null,
+          watermarkUrl: null,
+          watermarkProps: null,
+        });
+        return;
+      }
+
+      const [headerUrl, footerUrl, watermarkUrl] = await Promise.all([
+        fetchProtectedImage(tpl.headerUrl, apiKey, null, backendUrl),
+        fetchProtectedImage(tpl.footerUrl, apiKey, null, backendUrl),
+        fetchProtectedImage(tpl.watermarkUrl, apiKey, null, backendUrl),
+      ]);
+
+      if (cancelled) return;
+
+      setResolvedTemplateAssets({
+        headerUrl: headerUrl || tpl.headerUrl || null,
+        footerUrl: footerUrl || tpl.footerUrl || null,
+        watermarkUrl: watermarkUrl || tpl.watermarkUrl || null,
+        watermarkProps: tpl.watermarkProps || null,
+      });
+    };
+
+    resolveAssets();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [activeTemplate, apiKey, backendUrl]);
+
+  const templateReady = useMemo(() => {
+    if (!activeTemplate) return true;
+
+    const headerOk =
+      !resolvedTemplateAssets.headerUrl || headerLoaded || !showTemplateToolbar;
+    const footerOk =
+      !resolvedTemplateAssets.footerUrl || footerLoaded || !showTemplateToolbar;
+    const watermarkOk =
+      !resolvedTemplateAssets.watermarkUrl ||
+      watermarkLoaded ||
+      !showTemplateToolbar;
+
+    return headerOk && footerOk && watermarkOk;
+  }, [
+    activeTemplate,
+    resolvedTemplateAssets.headerUrl,
+    resolvedTemplateAssets.footerUrl,
+    resolvedTemplateAssets.watermarkUrl,
+    headerLoaded,
+    footerLoaded,
+    watermarkLoaded,
+    showTemplateToolbar,
+  ]);
+
+  useEffect(() => {
+    if (typeof onTemplateReady === "function") {
+      try {
+        onTemplateReady(templateReady);
+      } catch (e) {
+        console.warn("onTemplateReady threw", e);
+      }
+    }
+  }, [templateReady, onTemplateReady]);
+
+  const updateSelectedTemplateKey = useCallback(
+    (nextKey) => {
+      if (typeof onSelectedTemplateKeyChange === "function") {
+        onSelectedTemplateKeyChange(nextKey);
+      } else {
+        setInternalTemplateKey(nextKey);
+      }
+    },
+    [onSelectedTemplateKeyChange],
+  );
 
   const totals = parsedLineItems.reduce(
     (acc, item) => {
@@ -94,11 +573,92 @@ const InvoiceTemplate = React.forwardRef((props, ref) => {
       ? invoiceType.toUpperCase()
       : "INVOICE";
 
-  return (
-    <div ref={ref} className={`emp-inv-container ${isOrg32 ? "org-32" : ""}`}>
-      {isCancelled && <div className="cancelled-watermark">CANCELLED</div>}
-      {isOrg32 ? (
-        <header className="org32-header">
+  const selectedHeaderUrl = resolvedTemplateAssets.headerUrl || null;
+  const selectedFooterUrl = resolvedTemplateAssets.footerUrl || null;
+  const selectedWatermarkUrl = resolvedTemplateAssets.watermarkUrl || null;
+  const selectedWatermarkProps = resolvedTemplateAssets.watermarkProps || null;
+
+  const handleTemplateSelection = useCallback(
+    (event) => {
+      updateSelectedTemplateKey(event.target.value);
+    },
+    [updateSelectedTemplateKey],
+  );
+
+  const openTemplateBuilder = useCallback(() => {
+    if (typeof window === "undefined") return;
+
+    window.dispatchEvent(
+      new CustomEvent("app:navigate", {
+        detail: { path: "/TemplateBuilder" },
+      }),
+    );
+  }, []);
+
+  const watermarkStyle = useMemo(() => {
+    if (!selectedWatermarkUrl) return null;
+
+    const pct = (value, fallback) => {
+      const n = Number(String(value ?? fallback).replace("%", ""));
+      return Number.isFinite(n) ? n : fallback;
+    };
+
+    const xPct = pct(selectedWatermarkProps?.xPct, 50);
+    const yPct = pct(selectedWatermarkProps?.yPct, 35);
+    const wPct = pct(selectedWatermarkProps?.wPct, 24);
+    const hPct = pct(selectedWatermarkProps?.hPct, 16);
+    const opacity =
+      typeof selectedWatermarkProps?.opacity === "number"
+        ? selectedWatermarkProps.opacity
+        : 0.12;
+
+    return {
+      position: "absolute",
+      left: `${xPct - wPct / 2}%`,
+      top: `${yPct - hPct / 2}%`,
+      width: `${wPct}%`,
+      height: `${hPct}%`,
+      opacity,
+      pointerEvents: "none",
+      zIndex: 0,
+      objectFit: "contain",
+      userSelect: "none",
+    };
+  }, [selectedWatermarkProps, selectedWatermarkUrl]);
+
+  const renderOrgHeader = () => {
+    if (selectedHeaderUrl) {
+      return (
+        <header
+          className="emp-inv-header"
+          style={{
+            position: "relative",
+            zIndex: 1,
+            padding: 0,
+            overflow: "hidden",
+          }}
+        >
+          <img
+            src={selectedHeaderUrl}
+            alt={activeTemplate?.name || "Header preview"}
+            onLoad={() => setHeaderLoaded(true)}
+            onError={() => setHeaderLoaded(true)}
+            style={{
+              width: "100%",
+              display: "block",
+              objectFit: "contain",
+            }}
+          />
+        </header>
+      );
+    }
+
+    if (isOrg32) {
+      return (
+        <header
+          className="org32-header"
+          style={{ position: "relative", zIndex: 1 }}
+        >
           <div className="org32-gst-line">GST Reg. No. : 29CRGPG2296B1ZU</div>
           <div className="org32-top-row">
             <div className="org32-left-accent" />
@@ -130,8 +690,15 @@ const InvoiceTemplate = React.forwardRef((props, ref) => {
             </div>
           </div>
         </header>
-      ) : (
-        <header className="emp-inv-header">
+      );
+    }
+
+    if (isOrg1) {
+      return (
+        <header
+          className="emp-inv-header"
+          style={{ position: "relative", zIndex: 1 }}
+        >
           <div className="emp-inv-logo">
             <img src="/images/company-logo.png" alt="Company Logo" />
           </div>
@@ -146,9 +713,337 @@ const InvoiceTemplate = React.forwardRef((props, ref) => {
             <p>PAN: ABICS7525C</p>
           </div>
         </header>
+      );
+    }
+
+    return (
+      <div
+        style={{
+          position: "relative",
+          zIndex: 1,
+          textAlign: "center",
+          marginBottom: "12px",
+          color: "#64748b",
+          fontWeight: 500,
+          padding: "10px 0",
+        }}
+      >
+        No template configured for this organization.
+      </div>
+    );
+  };
+
+  const renderOrgFooter = () => {
+    if (selectedFooterUrl) {
+      return (
+        <footer
+          className="emp-inv-footer"
+          style={{
+            position: "relative",
+            zIndex: 1,
+            padding: 0,
+            overflow: "hidden",
+          }}
+        >
+          <img
+            src={selectedFooterUrl}
+            alt={activeTemplate?.name || "Footer preview"}
+            onLoad={() => setFooterLoaded(true)}
+            onError={() => setFooterLoaded(true)}
+            style={{
+              width: "100%",
+              display: "block",
+              objectFit: "contain",
+            }}
+          />
+        </footer>
+      );
+    }
+
+    if (isOrg32) {
+      return (
+        <footer
+          className="org32-footer"
+          style={{ position: "relative", zIndex: 1 }}
+        >
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              gap: "10px",
+              marginTop: "12px",
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                gap: "16px",
+                alignItems: "stretch",
+              }}
+            >
+              <div className="emp-footer-partition" style={{ width: "49%" }}>
+                <h4
+                  style={{
+                    background: "#000",
+                    color: "#fff",
+                    margin: 0,
+                    padding: "10px 14px",
+                  }}
+                >
+                  Bank Details
+                </h4>
+                <div className="emp-bank-details" style={{ gap: "12px" }}>
+                  <div className="emp-qr-code" style={{ margin: "1% 2% 0 0" }}>
+                    <img
+                      src="/images/qr_avinya.png"
+                      alt="AVINYA QR Code"
+                      style={{ width: "150px", height: "150px" }}
+                    />
+                  </div>
+                  <p style={{ fontSize: "medium" }}>
+                    Name: INDIAN OVERSEAS BANK
+                    <br />
+                    <br />
+                    Account No: 030802000003462
+                    <br />
+                    <br />
+                    IFSC code: IOBA0000308
+                    <br />
+                    <br />
+                    Account holder&apos;s name: AVINYA MOTORS
+                  </p>
+                </div>
+              </div>
+
+              <div
+                className="emp-seal-signs"
+                style={{
+                  width: "49%",
+                  textAlign: "center",
+                  margin: 0,
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                }}
+              >
+                <p style={{ margin: 0 }}>For: AVINYA MOTORS</p>
+                {withSeal ? (
+                  <div className="emp-seal">
+                    <img
+                      src="/images/avinya_seal.jpeg"
+                      alt="SEAL"
+                      style={{ width: "200px", height: "150px" }}
+                    />
+                  </div>
+                ) : (
+                  <div
+                    className="emp-no-seal"
+                    style={{ width: "200px", height: "150px" }}
+                  />
+                )}
+                <strong>
+                  <p className="emp-authorized" style={{ margin: 0 }}>
+                    Authorized Signatory
+                  </p>
+                </strong>
+              </div>
+            </div>
+
+            <div className="org32-footer-bar">
+              <FiMapPin
+                className="org32-footer-icon"
+                style={{ fontSize: "18px" }}
+              />
+              <span>
+                Plot No. 04, 2nd Cross, Prajwani Road, Near High Court, Belur
+                Industrial Area, Dharwad - 580 011
+              </span>
+            </div>
+          </div>
+        </footer>
+      );
+    }
+
+    if (isOrg1) {
+      return (
+        <>
+          <footer
+            className="emp-inv-footer"
+            style={{ position: "relative", zIndex: 1 }}
+          >
+            <div className="emp-footer-partition">
+              <h4>Bank Details</h4>
+              <div className="emp-bank-details">
+                <div className="emp-qr-code">
+                  <img src="/images/upi-qr-code.png" alt="UPI QR Code" />
+                </div>
+                <div>
+                  <p>
+                    Name: HDFC BANK, BELGAUM
+                    <br />
+                    Account No: 50200089573214
+                    <br />
+                    IFSC code: HDFC0000253
+                    <br />
+                    Account holder&apos;s name: Sukalpa Tech Solutions Pvt Ltd
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="emp-seal-signs">
+              <p>For: Sukalpa Tech Solutions Pvt Ltd</p>
+              {withSeal ? (
+                <div className="emp-seal">
+                  <img src="/images/seal.png" alt="SEAL" />
+                </div>
+              ) : (
+                <div className="emp-no-seal" />
+              )}
+              <strong>
+                <p className="emp-authorized">Authorized Signatory</p>
+              </strong>
+            </div>
+          </footer>
+
+          <div className="emp-note" style={{ position: "relative", zIndex: 1 }}>
+            <p>
+              Note: We are a registered MSME under the MSMED Act. As per Section
+              15, kindly ensure payment within 45 days from the invoice date.
+            </p>
+            <p>Timely payment supports small businesses like ours.</p>
+          </div>
+        </>
+      );
+    }
+
+    return null;
+  };
+
+  return (
+    <div
+      ref={ref}
+      data-template-ready={templateReady ? "true" : "false"}
+      data-template-key={selectedTemplateKey}
+      className={`emp-inv-container ${isOrg32 ? "org-32" : ""}`}
+      style={{ position: "relative" }}
+    >
+      {showTemplateToolbar && (
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            gap: "12px",
+            margin: "0 0 12px",
+            padding: "10px 12px",
+            border: "1px solid #e2e8f0",
+            borderRadius: "12px",
+            background: "#fff",
+            position: "relative",
+            zIndex: 2,
+            flexWrap: "wrap",
+          }}
+        >
+          <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+            <span
+              style={{ fontSize: "12px", fontWeight: 700, color: "#475569" }}
+            >
+              Saved templates
+            </span>
+            <select
+              value={selectedTemplateKey}
+              onChange={handleTemplateSelection}
+              disabled={templatesLoading}
+              style={{
+                minWidth: "240px",
+                padding: "8px 10px",
+                borderRadius: "10px",
+                border: "1px solid #cbd5e1",
+                background: "#fff",
+                fontSize: "14px",
+              }}
+            >
+              <option value="__default__">Default invoice layout</option>
+              {savedTemplates.map((template) => (
+                <option key={template.key} value={template.key}>
+                  {template.name}
+                </option>
+              ))}
+            </select>
+            <div style={{ fontSize: "12px", color: "#64748b" }}>
+              {templatesLoading
+                ? "Loading saved templates..."
+                : activeTemplate
+                  ? `Applying: ${activeTemplate.name}`
+                  : "No saved template selected"}
+            </div>
+          </div>
+
+          <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+            <button
+              type="button"
+              onClick={openTemplateBuilder}
+              style={{
+                padding: "9px 14px",
+                borderRadius: "10px",
+                border: "none",
+                background: "#111827",
+                color: "#fff",
+                fontWeight: 600,
+                cursor: "pointer",
+              }}
+            >
+              Build Template
+            </button>
+            {!savedTemplates.length && !templatesLoading && (
+              <span style={{ fontSize: "12px", color: "#b45309" }}>
+                No saved templates found for this organization.
+              </span>
+            )}
+          </div>
+        </div>
       )}
 
-      <div className="emp-inv-title-section">
+      {templatesError && (
+        <div
+          style={{
+            marginBottom: "12px",
+            padding: "10px 12px",
+            borderRadius: "10px",
+            background: "#fff7ed",
+            color: "#9a3412",
+            border: "1px solid #fdba74",
+            position: "relative",
+            zIndex: 2,
+          }}
+        >
+          {templatesError}
+        </div>
+      )}
+
+      {Boolean(isCancelled) && (
+        <div className="cancelled-watermark">CANCELLED</div>
+      )}
+
+      {selectedWatermarkUrl && (
+        <img
+          src={selectedWatermarkUrl}
+          alt={activeTemplate?.name || "Watermark"}
+          onLoad={() => setWatermarkLoaded(true)}
+          onError={() => setWatermarkLoaded(true)}
+          style={watermarkStyle || undefined}
+        />
+      )}
+
+      {renderOrgHeader()}
+
+      <div
+        className="emp-inv-title-section"
+        style={{ position: "relative", zIndex: 1 }}
+      >
         <div className="emp-inv-title-block">{headerTitle}</div>
 
         <div className={`emp-bill-header ${isOrg32 ? "org32-black" : ""}`}>
@@ -281,7 +1176,10 @@ const InvoiceTemplate = React.forwardRef((props, ref) => {
         </div>
       </div>
 
-      <table className="emp-inv-table">
+      <table
+        className="emp-inv-table"
+        style={{ position: "relative", zIndex: 1 }}
+      >
         <thead>
           <tr>
             <th>S.No</th>
@@ -344,7 +1242,10 @@ const InvoiceTemplate = React.forwardRef((props, ref) => {
         </tbody>
       </table>
 
-      <div className="emp-tax-section">
+      <div
+        className="emp-tax-section"
+        style={{ position: "relative", zIndex: 1 }}
+      >
         <div className="emp-partition">
           <div className={`emp-tax-box ${isOrg32 ? "org32-black" : ""}`}>
             <p>Tax type</p>
@@ -447,149 +1348,7 @@ const InvoiceTemplate = React.forwardRef((props, ref) => {
         </div>
       </div>
 
-      {isOrg32 ? (
-        <footer className="org32-footer">
-          <div
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              gap: "10px",
-              marginTop: "12px",
-            }}
-          >
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                gap: "16px",
-                alignItems: "stretch",
-              }}
-            >
-              <div className="emp-footer-partition" style={{ width: "49%" }}>
-                <h4
-                  style={{
-                    background: "#000",
-                    color: "#fff",
-                    margin: 0,
-                    padding: "10px 14px",
-                  }}
-                >
-                  Bank Details
-                </h4>
-                <div className="emp-bank-details" style={{ gap: "12px" }}>
-                  <div className="emp-qr-code" style={{ margin: "1% 2% 0 0" }}>
-                    <img
-                      src="/images/qr_avinya.png"
-                      alt="AVINYA QR Code"
-                      style={{ width: "150px", height: "150px" }}
-                    />
-                  </div>
-                  <p style={{ fontSize: "medium" }}>
-                    Name: INDIAN OVERSEAS BANK
-                    <br />
-                    <br />
-                    Account No: 030802000003462
-                    <br />
-                    <br />
-                    IFSC code: IOBA0000308
-                    <br />
-                    <br />
-                    Account holder&apos;s name: AVINYA MOTORS
-                  </p>
-                </div>
-              </div>
-
-              <div
-                className="emp-seal-signs"
-                style={{
-                  width: "49%",
-                  textAlign: "center",
-                  margin: 0,
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                }}
-              >
-                <p style={{ margin: 0 }}>For: AVINYA MOTORS</p>
-                {withSeal ? (
-                  <div className="emp-seal">
-                    <img
-                      src="/images/avinya_seal.jpeg"
-                      alt="SEAL"
-                      style={{ width: "200px", height: "150px" }}
-                    />
-                  </div>
-                ) : (
-                  <div
-                    className="emp-no-seal"
-                    style={{ width: "200px", height: "150px" }}
-                  />
-                )}
-                <strong>
-                  <p className="emp-authorized" style={{ margin: 0 }}>
-                    Authorized Signatory
-                  </p>
-                </strong>
-              </div>
-            </div>
-
-            <div className="org32-footer-bar">
-              <FiMapPin
-                className="org32-footer-icon"
-                style={{ fontSize: "18px" }}
-              />
-              <span>{`Plot No. 04, 2nd Cross, Prajwani Road, Near High Court, Belur Industrial Area, Dharwad - 580 011`}</span>
-            </div>
-          </div>
-        </footer>
-      ) : (
-        <>
-          <footer className="emp-inv-footer">
-            <div className="emp-footer-partition">
-              <h4>Bank Details</h4>
-              <div className="emp-bank-details">
-                <div className="emp-qr-code">
-                  <img src="/images/upi-qr-code.png" alt="UPI QR Code" />
-                </div>
-                <div>
-                  <p>
-                    Name: HDFC BANK, BELGAUM
-                    <br />
-                    Account No: 50200089573214
-                    <br />
-                    IFSC code: HDFC0000253
-                    <br />
-                    Account holder&apos;s name: Sukalpa Tech Solutions Pvt Ltd
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <div className="emp-seal-signs">
-              <p>For: Sukalpa Tech Solutions Pvt Ltd</p>
-              {withSeal ? (
-                <div className="emp-seal">
-                  <img src="/images/seal.png" alt="SEAL" />
-                </div>
-              ) : (
-                <div className="emp-no-seal" />
-              )}
-              <strong>
-                <p className="emp-authorized">Authorized Signatory</p>
-              </strong>
-            </div>
-          </footer>
-
-          <div className="emp-note">
-            <p>
-              Note: We are a registered MSME under the MSMED Act. As per Section
-              15, kindly ensure payment within 45 days from the invoice date.
-            </p>
-            <p>Timely payment supports small businesses like ours.</p>
-          </div>
-        </>
-      )}
+      {renderOrgFooter()}
     </div>
   );
 });

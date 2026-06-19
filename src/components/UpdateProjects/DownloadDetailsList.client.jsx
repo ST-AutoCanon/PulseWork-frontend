@@ -846,6 +846,7 @@ const DownloadDetailsList = ({
             invoiceNumber={redownloadInvoiceNumber}
             downloadDetails={redownloadDetails}
             orgId={orgId}
+            showTemplateToolbar={false}
           />
         </div>
       </div>

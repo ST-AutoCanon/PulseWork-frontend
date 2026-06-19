@@ -413,50 +413,7 @@ if (
   const medicalBase =
     planData.medicalCalculationBase === "gross" ? grossSalary : basicSalary;
 
-   // ==================== ESIC (Employee & Employer) ====================
-  // ESIC Employee
-  if (
-    planData.isESICEmployee &&
-    planData.esicEmployeeType === "percentage" &&
-    planData.esicEmployeePercentage &&
-    !isNaN(parseFloat(planData.esicEmployeePercentage))
-  ) {
-    esic = medicalBase * (parseFloat(planData.esicEmployeePercentage) / 100);
-    planData.esicEmployeeText = `${
-      planData.esicEmployeePercentage
-    }% of ${formatCalculationBase(planData.medicalCalculationBase || "basic")}`;
-  } else if (
-    planData.esicEmployeeAmount &&
-    !isNaN(parseFloat(planData.esicEmployeeAmount))
-  ) {
-    esic = parseFloat(planData.esicEmployeeAmount);
-    planData.esicEmployeeText = `₹${planData.esicEmployeeAmount} (Fixed)`;
-  } else {
-    esic = 0;
-    planData.esicEmployeeText = "Not Applicable";
-  }
-
-  // ESIC Employer - FIXED
-  if (
-    planData.isESICEmployer &&
-    planData.esicEmployerType === "percentage" &&
-    planData.esicEmployerPercentage &&
-    !isNaN(parseFloat(planData.esicEmployerPercentage))
-  ) {
-    esicEmployer = medicalBase * (parseFloat(planData.esicEmployerPercentage) / 100);
-    planData.esicEmployerText = `${
-      planData.esicEmployerPercentage
-    }% of ${formatCalculationBase(planData.medicalCalculationBase || "basic")}`;
-  } else if (
-    planData.esicEmployerAmount &&
-    !isNaN(parseFloat(planData.esicEmployerAmount))
-  ) {
-    esicEmployer = parseFloat(planData.esicEmployerAmount);
-    planData.esicEmployerText = `₹${planData.esicEmployerAmount} (Fixed)`;
-  } else {
-    esicEmployer = 0;
-    planData.esicEmployerText = "Not Applicable";
-  }
+   
 
   // ==================== Insurance (Employee & Employer) ====================
   // Insurance Employee
@@ -725,7 +682,44 @@ const employeeDeductions =
   advanceRecovery +
   lopDeduction;
 const netSalary = grossSalary - employeeDeductions;
+  // ==================== ESIC (Employee & Employer) ====================
+  // IMPORTANT: Other Allowance must be calculated BEFORE this block
 
+  // Base = Basic + HRA + Other Allowance
+  const grossForESI = 
+    Number(basicSalary || 0) + 
+    Number(hra || 0) + 
+    Number(otherAllowances || 0);
+
+  // ESIC Employee
+  if (
+    planData.isESICEmployee &&
+    planData.esicEmployeeType === "percentage" &&
+    planData.esicEmployeePercentage
+  ) {
+    const rate = parseFloat(planData.esicEmployeePercentage) / 100;
+    esic = grossForESI * rate;
+    planData.esicEmployeeText = `${planData.esicEmployeePercentage}% of (Basic + HRA + Other Allowance)`;
+  } else if (planData.esicEmployeeAmount) {
+    esic = parseFloat(planData.esicEmployeeAmount);
+  } else {
+    esic = 0;
+  }
+
+  // ESIC Employer
+  if (
+    planData.isESICEmployer &&
+    planData.esicEmployerType === "percentage" &&
+    planData.esicEmployerPercentage
+  ) {
+    const rate = parseFloat(planData.esicEmployerPercentage) / 100;
+    esicEmployer = grossForESI * rate;
+    planData.esicEmployerText = `${planData.esicEmployerPercentage}% of (Basic + HRA + Other Allowance)`;
+  } else if (planData.esicEmployerAmount) {
+    esicEmployer = parseFloat(planData.esicEmployerAmount);
+  } else {
+    esicEmployer = 0;
+  }
 const salaryDetails = {
 
   basicSalary,

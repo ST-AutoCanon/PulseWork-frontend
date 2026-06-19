@@ -9,7 +9,8 @@ import SalaryCalculationPeriod from "./salaryCalculationPeriod/salaryCalculation
 import { useAuth } from "../../context/AuthProvider.client";
 const API_KEY = process.env.NEXT_PUBLIC_API_KEY;
 const DEFAULT_CTC = 100000;
-
+// Add this near the top with other imports
+import { calculatePreviewBreakdown } from "./previewCalculation";   // ← Adjust path if needed
 // Duplicate of helper present in SalaryDetails/TotalsContainer; used here for
 // preview so gross/net matches the same include-in-CTC rules.
 const calculateLocalGrossNet = (salaryDetails, planData) => {
@@ -35,10 +36,15 @@ const calculateLocalGrossNet = (salaryDetails, planData) => {
       value: salaryDetails.employerPF,
       include: planData.pfEmployerIncludeInCtc,
     },
-    {
-      value: salaryDetails.esic,
-      include: planData.esicEmployeeIncludeInCtc,
-    },
+   {
+  value: salaryDetails.esicEmployee,
+  include: planData.esicEmployeeIncludeInCtc,
+},
+
+{
+  value: salaryDetails.esicEmployer,
+  include: planData.esicEmployerIncludeInCtc,
+},
     {
       value: salaryDetails.gratuity,
       include: planData.gratuityIncludeInCtc,
@@ -82,6 +88,7 @@ const calculateLocalGrossNet = (salaryDetails, planData) => {
       value: salaryDetails.insurance,
       include: planData.insuranceEmployeeIncludeInCtc,
     },
+    
   ].reduce(
     (sum, item) =>
       item.include !== false
@@ -134,52 +141,34 @@ const GROSS_BASED_FIELDS = [
 const FIXED_AMOUNT_FIELDS = [
   'professionalTax',
 ];
-
 const getEffectiveCtcPercentage = (fieldName, formData, ctc = DEFAULT_CTC) => {
-  let cleanField = fieldName.replace('Percentage', '');
+  let cleanField = fieldName.replace('Percentage', '').replace('Amount', '');
+  const rawValue = parseFloat(formData[fieldName]) || 0;
+  if (rawValue <= 0) return 0;
 
-  const rawPct = parseFloat(formData[fieldName]) || 0;
-  if (rawPct <= 0) return 0;
+  const basicPct = parseFloat(formData.basicSalary) || 40;
+  const basicAmount = (basicPct / 100) * ctc;
 
-  // Get the actual basic salary amount (formData.basicSalary is a %, so convert to amount)
-  // For default CTC of 100000, if basicSalary is 40%, basic amount = 40000
-  const basicSalaryAmount = (parseFloat(formData.basicSalary) || 0) / 100 * ctc;
-  const basicPct = basicSalaryAmount; // This is now the actual amount in rupees
-
- 
-  const includeFieldMap = {
-    pfEmployee: 'pfEmployeeIncludeInCtc',
-    pfEmployer: 'pfEmployerIncludeInCtc',
-    esicEmployee: 'esicEmployeeIncludeInCtc',
-    insuranceEmployee: 'insuranceEmployeeIncludeInCtc',
-    gratuity: 'gratuityIncludeInCtc',
-    variablePay: 'variablePayIncludeInCtc',              // ← critical for Variable Pay
-    statutoryBonus: 'statutoryBonusIncludeInCtc',        // ← critical for Statutory Bonus
-   
-  };
-
+  const includeFieldMap = { /* keep your map */ };
   const includeKey = includeFieldMap[cleanField];
-  if (includeKey && !formData[includeKey]) {
-    return 0; // Checkbox unchecked → 0 contribution
+  if (includeKey && formData[includeKey] === false) return 0;
+
+  // Direct CTC-based
+  if (CTC_BASED_FIELDS.includes(cleanField) || 
+      ['variablePay', 'statutoryBonus', 'incentives', 'ltaAllowance'].includes(cleanField)) {
+    return rawValue;
   }
 
-  // Direct CTC-based (no × basicPct)
-  if (CTC_BASED_FIELDS.includes(cleanField)) {
-    return rawPct;
+  // Basic-based components
+  if (BASIC_BASED_FIELDS.includes(cleanField) || 
+      cleanField.toLowerCase().includes('hra') || 
+      cleanField.toLowerCase().includes('pf') ||
+      cleanField.toLowerCase().includes('gratuity') ||
+      cleanField.toLowerCase().includes('esic')) {
+    return (rawValue / 100) * basicPct;   // e.g. 50% of 40% Basic = 20% CTC
   }
 
-  // Basic-based → convert: (percentage of basic) → (percentage of CTC)
-  // e.g., 20% of basic (which is 40% of CTC = 40000) = 20/100 * 40000 = 8000 annually = 8% of CTC
-  if (BASIC_BASED_FIELDS.includes(cleanField)) {
-    return (rawPct / 100) * basicPct / ctc * 100;
-  }
-
-  // Gross-based
-  if (GROSS_BASED_FIELDS.includes(cleanField)) {
-    return rawPct;
-  }
-
-  return rawPct;
+  return rawValue;
 };
 
 
@@ -277,19 +266,19 @@ const allowancePercentageFields = [
     include: "pfEmployerIncludeInCtc",
   },
   {
-    field: "esicEmployeePercentage",
-    enable: "isESICEmployee",
-    type: "esicEmployeeType",
-    amountField: "esicEmployeeAmount",
-    include: "esicEmployeeIncludeInCtc",
-  },
-  {
-    field: "insuranceEmployeePercentage",
-    enable: "isInsuranceEmployee",
-    type: "insuranceEmployeeType",
-    amountField: "insuranceEmployeeAmount",
-    include: "insuranceEmployeeIncludeInCtc",
-  },
+  field: "esicEmployerPercentage",
+  enable: "isESICEmployer",
+  type: "esicEmployerType",
+  amountField: "esicEmployerAmount",
+  include: "esicEmployerIncludeInCtc",
+},
+{
+  field: "insuranceEmployerPercentage",
+  enable: "isInsuranceEmployer",
+  type: "insuranceEmployerType",
+  amountField: "insuranceEmployerAmount",
+  include: "insuranceEmployerIncludeInCtc",
+},
   {
     field: "gratuityPercentage",
     enable: "isGratuityApplicable",
@@ -346,16 +335,32 @@ const defaultFormData = {
   pfEmployeeIncludeInCtc: false,
   isMedicalApplicable: false,
   medicalCalculationBase: "",
+  isESICApplicable: false,           // NEW: Overall ESIC toggle (like PF)
   isESICEmployee: false,
   esicEmployeePercentage: "",
   esicEmployeeAmount: "",
   esicEmployeeType: "percentage",
   esicEmployeeIncludeInCtc: false,
+
+  isESICEmployer: false,             // NEW
+  esicEmployerPercentage: "",
+  esicEmployerAmount: "",
+  esicEmployerType: "percentage",
+  esicEmployerIncludeInCtc: false,   // NEW
+
+  isInsuranceApplicable: false,      // NEW: Overall Insurance toggle
   isInsuranceEmployee: false,
   insuranceEmployeePercentage: "",
   insuranceEmployeeAmount: "",
   insuranceEmployeeType: "percentage",
   insuranceEmployeeIncludeInCtc: false,
+
+  isInsuranceEmployer: false,        // NEW
+  insuranceEmployerPercentage: "",
+  insuranceEmployerAmount: "",
+  insuranceEmployerType: "percentage",
+  insuranceEmployerIncludeInCtc: false, // NEW
+
   isGratuityApplicable: false,
   gratuityPercentage: "",
   gratuityAmount: "",
@@ -529,12 +534,34 @@ const salaryFieldToFormDataMap = {
     enable: "isESICEmployee",
     default: calculationDefaults.esicEmployee,
   },
-  insurance: {
+  esicEmployee: {
+    amount: "esicEmployeeAmount",
+    percentage: "esicEmployeePercentage",
+    type: "esicEmployeeType",
+    enable: "isESICEmployee",
+    default: calculationDefaults.esicEmployee,
+  },
+  esicEmployer: {                        // NEW
+    amount: "esicEmployerAmount",
+    percentage: "esicEmployerPercentage",
+    type: "esicEmployerType",
+    enable: "isESICEmployer",
+    default: { percentage: "0", type: "percentage" },
+  },
+
+  insuranceEmployee: {
     amount: "insuranceEmployeeAmount",
     percentage: "insuranceEmployeePercentage",
     type: "insuranceEmployeeType",
     enable: "isInsuranceEmployee",
     default: calculationDefaults.insuranceEmployee,
+  },
+  insuranceEmployer: {                   // NEW
+    amount: "insuranceEmployerAmount",
+    percentage: "insuranceEmployerPercentage",
+    type: "insuranceEmployerType",
+    enable: "isInsuranceEmployer",
+    default: { percentage: "0", type: "percentage" },
   },
   gratuity: {
     amount: "gratuityAmount",
@@ -909,20 +936,20 @@ useEffect(() => {
       amountField: "pfEmployerAmount",
       include: "pfEmployerIncludeInCtc",
     },
-    {
-      field: "esicEmployeePercentage",
-      enable: "isESICEmployee",
-      type: "esicEmployeeType",
-      amountField: "esicEmployeeAmount",
-      include: "esicEmployeeIncludeInCtc",
-    },
-    {
-      field: "insuranceEmployeePercentage",
-      enable: "isInsuranceEmployee",
-      type: "insuranceEmployeeType",
-      amountField: "insuranceEmployeeAmount",
-      include: "insuranceEmployeeIncludeInCtc",
-    },
+   {
+  field: "esicEmployerPercentage",
+  enable: "isESICEmployer",
+  type: "esicEmployerType",
+  amountField: "esicEmployerAmount",
+  include: "esicEmployerIncludeInCtc",
+},
+{
+  field: "insuranceEmployerPercentage",
+  enable: "isInsuranceEmployer",
+  type: "insuranceEmployerType",
+  amountField: "insuranceEmployerAmount",
+  include: "insuranceEmployerIncludeInCtc",
+},
     {
       field: "gratuityPercentage",
       enable: "isGratuityApplicable",
@@ -1578,20 +1605,40 @@ if (
           newData.pfEmployerIncludeInCtc = false;
           updatedErrors.pfEmployerPercentage = "";
         }
-        if (field === "isESICEmployee") {
-          newData.esicEmployeePercentage = "";
-          newData.esicEmployeeAmount = "";
-          newData.esicEmployeeType = "percentage";
-          newData.esicEmployeeIncludeInCtc = false;
-          updatedErrors.esicEmployeePercentage = "";
-        }
-        if (field === "isInsuranceEmployee") {
-          newData.insuranceEmployeePercentage = "";
-          newData.insuranceEmployeeAmount = "";
-          newData.insuranceEmployeeType = "percentage";
-          newData.insuranceEmployeeIncludeInCtc = false;
-          updatedErrors.insuranceEmployeePercentage = "";
-        }
+      if (field === "isPFApplicable") {
+  newData.isPFEmployee = value === "yes";
+  newData.isPFEmployer = value === "yes";
+}
+
+if (field === "isESICApplicable") {
+  newData.isESICEmployee = value === "yes";
+  newData.isESICEmployer = value === "yes";
+}
+
+if (field === "isInsuranceApplicable") {
+  newData.isInsuranceEmployee = value === "yes";
+  newData.isInsuranceEmployer = value === "yes";
+}
+
+// Reset logic for individual toggles
+if (["isPFEmployee", "isPFEmployer", "isESICEmployee", "isESICEmployer", 
+     "isInsuranceEmployee", "isInsuranceEmployer"].includes(field)) {
+  const isESIC = field.includes("ESIC");
+  const isInsurance = field.includes("Insurance");
+  const isPF = field.includes("PF");
+  
+  let prefix = "";
+  if (isESIC) prefix = "esic";
+  else if (isInsurance) prefix = "insurance";
+  else if (isPF) prefix = "pf";
+
+  const part = field.replace(`is${prefix.charAt(0).toUpperCase() + prefix.slice(1)}`, "");
+  
+  newData[`${prefix}${part}Percentage`] = "";
+  newData[`${prefix}${part}Amount`] = "";
+  newData[`${prefix}${part}Type`] = "percentage";
+  newData[`${prefix}${part}IncludeInCtc`] = value === "yes";
+}
         if (field === "isGratuityApplicable") {
           newData.gratuityPercentage = "";
           newData.gratuityAmount = "";
@@ -1891,26 +1938,52 @@ if (
       pfEmployeeType: compensation.plan_data?.pfEmployeeType || "percentage",
       pfEmployeeIncludeInCtc:
         compensation.plan_data?.pfEmployeeIncludeInCtc || false,
-      isMedicalApplicable: compensation.plan_data?.isMedicalApplicable || false,
-      medicalCalculationBase:
-        compensation.plan_data?.medicalCalculationBase || "",
-      isESICEmployee: compensation.plan_data?.isESICEmployee || false,
-      esicEmployeePercentage:
-        compensation.plan_data?.esicEmployeePercentage || "",
-      esicEmployeeAmount: compensation.plan_data?.esicEmployeeAmount || "",
-      esicEmployeeType:
-        compensation.plan_data?.esicEmployeeType || "percentage",
-      esicEmployeeIncludeInCtc:
-        compensation.plan_data?.esicEmployeeIncludeInCtc || false,
-      isInsuranceEmployee: compensation.plan_data?.isInsuranceEmployee || false,
-      insuranceEmployeePercentage:
-        compensation.plan_data?.insuranceEmployeePercentage || "",
-      insuranceEmployeeAmount:
-        compensation.plan_data?.insuranceEmployeeAmount || "",
-      insuranceEmployeeType:
-        compensation.plan_data?.insuranceEmployeeType || "percentage",
-      insuranceEmployeeIncludeInCtc:
-        compensation.plan_data?.insuranceEmployeeIncludeInCtc || false,
+      isESICApplicable: compensation.plan_data?.isESICApplicable || false,
+isESICEmployer: compensation.plan_data?.isESICEmployer || false,
+esicEmployerPercentage: compensation.plan_data?.esicEmployerPercentage || "",
+esicEmployerAmount: compensation.plan_data?.esicEmployerAmount || "",
+esicEmployerType: compensation.plan_data?.esicEmployerType || "percentage",
+esicEmployerIncludeInCtc: compensation.plan_data?.esicEmployerIncludeInCtc || false,
+
+isInsuranceApplicable: compensation.plan_data?.isInsuranceApplicable || false,
+isInsuranceEmployer: compensation.plan_data?.isInsuranceEmployer || false,
+insuranceEmployerPercentage: compensation.plan_data?.insuranceEmployerPercentage || "",
+insuranceEmployerAmount: compensation.plan_data?.insuranceEmployerAmount || "",
+insuranceEmployerType: compensation.plan_data?.insuranceEmployerType || "percentage",
+insuranceEmployerIncludeInCtc: compensation.plan_data?.insuranceEmployerIncludeInCtc || false,
+// ESIC Employee
+isESICEmployee:
+  compensation.plan_data?.isESICEmployee || false,
+
+esicEmployeePercentage:
+  compensation.plan_data?.esicEmployeePercentage || "",
+
+esicEmployeeAmount:
+  compensation.plan_data?.esicEmployeeAmount || "",
+
+esicEmployeeType:
+  compensation.plan_data?.esicEmployeeType || "percentage",
+
+esicEmployeeIncludeInCtc:
+  compensation.plan_data?.esicEmployeeIncludeInCtc || false,
+
+
+// Insurance Employee
+isInsuranceEmployee:
+  compensation.plan_data?.isInsuranceEmployee || false,
+
+insuranceEmployeePercentage:
+  compensation.plan_data?.insuranceEmployeePercentage || "",
+
+insuranceEmployeeAmount:
+  compensation.plan_data?.insuranceEmployeeAmount || "",
+
+insuranceEmployeeType:
+  compensation.plan_data?.insuranceEmployeeType || "percentage",
+
+insuranceEmployeeIncludeInCtc:
+  compensation.plan_data?.insuranceEmployeeIncludeInCtc || false,
+  
       isGratuityApplicable:
         compensation.plan_data?.isGratuityApplicable || false,
       gratuityPercentage: compensation.plan_data?.gratuityPercentage || "",
@@ -2744,7 +2817,7 @@ const handleCalculate = () => {
   }
 
   const planDataCopy = { ...formData };
-  const calculatedDetails = calculateSalaryDetails(
+  let calculatedDetails = calculateSalaryDetails(
     annualCTC,
     planDataCopy,
     "preview-employee",
@@ -2762,17 +2835,13 @@ const handleCalculate = () => {
   calculatedDetails.localGross = localGross;
   calculatedDetails.localNet = localNet;
 
-  // Enhanced Included / Excluded
-  const { included, excluded } = getIncludedAndExcludedComponents(
-    formData,
-    calculatedDetails,
-    ctcInput
-  );
+  // ←←← THIS IS THE PROBLEM AREA
+  const previewData = calculatePreviewBreakdown(ctcInput, formData, calculatedDetails);
 
   setSalaryDetails({
     ...calculatedDetails,
-    _includedComponents: included,
-    _excludedComponents: excluded,
+    ...previewData,
+    _previewBreakdown: previewData,   // Make sure this contains ESIC
   });
 };
 
@@ -3085,93 +3154,95 @@ const handleCalculate = () => {
         },
       ],
     },
-   {
+{
   title: "PF and Medical Contributions",
   fields: [
     {
       label: "PF Applicable",
       field: "isPFApplicable",
     },
-    ...(formData.isPFApplicable
-      ? [
-          {
-            label: "Calculation Based On",
-            field: "pfCalculationBase",
-            component: (
-              <div className="compensation-form-group">
-                <span className="compensation-label-text">Calculation Based On</span>
-                <div className="compensation-input-group">
-                  <select
-                    value={formData.pfCalculationBase || "basic"}
-                    className="compensation-select"
-                    disabled
-                  >
-                    <option value="basic">Basic Salary</option>
-                  </select>
-                </div>
-              </div>
-            ),
-          },
-          {
-            label: "PF of Employee",
-            field: "isPFEmployee",
-            percentageField: "pfEmployeePercentage",
-            amountField: "pfEmployeeAmount",
-            typeField: "pfEmployeeType",
-            includeCtcField: "pfEmployeeIncludeInCtc",
-          },
-          {
-            label: "PF of Employer",
-            field: "isPFEmployer",
-            percentageField: "pfEmployerPercentage",
-            amountField: "pfEmployerAmount",
-            typeField: "pfEmployerType",
-            includeCtcField: "pfEmployerIncludeInCtc",
-          },
-        ]
-      : []),
+    ...(formData.isPFApplicable ? [
+      {
+        label: "Calculation Based On",
+        field: "pfCalculationBase",
+        component: (
+          <div className="compensation-form-group">
+            <span className="compensation-label-text">Calculation Based On</span>
+            <div className="compensation-input-group">
+              <select
+                value={formData.pfCalculationBase || "basic"}
+                className="compensation-select"
+                disabled
+              >
+                <option value="basic">Basic Salary</option>
+              </select>
+            </div>
+          </div>
+        ),
+      },
+      {
+        label: "PF of Employee",
+        field: "isPFEmployee",
+        percentageField: "pfEmployeePercentage",
+        amountField: "pfEmployeeAmount",
+        typeField: "pfEmployeeType",
+        includeCtcField: "pfEmployeeIncludeInCtc",
+      },
+      {
+        label: "PF of Employer",
+        field: "isPFEmployer",
+        percentageField: "pfEmployerPercentage",
+        amountField: "pfEmployerAmount",
+        typeField: "pfEmployerType",
+        includeCtcField: "pfEmployerIncludeInCtc",
+      },
+    ] : []),
+
     {
-      label: "Medical Applicable",
-      field: "isMedicalApplicable",
+      label: "ESIC Applicable",
+      field: "isESICApplicable",
     },
-    ...(formData.isMedicalApplicable
-      ? [
-          {
-            label: "Calculation Based On",
-            field: "medicalCalculationBase",
-            component: (
-              <div className="compensation-form-group">
-                <span className="compensation-label-text">Calculation Based On</span>
-                <div className="compensation-input-group">
-                  <select
-                    value={formData.medicalCalculationBase || "basic"}
-                    className="compensation-select"
-                    disabled   // ← Now added/fixed
-                  >
-                    <option value="basic">Basic Salary</option>
-                  </select>
-                </div>
-              </div>
-            ),
-          },
-          {
-            label: "Esic of Employee",
-            field: "isESICEmployee",
-            percentageField: "esicEmployeePercentage",
-            amountField: "esicEmployeeAmount",
-            typeField: "esicEmployeeType",
-            includeCtcField: "esicEmployeeIncludeInCtc",
-          },
-          {
-            label: "Insurance of Employee",
-            field: "isInsuranceEmployee",
-            percentageField: "insuranceEmployeePercentage",
-            amountField: "insuranceEmployeeAmount",
-            typeField: "insuranceEmployeeType",
-            includeCtcField: "insuranceEmployeeIncludeInCtc",
-          },
-        ]
-      : []),
+    ...(formData.isESICApplicable ? [
+      {
+        label: "ESIC of Employee",
+        field: "isESICEmployee",
+        percentageField: "esicEmployeePercentage",
+        amountField: "esicEmployeeAmount",
+        typeField: "esicEmployeeType",
+        includeCtcField: "esicEmployeeIncludeInCtc",
+      },
+      {
+        label: "ESIC of Employer",
+        field: "isESICEmployer",
+        percentageField: "esicEmployerPercentage",
+        amountField: "esicEmployerAmount",
+        typeField: "esicEmployerType",
+        includeCtcField: "esicEmployerIncludeInCtc",
+      },
+    ] : []),
+
+    {
+      label: "Insurance Applicable",
+      field: "isInsuranceApplicable",
+    },
+    ...(formData.isInsuranceApplicable ? [
+      {
+        label: "Insurance of Employee",
+        field: "isInsuranceEmployee",
+        percentageField: "insuranceEmployeePercentage",
+        amountField: "insuranceEmployeeAmount",
+        typeField: "insuranceEmployeeType",
+        includeCtcField: "insuranceEmployeeIncludeInCtc",
+      },
+      {
+        label: "Insurance of Employer",
+        field: "isInsuranceEmployer",
+        percentageField: "insuranceEmployerPercentage",
+        amountField: "insuranceEmployerAmount",
+        typeField: "insuranceEmployerType",
+        includeCtcField: "insuranceEmployerIncludeInCtc",
+      },
+    ] : []),
   ],
 },
     {
@@ -3737,267 +3808,276 @@ const handleCalculate = () => {
               </div>
               <div className="create-preview-columns">
                 <div className="create-preview-left">
-                  <table className="create-compensation-preview-table">
-                    <thead>
-                      <tr className="create-header-row">
-                        <th>Field</th>
-                        <th>Value</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {[
-                        {
-                          label: "Basic Salary",
-                          amountField: "basicSalaryAmount",
-                          percentageField: "basicSalary",
-                          typeField: "basicSalaryType",
-                          enableField: "isBasicSalary",
-                        },
-                        {
-                          label: "House Rent Allowance (HRA)",
-                          amountField: "houseRentAllowanceAmount",
-                          percentageField: "houseRentAllowance",
-                          typeField: "houseRentAllowanceType",
-                          enableField: "isHouseRentAllowance",
-                        },
-                        {
-                          label: "Leave Travel Allowance (LTA)",
-                          amountField: "ltaAllowanceAmount",
-                          percentageField: "ltaAllowance",
-                          typeField: "ltaAllowanceType",
-                          enableField: "isLtaAllowance",
-                        },
-                        {
-                          label: "Other Allowance",
-                          amountField: "otherAllowanceAmount",
-                          percentageField: "otherAllowance",
-                          typeField: "otherAllowanceType",
-                          enableField: "isOtherAllowance",
-                        },
-                        {
-                          label: "Provident Fund (PF - Employee)",
-                          amountField: "pfEmployeeAmount",
-                          percentageField: "pfEmployeePercentage",
-                          typeField: "pfEmployeeType",
-                          enableField: "isPFEmployee",
-                        },
-                        {
-                          label: "Provident Fund (PF - Employer)",
-                          amountField: "pfEmployerAmount",
-                          percentageField: "pfEmployerPercentage",
-                          typeField: "pfEmployerType",
-                          enableField: "isPFEmployer",
-                        },
-                        {
-                          label: "Employee State Insurance (ESIC - Employee)",
-                          amountField: "esicEmployeeAmount",
-                          percentageField: "esicEmployeePercentage",
-                          typeField: "esicEmployeeType",
-                          enableField: "isESICEmployee",
-                        },
-                        {
-                          label: "Insurance (Employee)",
-                          amountField: "insuranceEmployeeAmount",
-                          percentageField: "insuranceEmployeePercentage",
-                          typeField: "insuranceEmployeeType",
-                          enableField: "isInsuranceEmployee",
-                        },
-                        {
-                          label: "Professional Tax",
-                          amountField: "professionalTaxAmount",
-                          percentageField: "professionalTax",
-                          typeField: "professionalTaxType",
-                          enableField: "isProfessionalTax",
-                        },
-                        {
-                          label: "Statutory Bonus",
-                          amountField: "statutoryBonusAmount",
-                          percentageField: "statutoryBonusPercentage",
-                          typeField: "statutoryBonusType",
-                          enableField: "isStatutoryBonus",
-                        },
-                        {
-                          label: "Incentives",
-                          amountField: "incentivesAmount",
-                          percentageField: "incentives",
-                          typeField: "incentivesType",
-                          enableField: "isIncentives",
-                        },
-                        {
-                          label: "Variable Pay / Bonus",
-                          amountField: "variablePayAmount",
-                          percentageField: "variablePay",
-                          typeField: "variablePayType",
-                          enableField: "isVariablePay",
-                        },
-                        {
-                          label: "Gratuity",
-                          amountField: "gratuityAmount",
-                          percentageField: "gratuityPercentage",
-                          typeField: "gratuityType",
-                          enableField: "isGratuityApplicable",
-                        },
-                        {
-                          label: "Overtime Pay",
-                          values: {
-                            Type: formData.overtimePayType,
-                            Rate: formData.overtimePayAmount,
-                            Units: formData.overtimePayUnits,
-                          },
-                          enableField: "isOvertimePay",
-                        },
-                        {
-                          label: "Default Working Days",
-                          values: formData.defaultWorkingDays || {},
-                          enableField: "isDefaultWorkingDays",
-                        },
-                        {
-                          label: "TDS Slabs",
-                          values: { Slabs: formData.tdsSlabs || [] },
-                          enableField: "isTDSApplicable",
-                        },
-                      ]
-                        .map((field, idx) => {
-                          if (!formData[field.enableField]) return null;
-                          const totalCTC = ctcInput
-                            ? parseFloat(ctcInput)
-                            : DEFAULT_CTC;
-                          let displayValue = "";
-                          if (field.label === "Default Working Days") {
-                            displayValue = Object.entries(field.values).map(
-                              ([day, status]) => (
-                                <div key={day}>{`${day}: ${formatStatus(
-                                  status
-                                )}`}</div>
-                              )
-                            );
-                          } else if (field.label === "TDS Slabs") {
-                            displayValue =
-                              field.values.Slabs.length > 0 ? (
-                                field.values.Slabs.map((slab, i) => (
-                                  <div key={i}>
-                                    From: {slab.from}, To: {slab.to}, %:{" "}
-                                    {slab.percentage}
-                                  </div>
-                                ))
-                              ) : (
-                                <span>-</span>
-                              );
-                          } else if (field.label === "Overtime Pay") {
-                            const { Type, Rate, Units } = field.values;
-                            displayValue =
-                              Rate && Units
-                                ? `${Number(Rate).toLocaleString("en-IN", {
-                                    minimumFractionDigits: 2,
-                                    maximumFractionDigits: 2,
-                                  })} / ${
-                                    Type === "hourly"
-                                      ? "hour"
-                                      : Type === "daily"
-                                      ? "day"
-                                      : "unit"
-                                  } (${Units} ${
-                                    Type === "hourly"
-                                      ? "hours"
-                                      : Type === "daily"
-                                      ? "days"
-                                      : "units"
-                                  })`
-                                : "-";
-                          } else {
-  const typeValue = formData[field.typeField];
-  let value = typeValue === "amount" ? formData[field.amountField] : formData[field.percentageField];
-  const basicSalary = parseFloat(formData.basicSalary) || 0;
+              <table className="create-compensation-preview-table">
+  <thead>
+    <tr className="create-header-row">
+      <th>Field</th>
+      <th>Value</th>
+    </tr>
+  </thead>
+  <tbody>
+    {[
+      {
+        label: "Basic Salary",
+        amountField: "basicSalaryAmount",
+        percentageField: "basicSalary",
+        typeField: "basicSalaryType",
+        enableField: "isBasicSalary",
+      },
+      {
+        label: "House Rent Allowance (HRA)",
+        amountField: "houseRentAllowanceAmount",
+        percentageField: "houseRentAllowance",
+        typeField: "houseRentAllowanceType",
+        enableField: "isHouseRentAllowance",
+      },
+      {
+        label: "Leave Travel Allowance (LTA)",
+        amountField: "ltaAllowanceAmount",
+        percentageField: "ltaAllowance",
+        typeField: "ltaAllowanceType",
+        enableField: "isLtaAllowance",
+      },
+      {
+        label: "Other Allowance",
+        amountField: "otherAllowanceAmount",
+        percentageField: "otherAllowance",
+        typeField: "otherAllowanceType",
+        enableField: "isOtherAllowance",
+      },
+      {
+        label: "Provident Fund (PF - Employee)",
+        amountField: "pfEmployeeAmount",
+        percentageField: "pfEmployeePercentage",
+        typeField: "pfEmployeeType",
+        enableField: "isPFEmployee",
+      },
+      {
+        label: "Provident Fund (PF - Employer)",
+        amountField: "pfEmployerAmount",
+        percentageField: "pfEmployerPercentage",
+        typeField: "pfEmployerType",
+        enableField: "isPFEmployer",
+      },
+      {
+        label: "Employee State Insurance (ESIC - Employee)",
+        amountField: "esicEmployeeAmount",
+        percentageField: "esicEmployeePercentage",
+        typeField: "esicEmployeeType",
+        enableField: "isESICEmployee",
+      },
+      {
+        label: "ESIC of Employer",                    // ← NEW
+        amountField: "esicEmployerAmount",
+        percentageField: "esicEmployerPercentage",
+        typeField: "esicEmployerType",
+        enableField: "isESICEmployer",
+      },
+      {
+        label: "Insurance (Employee)",
+        amountField: "insuranceEmployeeAmount",
+        percentageField: "insuranceEmployeePercentage",
+        typeField: "insuranceEmployeeType",
+        enableField: "isInsuranceEmployee",
+      },
+      {
+        label: "Insurance of Employer",               // ← NEW
+        amountField: "insuranceEmployerAmount",
+        percentageField: "insuranceEmployerPercentage",
+        typeField: "insuranceEmployerType",
+        enableField: "isInsuranceEmployer",
+      },
+      {
+        label: "Professional Tax",
+        amountField: "professionalTaxAmount",
+        percentageField: "professionalTax",
+        typeField: "professionalTaxType",
+        enableField: "isProfessionalTax",
+      },
+      {
+        label: "Statutory Bonus",
+        amountField: "statutoryBonusAmount",
+        percentageField: "statutoryBonusPercentage",
+        typeField: "statutoryBonusType",
+        enableField: "isStatutoryBonus",
+      },
+      {
+        label: "Incentives",
+        amountField: "incentivesAmount",
+        percentageField: "incentives",
+        typeField: "incentivesType",
+        enableField: "isIncentives",
+      },
+      {
+        label: "Variable Pay / Bonus",
+        amountField: "variablePayAmount",
+        percentageField: "variablePay",
+        typeField: "variablePayType",
+        enableField: "isVariablePay",
+      },
+      {
+        label: "Gratuity",
+        amountField: "gratuityAmount",
+        percentageField: "gratuityPercentage",
+        typeField: "gratuityType",
+        enableField: "isGratuityApplicable",
+      },
+      {
+        label: "Overtime Pay",
+        values: {
+          Type: formData.overtimePayType,
+          Rate: formData.overtimePayAmount,
+          Units: formData.overtimePayUnits,
+        },
+        enableField: "isOvertimePay",
+      },
+      {
+        label: "Default Working Days",
+        values: formData.defaultWorkingDays || {},
+        enableField: "isDefaultWorkingDays",
+      },
+      {
+        label: "TDS Slabs",
+        values: { Slabs: formData.tdsSlabs || [] },
+        enableField: "isTDSApplicable",
+      },
+    ]
+      .map((field, idx) => {
+        if (!formData[field.enableField]) return null;
 
-  if (value !== "" && value !== undefined) {
-    const numValue = parseFloat(value);
-    
-    // If salaryDetails exist (post-Calculate), compute effective CTC % from actual calculated values
-    if (salaryDetails) {
-      // Map field labels to salaryDetails keys
-      const salaryDetailsKeyMap = {
-        "Basic Salary": "basicSalary",
-        "House Rent Allowance (HRA)": "hra",
-        "Leave Travel Allowance (LTA)": "ltaAllowance",
-        "Other Allowance": "otherAllowances",
-        "Provident Fund (PF - Employee)": "employeePF",
-        "Provident Fund (PF - Employer)": "employerPF",
-        "Employee State Insurance (ESIC - Employee)": "esic",
-        "Insurance (Employee)": "insurance",
-        "Professional Tax": "professionalTax",
-        "Statutory Bonus": "statutoryBonus",
-        "Variable Pay / Bonus": "variablePay",
-        "Gratuity": "gratuity",
-      };
-      const includeMap = {
-        employeePF: 'pfEmployeeIncludeInCtc',
-        employerPF: 'pfEmployerIncludeInCtc',
-        esic: 'esicEmployeeIncludeInCtc',
-        insurance: 'insuranceEmployeeIncludeInCtc',
-        professionalTax: 'professionalTaxIncludeInCtc',
-        gratuity: 'gratuityIncludeInCtc',
-      };
+        const totalCTC = ctcInput ? parseFloat(ctcInput) : DEFAULT_CTC;
+        let displayValue = "";
 
-      const salaryKey = salaryDetailsKeyMap[field.label];
-      let monthlyCalc = salaryKey ? (Number(salaryDetails[salaryKey]) || 0) : 0;
-      // apply include-flag: if explicitly false, treat as zero
-      if (salaryKey && includeMap[salaryKey] && formData[includeMap[salaryKey]] === false) {
-        monthlyCalc = 0;
-      }
-      
-      if (monthlyCalc > 0) {
-        const annualCalc = monthlyCalc * 12;
-        const totalCTC = parseFloat(ctcInput) || DEFAULT_CTC;
-        const effPct = (annualCalc / totalCTC) * 100;
-        console.log(`Preview [${field.label}]: Using calculated value from salaryDetails[${salaryKey}] = ₹${monthlyCalc.toFixed(2)}/mo ≈ ${effPct.toFixed(4)}% of CTC`);
-        
-        if (typeValue === "amount") {
-          // Amount mode: show monthly amount and effective CTC %
-          displayValue = `₹${monthlyCalc.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/mo ≈ ${effPct.toFixed(4)}% of CTC`;
+        if (field.label === "Default Working Days") {
+          displayValue = Object.entries(field.values).map(
+            ([day, status]) => (
+              <div key={day}>{`${day}: ${formatStatus(status)}`}</div>
+            )
+          );
+        } else if (field.label === "TDS Slabs") {
+          displayValue =
+            field.values.Slabs.length > 0 ? (
+              field.values.Slabs.map((slab, i) => (
+                <div key={i}>
+                  From: {slab.from}, To: {slab.to}, %: {slab.percentage}
+                </div>
+              ))
+            ) : (
+              <span>-</span>
+            );
+        } else if (field.label === "Overtime Pay") {
+          const { Type, Rate, Units } = field.values;
+          displayValue =
+            Rate && Units
+              ? `${Number(Rate).toLocaleString("en-IN", {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                })} / ${
+                  Type === "hourly"
+                    ? "hour"
+                    : Type === "daily"
+                    ? "day"
+                    : "unit"
+                } (${Units} ${
+                  Type === "hourly"
+                    ? "hours"
+                    : Type === "daily"
+                    ? "days"
+                    : "units"
+                })`
+              : "-";
         } else {
-          // Percentage mode: show form value ≈ effective CTC %
-          displayValue = `${numValue.toFixed(2)}% ≈ ${effPct.toFixed(4)}% of CTC`;
+          const typeValue = formData[field.typeField];
+          let value = typeValue === "amount" ? formData[field.amountField] : formData[field.percentageField];
+          const basicSalary = parseFloat(formData.basicSalary) || 0;
+
+          if (value !== "" && value !== undefined) {
+            const numValue = parseFloat(value);
+
+            if (salaryDetails) {
+              // Updated salaryDetailsKeyMap with Employer ESIC & Insurance
+              const salaryDetailsKeyMap = {
+                "Basic Salary": "basicSalary",
+                "House Rent Allowance (HRA)": "hra",
+                "Leave Travel Allowance (LTA)": "ltaAllowance",
+                "Other Allowance": "otherAllowances",
+                "Provident Fund (PF - Employee)": "employeePF",
+                "Provident Fund (PF - Employer)": "employerPF",
+                "Employee State Insurance (ESIC - Employee)": "esic",
+                "ESIC of Employer": "esicEmployer",                    // ← NEW
+                "Insurance (Employee)": "insurance",
+                "Insurance of Employer": "insuranceEmployer",          // ← NEW
+                "Professional Tax": "professionalTax",
+                "Statutory Bonus": "statutoryBonus",
+                "Variable Pay / Bonus": "variablePay",
+                "Gratuity": "gratuity",
+              };
+
+              const includeMap = {
+                employeePF: 'pfEmployeeIncludeInCtc',
+                employerPF: 'pfEmployerIncludeInCtc',
+                esic: 'esicEmployeeIncludeInCtc',
+                insurance: 'insuranceEmployeeIncludeInCtc',
+                professionalTax: 'professionalTaxIncludeInCtc',
+                gratuity: 'gratuityIncludeInCtc',
+              };
+
+              const salaryKey = salaryDetailsKeyMap[field.label];
+              let monthlyCalc = salaryKey ? (Number(salaryDetails[salaryKey]) || 0) : 0;
+
+              if (salaryKey && includeMap[salaryKey] && formData[includeMap[salaryKey]] === false) {
+                monthlyCalc = 0;
+              }
+
+              if (monthlyCalc > 0) {
+                const annualCalc = monthlyCalc * 12;
+                const totalCTCVal = parseFloat(ctcInput) || DEFAULT_CTC;
+                const effPct = (annualCalc / totalCTCVal) * 100;
+
+                if (typeValue === "amount") {
+                  displayValue = `₹${monthlyCalc.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/mo ≈ ${effPct.toFixed(4)}% of CTC`;
+                } else {
+                  displayValue = `${numValue.toFixed(2)}% ≈ ${effPct.toFixed(4)}% of CTC`;
+                }
+              } else {
+                displayValue = "-";
+              }
+            } else {
+              // Fallback logic (unchanged)
+              if (typeValue === "amount") {
+                const monthlyFields = ["basicSalaryAmount", "houseRentAllowanceAmount", "ltaAllowanceAmount", "otherAllowanceAmount", "pfEmployeeAmount", "pfEmployerAmount", "esicEmployeeAmount", "insuranceEmployeeAmount", "professionalTaxAmount"];
+                const isMonthly = monthlyFields.includes(field.amountField);
+                const annualValue = isMonthly ? (Number(value) * 12) : Number(value);
+                const timeUnit = isMonthly ? "/mo" : "/yr";
+                const totalCTCVal = parseFloat(ctcInput) || DEFAULT_CTC;
+                const effPct = (annualValue / totalCTCVal * 100).toFixed(4);
+                displayValue = `₹${Number(value).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}${timeUnit} ≈ ${effPct}% of CTC`;
+              } else {
+                let effectivePct = numValue;
+                const fieldBase = field.percentageField.replace("Percentage", "");
+                if (BASIC_BASED_FIELDS.includes(fieldBase) && basicSalary > 0) {
+                  effectivePct = (numValue / 100) * basicSalary;
+                }
+                displayValue = Math.abs(effectivePct - numValue) < 0.01 
+                  ? `${numValue.toFixed(2)}%` 
+                  : `${numValue.toFixed(2)}% ≈ ${effectivePct.toFixed(4)}% of CTC`;
+              }
+            }
+          } else {
+            displayValue = "-";
+          }
         }
-      } else {
-        displayValue = "-";
-      }
-    } else {
-      // Fallback: compute from form values when salaryDetails not available
-      if (typeValue === "amount") {
-        // Determine if monthly or annual
-        const monthlyFields = ["basicSalaryAmount", "houseRentAllowanceAmount", "ltaAllowanceAmount", "otherAllowanceAmount", "pfEmployeeAmount", "pfEmployerAmount", "esicEmployeeAmount", "insuranceEmployeeAmount", "professionalTaxAmount"];
-        const isMonthly = monthlyFields.includes(field.amountField);
-        const annualValue = isMonthly ? (Number(value) * 12) : Number(value);
-        const timeUnit = isMonthly ? "/mo" : "/yr";
-        const totalCTC = parseFloat(ctcInput) || DEFAULT_CTC;
-        const effPct = (annualValue / totalCTC * 100).toFixed(4);
-        displayValue = `₹${Number(value).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}${timeUnit} ≈ ${effPct}% of CTC`;
-      } else {
-        // Percentage mode - show effective CTC percentage
-        let effectivePct = numValue;
-        const fieldBase = field.percentageField.replace("Percentage", "");
-        if (BASIC_BASED_FIELDS.includes(fieldBase) && basicSalary > 0) {
-          effectivePct = (numValue / 100) * basicSalary;
-        }
-        displayValue = Math.abs(effectivePct - numValue) < 0.01 
-          ? `${numValue.toFixed(2)}%` 
-          : `${numValue.toFixed(2)}% ≈ ${effectivePct.toFixed(4)}% of CTC`;
-      }
-    }
-  } else {
-    displayValue = "-";
-  }
-}
-                          return (
-                            <tr key={idx}>
-                              <td>{field.label}</td>
-                              <td>{displayValue}</td>
-                            </tr>
-                          );
-                        })
-                        .filter((row) => row !== null)}
-                    </tbody>
-                  </table>
+
+        return (
+          <tr key={idx}>
+            <td>{field.label}</td>
+            <td>{displayValue}</td>
+          </tr>
+        );
+      })
+      .filter((row) => row !== null)}
+  </tbody>
+</table>
 
                   {previewAllocation && (
                     <div style={{
@@ -4021,207 +4101,160 @@ const handleCalculate = () => {
                   )}
 
                 </div>
- {salaryDetails && (
+{salaryDetails && (
   <div className="create-preview-right">
-    <h3>Calculated Salary (Monthly)</h3>
+    <h3>Salary Breakdown (Monthly)</h3>
 
-    {/* === EMPLOYEE EARNINGS === */}
+    {/* ==================== EMPLOYEE EARNINGS ==================== */}
     <table className="create-compensation-preview-table">
       <thead>
         <tr className="create-header-row">
           <th colSpan="3" style={{ backgroundColor: "#e8f5e9" }}>Employee Earnings</th>
         </tr>
-        <tr className="create-header-row">
+        <tr>
           <th>Component</th>
-          <th>Amount (₹)</th>
-          <th>% of CTC</th>
+          <th>Monthly (₹)</th>
+          <th>Yearly (₹)</th>
         </tr>
       </thead>
       <tbody>
-        {getEarnings(salaryDetails).map((item, idx) => {
-          const annual = item.amount * 12;
-          const pct = (annual / (parseFloat(ctcInput) || DEFAULT_CTC)) * 100;
-          let amountDisplay = item.amount.toLocaleString("en-IN", { minimumFractionDigits: 2 });
+        {[
+          { label: "Basic", amount: salaryDetails._previewBreakdown.employeeEarnings.basic },
+          { label: "HRA", amount: salaryDetails._previewBreakdown.employeeEarnings.hra },
+          { label: "LTA", amount: salaryDetails._previewBreakdown.employeeEarnings.lta },
+          { label: "Other Allowance", amount: salaryDetails._previewBreakdown.employeeEarnings.otherAllowance },
+          { label: "Incentives", amount: salaryDetails._previewBreakdown.employeeEarnings.incentivePay },
+          { label: "Overtime Pay", amount: salaryDetails._previewBreakdown.employeeEarnings.overtimePay },
+          { label: "Statutory Bonus", amount: salaryDetails._previewBreakdown.employeeEarnings.statutoryBonus },
+        ].map((item, idx) => item.amount > 0 && (
+          <tr key={idx}>
+            <td><strong>{item.label}</strong></td>
+            <td>{item.amount.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</td>
+            <td>{(item.amount * 12).toLocaleString("en-IN")}</td>
+          </tr>
+        ))}
+        <tr style={{ backgroundColor: "#c8e6c9", fontWeight: "bold" }}>
+          <td><strong>Total Earnings (A)</strong></td>
+          <td>{salaryDetails._previewBreakdown.employeeEarnings.total.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</td>
+          <td>{(salaryDetails._previewBreakdown.employeeEarnings.total * 12).toLocaleString("en-IN")}</td>
+        </tr>
+      </tbody>
+    </table>
 
-          if (item.label === "Other Allowances") {
-            const includedComps = getCtcIncludedComponentsForBreakdown(salaryDetails, formData);
-            amountDisplay = (
-              <>
-                {amountDisplay}
-                <div style={{ fontSize: "0.78rem", color: "#555", marginTop: "4px", whiteSpace: "pre-line", lineHeight: "1.35" }}>
-                  CTC - ({includedComps.map(c => c.label).join(" + ")})
-                </div>
-              </>
-            );
-          }
+    {/* ==================== EMPLOYER CONTRIBUTIONS ==================== */}
+   {/* ==================== EMPLOYER CONTRIBUTIONS ==================== */}
+<table className="create-compensation-preview-table" style={{ marginTop: "20px" }}>
+  <thead>
+    <tr className="create-header-row">
+      <th colSpan="3" style={{ backgroundColor: "#e3f2fd" }}>Employer Contributions</th>
+    </tr>
+    <tr>
+      <th>Component</th>
+      <th>Monthly (₹)</th>
+      <th>Yearly (₹)</th>
+    </tr>
+  </thead>
+  <tbody>
+    {[
+      { label: "Employer PF", amount: salaryDetails._previewBreakdown.employerContributions.employerPF, show: formData.isPFEmployer },
+      { label: "Gratuity", amount: salaryDetails._previewBreakdown.employerContributions.gratuity, show: formData.isGratuityApplicable },
+      { label: "Insurance (Employer)", amount: salaryDetails._previewBreakdown.employerContributions.insuranceEmployer, show: formData.isInsuranceEmployer },
+      { label: "ESIC (Employer)", amount: salaryDetails._previewBreakdown.employerContributions.esicEmployer, show: formData.isESICEmployer },   // ← Added/Fixed
+    ]
+      .filter(item => item.show && item.amount > 0)
+      .map((item, idx) => (
+        <tr key={idx}>
+          <td><strong>{item.label}</strong></td>
+          <td>{item.amount.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</td>
+          <td>{(item.amount * 12).toLocaleString("en-IN")}</td>
+        </tr>
+      ))}
+    <tr style={{ backgroundColor: "#bbdefb", fontWeight: "bold" }}>
+      <td><strong>Total Employer Contribution (B)</strong></td>
+      <td>{salaryDetails._previewBreakdown.employerContributions.total.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</td>
+      <td>{(salaryDetails._previewBreakdown.employerContributions.total * 12).toLocaleString("en-IN")}</td>
+    </tr>
+  </tbody>
+</table>
 
-          return (
+    {/* ==================== FINAL CTC VALIDATION ==================== */}
+    <table className="create-compensation-preview-table" style={{ marginTop: "20px", backgroundColor: "#f0f4ff" }}>
+      <thead>
+        <tr className="create-header-row">
+          <th colSpan="3">Final CTC Validation</th>
+        </tr>
+        <tr>
+          <th>Component</th>
+          <th>Monthly (₹)</th>
+          <th>Yearly (₹)</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>Gross Salary (A)</strong></td>
+          <td>{salaryDetails._previewBreakdown.summary.grossSalaryMonthly.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</td>
+          <td>{(salaryDetails._previewBreakdown.summary.grossSalaryMonthly * 12).toLocaleString("en-IN")}</td>
+        </tr>
+        <tr>
+          <td><strong>Total Employer Contribution (B)</strong></td>
+          <td>{salaryDetails._previewBreakdown.employerContributions.total.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</td>
+          <td>{(salaryDetails._previewBreakdown.employerContributions.total * 12).toLocaleString("en-IN")}</td>
+        </tr>
+        <tr style={{ backgroundColor: "#e8f5e9", fontWeight: "bold" }}>
+          <td><strong>Final CTC (A + B)</strong></td>
+          <td>{salaryDetails._previewBreakdown.summary.finalCTCMonthly.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</td>
+          <td>{(salaryDetails._previewBreakdown.summary.finalCTCMonthly * 12).toLocaleString("en-IN")}</td>
+        </tr>
+      </tbody>
+    </table>
+
+    {/* ==================== EMPLOYEE DEDUCTIONS ==================== */}
+    <table className="create-compensation-preview-table" style={{ marginTop: "25px" }}>
+      <thead>
+        <tr className="create-header-row">
+          <th colSpan="3" style={{ backgroundColor: "#fff3e0" }}>Employee Deductions</th>
+        </tr>
+        <tr>
+          <th>Component</th>
+          <th>Monthly (₹)</th>
+          <th>Yearly (₹)</th>
+        </tr>
+      </thead>
+      <tbody>
+        {[
+          { label: "Employee PF", amount: salaryDetails._previewBreakdown.employeeDeductions.employeePF, show: formData.isPFEmployee },
+          { label: "Professional Tax", amount: salaryDetails._previewBreakdown.employeeDeductions.professionalTax, show: formData.isProfessionalTax },
+          { label: "ESIC (Employee)", amount: salaryDetails._previewBreakdown.employeeDeductions.esicEmployee, show: formData.isESICEmployee },
+          { label: "Insurance (Employee)", amount: salaryDetails._previewBreakdown.employeeDeductions.insuranceEmployee, show: formData.isInsuranceEmployee },
+        ]
+          .filter(item => item.show && item.amount > 0)
+          .map((item, idx) => (
             <tr key={idx}>
               <td><strong>{item.label}</strong></td>
-              <td>{amountDisplay}</td>
-              <td>{pct.toFixed(4)}%</td>
+              <td>{item.amount.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</td>
+              <td>{(item.amount * 12).toLocaleString("en-IN")}</td>
             </tr>
-          );
-        })}
-
-        {/* === TOTAL EARNINGS === */}
-        <tr style={{ backgroundColor: "#c8e6c9", fontWeight: "bold" }}>
-          <td><strong>Total Earnings</strong></td>
-          <td>
-            {getEarnings(salaryDetails)
-              .reduce((sum, item) => sum + item.amount, 0)
-              .toLocaleString("en-IN", { minimumFractionDigits: 2 })}
-          </td>
-          <td>—</td>
+          ))}
+        <tr style={{ backgroundColor: "#ffe0b2", fontWeight: "bold" }}>
+          <td><strong>Total Deduction (C)</strong></td>
+          <td>{salaryDetails._previewBreakdown.employeeDeductions.total.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</td>
+          <td>{(salaryDetails._previewBreakdown.employeeDeductions.total * 12).toLocaleString("en-IN")}</td>
         </tr>
       </tbody>
     </table>
 
-    {/* === EMPLOYEE DEDUCTIONS (Included in CTC) === */}
-    <table className="create-compensation-preview-table" style={{ marginTop: "20px" }}>
+    {/* ==================== NET SALARY ==================== */}
+    <table className="create-compensation-preview-table" style={{ marginTop: "20px", backgroundColor: "#e8f5e9" }}>
       <thead>
         <tr className="create-header-row">
-          <th colSpan="3" style={{ backgroundColor: "#fff3e0" }}>Employee Deductions (Included in CTC)</th>
-        </tr>
-        <tr className="create-header-row">
-          <th>Component</th>
-          <th>Amount (₹)</th>
-          <th>% of CTC</th>
+          <th colSpan="3">Net Salary</th>
         </tr>
       </thead>
       <tbody>
-        {getEmployeeDeductions(salaryDetails, formData).map((item, idx) => (
-          <tr key={idx}>
-            <td><strong>{item.label}</strong></td>
-            <td>{item.amount.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</td>
-            <td>{((item.amount * 12) / (parseFloat(ctcInput) || DEFAULT_CTC) * 100).toFixed(4)}%</td>
-          </tr>
-        ))}
-      </tbody>
-    </table>
-
-    {/* === EMPLOYER CONTRIBUTIONS === */}
-    <table className="create-compensation-preview-table" style={{ marginTop: "20px" }}>
-      <thead>
-        <tr className="create-header-row">
-          <th colSpan="3" style={{ backgroundColor: "#e3f2fd" }}>Employer Contributions</th>
-        </tr>
-        <tr className="create-header-row">
-          <th>Component</th>
-          <th>Amount (₹)</th>
-          <th>% of CTC</th>
-        </tr>
-      </thead>
-      <tbody>
-        {getEmployerContributions(salaryDetails, formData).map((item, idx) => (
-          <tr key={idx}>
-            <td><strong>{item.label}</strong></td>
-            <td>{item.amount.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</td>
-            <td>{((item.amount * 12) / (parseFloat(ctcInput) || DEFAULT_CTC) * 100).toFixed(4)}%</td>
-          </tr>
-        ))}
-      </tbody>
-    </table>
-
-    {/* === COMPONENTS NOT INCLUDED IN CTC === */}
-    {salaryDetails._excludedComponents && salaryDetails._excludedComponents.length > 0 && (
-      <>
-        <h3 style={{ marginTop: "30px", color: "#d32f2f" }}>Components Not Included in CTC</h3>
-        <table className="create-compensation-preview-table" style={{ borderColor: "#ffcdd2" }}>
-          <thead>
-            <tr className="create-header-row" style={{ backgroundColor: "#ffebee" }}>
-              <th>Component</th>
-              <th>Monthly (₹)</th>
-              <th>Annual (₹)</th>
-              <th>% of CTC</th>
-            </tr>
-          </thead>
-          <tbody>
-            {salaryDetails._excludedComponents.map((item, idx) => (
-              <tr key={idx}>
-                <td><strong>{item.label}</strong></td>
-                <td>{item.monthly.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</td>
-                <td>{item.annual.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</td>
-                <td>{item.percentage.toFixed(4)}%</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </>
-    )}
-
-    {/* === SUMMARY WITH CLEAR CALCULATIONS === */}
-    <table className="create-compensation-preview-table" style={{ marginTop: "25px", backgroundColor: "#f8f9fa" }}>
-      <thead>
-        <tr className="create-header-row">
-          <th>Summary</th>
-          <th>Amount (₹) + Calculation</th>
-          <th>% of CTC</th>
-        </tr>
-      </thead>
-      <tbody>
-        {/* Original Gross & Net - Kept as is */}
-        <tr>
-          <td><strong>Gross Salary</strong></td>
-          <td>
-            {Number(salaryDetails.localGross || 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
-            <div style={{ fontSize: "0.78rem", color: "#555", marginTop: "6px", whiteSpace: "pre-line", lineHeight: "1.4" }}>
-              Total Earnings + Included Deductions
-            </div>
-          </td>
-          <td>{((salaryDetails.localGross * 12) / (parseFloat(ctcInput) || DEFAULT_CTC) * 100).toFixed(4)}%</td>
-        </tr>
-
-        <tr>
-          <td><strong>Net Salary</strong></td>
-          <td>
-            {Number(salaryDetails.localNet || 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
-            <div style={{ fontSize: "0.78rem", color: "#555", marginTop: "6px", whiteSpace: "pre-line", lineHeight: "1.4" }}>
-              Gross Salary - Employee Deductions
-            </div>
-          </td>
-          <td>{((salaryDetails.localNet * 12) / (parseFloat(ctcInput) || DEFAULT_CTC) * 100).toFixed(4)}%</td>
-        </tr>
-
-        {/* Final Calculations as per your requirement */}
-        <tr style={{ backgroundColor: "#e8f5e9", fontWeight: "bold" }}>
-          <td><strong>Final Gross Salary</strong></td>
-          <td>
-            {getEarnings(salaryDetails)
-              .reduce((sum, item) => sum + item.amount, 0)
-              .toLocaleString("en-IN", { minimumFractionDigits: 2 })}
-            <div style={{ fontSize: "0.78rem", color: "#555", marginTop: "6px" }}>
-              = Total Earnings
-            </div>
-          </td>
-          <td>—</td>
-        </tr>
-
-        <tr style={{ backgroundColor: "#e8f5e9", fontWeight: "bold" }}>
-          <td><strong>Final Net Salary</strong></td>
-          <td>
-            {(() => {
-              const totalEarnings = getEarnings(salaryDetails).reduce((sum, item) => sum + item.amount, 0);
-              const employeeDeductions = getEmployeeDeductions(salaryDetails, formData).reduce((sum, item) => sum + item.amount, 0);
-              const finalNet = totalEarnings - employeeDeductions;
-              return finalNet.toLocaleString("en-IN", { minimumFractionDigits: 2 });
-            })()}
-            <div style={{ fontSize: "0.78rem", color: "#555", marginTop: "6px", whiteSpace: "pre-line", lineHeight: "1.4" }}>
-              = Total Earnings ₹{getEarnings(salaryDetails)
-                .reduce((sum, item) => sum + item.amount, 0)
-                .toLocaleString("en-IN", { minimumFractionDigits: 2 })} 
-              - (Employee Deductions: ₹{getEmployeeDeductions(salaryDetails, formData)
-                .reduce((sum, item) => sum + item.amount, 0)
-                .toLocaleString("en-IN", { minimumFractionDigits: 2 })})
-            </div>
-          </td>
-          <td>—</td>
-        </tr>
-
-        <tr style={{ fontWeight: "bold", backgroundColor: "#e8f5e9" }}>
-          <td><strong>Total CTC Allocation</strong></td>
-          <td>—</td>
-          <td><strong>100.0000%</strong></td>
+        <tr style={{ fontWeight: "bold" }}>
+          <td><strong>Net Salary (A - C)</strong></td>
+          <td>{salaryDetails._previewBreakdown.summary.netSalaryMonthly.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</td>
+          <td>{(salaryDetails._previewBreakdown.summary.netSalaryMonthly * 12).toLocaleString("en-IN")}</td>
         </tr>
       </tbody>
     </table>

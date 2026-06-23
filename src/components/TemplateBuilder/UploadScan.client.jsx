@@ -127,13 +127,18 @@ export default function UploadScan({
 
   useEffect(() => {
     if (typeof onPreviewChange !== "function") return;
+
     try {
       onPreviewChange({
-        headerUrl: headerFile ? headerUrl : null,
-        footerUrl: footerFile ? footerUrl : null,
+        headerUrl: headerFile
+          ? headerUrl
+          : (headerUrl ?? initialHeaderUrl ?? null),
+        footerUrl: footerFile
+          ? footerUrl
+          : (footerUrl ?? initialFooterUrl ?? null),
         headerFile,
         footerFile,
-        watermarkUrl: watermarkFile ? watermarkUrl : watermarkUrlProp,
+        watermarkUrl: watermarkFile ? watermarkUrl : (watermarkUrlProp ?? null),
         watermarkFile,
       });
     } catch (e) {
@@ -147,6 +152,8 @@ export default function UploadScan({
     watermarkFile,
     watermarkUrl,
     watermarkUrlProp,
+    initialHeaderUrl,
+    initialFooterUrl,
     onPreviewChange,
   ]);
 
@@ -157,8 +164,8 @@ export default function UploadScan({
 
     if (!f && typeof onPreviewChange === "function") {
       onPreviewChange({
-        headerUrl: null,
-        footerUrl,
+        headerUrl: initialHeaderUrl ?? null,
+        footerUrl: footerUrl ?? initialFooterUrl ?? null,
         headerFile: null,
         footerFile,
         watermarkUrl: watermarkFile ? watermarkUrl : watermarkUrlProp,
@@ -174,8 +181,8 @@ export default function UploadScan({
 
     if (!f && typeof onPreviewChange === "function") {
       onPreviewChange({
-        footerUrl: null,
-        headerUrl,
+        footerUrl: initialFooterUrl ?? null,
+        headerUrl: headerUrl ?? initialHeaderUrl ?? null,
         footerFile: null,
         headerFile,
         watermarkUrl: watermarkFile ? watermarkUrl : watermarkUrlProp,
@@ -196,7 +203,7 @@ export default function UploadScan({
     if (typeof onPreviewChange === "function") {
       onPreviewChange({
         headerUrl: null,
-        footerUrl,
+        footerUrl: footerUrl ?? initialFooterUrl ?? null,
         headerFile: null,
         footerFile,
         watermarkUrl: watermarkFile ? watermarkUrl : watermarkUrlProp,
@@ -211,7 +218,7 @@ export default function UploadScan({
     if (typeof onPreviewChange === "function") {
       onPreviewChange({
         footerUrl: null,
-        headerUrl,
+        headerUrl: headerUrl ?? initialHeaderUrl ?? null,
         footerFile: null,
         headerFile,
         watermarkUrl: watermarkFile ? watermarkUrl : watermarkUrlProp,

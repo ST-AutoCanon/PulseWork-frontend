@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { FaSearch, FaChevronDown, FaChevronUp } from "react-icons/fa";
 import { FiDownload } from "react-icons/fi";
 import { FaFileInvoice } from "react-icons/fa6";
@@ -15,6 +15,7 @@ import "./RbTeamLead.css";
 import Modal from "../Modal/Modal.client";
 import ParticipantSelection from "./ParticipantSelection.client";
 import { useAuth } from "../../context/AuthProvider.client";
+
 function getCookie(name) {
   if (typeof document === "undefined") return null;
   const m = document.cookie.match(
@@ -65,6 +66,7 @@ function getEmployeeIdFromContextOrCookie(user) {
   }
   return null;
 }
+
 const RbTeamLead = () => {
   const { user, hydrated } = useAuth();
   const employeeData = (user && (user.raw || user.dashboard)) || {};
@@ -122,10 +124,12 @@ const RbTeamLead = () => {
     title: "",
     message: "",
   });
+
   const showAlert = (message, title = "") =>
     setAlertModal({ isVisible: true, title, message });
   const closeAlert = () =>
     setAlertModal({ isVisible: false, title: "", message: "" });
+
   useEffect(() => {
     console.debug("Auth user (resolved):", {
       id: user?.employeeId || user?.id || teamLeadId,
@@ -134,7 +138,24 @@ const RbTeamLead = () => {
       hydrated,
       rawKeys: user?.raw ? Object.keys(user.raw).slice(0, 8) : undefined,
     });
-  }, [user, departmentId, orgId, hydrated]);
+  }, [user, departmentId, orgId, hydrated, teamLeadId]);
+  const normalizeProject = (value) => String(value ?? "").trim();
+
+  const isInvalidProject = (value) => {
+    const v = normalizeProject(value).toUpperCase();
+    return !v || v === "STS CLAIM";
+  };
+
+  const dedupeProjects = (list = []) => {
+    const seen = new Set();
+    return (Array.isArray(list) ? list : []).filter((item) => {
+      const key = normalizeProject(item).toLowerCase();
+      if (!key || seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  };
+
   const buildHeaders = useCallback(
     (extra = {}) => {
       const h = {};
@@ -161,6 +182,7 @@ const RbTeamLead = () => {
     },
     [user, apiKey, orgId],
   );
+
   const resolveDepartmentIdOnce = useCallback(async () => {
     if (departmentId) return departmentId;
     if (deptResolveTried) return null;
@@ -225,6 +247,30 @@ const RbTeamLead = () => {
     resolvingDept,
     teamLeadId,
   ]);
+  const orgPrefix = useMemo(() => {
+    const candidates = [
+      user?.orgPrefix,
+      user?.org_prefix,
+      user?.raw?.orgPrefix,
+      user?.raw?.org_prefix,
+      user?.dashboard?.orgPrefix,
+      user?.dashboard?.org_prefix,
+      user?.organization?.orgPrefix,
+      user?.organization?.org_prefix,
+      user?.organization_name,
+      user?.orgName,
+      user?.raw?.organization_name,
+      user?.raw?.org_name,
+    ];
+
+    const found = candidates.find(
+      (v) => v !== undefined && v !== null && String(v).trim() !== "",
+    );
+
+    return found ? String(found).trim() : "";
+  }, [user]);
+
+  const orgClaimLabel = orgPrefix ? `${orgPrefix} CLAIM` : "";
   const resolveOrgIdOnce = useCallback(async () => {
     if (orgId) return orgId;
     if (orgResolveTried) return orgId;
@@ -291,11 +337,21 @@ const RbTeamLead = () => {
     resolvingOrg,
     teamLeadId,
   ]);
+
   useEffect(() => {
     if (!hydrated) return;
     if (!orgId && !orgResolveTried) resolveOrgIdOnce();
     if (!departmentId && !deptResolveTried) resolveDepartmentIdOnce();
-  }, [hydrated]);
+  }, [
+    hydrated,
+    orgId,
+    orgResolveTried,
+    departmentId,
+    deptResolveTried,
+    resolveOrgIdOnce,
+    resolveDepartmentIdOnce,
+  ]);
+
   useEffect(() => {
     if (!hydrated) return;
     const fetchProjects = async () => {
@@ -306,7 +362,28 @@ const RbTeamLead = () => {
           withCredentials: true,
           headers: buildHeaders(),
         });
-        setProjects(response.data || []);
+
+        const raw = Array.isArray(response.data)
+          ? response.data
+          : response.data?.data || [];
+
+        const cleaned = dedupeProjects(
+          raw
+            .map((item) => {
+              if (typeof item === "string") return item;
+              return (
+                item?.project ||
+                item?.project_name ||
+                item?.name ||
+                item?.label ||
+                ""
+              );
+            })
+            .map(normalizeProject)
+            .filter((p) => !isInvalidProject(p)),
+        );
+
+        setProjects(cleaned);
       } catch (error) {
         console.error(
           "Error fetching projects:",
@@ -316,7 +393,17 @@ const RbTeamLead = () => {
     };
     fetchProjects();
     fetchEmployeeOptions();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hydrated]);
+
+  const safeProjects = useMemo(() => {
+    return dedupeProjects(
+      (Array.isArray(projects) ? projects : [])
+        .map(normalizeProject)
+        .filter((p) => !isInvalidProject(p)),
+    );
+  }, [projects]);
+
   const fetchEmployeeOptions = async () => {
     try {
       if (!orgId && !orgResolveTried) await resolveOrgIdOnce();
@@ -355,11 +442,7 @@ const RbTeamLead = () => {
       ]);
     }
   };
-  useEffect(() => {
-    if (view !== "team") return;
-    if (!hydrated) return;
-    fetchEmployees();
-  }, [view, hydrated]);
+
   const resolveDateDisplay = (payload = {}, claim = {}) => {
     const pick = (obj, keys = []) => {
       for (const k of keys) {
@@ -442,6 +525,7 @@ const RbTeamLead = () => {
     const yy = d.getFullYear();
     return `${dd}-${mon}-${yy}`;
   };
+
   const formatRange = (from, to) => {
     const f = formatDisplayDate(from);
     const t = formatDisplayDate(to);
@@ -449,6 +533,7 @@ const RbTeamLead = () => {
     if (f && t && f !== t) return `${f} - ${t}`;
     return f || t;
   };
+
   const fetchEmployees = async () => {
     try {
       if (!teamLeadId) {
@@ -712,11 +797,12 @@ const RbTeamLead = () => {
       showAlert("Error fetching claims.");
     }
   };
+
   const toggleRow = (employeeId) =>
     setExpandedRows((prev) => ({ ...prev, [employeeId]: !prev[employeeId] }));
-
   const toggleClaimExpand = (claimId) =>
     setExpandedClaims((prev) => ({ ...prev, [claimId]: !prev[claimId] }));
+
   const handleOpenAttachments = async (files, claim) => {
     try {
       if (!files || files.length === 0) {
@@ -773,8 +859,6 @@ const RbTeamLead = () => {
     }
   };
 
-  const handleStatusChange = (id, value) =>
-    setStatusUpdates((prev) => ({ ...prev, [id]: value }));
   const parseInvoicesForClaim = (claim) => {
     let invs =
       claim?.invoices || claim?.invoice_numbers || claim?.invoice_no || [];
@@ -790,6 +874,7 @@ const RbTeamLead = () => {
     }
     return Array.isArray(invs) && invs.length ? invs : [];
   };
+
   const getParticipantNamesForClaim = (claim = {}) => {
     const partRaw =
       claim.participants ||
@@ -822,6 +907,7 @@ const RbTeamLead = () => {
     });
     return names.join(", ");
   };
+
   const parseAmount = (v) => {
     if (v === null || v === undefined || v === "") return 0;
     if (typeof v === "number") return Number.isFinite(v) ? v : 0;
@@ -832,6 +918,7 @@ const RbTeamLead = () => {
     const n = parseFloat(s);
     return Number.isFinite(n) ? n : 0;
   };
+
   const getClaimAmount = (claim = {}) => {
     if (!claim) return 0;
     const candidates = [
@@ -867,6 +954,7 @@ const RbTeamLead = () => {
     }
     return 0;
   };
+
   const openParticipantsModal = (claim) => {
     let existing = claim.participants || claim.participant_ids || [];
     try {
@@ -892,12 +980,14 @@ const RbTeamLead = () => {
     setSelectedClaim(claim);
     setIsParticipantsModalOpen(true);
   };
+
   const handleParticipantSelectionChange = (selectedArray) => {
     const ids = (selectedArray || []).map((it) =>
       typeof it === "string" ? it : it.employee_id || it.id || it.employeeId,
     );
     setParticipantsForEdit(ids.map(String));
   };
+
   const saveParticipants = async () => {
     if (!selectedClaim) return;
     setParticipantsSaving(true);
@@ -923,10 +1013,11 @@ const RbTeamLead = () => {
       setParticipantsSaving(false);
     }
   };
+
   function sanitizeFileName(name = "") {
     return String(name)
       .normalize("NFKD")
-      .replace(/[\u0000-\u001F<>:"/\\|?*]+/g, "")
+      .replace(/[\u0000-\u001F<>:\"/\\|?*]+/g, "")
       .trim()
       .replace(/\s+/g, "_")
       .slice(0, 100);
@@ -937,10 +1028,8 @@ const RbTeamLead = () => {
       const url =
         (backendBase ? `${backendBase}` : "") + `/download/${claim.id}`;
       const headers = buildHeaders();
-
       console.log("Download URL:", url);
       console.log("Request Headers:", headers);
-
       if (authToken) headers.Authorization = `Bearer ${authToken}`;
 
       const response = await axios.get(url, {
@@ -971,13 +1060,10 @@ const RbTeamLead = () => {
         }
       }
 
-      if (!filename) {
-        filename = `Reimbursement_${claim.id}.pdf`;
-      }
+      if (!filename) filename = `Reimbursement_${claim.id}.pdf`;
       if (!filename.toLowerCase().endsWith(".pdf")) filename += ".pdf";
 
       const blob = new Blob([response.data], { type: "application/pdf" });
-
       if (window.navigator && window.navigator.msSaveOrOpenBlob) {
         window.navigator.msSaveOrOpenBlob(blob, filename);
         return;
@@ -991,11 +1077,9 @@ const RbTeamLead = () => {
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(urlObj);
-
       console.log("Download started for", filename);
     } catch (error) {
       console.error("Error downloading reimbursement PDF:", error);
-
       try {
         if (error?.response?.data && error.response.data instanceof Blob) {
           const reader = new FileReader();
@@ -1007,12 +1091,12 @@ const RbTeamLead = () => {
       } catch (rErr) {
         console.error("Failed to read error blob:", rErr);
       }
-
       alert(
         "There was an issue downloading the file. Check console for details.",
       );
     }
   };
+
   const updateStatus = async (claimId) => {
     try {
       const newStatus = statusUpdates[claimId];
@@ -1021,19 +1105,18 @@ const RbTeamLead = () => {
         return;
       }
 
-      const url = `${
-        backendBase ? backendBase : ""
-      }/reimbursement/${claimId}/status`;
-
+      const url = `${backendBase ? backendBase : ""}/reimbursement/${claimId}/status`;
       const actor = getEmployeeIdFromContextOrCookie(user) || teamLeadId || "";
       const currentClaim = employees
         .flatMap((e) => e.claims)
         .find((c) => String(c.id) === String(claimId));
 
-      const finalProject =
+      const rawProject =
         projectSelections[claimId] !== undefined
           ? projectSelections[claimId]
           : currentClaim?.project || "";
+      const finalProject = isInvalidProject(rawProject) ? "" : rawProject;
+
       const body = {
         status: newStatus,
         approver_comments: comments[claimId] || "",
@@ -1047,28 +1130,22 @@ const RbTeamLead = () => {
       if (!headers["x-org-id"] && orgId)
         headers["x-org-id"] = String(orgId).trim();
 
-      await axios.put(url, body, {
-        withCredentials: true,
-        headers,
-      });
-
+      await axios.put(url, body, { withCredentials: true, headers });
       showAlert("Status updated.");
       fetchEmployees();
     } catch (err) {
       console.error("updateStatus failed:", err);
-
       try {
-        const url = `${
-          backendBase ? backendBase : ""
-        }/reimbursement/${claimId}/status`;
+        const url = `${backendBase ? backendBase : ""}/reimbursement/${claimId}/status`;
         const currentClaim = employees
           .flatMap((e) => e.claims)
           .find((c) => String(c.id) === String(claimId));
+        const rawProject =
+          projectSelections[claim.id] !== undefined
+            ? projectSelections[claim.id]
+            : claim.project || "";
 
-        const finalProject =
-          projectSelections[claimId] !== undefined
-            ? projectSelections[claimId]
-            : currentClaim?.project || "";
+        const project = isInvalidProject(rawProject) ? "" : rawProject;
         const body = {
           status: statusUpdates[claimId],
           approver_comments: comments[claimId] || "",
@@ -1088,7 +1165,6 @@ const RbTeamLead = () => {
           withCredentials: true,
           headers: minimalHeaders,
         });
-
         showAlert("Status updated (fallback).");
         fetchEmployees();
       } catch (err2) {
@@ -1122,7 +1198,6 @@ const RbTeamLead = () => {
       const url =
         (backendBase ? `${backendBase}` : "") +
         `/reimbursement/${encodeURIComponent(claimId)}/payment`;
-
       const headers = { ...buildHeaders(), "Content-Type": "application/json" };
       const actor = getEmployeeIdFromContextOrCookie(user) || teamLeadId;
       if (!headers["x-employee-id"] && actor)
@@ -1136,10 +1211,7 @@ const RbTeamLead = () => {
           payment_status: paymentOption,
           user_role: user?.role || user?.raw?.role || undefined,
         },
-        {
-          withCredentials: true,
-          headers,
-        },
+        { withCredentials: true, headers },
       );
 
       showAlert("Payment status updated.");
@@ -1189,6 +1261,7 @@ const RbTeamLead = () => {
       fetchSelfClaims();
     }, 200);
   };
+
   const filteredEmployees = employees
     .map((emp) => ({
       ...emp,
@@ -1220,6 +1293,7 @@ const RbTeamLead = () => {
       const idStr = String(emp.employee_id).toLowerCase();
       return name.includes(q) || idStr.includes(q);
     });
+
   return (
     <div className="rb-admin">
       <h2>Reimbursement Requests</h2>
@@ -1343,6 +1417,7 @@ const RbTeamLead = () => {
                       )}
                     </div>
                   </div>
+
                   {expandedRows[employee.employee_id] && (
                     <div className="reimbursement-table-scroll">
                       <div className="rb-sub-container">
@@ -1365,9 +1440,9 @@ const RbTeamLead = () => {
                             </tr>
                           </thead>
                           <tbody>
-                            {filteredClaims.map((rb, index) => {
-                              const lines = Array.isArray(rb.lines)
-                                ? rb.lines
+                            {filteredClaims.map((claim, index) => {
+                              const lines = Array.isArray(claim.lines)
+                                ? claim.lines
                                     .slice()
                                     .sort(
                                       (a, b) =>
@@ -1376,152 +1451,111 @@ const RbTeamLead = () => {
                                     )
                                 : [];
 
-                              const claimLevelInvs = parseInvoicesForClaim(rb);
-                              const invSet = new Set(
-                                (claimLevelInvs || []).map((i) =>
-                                  String(i).trim(),
-                                ),
-                              );
-
-                              lines.forEach((ln) => {
-                                const lnInvRaw =
-                                  ln?.payload?.invoices ||
-                                  ln?.payload?.invoice ||
-                                  [];
-                                let parsed = lnInvRaw;
-                                try {
-                                  if (
-                                    typeof parsed === "string" &&
-                                    parsed.trim()
-                                  )
-                                    parsed = JSON.parse(parsed);
-                                } catch (e) {}
-                                if (typeof parsed === "string") {
-                                  parsed = parsed
-                                    .split(",")
-                                    .map((s) => s.trim())
-                                    .filter(Boolean);
-                                }
-                                if (Array.isArray(parsed)) {
-                                  parsed.forEach((i) => {
-                                    if (i) invSet.add(String(i).trim());
-                                  });
-                                }
-                              });
-
-                              const claimInvDisplay = invSet.size
-                                ? Array.from(invSet).join(", ")
-                                : "-";
-
                               const firstLinePayload =
                                 lines && lines.length
                                   ? lines[0].payload || {}
                                   : {};
-                              const amountDisplayNumber = getClaimAmount(rb);
+                              const claimInvs = parseInvoicesForClaim(
+                                claim.invoices ||
+                                  claim.invoice_numbers ||
+                                  claim.invoice_no,
+                              );
+                              const invSet = new Set(
+                                (claimInvs || []).map((i) => String(i).trim()),
+                              );
+                              (lines || []).forEach((ln) => {
+                                const linv =
+                                  ln?.payload?.invoices ||
+                                  ln?.payload?.invoice ||
+                                  [];
+                                parseInvoicesForClaim(linv).forEach((i) => {
+                                  if (i) invSet.add(String(i).trim());
+                                });
+                              });
+                              const claimInvDisplay = Array.from(invSet).length
+                                ? Array.from(invSet).join(", ")
+                                : "-";
 
                               return (
                                 <React.Fragment
                                   key={
-                                    rb.id || `${employee.employee_id}-${index}`
+                                    claim.id ||
+                                    `${employee.employee_id}-${index}`
                                   }
                                 >
                                   <tr className="claim-main-row">
                                     <td>
                                       <button
                                         type="button"
-                                        onClick={() => toggleClaimExpand(rb.id)}
-                                        aria-expanded={!!expandedClaims[rb.id]}
-                                        title={
-                                          expandedClaims[rb.id]
-                                            ? "Collapse"
-                                            : "Expand"
+                                        onClick={() =>
+                                          toggleClaimExpand(claim.id)
+                                        }
+                                        aria-expanded={
+                                          !!expandedClaims[claim.id]
                                         }
                                         style={{ minWidth: 36 }}
                                       >
-                                        {expandedClaims[rb.id] ? "−" : "+"}
+                                        {expandedClaims[claim.id] ? "−" : "+"}
                                       </button>{" "}
                                       {index + 1}
                                     </td>
 
-                                    <td>{rb.claim_type || "-"}</td>
-
+                                    <td>{claim.claim_type || "-"}</td>
                                     <td>
                                       {resolveDateDisplay(
-                                        lines && lines.length
-                                          ? lines[0].payload
-                                          : {},
-                                        rb,
+                                        firstLinePayload,
+                                        claim,
                                       )}
                                     </td>
-
-                                    <td>
-                                      ₹
-                                      {amountDisplayNumber.toLocaleString(
-                                        "en-IN",
-                                        {
-                                          minimumFractionDigits: 2,
-                                          maximumFractionDigits: 2,
-                                        },
-                                      )}
-                                    </td>
-
+                                    <td>₹{claim.aggregated_total}</td>
                                     <td
                                       className="participants-cell-col"
-                                      title={rb.purpose}
+                                      title={claim.purpose}
                                     >
                                       <div className="rbadmin-comments">
-                                        {rb.purpose || rb.comments || "-"}
+                                        {claim.purpose || claim.comments || "-"}
                                       </div>
                                     </td>
-
                                     <td
                                       className="participants-cell-col"
-                                      title={getParticipantNamesForClaim(rb)}
+                                      title={getParticipantNamesForClaim(claim)}
                                     >
                                       <div className="rbadmin-comments">
-                                        {getParticipantNamesForClaim(rb)}
+                                        {getParticipantNamesForClaim(claim)}
                                       </div>
                                     </td>
-
                                     <td
                                       className="invoice-cell"
                                       title={claimInvDisplay}
-                                      style={{
-                                        maxWidth: 180,
-                                        overflow: "hidden",
-                                        textOverflow: "ellipsis",
-                                        whiteSpace: "nowrap",
-                                      }}
                                     >
                                       {claimInvDisplay}
                                     </td>
-
                                     <td>
-                                      {attachments[rb.id] &&
-                                      attachments[rb.id].length > 0 ? (
+                                      {attachments[claim.id] &&
+                                      attachments[claim.id].length > 0 ? (
                                         <button
                                           className="attachments-btn"
                                           onClick={() =>
                                             handleOpenAttachments(
-                                              attachments[rb.id],
-                                              rb,
+                                              attachments[claim.id],
+                                              claim,
                                             )
                                           }
                                         >
                                           <MdOutlineRemoveRedEye className="eye-icon" />{" "}
                                           View
                                         </button>
-                                      ) : rb.line_attachments_map &&
-                                        Object.keys(rb.line_attachments_map)
+                                      ) : claim.line_attachments_map &&
+                                        Object.keys(claim.line_attachments_map)
                                           .length > 0 ? (
                                         <button
                                           className="attachments-btn"
                                           onClick={() =>
                                             handleOpenAttachments(
                                               Object.values(
-                                                rb.line_attachments_map,
+                                                claim.line_attachments_map,
                                               ).flat(),
-                                              rb,
+                                              claim,
                                             )
                                           }
                                         >
@@ -1529,34 +1563,38 @@ const RbTeamLead = () => {
                                           View Line Attachments
                                         </button>
                                       ) : (
-                                        "Not Attached"
+                                        "No Attachments"
                                       )}
                                     </td>
 
                                     <td>
-                                      {rb.status === "approved" ||
-                                      rb.status === "rejected" ? (
+                                      {claim.status === "approved" ||
+                                      claim.status === "rejected" ? (
                                         <span
-                                          className={`status-label ${rb.status}`}
+                                          className={`status-label ${claim.status}`}
                                         >
                                           <span className="status-dot"></span>
-                                          {rb.status.charAt(0).toUpperCase() +
-                                            rb.status.slice(1)}
+                                          {claim.status
+                                            .charAt(0)
+                                            .toUpperCase() +
+                                            claim.status.slice(1)}
                                         </span>
                                       ) : (
                                         <select
                                           className="rb-status-dropdown"
                                           value={
-                                            statusUpdates[rb.id] ||
-                                            rb.status ||
+                                            statusUpdates[claim.id] ||
+                                            claim.status ||
                                             ""
                                           }
                                           onChange={(e) =>
+                                            !isHR &&
                                             handleStatusChange(
-                                              rb.id,
+                                              claim.id,
                                               e.target.value,
                                             )
                                           }
+                                          disabled={isHR}
                                         >
                                           <option value="">Pending</option>
                                           <option value="approved">
@@ -1570,11 +1608,11 @@ const RbTeamLead = () => {
                                     </td>
 
                                     <td>
-                                      {rb.status === "approved" ||
-                                      rb.status === "rejected" ? (
+                                      {claim.status === "approved" ||
+                                      claim.status === "rejected" ? (
                                         <div className="rbadmin-comments">
-                                          {projectSelections[rb.id] ||
-                                            rb.project}
+                                          {projectSelections[claim.id] ||
+                                            claim.project}
                                         </div>
                                       ) : (
                                         <select
@@ -1591,14 +1629,22 @@ const RbTeamLead = () => {
                                               [rb.id]: e.target.value,
                                             }))
                                           }
+                                          disabled={isHR}
                                         >
                                           <option value="">Select</option>
-                                          <option value="STS CLAIM">
-                                            STS CLAIM
-                                          </option>
+
+                                          {orgClaimLabel && (
+                                            <option value={orgClaimLabel}>
+                                              {orgClaimLabel}
+                                            </option>
+                                          )}
 
                                           {rb.project &&
-                                            !projects.includes(rb.project) && (
+                                            !isInvalidProject(rb.project) &&
+                                            rb.project !== orgClaimLabel &&
+                                            !safeProjects.includes(
+                                              rb.project,
+                                            ) && (
                                               <option
                                                 key={`current-${rb.id}`}
                                                 value={rb.project}
@@ -1607,7 +1653,7 @@ const RbTeamLead = () => {
                                               </option>
                                             )}
 
-                                          {projects.map((project, idx) => (
+                                          {safeProjects.map((project, idx) => (
                                             <option key={idx} value={project}>
                                               {project}
                                             </option>
@@ -1617,135 +1663,160 @@ const RbTeamLead = () => {
                                     </td>
 
                                     <td>
-                                      {rb.status === "approved" ||
-                                      rb.status === "rejected" ? (
+                                      {claim.status === "approved" ||
+                                      claim.status === "rejected" ? (
                                         <div className="rbadmin-comments">
-                                          {rb.approver_comments ||
+                                          {claim.approver_comments ||
                                             "No comments"}
                                         </div>
                                       ) : (
                                         <input
                                           type="text"
-                                          placeholder="Enter comments"
-                                          value={comments[rb.id] || ""}
+                                          placeholder={
+                                            isHR
+                                              ? "View only"
+                                              : "Enter comments"
+                                          }
+                                          value={comments[claim.id] || ""}
                                           onChange={(e) =>
+                                            !isHR &&
                                             setComments((prev) => ({
                                               ...prev,
-                                              [rb.id]: e.target.value,
+                                              [claim.id]: e.target.value,
                                             }))
                                           }
+                                          disabled={isHR}
                                         />
                                       )}
                                     </td>
 
                                     <td>
-                                      {rb.status?.toLowerCase().trim() ===
+                                      {claim.status?.toLowerCase().trim() ===
                                       "approved" ? (
-                                        !rb.payment_status ||
-                                        rb.payment_status
+                                        !claim.payment_status ||
+                                        claim.payment_status
                                           ?.toLowerCase()
-                                          .trim() === "pending" ? (
+                                          ?.trim() === "pending" ? (
                                           <button
-                                            className="pending-payment-btn"
+                                            className={`pending-payment-btn ${isHR ? "disabled" : ""}`}
                                             onClick={() => {
-                                              setSelectedPaymentClaim(rb);
-                                              const current = rb.payment_status
-                                                ? String(rb.payment_status)
-                                                    .toLowerCase()
-                                                    .trim()
-                                                : "pending";
-                                              setSelectedPaymentOption(current);
-                                              setIsPaymentModalOpen(true);
+                                              if (!isHR)
+                                                openPaymentModal(claim);
+                                            }}
+                                            disabled={isHR}
+                                            style={{
+                                              pointerEvents: isHR
+                                                ? "none"
+                                                : "auto",
+                                              opacity: isHR ? 0.4 : 1,
+                                              cursor: isHR
+                                                ? "not-allowed"
+                                                : "pointer",
                                             }}
                                           >
                                             Pending
                                           </button>
                                         ) : (
                                           <span>
-                                            {rb.payment_status
-                                              ? rb.payment_status
+                                            {claim.payment_status
+                                              ? claim.payment_status
                                                   .charAt(0)
                                                   .toUpperCase() +
-                                                rb.payment_status.slice(1)
-                                              : "N/A"}
-                                            {rb.paid_date
-                                              ? ` (${formatDisplayDate(
-                                                  rb.paid_date,
-                                                )})`
+                                                claim.payment_status.slice(1)
+                                              : " "}
+                                            {claim.paid_date
+                                              ? ` (${formatDisplayDate(claim.paid_date)})`
                                               : ""}
                                           </span>
                                         )
                                       ) : (
-                                        <span>{rb.payment_status || "-"}</span>
+                                        <span>
+                                          {claim.payment_status || "-"}
+                                        </span>
                                       )}
                                     </td>
 
                                     <td>
                                       <FaFileInvoice
                                         size={24}
-                                        className="update-btn"
+                                        className={`update-btn ${isHR ? "disabled" : ""}`}
                                         onClick={() => {
-                                          if (
-                                            rb.status === "approved" ||
-                                            rb.status === "rejected"
-                                          )
-                                            return;
-                                          updateStatus(rb.id);
+                                          if (!isHR) updateStatus(claim.id);
                                         }}
-                                        title="Update status"
+                                        style={{
+                                          pointerEvents: isHR ? "none" : "auto",
+                                          opacity: isHR ? 0.4 : 1,
+                                          cursor: isHR
+                                            ? "not-allowed"
+                                            : "pointer",
+                                        }}
                                       />
                                       <FiDownload
                                         size={24}
                                         className="download-btn"
-                                        onClick={() => handleDownload(rb)}
-                                        title="Download PDF"
+                                        onClick={() => handleDownloadPDF(claim)}
                                       />
                                     </td>
                                   </tr>
 
-                                  {expandedClaims[rb.id] &&
+                                  {expandedClaims[claim.id] &&
                                     (lines.length
                                       ? lines
-                                      : [{ id: null, payload: rb }]
+                                      : [{ id: null, payload: claim }]
                                     ).map((line, li) => {
                                       const payload = line.payload || {};
-                                      const lineInvsRaw =
+                                      const lineInvs = parseInvoicesForClaim(
                                         payload.invoices ||
-                                        payload.invoice ||
-                                        [];
-                                      let lineInvs = [];
-                                      try {
-                                        if (
-                                          typeof lineInvsRaw === "string" &&
-                                          lineInvsRaw.trim()
-                                        ) {
-                                          lineInvs = JSON.parse(lineInvsRaw);
-                                        } else if (Array.isArray(lineInvsRaw)) {
-                                          lineInvs = lineInvsRaw;
-                                        }
-                                      } catch (e) {
-                                        if (typeof lineInvsRaw === "string") {
-                                          lineInvs = lineInvsRaw
-                                            .split(",")
-                                            .map((s) => s.trim())
-                                            .filter(Boolean);
-                                        }
-                                      }
+                                          payload.invoice ||
+                                          [],
+                                      );
                                       const lnInvDisplay =
                                         Array.isArray(lineInvs) &&
                                         lineInvs.length
                                           ? lineInvs.join(", ")
                                           : claimInvDisplay;
-
                                       const lineAttachMap =
-                                        rb.line_attachments_map || {};
-                                      const attachmentsForThis =
+                                        claim.line_attachments_map || {};
+
+                                      let attachmentsForThis =
                                         (line &&
                                           (lineAttachMap[String(line.id)] ||
                                             lineAttachMap[line.id])) ||
                                         [];
 
-                                      const lineAmount = line
+                                      if (
+                                        (!attachmentsForThis ||
+                                          attachmentsForThis.length === 0) &&
+                                        attachments &&
+                                        attachments[claim.id] &&
+                                        attachments[claim.id].length
+                                      ) {
+                                        const lineIdStr =
+                                          line &&
+                                          line.id !== undefined &&
+                                          line.id !== null
+                                            ? String(line.id)
+                                            : "";
+                                        const matched = lineIdStr
+                                          ? (
+                                              attachments[claim.id] || []
+                                            ).filter((a) => {
+                                              const fname = String(
+                                                a.file_name ||
+                                                  a.filename ||
+                                                  a.name ||
+                                                  a.fileName ||
+                                                  "",
+                                              );
+                                              return fname.includes(lineIdStr);
+                                            })
+                                          : [];
+                                        attachmentsForThis = matched.length
+                                          ? matched
+                                          : attachments[claim.id];
+                                      }
+
+                                      const amount = line
                                         ? line.total_amount ||
                                           payload.total_amount ||
                                           0
@@ -1753,16 +1824,16 @@ const RbTeamLead = () => {
 
                                       return (
                                         <tr
-                                          key={`line-${rb.id}-${line.id ?? li}`}
+                                          key={`line-${claim.id}-${line.id ?? li}`}
                                           className="claim-line-row"
                                         >
                                           <td></td>
                                           <td></td>
                                           <td>
-                                            {resolveDateDisplay(payload, rb)}
+                                            {resolveDateDisplay(payload, claim)}
                                           </td>
                                           <td>
-                                            {Number(lineAmount || 0).toFixed(2)}
+                                            {Number(amount || 0).toFixed(2)}
                                           </td>
                                           <td style={{ paddingLeft: 12 }}>
                                             {payload.purpose || "-"}
@@ -1770,11 +1841,13 @@ const RbTeamLead = () => {
                                           <td
                                             className="participants-cell-col"
                                             title={getParticipantNamesForClaim(
-                                              rb,
+                                              claim,
                                             )}
                                           >
                                             <div className="rbadmin-comments">
-                                              {getParticipantNamesForClaim(rb)}
+                                              {getParticipantNamesForClaim(
+                                                claim,
+                                              )}
                                             </div>
                                           </td>
                                           <td
@@ -1801,7 +1874,7 @@ const RbTeamLead = () => {
                                                           a.filename,
                                                       }),
                                                     ),
-                                                    rb,
+                                                    claim,
                                                   )
                                                 }
                                               >
@@ -1824,6 +1897,31 @@ const RbTeamLead = () => {
                               );
                             })}
                           </tbody>
+                          <tfoot>
+                            <tr className="total-row">
+                              <td
+                                colSpan="7"
+                                style={{
+                                  textAlign: "right",
+                                  color: "#949494",
+                                  fontWeight: "bold",
+                                }}
+                              >
+                                Total Amount Claiming:{" "}
+                                <span
+                                  style={{ fontWeight: "bold", color: "black" }}
+                                >
+                                  Rs {totalAmount}
+                                </span>
+                              </td>
+                              <td colSpan="6" style={{ textAlign: "right" }}>
+                                Amount Approved: Rs{" "}
+                                <span style={{ fontWeight: "bold" }}>
+                                  {approvedAmount}
+                                </span>
+                              </td>
+                            </tr>
+                          </tfoot>
                         </table>
                       </div>
                     </div>
@@ -1836,43 +1934,7 @@ const RbTeamLead = () => {
       ) : (
         <Reimbursement />
       )}
-      {isEditModalOpen && claimToEdit && (
-        <Modal
-          isVisible={isEditModalOpen}
-          onClose={() => setIsEditModalOpen(false)}
-          buttons={[
-            { label: "Close", onClick: () => setIsEditModalOpen(false) },
-            {
-              label: "Open in Self View",
-              onClick: () => confirmOpenInSelfView(claimToEdit),
-            },
-          ]}
-        >
-          <h3>Edit Claim</h3>
-          <p>
-            <strong>Claim ID:</strong> {claimToEdit.id}
-          </p>
-          <p>
-            <strong>Employee:</strong> {claimToEdit.employee_name} (
-            {claimToEdit.employee_id})
-          </p>
-          <p>
-            <strong>Type:</strong> {claimToEdit.claim_type}
-          </p>
-          <p>
-            <strong>Amount:</strong> ₹{claimToEdit.total_amount}
-          </p>
-          <p>
-            <strong>Purpose:</strong> {claimToEdit.purpose || "—"}
-          </p>
-          <p style={{ color: "#555", marginTop: 8 }}>
-            Clicking "Open in Self View" will switch to the Self tab and store a
-            temporary edit id in localStorage (`reimbursementEditId`). The
-            Reimbursement UI can read that value to prefill the form for
-            editing.
-          </p>
-        </Modal>
-      )}
+
       {isParticipantsModalOpen && (
         <Modal
           isVisible={isParticipantsModalOpen}
@@ -1890,8 +1952,11 @@ const RbTeamLead = () => {
           ]}
         >
           <h3>Manage Participants</h3>
+          <p style={{ marginTop: 0 }}>
+            Select employees to be saved as participants for this claim.
+          </p>
           <ParticipantSelection
-            departmentId={departmentId}
+            departmentId={employeeData?.department_id || ""}
             selectionMode="group"
             onSelectionChange={handleParticipantSelectionChange}
             initialSelection={
@@ -1902,7 +1967,6 @@ const RbTeamLead = () => {
                 : []
             }
             limit={500}
-            orgId={orgId}
           />
           <div className="participants-modal-selected">
             <div className="selected-title">Selected:</div>
@@ -1922,6 +1986,96 @@ const RbTeamLead = () => {
                 <div className="selected-none">No participants selected.</div>
               )}
             </div>
+          </div>
+        </Modal>
+      )}
+
+      {isPaymentModalOpen && (
+        <Modal
+          title={"Update Payment Status"}
+          isVisible={isPaymentModalOpen}
+          onClose={() => setIsPaymentModalOpen(false)}
+          buttons={[]}
+        >
+          <div className="payment-modal-content">
+            <div className="payment-options">
+              <label>
+                <input
+                  type="radio"
+                  name="paymentOption"
+                  value="rejected"
+                  checked={selectedPaymentOption === "rejected"}
+                  onChange={(e) => setSelectedPaymentOption(e.target.value)}
+                />{" "}
+                Reject
+              </label>
+              <label style={{ marginLeft: "20px" }}>
+                <input
+                  type="radio"
+                  name="paymentOption"
+                  value="pending"
+                  checked={selectedPaymentOption === "pending"}
+                  onChange={(e) => setSelectedPaymentOption(e.target.value)}
+                />{" "}
+                Pending
+              </label>
+              <label style={{ marginLeft: "20px" }}>
+                <input
+                  type="radio"
+                  name="paymentOption"
+                  value="paid"
+                  checked={selectedPaymentOption === "paid"}
+                  onChange={(e) => setSelectedPaymentOption(e.target.value)}
+                />{" "}
+                Payable
+              </label>
+            </div>
+            <p>I'll make sure to process the payment today</p>
+            <button
+              className="modal-cross-btn"
+              onClick={() => setIsPaymentModalOpen(false)}
+            >
+              Cancel
+            </button>
+            <button
+              className="submit-payment-btn"
+              onClick={async () => {
+                if (!selectedPaymentOption) {
+                  showAlert("Please select an option.");
+                  return;
+                }
+                if (!selectedPaymentClaim) {
+                  showAlert("No claim selected.");
+                  return;
+                }
+                try {
+                  const url =
+                    (backendBase ? `${backendBase}` : "") +
+                    `/reimbursement/payment-status/${selectedPaymentClaim.id}`;
+                  await axios.put(
+                    url,
+                    {
+                      payment_status: selectedPaymentOption,
+                      user_role: "admin",
+                    },
+                    { withCredentials: true, headers: buildHeaders() },
+                  );
+                  showAlert("Payment status updated successfully.");
+                  setIsPaymentModalOpen(false);
+                  fetchEmployees();
+                } catch (error) {
+                  console.error(
+                    "Error updating payment status:",
+                    error?.response?.data || error?.message || error,
+                  );
+                  showAlert(
+                    "Could not update payment status. Please try again.",
+                  );
+                }
+              }}
+            >
+              Submit
+            </button>
           </div>
         </Modal>
       )}
@@ -1961,69 +2115,7 @@ const RbTeamLead = () => {
           </div>
         </div>
       )}
-      {isPaymentModalOpen && (
-        <Modal
-          title={"Update Payment Status"}
-          isVisible={isPaymentModalOpen}
-          onClose={() => setIsPaymentModalOpen(false)}
-          buttons={[]}
-        >
-          <div className="payment-modal-content">
-            <div className="payment-options">
-              <label>
-                <input
-                  type="radio"
-                  name="paymentOption"
-                  value="rejected"
-                  checked={selectedPaymentOption === "rejected"}
-                  onChange={(e) => setSelectedPaymentOption(e.target.value)}
-                />{" "}
-                Reject
-              </label>
-              <label>
-                <input
-                  type="radio"
-                  name="paymentOption"
-                  value="paid"
-                  checked={selectedPaymentOption === "paid"}
-                  onChange={(e) => setSelectedPaymentOption(e.target.value)}
-                />{" "}
-                Payable
-              </label>
-              <label>
-                <input
-                  type="radio"
-                  name="paymentOption"
-                  value="pending"
-                  checked={selectedPaymentOption === "pending"}
-                  onChange={(e) => setSelectedPaymentOption(e.target.value)}
-                />{" "}
-                Pending
-              </label>
-            </div>
-            <p>I'll make sure to process the payment today</p>
 
-            <button
-              className="modal-cross-btn"
-              onClick={() => setIsPaymentModalOpen(false)}
-            >
-              Cancel
-            </button>
-            <button
-              className="submit-payment-btn"
-              onClick={() =>
-                updatePaymentStatus(
-                  selectedPaymentClaim?.id,
-                  selectedPaymentOption,
-                )
-              }
-              disabled={!selectedPaymentOption}
-            >
-              Submit
-            </button>
-          </div>
-        </Modal>
-      )}
       <Modal
         isVisible={alertModal.isVisible}
         onClose={closeAlert}
@@ -2034,4 +2126,5 @@ const RbTeamLead = () => {
     </div>
   );
 };
+
 export default RbTeamLead;

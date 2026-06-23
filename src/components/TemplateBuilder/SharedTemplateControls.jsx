@@ -91,8 +91,14 @@ export default function SharedTemplateControls({
   useEffect(() => {
     if (onPreviewChange) {
       onPreviewChange({
-        headerUrl: headerFile ? URL.createObjectURL(headerFile) : null,
-        footerUrl: footerFile ? URL.createObjectURL(footerFile) : null,
+        headerUrl: headerFile
+          ? URL.createObjectURL(headerFile)
+          : headerUrlProp || null,
+
+        footerUrl: footerFile
+          ? URL.createObjectURL(footerFile)
+          : footerUrlProp || null,
+
         watermarkUrl:
           watermarkUrlProp ||
           (watermarkFile ? URL.createObjectURL(watermarkFile) : null),
@@ -101,6 +107,8 @@ export default function SharedTemplateControls({
   }, [
     headerFile,
     footerFile,
+    headerUrlProp,
+    footerUrlProp,
     watermarkUrlProp,
     watermarkFile,
     onPreviewChange,

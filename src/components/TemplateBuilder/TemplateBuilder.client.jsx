@@ -1596,8 +1596,8 @@ export default function TemplateBuilder() {
             ? await ensureBlobUrl(watermarkUrl)
             : null;
 
-          setPreviewHeaderUrl(finalHeaderUrl);
-          setPreviewFooterUrl(finalFooterUrl);
+          setPreviewHeaderUrl(headerUrlResolved);
+          setPreviewFooterUrl(footerUrlResolved);
           setPreviewWatermarkUrl(watermarkUrlResolved);
           if (watermarkPlacementProps)
             setWatermarkProps(watermarkPlacementProps);

@@ -12,7 +12,6 @@ import {
   Gauge,
   Loader2,
   Mail,
-  Settings2,
   ShieldAlert,
   Sparkles,
   Users,
@@ -54,34 +53,6 @@ function getRole(user) {
     .toLowerCase()
     .replace(/[_\s]+/g, " ")
     .trim();
-}
-
-function Toggle({ label, description, checked, onChange, disabled }) {
-  return (
-    <label
-      className={`toggle-card ${disabled ? "opacity-60" : ""}`}
-      style={disabled ? { cursor: "not-allowed" } : undefined}
-    >
-      <div className="toggle-card__text">
-        <div className="toggle-card__title">{label}</div>
-        {description ? (
-          <p className="toggle-card__desc">{description}</p>
-        ) : null}
-      </div>
-
-      <button
-        type="button"
-        role="switch"
-        aria-checked={checked}
-        aria-label={label}
-        disabled={disabled}
-        onClick={() => onChange(!checked)}
-        className={`toggle-switch ${checked ? "toggle-switch--on" : ""}`}
-      >
-        <span className="toggle-switch__thumb" />
-      </button>
-    </label>
-  );
 }
 
 function Field({ label, hint, children, icon }) {
@@ -171,7 +142,9 @@ export default function LoginHourSettingsModal({ isOpen, onClose }) {
 
   const [values, setValues] = useState(DEFAULT_VALUES);
   const [actionRoles, setActionRoles] = useState(DEFAULT_ACTION_ROLES);
-  const [loading, setLoading] = useState(false);
+
+  const [isFetching, setIsFetching] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   const [alertModal, setAlertModal] = useState({
     isVisible: false,
@@ -236,7 +209,7 @@ export default function LoginHourSettingsModal({ isOpen, onClose }) {
     let cancelled = false;
 
     const fetchConfig = async () => {
-      setLoading(true);
+      setIsFetching(true);
 
       try {
         const response = await axios.get(
@@ -270,7 +243,7 @@ export default function LoginHourSettingsModal({ isOpen, onClose }) {
           showAlert("Unable to load attendance settings.", "Error", "error");
         }
       } finally {
-        if (!cancelled) setLoading(false);
+        if (!cancelled) setIsFetching(false);
       }
     };
 
@@ -342,6 +315,8 @@ export default function LoginHourSettingsModal({ isOpen, onClose }) {
     });
 
   const handleSave = async () => {
+    if (isSaving) return;
+
     const validationErrors = validateValues();
     if (validationErrors.length > 0) {
       showAlert(validationErrors.join(" "), "Validation Error", "warning");
@@ -357,7 +332,7 @@ export default function LoginHourSettingsModal({ isOpen, onClose }) {
       return;
     }
 
-    setLoading(true);
+    setIsSaving(true);
 
     try {
       const selectedActionRoles = Object.entries(actionRoles)
@@ -369,9 +344,9 @@ export default function LoginHourSettingsModal({ isOpen, onClose }) {
         punch_out_start: values.punchOutStart || "",
         buffer_minutes: values.bufferMinutes || "10",
         late_login_enabled: values.lateLoginEnabled ? "1" : "0",
-        late_login_streak_days: values.lateStreakDays || "3",
+        late_streak_days: values.lateStreakDays || "3",
         auto_mark_late: values.autoMarkLate ? "1" : "0",
-        late_escalation_mode: values.escalationMode || "mail_notify",
+        escalation_mode: values.escalationMode || "mail_notify",
         late_action_roles: JSON.stringify(selectedActionRoles),
       });
 
@@ -390,7 +365,7 @@ export default function LoginHourSettingsModal({ isOpen, onClose }) {
         "error",
       );
     } finally {
-      setLoading(false);
+      setIsSaving(false);
     }
   };
 
@@ -533,7 +508,7 @@ export default function LoginHourSettingsModal({ isOpen, onClose }) {
                       onChange={(e) =>
                         handleChange("punchInStart", e.target.value)
                       }
-                      disabled={loading}
+                      disabled={isFetching || isSaving}
                     />
                   </Field>
 
@@ -549,7 +524,7 @@ export default function LoginHourSettingsModal({ isOpen, onClose }) {
                       onChange={(e) =>
                         handleChange("bufferMinutes", e.target.value)
                       }
-                      disabled={loading}
+                      disabled={isFetching || isSaving}
                     />
                   </Field>
 
@@ -563,7 +538,7 @@ export default function LoginHourSettingsModal({ isOpen, onClose }) {
                       onChange={(e) =>
                         handleChange("punchOutStart", e.target.value)
                       }
-                      disabled={loading}
+                      disabled={isFetching || isSaving}
                     />
                   </Field>
 
@@ -579,37 +554,9 @@ export default function LoginHourSettingsModal({ isOpen, onClose }) {
                       onChange={(e) =>
                         handleChange("lateStreakDays", e.target.value)
                       }
-                      disabled={loading}
+                      disabled={isFetching || isSaving}
                     />
                   </Field>
-                </div>
-              </section>
-
-              <section className="attendance-card">
-                <div className="attendance-card__title">
-                  <Settings2 className="attendance-card__icon h-5 w-5" />
-                  Late-login engine
-                </div>
-
-                <div className="grid gap-4 md:grid-cols-2">
-                  <Toggle
-                    label="Enable late-login rules"
-                    description="Turn on late-login detection for this organization."
-                    checked={values.lateLoginEnabled}
-                    onChange={(checked) =>
-                      handleChange("lateLoginEnabled", checked)
-                    }
-                    disabled={loading}
-                  />
-                  <Toggle
-                    label="Auto mark late"
-                    description="Automatically tag attendance as late when rules are violated."
-                    checked={values.autoMarkLate}
-                    onChange={(checked) =>
-                      handleChange("autoMarkLate", checked)
-                    }
-                    disabled={loading}
-                  />
                 </div>
               </section>
 
@@ -643,7 +590,7 @@ export default function LoginHourSettingsModal({ isOpen, onClose }) {
                             hr: checked,
                           }))
                         }
-                        disabled={loading}
+                        disabled={isFetching || isSaving}
                       />
                       <CheckboxRow
                         label="Manager"
@@ -654,7 +601,7 @@ export default function LoginHourSettingsModal({ isOpen, onClose }) {
                             manager: checked,
                           }))
                         }
-                        disabled={loading}
+                        disabled={isFetching || isSaving}
                       />
                       <CheckboxRow
                         label="Supervisor"
@@ -665,7 +612,7 @@ export default function LoginHourSettingsModal({ isOpen, onClose }) {
                             supervisor: checked,
                           }))
                         }
-                        disabled={loading}
+                        disabled={isFetching || isSaving}
                       />
                     </div>
                     <p className="field__hint">
@@ -684,7 +631,7 @@ export default function LoginHourSettingsModal({ isOpen, onClose }) {
                       onChange={(e) =>
                         handleChange("escalationMode", e.target.value)
                       }
-                      disabled={loading}
+                      disabled={isFetching || isSaving}
                     >
                       <option value="mail_notify">
                         Send email and notification
@@ -754,24 +701,25 @@ export default function LoginHourSettingsModal({ isOpen, onClose }) {
           </p>
 
           <div className="attendance-actions">
-            <button
-              type="button"
-              onClick={onClose}
-              disabled={loading}
-              className="btn btn--ghost"
-            >
+            <button type="button" onClick={onClose} className="btn btn--ghost">
               Cancel
             </button>
+
             <button
               type="button"
               onClick={handleSave}
-              disabled={loading}
+              disabled={isFetching || isSaving}
               className="btn btn--primary"
             >
-              {loading ? (
+              {isSaving ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin" />
                   Saving...
+                </>
+              ) : isFetching ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Loading...
                 </>
               ) : (
                 "Save settings"

@@ -92,6 +92,8 @@ const Invoice = ({ onBack, project }) => {
   const [invoiceNo, setInvoiceNo] = useState("");
   const [referenceId, setReferenceId] = useState("");
   const [referenceDate, setReferenceDate] = useState("");
+  const [selectedTemplateKey, setSelectedTemplateKey] = useState("__default__");
+  const [pdfReady, setPdfReady] = useState(false);
 
   const createEmptyLineItem = () => ({
     description: "",
@@ -773,15 +775,15 @@ const Invoice = ({ onBack, project }) => {
 
       await waitForImagesToLoad(element, 7000);
 
-      const canvas = await html2canvas(element, {
+      if (!pdfReady) {
+        await new Promise((resolve) => setTimeout(resolve, 300));
+      }
+
+      const canvas = await html2canvas(printRef.current, {
         scale: 2,
         useCORS: true,
-        allowTaint: false,
-        logging: false,
-        windowWidth: document.documentElement.scrollWidth,
-        windowHeight: document.documentElement.scrollHeight,
+        backgroundColor: "#ffffff",
       });
-
       const imgData = canvas.toDataURL("image/png");
 
       const pdf = new jsPDF({
@@ -1177,6 +1179,9 @@ const Invoice = ({ onBack, project }) => {
                 withSeal,
               }}
               orgId={orgId}
+              selectedTemplateKey={selectedTemplateKey}
+              onSelectedTemplateKeyChange={setSelectedTemplateKey}
+              onTemplateReady={setPdfReady}
             />
           )}
         </div>
@@ -1600,6 +1605,9 @@ const Invoice = ({ onBack, project }) => {
                 withSeal,
               }}
               orgId={orgId}
+              selectedTemplateKey={selectedTemplateKey}
+              onSelectedTemplateKeyChange={setSelectedTemplateKey}
+              onTemplateReady={setPdfReady}
             />
           </div>
         </div>

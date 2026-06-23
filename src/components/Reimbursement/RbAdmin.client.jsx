@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useMemo } from "react";
 import "./RbAdmin.css";
 import { MdOutlineRemoveRedEye, MdOutlineCancel } from "react-icons/md";
 import { FaSearch, FaChevronDown, FaChevronUp } from "react-icons/fa";
@@ -11,15 +11,6 @@ import Reimbursement from "./Reimbursement.client";
 import Modal from "../Modal/Modal.client";
 import ParticipantSelection from "./ParticipantSelection.client";
 import { useAuth } from "../../context/AuthProvider.client";
-
-/**
- * RbAdmin (Next.js client component)
- *
- * Notes:
- *  - No localStorage usage — uses useAuth() only.
- *  - Attempts to resolve orgId from profile endpoints if missing.
- *  - Will NOT call /reimbursements if orgId cannot be resolved (avoids backend 500).
- */
 
 const RbAdmin = () => {
   const { user } = useAuth();
@@ -58,11 +49,50 @@ const RbAdmin = () => {
   const [projectSelections, setProjectSelections] = useState({});
   const [searchQuery, setSearchQuery] = useState("");
 
+  const orgPrefix = useMemo(() => {
+    const candidates = [
+      user?.orgPrefix,
+      user?.org_prefix,
+      user?.raw?.orgPrefix,
+      user?.raw?.org_prefix,
+      user?.dashboard?.orgPrefix,
+      user?.dashboard?.org_prefix,
+      user?.organization?.orgPrefix,
+      user?.organization?.org_prefix,
+      user?.organization_name,
+      user?.orgName,
+      user?.raw?.organization_name,
+      user?.raw?.org_name,
+    ];
+
+    const found = candidates.find(
+      (v) => v !== undefined && v !== null && String(v).trim() !== "",
+    );
+
+    return found ? String(found).trim() : "";
+  }, [user]);
+
+  const orgClaimLabel = orgPrefix ? `${orgPrefix} CLAIM` : "";
   const [employeeOptions, setEmployeeOptions] = useState([]);
   const [isParticipantsModalOpen, setIsParticipantsModalOpen] = useState(false);
   const [participantsForEdit, setParticipantsForEdit] = useState([]);
   const [participantsSaving, setParticipantsSaving] = useState(false);
+  const normalizeProject = (value) => String(value ?? "").trim();
 
+  const isInvalidProject = (value) => {
+    const v = normalizeProject(value).toUpperCase();
+    return !v || v === "STS CLAIM";
+  };
+
+  const dedupeProjects = (list = []) => {
+    const seen = new Set();
+    return (Array.isArray(list) ? list : []).filter((item) => {
+      const key = normalizeProject(item).toLowerCase();
+      if (!key || seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  };
   const backendBase =
     process.env.NEXT_PUBLIC_BACKEND_URL || process.env.REACT_APP_BACKEND_URL;
 
@@ -204,7 +234,14 @@ const RbAdmin = () => {
     return h;
   }, [user, apiKey, authToken, orgId, employeeData, departmentId, isHR]);
 
-  // resolve org id from backend profile endpoints (only when needed)
+  const safeProjects = useMemo(() => {
+    return dedupeProjects(
+      (Array.isArray(projects) ? projects : [])
+        .map(normalizeProject)
+        .filter((p) => !isInvalidProject(p)),
+    );
+  }, [projects]);
+
   const resolveOrgIdOnce = useCallback(async () => {
     if (orgId) return orgId;
     if (orgResolveTried) return orgId;
@@ -261,7 +298,6 @@ const RbAdmin = () => {
             }
           }
         } catch (err) {
-          // try next endpoint silently
           console.debug(
             "resolveOrgIdOnce: candidate failed",
             p,
@@ -293,7 +329,6 @@ const RbAdmin = () => {
     if (!orgId && !orgResolveTried) {
       resolveOrgIdOnce();
     }
-    // on mount we will attempt to fetch projects and employee options once org resolution was attempted
     const init = async () => {
       if (!orgId && !orgResolveTried) await resolveOrgIdOnce();
       await fetchProjects();
@@ -311,7 +346,28 @@ const RbAdmin = () => {
         withCredentials: true,
         headers: buildHeaders(),
       });
-      setProjects(response.data || []);
+
+      const raw = Array.isArray(response.data)
+        ? response.data
+        : response.data?.data || [];
+
+      const cleaned = dedupeProjects(
+        raw
+          .map((item) => {
+            if (typeof item === "string") return item;
+            return (
+              item?.project ||
+              item?.project_name ||
+              item?.name ||
+              item?.label ||
+              ""
+            );
+          })
+          .map(normalizeProject)
+          .filter((p) => !isInvalidProject(p)),
+      );
+
+      setProjects(cleaned);
     } catch (error) {
       console.error(
         "Error fetching projects:",
@@ -399,14 +455,13 @@ const RbAdmin = () => {
   };
 
   useEffect(() => {
-    // initial employees load (safe: will attempt org resolution first)
     const initLoad = async () => {
       if (!orgId && !orgResolveTried) await resolveOrgIdOnce();
       await fetchEmployees();
     };
     initLoad();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // initial employees load
+  }, []);
 
   const getClaimAmount = (claim = {}) => {
     const raw =
@@ -426,10 +481,8 @@ const RbAdmin = () => {
 
   const fetchEmployees = async () => {
     try {
-      // try resolving orgId if we don't have it yet
       if (!orgId && !orgResolveTried) await resolveOrgIdOnce();
 
-      // if orgId is required by backend and still missing, do NOT call the endpoint
       if (!orgId) {
         console.error(
           "fetchEmployees aborted: orgId missing; headers:",
@@ -464,7 +517,7 @@ const RbAdmin = () => {
       const initialProjects = {};
       (data || []).forEach((emp) =>
         (emp.claims || []).forEach((claim) => {
-          if (claim.project) {
+          if (claim.project && !isInvalidProject(claim.project)) {
             initialProjects[claim.id] = claim.project;
           }
         }),
@@ -505,13 +558,11 @@ const RbAdmin = () => {
         return;
       }
 
-      // Use your buildHeaders() so HR gets x-org-id / Authorization / x-api-key etc.
       const baseHeaders = buildHeaders();
 
       const fetchedFiles = await Promise.all(
         (files || []).map(async (file) => {
           try {
-            // support multiple attachment shapes
             const candidateFilename =
               file.filename ||
               file.file_name ||
@@ -519,17 +570,14 @@ const RbAdmin = () => {
               file.fileName ||
               null;
 
-            // If the server already provided a direct URL, use it (no extra headers)
             if (file.file_path && typeof file.file_path === "string") {
               const urlFromServer = file.file_path;
-              // if file_path looks like a full URL use it directly
               if (/^https?:\/\//i.test(urlFromServer)) {
                 return {
                   name: candidateFilename || urlFromServer.split("/").pop(),
                   url: urlFromServer,
                 };
               }
-              // otherwise try to build full URL from backend + file_path
               const fileUrl = `${backendBase || process.env.NEXT_PUBLIC_BACKEND_URL || ""}${urlFromServer}`;
               const resp = await axios.get(fileUrl, {
                 withCredentials: true,
@@ -547,19 +595,16 @@ const RbAdmin = () => {
 
             if (!candidateFilename) return null;
 
-            // Try to extract year/month from filename (some filenames are prefixed with yyyy-mm-dd)
             let match = candidateFilename.match(/^(\d{4})-(\d{2})-(\d{2})/);
             if (!match) {
               const match2 = candidateFilename.match(
                 /^(\d{4})[-_](\d{2})[-_](\d{2})/,
               );
               if (!match2) {
-                // fallback: try search by claim date or just return "not found" for this file
                 console.debug(
                   "filename does not contain date prefix, attempting fallback URL",
                   candidateFilename,
                 );
-                // Fallback: attempt path using claim.created_at or claim.date if available
                 const fallbackYear =
                   (claim?.created_at &&
                     new Date(claim.created_at).getFullYear()) ||
@@ -599,12 +644,11 @@ const RbAdmin = () => {
               return null;
             }
 
-            // Construct file URL using same convention your backend uses
             const fileUrl = `${backendBase || process.env.NEXT_PUBLIC_BACKEND_URL}/reimbursement/${orgId}/${year}/${month}/${empId}/${candidateFilename}`;
 
             const resp = await axios.get(fileUrl, {
               withCredentials: true,
-              headers: baseHeaders, // includes x-org-id, Authorization, x-employee-id, x-api-key (if available)
+              headers: baseHeaders,
               responseType: "blob",
             });
 
@@ -679,9 +723,12 @@ const RbAdmin = () => {
       return;
     }
 
-    const project = projectSelections[id] || "";
+    const rawProject =
+      projectSelections[id] !== undefined ? projectSelections[id] : "";
+    const project = isInvalidProject(rawProject) ? "" : rawProject;
+
     if (!project) {
-      showAlert("Please select a project.");
+      showAlert("Please select a valid project.");
       return;
     }
 
@@ -831,7 +878,6 @@ const RbAdmin = () => {
     }
   };
 
-  // ensure filteredEmployees exists for rendering
   const filteredEmployees = (employees || [])
     .map((emp) => ({
       ...emp,
@@ -937,6 +983,7 @@ const RbAdmin = () => {
   const handleToggleChange = (e) => {
     setView(e.target.checked ? "self" : "all");
   };
+
   const downloadExcel = async () => {
     try {
       const url = `${backendBase || ""}/reimbursements/export`;
@@ -945,17 +992,15 @@ const RbAdmin = () => {
       if (submittedTo) params.submittedTo = submittedTo;
 
       const headers = { ...buildHeaders() };
-      // ensure org header present
       if (!headers["x-org-id"] && orgId) headers["x-org-id"] = String(orgId);
 
       const resp = await axios.get(url, {
         headers,
         params,
         withCredentials: true,
-        responseType: "arraybuffer", // <- crucial
+        responseType: "arraybuffer",
       });
 
-      // If server returned JSON (error), try to parse it and show message
       const contentType = resp.headers["content-type"] || "";
       if (contentType.includes("application/json")) {
         const text = Buffer.from(resp.data).toString("utf8");
@@ -983,7 +1028,6 @@ const RbAdmin = () => {
       URL.revokeObjectURL(link.href);
     } catch (err) {
       console.error("downloadExcel failed:", err?.response || err);
-      // If backend returned JSON error body, try to extract message
       if (err?.response?.data) {
         try {
           const text = new TextDecoder().decode(err.response.data);
@@ -1008,7 +1052,6 @@ const RbAdmin = () => {
   const closeAlert = () =>
     setAlertModal({ isVisible: false, title: "", message: "" });
 
-  // --- MISSING previously: openPaymentModal (added) ---
   const openPaymentModal = (claim) => {
     if (!claim) return;
     setSelectedPaymentClaim(claim);
@@ -1142,7 +1185,6 @@ const RbAdmin = () => {
                     <div className="reimbursement-table-scroll">
                       <div className="rb-sub-container">
                         <table className="rb-sub-table">
-                          {/* table head/body omitted for brevity inside this snippet but unchanged */}
                           <thead>
                             <tr>
                               <th>Sl No</th>
@@ -1339,7 +1381,10 @@ const RbAdmin = () => {
                                         <select
                                           className="rb-status-dropdown"
                                           value={
-                                            projectSelections[claim.id] || ""
+                                            projectSelections[claim.id] !==
+                                            undefined
+                                              ? projectSelections[claim.id]
+                                              : claim.project || ""
                                           }
                                           onChange={(e) =>
                                             !isHR &&
@@ -1351,10 +1396,28 @@ const RbAdmin = () => {
                                           disabled={isHR}
                                         >
                                           <option value="">Select</option>
-                                          <option value="STS CLAIM">
-                                            STS CLAIM
-                                          </option>
-                                          {projects.map((project, idx) => (
+
+                                          {orgClaimLabel && (
+                                            <option value={orgClaimLabel}>
+                                              {orgClaimLabel}
+                                            </option>
+                                          )}
+
+                                          {claim.project &&
+                                            !isInvalidProject(claim.project) &&
+                                            claim.project !== orgClaimLabel &&
+                                            !safeProjects.includes(
+                                              claim.project,
+                                            ) && (
+                                              <option
+                                                key={`current-${claim.id}`}
+                                                value={claim.project}
+                                              >
+                                                {claim.project}
+                                              </option>
+                                            )}
+
+                                          {safeProjects.map((project, idx) => (
                                             <option key={idx} value={project}>
                                               {project}
                                             </option>
@@ -1482,18 +1545,15 @@ const RbAdmin = () => {
                                         lineInvs.length
                                           ? lineInvs.join(", ")
                                           : claimInvDisplay;
-                                      // --- START REPLACEMENT: improved line-level attachments fallback ---
                                       const lineAttachMap =
                                         claim.line_attachments_map || {};
 
-                                      // First try line-specific attachments (existing behaviour)
                                       let attachmentsForThis =
                                         (line &&
                                           (lineAttachMap[String(line.id)] ||
                                             lineAttachMap[line.id])) ||
                                         [];
 
-                                      // Fallback: if none found at line level, use claim-level attachments (helps HR)
                                       if (
                                         (!attachmentsForThis ||
                                           attachmentsForThis.length === 0) &&
@@ -1501,7 +1561,6 @@ const RbAdmin = () => {
                                         attachments[claim.id] &&
                                         attachments[claim.id].length
                                       ) {
-                                        // try to match attachments by filename containing line id, otherwise use all claim attachments
                                         const lineIdStr =
                                           line &&
                                           line.id !== undefined &&
@@ -1526,7 +1585,6 @@ const RbAdmin = () => {
                                           ? matched
                                           : attachments[claim.id];
                                       }
-                                      // --- END REPLACEMENT ---
 
                                       const amount = line
                                         ? line.total_amount ||
@@ -1536,9 +1594,7 @@ const RbAdmin = () => {
 
                                       return (
                                         <tr
-                                          key={`line-${claim.id}-${
-                                            line.id ?? li
-                                          }`}
+                                          key={`line-${claim.id}-${line.id ?? li}`}
                                           className="claim-line-row"
                                         >
                                           <td></td>

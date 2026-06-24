@@ -1071,19 +1071,26 @@ const RbTeamLead = () => {
         return;
       }
 
+      const currentClaim = employees
+        .flatMap((e) => e.claims)
+        .find((c) => String(c.id) === String(claimId));
+
+      const finalProjectRaw =
+        projectSelections[claimId] !== undefined &&
+        projectSelections[claimId] !== null &&
+        String(projectSelections[claimId]).trim() !== ""
+          ? projectSelections[claimId]
+          : currentClaim?.project || "";
+
+      const finalProject = isInvalidProject(finalProjectRaw)
+        ? ""
+        : String(finalProjectRaw).trim();
+
       const url = `${
         backendBase ? backendBase : ""
       }/reimbursement/${claimId}/status`;
 
       const actor = getEmployeeIdFromContextOrCookie(user) || teamLeadId || "";
-      const currentClaim = employees
-        .flatMap((e) => e.claims)
-        .find((c) => String(c.id) === String(claimId));
-
-      const finalProject =
-        projectSelections[claimId] !== undefined
-          ? projectSelections[claimId]
-          : currentClaim?.project || "";
 
       const body = {
         status: newStatus,
@@ -1119,18 +1126,24 @@ const RbTeamLead = () => {
       console.error("updateStatus failed:", err);
 
       try {
-        const url = `${
-          backendBase ? backendBase : ""
-        }/reimbursement/${claimId}/status`;
-
         const currentClaim = employees
           .flatMap((e) => e.claims)
           .find((c) => String(c.id) === String(claimId));
 
-        const finalProject =
-          projectSelections[claimId] !== undefined
+        const finalProjectRaw =
+          projectSelections[claimId] !== undefined &&
+          projectSelections[claimId] !== null &&
+          String(projectSelections[claimId]).trim() !== ""
             ? projectSelections[claimId]
             : currentClaim?.project || "";
+
+        const finalProject = isInvalidProject(finalProjectRaw)
+          ? ""
+          : String(finalProjectRaw).trim();
+
+        const url = `${
+          backendBase ? backendBase : ""
+        }/reimbursement/${claimId}/status`;
 
         const body = {
           status: statusUpdates[claimId],
@@ -1162,7 +1175,6 @@ const RbTeamLead = () => {
         };
 
         showAlert(statusMsgMap[fallbackStatus] || `Status updated (fallback).`);
-
         fetchEmployees();
       } catch (err2) {
         console.error("Fallback updateStatus failed:", err2);

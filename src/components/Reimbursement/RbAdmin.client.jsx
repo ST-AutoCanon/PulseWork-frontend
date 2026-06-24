@@ -723,9 +723,18 @@ const RbAdmin = () => {
       return;
     }
 
+    const currentClaim = employees
+      .flatMap((e) => e.claims)
+      .find((c) => String(c.id) === String(id));
+
     const rawProject =
-      projectSelections[id] !== undefined ? projectSelections[id] : "";
-    const project = isInvalidProject(rawProject) ? "" : rawProject;
+      projectSelections[id] !== undefined && projectSelections[id] !== null
+        ? projectSelections[id]
+        : currentClaim?.project || "";
+
+    const project = isInvalidProject(rawProject)
+      ? ""
+      : String(rawProject).trim();
 
     if (!project) {
       showAlert("Please select a valid project.");
@@ -738,7 +747,7 @@ const RbAdmin = () => {
 
     try {
       const url =
-        (backendBase ? `${backendBase}` : "") + `/reimbursement/status/${id}`;
+        (backendBase ? backendBase : "") + `/reimbursement/status/${id}`;
       await axios.put(
         url,
         {
@@ -752,7 +761,9 @@ const RbAdmin = () => {
           headers: buildHeaders(),
         },
       );
+
       showAlert(`Reimbursement ${updatedStatus} successfully.`);
+
       setEmployees((prevEmployees) =>
         prevEmployees.map((emp) => ({
           ...emp,
@@ -762,6 +773,7 @@ const RbAdmin = () => {
                   ...claim,
                   status: updatedStatus,
                   approver_comments: approverComment,
+                  project,
                 }
               : claim,
           ),
@@ -775,7 +787,6 @@ const RbAdmin = () => {
       showAlert("Status update was not successful. Try again later.");
     }
   };
-
   const updatePaymentStatus = async (id) => {
     if (!paymentStatusUpdates[id]) {
       showAlert("Please select a payment status.");

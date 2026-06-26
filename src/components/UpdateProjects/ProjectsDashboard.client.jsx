@@ -137,10 +137,17 @@ const ProjectsDashboard = () => {
   const [selectedTemplateKey, setSelectedTemplateKey] = useState("__default__");
   const [pdfReady, setPdfReady] = useState(false);
 
+  const [templateSelected, setTemplateSelected] = useState(false);
+
   const openDownloadForm = (initialData = null) => {
     setSelectedProject(null);
     setDownloadFormInitialData(initialData);
+
     setShowTemplatePreview(false);
+
+    setTemplateSelected(false);
+    setSelectedTemplateKey("__default__");
+
     setShowDownloadForm(true);
   };
 
@@ -253,7 +260,8 @@ const ProjectsDashboard = () => {
   const invoiceTypeKey = getInvoiceTypeKey(selectedInvoiceType);
 
   useEffect(() => {
-    fetchInvoiceSequence();
+    setTemplateSelected(false);
+    setSelectedTemplateKey("__default__");
   }, [selectedInvoiceType]);
 
   useEffect(() => {
@@ -711,7 +719,17 @@ const ProjectsDashboard = () => {
                 <button
                   className="view-template-button"
                   onClick={() => {
-                    setShowTemplatePreview((prev) => !prev);
+                    setShowTemplatePreview((prev) => {
+                      const next = !prev;
+
+                      if (!next) {
+                        setTemplateSelected(false);
+                        setSelectedTemplateKey("__default__");
+                      }
+
+                      return next;
+                    });
+
                     setShowDownloadForm(false);
                   }}
                 >
@@ -721,6 +739,9 @@ const ProjectsDashboard = () => {
                 <button
                   className="download-template-button"
                   onClick={handleDownloadTemplate}
+                  disabled={
+                    !showTemplatePreview || !templateSelected || !pdfReady
+                  }
                 >
                   Download <FiDownload className="template-icons" />
                 </button>
@@ -734,7 +755,10 @@ const ProjectsDashboard = () => {
                     downloadDetails={downloadDetails}
                     orgId={user?.orgId}
                     selectedTemplateKey={selectedTemplateKey}
-                    onSelectedTemplateKeyChange={setSelectedTemplateKey}
+                    onSelectedTemplateKeyChange={(key) => {
+                      setSelectedTemplateKey(key);
+                      setTemplateSelected(key && key !== "__default__");
+                    }}
                   />
                 </div>
               )}
@@ -816,7 +840,10 @@ const ProjectsDashboard = () => {
             orgId={user?.orgId}
             showTemplateToolbar={false}
             selectedTemplateKey={selectedTemplateKey}
-            onSelectedTemplateKeyChange={setSelectedTemplateKey}
+            onSelectedTemplateKeyChange={(key) => {
+              setSelectedTemplateKey(key);
+              setTemplateSelected(key && key !== "__default__");
+            }}
             onTemplateReady={setPdfReady}
           />
         </div>

@@ -572,7 +572,7 @@ const AdminQuery = () => {
 
       <div className="admin-query-content">
         <div className="ad-sidebar">
-          <div className="toggle-switch">
+          <div className="eq-toggle-switch">
             <div
               className={`toggle-option ${!showResolved ? "active" : ""}`}
               onClick={() => setShowResolved(false)}

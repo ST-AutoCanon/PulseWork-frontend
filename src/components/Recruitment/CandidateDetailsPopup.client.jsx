@@ -130,6 +130,10 @@ export default function CandidateDetailsPopup({
             <p>{valueOrDash(candidate.department)}</p>
           </div>
           <div>
+            <strong>Skills</strong>
+            <p>{valueOrDash(candidate.skills)}</p>
+          </div>
+          <div>
             <strong>Source</strong>
             <p>{valueOrDash(candidate.source)}</p>
           </div>

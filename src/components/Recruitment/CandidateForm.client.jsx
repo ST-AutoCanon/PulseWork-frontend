@@ -12,6 +12,7 @@ const EMPTY_FORM = {
   phone: "",
   applied_position: "",
   department: "",
+  skills: "",
   source: "",
   current_ctc: "",
   expected_ctc: "",
@@ -74,6 +75,7 @@ export default function CandidateForm({
       phone: initialData.phone || "",
       applied_position: initialData.applied_position || "",
       department: initialData.department || "",
+      skills: initialData.skills || "",
       source: initialData.source || "",
       current_ctc: initialData.current_ctc ?? "",
       expected_ctc: initialData.expected_ctc ?? "",
@@ -115,6 +117,7 @@ export default function CandidateForm({
         phone: parsed.phone || prev.phone,
         applied_position: parsed.applied_position || prev.applied_position,
         department: parsed.department || prev.department,
+        skills: parsed.skills || prev.skills,
         source: parsed.source || prev.source || "Resume Upload",
         current_ctc: parsed.current_ctc ?? prev.current_ctc,
         expected_ctc: parsed.expected_ctc ?? prev.expected_ctc,
@@ -192,6 +195,7 @@ export default function CandidateForm({
       phone: prev.phone,
       applied_position: prev.applied_position,
       department: prev.department,
+      skills: prev.skills,
       source: prev.source,
     }));
   };
@@ -295,6 +299,16 @@ export default function CandidateForm({
                 type="text"
                 name="department"
                 value={formData.department}
+                onChange={handleChange}
+              />
+            </div>
+
+            <div className="rf-field">
+              <label>Skills</label>
+              <input
+                type="text"
+                name="skills"
+                value={formData.skills}
                 onChange={handleChange}
               />
             </div>

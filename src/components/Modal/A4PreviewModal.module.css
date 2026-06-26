@@ -1,0 +1,47 @@
+.a4Overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+
+  z-index: 9999;
+
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.a4Modal {
+  width: 60vw;
+  height: 95vh;
+
+  background: white;
+
+  border-radius: 12px;
+
+  display: flex;
+  flex-direction: column;
+
+  overflow: hidden;
+}
+
+.a4Header {
+  height: 60px;
+
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  padding: 0 20px;
+
+  border-bottom: 1px solid #ddd;
+
+  flex-shrink: 0;
+}
+
+.a4Content {
+  flex: 1;
+
+  overflow-y: auto;
+
+  padding: 20px;
+}

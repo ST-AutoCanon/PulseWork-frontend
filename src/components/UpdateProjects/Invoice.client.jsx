@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
 import InvoicePrint from "./InvoicePrint.client";
@@ -21,7 +21,7 @@ const protectedImageCache = new Map();
 
 async function fetchProtectedImageAsBlobUrl(src, apiKey) {
   if (!src) return null;
-  if (src.startsWith("blob:") || src.startsWith("data:")) return src;
+  if (/^(data:|https?:\/\/)/i.test(src)) return src;
 
   const cached = protectedImageCache.get(src);
   if (cached) return cached;
@@ -36,9 +36,16 @@ async function fetchProtectedImageAsBlobUrl(src, apiKey) {
     if (!res.ok) throw new Error(`Image fetch failed (${res.status})`);
 
     const blob = await res.blob();
-    const url = URL.createObjectURL(blob);
-    protectedImageCache.set(src, url);
-    return url;
+
+    const dataUrl = await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result);
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+
+    protectedImageCache.set(src, dataUrl);
+    return dataUrl;
   } catch (err) {
     console.warn(
       "fetchProtectedImageAsBlobUrl failed",
@@ -138,6 +145,11 @@ const Invoice = ({ onBack, project }) => {
     title: "",
     message: "",
   });
+
+  const printRef = useRef(null);
+
+  const canDownloadInvoice =
+    Boolean(selectedInvoice) && selectedTemplateKey !== "__default__";
 
   const showAlert = (message, title = "") => {
     setAlertModal({ isVisible: true, title, message });
@@ -730,19 +742,30 @@ const Invoice = ({ onBack, project }) => {
   };
 
   const handleDownloadClick = (invoice) => {
+    if (selectedTemplateKey === "__default__") {
+      showAlert("Please choose a saved template first.");
+      return;
+    }
+
     setSelectedInvoice(invoice);
     setShowSealModal(true);
   };
 
-  const handleDownloadInvoice = async (invoice) => {
+  const handleDownloadInvoice = async (invoice, sealChoice = false) => {
     try {
-      setSelectedInvoice(invoice || null);
+      if (!invoice) {
+        showAlert("Invoice not selected.");
+        return;
+      }
 
-      await new Promise((resolve) => setTimeout(resolve, 300));
+      setSelectedInvoice(invoice);
+      setWithSeal(sealChoice);
 
-      const element = document.getElementById("printableArea");
+      await new Promise((resolve) => requestAnimationFrame(() => resolve()));
+      await new Promise((resolve) => requestAnimationFrame(() => resolve()));
+
+      const element = printRef.current;
       if (!element) {
-        console.error("Printable area not found");
         showAlert("Printable area not found");
         return;
       }
@@ -753,20 +776,17 @@ const Invoice = ({ onBack, project }) => {
           if (imgs.length === 0) return resolve();
 
           let loaded = 0;
-          const onLoadOrError = () => {
-            loaded++;
+          const done = () => {
+            loaded += 1;
             if (loaded >= imgs.length) resolve();
           };
 
           imgs.forEach((img) => {
             if (img.complete && img.naturalWidth !== 0) {
-              onLoadOrError();
+              done();
             } else {
-              try {
-                img.crossOrigin = "anonymous";
-              } catch (e) {}
-              img.addEventListener("load", onLoadOrError);
-              img.addEventListener("error", onLoadOrError);
+              img.addEventListener("load", done, { once: true });
+              img.addEventListener("error", done, { once: true });
             }
           });
 
@@ -775,15 +795,12 @@ const Invoice = ({ onBack, project }) => {
 
       await waitForImagesToLoad(element, 7000);
 
-      if (!pdfReady) {
-        await new Promise((resolve) => setTimeout(resolve, 300));
-      }
-
-      const canvas = await html2canvas(printRef.current, {
+      const canvas = await html2canvas(element, {
         scale: 2,
         useCORS: true,
         backgroundColor: "#ffffff",
       });
+
       const imgData = canvas.toDataURL("image/png");
 
       const pdf = new jsPDF({
@@ -794,13 +811,9 @@ const Invoice = ({ onBack, project }) => {
 
       const pdfWidth = pdf.internal.pageSize.getWidth();
       const pdfHeight = pdf.internal.pageSize.getHeight();
-
-      const canvasWidth = canvas.width;
-      const canvasHeight = canvas.height;
       const imgWidth = pdfWidth - 20;
-      const ratio = imgWidth / canvasWidth;
-      const imgHeight = canvasHeight * ratio;
-
+      const ratio = imgWidth / canvas.width;
+      const imgHeight = canvas.height * ratio;
       const pageInnerHeight = pdfHeight - 20;
 
       if (imgHeight <= pageInnerHeight) {
@@ -808,11 +821,12 @@ const Invoice = ({ onBack, project }) => {
       } else {
         let heightLeft = imgHeight;
         let pageCount = 0;
+
         while (heightLeft > 0) {
           const y = 10 - pageCount * pageInnerHeight;
           pdf.addImage(imgData, "PNG", 10, y, imgWidth, imgHeight);
           heightLeft -= pageInnerHeight;
-          pageCount++;
+          pageCount += 1;
           if (heightLeft > 0) pdf.addPage();
         }
       }
@@ -1120,9 +1134,18 @@ const Invoice = ({ onBack, project }) => {
                         className="in-edit-icon"
                         onClick={() => handleEditInvoice(inv)}
                       />
+
                       <FiDownload
                         className="in-download-icon"
                         onClick={() => handleDownloadClick(inv)}
+                        disabled={!canDownloadInvoice}
+                        title={
+                          selectedTemplateKey === "__default__"
+                            ? "Choose a template first"
+                            : !pdfReady
+                              ? "Template is loading"
+                              : "Download invoice"
+                        }
                       />
 
                       <div className="invoice-menu-wrap">
@@ -1234,21 +1257,24 @@ const Invoice = ({ onBack, project }) => {
             <p>Choose seal option:</p>
             <div className="seal-options">
               <button
+                type="button"
                 className="seal-btn"
-                onClick={() => {
-                  setWithSeal(true);
+                disabled={!canDownloadInvoice}
+                onClick={async () => {
                   setShowSealModal(false);
-                  handleDownloadInvoice(selectedInvoice);
+                  await handleDownloadInvoice(selectedInvoice, true);
                 }}
               >
                 With Seal
               </button>
+
               <button
+                type="button"
                 className="seal-btn"
-                onClick={() => {
-                  setWithSeal(false);
+                disabled={!canDownloadInvoice}
+                onClick={async () => {
                   setShowSealModal(false);
-                  handleDownloadInvoice(selectedInvoice);
+                  await handleDownloadInvoice(selectedInvoice, false);
                 }}
               >
                 Without Seal
@@ -1681,6 +1707,23 @@ const Invoice = ({ onBack, project }) => {
       >
         <p>{alertModal.message}</p>
       </Modal>
+
+      <div id="printableArea" ref={printRef}>
+        {selectedInvoice && (
+          <InvoicePrint
+            invoiceData={{
+              ...selectedInvoice,
+              project,
+              withSeal,
+            }}
+            orgId={orgId}
+            selectedTemplateKey={selectedTemplateKey}
+            onSelectedTemplateKeyChange={setSelectedTemplateKey}
+            onTemplateReady={null}
+            showTemplateToolbar={false}
+          />
+        )}
+      </div>
     </div>
   );
 };

@@ -759,7 +759,7 @@ const EmployeeQuery = () => {
       <div className="emp-query-content">
         {(!isMobile || !selectedQuery) && (
           <div className="emp-sidebar">
-            <div className="toggle-switch">
+            <div className="eq-toggle-switch">
               <div
                 className={`toggle-option ${!showResolved ? "active" : ""}`}
                 onClick={() => setShowResolved(false)}

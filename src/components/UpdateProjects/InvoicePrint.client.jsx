@@ -69,11 +69,7 @@ const resolveTemplateAssetUrl = (value, backendBase = "") => {
 async function fetchProtectedImage(src, apiKey, employeeId, backendBase = "") {
   if (!src) return null;
 
-  if (
-    src.startsWith("blob:") ||
-    src.startsWith("data:") ||
-    /^https?:\/\//i.test(src)
-  ) {
+  if (/^(data:|https?:\/\/)/i.test(src)) {
     return src;
   }
 
@@ -103,9 +99,16 @@ async function fetchProtectedImage(src, apiKey, employeeId, backendBase = "") {
     }
 
     const blob = await res.blob();
-    const blobUrl = URL.createObjectURL(blob);
-    protectedImageCache.set(resolvedSrc, blobUrl);
-    return blobUrl;
+
+    const dataUrl = await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result);
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+
+    protectedImageCache.set(resolvedSrc, dataUrl);
+    return dataUrl;
   } catch (err) {
     console.warn(
       "fetchProtectedImage error:",
@@ -586,6 +589,7 @@ const InvoicePrint = React.forwardRef(
     ]);
 
     useEffect(() => {
+      if (!showTemplateToolbar) return;
       if (typeof onTemplateReady === "function") {
         try {
           onTemplateReady(templateReady);
@@ -593,7 +597,7 @@ const InvoicePrint = React.forwardRef(
           console.warn("onTemplateReady threw", e);
         }
       }
-    }, [templateReady, onTemplateReady]);
+    }, [templateReady, onTemplateReady, showTemplateToolbar]);
 
     const totals = parsedLineItems.reduce(
       (acc, item) => {

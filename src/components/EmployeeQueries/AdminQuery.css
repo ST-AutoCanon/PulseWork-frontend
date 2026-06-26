@@ -75,7 +75,7 @@
   outline-offset: 2px;
 }
 
-.toggle-switch {
+.eq-toggle-switch {
   display: flex;
   background: #f0f0f0;
   border-radius: 20px;

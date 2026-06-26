@@ -13,6 +13,7 @@ import { useAuth } from "../../context/AuthProvider.client";
 import BasicTemplateEditor from "./BasicTemplateEditor.client";
 import CustomTemplateEditor from "./CustomTemplateEditor.client";
 import styles from "./TemplateBuilder.module.css";
+import A4PreviewModal from "../Modal/A4PreviewModal.client";
 
 function dataURLToBlob(dataURL) {
   const arr = dataURL.split(",");
@@ -424,6 +425,8 @@ export default function TemplateBuilder() {
     },
     [closeModal],
   );
+
+  const hydratingSavedTemplateRef = useRef(false);
 
   useEffect(() => {
     if (mode === "view") {
@@ -2211,21 +2214,16 @@ export default function TemplateBuilder() {
         </Modal>
       )}
 
-      <Modal
-        isVisible={showA4Preview}
-        title="A4 Preview"
+      <A4PreviewModal
+        isOpen={showA4Preview}
         onClose={() => setShowA4Preview(false)}
-        buttons={[
-          {
-            label: "Close",
-            onClick: () => setShowA4Preview(false),
-            className: "ac-modal-btn",
-          },
-        ]}
-        customClass="a4-preview-modal"
       >
         <div
-          style={{ width: "100%", display: "flex", justifyContent: "center" }}
+          style={{
+            width: "100%",
+            display: "flex",
+            justifyContent: "center",
+          }}
         >
           <A4Preview
             headerUrl={
@@ -2251,7 +2249,7 @@ export default function TemplateBuilder() {
             bodyHtml={mode === "view" ? viewingTemplate?.html : null}
           />
         </div>
-      </Modal>
+      </A4PreviewModal>
 
       <Modal
         isVisible={modalConfig.isVisible}

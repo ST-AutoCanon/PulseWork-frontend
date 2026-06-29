@@ -770,30 +770,23 @@ const Invoice = ({ onBack, project }) => {
         return;
       }
 
-      const waitForImagesToLoad = (rootEl, timeout = 7000) =>
-        new Promise((resolve) => {
-          const imgs = Array.from(rootEl.querySelectorAll("img"));
-          if (imgs.length === 0) return resolve();
+      const waitForPrintableTemplate = async (rootEl, timeoutMs = 7000) => {
+        const startedAt = Date.now();
 
-          let loaded = 0;
-          const done = () => {
-            loaded += 1;
-            if (loaded >= imgs.length) resolve();
-          };
+        while (Date.now() - startedAt < timeoutMs) {
+          const templateEl = rootEl.querySelector("[data-template-ready]");
+          const templateReady =
+            !templateEl || templateEl.dataset.templateReady === "true";
+          const imagesReady = Array.from(rootEl.querySelectorAll("img")).every(
+            (img) => img.complete && img.naturalWidth !== 0,
+          );
 
-          imgs.forEach((img) => {
-            if (img.complete && img.naturalWidth !== 0) {
-              done();
-            } else {
-              img.addEventListener("load", done, { once: true });
-              img.addEventListener("error", done, { once: true });
-            }
-          });
+          if (templateReady && imagesReady) return;
+          await new Promise((resolve) => setTimeout(resolve, 100));
+        }
+      };
 
-          setTimeout(resolve, timeout);
-        });
-
-      await waitForImagesToLoad(element, 7000);
+      await waitForPrintableTemplate(element, 7000);
 
       const canvas = await html2canvas(element, {
         scale: 2,
@@ -811,25 +804,21 @@ const Invoice = ({ onBack, project }) => {
 
       const pdfWidth = pdf.internal.pageSize.getWidth();
       const pdfHeight = pdf.internal.pageSize.getHeight();
-      const imgWidth = pdfWidth - 20;
+      const pdfMargin = 2;
+      const imgWidth = pdfWidth - pdfMargin * 2;
+      const pageInnerHeight = pdfHeight - pdfMargin * 2;
       const ratio = imgWidth / canvas.width;
       const imgHeight = canvas.height * ratio;
-      const pageInnerHeight = pdfHeight - 20;
+      const fittedHeight = Math.min(imgHeight, pageInnerHeight);
 
-      if (imgHeight <= pageInnerHeight) {
-        pdf.addImage(imgData, "PNG", 10, 10, imgWidth, imgHeight);
-      } else {
-        let heightLeft = imgHeight;
-        let pageCount = 0;
-
-        while (heightLeft > 0) {
-          const y = 10 - pageCount * pageInnerHeight;
-          pdf.addImage(imgData, "PNG", 10, y, imgWidth, imgHeight);
-          heightLeft -= pageInnerHeight;
-          pageCount += 1;
-          if (heightLeft > 0) pdf.addPage();
-        }
-      }
+      pdf.addImage(
+        imgData,
+        "PNG",
+        pdfMargin,
+        pdfMargin,
+        imgWidth,
+        fittedHeight,
+      );
 
       pdf.save(`Invoice-${invoice.invoiceNo || Date.now()}.pdf`);
       showAlert("Invoice PDF downloaded.");
@@ -1193,7 +1182,7 @@ const Invoice = ({ onBack, project }) => {
           <p>No invoices available.</p>
         )}
 
-        <div id="printableArea">
+        <div className="invoice-template-selector">
           {selectedInvoice && (
             <InvoicePrint
               invoiceData={{
@@ -1624,17 +1613,19 @@ const Invoice = ({ onBack, project }) => {
               />
             </div>
 
-            <InvoicePrint
-              invoiceData={{
-                ...selectedInvoice,
-                project,
-                withSeal,
-              }}
-              orgId={orgId}
-              selectedTemplateKey={selectedTemplateKey}
-              onSelectedTemplateKeyChange={setSelectedTemplateKey}
-              onTemplateReady={setPdfReady}
-            />
+            <div className="invoice-template-preview">
+              <InvoicePrint
+                invoiceData={{
+                  ...selectedInvoice,
+                  project,
+                  withSeal,
+                }}
+                orgId={orgId}
+                selectedTemplateKey={selectedTemplateKey}
+                onSelectedTemplateKeyChange={setSelectedTemplateKey}
+                onTemplateReady={setPdfReady}
+              />
+            </div>
           </div>
         </div>
       )}
@@ -1708,7 +1699,7 @@ const Invoice = ({ onBack, project }) => {
         <p>{alertModal.message}</p>
       </Modal>
 
-      <div id="printableArea" ref={printRef}>
+      <div className="invoice-print-capture" ref={printRef}>
         {selectedInvoice && (
           <InvoicePrint
             invoiceData={{
@@ -1719,7 +1710,7 @@ const Invoice = ({ onBack, project }) => {
             orgId={orgId}
             selectedTemplateKey={selectedTemplateKey}
             onSelectedTemplateKeyChange={setSelectedTemplateKey}
-            onTemplateReady={null}
+            onTemplateReady={setPdfReady}
             showTemplateToolbar={false}
           />
         )}

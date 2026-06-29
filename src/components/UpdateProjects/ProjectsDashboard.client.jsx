@@ -138,6 +138,11 @@ const ProjectsDashboard = () => {
   const [pdfReady, setPdfReady] = useState(false);
 
   const [templateSelected, setTemplateSelected] = useState(false);
+  const [downloadWarning, setDownloadWarning] = useState({
+    isVisible: false,
+    title: "Template Required",
+    message: "",
+  });
 
   const openDownloadForm = (initialData = null) => {
     setSelectedProject(null);
@@ -311,6 +316,15 @@ const ProjectsDashboard = () => {
   };
 
   const handleDownloadTemplate = async () => {
+    if (!templateSelected) {
+      setDownloadWarning({
+        isVisible: true,
+        title: "Template Required",
+        message:
+          "Please preview and select an invoice template before downloading.",
+      });
+      return;
+    }
     if (!printRef.current) return;
 
     try {
@@ -739,9 +753,6 @@ const ProjectsDashboard = () => {
                 <button
                   className="download-template-button"
                   onClick={handleDownloadTemplate}
-                  disabled={
-                    !showTemplatePreview || !templateSelected || !pdfReady
-                  }
                 >
                   Download <FiDownload className="template-icons" />
                 </button>
@@ -848,6 +859,32 @@ const ProjectsDashboard = () => {
           />
         </div>
       </div>
+
+      <Modal
+        isVisible={downloadWarning.isVisible}
+        title={downloadWarning.title}
+        onClose={() =>
+          setDownloadWarning({
+            isVisible: false,
+            title: "",
+            message: "",
+          })
+        }
+        buttons={[
+          {
+            label: "OK",
+            className: "confirm-btn",
+            onClick: () =>
+              setDownloadWarning({
+                isVisible: false,
+                title: "",
+                message: "",
+              }),
+          },
+        ]}
+      >
+        <p>{downloadWarning.message}</p>
+      </Modal>
     </div>
   );
 };

@@ -33,7 +33,9 @@ export default function SharedTemplateControls({
   const fileInputRef = externalFileInputRef || useRef(null);
   const fileInputHeaderRef = useRef(null);
   const fileInputFooterRef = useRef(null);
-
+  const watermarkUrl = watermarkFile
+    ? URL.createObjectURL(watermarkFile)
+    : watermarkUrlProp;
   const [localActive, setLocalActive] = useState(
     String(activeArea || "header"),
   );
@@ -99,9 +101,7 @@ export default function SharedTemplateControls({
           ? URL.createObjectURL(footerFile)
           : footerUrlProp || null,
 
-        watermarkUrl:
-          watermarkUrlProp ||
-          (watermarkFile ? URL.createObjectURL(watermarkFile) : null),
+        watermarkUrl: watermarkUrl,
       });
     }
   }, [

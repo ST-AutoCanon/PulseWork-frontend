@@ -104,6 +104,17 @@ const DownloadDetailsList = ({
     useState("Tax Invoice");
   const [redownloadInvoiceNumber, setRedownloadInvoiceNumber] = useState("");
   const [pendingRedownloadId, setPendingRedownloadId] = useState(null);
+  const [showRedownloadPreview, setShowRedownloadPreview] = useState(false);
+  const [redownloadSelectedTemplateKey, setRedownloadSelectedTemplateKey] =
+    useState("__default__");
+  const [redownloadTemplateSelected, setRedownloadTemplateSelected] =
+    useState(false);
+  const [redownloadPdfReady, setRedownloadPdfReady] = useState(false);
+  const [redownloadWarning, setRedownloadWarning] = useState({
+    isVisible: false,
+    title: "Template Required",
+    message: "",
+  });
   const [successNotice, setSuccessNotice] = useState({
     isVisible: false,
     title: "Success",
@@ -225,7 +236,50 @@ const DownloadDetailsList = ({
     setRedownloadDetails(buildDownloadDetails(record));
     setRedownloadInvoiceType(normalizeInvoiceTypeLabel(record.invoiceType));
     setRedownloadInvoiceNumber(record.invoiceNumber || "");
-    setPendingRedownloadId(record.id ?? `${Date.now()}`);
+    setRedownloadSelectedTemplateKey("__default__");
+    setRedownloadTemplateSelected(false);
+    setRedownloadPdfReady(false);
+    setPendingRedownloadId(null);
+    setShowRedownloadPreview(true);
+  };
+
+  const closeRedownloadPreview = () => {
+    setShowRedownloadPreview(false);
+    setRedownloadDetails({});
+    setRedownloadInvoiceNumber("");
+    setRedownloadSelectedTemplateKey("__default__");
+    setRedownloadTemplateSelected(false);
+    setRedownloadPdfReady(false);
+    setPendingRedownloadId(null);
+  };
+
+  const waitForTemplateRender = async (element, timeoutMs = 5000) => {
+    const startedAt = Date.now();
+
+    while (Date.now() - startedAt < timeoutMs) {
+      const ready = element?.dataset?.templateReady === "true";
+      const imagesReady = Array.from(element?.querySelectorAll("img") || [])
+        .filter((img) => img.offsetParent !== null || img.currentSrc || img.src)
+        .every((img) => img.complete && img.naturalWidth !== 0);
+
+      if (ready && imagesReady) return true;
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    }
+
+    return false;
+  };
+
+  const startRedownload = () => {
+    if (!redownloadTemplateSelected) {
+      setRedownloadWarning({
+        isVisible: true,
+        title: "Template Required",
+        message: "Please select a saved template before downloading.",
+      });
+      return;
+    }
+
+    setPendingRedownloadId(`${Date.now()}`);
   };
 
   const handleViewTemplate = (record) => {
@@ -375,7 +429,15 @@ const DownloadDetailsList = ({
 
         if (!printRef.current) return;
 
-        const canvas = await html2canvas(printRef.current, { scale: 2 });
+        if (!redownloadPdfReady) {
+          await waitForTemplateRender(printRef.current);
+        }
+
+        const canvas = await html2canvas(printRef.current, {
+          scale: 2,
+          useCORS: true,
+          backgroundColor: "#ffffff",
+        });
         const imgData = canvas.toDataURL("image/png");
         const pdf = new jsPDF({
           orientation: "portrait",
@@ -388,6 +450,7 @@ const DownloadDetailsList = ({
 
         const filename = `${redownloadInvoiceNumber || "invoice"}.pdf`;
         pdf.save(filename);
+        closeRedownloadPreview();
       } catch (error) {
         console.error("Error generating PDF", error);
       } finally {
@@ -401,6 +464,8 @@ const DownloadDetailsList = ({
     redownloadDetails,
     redownloadInvoiceType,
     redownloadInvoiceNumber,
+    redownloadPdfReady,
+    redownloadSelectedTemplateKey,
     orgId,
   ]);
 
@@ -814,6 +879,80 @@ const DownloadDetailsList = ({
         </div>
       )}
 
+      {showRedownloadPreview && (
+        <div className="pj-modal">
+          <div className="pj-modal-content" style={{ maxWidth: "1100px" }}>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                backgroundColor: "#00468c",
+              }}
+            >
+              <h3 className="preview">Redownload Preview</h3>
+              <button
+                type="button"
+                className="pj-close-button"
+                onClick={closeRedownloadPreview}
+              >
+                X
+              </button>
+            </div>
+
+            <InvoiceTemplate
+              invoiceType={redownloadInvoiceType}
+              invoiceNumber={redownloadInvoiceNumber}
+              downloadDetails={redownloadDetails}
+              orgId={orgId}
+              selectedTemplateKey={redownloadSelectedTemplateKey}
+              onSelectedTemplateKeyChange={(key) => {
+                setRedownloadSelectedTemplateKey(key);
+                setRedownloadTemplateSelected(key && key !== "__default__");
+                setRedownloadPdfReady(false);
+              }}
+            />
+
+            <div className="redownload-preview-actions">
+              <button
+                type="button"
+                className="download-template-button"
+                onClick={startRedownload}
+                disabled={Boolean(pendingRedownloadId)}
+              >
+                {pendingRedownloadId ? "Downloading..." : "Download"}{" "}
+                <FiDownload />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <Modal
+        isVisible={redownloadWarning.isVisible}
+        title={redownloadWarning.title}
+        onClose={() =>
+          setRedownloadWarning({
+            isVisible: false,
+            title: "",
+            message: "",
+          })
+        }
+        buttons={[
+          {
+            label: "OK",
+            className: "confirm-btn",
+            onClick: () =>
+              setRedownloadWarning({
+                isVisible: false,
+                title: "",
+                message: "",
+              }),
+          },
+        ]}
+      >
+        <p>{redownloadWarning.message}</p>
+      </Modal>
+
       {pendingCancelRecord && (
         <Modal
           isVisible={true}
@@ -839,17 +978,23 @@ const DownloadDetailsList = ({
         </Modal>
       )}
 
-      <div style={{ position: "absolute", top: "-10000px", left: "-10000px" }}>
-        <div ref={printRef}>
-          <InvoiceTemplate
-            invoiceType={redownloadInvoiceType}
-            invoiceNumber={redownloadInvoiceNumber}
-            downloadDetails={redownloadDetails}
-            orgId={orgId}
-            showTemplateToolbar={false}
-          />
+      {showRedownloadPreview && (
+        <div
+          style={{ position: "absolute", top: "-10000px", left: "-10000px" }}
+        >
+          <div ref={printRef}>
+            <InvoiceTemplate
+              invoiceType={redownloadInvoiceType}
+              invoiceNumber={redownloadInvoiceNumber}
+              downloadDetails={redownloadDetails}
+              orgId={orgId}
+              showTemplateToolbar={false}
+              selectedTemplateKey={redownloadSelectedTemplateKey}
+              onTemplateReady={setRedownloadPdfReady}
+            />
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 };

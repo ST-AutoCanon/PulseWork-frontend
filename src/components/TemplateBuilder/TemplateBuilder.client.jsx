@@ -1128,7 +1128,6 @@ export default function TemplateBuilder() {
   useEffect(() => {
     setWatermarkEnabled(false);
     setWatermarkFile(null);
-    setPreviewWatermarkUrl(null);
     setHeaderHeight(0);
     setFooterHeight(0);
 

@@ -853,6 +853,14 @@ export default function A4Preview({
     };
   }, [localWatermark, w, h, editable]);
 
+  console.log("A4Preview", {
+    resolvedHeader,
+    resolvedFooter,
+    resolvedWatermark,
+    watermarkUrl,
+    previewWatermarkUrl,
+  });
+
   return (
     <div className={styles.previewArea} style={{ overflow: "hidden" }}>
       <div

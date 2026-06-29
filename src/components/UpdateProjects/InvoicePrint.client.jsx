@@ -563,18 +563,10 @@ const InvoicePrint = React.forwardRef(
     const templateReady = useMemo(() => {
       if (!activeTemplate) return true;
 
-      const headerOk =
-        !resolvedTemplateAssets.headerUrl ||
-        headerLoaded ||
-        !showTemplateToolbar;
-      const footerOk =
-        !resolvedTemplateAssets.footerUrl ||
-        footerLoaded ||
-        !showTemplateToolbar;
+      const headerOk = !resolvedTemplateAssets.headerUrl || headerLoaded;
+      const footerOk = !resolvedTemplateAssets.footerUrl || footerLoaded;
       const watermarkOk =
-        !resolvedTemplateAssets.watermarkUrl ||
-        watermarkLoaded ||
-        !showTemplateToolbar;
+        !resolvedTemplateAssets.watermarkUrl || watermarkLoaded;
 
       return headerOk && footerOk && watermarkOk;
     }, [
@@ -585,11 +577,9 @@ const InvoicePrint = React.forwardRef(
       headerLoaded,
       footerLoaded,
       watermarkLoaded,
-      showTemplateToolbar,
     ]);
 
     useEffect(() => {
-      if (!showTemplateToolbar) return;
       if (typeof onTemplateReady === "function") {
         try {
           onTemplateReady(templateReady);
@@ -597,7 +587,7 @@ const InvoicePrint = React.forwardRef(
           console.warn("onTemplateReady threw", e);
         }
       }
-    }, [templateReady, onTemplateReady, showTemplateToolbar]);
+    }, [templateReady, onTemplateReady]);
 
     const totals = parsedLineItems.reduce(
       (acc, item) => {

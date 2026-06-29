@@ -488,14 +488,9 @@ const InvoiceTemplate = React.forwardRef((props, ref) => {
   const templateReady = useMemo(() => {
     if (!activeTemplate) return true;
 
-    const headerOk =
-      !resolvedTemplateAssets.headerUrl || headerLoaded || !showTemplateToolbar;
-    const footerOk =
-      !resolvedTemplateAssets.footerUrl || footerLoaded || !showTemplateToolbar;
-    const watermarkOk =
-      !resolvedTemplateAssets.watermarkUrl ||
-      watermarkLoaded ||
-      !showTemplateToolbar;
+    const headerOk = !resolvedTemplateAssets.headerUrl || headerLoaded;
+    const footerOk = !resolvedTemplateAssets.footerUrl || footerLoaded;
+    const watermarkOk = !resolvedTemplateAssets.watermarkUrl || watermarkLoaded;
 
     return headerOk && footerOk && watermarkOk;
   }, [
@@ -506,7 +501,6 @@ const InvoiceTemplate = React.forwardRef((props, ref) => {
     headerLoaded,
     footerLoaded,
     watermarkLoaded,
-    showTemplateToolbar,
   ]);
 
   useEffect(() => {

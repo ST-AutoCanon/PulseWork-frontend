@@ -72,6 +72,11 @@ export default function UploadScan({
   const fileInputWatermarkRef = useRef(null);
 
   useEffect(() => {
+    console.log("UploadScan watermarkUrlProp:", watermarkUrlProp);
+    console.log("UploadScan watermarkProps:", watermarkPropsProp);
+  }, [watermarkUrlProp, watermarkPropsProp]);
+
+  useEffect(() => {
     if (headerFile) {
       const u = URL.createObjectURL(headerFile);
       setHeaderUrl(u);

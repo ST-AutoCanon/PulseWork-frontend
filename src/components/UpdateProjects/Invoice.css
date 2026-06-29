@@ -239,6 +239,37 @@
   overflow: hidden;
 }
 
+.invoice-print-capture {
+  position: absolute;
+  top: 0;
+  left: -10000px;
+  width: 794px;
+  max-width: 794px;
+  background: #fff;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.invoice-print-capture .emp-inv-container {
+  width: 794px;
+  max-width: 794px;
+  padding: 8px 8px;
+  box-sizing: border-box;
+}
+
+.invoice-template-selector .emp-inv-container,
+.invoice-template-preview .emp-inv-container {
+  padding-left: 4px;
+  padding-right: 4px;
+}
+
+.invoice-print-capture .emp-inv-container.org-32,
+.invoice-template-selector .emp-inv-container.org-32,
+.invoice-template-preview .emp-inv-container.org-32 {
+  padding-left: 0;
+  padding-right: 0;
+}
+
 .line-items-wrapper {
   padding: 2%;
   border: 1px solid #ddd;

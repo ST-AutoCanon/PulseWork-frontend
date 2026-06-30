@@ -1,4 +1,3 @@
-
 // export const getCurrentYearMonth = () => {
 //   const year = new Date().getFullYear();
 //   const month = String(new Date().getMonth() + 1).padStart(2, "0");
@@ -358,7 +357,6 @@
 //   bonusPay +
 //   incentivePay;
 
-
 //   const pfBase =
 //     planData.pfCalculationBase === "gross" ? grossSalary : basicSalary;
 
@@ -412,8 +410,6 @@
 
 //   const medicalBase =
 //     planData.medicalCalculationBase === "gross" ? grossSalary : basicSalary;
-
-   
 
 //   // ==================== Insurance (Employee & Employer) ====================
 //   // Insurance Employee
@@ -600,16 +596,16 @@
 //   // ==================== OTHER ALLOWANCE - NEW LOGIC ====================
 //   // New Requirement: Other Allowance = Monthly CTC - (Basic + HRA + LTA + Employer Contributions)
 
-//   let employerContributionsForBalancing = 
-//     employerPF + 
-//     gratuity + 
-//     insuranceEmployer + 
+//   let employerContributionsForBalancing =
+//     employerPF +
+//     gratuity +
+//     insuranceEmployer +
 //     esicEmployer;
 
 //   // Calculate Other Allowance as balancing figure
 //   if (planData.isOtherAllowance) {
 //     const knownFixed = basicSalary + hra + ltaAllowance + employerContributionsForBalancing;
-    
+
 //     otherAllowances = monthlyCtc - knownFixed;
 
 //     // Prevent negative value
@@ -632,8 +628,6 @@
 //     overtimePay +
 //     bonusPay +
 //     incentivePay;
-
-
 
 // // Prevent negative
 // if (otherAllowances < 0) {
@@ -685,9 +679,9 @@
 //   // IMPORTANT: Other Allowance must be calculated BEFORE this block
 
 //   // Base = Basic + HRA + Other Allowance
-//   const grossForESI = 
-//     Number(basicSalary || 0) + 
-//     Number(hra || 0) + 
+//   const grossForESI =
+//     Number(basicSalary || 0) +
+//     Number(hra || 0) +
 //     Number(otherAllowances || 0);
 
 //   // ESIC Employee
@@ -849,8 +843,6 @@
 //   return Math.round(parseFloat(employee.ctc) / 12);
 // };
 
-
-
 export const getCurrentYearMonth = () => {
   const year = new Date().getFullYear();
   const month = String(new Date().getMonth() + 1).padStart(2, "0");
@@ -885,7 +877,7 @@ export const parseApplicableMonth = (monthStr) => {
     "December",
   ];
   const monthIndex = monthNames.findIndex(
-    (name) => name.toLowerCase() === monthStr.toLowerCase()
+    (name) => name.toLowerCase() === monthStr.toLowerCase(),
   );
   if (monthIndex !== -1) {
     return new Date(new Date().getFullYear(), monthIndex);
@@ -920,10 +912,10 @@ export const getPayrollFilter = () => {
   const targetMonthStr = targetMonth.toString().padStart(2, "0");
 
   const windowStart = new Date(
-    Date.UTC(targetYear, targetMonth - 1, cutoffDate)
+    Date.UTC(targetYear, targetMonth - 1, cutoffDate),
   );
   const windowEnd = new Date(
-    Date.UTC(currentYear, currentMonth - 1, cutoffDate)
+    Date.UTC(currentYear, currentMonth - 1, cutoffDate),
   );
 
   return { targetMonthStr, targetYear, windowStart, windowEnd };
@@ -956,7 +948,7 @@ export const calculateSalaryDetails = (
   bonusRecords = [],
   advances = [],
   employeeIncentiveData = {},
-  employeeLopData = {}
+  employeeLopData = {},
 ) => {
   const safeOvertimeRecords = Array.isArray(overtimeRecords)
     ? overtimeRecords
@@ -971,7 +963,7 @@ export const calculateSalaryDetails = (
 
   if (!ctc || ctc <= 0 || isNaN(parseFloat(ctc))) {
     console.warn(
-      `Invalid or missing CTC (${ctc}) for employee ${employeeId}. Using default CTC of 0.`
+      `Invalid or missing CTC (${ctc}) for employee ${employeeId}. Using default CTC of 0.`,
     );
     ctc = 0;
   }
@@ -989,16 +981,12 @@ export const calculateSalaryDetails = (
     recordBonusPay = 0,
     statutoryBonus = 0,
     statutoryBonusYearly = 0,
-
     employeePF = 0,
     employerPF = 0,
-
     esic = 0,
     esicEmployer = 0,
-
     insurance = 0,
     insuranceEmployer = 0,
-
     gratuity = 0,
     professionalTax = 0,
     otherAllowances = 0,
@@ -1009,7 +997,7 @@ export const calculateSalaryDetails = (
 
   if (!planData || typeof planData !== "object") {
     console.warn(
-      `Invalid or missing planData for employee ${employeeId}. Using default values.`
+      `Invalid or missing planData for employee ${employeeId}. Using default values.`,
     );
     planData = {};
   }
@@ -1030,7 +1018,7 @@ export const calculateSalaryDetails = (
   } else {
     basicSalary = monthlyCtc ? monthlyCtc * 0.4 : 0;
     console.warn(
-      `Using default basicSalary (40% of CTC) for employee ${employeeId}`
+      `Using default basicSalary (40% of CTC) for employee ${employeeId}`,
     );
   }
 
@@ -1095,7 +1083,7 @@ export const calculateSalaryDetails = (
     const isInWindow = updatedDate >= windowStart && updatedDate < windowEnd;
     const monthStr = String(otDate ? otDate.getMonth() + 1 : 0).padStart(
       2,
-      "0"
+      "0",
     );
     const isValid =
       ot.employee_id === employeeId &&
@@ -1120,7 +1108,7 @@ export const calculateSalaryDetails = (
       } else {
         rate = 500;
         console.warn(
-          `No valid rate or overtimePayAmount for employee ${employeeId}; using default rate=₹${rate}/hour`
+          `No valid rate or overtimePayAmount for employee ${employeeId}; using default rate=₹${rate}/hour`,
         );
       }
     }
@@ -1186,28 +1174,23 @@ export const calculateSalaryDetails = (
 
   const empId = String(employeeId).toUpperCase();
   const matchedKey = Object.keys(employeeIncentiveData).find(
-    (key) => String(key).toUpperCase() === empId
+    (key) => String(key).toUpperCase() === empId,
   );
 
   if (matchedKey && employeeIncentiveData[matchedKey]) {
     const incData = employeeIncentiveData[matchedKey];
     const currentYm = getCurrentYearMonth();
     const currentMonthIncentives = (incData.incentives || []).filter(
-      (inc) => inc.applicable_month === currentYm
+      (inc) => inc.applicable_month === currentYm,
     );
     incentivePay = currentMonthIncentives.reduce(
       (sum, inc) => sum + parseFloat(inc.value || 0),
-      0
+      0,
     );
   }
 
   grossSalary =
-    basicSalary +
-    hra +
-    ltaAllowance +
-    overtimePay +
-    bonusPay +
-    incentivePay;
+    basicSalary + hra + ltaAllowance + overtimePay + bonusPay + incentivePay;
 
   const pfBase =
     planData.pfCalculationBase === "gross" ? grossSalary : basicSalary;
@@ -1268,7 +1251,8 @@ export const calculateSalaryDetails = (
     planData.insuranceEmployeePercentage &&
     !isNaN(parseFloat(planData.insuranceEmployeePercentage))
   ) {
-    insurance = medicalBase * (parseFloat(planData.insuranceEmployeePercentage) / 100);
+    insurance =
+      medicalBase * (parseFloat(planData.insuranceEmployeePercentage) / 100);
     planData.insuranceEmployeeText = `${
       planData.insuranceEmployeePercentage
     }% of ${formatCalculationBase(planData.medicalCalculationBase || "basic")}`;
@@ -1290,7 +1274,8 @@ export const calculateSalaryDetails = (
     planData.insuranceEmployerPercentage &&
     !isNaN(parseFloat(planData.insuranceEmployerPercentage))
   ) {
-    insuranceEmployer = medicalBase * (parseFloat(planData.insuranceEmployerPercentage) / 100);
+    insuranceEmployer =
+      medicalBase * (parseFloat(planData.insuranceEmployerPercentage) / 100);
     planData.insuranceEmployerText = `${
       planData.insuranceEmployerPercentage
     }% of ${formatCalculationBase(planData.medicalCalculationBase || "basic")}`;
@@ -1321,7 +1306,7 @@ export const calculateSalaryDetails = (
   } else {
     gratuity = basicSalary * 0;
     console.warn(
-      `Using default gratuity (4.81% of basicSalary) for employee ${employeeId}`
+      `Using default gratuity (4.81% of basicSalary) for employee ${employeeId}`,
     );
   }
 
@@ -1403,35 +1388,91 @@ export const calculateSalaryDetails = (
     tds = Math.round((annualTDS / 12) * 100) / 100;
   }
 
-   // ==================== OTHER ALLOWANCE - ALGEBRAIC BALANCING ====================
+  // ==================== OTHER ALLOWANCE - BALANCING LOGIC ====================
+  // Calculate Other Allowance so that Monthly CTC = Earnings + Employer Contributions
   if (planData.isOtherAllowance) {
- const totalEmployerContribution =
-  employerPF +
-  gratuity +
-  insuranceEmployer;
+    // First pass: fixed components + employer contributions that don't depend on Other
+    const knownFixedEarnings = basicSalary + hra + ltaAllowance;
 
-otherAllowances = Math.max(
-  0,
-  monthlyCtc -
-    basicSalary -
-    hra -
-    totalEmployerContribution
-);
+    const knownEmployerContrib = employerPF + gratuity + insuranceEmployer;
 
-planData.otherAllowanceText =
-  "Balancing Component (CTC - Basic - HRA - Employer Contributions)";
+    // Initial estimate (excluding ESIC which depends on Other)
+    let estimatedOther = monthlyCtc - knownFixedEarnings - knownEmployerContrib;
 
-    planData.otherAllowanceText = `Balancing Component (CTC - Fixed + ESI adjustment)`;
+    // Prevent negative
+    estimatedOther = Math.max(0, estimatedOther);
+
+    // Now calculate ESIC on (Basic + HRA + Other) as per requirement
+    const grossForESI =
+      Number(basicSalary || 0) + Number(hra || 0) + Number(estimatedOther || 0);
+
+    // ESIC Employee
+    if (
+      planData.isESICEmployee &&
+      planData.esicEmployeeType === "percentage" &&
+      planData.esicEmployeePercentage
+    ) {
+      const rate = parseFloat(planData.esicEmployeePercentage) / 100;
+      esic = grossForESI * rate;
+      planData.esicEmployeeText = `${planData.esicEmployeePercentage}% of (Basic + HRA + Other Allowance)`;
+    } else if (planData.esicEmployeeAmount) {
+      esic = parseFloat(planData.esicEmployeeAmount);
+    } else {
+      esic = 0;
+    }
+
+    // ESIC Employer
+    if (
+      planData.isESICEmployer &&
+      planData.esicEmployerType === "percentage" &&
+      planData.esicEmployerPercentage
+    ) {
+      const rate = parseFloat(planData.esicEmployerPercentage) / 100;
+      esicEmployer = grossForESI * rate;
+      planData.esicEmployerText = `${planData.esicEmployerPercentage}% of (Basic + HRA + Other Allowance)`;
+    } else if (planData.esicEmployerAmount) {
+      esicEmployer = parseFloat(planData.esicEmployerAmount);
+    } else {
+      esicEmployer = 0;
+    }
+
+    // Final balancing including ESIC Employer
+    otherAllowances =
+      monthlyCtc -
+      basicSalary -
+      hra -
+      ltaAllowance -
+      employerPF -
+      gratuity -
+      insuranceEmployer -
+      esicEmployer;
+
+    otherAllowances = Math.max(0, otherAllowances);
+
+    planData.otherAllowanceText = `Balancing Component (CTC - Basic - HRA - LTA - Employer Contributions)`;
   } else {
     otherAllowances = 0;
+    // Recalculate ESIC without Other if not using balancing
+    const grossForESI = Number(basicSalary || 0) + Number(hra || 0);
+    // ... (ESIC calculation can be duplicated or extracted to a helper)
   }
+
+  // ==================== RECALCULATE GROSS SALARY ====================
+  grossSalary =
+    basicSalary +
+    hra +
+    ltaAllowance +
+    otherAllowances +
+    overtimePay +
+    bonusPay +
+    incentivePay;
+
+  // Rest of the function remains the same...
 
   // ==================== GROSS FOR ESI (EXCLUDING LTA) ====================
   // IMPORTANT: LTA is deliberately excluded from ESI base as per requirement
   const grossForESI =
-    Number(basicSalary || 0) +
-    Number(hra || 0) +
-    Number(otherAllowances || 0);
+    Number(basicSalary || 0) + Number(hra || 0) + Number(otherAllowances || 0);
   // Note: ltaAllowance is NOT added here
 
   // ==================== ESIC (Employee & Employer) ====================
@@ -1467,15 +1508,14 @@ planData.otherAllowanceText =
   grossSalary =
     basicSalary +
     hra +
-    ltaAllowance +        // LTA is included in gross salary / take-home
+    ltaAllowance + // LTA is included in gross salary / take-home
     otherAllowances +
     overtimePay +
     bonusPay +
     incentivePay;
 
-
   lopDeduction = parseFloat(
-    employeeLopData[employeeId]?.currentMonth?.value || 0
+    employeeLopData[employeeId]?.currentMonth?.value || 0,
   );
 
   // Employee Deductions
@@ -1514,7 +1554,7 @@ planData.otherAllowanceText =
     netSalary,
     incentivePay,
     lopDeduction,
-    grossForESI,           // Added for debugging / display
+    grossForESI, // Added for debugging / display
   };
 
   return salaryDetails;
@@ -1526,7 +1566,7 @@ export const calculateTotals = (
   bonusRecords,
   advances,
   incentivesData,
-  employeeLopData
+  employeeLopData,
 ) => {
   if (!Array.isArray(employees)) {
     console.error("Invalid employees array in calculateTotals");
@@ -1555,7 +1595,7 @@ export const calculateTotals = (
         bonusRecords,
         advances,
         incentivesData,
-        employeeLopData
+        employeeLopData,
       );
       if (!salaryDetails) {
         console.warn(`No salary details for employee ${emp.employee_id}`);
@@ -1589,7 +1629,7 @@ export const calculateTotals = (
       totalInsurance: 0,
       totalIncentives: 0,
       totalLopDeduction: 0,
-    }
+    },
   );
 };
 

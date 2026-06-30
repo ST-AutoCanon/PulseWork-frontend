@@ -12,6 +12,7 @@ import {
   Gauge,
   Loader2,
   Mail,
+  Settings2,
   ShieldAlert,
   Sparkles,
   Users,
@@ -53,6 +54,34 @@ function getRole(user) {
     .toLowerCase()
     .replace(/[_\s]+/g, " ")
     .trim();
+}
+
+function Toggle({ label, description, checked, onChange, disabled }) {
+  return (
+    <label
+      className={`toggle-card ${disabled ? "opacity-60" : ""}`}
+      style={disabled ? { cursor: "not-allowed" } : undefined}
+    >
+      <div className="toggle-card__text">
+        <div className="toggle-card__title">{label}</div>
+        {description ? (
+          <p className="toggle-card__desc">{description}</p>
+        ) : null}
+      </div>
+
+      <button
+        type="button"
+        role="switch"
+        aria-checked={checked}
+        aria-label={label}
+        disabled={disabled}
+        onClick={() => onChange(!checked)}
+        className={`toggle-switch ${checked ? "toggle-switch--on" : ""}`}
+      >
+        <span className="toggle-switch__thumb" />
+      </button>
+    </label>
+  );
 }
 
 function Field({ label, hint, children, icon }) {
@@ -315,8 +344,6 @@ export default function LoginHourSettingsModal({ isOpen, onClose }) {
     });
 
   const handleSave = async () => {
-    if (isSaving) return;
-
     const validationErrors = validateValues();
     if (validationErrors.length > 0) {
       showAlert(validationErrors.join(" "), "Validation Error", "warning");
@@ -701,10 +728,14 @@ export default function LoginHourSettingsModal({ isOpen, onClose }) {
           </p>
 
           <div className="attendance-actions">
-            <button type="button" onClick={onClose} className="btn btn--ghost">
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={isSaving}
+              className="btn btn--ghost"
+            >
               Cancel
             </button>
-
             <button
               type="button"
               onClick={handleSave}

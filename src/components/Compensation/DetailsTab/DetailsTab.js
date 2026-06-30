@@ -483,393 +483,180 @@ const DetailsTab = ({
   };
 
   const components = [
-    {
-      label: "Basic Salary",
-      planDetail:
-        planData.isBasicSalary &&
-        planData.basicSalaryType === "percentage" &&
-        planData.basicSalary
-          ? `${planData.basicSalary}% of CTC`
-          : planData.isBasicSalary &&
-            planData.basicSalaryType === "amount" &&
-            planData.basicSalaryAmount
-          ? `₹${parseFloat(planData.basicSalaryAmount).toLocaleString()}`
-          : `${calculationDefaults.basicSalary.percentage}% of CTC (default)`,
-      yearly: salaryDetails.basicSalary * 12,
-      monthly: salaryDetails.basicSalary,
-      isDeduction: false,
-      category: "Earnings",
-    },
-    {
-      label: "HRA",
-      planDetail:
-        planData.isHouseRentAllowance &&
-        planData.houseRentAllowanceType === "percentage" &&
-        planData.houseRentAllowance
-          ? `${planData.houseRentAllowance}% of Basic`
-          : planData.isHouseRentAllowance &&
-            planData.houseRentAllowanceType === "amount" &&
-            planData.houseRentAllowanceAmount
-          ? `₹${parseFloat(planData.houseRentAllowanceAmount).toLocaleString()}`
-          : `${calculationDefaults.hra.percentage}% of Basic (default)`,
-      yearly: salaryDetails.hra * 12,
-      monthly: salaryDetails.hra,
-      isDeduction: false,
-      category: "Earnings",
-    },
-    {
-      label: "LTA Allowance",
-      planDetail:
-        planData.isLtaAllowance &&
-        planData.ltaAllowanceType === "percentage" &&
-        planData.ltaAllowance
-          ? `${planData.ltaAllowance}% of CTC`
-          : planData.isLtaAllowance &&
-            planData.ltaAllowanceType === "amount" &&
-            planData.ltaAllowanceAmount
-          ? `₹${parseFloat(planData.ltaAllowanceAmount).toLocaleString()}`
-          : `${calculationDefaults.lta.percentage}% of CTC (default)`,
-      yearly: salaryDetails.ltaAllowance * 12,
-      monthly: salaryDetails.ltaAllowance,
-      isDeduction: false,
-      category: "Earnings",
-    },
-    {
-      label: "Other Allowances",
-      planDetail:
-        planData.isOtherAllowance &&
-        planData.otherAllowanceType === "percentage" &&
-        planData.otherAllowance
-          ? `${planData.otherAllowance}% of CTC`
-          : planData.isOtherAllowance &&
-            planData.otherAllowanceType === "amount" &&
-            planData.otherAllowanceAmount
-          ? `₹${parseFloat(planData.otherAllowanceAmount).toLocaleString()}`
-          : salaryDetails.otherAllowances > 0 && monthlyCTC > 0
-          ? `${((salaryDetails.otherAllowances / monthlyCTC) * 100).toFixed(
-              2
-            )}% of CTC (calculated)`
-          : `${calculationDefaults.otherAllowance.percentage}% of CTC (default)`,
-      yearly: salaryDetails.otherAllowances * 12,
-      monthly: salaryDetails.otherAllowances,
-      isDeduction: false,
-      category: "Earnings",
-    },
-    {
-      label: "Incentives",
-      planDetail:
-        activeTab === "monthly"
-          ? monthlyIncentivePlanDetail
-          : yearlyIncentivePlanDetail,
-      yearly: yearlyIncentiveData,
-      monthly: monthlyIncentiveData,
-      isDeduction: false,
-      category: "Earnings",
-    },
-    {
-      label: "Overtime Pay",
-      planDetail: getOvertimePlanDetail(activeTab),
-      yearly: yearlyTotalOvertimePay,
-      monthly: totalOvertimePay,
-      isDeduction: false,
-      category: "Earnings",
-    },
-    {
-      label: "Statutory Bonus",
-      planDetail:
-        planData.isStatutoryBonus &&
-        planData.statutoryBonusType === "percentage" &&
-        planData.statutoryBonusPercentage
-          ? `${planData.statutoryBonusPercentage}% of CTC`
-          : planData.isStatutoryBonus &&
-            planData.statutoryBonusType === "amount" &&
-            planData.statutoryBonusAmount
-          ? `₹${parseFloat(
-              planData.statutoryBonusAmount
-            ).toLocaleString()} (Fixed)`
-          : `${calculationDefaults.statutoryBonus.percentage}% of CTC (default)`,
-      yearly: salaryDetails.statutoryBonusYearly,
-      monthly: salaryDetails.statutoryBonus,
-      isDeduction: false,
-      category: "Earnings",
-    },
-    {
-      label: "Bonus Pay",
-      planDetail: getBonusPlanDetail(activeTab),
-      yearly: yearlyBonusPay,
-      monthly: monthlyBonusPay,
-      isDeduction: false,
-      category: "Earnings",
-    },
-    {
-      label: "Employee PF",
-      planDetail:
-        planData.isPFApplicable &&
-        planData.isPFEmployee &&
-        planData.pfEmployeeType === "percentage" &&
-        planData.pfEmployeePercentage
-          ? `${planData.pfEmployeePercentage}% of ${formatCalculationBase(
-              planData.pfCalculationBase
-            )}`
-          : planData.isPFApplicable &&
-            planData.isPFEmployee &&
-            planData.pfEmployeeType === "amount" &&
-            planData.pfEmployeeAmount
-          ? `₹${parseFloat(planData.pfEmployeeAmount).toLocaleString()}`
-          : `${calculationDefaults.pfEmployee.percentage}% of Basic (default)`,
-      yearly: salaryDetails.employeePF * 12,
-      monthly: salaryDetails.employeePF,
-      isDeduction: true,
-      category: "Deductions",
-      deductedFromNet: planData.pfEmployeeIncludeInCtc !== false,
-    },
-    {
-      label: "Employer PF",
-      planDetail:
-        planData.isPFApplicable &&
-        planData.isPFEmployer &&
-        planData.pfEmployerType === "percentage" &&
-        planData.pfEmployerPercentage
-          ? `${planData.pfEmployerPercentage}% of ${formatCalculationBase(
-              planData.pfCalculationBase
-            )}`
-          : planData.isPFApplicable &&
-            planData.isPFEmployer &&
-            planData.pfEmployerType === "amount" &&
-            planData.pfEmployerAmount
-          ? `₹${parseFloat(planData.pfEmployerAmount).toLocaleString()}`
-          : `${calculationDefaults.pfEmployer.percentage}% of Basic (default)`,
-      yearly: salaryDetails.employerPF * 12,
-      monthly: salaryDetails.employerPF,
-      isDeduction: true,
-      category: "Deductions",
-      deductedFromNet: planData.pfEmployerIncludeInCtc !== false,
-    },
-    {
-      label: "ESIC",
-      planDetail:
-        planData.isMedicalApplicable &&
-        planData.isESICEmployee &&
-        planData.esicEmployeeType === "percentage" &&
-        planData.esicEmployeePercentage
-          ? `${planData.esicEmployeePercentage}% of ${formatCalculationBase(
-              planData.medicalCalculationBase
-            )}`
-          : planData.isMedicalApplicable &&
-            planData.isESICEmployee &&
-            planData.esicEmployeeType === "amount" &&
-            planData.esicEmployeeAmount
-          ? `₹${parseFloat(planData.esicEmployeeAmount).toLocaleString()}`
-          : `${calculationDefaults.esicEmployee.percentage}% of Basic (default)`,
-      yearly: salaryDetails.esic * 12,
-      monthly: salaryDetails.esic,
-      isDeduction: true,
-      category: "Deductions",
-      deductedFromNet: planData.esicEmployeeIncludeInCtc !== false,
-    },
-    {
-      label: "Gratuity",
-      planDetail:
-        planData.isGratuityApplicable &&
-        planData.gratuityType === "percentage" &&
-        planData.gratuityPercentage
-          ? `${planData.gratuityPercentage}% of Basic`
-          : planData.isGratuityApplicable &&
-            planData.gratuityType === "amount" &&
-            planData.gratuityAmount
-          ? `₹${parseFloat(planData.gratuityAmount).toLocaleString()}`
-          : `${calculationDefaults.gratuity.percentage}% of Basic (default)`,
-      yearly: salaryDetails.gratuity * 12,
-      monthly: salaryDetails.gratuity,
-      isDeduction: true,
-      category: "Deductions",
-      deductedFromNet: planData.gratuityIncludeInCtc !== false,
-    },
-    {
-      label: "Professional Tax",
-      planDetail: (() => {
-        if (
-          planData.isProfessionalTax &&
-          planData.professionalTaxType === "percentage" &&
-          planData.professionalTax
-        ) {
-          return `${planData.professionalTax}% of CTC (based on monthly salary slab)`;
-        }
-        if (
-          planData.isProfessionalTax &&
-          planData.professionalTaxType === "amount" &&
-          planData.professionalTaxAmount
-        ) {
-          return `₹${parseFloat(
-            planData.professionalTaxAmount
-          ).toLocaleString()} (Fixed monthly)`;
-        }
-        if (planData.isProfessionalTax) {
-          if (monthlyCTC <= 15000) {
-            return `₹0 (default - below ₹15,000 monthly CTC threshold)`;
-          } else {
-            return `₹${calculationDefaults.professionalTax.amount} (default - standard slab for monthly CTC > ₹15,000)`;
-          }
-        }
-        return "Not Applicable";
-      })(),
-      yearly: salaryDetails.professionalTax * 12,
-      monthly: salaryDetails.professionalTax,
-      isDeduction: true,
-      category: "Deductions",
-      deductedFromNet: planData.professionalTaxIncludeInCtc !== false,
-    },
-    {
-      label: "TDS",
-      planDetail: (() => {
-        const appliedSlab = getAppliedTdsSlab(
-          selectedEmployee.ctc,
-          planData.tdsSlabs || []
-        );
-        if (appliedSlab) {
-          return `${appliedSlab} (calculated based on CTC)`;
-        }
-        if (
-          planData.isTDSApplicable &&
-          Array.isArray(planData.tdsSlabs) &&
-          planData.tdsSlabs.length > 0
-        ) {
-          return `${formatTdsSlabs(
-            planData.tdsSlabs
-          )} (calculated based on CTC)`;
-        }
-        return `${calculationDefaults.tds.percentage}% (default)`;
-      })(),
-      yearly: salaryDetails.tds * 12,
-      monthly: salaryDetails.tds,
-      isDeduction: true,
-      category: "Deductions",
-      deductedFromNet: true,
-    },
-    {
-      label: "Insurance",
-      planDetail:
-        planData.isMedicalApplicable &&
-        planData.isInsuranceEmployee &&
-        planData.insuranceEmployeeType === "percentage" &&
-        planData.insuranceEmployeePercentage
-          ? `${
-              planData.insuranceEmployeePercentage
-            }% of ${formatCalculationBase(planData.medicalCalculationBase)}`
-          : planData.isMedicalApplicable &&
-            planData.isInsuranceEmployee &&
-            planData.insuranceEmployeeType === "amount" &&
-            planData.insuranceEmployeeAmount
-          ? `₹${parseFloat(planData.insuranceEmployeeAmount).toLocaleString()}`
-          : `${calculationDefaults.insuranceEmployee.percentage}% of Basic (default)`,
-      yearly: salaryDetails.insurance * 12,
-      monthly: salaryDetails.insurance,
-      isDeduction: true,
-      category: "Deductions",
-      deductedFromNet: planData.insuranceEmployeeIncludeInCtc !== false,
-    },
-    {
-      label: "LOP Deduction",
-      planDetail: getLopPlanDetail(activeTab),
-      yearly: parseFloat(lopData.yearly?.value || 0),
-      monthly: parseFloat(lopData.yearly?.value || 0),
-      isDeduction: true,
-      category: "Deductions",
-      deductedFromNet: true,
-    },
-    {
-      label: "Advance Recovery",
-      planDetail: (() => {
-        const employeeAdvances = advances.filter((adv) => {
-          if (!adv.applicable_months || !adv.recovery_months) return false;
-          const advDate = parseApplicableMonth(adv.applicable_months);
-          if (!advDate) return false;
-          const advYear = advDate.getFullYear();
-          const advMonth = advDate.getMonth() + 1;
-          const recoveryMonths = parseInt(adv.recovery_months);
-          const startMonth = advMonth;
-          const startYear = advYear;
-          let endYear = startYear;
-          let endMonth = startMonth + recoveryMonths - 1;
-          if (endMonth > 12) {
-            endYear += Math.floor((endMonth - 1) / 12);
-            endMonth = ((endMonth - 1) % 12) + 1;
-          }
-          const currentDate = new Date(
-            currentYear,
-            parseInt(currentMonthStr) - 1
-          );
-          const startDate = new Date(startYear, startMonth - 1);
-          const endDate = new Date(endYear, endMonth - 1);
-          return (
-            adv.employee_id === selectedEmployee.employee_id &&
-            currentDate >= startDate &&
-            currentDate <= endDate
-          );
-        });
-        if (employeeAdvances.length > 0) {
-          return employeeAdvances
-            .map((adv) => {
-              const amount = parseFloat(adv.advance_amount);
-              const months = parseInt(adv.recovery_months);
-              const monthlyRecovery = months > 0 ? amount / months : 0;
-              const advDate = parseApplicableMonth(adv.applicable_months);
-              if (!advDate) return null;
-              const currentDate = new Date(
-                new Date().getFullYear(),
-                new Date().getMonth()
-              );
-              const startMonth = advDate.getMonth();
-              const startYear = advDate.getFullYear();
-              const monthsElapsed =
-                (currentDate.getFullYear() - startYear) * 12 +
-                (currentDate.getMonth() - startMonth) +
-                1;
-              const deductionMonth =
-                monthsElapsed > 0 && monthsElapsed <= months
-                  ? monthsElapsed
-                  : 1;
-              return `₹${monthlyRecovery.toLocaleString(undefined, {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2,
-              })} (${deductionMonth}${
-                deductionMonth === 1 ? "st" : deductionMonth === 2 ? "nd" : "th"
-              } month of ${months}, from ${adv.applicable_months})`;
-            })
-            .filter(Boolean)
-            .join(", ");
-        }
-        return `${calculationDefaults.advanceRecovery.amount} (default)`;
-      })(),
-      yearly: salaryDetails.advanceRecovery * 12,
-      monthly: salaryDetails.advanceRecovery,
-      isDeduction: true,
-      category: "Deductions",
-      deductedFromNet: true,
-    },
-    {
-      label: "Default Working Hours",
-      planDetail:
-        planData.isDefaultWorkingHours && planData.defaultWorkingHours
-          ? `${planData.defaultWorkingHours} hours`
-          : "None",
-      yearly: null,
-      monthly: null,
-      isDeduction: false,
-      category: "Other",
-    },
-    {
-      label: "Default Working Days",
-      planDetail:
-        planData.isDefaultWorkingDays && planData.defaultWorkingDays
-          ? formatWorkingDays(planData.defaultWorkingDays)
-          : "None",
-      yearly: null,
-      monthly: null,
-      isDeduction: false,
-      category: "Other",
-    },
-  ];
+  // ====================== EARNINGS ======================
+  {
+    label: "Basic Salary",
+    planDetail: planData.isBasicSalary && planData.basicSalary ? 
+      `${planData.basicSalary}% of CTC` : "40% of CTC (default)",
+    yearly: salaryDetails.basicSalary * 12,
+    monthly: salaryDetails.basicSalary,
+    isDeduction: false,
+    category: "Earnings",
+  },
+  {
+    label: "HRA",
+    planDetail: planData.isHouseRentAllowance && planData.houseRentAllowance ? 
+      `${planData.houseRentAllowance}% of Basic` : "50% of Basic (default)",
+    yearly: salaryDetails.hra * 12,
+    monthly: salaryDetails.hra,
+    isDeduction: false,
+    category: "Earnings",
+  },
+  {
+    label: "LTA Allowance",
+    planDetail: planData.isLtaAllowance && planData.ltaAllowance ? 
+      `${planData.ltaAllowance}% of CTC` : "5% of CTC (default)",
+    yearly: salaryDetails.ltaAllowance * 12,
+    monthly: salaryDetails.ltaAllowance,
+    isDeduction: false,
+    category: "Earnings",
+  },
+  {
+    label: "Other Allowances",
+    planDetail: planData.otherAllowanceText || "Balancing Component",
+    yearly: salaryDetails.otherAllowances * 12,
+    monthly: salaryDetails.otherAllowances,
+    isDeduction: false,
+    category: "Earnings",
+  },
+  {
+    label: "Incentives",
+    planDetail: activeTab === "monthly" ? monthlyIncentivePlanDetail : yearlyIncentivePlanDetail,
+    yearly: yearlyIncentiveData,
+    monthly: monthlyIncentiveData,
+    isDeduction: false,
+    category: "Earnings",
+  },
+  {
+    label: "Overtime Pay",
+    planDetail: getOvertimePlanDetail(activeTab),
+    yearly: yearlyTotalOvertimePay,
+    monthly: totalOvertimePay,
+    isDeduction: false,
+    category: "Earnings",
+  },
+  {
+    label: "Statutory Bonus",
+    planDetail: planData.isStatutoryBonus ? 
+      `${planData.statutoryBonusPercentage || 0}% of CTC` : "0%",
+    yearly: salaryDetails.statutoryBonusYearly,
+    monthly: salaryDetails.statutoryBonus,
+    isDeduction: false,
+    category: "Earnings",
+  },
+  {
+    label: "Bonus Pay",
+    planDetail: getBonusPlanDetail(activeTab),
+    yearly: yearlyBonusPay,
+    monthly: monthlyBonusPay,
+    isDeduction: false,
+    category: "Earnings",
+  },
+
+  // ====================== EMPLOYER CONTRIBUTIONS ======================
+  {
+    label: "Employer PF",
+    planDetail: planData.pfEmployerText || "12% of Basic (Employer)",
+    yearly: salaryDetails.employerPF * 12,
+    monthly: salaryDetails.employerPF,
+    isDeduction: true,
+    category: "Deductions",
+    deductedFromNet: false,
+  },
+  {
+    label: "Gratuity",
+    planDetail: planData.gratuityPercentage ? 
+      `${planData.gratuityPercentage}% of Basic (Employer)` : "4.81% of Basic (Employer)",
+    yearly: salaryDetails.gratuity * 12,
+    monthly: salaryDetails.gratuity,
+    isDeduction: true,
+    category: "Deductions",
+    deductedFromNet: false,
+  },
+  {
+    label: "Insurance",
+    planDetail: planData.insuranceEmployerText || "Insurance (Employer)",
+    yearly: salaryDetails.insuranceEmployer * 12,
+    monthly: salaryDetails.insuranceEmployer,
+    isDeduction: true,
+    category: "Deductions",
+    deductedFromNet: false,
+  },
+  {
+    label: "ESIC",
+    planDetail: planData.esicEmployerText || "ESIC (Employer)",
+    yearly: salaryDetails.esicEmployer * 12,
+    monthly: salaryDetails.esicEmployer,
+    isDeduction: true,
+    category: "Deductions",
+    deductedFromNet: false,
+  },
+
+  // ====================== EMPLOYEE DEDUCTIONS ======================
+  {
+    label: "Employee PF",
+    planDetail: planData.pfEmployeeText || "12% of Basic",
+    yearly: salaryDetails.employeePF * 12,
+    monthly: salaryDetails.employeePF,
+    isDeduction: true,
+    category: "Deductions",
+    deductedFromNet: true,
+  },
+  {
+    label: "ESIC",
+    planDetail: planData.esicEmployeeText || "ESIC (Employee)",
+    yearly: salaryDetails.esic * 12,
+    monthly: salaryDetails.esic,
+    isDeduction: true,
+    category: "Deductions",
+    deductedFromNet: true,
+  },
+  {
+    label: "Professional Tax",
+    planDetail: planData.professionalTaxText || "Professional Tax",
+    yearly: salaryDetails.professionalTax * 12,
+    monthly: salaryDetails.professionalTax,
+    isDeduction: true,
+    category: "Deductions",
+    deductedFromNet: true,
+  },
+  {
+    label: "Insurance",
+    planDetail: planData.insuranceEmployeeText || "Insurance (Employee)",
+    yearly: salaryDetails.insurance * 12,
+    monthly: salaryDetails.insurance,
+    isDeduction: true,
+    category: "Deductions",
+    deductedFromNet: true,
+  },
+  {
+    label: "TDS",
+    planDetail: "Calculated based on CTC",
+    yearly: salaryDetails.tds * 12,
+    monthly: salaryDetails.tds,
+    isDeduction: true,
+    category: "Deductions",
+    deductedFromNet: true,
+  },
+  {
+    label: "LOP Deduction",
+    planDetail: getLopPlanDetail(activeTab),
+    yearly: parseFloat(lopData.yearly?.value || 0),
+    monthly: parseFloat(lopData.currentMonth?.value || 0),
+    isDeduction: true,
+    category: "Deductions",
+    deductedFromNet: true,
+  },
+  {
+    label: "Advance Recovery",
+    planDetail: "Advance Recovery",
+    yearly: salaryDetails.advanceRecovery * 12,
+    monthly: salaryDetails.advanceRecovery,
+    isDeduction: true,
+    category: "Deductions",
+    deductedFromNet: true,
+  },
+];
 
  const getAmountForTab = (comp, tab) =>
     tab === "yearly" ? comp.yearly || 0 : comp.monthly || 0;
@@ -950,64 +737,48 @@ const DetailsTab = ({
   // ==================================================================
 
   // Employer Contributions
-  const employerContributions = components.filter((comp) => {
-    if (comp.label !== "Employer PF" && comp.label !== "Gratuity") return false;
-    const amount = parseFloat(getAmountForTab(comp, activeTab) || 0);
-    return amount > 0;
-  });
+// Employer Contributions Filter
+const employerContributions = components.filter((comp) => 
+  ["Employer PF", "Gratuity", "Insurance", "ESIC"].includes(comp.label) &&
+  parseFloat(getAmountForTab(comp, activeTab) || 0) > 0
+);
+
+// Employee Deductions Filter (only those that reduce Net Salary)
+const deductedComponents = components.filter((comp) => 
+  comp.deductedFromNet === true &&
+  parseFloat(getAmountForTab(comp, activeTab) || 0) > 0 &&
+  !["Employer PF", "Gratuity"].includes(comp.label)
+);
 
   const filteredOther = components.filter((comp) => comp.category === "Other");
 
- const deductedComponents = components.filter((comp) => {
+// const deductedComponents = components.filter((comp) => {
+//   const amount = parseFloat(getAmountForTab(comp, activeTab) || 0);
+//   if (amount <= 0) return false;
+
+//   if (comp.label === "LOP Deduction" && activeTab === "yearly") return false;
+//   if (comp.label === "TDS" && amount <= 0) return false;
+
+//   return (
+//     comp.category === "Deductions" &&
+//     comp.deductedFromNet === true &&                    // Only employee side
+//     !["Employer PF", "Gratuity", "Insurance", "ESIC"].includes(comp.label)
+//   );
+// });
+
+ // Improved Employer Contributions Filter
+const employerComponents = components.filter((comp) => {
   const amount = parseFloat(getAmountForTab(comp, activeTab) || 0);
-
-  // Hide LOP completely when in yearly view
-  if (comp.label === "LOP Deduction" && activeTab === "yearly") {
-    return false;
-  }
-
-  // TDS → show ONLY if > 0
-  if (comp.label === "TDS") {
-    return amount > 0;
-  }
-
-  // LOP Deduction → show ONLY if > 0   (but already blocked above for yearly)
-  if (comp.label === "LOP Deduction") {
-    return amount > 0;
-  }
-
-  // Incentives → show ONLY if > 0
-  if (comp.label === "Incentives") {
-    return amount > 0;
-  }
-
-  // Advance Recovery → keep existing rule
-  if (comp.label === "Advance Recovery") {
-    return comp.deductedFromNet && amount > 0;
-  }
+  if (amount <= 0) return false;
 
   return (
-    comp.category === "Deductions" &&
-    comp.deductedFromNet &&
-    amount > 0
+    (comp.label === "Employer PF" ||
+     comp.label === "Gratuity" ||
+     comp.label === "Insurance" ||           // ← Added
+     comp.label === "ESIC") &&               // ← Added
+    !comp.deductedFromNet                    // Only employer side
   );
 });
-
-
-  const employerComponents = components.filter((comp) => {
-    if (
-      comp.label === "TDS" ||
-      comp.label === "LOP Deduction" ||
-      comp.label === "Advance Recovery"
-    )
-      return false;
-    const amount = getAmountForTab(comp, activeTab);
-    return (
-      comp.category === "Deductions" &&
-      !comp.deductedFromNet &&
-      parseFloat(amount) > 0
-    );
-  });
 
   // const filteredOther = components.filter((comp) => comp.category === "Other");
 
@@ -1166,147 +937,124 @@ const DetailsTab = ({
           </button>
         </div>
         <div className="sb-details-tab-details">
-          <table className="sb-details-table">
-            <thead>
-              <tr>
-                <th className="sb-details-table-header sb-details-align-left">
-                  Component
-                </th>
-                <th className="sb-details-table-header sb-details-align-left">
-                  Comp. Plan
-                </th>
-                <th className="sb-details-table-header sb-details-align-right">
-                  {activeTab === "yearly" ? "Y.Amount" : "M.Amount"}
-                </th>
-              </tr>
-            </thead>
-                        <tbody className="sb-details-table-body-wrapper">
-              {/* Earnings Section */}
-              <tr className="sb-details-section-header">
-                <td colSpan="3" className="sb-details-section-title">Earnings</td>
-              </tr>
-              {filteredEarnings.map((item, index) => (
-                <tr key={`earnings-${index}`} className="sb-details-earnings-row">
-                  <td className="sb-details-table-cell sb-details-align-left">{item.label}</td>
-                  <td className="sb-details-table-cell sb-details-align-left">{item.planDetail}</td>
-                  <td className="sb-details-table-cell sb-details-align-right">
-                    {renderAmount(item, activeTab)}
-                  </td>
-                </tr>
-              ))}
+       <table className="sb-details-table">
+  <thead>
+    <tr>
+      <th className="sb-details-table-header sb-details-align-left">Component</th>
+      <th className="sb-details-table-header sb-details-align-left">Comp. Plan</th>
+      <th className="sb-details-table-header sb-details-align-right">
+        {activeTab === "yearly" ? "Yearly (₹)" : "Monthly (₹)"}
+      </th>
+    </tr>
+  </thead>
+  <tbody>
 
-              {/* Employee Deductions */}
-              <tr className="sb-details-section-header">
-                <td colSpan="3" className="sb-details-section-title">Deductions (Employee)</td>
-              </tr>
-              <tr className="sb-details-section-header">
-                <td colSpan="3" className="sb-details-section-title">Deductions (Employee)</td>
-              </tr>
-              {employeeDeductionsForNet.map((item, index) => (
-                <tr key={`emp-ded-${index}`} className="sb-details-deduction-row">
-                  <td className="sb-details-table-cell sb-details-align-left">{item.label}</td>
-                  <td className="sb-details-table-cell sb-details-align-left">{item.planDetail}</td>
-                  <td className="sb-details-table-cell sb-details-align-right">
-                    {renderAmount(item, activeTab)}
-                  </td>
-                </tr>
-              ))}
+    {/* Employee Earnings */}
+    <tr className="sb-details-section-header">
+      <td colSpan="3" className="sb-details-section-title">Employee Earnings</td>
+    </tr>
+    {filteredEarnings.map((item, index) => (
+      <tr key={`earnings-${index}`} className="sb-details-earnings-row">
+        <td>{item.label}</td>
+        <td>{item.planDetail}</td>
+        <td className="sb-details-align-right">{renderAmount(item, activeTab)}</td>
+      </tr>
+    ))}
+    <tr className="sb-details-total-row">
+      <td><strong>Total Earnings (A)</strong></td>
+      <td></td>
+      <td className="sb-details-align-right">
+        <strong>₹{(activeTab === "yearly" ? grossYearly : grossMonthly).toLocaleString('en-IN', {minimumFractionDigits: 2})}</strong>
+      </td>
+    </tr>
 
-              {/* Employer Contributions */}
-              {employerContributions.length > 0 && (
-                <>
-                  <tr className="sb-details-section-header">
-                    <td colSpan="3" className="sb-details-section-title">Employer Contributions</td>
-                  </tr>
-                  {employerContributions.map((item, index) => (
-                    <tr key={`emp-contrib-${index}`} className="sb-details-deduction-row">
-                      <td className="sb-details-table-cell sb-details-align-left">{item.label}</td>
-                      <td className="sb-details-table-cell sb-details-align-left">
-                        {item.planDetail} (Employer)
-                      </td>
-                      <td className="sb-details-table-cell sb-details-align-right">
-                        {renderAmount(item, activeTab)}
-                      </td>
-                    </tr>
-                  ))}
-                </>
-              )}
+    {/* Employer Contributions */}
+    {employerComponents.length > 0 && (
+      <>
+        <tr className="sb-details-section-header">
+          <td colSpan="3" className="sb-details-section-title">Employer Contributions</td>
+        </tr>
+        {employerComponents.map((item, index) => (
+          <tr key={`emp-contrib-${index}`}>
+            <td>{item.label}</td>
+            <td>{item.planDetail} (Employer)</td>
+            <td className="sb-details-align-right">{renderAmount(item, activeTab)}</td>
+          </tr>
+        ))}
+        <tr className="sb-details-total-row">
+          <td><strong>Total Employer Contribution (B)</strong></td>
+          <td></td>
+          <td className="sb-details-align-right">
+            <strong>₹{employerComponents.reduce((sum, item) => sum + parseFloat(getAmountForTab(item, activeTab) || 0), 0)
+              .toLocaleString('en-IN', {minimumFractionDigits: 2})}</strong>
+          </td>
+        </tr>
+      </>
+    )}
 
-              {/* Other Section */}
-              <tr className="sb-details-section-header">
-                <td colSpan="3" className="sb-details-section-title">Other</td>
-              </tr>
-              {filteredOther.map((item, index) => (
-                <tr key={`other-${index}`}>
-                  <td className="sb-details-table-cell sb-details-align-left">{item.label}</td>
-                  <td className="sb-details-table-cell sb-details-align-left">
-                    {Array.isArray(item.planDetail)
-                      ? item.planDetail.map((line, idx) => <div key={idx}>{line}</div>)
-                      : item.planDetail}
-                  </td>
-                  <td className="sb-details-table-cell sb-details-align-right">
-                    {typeof getAmountForTab(item, activeTab) === "number" &&
-                    getAmountForTab(item, activeTab) !== null
-                      ? `₹${parseFloat(getAmountForTab(item, activeTab)).toLocaleString(undefined, {
-                          minimumFractionDigits: 2,
-                          maximumFractionDigits: 2,
-                        })}`
-                      : "-"}
-                  </td>
-                </tr>
-              ))}
+    {/* Final CTC Validation */}
+    <tr className="sb-details-section-header">
+      <td colSpan="3" className="sb-details-section-title">Final CTC Validation</td>
+    </tr>
+    <tr className="sb-details-total-row">
+      <td><strong>Gross Salary (A)</strong></td>
+      <td></td>
+      <td className="sb-details-align-right">
+        <strong>₹{(activeTab === "yearly" ? grossYearly : grossMonthly).toLocaleString('en-IN', {minimumFractionDigits: 2})}</strong>
+      </td>
+    </tr>
+    {employerComponents.length > 0 && (
+      <tr className="sb-details-total-row">
+        <td><strong>Total Employer Contribution (B)</strong></td>
+        <td></td>
+        <td className="sb-details-align-right">
+          <strong>₹{employerComponents.reduce((sum, item) => sum + parseFloat(getAmountForTab(item, activeTab) || 0), 0)
+            .toLocaleString('en-IN', {minimumFractionDigits: 2})}</strong>
+        </td>
+      </tr>
+    )}
+    <tr className="sb-details-total-row">
+      <td><strong>Final CTC (A + B)</strong></td>
+      <td></td>
+      <td className="sb-details-align-right">
+        <strong>₹{(
+          (activeTab === "yearly" ? grossYearly : grossMonthly) +
+          employerComponents.reduce((sum, item) => sum + parseFloat(getAmountForTab(item, activeTab) || 0), 0)
+        ).toLocaleString('en-IN', {minimumFractionDigits: 2})}</strong>
+      </td>
+    </tr>
 
-                            {/* Totals - Clean & Corrected */}
-                            {/* Totals - Using Preview Logic */}
-                            {/* FINAL TOTALS - Matching Preview Logic */}
-            <tr className="sb-details-total-row">
-              <td className="sb-details-table-cell sb-details-align-left">
-                <strong>Final Gross Salary</strong>
-              </td>
-              <td className="sb-details-table-cell sb-details-align-left">Total Earnings</td>
-              <td className="sb-details-table-cell sb-details-align-right">
-                <strong>
-                  ₹{finalGross.toLocaleString(undefined, {
-                    minimumFractionDigits: 2,
-                    maximumFractionDigits: 2,
-                  })}
-                </strong>
-              </td>
-            </tr>
+    {/* Employee Deductions */}
+    <tr className="sb-details-section-header">
+      <td colSpan="3" className="sb-details-section-title">Employee Deductions</td>
+    </tr>
+    {deductedComponents.map((item, index) => (
+      <tr key={`ded-${index}`}>
+        <td>{item.label}</td>
+        <td>{item.planDetail}</td>
+        <td className="sb-details-align-right">{renderAmount(item, activeTab)}</td>
+      </tr>
+    ))}
+    <tr className="sb-details-total-row">
+      <td><strong>Total Deduction (C)</strong></td>
+      <td></td>
+      <td className="sb-details-align-right">
+        <strong>₹{deductedComponents.reduce((sum, item) => sum + parseFloat(getAmountForTab(item, activeTab) || 0), 0)
+          .toLocaleString('en-IN', {minimumFractionDigits: 2})}</strong>
+      </td>
+    </tr>
 
-            <tr className="sb-details-total-row">
-              <td className="sb-details-table-cell sb-details-align-left">
-                <strong>Final Net Salary</strong>
-              </td>
-              <td className="sb-details-table-cell sb-details-align-left">
-                Earnings - Employee Deductions
-              </td>
-              <td className="sb-details-table-cell sb-details-align-right">
-                <strong>
-                  ₹{finalNet.toLocaleString(undefined, {
-                    minimumFractionDigits: 2,
-                    maximumFractionDigits: 2,
-                  })}
-                </strong>
-              </td>
-            </tr>          
-            
-                {/* <tr className="sb-details-total-row">
-                <td className="sb-details-table-cell sb-details-align-left">
-                  <strong>Net Salary</strong>
-                </td>
-                <td className="sb-details-table-cell sb-details-align-left">N/A</td>
-                <td className="sb-details-table-cell sb-details-align-right">
-                  <strong>
-                    ₹{displayedNet.toLocaleString(undefined, {
-                      minimumFractionDigits: 2,
-                      maximumFractionDigits: 2,
-                    })}
-                  </strong>
-                </td>
-              </tr> */}
-            </tbody>
-          </table>
+    {/* Net Salary */}
+    <tr className="sb-details-total-row" style={{ backgroundColor: "#f0f9f0", fontWeight: "bold" }}>
+      <td><strong>Net Salary</strong></td>
+      <td>Earnings - Employee Deductions</td>
+      <td className="sb-details-align-right">
+        <strong>₹{(activeTab === "yearly" ? netYearly : netMonthly).toLocaleString('en-IN', {minimumFractionDigits: 2})}</strong>
+      </td>
+    </tr>
+
+  </tbody>
+</table>
         </div>
       </div>
     </div>

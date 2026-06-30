@@ -496,76 +496,43 @@ const employerInsurance = Number(payrollData.insurance_employer || 0);
         </div>
       `;
 
-      const earnings = [];
-      if (basicSalary > 0) earnings.push({ name: "Basic Salary", amount: basicSalary });
-      if (hra > 0) earnings.push({ name: "HRA", amount: hra });
-      if (lta > 0) earnings.push({ name: "LTA", amount: lta });
-      if (allowance > 0) earnings.push({ name: "Other Allowances", amount: allowance });
-      if (incentives > 0) earnings.push({ name: "Incentives", amount: incentives });
-      if (overtime > 0) earnings.push({ name: "Overtime", amount: overtime });
-      if (statutoryBonus > 0) earnings.push({ name: "Statutory Bonus", amount: statutoryBonus });
-      if (bonus > 0) earnings.push({ name: "Bonus", amount: bonus });
+    // === INSIDE handleDownload() ===
+const earnings = [];
+if (basicSalary > 0) earnings.push({ name: "Basic Salary", amount: basicSalary });
+if (hra > 0) earnings.push({ name: "HRA", amount: hra });
+if (lta > 0) earnings.push({ name: "LTA", amount: lta });
+if (allowance > 0) earnings.push({ name: "Other Allowances", amount: allowance });
+if (incentives > 0) earnings.push({ name: "Incentives", amount: incentives });
+if (overtime > 0) earnings.push({ name: "Overtime", amount: overtime });
+if (statutoryBonus > 0) earnings.push({ name: "Statutory Bonus", amount: statutoryBonus });
+if (bonus > 0) earnings.push({ name: "Bonus", amount: bonus });
 
-      const deductions = [];
-      if (employeePf > 0)
-  deductions.push({
-    name: "Employee PF",
-    amount: employeePf,
-  });
+// === UPDATED DEDUCTIONS (Employee Side only - matching DetailsTab) ===
+const deductions = [];
 
-// if (employerPf > 0)
-//   deductions.push({
-//     name: "Employer PF",
-//     amount: employerPf,
-//   });
+if (employeePf > 0)
+  deductions.push({ name: "Employee PF", amount: employeePf });
 
 if (employeeEsic > 0)
-  deductions.push({
-    name: "Employee ESIC",
-    amount: employeeEsic,
-  });
-
-if (employerEsic > 0)
-  deductions.push({
-    name: "Employer ESIC",
-    amount: employerEsic,
-  });
-
-if (gratuity > 0)
-  deductions.push({
-    name: "Gratuity",
-    amount: gratuity,
-  });
+  deductions.push({ name: "Employee ESIC", amount: employeeEsic });
 
 if (professionalTax > 0)
-  deductions.push({
-    name: "Professional Tax",
-    amount: professionalTax,
-  });
+  deductions.push({ name: "Professional Tax", amount: professionalTax });
 
 if (tds > 0)
-  deductions.push({
-    name: "TDS",
-    amount: tds,
-  });
+  deductions.push({ name: "TDS", amount: tds });
 
 if (employeeInsurance > 0)
-  deductions.push({
-    name: "Employee Insurance",
-    amount: employeeInsurance,
-  });
-
-if (employerInsurance > 0)
-  deductions.push({
-    name: "Employer Insurance",
-    amount: employerInsurance,
-  });
+  deductions.push({ name: "Employee Insurance", amount: employeeInsurance });
 
 if (lopDeduction > 0)
-  deductions.push({
-    name: "LOP Deduction",
-    amount: lopDeduction,
-  });
+  deductions.push({ name: "LOP Deduction", amount: lopDeduction });
+
+// Advance Recovery is handled separately with details
+// (We already have advanceBlockHtml)
+
+
+
 
       const maxRows = Math.max(earnings.length, deductions.length);
       let detailRows = "";
@@ -987,7 +954,7 @@ const previewEmployerInsurance = Number(
   const previewAdvanceRecovery = Number(payrollData?.advance_recovery || 0);
   const previewLopDeduction = Number(payrollData?.lop_deduction || 0);
   const previewGross = Number(payrollData?.gross_salary || 0);
-  const previewTotalDed =
+ const previewTotalDed =
   previewPf +
   previewEmployeeEsic +
   previewPt +
@@ -1044,90 +1011,76 @@ const previewEmployerInsurance = Number(
             </tbody>
           </table>
 
-          <table className="payslip-table">
-            <thead>
-              <tr>
-                <th>Earnings</th>
-                <th>Amount (₹)</th>
-                <th>Deductions</th>
-                <th>Amount (₹)</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td>Basic Salary</td>
-                <td>₹{previewBasic.toFixed(2)}</td>
-                <td>PF</td>
-                <td>₹{previewPf.toFixed(2)}</td>
-              </tr>
-              <tr>
-                <td>HRA</td>
-                <td>₹{previewHra.toFixed(2)}</td>
-                <td>Employee ESIC</td>
-<td>₹{previewEmployeeEsic.toFixed(2)}</td>
-              </tr>
-              <tr>
-                <td>Other Allowances</td>
-                <td>₹{previewAllowance.toFixed(2)}</td>
-                <td>Professional Tax</td>
-                <td>₹{previewPt.toFixed(2)}</td>
-              </tr>
-              {previewBonus > 0 && (
-                <tr>
-                  <td>Bonus</td>
-                  <td>₹{previewBonus.toFixed(2)}</td>
-                  <td></td>
-                  <td></td>
-                </tr>
-              )}
-              <tr>
-                <td><strong>Gross Salary</strong></td>
-                <td><strong>₹{previewGross.toFixed(2)}</strong></td>
-                <td>TDS</td>
-                <td>₹{previewTds.toFixed(2)}</td>
-              </tr>
-              <tr>
-                <td></td>
-                <td></td>
-               <td>Employee Insurance</td>
-<td>₹{previewEmployeeInsurance.toFixed(2)}</td>
-              </tr>
-              {previewLopDeduction > 0 && (
-                <tr>
-                  <td></td>
-                  <td></td>
-                  <td>LOP Deduction</td>
-                  <td>₹{previewLopDeduction.toFixed(2)}</td>
-                </tr>
-              )}
-              <tr className="total-row">
-                <td colSpan="2"></td>
-                <td><strong>Total Deductions</strong></td>
-                <td><strong>₹{previewTotalDed.toFixed(2)}</strong></td>
-              </tr>
+       <table className="payslip-table">
+  <thead>
+    <tr>
+      <th>Earnings</th>
+      <th>Amount (₹)</th>
+      <th>Deductions</th>
+      <th>Amount (₹)</th>
+    </tr>
+  </thead>
+  <tbody>
+    {/* Earnings */}
+    <tr><td>Basic Salary</td><td>₹{previewBasic.toFixed(2)}</td><td>Employee PF</td><td>₹{previewPf.toFixed(2)}</td></tr>
+    <tr><td>HRA</td><td>₹{previewHra.toFixed(2)}</td><td>Employee ESIC</td><td>₹{previewEmployeeEsic.toFixed(2)}</td></tr>
+    <tr><td>Other Allowances</td><td>₹{previewAllowance.toFixed(2)}</td><td>Professional Tax</td><td>₹{previewPt.toFixed(2)}</td></tr>
+    
+    {previewBonus > 0 && (
+      <tr><td>Bonus</td><td>₹{previewBonus.toFixed(2)}</td><td></td><td></td></tr>
+    )}
 
-              {previewAdvanceRecovery > 0 && (
-                <>
-                  <tr>
-                    <td colSpan="4" style={{ height: "30px", border: "none" }}></td>
-                  </tr>
-                  <tr style={{ backgroundColor: "#e0e0e0", fontSize: "15px" }}>
-                    <td colSpan="2" style={{ padding: "15px 12px", fontWeight: "bold", color: "#1a3c6d" }}>
-                      Advance Recovery {advanceDetailText !== "None" ? advanceDetailText : ""}
-                    </td>
-                    <td colSpan="2" style={{ padding: "15px 12px", textAlign: "right", fontWeight: "bold", color: "#1a3c6d" }}>
-                      ₹{previewAdvanceRecovery.toFixed(2)}
-                    </td>
-                  </tr>
-                </>
-              )}
+    {/* Gross */}
+    <tr>
+      <td><strong>Gross Salary</strong></td>
+      <td><strong>₹{previewGross.toFixed(2)}</strong></td>
+      <td>TDS</td>
+      <td>₹{previewTds.toFixed(2)}</td>
+    </tr>
 
-              <tr className="net-salary-row">
-                <td colSpan="2"><strong>Net Salary</strong></td>
-                <td colSpan="2"><strong>₹{previewNet.toFixed(2)}</strong></td>
-              </tr>
-            </tbody>
-          </table>
+    <tr>
+      <td></td>
+      <td></td>
+      <td>Employee Insurance</td>
+      <td>₹{previewEmployeeInsurance.toFixed(2)}</td>
+    </tr>
+
+    {previewLopDeduction > 0 && (
+      <tr>
+        <td></td>
+        <td></td>
+        <td>LOP Deduction</td>
+        <td>₹{previewLopDeduction.toFixed(2)}</td>
+      </tr>
+    )}
+
+    <tr className="total-row">
+      <td colSpan="2"></td>
+      <td><strong>Total Deductions</strong></td>
+      <td><strong>₹{previewTotalDed.toFixed(2)}</strong></td>
+    </tr>
+
+    {/* Advance Recovery */}
+    {previewAdvanceRecovery > 0 && (
+      <>
+        <tr><td colSpan="4" style={{ height: "30px", border: "none" }}></td></tr>
+        <tr style={{ backgroundColor: "#e0e0e0", fontSize: "15px" }}>
+          <td colSpan="2" style={{ padding: "15px 12px", fontWeight: "bold", color: "#1a3c6d" }}>
+            Advance Recovery {advanceDetailText !== "None" ? advanceDetailText : ""}
+          </td>
+          <td colSpan="2" style={{ padding: "15px 12px", textAlign: "right", fontWeight: "bold", color: "#1a3c6d" }}>
+            ₹{previewAdvanceRecovery.toFixed(2)}
+          </td>
+        </tr>
+      </>
+    )}
+
+    <tr className="net-salary-row">
+      <td colSpan="2"><strong>Net Salary</strong></td>
+      <td colSpan="2"><strong>₹{previewNet.toFixed(2)}</strong></td>
+    </tr>
+  </tbody>
+</table>
 
           <button onClick={handleDownload} className="payroll-download-btn">
             Download PDF

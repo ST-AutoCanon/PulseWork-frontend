@@ -660,141 +660,131 @@ const SalaryDetails = () => {
     return months[date.getMonth()];
   };
 
-  const handleSaveData = async () => {
-    if (!hasValidCredentials()) {
-      showAlert("Missing credentials. Please log in again.");
+ const handleSaveData = async () => {
+  if (!hasValidCredentials()) {
+    showAlert("Missing credentials. Please log in again.");
+    return;
+  }
+
+  try {
+    if (validSelectedEmployees.length === 0) {
+      showAlert("No valid employees selected.");
       return;
     }
-    try {
-      if (validSelectedEmployees.length === 0) {
-        showAlert("No valid employees selected.");
-        return;
-      }
 
-      const currentDate = new Date();
-      const currentYear = currentDate.getFullYear();
-      const currentMonthAbbrev = getAbbrevMonth(currentDate);
+    const currentDate = new Date();
+    const currentYear = currentDate.getFullYear();
+    const currentMonthAbbrev = getAbbrevMonth(currentDate);
 
-      const fullSalaryData = validSelectedEmployees
-        .map((emp) => {
-          try {
-            const salaryDetails = calculateSalaryDetails(
-              emp.ctc,
-              emp.plan_data,
-              emp.employee_id,
-              overtimeRecords || [],
-              bonusRecords || [],
-              advances || [],
-              employeeIncentiveData || {},
-              employeeLopData
-            );
-            if (!salaryDetails) return null;
-
-            const monthlyBonusPay = calculateMonthlyBonusPay(
-              emp.ctc,
-              bonusRecords
-            );
-
-            const lopData = employeeLopData[emp.employee_id] || {
-              currentMonth: { days: 0, value: "0.00", currency: "INR" },
-            };
-            const lopDays = parseFloat(lopData.yearly?.days || 0);
-            const lopDeduction = parseFloat(lopData.yearly?.value || "0.00");
-
-                      const { localGross, localNet } = calculateLocalGrossNet(
-              salaryDetails,
-              emp.plan_data
-            );
-
-            return {
-              employee_id: emp.employee_id,
-              full_name: emp.full_name,
-              annual_ctc: emp.ctc,
-              basic_salary: salaryDetails.basicSalary || 0,
-              hra: salaryDetails.hra || 0,
-              lta: salaryDetails.ltaAllowance || 0,
-              other_allowances: salaryDetails.otherAllowances || 0,
-              incentives: salaryDetails.incentivePay || 0,
-              overtime: salaryDetails.overtimePay || 0,
-              statutory_bonus: salaryDetails.statutoryBonus || 0,
-              bonus: monthlyBonusPay,
-              advance_recovery: salaryDetails.advanceRecovery || 0,
-              employee_pf: salaryDetails.employeePF || 0,
-              employer_pf: salaryDetails.employerPF || 0,
-              esic: salaryDetails.esic || 0,
-              gratuity: salaryDetails.gratuity || 0,
-              professional_tax: salaryDetails.professionalTax || 0,
-              tds: salaryDetails.tds || 0,
-              insurance: salaryDetails.insurance || 0,
-              lop_days: lopDays,
-              lop_deduction: lopDeduction,
-              gross_salary: localGross,
-              net_salary: localNet > 0 ? localNet : 0,
-
-              status: "Approved",
-              payslip_generation: "disabled",
-            };
-          } catch (empError) {
-            console.error(
-              `Error processing employee ${emp.employee_id} for save:`,
-              empError
-            );
-            return null;
-          }
-        })
-        .filter((data) => data !== null);
-
-      if (fullSalaryData.length === 0) {
-        showAlert(
-          "Failed to generate salary data for any selected employees. Check console for errors."
-        );
-        return;
-      }
-
-      let salaryDataToSave = fullSalaryData;
-      try {
-        const existingRes = await axios.get(
-          `${BASE_URL}/api/salary-details/get-monthly`,
-          {
-            withCredentials: true,
-            params: { month: currentMonthAbbrev, year: currentYear },
-            headers: {
-              "x-employee-id": meId,
-              "x-org-id": orgId,
-              "Content-Type": "application/json",
-            },
-          }
-        );
-        const existingSalaryData = existingRes.data.data || [];
-        const mergedSalaryData = [...existingSalaryData];
-        fullSalaryData.forEach((newItem) => {
-          const index = mergedSalaryData.findIndex(
-            (item) => item.employee_id === newItem.employee_id
+    const fullSalaryData = validSelectedEmployees
+      .map((emp) => {
+        try {
+          const salaryDetails = calculateSalaryDetails(
+            emp.ctc,
+            emp.plan_data,
+            emp.employee_id,
+            overtimeRecords || [],
+            bonusRecords || [],
+            advances || [],
+            employeeIncentiveData || {},
+            employeeLopData
           );
-          if (index > -1) {
-            mergedSalaryData[index] = {
-              ...mergedSalaryData[index],
-              ...newItem,
-            };
-          } else {
-            mergedSalaryData.push(newItem);
-          }
-        });
-        salaryDataToSave = mergedSalaryData;
-      } catch (fetchError) {
-        console.warn(
-          "Could not fetch existing data, proceeding with new data only:",
-          fetchError
-        );
-      }
 
-      const response = await axios.post(
-        `${BASE_URL}/api/salary-details/save`,
-        {
-          salaryData: salaryDataToSave,
-          month: currentMonthAbbrev,
-          year: currentYear,
+          if (!salaryDetails) return null;
+
+          const monthlyBonusPay = calculateMonthlyBonusPay(emp.ctc, bonusRecords);
+
+          const lopData = employeeLopData[emp.employee_id] || {
+            yearly: { days: 0, value: "0.00" },
+          };
+          const lopDays = parseFloat(lopData.yearly?.days || 0);
+          const lopDeduction = parseFloat(lopData.yearly?.value || "0.00");
+
+          const { localGross, localNet } = calculateLocalGrossNet(
+            salaryDetails,
+            emp.plan_data
+          );
+
+          // Calculate Final CTC (if needed)
+          const finalCTC = localGross +
+            Number(salaryDetails.employerPF || 0) +
+            Number(salaryDetails.gratuity || 0) +
+            Number(salaryDetails.insuranceEmployer || 0) +
+            Number(salaryDetails.esicEmployer || 0);
+
+          return {
+            employee_id: emp.employee_id,
+            full_name: emp.full_name,
+            annual_ctc: emp.ctc || 0,
+            basic_salary: Number(salaryDetails.basicSalary || 0),
+            hra: Number(salaryDetails.hra || 0),
+            lta: Number(salaryDetails.ltaAllowance || 0),
+            other_allowances: Number(salaryDetails.otherAllowances || 0),
+            incentives: Number(salaryDetails.incentivePay || 0),
+            overtime: Number(salaryDetails.overtimePay || 0),
+            statutory_bonus: Number(salaryDetails.statutoryBonus || 0),
+            bonus: Number(monthlyBonusPay || 0),
+            advance_recovery: Number(salaryDetails.advanceRecovery || 0),
+            employee_pf: Number(salaryDetails.employeePF || 0),
+            employer_pf: Number(salaryDetails.employerPF || 0),
+
+            // ✅ Correct column names matching backend
+            esic_employee: Number(salaryDetails.esic || 0),
+            esic_employer: Number(salaryDetails.esicEmployer || 0),
+
+            gratuity: Number(salaryDetails.gratuity || 0),
+            professional_tax: Number(salaryDetails.professionalTax || 0),
+            tds: Number(salaryDetails.tds || 0),
+
+            insurance_employee: Number(salaryDetails.insurance || 0),
+            insurance_employer: Number(salaryDetails.insuranceEmployer || 0),
+
+            lop_days: lopDays,
+            lop_deduction: lopDeduction,
+            gross_salary: Number(localGross || 0),
+            final_ctc: Number(finalCTC || 0),
+            net_salary: Number(localNet > 0 ? localNet : 0),
+
+            status: "Approved",
+            payslip_generation: "disabled",
+            payslip_generated: 0
+          };
+        } catch (empError) {
+          console.error(`Error processing employee ${emp.employee_id}:`, empError);
+          return null;
+        }
+      })
+      .filter((data) => data !== null);
+
+    // Use fullSalaryData instead of undefined salaryDataToSave
+    const salaryDataToSave = fullSalaryData;
+
+    const response = await axios.post(
+      `${BASE_URL}/api/salary-details/save`,
+      {
+        salaryData: salaryDataToSave,
+        month: currentMonthAbbrev,
+        year: currentYear,
+      },
+      {
+        withCredentials: true,
+        headers: {
+          "x-employee-id": meId,
+          "x-org-id": orgId,
+          "Content-Type": "application/json",
         },
+      }
+    );
+
+    if (response.data.success) {
+      const rowsInserted =
+        response.data.rowsInserted || salaryDataToSave.length;
+      showAlert(
+        `Data saved successfully in table: ${response.data.tableName} (${rowsInserted} rows)`
+      );
+
+      const approvedRes = await axios.get(
+        `${BASE_URL}/api/salary-details/approved-ids`,
         {
           withCredentials: true,
           headers: {
@@ -804,51 +794,32 @@ const SalaryDetails = () => {
           },
         }
       );
-
-      if (response.data.success) {
-        const rowsInserted =
-          response.data.rowsInserted || salaryDataToSave.length;
-        showAlert(
-          `Data saved successfully in table: ${response.data.tableName} (${rowsInserted} rows)`
-        );
-
-        const approvedRes = await axios.get(
-          `${BASE_URL}/api/salary-details/approved-ids`,
-          {
-            withCredentials: true,
-            headers: {
-              "x-employee-id": meId,
-              "x-org-id": orgId,
-              "Content-Type": "application/json",
-            },
-          }
-        );
-        const newApprovedIds = approvedRes.data.approvedIds || [];
-        setApprovedIds(newApprovedIds);
-        setSelectedEmployees((prev) => {
-          const newSet = new Set(prev);
-          newApprovedIds.forEach((id) => newSet.delete(String(id)));
-          return newSet;
-        });
-      } else {
-        showAlert(`Error: ${response.data.error}`);
-      }
-    } catch (error) {
-      console.error("Save error:", error);
-      if (error.response?.status === 400 || error.response?.status === 401) {
-        showAlert(
-          `Authentication failed: ${
-            error.response?.data?.error || "Please log in again."
-          }`
-        );
-      } else {
-        showAlert(
-          `Failed to save data: ${error.response?.data?.error || error.message}`
-        );
-      }
+      const newApprovedIds = approvedRes.data.approvedIds || [];
+      setApprovedIds(newApprovedIds);
+      setSelectedEmployees((prev) => {
+        const newSet = new Set(prev);
+        newApprovedIds.forEach((id) => newSet.delete(String(id)));
+        return newSet;
+      });
+    } else {
+      showAlert(`Error: ${response.data.error}`);
     }
-    setShowPreviewModal(false);
-  };
+  } catch (error) {
+    console.error("Save error:", error);
+    if (error.response?.status === 400 || error.response?.status === 401) {
+      showAlert(
+        `Authentication failed: ${
+          error.response?.data?.error || "Please log in again."
+        }`
+      );
+    } else {
+      showAlert(
+        `Failed to save data: ${error.response?.data?.error || error.message}`
+      );
+    }
+  }
+  setShowPreviewModal(false);
+};
 
 const renderTableRows = (employeesToRender) => {
   return (

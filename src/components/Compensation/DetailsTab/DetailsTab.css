@@ -100,36 +100,43 @@
   color: #fff;
 }
 
+/* ==================== TABLE STYLES ==================== */
 .sb-details-table {
   width: 100%;
   border-collapse: collapse;
   font-size: 0.9rem;
+  background: white;
+  border-radius: 6px;
+  overflow: hidden;
 }
 
 .sb-details-table-header {
   background: #f1f3f6;
   color: #001d4a;
-  padding: 10px;
+  padding: 12px 10px;
   font-weight: 600;
   border-bottom: 2px solid #ddd;
+  text-align: left;
 }
 
 .sb-details-table-cell {
-  padding: 10px;
+  padding: 14px 10px;           /* Increased vertical padding */
   border-bottom: 1px solid #eee;
   color: #333;
+  vertical-align: middle;
+}
+
+/* Increase overall row height */
+.sb-details-table tr {
+  height: 52px;                 /* Increased row height */
 }
 
 .sb-details-table tbody tr:nth-child(even) {
   background: #fafafa;
 }
 
-.sb-details-align-left {
-  text-align: left;
-}
-.sb-details-align-right {
-  text-align: right;
-}
+.sb-details-align-left { text-align: left; }
+.sb-details-align-right { text-align: right; }
 
 .sb-details-section-header {
   background: #e6e9ef;
@@ -138,28 +145,52 @@
 }
 
 .sb-details-section-title {
-  padding: 12px;
+  padding: 14px 10px;
   font-size: 1rem;
 }
 
+/* Colored Section Headers */
+tr[style*="e8f5e9"] td { background-color: #e8f5e9 !important; }
+tr[style*="e3f2fd"] td { background-color: #e3f2fd !important; }
+tr[style*="f0f4ff"] td { background-color: #f0f4ff !important; }
+tr[style*="fff3e0"] td { background-color: #fff3e0 !important; }
+
+/* Total Rows */
+.sb-details-total-row,
+tr[style*="c8e6c9"],
+tr[style*="bbdefb"],
+tr[style*="ffe0b2"],
+tr[style*="e8f5e9"] {
+  font-weight: 700;
+  background: #f6fff1 !important;
+  color: #001d4a;
+  height: 56px;   /* Slightly taller for totals */
+}
+
+.sb-details-total-row strong,
+tr[style*="c8e6c9"] strong,
+tr[style*="bbdefb"] strong,
+tr[style*="ffe0b2"] strong,
+tr[style*="e8f5e9"] strong {
+  color: #79c42b;
+}
+
+/* Legacy classes for compatibility */
 .sb-details-earnings-row {
-  background: #d4f8c1;
+  background: #d4f8c1 !important;
 }
 
 .sb-details-deduction-row {
-  background: #f5d0d0;
+  background: #f5d0d0 !important;
 }
 
 .sb-details-total-row {
   font-weight: 600;
-  background: #f6fff1;
+  background: #f6fff1 !important;
   color: #001d4a;
 }
 
-.sb-details-total-row strong {
-  color: #79c42b;
-}
-
+/* Responsive */
 @media (max-width: 768px) {
   .sb-details-tab {
     width: 100%;
@@ -167,12 +198,13 @@
     height: auto;
   }
 
-  .sb-details-tab-header h2 {
-    font-size: 1.1rem;
-  }
-
   .sb-details-table {
     font-size: 0.85rem;
+  }
+
+  .sb-details-table-cell,
+  .sb-details-table-header {
+    padding: 12px 8px;
   }
 }
 

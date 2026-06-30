@@ -294,76 +294,72 @@ const SalaryDetails = () => {
     employees.filter((emp) => selectedEmployees.has(emp.employee_id));
 
   const handleProceed = async () => {
-    if (!hasValidCredentials()) {
-      showAlert("Missing credentials. Please log in again.");
-      return;
-    }
-    if (selectedEmployees.size === 0) {
-      showAlert("Please select at least one employee.");
-      return;
-    }
-    try {
-      const employeeIds = Array.from(selectedEmployees);
-      const personalRes = await axios.post(
-        `${BASE_URL}/api/compensation/employee-personal-details`,
-        { employeeIds },
-        {
-          withCredentials: true,
-          headers: {
-            "x-employee-id": meId,
-            "x-org-id": orgId,
-            "Content-Type": "application/json",
-          },
-        }
-      );
-      setPersonalMap(personalRes.data.data || {});
+  if (!hasValidCredentials()) {
+    showAlert("Missing credentials. Please log in again.");
+    return;
+  }
+  if (selectedEmployees.size === 0) {
+    showAlert("Please select at least one employee.");
+    return;
+  }
 
-      const allSelected = getSelectedEmployees();
-      const validEmployees = allSelected.filter((emp) => {
-        try {
-          if (!employeeLopData || !employeeLopData[emp.employee_id]) {
-            return false;
-          }
+  try {
+    const employeeIds = Array.from(selectedEmployees);
+    const personalRes = await axios.post(
+      `${BASE_URL}/api/compensation/employee-personal-details`,
+      { employeeIds },
+      { withCredentials: true, headers: requestHeaders }
+    );
+    setPersonalMap(personalRes.data.data || {});
 
-          const salaryDetails = calculateSalaryDetails(
-            emp.ctc,
-            emp.plan_data,
-            emp.employee_id,
-            overtimeRecords || [],
-            bonusRecords || [],
-            advances || [],
-            employeeIncentiveData || {},
-            employeeLopData
-          );
-
-          return !!salaryDetails;
-        } catch (e) {
-          console.error(
-            `Error calculating salary details for ${emp.employee_id}:`,
-            e
-          );
-          return false;
-        }
-      });
-
-      if (validEmployees.length === 0) {
-        showAlert(
-          "No valid employees selected for processing. Please check the selected employees."
+    const allSelected = getSelectedEmployees();
+    
+    // More lenient validation
+    const validEmployees = allSelected.filter((emp) => {
+      try {
+        const lopData = employeeLopData[emp.employee_id];
+        // Allow proceeding even if LOP data is missing (treat as 0)
+        const salaryDetails = calculateSalaryDetails(
+          emp.ctc,
+          emp.plan_data,
+          emp.employee_id,
+          overtimeRecords || [],
+          bonusRecords || [],
+          advances || [],
+          employeeIncentiveData || {},
+          employeeLopData
         );
-        return;
+        return !!salaryDetails; // only reject if calculation completely fails
+      } catch (e) {
+        console.warn(`Validation failed for ${emp.employee_id}:`, e);
+        return false;
       }
+    });
 
-      setValidSelectedEmployees(validEmployees);
-      setShowPreviewModal(true);
-    } catch (error) {
-      console.error("Error fetching personal details for preview:", error);
-      if (error.response?.status === 400 || error.response?.status === 401) {
-        showAlert("Authentication failed. Please log in again.");
-      } else {
-        showAlert("Failed to fetch employee details for preview");
-      }
+    if (validEmployees.length === 0) {
+      showAlert(
+        "None of the selected employees could be processed. Please check console for details."
+      );
+      return;
     }
-  };
+
+    if (validEmployees.length < allSelected.length) {
+      showAlert(
+        `${validEmployees.length} of ${allSelected.length} employees are valid. Proceeding with valid ones.`
+      );
+    }
+
+    setValidSelectedEmployees(validEmployees);
+    setShowPreviewModal(true);
+  } catch (error) {
+    console.error("Error fetching personal details:", error);
+    showAlert(
+      error.response?.status === 401
+        ? "Authentication failed. Please log in again."
+        : "Failed to load employee details for preview."
+    );
+  }
+};
 
   const handleCloseModal = () => {
     setShowPreviewModal(false);
@@ -854,315 +850,114 @@ const SalaryDetails = () => {
     setShowPreviewModal(false);
   };
 
-  const renderTableRows = (employeesToRender) => {
-    return (
-      <tbody className="sd-table-body">
-        {employeesToRender.map((emp) => {
-          let salaryDetails;
-          try {
-            salaryDetails = calculateSalaryDetails(
-              emp.ctc,
-              emp.plan_data,
-              emp.employee_id,
-              overtimeRecords || [],
-              bonusRecords || [],
-              advances || [],
-              employeeIncentiveData || {},
-              employeeLopData
-            );
-          } catch (e) {
-            console.error(
-              `Error calculating salary details for ${emp.employee_id}:`,
-              e
-            );
-            salaryDetails = null;
-          }
-
-          if (!salaryDetails) {
-            return (
-              <tr
-                key={emp.employee_id}
-                className={isApproved(emp.employee_id) ? "sd-row-disabled" : ""}
-              >
-                <td
-                  className="sd-table-cell sd-align-center sd-select-column sd-sticky-col sd-sticky-checkbox"
-                  style={{
-                    left: 0,
-                    borderRight: "1px solid #dee2e6",
-                    zIndex: 10,
-                  }}
-                >
-                  <input type="checkbox" checked={false} disabled={true} />
-                </td>
-                <td
-                  className="sd-table-cell sd-align-left sd-id-column sd-sticky-col sd-sticky-id"
-                  style={{
-                    left: "40px",
-                    borderRight: "1px solid #dee2e6",
-                    zIndex: 10,
-                  }}
-                >
-                  {emp.employee_id}
-                </td>
-                <td
-                  className="sd-table-cell sd-align-left sd-name-column sd-sticky-col sd-sticky-name"
-                  style={{
-                    left: "110px",
-                    borderRight: "1px solid #dee2e6",
-                    zIndex: 10,
-                  }}
-                >
-                  {emp.full_name}
-                </td>
-                <td
-                  className="sd-table-cell sd-align-right sd-sticky-col sd-sticky-ctc"
-                  style={{
-                    left: "260px",
-                    borderRight: "1px solid #dee2e6",
-                    zIndex: 10,
-                  }}
-                >
-                  {emp.ctc ? `₹${parseFloat(emp.ctc).toLocaleString()}` : "N/A"}
-                </td>
-                {Array(20)
-                  .fill()
-                  .map((_, i) => (
-                    <td key={i} className="sd-table-cell sd-align-right">
-                      N/A
-                    </td>
-                  ))}
-              </tr>
-            );
-          }
-
-          const monthlyBonusPay = calculateMonthlyBonusPay(
+const renderTableRows = (employeesToRender) => {
+  return (
+    <tbody className="sd-table-body">
+      {employeesToRender.map((emp) => {
+        let salaryDetails;
+        try {
+          salaryDetails = calculateSalaryDetails(
             emp.ctc,
-            bonusRecords
+            emp.plan_data,
+            emp.employee_id,
+            overtimeRecords || [],
+            bonusRecords || [],
+            advances || [],
+            employeeIncentiveData || {},
+            employeeLopData
           );
+        } catch (e) {
+          console.error(`Error calculating salary for ${emp.employee_id}:`, e);
+          salaryDetails = null;
+        }
 
-          const lopData = employeeLopData[emp.employee_id] || {
-            currentMonth: { days: 0, value: "0.00", currency: "INR" },
-          };
-          const lopDays = parseFloat(lopData.yearly?.days || 0);
-          const lopDeduction = parseFloat(lopData.yearly?.value || "0.00");
-          const isSelected = selectedEmployees.has(emp.employee_id);
-
-                      const { localGross, localNet } = calculateLocalGrossNet(
-              salaryDetails,
-              emp.plan_data
-            );
-
+        if (!salaryDetails) {
           return (
-            <tr
-              key={emp.employee_id}
-              className={isApproved(emp.employee_id) ? "sd-row-disabled" : ""}
-            >
-              <td
-                className="sd-table-cell sd-align-center sd-select-column sd-sticky-col sd-sticky-checkbox"
-                style={{
-                  left: 0,
-                  borderRight: "1px solid #dee2e6",
-                  zIndex: 10,
-                }}
-              >
-                <input
-                  type="checkbox"
-                  checked={isSelected}
-                  disabled={isApproved(emp.employee_id)}
-                  onChange={() => handleRowSelect(emp.employee_id)}
-                />
+            <tr key={emp.employee_id} className={isApproved(emp.employee_id) ? "sd-row-disabled" : ""}>
+              {/* Fallback row with sticky columns */}
+              <td className="sd-table-cell sd-align-center sd-select-column sd-sticky-col sd-sticky-checkbox" style={{ left: 0, zIndex: 10 }}>
+                <input type="checkbox" disabled />
               </td>
-              <td
-                className="sd-table-cell sd-align-left sd-id-column sd-sticky-col sd-sticky-id"
-                style={{
-                  left: "40px",
-                  borderRight: "1px solid #dee2e6",
-                  zIndex: 10,
-                }}
-              >
-                {emp.employee_id}
-              </td>
-              <td
-                className="sd-table-cell sd-align-left sd-name-column sd-sticky-col sd-sticky-name"
-                style={{
-                  left: "110px",
-                  borderRight: "1px solid #dee2e6",
-                  zIndex: 10,
-                }}
-              >
-                {emp.full_name}
-              </td>
-              <td
-                className="sd-table-cell sd-align-right sd-sticky-col sd-sticky-ctc"
-                style={{
-                  left: "260px",
-                  borderRight: "1px solid #dee2e6",
-                  zIndex: 10,
-                }}
-              >
+              <td className="sd-table-cell sd-align-left sd-id-column sd-sticky-col sd-sticky-id" style={{ left: "40px", zIndex: 10 }}>{emp.employee_id}</td>
+              <td className="sd-table-cell sd-align-left sd-name-column sd-sticky-col sd-sticky-name" style={{ left: "110px", zIndex: 10 }}>{emp.full_name}</td>
+              <td className="sd-table-cell sd-align-right sd-sticky-col sd-sticky-ctc" style={{ left: "260px", zIndex: 10 }}>
                 {emp.ctc ? `₹${parseFloat(emp.ctc).toLocaleString()}` : "N/A"}
               </td>
-              <td className="sd-table-cell sd-align-right">
-                {salaryDetails.basicSalary > 0
-                  ? `₹${salaryDetails.basicSalary.toLocaleString(undefined, {
-                      minimumFractionDigits: 2,
-                      maximumFractionDigits: 2,
-                    })}`
-                  : "N/A"}
-              </td>
-              <td className="sd-table-cell sd-align-right">
-                {salaryDetails.hra > 0
-                  ? `₹${salaryDetails.hra.toLocaleString(undefined, {
-                      minimumFractionDigits: 2,
-                      maximumFractionDigits: 2,
-                    })}`
-                  : "N/A"}
-              </td>
-              <td className="sd-table-cell sd-align-right">
-                {salaryDetails.ltaAllowance > 0
-                  ? `₹${salaryDetails.ltaAllowance.toLocaleString(undefined, {
-                      minimumFractionDigits: 2,
-                      maximumFractionDigits: 2,
-                    })}`
-                  : "N/A"}
-              </td>
-              <td className="sd-table-cell sd-align-right">
-                {salaryDetails.otherAllowances > 0
-                  ? `₹${salaryDetails.otherAllowances.toLocaleString(
-                      undefined,
-                      { minimumFractionDigits: 2, maximumFractionDigits: 2 }
-                    )}`
-                  : "N/A"}
-              </td>
-              <td className="sd-table-cell sd-align-right">
-                {salaryDetails.incentivePay > 0
-                  ? `₹${salaryDetails.incentivePay.toLocaleString(undefined, {
-                      minimumFractionDigits: 2,
-                      maximumFractionDigits: 2,
-                    })}`
-                  : "N/A"}
-              </td>
-              <td className="sd-table-cell sd-align-right">
-                {salaryDetails.overtimePay > 0
-                  ? `₹${salaryDetails.overtimePay.toLocaleString(undefined, {
-                      minimumFractionDigits: 2,
-                      maximumFractionDigits: 2,
-                    })}`
-                  : "N/A"}
-              </td>
-              <td className="sd-table-cell sd-align-right">
-                {salaryDetails.statutoryBonus > 0
-                  ? `₹${salaryDetails.statutoryBonus.toLocaleString(undefined, {
-                      minimumFractionDigits: 2,
-                      maximumFractionDigits: 2,
-                    })}`
-                  : "N/A"}
-              </td>
-              <td className="sd-table-cell sd-align-right">
-                {monthlyBonusPay > 0
-                  ? `₹${monthlyBonusPay.toLocaleString(undefined, {
-                      minimumFractionDigits: 2,
-                      maximumFractionDigits: 2,
-                    })}`
-                  : "N/A"}
-              </td>
-              <td className="sd-table-cell sd-align-right sd-deduction">
-                {salaryDetails.advanceRecovery > 0
-                  ? `₹${salaryDetails.advanceRecovery.toLocaleString(
-                      undefined,
-                      { minimumFractionDigits: 2, maximumFractionDigits: 2 }
-                    )}`
-                  : "N/A"}
-              </td>
-              <td className="sd-table-cell sd-align-right sd-deduction">
-                {salaryDetails.employeePF > 0
-                  ? `₹${salaryDetails.employeePF.toLocaleString(undefined, {
-                      minimumFractionDigits: 2,
-                      maximumFractionDigits: 2,
-                    })}`
-                  : "N/A"}
-              </td>
-              <td className="sd-table-cell sd-align-right sd-deduction">
-                {salaryDetails.employerPF > 0
-                  ? `₹${salaryDetails.employerPF.toLocaleString(undefined, {
-                      minimumFractionDigits: 2,
-                      maximumFractionDigits: 2,
-                    })}`
-                  : "N/A"}
-              </td>
-              <td className="sd-table-cell sd-align-right sd-deduction">
-                {salaryDetails.esic > 0
-                  ? `₹${salaryDetails.esic.toLocaleString(undefined, {
-                      minimumFractionDigits: 2,
-                      maximumFractionDigits: 2,
-                    })}`
-                  : "N/A"}
-              </td>
-              <td className="sd-table-cell sd-align-right sd-deduction">
-                {salaryDetails.gratuity > 0
-                  ? `₹${salaryDetails.gratuity.toLocaleString(undefined, {
-                      minimumFractionDigits: 2,
-                      maximumFractionDigits: 2,
-                    })}`
-                  : "N/A"}
-              </td>
-              <td className="sd-table-cell sd-align-right sd-deduction">
-                {salaryDetails.professionalTax > 0
-                  ? `₹${salaryDetails.professionalTax.toLocaleString(
-                      undefined,
-                      { minimumFractionDigits: 2, maximumFractionDigits: 2 }
-                    )}`
-                  : "N/A"}
-              </td>
-              <td className="sd-table-cell sd-align-right sd-deduction">
-                {salaryDetails.tds > 0
-                  ? `₹${salaryDetails.tds.toLocaleString(undefined, {
-                      minimumFractionDigits: 2,
-                      maximumFractionDigits: 2,
-                    })}`
-                  : "N/A"}
-              </td>
-              <td className="sd-table-cell sd-align-right sd-deduction">
-                {salaryDetails.insurance > 0
-                  ? `₹${salaryDetails.insurance.toLocaleString(undefined, {
-                      minimumFractionDigits: 2,
-                      maximumFractionDigits: 2,
-                    })}`
-                  : "N/A"}
-              </td>
-              <td className="sd-table-cell sd-align-right sd-deduction">
-                {lopDays > 0 ? lopDays.toFixed(0) : "N/A"}
-              </td>
-              <td className="sd-table-cell sd-align-right sd-deduction">
-                {lopDeduction > 0
-                  ? `₹${lopDeduction.toLocaleString(undefined, {
-                      minimumFractionDigits: 2,
-                      maximumFractionDigits: 2,
-                    })}`
-                  : "N/A"}
-              </td>
-              <td className="sd-table-cell sd-align-right">
-                {localGross > 0
-                  ? `₹${localGross.toLocaleString(undefined, {
-                      minimumFractionDigits: 2,
-                      maximumFractionDigits: 2,
-                    })}`
-                  : "N/A"}
-              </td>
-              <td className="sd-table-cell sd-align-right">
-                {localNet > 0
-                  ? `₹${localNet.toLocaleString(undefined, {
-                      minimumFractionDigits: 2,
-                      maximumFractionDigits: 2,
-                    })}`
-                  : "N/A"}
-              </td>
+              <td colSpan="20" className="sd-table-cell">Calculation Error</td>
             </tr>
           );
-        })}
-      </tbody>
-    );
-  };
+        }
+
+        const monthlyBonusPay = calculateMonthlyBonusPay(emp.ctc, bonusRecords);
+        const lopData = employeeLopData[emp.employee_id] || { yearly: { days: 0, value: "0.00" } };
+        const lopDays = parseFloat(lopData.yearly?.days || 0);
+        const lopDeduction = parseFloat(lopData.yearly?.value || 0);
+
+        const { localGross, localNet } = calculateLocalGrossNet(salaryDetails, emp.plan_data);
+
+        const finalCTC = localGross +
+          (salaryDetails.employerPF || 0) +
+          (salaryDetails.gratuity || 0) +
+          (salaryDetails.insuranceEmployer || 0) +
+          (salaryDetails.esicEmployer || 0);
+
+        return (
+          <tr key={emp.employee_id} className={isApproved(emp.employee_id) ? "sd-row-disabled" : ""}>
+            {/* Sticky Columns */}
+            <td className="sd-table-cell sd-align-center sd-select-column sd-sticky-col sd-sticky-checkbox" style={{ left: 0, zIndex: 10 }}>
+              <input
+                type="checkbox"
+                checked={selectedEmployees.has(emp.employee_id)}
+                disabled={isApproved(emp.employee_id)}
+                onChange={() => handleRowSelect(emp.employee_id)}
+              />
+            </td>
+            <td className="sd-table-cell sd-align-left sd-id-column sd-sticky-col sd-sticky-id" style={{ left: "40px", zIndex: 10 }}>
+              {emp.employee_id}
+            </td>
+            <td className="sd-table-cell sd-align-left sd-name-column sd-sticky-col sd-sticky-name" style={{ left: "110px", zIndex: 10 }}>
+              {emp.full_name}
+            </td>
+            <td className="sd-table-cell sd-align-right sd-sticky-col sd-sticky-ctc" style={{ left: "260px", zIndex: 10 }}>
+              {emp.ctc ? `₹${parseFloat(emp.ctc).toLocaleString()}` : "N/A"}
+            </td>
+
+            {/* Employee Earnings */}
+            <td className="sd-table-cell sd-align-right">₹{Number(salaryDetails.basicSalary || 0).toFixed(2)}</td>
+            <td className="sd-table-cell sd-align-right">₹{Number(salaryDetails.hra || 0).toFixed(2)}</td>
+            <td className="sd-table-cell sd-align-right">₹{Number(salaryDetails.ltaAllowance || 0).toFixed(2)}</td>
+            <td className="sd-table-cell sd-align-right">₹{Number(salaryDetails.otherAllowances || 0).toFixed(2)}</td>
+            <td className="sd-table-cell sd-align-right">₹{Number(salaryDetails.incentivePay || 0).toFixed(2)}</td>
+            <td className="sd-table-cell sd-align-right">₹{Number(salaryDetails.overtimePay || 0).toFixed(2)}</td>
+            <td className="sd-table-cell sd-align-right">₹{Number(salaryDetails.statutoryBonus || 0).toFixed(2)}</td>
+            <td className="sd-table-cell sd-align-right">₹{monthlyBonusPay.toFixed(2)}</td>
+
+            {/* Employer Contributions */}
+            <td className="sd-table-cell sd-align-right sd-deduction">₹{Number(salaryDetails.employerPF || 0).toFixed(2)}</td>
+            <td className="sd-table-cell sd-align-right sd-deduction">₹{Number(salaryDetails.gratuity || 0).toFixed(2)}</td>
+            <td className="sd-table-cell sd-align-right sd-deduction">₹{Number(salaryDetails.insuranceEmployer || 0).toFixed(2)}</td>
+            <td className="sd-table-cell sd-align-right sd-deduction">₹{Number(salaryDetails.esicEmployer || 0).toFixed(2)}</td>
+
+            {/* Employee Deductions */}
+            <td className="sd-table-cell sd-align-right sd-deduction">₹{Number(salaryDetails.advanceRecovery || 0).toFixed(2)}</td>
+            <td className="sd-table-cell sd-align-right sd-deduction">₹{Number(salaryDetails.employeePF || 0).toFixed(2)}</td>
+            <td className="sd-table-cell sd-align-right sd-deduction">₹{Number(salaryDetails.esic || 0).toFixed(2)}</td>
+            <td className="sd-table-cell sd-align-right sd-deduction">₹{Number(salaryDetails.professionalTax || 0).toFixed(2)}</td>
+            <td className="sd-table-cell sd-align-right sd-deduction">₹{Number(salaryDetails.tds || 0).toFixed(2)}</td>
+            <td className="sd-table-cell sd-align-right sd-deduction">₹{Number(salaryDetails.insurance || 0).toFixed(2)}</td>
+            <td className="sd-table-cell sd-align-right sd-deduction">{lopDays > 0 ? lopDays.toFixed(0) : "0"}</td>
+            <td className="sd-table-cell sd-align-right sd-deduction">₹{lopDeduction.toFixed(2)}</td>
+
+            {/* Totals */}
+            <td className="sd-table-cell sd-align-right"><strong>₹{localGross.toFixed(2)}</strong></td>
+            <td className="sd-table-cell sd-align-right"><strong>₹{finalCTC.toFixed(2)}</strong></td>
+            <td className="sd-table-cell sd-align-right"><strong>₹{localNet.toFixed(2)}</strong></td>
+          </tr>
+        );
+      })}
+    </tbody>
+  );
+};
 
   const renderPreviewTableRows = (employeesToRender) => {
     return (
@@ -1251,106 +1046,72 @@ const SalaryDetails = () => {
           <div className="sd-table-container">
             <div className="sd-table-wrapper">
               <table className="sd-table">
-                <thead className="sd-table-head">
-                  <tr>
-                    <th
-                      className="sd-table-header sd-align-center sd-select-column sd-sticky-col sd-sticky-checkbox"
-                      style={{
-                        left: 0,
-                        borderRight: "1px solid #dee2e6",
-                        zIndex: 13,
-                      }}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={isAllSelected}
-                        onChange={handleSelectAll}
-                      />
-                    </th>
-                    <th
-                      className="sd-table-header sd-align-left sd-id-column sd-sticky-col sd-sticky-id"
-                      style={{
-                        left: "40px",
-                        borderRight: "1px solid #dee2e6",
-                        zIndex: 13,
-                      }}
-                    >
-                      ID
-                    </th>
-                    <th
-                      className="sd-table-header sd-align-left sd-name-column sd-sticky-col sd-sticky-name"
-                      style={{
-                        left: "110px",
-                        borderRight: "1px solid #dee2e6",
-                        zIndex: 13,
-                      }}
-                    >
-                      Name
-                    </th>
-                    <th
-                      className="sd-table-header sd-align-right sd-sticky-col sd-sticky-ctc"
-                      style={{
-                        left: "260px",
-                        borderRight: "1px solid #dee2e6",
-                        zIndex: 13,
-                      }}
-                    >
-                      Annual CTC
-                    </th>
-                    <th className="sd-table-header sd-align-right">
-                      Basic Salary
-                    </th>
-                    <th className="sd-table-header sd-align-right">HRA</th>
-                    <th className="sd-table-header sd-align-right">LTA</th>
-                    <th className="sd-table-header sd-align-right">
-                      Other Allowances
-                    </th>
-                    <th className="sd-table-header sd-align-right">
-                      Incentives
-                    </th>
-                    <th className="sd-table-header sd-align-right">Overtime</th>
-                    <th className="sd-table-header sd-align-right">
-                      Statutory Bonus
-                    </th>
-                    <th className="sd-table-header sd-align-right">Bonus</th>
-                    <th className="sd-table-header sd-align-right sd-deduction">
-                      Advance Recovery
-                    </th>
-                    <th className="sd-table-header sd-align-right sd-deduction">
-                      Employee PF
-                    </th>
-                    <th className="sd-table-header sd-align-right sd-deduction">
-                      Employer PF
-                    </th>
-                    <th className="sd-table-header sd-align-right sd-deduction">
-                      ESIC
-                    </th>
-                    <th className="sd-table-header sd-align-right sd-deduction">
-                      Gratuity
-                    </th>
-                    <th className="sd-table-header sd-align-right sd-deduction">
-                      Professional Tax
-                    </th>
-                    <th className="sd-table-header sd-align-right sd-deduction">
-                      TDS
-                    </th>
-                    <th className="sd-table-header sd-align-right sd-deduction">
-                      Insurance
-                    </th>
-                    <th className="sd-table-header sd-align-right sd-deduction">
-                      LOP Days
-                    </th>
-                    <th className="sd-table-header sd-align-right sd-deduction">
-                      LOP Deduction
-                    </th>
-                    <th className="sd-table-header sd-align-right">
-                      Gross Salary
-                    </th>
-                    <th className="sd-table-header sd-align-right">
-                      Net Salary
-                    </th>
-                  </tr>
-                </thead>
+              <thead className="sd-table-head">
+  <tr>
+    {/* === STICKY COLUMNS (Preserved) === */}
+    <th
+  className="sd-table-header sd-align-center sd-select-column sd-sticky-col sd-sticky-checkbox"
+  style={{ left: 0, borderRight: "1px solid #dee2e6", zIndex: 13 }}
+>
+  <input
+    type="checkbox"
+    checked={isAllSelected}
+    onChange={handleSelectAll}
+    disabled={filteredEmployees.length === 0}
+  />
+  
+</th>
+    <th 
+      className="sd-table-header sd-align-left sd-id-column sd-sticky-col sd-sticky-id"
+      style={{ left: "40px", borderRight: "1px solid #dee2e6", zIndex: 13 }}
+    >
+      ID
+    </th>
+    <th 
+      className="sd-table-header sd-align-left sd-name-column sd-sticky-col sd-sticky-name"
+      style={{ left: "110px", borderRight: "1px solid #dee2e6", zIndex: 13 }}
+    >
+      Name
+    </th>
+    <th 
+      className="sd-table-header sd-align-right sd-sticky-col sd-sticky-ctc"
+      style={{ left: "260px", borderRight: "1px solid #dee2e6", zIndex: 13 }}
+    >
+      Annual CTC
+    </th>
+
+    {/* === EMPLOYEE EARNINGS === */}
+    <th className="sd-table-header sd-align-right">Basic Salary</th>
+    <th className="sd-table-header sd-align-right">HRA</th>
+    <th className="sd-table-header sd-align-right">LTA</th>
+    <th className="sd-table-header sd-align-right">Other Allowances</th>
+    <th className="sd-table-header sd-align-right">Incentives</th>
+    <th className="sd-table-header sd-align-right">Overtime</th>
+    <th className="sd-table-header sd-align-right">Statutory Bonus</th>
+    <th className="sd-table-header sd-align-right">Bonus</th>
+
+    {/* === EMPLOYER CONTRIBUTIONS === */}
+    <th className="sd-table-header sd-align-right">Employer PF</th>
+    <th className="sd-table-header sd-align-right">Gratuity</th>
+    <th className="sd-table-header sd-align-right">Insurance (Emplyr)</th>
+    <th className="sd-table-header sd-align-right">ESIC (Emplyr)</th>
+
+    {/* === EMPLOYEE DEDUCTIONS === */}
+    <th className="sd-table-header sd-align-right">Advance Recovery</th>
+    <th className="sd-table-header sd-align-right">Employee PF</th>
+    <th className="sd-table-header sd-align-right">ESIC (Emp)</th>
+    <th className="sd-table-header sd-align-right">Prof. Tax</th>
+    <th className="sd-table-header sd-align-right">TDS</th>
+    <th className="sd-table-header sd-align-right">Insurance (Emp)</th>
+    <th className="sd-table-header sd-align-right">LOP Days</th>
+    <th className="sd-table-header sd-align-right">LOP Deduction</th>
+
+    {/* === TOTALS === */}
+    <th className="sd-table-header sd-align-right">Gross Salary</th>
+    <th className="sd-table-header sd-align-right">Final CTC</th>
+    <th className="sd-table-header sd-align-right">Net Salary</th>
+  </tr>
+</thead>
                 {renderTableRows(filteredEmployees)}
               </table>
             </div>

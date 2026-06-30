@@ -343,19 +343,42 @@ const buildAdvanceDetailText = (
       const overtime = Number(payrollData.overtime || payrollData.overtimePay || 0);
       const statutoryBonus = Number(payrollData.statutory_bonus || payrollData.statutoryBonus || 0);
       const bonus = Number(payrollData.bonus || 0);
+      const grossSalary = Number(
+  payrollData.gross_salary ||
+  (
+    basicSalary +
+    hra +
+    lta +
+    allowance +
+    incentives +
+    overtime +
+    statutoryBonus +
+    bonus
+  )
+);
       const advanceRecovery = Number(payrollData.advance_recovery || 0);
       const lopDeduction = Number(payrollData.lop_deduction || 0);
       const employeePf = Number(payrollData.employee_pf || payrollData.pf || 0);
-      const employerPf = Number(payrollData.employer_pf || payrollData.employerPF || 0);
-      const esic = Number(payrollData.esic || 0);
-      const gratuity = Number(payrollData.gratuity || 0);
-      const professionalTax = Number(payrollData.professional_tax || 0);
-      const tds = Number(payrollData.tds || 0);
-      const insurance = Number(payrollData.insurance || 0);
-      const grossSalary = Number(payrollData.gross_salary || 0);
+const employerPf = Number(payrollData.employer_pf || payrollData.employerPF || 0);
 
-      const totalDeductions =
-        employeePf + esic + professionalTax + tds + insurance + advanceRecovery + lopDeduction;
+const employeeEsic = Number(payrollData.esic_employee || 0);
+const employerEsic = Number(payrollData.esic_employer || 0);
+
+const gratuity = Number(payrollData.gratuity || 0);
+
+const professionalTax = Number(payrollData.professional_tax || 0);
+const tds = Number(payrollData.tds || 0);
+
+const employeeInsurance = Number(payrollData.insurance_employee || 0);
+const employerInsurance = Number(payrollData.insurance_employer || 0);
+     const totalDeductions =
+  employeePf +
+  employeeEsic +
+  professionalTax +
+  tds +
+  employeeInsurance +
+  advanceRecovery +
+  lopDeduction;
 
       const netSalary = Number(payrollData.net_salary || grossSalary - totalDeductions);
 
@@ -484,14 +507,65 @@ const buildAdvanceDetailText = (
       if (bonus > 0) earnings.push({ name: "Bonus", amount: bonus });
 
       const deductions = [];
-      if (employeePf > 0) deductions.push({ name: "Employee PF", amount: employeePf });
-      if (employerPf > 0) deductions.push({ name: "Employer PF", amount: employerPf });
-      if (esic > 0) deductions.push({ name: "ESIC", amount: esic });
-      if (gratuity > 0) deductions.push({ name: "Gratuity", amount: gratuity });
-      if (professionalTax > 0) deductions.push({ name: "Professional Tax", amount: professionalTax });
-      if (tds > 0) deductions.push({ name: "TDS", amount: tds });
-      if (insurance > 0) deductions.push({ name: "Insurance", amount: insurance });
-      if (lopDeduction > 0) deductions.push({ name: "LOP Deduction", amount: lopDeduction });
+      if (employeePf > 0)
+  deductions.push({
+    name: "Employee PF",
+    amount: employeePf,
+  });
+
+// if (employerPf > 0)
+//   deductions.push({
+//     name: "Employer PF",
+//     amount: employerPf,
+//   });
+
+if (employeeEsic > 0)
+  deductions.push({
+    name: "Employee ESIC",
+    amount: employeeEsic,
+  });
+
+if (employerEsic > 0)
+  deductions.push({
+    name: "Employer ESIC",
+    amount: employerEsic,
+  });
+
+if (gratuity > 0)
+  deductions.push({
+    name: "Gratuity",
+    amount: gratuity,
+  });
+
+if (professionalTax > 0)
+  deductions.push({
+    name: "Professional Tax",
+    amount: professionalTax,
+  });
+
+if (tds > 0)
+  deductions.push({
+    name: "TDS",
+    amount: tds,
+  });
+
+if (employeeInsurance > 0)
+  deductions.push({
+    name: "Employee Insurance",
+    amount: employeeInsurance,
+  });
+
+if (employerInsurance > 0)
+  deductions.push({
+    name: "Employer Insurance",
+    amount: employerInsurance,
+  });
+
+if (lopDeduction > 0)
+  deductions.push({
+    name: "LOP Deduction",
+    amount: lopDeduction,
+  });
 
       const maxRows = Math.max(earnings.length, deductions.length);
       let detailRows = "";
@@ -899,16 +973,29 @@ const buildAdvanceDetailText = (
   const previewAllowance = Number(payrollData?.other_allowances || 0);
   const previewBonus = Number(payrollData?.bonus || 0);
   const previewPf = Number(payrollData?.employee_pf || payrollData?.pf || 0);
-  const previewEsic = Number(payrollData?.esic || 0);
-  const previewPt = Number(payrollData?.professional_tax || 0);
+const previewEmployeeEsic = Number(payrollData?.esic_employee || 0);
+const previewEmployerEsic = Number(payrollData?.esic_employer || 0);
+
+const previewEmployeeInsurance = Number(
+  payrollData?.insurance_employee || 0
+);
+
+const previewEmployerInsurance = Number(
+  payrollData?.insurance_employer || 0
+);  const previewPt = Number(payrollData?.professional_tax || 0);
   const previewTds = Number(payrollData?.tds || 0);
-  const previewInsurance = Number(payrollData?.insurance || 0);
   const previewAdvanceRecovery = Number(payrollData?.advance_recovery || 0);
   const previewLopDeduction = Number(payrollData?.lop_deduction || 0);
   const previewGross = Number(payrollData?.gross_salary || 0);
   const previewTotalDed =
-    previewPf + previewEsic + previewPt + previewTds + previewInsurance + previewAdvanceRecovery + previewLopDeduction;
-  const previewNet = Number(payrollData?.net_salary || previewGross - previewTotalDed);
+  previewPf +
+  previewEmployeeEsic +
+  previewPt +
+  previewTds +
+  previewEmployeeInsurance +
+  previewAdvanceRecovery +
+  previewLopDeduction;
+    const previewNet = Number(payrollData?.net_salary || previewGross - previewTotalDed);
 
   return (
     <div className="payroll-container">
@@ -976,8 +1063,8 @@ const buildAdvanceDetailText = (
               <tr>
                 <td>HRA</td>
                 <td>₹{previewHra.toFixed(2)}</td>
-                <td>ESIC</td>
-                <td>₹{previewEsic.toFixed(2)}</td>
+                <td>Employee ESIC</td>
+<td>₹{previewEmployeeEsic.toFixed(2)}</td>
               </tr>
               <tr>
                 <td>Other Allowances</td>
@@ -1002,8 +1089,8 @@ const buildAdvanceDetailText = (
               <tr>
                 <td></td>
                 <td></td>
-                <td>Insurance</td>
-                <td>₹{previewInsurance.toFixed(2)}</td>
+               <td>Employee Insurance</td>
+<td>₹{previewEmployeeInsurance.toFixed(2)}</td>
               </tr>
               {previewLopDeduction > 0 && (
                 <tr>

@@ -55,13 +55,17 @@ const generatePayslipPDFDefault = (tableData, selectedMonth, selectedYear) => {
     hra = 0,
     otherAllowance = 0,
     pf = 0,
-    esiInsurance = 0,
+    esi = 0,           // ← Keep
+    insurance = 0,     // ← Keep
     professionalTax = 0,
     tds = 0,
   } = tableData;
 
   const grossEarnings = [basic, hra, otherAllowance].reduce((a, b) => a + Number(b || 0), 0);
-  const totalDeductions = [pf, esiInsurance, professionalTax, tds].reduce((a, b) => a + Number(b || 0), 0);
+  
+  // ← FIXED: Use the new fields
+  const totalDeductions = [pf, esi, insurance, professionalTax, tds].reduce((a, b) => a + Number(b || 0), 0);
+  
   const netSalary = grossEarnings - totalDeductions;
 
   const monthName = new Date(0, selectedMonth - 1).toLocaleString("default", { month: "long" });
@@ -153,10 +157,11 @@ doc.setFont("helvetica", "normal").text(getVal(pfNumber), rightX + 30, 110);
   // ====================== SALARY TABLE (Transparent Background) ======================
   const getAmt = (val) => Math.round(parseFloat(val) || 0);
 
-  const tableBody = [
+   const tableBody = [
     ["Basic Salary", getAmt(basic).toString(), "PF (Employee)", getAmt(pf).toString()],
-    ["HRA", getAmt(hra).toString(), "ESI", getAmt(esiInsurance).toString()],
-    ["Other Allowance", getAmt(otherAllowance).toString(), "Professional Tax", getAmt(professionalTax).toString()],
+    ["HRA", getAmt(hra).toString(), "ESI", getAmt(esi).toString()],
+    ["Other Allowance", getAmt(otherAllowance).toString(), "Insurance", getAmt(insurance).toString()],
+    ["", "", "Professional Tax", getAmt(professionalTax).toString()],
     ["", "", "TDS", getAmt(tds).toString()],
     ["Gross Earnings", grossEarnings.toString(), "Total Deductions", totalDeductions.toString()],
   ];

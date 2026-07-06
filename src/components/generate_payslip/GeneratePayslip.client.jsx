@@ -80,7 +80,8 @@ export default function GeneratePayslip() {
     hra: "",
     otherAllowance: "",
     pf: "",
-    esiInsurance: "",
+   esi: "",           // ← New
+  insurance: "",     // ← New (replaces esiInsurance)
     professionalTax: "",
     tds: "",
   };
@@ -447,7 +448,8 @@ const handleDownloadWithDefaultTemplate = async () => {
       otherAllowance = 0,
       bonus = 0,
       pf = 0,
-      esiInsurance = 0,
+      esi = 0,           // ← New
+  insurance = 0,     // ← New
       professionalTax = 0,
       tds = 0,
       grossEarnings = 0,
@@ -543,7 +545,8 @@ const handleDownloadWithDefaultTemplate = async () => {
 
     const deductions = [];
     if (pf > 0) deductions.push({ name: "PF", amount: pf });
-    if (esiInsurance > 0) deductions.push({ name: "ESIC", amount: esiInsurance });
+    if (data.esi > 0) deductions.push({ name: "ESI", amount: data.esi });
+if (data.insurance > 0) deductions.push({ name: "Insurance", amount: data.insurance });
     if (professionalTax > 0) deductions.push({ name: "Professional Tax", amount: professionalTax });
     if (tds > 0) deductions.push({ name: "TDS", amount: tds });
 
@@ -721,7 +724,8 @@ const buildProcessedTemplate = (tableHtml) => {
       otherAllowance: parseFloat(formData.otherAllowance) || 0,
       bonus: 0,
       pf: parseFloat(formData.pf) || 0,
-      esiInsurance: parseFloat(formData.esiInsurance) || 0,
+      esi: parseFloat(formData.esi) || 0,           // ← New
+    insurance: parseFloat(formData.insurance) || 0, // ← New
       professionalTax: parseFloat(formData.professionalTax) || 0,
       tds: parseFloat(formData.tds) || 0,
       grossEarnings,
@@ -758,7 +762,8 @@ const buildProcessedTemplate = (tableHtml) => {
       otherAllowance: parseFloat(employee.other_allowance || 0),
       bonus: 0,
       pf: parseFloat(employee.pf || 0),
-      esiInsurance: parseFloat(employee.esi_insurance || 0),
+    esi: parseFloat(employee.esi || 0),                    // ← New (adjust backend field name if needed)
+    insurance: parseFloat(employee.insurance || 0),        // ← New
       professionalTax: parseFloat(employee.professional_tax || 0),
       tds: parseFloat(employee.tds || 0),
       grossEarnings: parseFloat(employee.gross_earnings || 0),
@@ -999,7 +1004,8 @@ const generatePdfWithTemplate = async (tableData) => {
     ];
     const deductions = [
       parseFloat(formData.pf) || 0,
-      parseFloat(formData.esiInsurance) || 0,
+      parseFloat(formData.esi) || 0,         // ← Changed
+    parseFloat(formData.insurance) || 0,   // ← New
       parseFloat(formData.professionalTax) || 0,
       parseFloat(formData.tds) || 0,
     ];
@@ -1026,7 +1032,8 @@ const fieldLabels = {
     hra: "HRA",
     otherAllowance: "Other Allowance",
     pf: "PF",
-    esiInsurance: "ESI/Insurance",
+    esi: "ESI",                    // ← New
+  insurance: "Insurance",        // ← New
     professionalTax: "Professional Tax",
     tds: "TDS",
     selectedMonth: "Month",
@@ -1053,7 +1060,7 @@ const fieldLabels = {
     if (formData.dateOfJoining && (isNaN(date.getTime()) || date > new Date()))
       return "Invalid Date of Joining";
 
-    const numericFields = ["workingDays", "leavesTaken", "basic", "hra", "otherAllowance", "pf", "esiInsurance", "professionalTax", "tds"];
+    const numericFields = ["workingDays", "leavesTaken", "basic", "hra", "otherAllowance", "pf", "esi", "insurance", "professionalTax", "tds"];
     for (const field of numericFields) {
       if (formData[field] && (isNaN(parseFloat(formData[field])) || parseFloat(formData[field]) < 0))
         return `${fieldLabels[field] || field} must be non-negative number`;
@@ -1076,35 +1083,43 @@ const fieldLabels = {
   };
 
   const prepareBackendData = () => {
-    const { grossEarnings, totalDeductions, netSalary } = calculateSummary();
-    return {
-      employee_name: formData.employeeName || "",
-      employee_id: formData.employeeId || "",
-      gender: formData.gender || "",
-      designation: formData.designation || "",
-date_of_joining: formData.dateOfJoining || "", // Normalized YYYY-MM-DD
+  const { grossEarnings, totalDeductions, netSalary } = calculateSummary();
 
-account_no: formData.accountNo || "",
-      working_days: parseInt(formData.workingDays) || 0,
-      leaves_taken: parseInt(formData.leavesTaken) || 0,
-      uin_no: formData.uinNo || "",
-      pan_number: formData.panNumber || "",
-      esi_number: formData.esiNumber || "",
-      pf_number: formData.pfNumber || "",
-      basic: parseFloat(formData.basic) || 0,
-      hra: parseFloat(formData.hra) || 0,
-      other_allowance: parseFloat(formData.otherAllowance) || 0,
-      pf: parseFloat(formData.pf) || 0,
-      esi_insurance: parseFloat(formData.esiInsurance) || 0,
-      professional_tax: parseFloat(formData.professionalTax) || 0,
-      tds: parseFloat(formData.tds) || 0,
-      gross_earnings: grossEarnings || 0,
-      total_deductions: totalDeductions || 0,
-      net_salary: netSalary || 0,
-      month: parseInt(selectedMonth) || 0,
-      year: parseInt(selectedYear) || 0,
-    };
+  return {
+    employee_name: formData.employeeName || "",
+    employee_id: formData.employeeId || "",
+    gender: formData.gender || "",
+    designation: formData.designation || "",
+    date_of_joining: formData.dateOfJoining || "",
+
+    account_no: formData.accountNo || "",
+    working_days: parseInt(formData.workingDays) || 0,
+    leaves_taken: parseInt(formData.leavesTaken) || 0,
+
+    uin_no: formData.uinNo || "",
+    pan_number: formData.panNumber || "",
+    esi_number: formData.esiNumber || "",
+    pf_number: formData.pfNumber || "",
+
+    basic: parseFloat(formData.basic) || 0,
+    hra: parseFloat(formData.hra) || 0,
+    other_allowance: parseFloat(formData.otherAllowance) || 0,
+
+    pf: parseFloat(formData.pf) || 0,
+    esi: parseFloat(formData.esi) || 0,               // ← New
+    insurance: parseFloat(formData.insurance) || 0,   // ← New
+
+    professional_tax: parseFloat(formData.professionalTax) || 0,
+    tds: parseFloat(formData.tds) || 0,
+
+    gross_earnings: grossEarnings || 0,
+    total_deductions: totalDeductions || 0,
+    net_salary: netSalary || 0,
+
+    month: parseInt(selectedMonth) || 0,
+    year: parseInt(selectedYear) || 0,
   };
+};
 
   const handleEdit = (employee) => {
     setFormData({
@@ -1132,9 +1147,8 @@ account_no: formData.accountNo || "",
         ? employee.other_allowance.toString()
         : "",
       pf: employee.pf ? employee.pf.toString() : "",
-      esiInsurance: employee.esi_insurance
-        ? employee.esi_insurance.toString()
-        : "",
+      esi: employee.esi ? employee.esi.toString() : "",           // ← New
+    insurance: employee.insurance ? employee.insurance.toString() : "", // ← New
       professionalTax: employee.professional_tax
         ? employee.professional_tax.toString()
         : "",
@@ -1329,7 +1343,7 @@ const fieldOrder = [
     "employeeId", "employeeName", "gender", "designation",
     "dateOfJoining", "accountNo", "workingDays", "leavesTaken",
     "uinNo", "panNumber", "esiNumber", "pfNumber",
-    "basic", "hra", "otherAllowance", "pf", "esiInsurance",
+    "basic", "hra", "otherAllowance", "pf", "esi", "insurance",
     "professionalTax", "tds",
     "selectedMonth", "selectedYear"
   ];
@@ -1619,14 +1633,12 @@ const fieldOrder = [
                             value={formData[field]}
                             onChange={handleChange}
                             className="generatePayslip-popup-input"
-                            type={
-                              ["workingDays", "leavesTaken", "basic", "hra", "otherAllowance",
-                               "pf", "esiInsurance", "professionalTax", "tds"].includes(field)
-                                ? "number"
-                                : field === "dateOfJoining"
-                                ? "date"
-                                : "text"
-                            }
+                           type={
+  ["workingDays", "leavesTaken", "basic", "hra", "otherAllowance",
+   "pf", "esi", "insurance", "professionalTax", "tds"].includes(field)  // ← Updated
+    ? "number"
+    : field === "dateOfJoining" ? "date" : "text"
+}
                             placeholder={field === "dateOfJoining" ? "YYYY-MM-DD" : undefined}
                           />
                         )}
@@ -1801,8 +1813,11 @@ const fieldOrder = [
             <dt className="earning">Other Allowance</dt>    <dd className="amount">{viewDetailsModal.employee.other_allowance?.toLocaleString('en-IN') || "0.00"}</dd>
 
             <dt className="deduction">PF</dt>               <dd className="amount deduction">{viewDetailsModal.employee.pf?.toLocaleString('en-IN') || "0.00"}</dd>
-            <dt className="deduction">ESIC</dt>             <dd className="amount deduction">{viewDetailsModal.employee.esi_insurance?.toLocaleString('en-IN') || "0.00"}</dd>
-            <dt className="deduction">Professional Tax</dt> <dd className="amount deduction">{viewDetailsModal.employee.professional_tax?.toLocaleString('en-IN') || "0.00"}</dd>
+<dt className="deduction">ESI</dt>             
+<dd className="amount deduction">{viewDetailsModal.employee.esi?.toLocaleString('en-IN') || "0.00"}</dd>
+
+<dt className="deduction">Insurance</dt>       
+<dd className="amount deduction">{viewDetailsModal.employee.insurance?.toLocaleString('en-IN') || "0.00"}</dd>            <dt className="deduction">Professional Tax</dt> <dd className="amount deduction">{viewDetailsModal.employee.professional_tax?.toLocaleString('en-IN') || "0.00"}</dd>
             <dt className="deduction">TDS</dt>              <dd className="amount deduction">{viewDetailsModal.employee.tds?.toLocaleString('en-IN') || "0.00"}</dd>
 
             <dt className="total">Gross Earnings</dt>       <dd className="amount total">{viewDetailsModal.employee.gross_earnings?.toLocaleString('en-IN') || "0.00"}</dd>

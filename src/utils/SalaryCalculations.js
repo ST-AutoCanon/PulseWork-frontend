@@ -1405,77 +1405,55 @@ export const calculateSalaryDetails = (
 
     // ==================== OTHER ALLOWANCE - BALANCING LOGIC ====================
   // Calculate Other Allowance so that Monthly CTC = Earnings + Employer Contributions
-  if (planData.isOtherAllowance) {
-    // First pass: fixed components + employer contributions that don't depend on Other
-    const knownFixedEarnings = basicSalary + hra + ltaAllowance;
-    
-    const knownEmployerContrib = 
-      employerPF +
-      gratuity +
-      insuranceEmployer;
+ // ==================== OTHER ALLOWANCE - BALANCING LOGIC ====================
 
-    // Initial estimate (excluding ESIC which depends on Other)
-    let estimatedOther = monthlyCtc - knownFixedEarnings - knownEmployerContrib;
+if (planData.isOtherAllowance) {
 
-    // Prevent negative
-    estimatedOther = Math.max(0, estimatedOther);
+  const fixedComponents =
+    basicSalary +
+    hra +
+    ltaAllowance +
+    employerPF +
+    gratuity +
+    insuranceEmployer;
 
-    // Now calculate ESIC on (Basic + HRA + Other) as per requirement
-    const grossForESI = 
-      Number(basicSalary || 0) + 
-      Number(hra || 0) + 
-      Number(estimatedOther || 0);
+  // Assume ESIC is applicable only if gross <= 21000
+  const baseSalary = basicSalary + hra;
 
-    // ESIC Employee
-    if (
-      planData.isESICEmployee &&
-      planData.esicEmployeeType === "percentage" &&
-      planData.esicEmployeePercentage
-    ) {
-      const rate = parseFloat(planData.esicEmployeePercentage) / 100;
-      esic = grossForESI * rate;
-      planData.esicEmployeeText = `${planData.esicEmployeePercentage}% of (Basic + HRA + Other Allowance)`;
-    } else if (planData.esicEmployeeAmount) {
-      esic = parseFloat(planData.esicEmployeeAmount);
-    } else {
-      esic = 0;
-    }
+  if (
+    planData.isESICEmployer &&
+    baseSalary <= 21000
+  ) {
 
-    // ESIC Employer
-    if (
-      planData.isESICEmployer &&
-      planData.esicEmployerType === "percentage" &&
-      planData.esicEmployerPercentage
-    ) {
-      const rate = parseFloat(planData.esicEmployerPercentage) / 100;
-      esicEmployer = grossForESI * rate;
-      planData.esicEmployerText = `${planData.esicEmployerPercentage}% of (Basic + HRA + Other Allowance)`;
-    } else if (planData.esicEmployerAmount) {
-      esicEmployer = parseFloat(planData.esicEmployerAmount);
-    } else {
-      esicEmployer = 0;
-    }
+    const esicRate =
+      parseFloat(planData.esicEmployerPercentage || 0) / 100;
 
-    // Final balancing including ESIC Employer
-    otherAllowances = monthlyCtc 
-      - basicSalary 
-      - hra 
-      - ltaAllowance 
-      - employerPF 
-      - gratuity 
-      - insuranceEmployer 
-      - esicEmployer;
+    const remaining =
+      monthlyCtc -
+      fixedComponents -
+      (baseSalary * esicRate);
 
-    otherAllowances = Math.max(0, otherAllowances);
+    otherAllowances = remaining / (1 + esicRate);
 
-    planData.otherAllowanceText = 
-      `Balancing Component (CTC - Basic - HRA - LTA - Employer Contributions)`;
+    esicEmployer =
+      (baseSalary + otherAllowances) * esicRate;
+
   } else {
-    otherAllowances = 0;
-    // Recalculate ESIC without Other if not using balancing
-    const grossForESI = Number(basicSalary || 0) + Number(hra || 0);
-    // ... (ESIC calculation can be duplicated or extracted to a helper)
+
+    otherAllowances =
+      monthlyCtc - fixedComponents;
+
+    esicEmployer = 0;
   }
+
+  otherAllowances = Math.max(0, otherAllowances);
+
+}
+else {
+
+  otherAllowances = 0;
+
+}
 
   // ==================== RECALCULATE GROSS SALARY ====================
   grossSalary =
@@ -1512,19 +1490,19 @@ export const calculateSalaryDetails = (
     esic = 0;
   }
 
-  if (
-    planData.isESICEmployer &&
-    planData.esicEmployerType === "percentage" &&
-    planData.esicEmployerPercentage
-  ) {
-    const rate = parseFloat(planData.esicEmployerPercentage) / 100;
-    esicEmployer = grossForESI * rate;
-    planData.esicEmployerText = `${planData.esicEmployerPercentage}% of (Basic + HRA + Other Allowance)`;
-  } else if (planData.esicEmployerAmount) {
-    esicEmployer = parseFloat(planData.esicEmployerAmount);
-  } else {
-    esicEmployer = 0;
-  }
+  // if (
+  //   planData.isESICEmployer &&
+  //   planData.esicEmployerType === "percentage" &&
+  //   planData.esicEmployerPercentage
+  // ) {
+  //   const rate = parseFloat(planData.esicEmployerPercentage) / 100;
+  //   esicEmployer = grossForESI * rate;
+  //   planData.esicEmployerText = `${planData.esicEmployerPercentage}% of (Basic + HRA + Other Allowance)`;
+  // } else if (planData.esicEmployerAmount) {
+  //   esicEmployer = parseFloat(planData.esicEmployerAmount);
+  // } else {
+  //   esicEmployer = 0;
+  // }
 
   // ==================== RECALCULATE GROSS SALARY ====================
   grossSalary =

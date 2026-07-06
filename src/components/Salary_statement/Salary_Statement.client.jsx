@@ -524,22 +524,43 @@ const Salary_Statement = () => {
     await savePreferences(month, year);
   };
 
-  const handleTemplateChange = async (e) => {
-    const newTemplateId = e.target.value;
-    setSelectedTemplate(newTemplateId);
-    await savePreferences();
-  };
+const handleTemplateChange = async (e) => {
+  const newTemplateId = e.target.value;
 
-  const handleEnableTemplate = async (e) => {
-    const enabled = e.target.checked;
-    setIsTemplateEnabled(enabled);
-    if (enabled && !selectedTemplate && templates.length > 0) {
-      setSelectedTemplate(String(templates[0].id));
-    } else if (!enabled) {
-      setSelectedTemplate("");
-    }
-    await savePreferences();
-  };
+  setSelectedTemplate(newTemplateId);
+
+  await savePreferences(
+    selectedMonth,
+    selectedYear,
+    newTemplateId,
+    isTemplateEnabled
+  );
+};
+
+ const handleEnableTemplate = async (e) => {
+  const enabled = e.target.checked;
+
+  setIsTemplateEnabled(enabled);
+
+  let template = selectedTemplate;
+
+  if (enabled && !template && templates.length > 0) {
+    template = String(templates[0].id);
+    setSelectedTemplate(template);
+  }
+
+  if (!enabled) {
+    template = "";
+    setSelectedTemplate("");
+  }
+
+  await savePreferences(
+    selectedMonth,
+    selectedYear,
+    template,
+    enabled
+  );
+};
 
   const fetchSalaryData = async (month = selectedMonth, year = selectedYear) => {
     if (!month || !year) return;
@@ -630,26 +651,40 @@ const Salary_Statement = () => {
     }
   };
 
-  const savePreferences = async (month = selectedMonth, year = selectedYear) => {
-    if (!orgId || !month || !year) return;
-    const templateId = isTemplateEnabled && selectedTemplate ? Number(selectedTemplate) : null;
-    try {
-      await axios.post(
-        `${BACKEND_URL}/api/salary-preferences`,
-        {
-          selected_month: month,
-          selected_year: year,
-          selected_template_id: templateId,
-        },
-        {
-          withCredentials: true,
-          headers,
-        }
-      );
-    } catch (err) {
-      console.error("Failed to save preferences:", err);
+  const savePreferences = async (
+  month = selectedMonth,
+  year = selectedYear,
+  template = selectedTemplate,
+  enabled = isTemplateEnabled
+) => {
+  if (!orgId || !month || !year) return;
+
+  const templateId =
+    enabled && template
+      ? Number(template)
+      : null;
+
+  console.log({
+    month,
+    year,
+    template,
+    enabled,
+    templateId,
+  });
+
+  await axios.post(
+    `${BACKEND_URL}/api/salary-preferences`,
+    {
+      selected_month: month,
+      selected_year: year,
+      selected_template_id: templateId,
+    },
+    {
+      withCredentials: true,
+      headers,
     }
-  };
+  );
+};
 
   useEffect(() => {
     if (!isTemplateEnabled || templates.length === 0) return;

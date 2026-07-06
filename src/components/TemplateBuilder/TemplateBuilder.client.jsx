@@ -337,6 +337,7 @@ export default function TemplateBuilder() {
   const basicEditorRef = useRef(null);
   const scratchEditorRef = useRef(null);
   const [currentPayload, setCurrentPayload] = useState(null);
+  const [editingUploadTemplateId, setEditingUploadTemplateId] = useState(null);
   const [activeArea, setActiveArea] = useState("header");
   const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "";
   const API_KEY = process.env.NEXT_PUBLIC_API_KEY || "";
@@ -476,9 +477,12 @@ export default function TemplateBuilder() {
     setMode(newMode);
 
     if (newMode === "upload") {
-      setPreviewHeaderUrl(null);
-      setPreviewFooterUrl(null);
-      setPreviewWatermarkUrl(null);
+      if (!hydratingSavedTemplateRef.current) {
+        setEditingUploadTemplateId(null);
+        setPreviewHeaderUrl(null);
+        setPreviewFooterUrl(null);
+        setPreviewWatermarkUrl(null);
+      }
     }
 
     if (newMode !== "view" && newMode !== "saved") {
@@ -1608,6 +1612,8 @@ export default function TemplateBuilder() {
             setWatermarkEnabled(true);
           }
 
+          setEditingUploadTemplateId(entry.id);
+
           setViewingTemplate(null);
           setShowSavedPane(false);
           setMode("upload");
@@ -1721,6 +1727,10 @@ export default function TemplateBuilder() {
 
         fd.append("name", saveName.trim());
 
+        if (editingUploadTemplateId) {
+          fd.append("templateId", editingUploadTemplateId);
+        }
+
         const wp = watermarkProps;
 
         fd.append(
@@ -1809,6 +1819,7 @@ export default function TemplateBuilder() {
 
         try {
           await openSavedTemplate(normalized);
+          setEditingUploadTemplateId(null);
         } catch (e) {
           console.warn("openSavedTemplate failed for newly saved template", e);
           if (orgId) await fetchSavedTemplates(orgId);

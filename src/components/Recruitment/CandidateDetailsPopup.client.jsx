@@ -19,6 +19,13 @@ function formatDateTime(value) {
   }
 }
 
+function safeLink(url) {
+  if (!url) return null;
+  const s = String(url).trim();
+  if (/^https?:\/\//i.test(s)) return s;
+  return `https://${s}`;
+}
+
 function getDecisionTone(decision = "") {
   const value = String(decision || "").toLowerCase();
 
@@ -118,7 +125,7 @@ export default function CandidateDetailsPopup({
             <p>{valueOrDash(candidate.email)}</p>
           </div>
           <div>
-            <strong>Phone</strong>
+            <strong>Phone Number</strong>
             <p>{valueOrDash(candidate.phone)}</p>
           </div>
           <div>
@@ -225,16 +232,22 @@ export default function CandidateDetailsPopup({
                       <div>
                         <span className="rf-label">Interview Link</span>
                         <strong className="rf-break">
-                          {valueOrDash(a.interview_link)}
+                          {a.interview_link ? (
+                            <a
+                              href={safeLink(a.interview_link)}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                            >
+                              {a.interview_link}
+                            </a>
+                          ) : (
+                            valueOrDash(a.interview_link)
+                          )}
                         </strong>
                       </div>
                       <div>
                         <span className="rf-label">Email Sent</span>
                         <strong>{a.send_interview_email ? "Yes" : "No"}</strong>
-                      </div>
-                      <div>
-                        <span className="rf-label">Next Round Date</span>
-                        <strong>{formatDateTime(a.next_round_date)}</strong>
                       </div>
                     </div>
 

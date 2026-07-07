@@ -193,14 +193,35 @@ export default function AdminRecruitmentDashboard() {
   const advanceCandidate = (candidate, nextStatus) => {
     if (!nextStatus) return;
 
+    const needsOfferDecision = nextStatus === "Offer Status";
+
     openConfirmModal({
       title: "Advance Candidate",
       message: `Move ${candidate.name || "this candidate"} to ${nextStatus}?`,
       onConfirm: async () => {
         try {
+          let offerDecision = null;
+
+          if (needsOfferDecision) {
+            const input = window.prompt(
+              "Enter offer decision (Accepted / Rejected / Pending)",
+              "Pending",
+            );
+
+            if (input === null) {
+              closeConfirmModal();
+              return;
+            }
+
+            offerDecision = input.trim() || "Pending";
+          }
+
           await axios.put(
             `${BASE_URL}/recruitment/${candidate.id}`,
-            { status: nextStatus },
+            {
+              status: nextStatus,
+              ...(offerDecision ? { offer_decision: offerDecision } : {}),
+            },
             {
               headers,
               withCredentials: true,

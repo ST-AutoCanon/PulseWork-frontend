@@ -79,45 +79,42 @@ const SalaryDetails = () => {
     // ====================== CONSISTENT GROSS/NET LOGIC (Same as DetailsTab) ======================
    // ====================== FINAL GROSS/NET LOGIC (Consistent with Preview) ======================
     // ====================== FINAL GROSS/NET LOGIC (Consistent with Preview & DetailsTab) ======================
-  const calculateLocalGrossNet = (salaryDetails, planData) => {
-    if (!salaryDetails) {
-      return { localGross: 0, localNet: 0 };
-    }
+ const calculateLocalGrossNet = (salaryDetails, planData, lopDeduction = 0, advanceRecovery = 0) => {
+  if (!salaryDetails) return { localGross: 0, localNet: 0 };
 
-    // 1. Final Gross = Sum of all Earnings ONLY
-    const earningsSum = [
-      salaryDetails.basicSalary || 0,
-      salaryDetails.hra || 0,
-      salaryDetails.ltaAllowance || 0,
-      salaryDetails.otherAllowances || 0,
-      salaryDetails.incentivePay || 0,
-      salaryDetails.overtimePay || 0,
-      salaryDetails.statutoryBonus || 0,
-    ].reduce((sum, val) => sum + parseFloat(val || 0), 0);
+  // === ALL Earnings (matches DetailsTab) ===
+  const earningsSum = [
+    salaryDetails.basicSalary || 0,
+    salaryDetails.hra || 0,
+    salaryDetails.ltaAllowance || 0,
+    salaryDetails.otherAllowances || 0,
+    salaryDetails.incentivePay || 0,
+    salaryDetails.overtimePay || 0,
+    salaryDetails.statutoryBonus || 0,
+    salaryDetails.bonusPay || 0,           // Important
+  ].reduce((sum, val) => sum + parseFloat(val || 0), 0);
 
-    // 2. ONLY Employee-side deductions that reduce Net Salary
-    let employeeDeductions = 0;
+  // Fixed deductions from plan
+  let employeeDeductions = 0;
 
-    if (planData.pfEmployeeIncludeInCtc !== false) {
-      employeeDeductions += parseFloat(salaryDetails.employeePF || 0);
-    }
-    if (planData.esicEmployeeIncludeInCtc !== false) {
-      employeeDeductions += parseFloat(salaryDetails.esic || 0);
-    }
-    if (planData.professionalTaxIncludeInCtc !== false) {
-      employeeDeductions += parseFloat(salaryDetails.professionalTax || 0);
-    }
-    if (planData.insuranceEmployeeIncludeInCtc !== false) {
-      employeeDeductions += parseFloat(salaryDetails.insurance || 0);
-    }
+  if (planData.pfEmployeeIncludeInCtc !== false)
+    employeeDeductions += parseFloat(salaryDetails.employeePF || 0);
+  if (planData.esicEmployeeIncludeInCtc !== false)
+    employeeDeductions += parseFloat(salaryDetails.esic || 0);
+  if (planData.professionalTaxIncludeInCtc !== false)
+    employeeDeductions += parseFloat(salaryDetails.professionalTax || 0);
+  if (planData.insuranceEmployeeIncludeInCtc !== false)
+    employeeDeductions += parseFloat(salaryDetails.insurance || 0);
 
-    const finalGross = earningsSum;
-    const finalNet = Math.max(0, earningsSum - employeeDeductions);
+  // Variable deductions
+  employeeDeductions += parseFloat(advanceRecovery || 0);
+  employeeDeductions += parseFloat(lopDeduction || 0);
 
-    console.log(`[SalaryDetails] Final Gross: ${finalGross.toFixed(2)} | Employee Deductions: ${employeeDeductions.toFixed(2)} | Final Net: ${finalNet.toFixed(2)}`);
+  const localGross = earningsSum;
+  const localNet = Math.max(0, earningsSum - employeeDeductions);
 
-    return { localGross: finalGross, localNet: finalNet };
-  };
+  return { localGross, localNet };
+};
   // ============================================================================================
 
   useEffect(() => {
@@ -369,125 +366,135 @@ const SalaryDetails = () => {
   };
 
   const downloadExcel = (employeesToExport = filteredEmployees) => {
-    if (employeesToExport.length === 0) return;
+    if (!employeesToExport || employeesToExport.length === 0) return;
 
-    const rows = employeesToExport.map((emp) => {
-      let salaryDetails;
-      try {
-        salaryDetails = calculateSalaryDetails(
-          emp.ctc,
+    try {
+      const rows = employeesToExport.map((emp) => {
+        let salaryDetails;
+        try {
+          salaryDetails = calculateSalaryDetails(
+            emp.ctc,
+            emp.plan_data,
+            emp.employee_id,
+            overtimeRecords || [],
+            bonusRecords || [],
+            advances || [],
+            employeeIncentiveData || {},
+            employeeLopData
+          );
+        } catch (e) {
+          console.error(
+            `Error calculating salary details for ${emp.employee_id}:`,
+            e
+          );
+          salaryDetails = null;
+        }
+
+        if (!salaryDetails) {
+          return Array(23).fill("N/A");
+        }
+
+        const monthlyBonusPay = calculateMonthlyBonusPay(emp.ctc, bonusRecords);
+        const lopData = employeeLopData[emp.employee_id] || {
+          yearly: { days: 0, value: "0.00" },
+        };
+        const lopDays = Number.parseFloat(lopData.yearly?.days || 0);
+        const lopDeduction = Number.parseFloat(lopData.yearly?.value || "0.00");
+        const advanceRecovery = Number.parseFloat(salaryDetails.advanceRecovery || 0);
+
+        const { localGross, localNet } = calculateLocalGrossNet(
+          salaryDetails,
           emp.plan_data,
+          lopDeduction,
+          advanceRecovery
+        );
+
+        return [
           emp.employee_id,
-          overtimeRecords || [],
-          bonusRecords || [],
-          advances || [],
-          employeeIncentiveData || {},
-          employeeLopData
-        );
-      } catch (e) {
-        console.error(
-          `Error calculating salary details for ${emp.employee_id}:`,
-          e
-        );
-        salaryDetails = null;
-      }
+          emp.full_name,
+          emp.ctc ? Number.parseFloat(emp.ctc) : 0,
+          salaryDetails.basicSalary || 0,
+          salaryDetails.hra || 0,
+          salaryDetails.ltaAllowance || 0,
+          salaryDetails.otherAllowances || 0,
+          salaryDetails.incentivePay || 0,
+          salaryDetails.overtimePay || 0,
+          salaryDetails.statutoryBonus || 0,
+          monthlyBonusPay,
+          salaryDetails.advanceRecovery || 0,
+          salaryDetails.employeePF || 0,
+          salaryDetails.employerPF || 0,
+          salaryDetails.esic || 0,
+          salaryDetails.gratuity || 0,
+          salaryDetails.professionalTax || 0,
+          salaryDetails.tds || 0,
+          salaryDetails.insurance || 0,
+          lopDays,
+          lopDeduction,
+          localGross,
+          Math.max(localNet, 0),
+        ];
+      });
 
-      if (!salaryDetails) {
-        return Array(23).fill("N/A");
-      }
-
-      const monthlyBonusPay = calculateMonthlyBonusPay(emp.ctc, bonusRecords);
-      const lopData = employeeLopData[emp.employee_id] || { yearly: { value: "0.00" } };
-      const lopDeduction = parseFloat(lopData.yearly?.value || "0.00");
-
-      const { localGross, localNet } = calculateLocalGrossNet(
-        salaryDetails,
-        emp.plan_data
-      );
-
-
-      return [
-        emp.employee_id,
-        emp.full_name,
-        emp.ctc ? parseFloat(emp.ctc) : 0,
-        salaryDetails.basicSalary || 0,
-        salaryDetails.hra || 0,
-        salaryDetails.ltaAllowance || 0,
-        salaryDetails.otherAllowances || 0,
-        salaryDetails.incentivePay || 0,
-        salaryDetails.overtimePay || 0,
-        salaryDetails.statutoryBonus || 0,
-        monthlyBonusPay,
-        salaryDetails.advanceRecovery || 0,
-        salaryDetails.employeePF || 0,
-        salaryDetails.employerPF || 0,
-        salaryDetails.esic || 0,
-        salaryDetails.gratuity || 0,
-        salaryDetails.professionalTax || 0,
-        salaryDetails.tds || 0,
-        salaryDetails.insurance || 0,
-        lopDays,
-        lopDeduction,
-        localGross,
-        localNet > 0 ? localNet : 0,
+      const headers = [
+        "ID",
+        "Name",
+        "Annual CTC",
+        "Basic Salary",
+        "HRA",
+        "LTA",
+        "Other Allowances",
+        "Incentives",
+        "Overtime",
+        "Statutory Bonus",
+        "Bonus",
+        "Advance Recovery",
+        "Employee PF",
+        "Employer PF",
+        "ESIC",
+        "Gratuity",
+        "Professional Tax",
+        "TDS",
+        "Insurance",
+        "LOP Days",
+        "LOP Deduction",
+        "Gross Salary",
+        "Net Salary",
       ];
-    });
 
-    const headers = [
-      "ID",
-      "Name",
-      "Annual CTC",
-      "Basic Salary",
-      "HRA",
-      "LTA",
-      "Other Allowances",
-      "Incentives",
-      "Overtime",
-      "Statutory Bonus",
-      "Bonus",
-      "Advance Recovery",
-      "Employee PF",
-      "Employer PF",
-      "ESIC",
-      "Gratuity",
-      "Professional Tax",
-      "TDS",
-      "Insurance",
-      "LOP Days",
-      "LOP Deduction",
-      "Gross Salary",
-      "Net Salary",
-    ];
-
-    const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
-    ws["!cols"] = [
-      { wch: 8 },
-      { wch: 15 },
-      { wch: 12 },
-      { wch: 12 },
-      { wch: 10 },
-      { wch: 8 },
-      { wch: 12 },
-      { wch: 10 },
-      { wch: 10 },
-      { wch: 8 },
-      { wch: 8 },
-      { wch: 12 },
-      { wch: 10 },
-      { wch: 12 },
-      { wch: 8 },
-      { wch: 10 },
-      { wch: 12 },
-      { wch: 10 },
-      { wch: 10 },
-      { wch: 8 },
-      { wch: 10 },
-      { wch: 12 },
-      { wch: 12 },
-    ];
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Salary Details");
-    XLSX.writeFile(wb, "salary-details.xlsx");
+      const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+      ws["!cols"] = [
+        { wch: 8 },
+        { wch: 15 },
+        { wch: 12 },
+        { wch: 12 },
+        { wch: 10 },
+        { wch: 8 },
+        { wch: 12 },
+        { wch: 10 },
+        { wch: 10 },
+        { wch: 8 },
+        { wch: 8 },
+        { wch: 12 },
+        { wch: 10 },
+        { wch: 12 },
+        { wch: 8 },
+        { wch: 10 },
+        { wch: 12 },
+        { wch: 10 },
+        { wch: 10 },
+        { wch: 8 },
+        { wch: 10 },
+        { wch: 12 },
+        { wch: 12 },
+      ];
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Salary Details");
+      XLSX.writeFile(wb, "salary-details.xlsx");
+    } catch (error) {
+      console.error("Excel export failed:", error);
+      showAlert("Excel export failed. Please check the console for details.");
+    }
   };
 
   const generateBankReportData = (selectedData) => {
@@ -520,14 +527,15 @@ const SalaryDetails = () => {
       const lopData = employeeLopData[emp.employee_id] || {
         currentMonth: { days: 0, value: "0.00", currency: "INR" },
       };
-      const lopDeduction = parseFloat(lopData.yearly?.value || "0.00");
+     const lopDeduction = parseFloat(lopData.yearly?.value || "0.00");
+const advanceRecovery = parseFloat(salaryDetails.advanceRecovery || 0);
 
-      const { localNet } = calculateLocalGrossNet(
-        salaryDetails,
-        monthlyBonusPay,
-        lopDeduction,
-        emp.plan_data
-      );
+const { localNet } = calculateLocalGrossNet(
+  salaryDetails,
+  emp.plan_data,
+  lopDeduction,
+  advanceRecovery
+);
       const netSalary = localNet > 0 ? localNet : 0;
 
       const personalDetails = personalMap[emp.employee_id] || {
@@ -692,25 +700,24 @@ const SalaryDetails = () => {
 
           if (!salaryDetails) return null;
 
-          const monthlyBonusPay = calculateMonthlyBonusPay(emp.ctc, bonusRecords);
+         const monthlyBonusPay = calculateMonthlyBonusPay(emp.ctc, bonusRecords);
+const lopData = employeeLopData[emp.employee_id] || { yearly: { days: 0, value: "0.00" } };
+const lopDays = parseFloat(lopData.yearly?.days || 0);
+const lopDeduction = parseFloat(lopData.yearly?.value || "0.00");
+const advanceRecovery = Number(salaryDetails.advanceRecovery || 0);
 
-          const lopData = employeeLopData[emp.employee_id] || {
-            yearly: { days: 0, value: "0.00" },
-          };
-          const lopDays = parseFloat(lopData.yearly?.days || 0);
-          const lopDeduction = parseFloat(lopData.yearly?.value || "0.00");
+const { localGross, localNet } = calculateLocalGrossNet(
+  salaryDetails, 
+  emp.plan_data, 
+  lopDeduction, 
+  advanceRecovery
+);
 
-          const { localGross, localNet } = calculateLocalGrossNet(
-            salaryDetails,
-            emp.plan_data
-          );
-
-          // Calculate Final CTC (if needed)
-          const finalCTC = localGross +
-            Number(salaryDetails.employerPF || 0) +
-            Number(salaryDetails.gratuity || 0) +
-            Number(salaryDetails.insuranceEmployer || 0) +
-            Number(salaryDetails.esicEmployer || 0);
+const finalCTC = localGross +
+  Number(salaryDetails.employerPF || 0) +
+  Number(salaryDetails.gratuity || 0) +
+  Number(salaryDetails.insuranceEmployer || 0) +
+  Number(salaryDetails.esicEmployer || 0);
 
           return {
             employee_id: emp.employee_id,
@@ -864,8 +871,15 @@ const renderTableRows = (employeesToRender) => {
         const lopDays = parseFloat(lopData.yearly?.days || 0);
         const lopDeduction = parseFloat(lopData.yearly?.value || 0);
 
-        const { localGross, localNet } = calculateLocalGrossNet(salaryDetails, emp.plan_data);
+const advanceRecovery = Number(salaryDetails.advanceRecovery || 0);
 
+const { localGross, localNet } =
+    calculateLocalGrossNet(
+        salaryDetails,
+        emp.plan_data,
+        lopDeduction,
+        advanceRecovery
+    );
         const finalCTC = localGross +
           (salaryDetails.employerPF || 0) +
           (salaryDetails.gratuity || 0) +
@@ -954,10 +968,14 @@ const renderTableRows = (employeesToRender) => {
             employeeLopData
           );
 
-                   const { localNet } = calculateLocalGrossNet(
-            salaryDetails,
-            emp.plan_data
-          );
+                 const advanceRecovery = Number(salaryDetails.advanceRecovery || 0);
+
+const { localNet } = calculateLocalGrossNet(
+    salaryDetails,
+    emp.plan_data,
+    lopDeduction,
+    advanceRecovery
+);
           const netSalary = localNet > 0 ? localNet : 0;
 
           return (

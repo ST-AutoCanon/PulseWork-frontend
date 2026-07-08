@@ -379,13 +379,13 @@ const TotalsContainer = () => {
   return (
     <div className="sb-totals-container">
       <h2 className="sb-totals-total-payroll">
-        Total Payroll: ₹{formatCurrency(totals.totalPayable)}
+        Total Net Salary: ₹{formatCurrency(totals.totalPayable)}
       </h2>
       <div className="sb-totals-grid">
         <div className="sb-totals-card sb-payable">
           <FaMoneyBillWave className="sb-totals-card-icon" />
           <div>
-            <span className="sb-totals-card-title">Total Payable</span>
+            <span className="sb-totals-card-title">Total Net Salary</span>
             <span className="sb-totals-card-value">
               ₹{formatCurrency(totals.totalPayable)}
             </span>
@@ -457,7 +457,7 @@ const TotalsContainer = () => {
         <div className="sb-totals-card sb-insurance">
           <FaStethoscope className="sb-totals-card-icon" />
           <div>
-            <span className="sb-totals-card-title">Total Insurance</span>
+            <span className="sb-totals-card-title">Employee Insurance</span>
             <span className="sb-totals-card-value">
               ₹{formatCurrency(totals.totalInsurance)}
             </span>

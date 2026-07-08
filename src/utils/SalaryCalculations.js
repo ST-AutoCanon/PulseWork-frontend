@@ -1406,13 +1406,16 @@ export const calculateSalaryDetails = (
     // ==================== OTHER ALLOWANCE - BALANCING LOGIC ====================
   // Calculate Other Allowance so that Monthly CTC = Earnings + Employer Contributions
  // ==================== OTHER ALLOWANCE - BALANCING LOGIC ====================
+    // ==================== OTHER ALLOWANCE - BALANCING LOGIC (LTA EXCLUDED) ====================
+    // Other Allowance = CTC - (Basic + HRA + Employer Contributions)
+    // LTA is NOT deducted from Other Allowance calculation
 
 if (planData.isOtherAllowance) {
 
-  const fixedComponents =
+  const fixedComponents =   // ← LTA is removed here
     basicSalary +
     hra +
-    ltaAllowance +
+    // ltaAllowance +     // ← Commented out / removed
     employerPF +
     gratuity +
     insuranceEmployer;
@@ -1441,18 +1444,17 @@ if (planData.isOtherAllowance) {
   } else {
 
     otherAllowances =
-      monthlyCtc - fixedComponents;
+      monthlyCtc - fixedComponents;   // LTA is not subtracted
 
     esicEmployer = 0;
   }
 
   otherAllowances = Math.max(0, otherAllowances);
 
-}
-else {
+  planData.otherAllowanceText = `Balancing Component (CTC - Basic - HRA - Employer Contributions) [LTA Excluded]`;
 
+} else {
   otherAllowances = 0;
-
 }
 
   // ==================== RECALCULATE GROSS SALARY ====================

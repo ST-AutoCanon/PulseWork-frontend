@@ -1067,7 +1067,14 @@ const SalaryBreakupMain = () => {
     fetchSalaryBreakupData();
   }, []);
   const totals = employees.length
-    ? calculateTotals(employees, overtimeRecords, bonusRecords, advances)
+    ? calculateTotals(
+        employees,
+        overtimeRecords,
+        bonusRecords,
+        advances,
+        employeeIncentiveData,
+        employeeLopData
+      )
     : {
         totalPayable: 0,
         totalGross: 0,

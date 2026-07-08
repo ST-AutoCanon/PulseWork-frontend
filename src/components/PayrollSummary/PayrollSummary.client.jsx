@@ -962,7 +962,27 @@ const previewEmployerInsurance = Number(
   previewEmployeeInsurance +
   previewAdvanceRecovery +
   previewLopDeduction;
-    const previewNet = Number(payrollData?.net_salary || previewGross - previewTotalDed);
+  const previewNet = Number(payrollData?.net_salary || previewGross - previewTotalDed);
+
+  const previewEarningsRows = [
+    { label: "Basic Salary", amount: previewBasic },
+    { label: "HRA", amount: previewHra },
+    { label: "Other Allowances", amount: previewAllowance },
+  ];
+  if (previewBonus > 0) previewEarningsRows.push({ label: "Bonus", amount: previewBonus });
+
+  const previewDeductionRows = [];
+  if (previewPf > 0) previewDeductionRows.push({ label: "Employee PF", amount: previewPf });
+  if (previewEmployeeEsic > 0) previewDeductionRows.push({ label: "Employee ESIC", amount: previewEmployeeEsic });
+  if (previewPt > 0) previewDeductionRows.push({ label: "Professional Tax", amount: previewPt });
+  if (previewTds > 0) previewDeductionRows.push({ label: "TDS", amount: previewTds });
+  if (previewEmployeeInsurance > 0) previewDeductionRows.push({ label: "Employee Insurance", amount: previewEmployeeInsurance });
+  if (previewLopDeduction > 0) previewDeductionRows.push({ label: "LOP Deduction", amount: previewLopDeduction });
+
+  const previewTableRows = Array.from({ length: Math.max(previewEarningsRows.length, previewDeductionRows.length) }, (_, i) => ({
+    earning: previewEarningsRows[i] ?? null,
+    deduction: previewDeductionRows[i] ?? null,
+  }));
 
   return (
     <div className="payroll-container">
@@ -1021,41 +1041,18 @@ const previewEmployerInsurance = Number(
     </tr>
   </thead>
   <tbody>
-    {/* Earnings */}
-    <tr><td>Basic Salary</td><td>₹{previewBasic.toFixed(2)}</td><td>Employee PF</td><td>₹{previewPf.toFixed(2)}</td></tr>
-    <tr><td>HRA</td><td>₹{previewHra.toFixed(2)}</td><td>Employee ESIC</td><td>₹{previewEmployeeEsic.toFixed(2)}</td></tr>
-    <tr><td>Other Allowances</td><td>₹{previewAllowance.toFixed(2)}</td><td>Professional Tax</td><td>₹{previewPt.toFixed(2)}</td></tr>
-    
-    {previewBonus > 0 && (
-      <tr><td>Bonus</td><td>₹{previewBonus.toFixed(2)}</td><td></td><td></td></tr>
-    )}
+    {previewTableRows.map((row, index) => (
+      <tr key={index}>
+        <td>{row.earning ? row.earning.label : "\u00A0"}</td>
+        <td>{row.earning ? `₹${row.earning.amount.toFixed(2)}` : "\u00A0"}</td>
+        <td>{row.deduction ? row.deduction.label : "\u00A0"}</td>
+        <td>{row.deduction ? `₹${row.deduction.amount.toFixed(2)}` : "\u00A0"}</td>
+      </tr>
+    ))}
 
-    {/* Gross */}
-    <tr>
+    <tr style={{ backgroundColor: "#f0f0f0" }}>
       <td><strong>Gross Salary</strong></td>
       <td><strong>₹{previewGross.toFixed(2)}</strong></td>
-      <td>TDS</td>
-      <td>₹{previewTds.toFixed(2)}</td>
-    </tr>
-
-    <tr>
-      <td></td>
-      <td></td>
-      <td>Employee Insurance</td>
-      <td>₹{previewEmployeeInsurance.toFixed(2)}</td>
-    </tr>
-
-    {previewLopDeduction > 0 && (
-      <tr>
-        <td></td>
-        <td></td>
-        <td>LOP Deduction</td>
-        <td>₹{previewLopDeduction.toFixed(2)}</td>
-      </tr>
-    )}
-
-    <tr className="total-row">
-      <td colSpan="2"></td>
       <td><strong>Total Deductions</strong></td>
       <td><strong>₹{previewTotalDed.toFixed(2)}</strong></td>
     </tr>

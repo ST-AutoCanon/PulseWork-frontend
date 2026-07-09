@@ -304,24 +304,28 @@ const TotalsContainer = () => {
             ? parseFloat(salaryDetails.advanceRecovery)
             : 0;
           const employeePF = salaryDetails
-            ? parseFloat(salaryDetails.employeePF)
+            ? parseFloat(salaryDetails.employeePF || 0)
             : 0;
           const employerPF = salaryDetails
-            ? parseFloat(salaryDetails.employerPF)
+            ? parseFloat(salaryDetails.employerPF || 0)
             : 0;
-          const esic = salaryDetails ? parseFloat(salaryDetails.esic) : 0;
+          const esic = salaryDetails
+            ? parseFloat(salaryDetails.esic || 0)
+            : 0;
           const gratuity = salaryDetails
-            ? parseFloat(salaryDetails.gratuity)
+            ? parseFloat(salaryDetails.gratuity || 0)
             : 0;
           const professionalTax = salaryDetails
-            ? parseFloat(salaryDetails.professionalTax)
+            ? parseFloat(salaryDetails.professionalTax || 0)
             : 0;
-          const tds = salaryDetails ? parseFloat(salaryDetails.tds) : 0;
+          const tds = salaryDetails
+            ? parseFloat(salaryDetails.tds || 0)
+            : 0;
           const insurance = salaryDetails
-            ? parseFloat(salaryDetails.insurance)
+            ? parseFloat(salaryDetails.insurance || 0)
             : 0;
           const overtimePay = salaryDetails
-            ? parseFloat(salaryDetails.overtimePay)
+            ? parseFloat(salaryDetails.overtimePay || 0)
             : 0;
           const roundedGross = Math.round(localGross * 100) / 100;
           const roundedPayable = Math.round(netSalary * 100) / 100;

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { MdOutlineCancel, MdOutlineEdit, MdVisibility } from "react-icons/md";
 import "./RecruitmentFlow.css";
 import { useAuth } from "../../context/AuthProvider.client";
@@ -82,6 +82,34 @@ export default function CandidateDetailsPopup({
     return h;
   }, [API_KEY, meId, orgId]);
 
+  const [interviewers, setInterviewers] = useState([]);
+
+  useEffect(() => {
+    const loadInterviewers = async () => {
+      if (!orgId || !BASE_URL) return;
+
+      try {
+        const res = await fetch(
+          `${BASE_URL}/recruitment/interviewers?orgId=${encodeURIComponent(orgId)}`,
+          {
+            headers,
+            credentials: "include",
+          },
+        );
+
+        if (!res.ok) throw new Error("Failed to load interviewers");
+
+        const data = await res.json();
+        setInterviewers(Array.isArray(data?.data) ? data.data : []);
+      } catch (err) {
+        console.error("loadInterviewers error:", err);
+        setInterviewers([]);
+      }
+    };
+
+    loadInterviewers();
+  }, [BASE_URL, headers, orgId]);
+
   const status = candidate.status || "Applied";
 
   const assessments = useMemo(() => {
@@ -98,6 +126,27 @@ export default function CandidateDetailsPopup({
     "Offer Status",
     "Onboarding",
   ].includes(status);
+
+  const interviewerLookup = useMemo(() => {
+    return interviewers.reduce((acc, interviewer) => {
+      if (interviewer?.employee_id) {
+        acc[String(interviewer.employee_id)] = interviewer;
+      }
+      return acc;
+    }, {});
+  }, [interviewers]);
+
+  const getInterviewerLabel = (interviewerId) => {
+    const rawValue = String(interviewerId || "").trim();
+    if (!rawValue) return "—";
+
+    const interviewer = interviewerLookup[rawValue];
+    if (interviewer?.name) {
+      return `${interviewer.name} (${rawValue})`;
+    }
+
+    return rawValue;
+  };
 
   const openResume = async () => {
     if (!candidate.resume_url) return;
@@ -223,7 +272,7 @@ export default function CandidateDetailsPopup({
                       </div>
                       <div>
                         <span className="rf-label">Interviewer</span>
-                        <strong>{valueOrDash(a.interviewer_id)}</strong>
+                        <strong>{getInterviewerLabel(a.interviewer_id)}</strong>
                       </div>
                       <div>
                         <span className="rf-label">Interview Date</span>
@@ -307,9 +356,11 @@ export default function CandidateDetailsPopup({
             </button>
           )}
 
-          <button type="button" className="rf-danger-btn" onClick={onReject}>
-            Reject
-          </button>
+          {onReject && (
+            <button type="button" className="rf-danger-btn" onClick={onReject}>
+              Reject
+            </button>
+          )}
         </div>
       </div>
     </div>

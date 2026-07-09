@@ -870,7 +870,20 @@ if (lopDeduction > 0)
           withCredentials: true,
         });
         setEmployeeDetails(empRes.data || null);
-        setAttendance(empRes.data?.attendanceStats || null);
+
+        try {
+          const attendanceRes = await axios.get(
+            `${BACKEND_URL.replace(/\/$/, "")}/attendance/${encodeURIComponent(employeeId)}`,
+            {
+              headers,
+              withCredentials: true,
+            }
+          );
+          setAttendance(attendanceRes.data?.attendanceStats || null);
+        } catch (attendanceErr) {
+          console.warn("Attendance stats fetch failed:", attendanceErr);
+          setAttendance(null);
+        }
 
         try {
           const bankRes = await axios.get(`${BACKEND_URL}/api/bank-details/${employeeId}`, {
@@ -963,6 +976,9 @@ const previewEmployerInsurance = Number(
   previewAdvanceRecovery +
   previewLopDeduction;
   const previewNet = Number(payrollData?.net_salary || previewGross - previewTotalDed);
+  const previewTotalWorkingDays =
+    attendance?.total_working_days ??
+    (Number(payrollData?.lop_days || 0) > 0 ? 30 - Number(payrollData?.lop_days || 0) : 30);
 
   const previewEarningsRows = [
     { label: "Basic Salary", amount: previewBasic },

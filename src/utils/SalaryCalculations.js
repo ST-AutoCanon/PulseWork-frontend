@@ -1606,18 +1606,26 @@ export const calculateTotals = (
       }
 
       return {
-        totalPayable: totals.totalPayable + salaryDetails.netSalary,
-        totalGross: totals.totalGross + salaryDetails.grossSalary,
-        totalTDS: totals.totalTDS + salaryDetails.tds,
-        totalAdvance: totals.totalAdvance + salaryDetails.advanceRecovery,
-        totalOvertime: totals.totalOvertime + salaryDetails.overtimePay,
-        totalBonus: totals.totalBonus + salaryDetails.bonusPay,
-        totalEmployeePF: totals.totalEmployeePF + salaryDetails.employeePF,
-        totalEmployerPF: totals.totalEmployerPF + salaryDetails.employerPF,
-        totalInsurance: totals.totalInsurance + salaryDetails.insurance,
-        totalIncentives: totals.totalIncentives + salaryDetails.incentivePay,
+        totalPayable:
+          totals.totalPayable + parseFloat(salaryDetails.netSalary || 0),
+        totalGross:
+          totals.totalGross + parseFloat(salaryDetails.grossSalary || 0),
+        totalTDS: totals.totalTDS + parseFloat(salaryDetails.tds || 0),
+        totalAdvance:
+          totals.totalAdvance + parseFloat(salaryDetails.advanceRecovery || 0),
+        totalOvertime:
+          totals.totalOvertime + parseFloat(salaryDetails.overtimePay || 0),
+        totalBonus: totals.totalBonus + parseFloat(salaryDetails.bonusPay || 0),
+        totalEmployeePF:
+          totals.totalEmployeePF + parseFloat(salaryDetails.employeePF || 0),
+        totalEmployerPF:
+          totals.totalEmployerPF + parseFloat(salaryDetails.employerPF || 0),
+        totalInsurance:
+          totals.totalInsurance + parseFloat(salaryDetails.insurance || 0),
+        totalIncentives:
+          totals.totalIncentives + parseFloat(salaryDetails.incentivePay || 0),
         totalLopDeduction:
-          totals.totalLopDeduction + salaryDetails.lopDeduction,
+          totals.totalLopDeduction + parseFloat(salaryDetails.lopDeduction || 0),
       };
     },
     {

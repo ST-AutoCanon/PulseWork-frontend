@@ -2198,9 +2198,15 @@ insuranceEmployeeIncludeInCtc:
             planData.esicEmployeeType ||
             "percentage",
           esicEmployeeIncludeInCtc: planData.esicEmployeeIncludeInCtc || false,
+          isInsuranceApplicable:
+            planData.is_insurance_applicable ||
+            planData.isInsuranceApplicable ||
+            false,
           isInsuranceEmployee:
             planData.is_insurance_employee ||
             planData.isInsuranceEmployee ||
+            planData.is_insurance_applicable ||
+            planData.isInsuranceApplicable ||
             false,
           insuranceEmployeePercentage:
             planData.insurance_employee_percentage ||
@@ -2216,6 +2222,26 @@ insuranceEmployeeIncludeInCtc:
             "percentage",
           insuranceEmployeeIncludeInCtc:
             planData.insuranceEmployeeIncludeInCtc || false,
+          isInsuranceEmployer:
+            planData.is_insurance_employer ||
+            planData.isInsuranceEmployer ||
+            planData.is_insurance_applicable ||
+            planData.isInsuranceApplicable ||
+            false,
+          insuranceEmployerPercentage:
+            planData.insurance_employer_percentage ||
+            planData.insuranceEmployerPercentage ||
+            "",
+          insuranceEmployerAmount:
+            planData.insurance_employer_amount ||
+            planData.insuranceEmployerAmount ||
+            "",
+          insuranceEmployerType:
+            planData.insurance_employer_type ||
+            planData.insuranceEmployerType ||
+            "percentage",
+          insuranceEmployerIncludeInCtc:
+            planData.insuranceEmployerIncludeInCtc || false,
           isGratuityApplicable:
             planData.is_gratuity_applicable ||
             planData.isGratuityApplicable ||
@@ -2476,8 +2502,15 @@ insuranceEmployeeIncludeInCtc:
       pfEmployerAmount: "isPFEmployer",
       esicEmployeePercentage: "isESICEmployee",
       esicEmployeeAmount: "isESICEmployee",
+      insuranceEmployerPercentage: "isInsuranceEmployer",
+      insuranceEmployerAmount: "isInsuranceEmployer",
+      insuranceEmployeeIncludeInCtc: "isInsuranceEmployee",
+      insuranceEmployerIncludeInCtc: "isInsuranceEmployer",
+      isInsuranceApplicable: true,
       insuranceEmployeePercentage: "isInsuranceEmployee",
       insuranceEmployeeAmount: "isInsuranceEmployee",
+      insuranceEmployerPercentage: "isInsuranceEmployer",
+      insuranceEmployerAmount: "isInsuranceEmployer",
       gratuityPercentage: "isGratuityApplicable",
       gratuityAmount: "isGratuityApplicable",
       basicSalary: "isBasicSalary",
@@ -2549,6 +2582,16 @@ insuranceEmployeeIncludeInCtc:
         typeField: "insuranceEmployeeType",
         showWhen: "amount",
         enableField: "isInsuranceEmployee",
+      },
+      insuranceEmployerPercentage: {
+        typeField: "insuranceEmployerType",
+        showWhen: "percentage",
+        enableField: "isInsuranceEmployer",
+      },
+      insuranceEmployerAmount: {
+        typeField: "insuranceEmployerType",
+        showWhen: "amount",
+        enableField: "isInsuranceEmployer",
       },
       gratuityPercentage: {
         typeField: "gratuityType",
@@ -3429,6 +3472,11 @@ const handleCalculate = () => {
       "insuranceEmployeeAmount",
       "insuranceEmployeeType",
       "insuranceEmployeeIncludeInCtc",
+      "isInsuranceEmployer",
+      "insuranceEmployerPercentage",
+      "insuranceEmployerAmount",
+      "insuranceEmployerType",
+      "insuranceEmployerIncludeInCtc",
       "isGratuityApplicable",
       "gratuityPercentage",
       "gratuityAmount",

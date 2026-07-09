@@ -19,6 +19,28 @@
   font-weight: bold;
 }
 
+.rf-view-switcher {
+  display: flex;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+}
+
+.rf-view-tab {
+  border: 1px solid #79c42b;
+  background: #fff;
+  color: #2f4f4f;
+  padding: 0.55rem 0.9rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.rf-view-tab.active {
+  background: #79c42b;
+  color: #fff;
+}
+
 .rf-subtitle {
   margin: 0.35rem 0 0;
   color: #666;
@@ -175,7 +197,7 @@
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
   margin-bottom: 0.75rem;
 }
 
@@ -189,6 +211,7 @@
   background: #fff;
   cursor: pointer;
   font-size: 0.85rem;
+  flex: 0 0 auto;
 }
 
 .candidate-icon-btn {

@@ -515,7 +515,7 @@ export default function InterviewAssessment({
             ) : (
               <>
                 <div className="rf-field">
-                  <label>Score</label>
+                  <label>Overall Score (1-10)</label>
                   <input
                     type="number"
                     name="score"

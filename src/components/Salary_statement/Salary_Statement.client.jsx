@@ -188,8 +188,8 @@ const Salary_Statement = () => {
       }
 
       const extractedHeaders = jsonData[0].map((h) =>
-        typeof h === "string" ? h.trim() : h
-      );
+  typeof h === "string" ? h.trim() : String(h).trim()
+);
       if (!validateHeaders(extractedHeaders)) {
         setError("❌ Headers not matched");
         setTableData([]);
@@ -234,22 +234,75 @@ const Salary_Statement = () => {
         let isInvalid = false;
         let isUpdated = false;
         let formattedCell = cell;
-        const columnName = headers?.[colIndex];
+               const columnName = headers?.[colIndex];
 
-        if (columnName === "Employee ID") {
-  const value = String(cell ?? "")
-    .trim()
-    .replace(/\s+/g, ""); // remove hidden spaces
+        // === Employee ID (now "ID") ===
+        if (columnName === "ID") {
+          const value = String(cell ?? "")
+            .trim()
+            .replace(/\s+/g, "");
+          const empIdPattern = /^STS-\d{6}$/;
+          if (!empIdPattern.test(value)) {
+            isInvalid = true;
+          } else {
+            row[colIndex] = value; // normalize
+          }
+        }
 
-  // ACCEPT: STS-000017
-  const empIdPattern = /^STS-\d{6}$/;
+        // === Name (now "Name") ===
+        if (columnName === "Name") {
+          const namePattern = /^[A-Za-z\s.]+$/;
+          if (!namePattern.test(String(cell)) || String(cell).trim() === "") {
+            isInvalid = true;
+          }
+        }
 
-  if (!empIdPattern.test(value)) {
-    isInvalid = true;
-  } else {
-    row[colIndex] = value; // normalize cleaned ID
-  }
-}
+        // === Numeric fields ===
+        if (
+          [
+            "Annual CTC",
+            "Basic Salary",
+            "HRA",
+            "LTA",
+            "Other Allowances",
+            "Incentives",
+            "Overtime",
+            "Statutory Bonus",
+            "Bonus",
+            "Advance Recovery",
+            "Employee PF",
+            "Employer PF",
+            "ESIC",
+            "Gratuity",
+            "Professional Tax",
+            "TDS",
+            "Insurance",
+            "LOP Deduction",
+            "Gross Salary",
+            "Net Salary",
+          ].includes(columnName)
+        ) {
+          if (isNaN(parseFloat(cell)) || cell === "") {
+            isInvalid = true;
+          }
+        }
+
+        // === LOP Days (integer) ===
+        if (columnName === "LOP Days") {
+          if (!Number.isInteger(Number(cell)) && cell !== "") {
+            isInvalid = true;
+          }
+        }
+
+        // === Joining Date (if it exists in future) ===
+        if (columnName === "Joining Date") {
+          const formattedCell = convertExcelDate(cell);
+          if (!formattedCell || !/^\d{4}-\d{2}-\d{2}$/.test(formattedCell)) {
+            isInvalid = true;
+          } else {
+            row[colIndex] = formattedCell;
+          }
+        }
 
 
         if (

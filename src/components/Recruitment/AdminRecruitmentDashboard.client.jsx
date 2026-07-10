@@ -8,7 +8,6 @@ import {
   MdDeleteOutline,
   MdKeyboardArrowDown,
   MdKeyboardArrowUp,
-  MdArrowForward,
   MdAssignment,
   MdPersonAddAlt,
   MdOutlineCancel,
@@ -112,6 +111,13 @@ export default function AdminRecruitmentDashboard() {
     onConfirm: null,
   });
 
+  const [offerDecisionModal, setOfferDecisionModal] = useState({
+    visible: false,
+    candidate: null,
+    nextStatus: null,
+    offerDecision: "Pending",
+  });
+
   const fetchCandidates = async () => {
     try {
       setLoading(true);
@@ -195,45 +201,74 @@ export default function AdminRecruitmentDashboard() {
 
     const needsOfferDecision = nextStatus === "Offer Status";
 
-    openConfirmModal({
-      title: "Advance Candidate",
-      message: `Move ${candidate.name || "this candidate"} to ${nextStatus}?`,
-      onConfirm: async () => {
-        try {
-          let offerDecision = null;
-
-          if (needsOfferDecision) {
-            const input = window.prompt(
-              "Enter offer decision (Accepted / Rejected / Pending)",
-              "Pending",
+    if (needsOfferDecision) {
+      setOfferDecisionModal({
+        visible: true,
+        candidate,
+        nextStatus,
+        offerDecision: "Pending",
+      });
+    } else {
+      openConfirmModal({
+        title: "Advance Candidate",
+        message: `Move ${candidate.name || "this candidate"} to ${nextStatus}?`,
+        onConfirm: async () => {
+          try {
+            await axios.put(
+              `${BASE_URL}/recruitment/${candidate.id}`,
+              {
+                status: nextStatus,
+              },
+              {
+                headers,
+                withCredentials: true,
+              },
             );
 
-            if (input === null) {
-              closeConfirmModal();
-              return;
-            }
-
-            offerDecision = input.trim() || "Pending";
+            closeConfirmModal();
+            fetchCandidates();
+          } catch (err) {
+            console.error("advanceCandidate error:", err);
           }
+        },
+      });
+    }
+  };
 
-          await axios.put(
-            `${BASE_URL}/recruitment/${candidate.id}`,
-            {
-              status: nextStatus,
-              ...(offerDecision ? { offer_decision: offerDecision } : {}),
-            },
-            {
-              headers,
-              withCredentials: true,
-            },
-          );
+  const confirmOfferDecision = async () => {
+    const { candidate, nextStatus, offerDecision } = offerDecisionModal;
 
-          closeConfirmModal();
-          fetchCandidates();
-        } catch (err) {
-          console.error("advanceCandidate error:", err);
-        }
-      },
+    try {
+      await axios.put(
+        `${BASE_URL}/recruitment/${candidate.id}`,
+        {
+          status: nextStatus,
+          offer_decision: offerDecision,
+        },
+        {
+          headers,
+          withCredentials: true,
+        },
+      );
+
+      setOfferDecisionModal({
+        visible: false,
+        candidate: null,
+        nextStatus: null,
+        offerDecision: "Pending",
+      });
+      fetchCandidates();
+    } catch (err) {
+      console.error("confirmOfferDecision error:", err);
+    }
+  };
+
+  const closeOfferDecisionModal = () => {
+    setOfferDecisionModal({
+      visible: false,
+      candidate: null,
+      nextStatus: null,
+      offerDecision: "Pending",
     });
   };
 
@@ -371,22 +406,6 @@ export default function AdminRecruitmentDashboard() {
                                   <MdOutlineEdit />
                                 </IconActionButton>
 
-                                {canAdvance(candidate) && (
-                                  <IconActionButton
-                                    label={`Advance to ${
-                                      getNextStage(candidate.status) || "Next"
-                                    }`}
-                                    onClick={() =>
-                                      advanceCandidate(
-                                        candidate,
-                                        getNextStage(candidate.status),
-                                      )
-                                    }
-                                  >
-                                    <MdArrowForward />
-                                  </IconActionButton>
-                                )}
-
                                 {canOpenAssessment(candidate) && (
                                   <IconActionButton
                                     label="Schedule Interview"
@@ -426,6 +445,21 @@ export default function AdminRecruitmentDashboard() {
                                   <MdDeleteOutline />
                                 </IconActionButton>
                               </div>
+
+                              {canAdvance(candidate) && (
+                                <button
+                                  type="button"
+                                  className="candidate-advance-btn"
+                                  onClick={() =>
+                                    advanceCandidate(
+                                      candidate,
+                                      getNextStage(candidate.status),
+                                    )
+                                  }
+                                >
+                                  Advance to Next Stage
+                                </button>
+                              )}
                             </div>
                           )}
                         </div>
@@ -494,6 +528,65 @@ export default function AdminRecruitmentDashboard() {
             fetchCandidates();
           }}
         />
+      )}
+
+      {offerDecisionModal.visible && offerDecisionModal.candidate && (
+        <div className="rf-modal-overlay">
+          <div className="rf-modal rf-form-modal">
+            <div className="rf-modal-header">
+              <h3>Offer Decision</h3>
+              <MdOutlineCancel
+                className="rf-close-icon"
+                onClick={closeOfferDecisionModal}
+              />
+            </div>
+
+            <div className="rf-candidate-strip">
+              <strong>{offerDecisionModal.candidate.name}</strong>
+              <span>{offerDecisionModal.candidate.applied_position}</span>
+            </div>
+
+            <form
+              className="rf-form"
+              onSubmit={(e) => {
+                e.preventDefault();
+                confirmOfferDecision();
+              }}
+            >
+              <div className="rf-grid">
+                <div className="rf-field rf-full">
+                  <label>Offer Decision</label>
+                  <select
+                    value={offerDecisionModal.offerDecision}
+                    onChange={(e) =>
+                      setOfferDecisionModal((prev) => ({
+                        ...prev,
+                        offerDecision: e.target.value,
+                      }))
+                    }
+                  >
+                    <option value="Pending">Pending</option>
+                    <option value="Accepted">Accepted</option>
+                    <option value="Rejected">Rejected</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="rf-actions">
+                <button
+                  type="button"
+                  className="rf-secondary-btn"
+                  onClick={closeOfferDecisionModal}
+                >
+                  Cancel
+                </button>
+                <button type="submit" className="rf-primary-btn">
+                  Confirm
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
       )}
 
       <Modal

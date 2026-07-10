@@ -130,6 +130,21 @@ export default function InterviewerRecruitmentDashboard() {
     }
   };
 
+  const refreshSelectedCandidateDetails = async (candidateId) => {
+    try {
+      const res = await axios.get(`${BASE_URL}/recruitment/${candidateId}`, {
+        headers,
+        withCredentials: true,
+      });
+      const updatedCandidate = res.data?.data;
+      if (updatedCandidate) {
+        setSelectedCandidate(updatedCandidate);
+      }
+    } catch (err) {
+      console.error("refreshSelectedCandidateDetails error:", err);
+    }
+  };
+
   const openAssessment = (candidate) => {
     const latest = getLatestAssessmentForMe(candidate, meId);
     setAssessmentCandidate(candidate);
@@ -266,6 +281,10 @@ export default function InterviewerRecruitmentDashboard() {
             setAssessmentRound("");
             setAssessmentToEdit(null);
             fetchCandidates();
+            // Refresh the selected candidate's details if popup is open
+            if (selectedCandidate && candidateDetailsOpen) {
+              refreshSelectedCandidateDetails(selectedCandidate.id);
+            }
           }}
         />
       )}

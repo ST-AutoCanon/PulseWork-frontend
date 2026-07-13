@@ -43,7 +43,7 @@ import OvertimeSupervisor from "../Compensation/overtimeSupervisor";
 import ExitFlow from "../ExitFlow/ExitFlow.client";
 import TaskManagementHr from "../TaskManagementHr/TaskManagementHr.jsx";
 import DynamicFormBuilder from "../DynamicFormBuilder/DynamicFormBuilder.client";
-
+import OfficeLocations from "../OfficeLocations/OfficeLocations.client.jsx";
 const Sidebar = ({ setActiveContent }) => {
   const { user, hydrated } = useAuth();
   const [menuItems, setMenuItems] = useState([]);
@@ -83,6 +83,11 @@ const Sidebar = ({ setActiveContent }) => {
           path: "/attendanceRegularisation",
           icon: "MdOutlineEventAvailable",
         },
+        {
+    label: "Office Locations",
+    path: "/OfficeLocations",
+    icon: "MdLocationOn",
+  },
       ],
       Manager: [
         { label: "Dashboard", path: "/dashboard", icon: "MdOutlineDashboard" },
@@ -150,6 +155,8 @@ const Sidebar = ({ setActiveContent }) => {
       "/OvertimeSummary": () => <OvertimeSupervisor />,
       "/report": () => <Report />,
       "/ExitFlow": () => <ExitFlow />,
+          "/OfficeLocations": () => <OfficeLocations />,
+
       "/TaskManagement": (role, sub) => {
         if (sub === "admin" && role === "Admin") return <TaskManagementAdmin />;
         if (role === "HR" && sub === "hr") {

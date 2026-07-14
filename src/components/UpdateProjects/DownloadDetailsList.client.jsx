@@ -138,6 +138,7 @@ const DownloadDetailsList = ({
 
   const orgId =
     user?.orgId || user?.raw?.org_id || user?.org_id || user?.organization_id;
+  const allowDefaultTemplate = [1, 32].includes(Number(orgId));
 
   useEffect(() => {
     let mounted = true;
@@ -270,7 +271,7 @@ const DownloadDetailsList = ({
   };
 
   const startRedownload = () => {
-    if (!redownloadTemplateSelected) {
+    if (!redownloadTemplateSelected && !allowDefaultTemplate) {
       setRedownloadWarning({
         isVisible: true,
         title: "Template Required",
@@ -434,11 +435,11 @@ const DownloadDetailsList = ({
         }
 
         const canvas = await html2canvas(printRef.current, {
-          scale: 2,
+          scale: 1.5,
           useCORS: true,
           backgroundColor: "#ffffff",
         });
-        const imgData = canvas.toDataURL("image/png");
+        const imgData = canvas.toDataURL("image/jpeg", 0.8);
         const pdf = new jsPDF({
           orientation: "portrait",
           unit: "pt",
@@ -446,7 +447,7 @@ const DownloadDetailsList = ({
         });
         const pdfWidth = pdf.internal.pageSize.getWidth();
         const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
-        pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
+        pdf.addImage(imgData, "JPEG", 0, 0, pdfWidth, pdfHeight);
 
         const filename = `${redownloadInvoiceNumber || "invoice"}.pdf`;
         pdf.save(filename);

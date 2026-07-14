@@ -4,7 +4,6 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import generatePayslipPDF from "../../utils/generatePayslipPDF";
-import generatePayslipPDFDefault from "./generatePayslipPDFDefault";
 
 
 import "./generate_payslip.css";
@@ -268,7 +267,30 @@ const handleDownloadWithDefaultTemplate = async () => {
   setIsLoading(true);
   try {
     const tableData = prepareManualPayslipData();
-    const pdfBlob = await generatePayslipPDFDefault(tableData, selectedMonth, selectedYear, watermarkImgSrc, watermarkProps);
+    const templateObj = templateHtml ? { html: templateHtml, css: templateCss } : null;
+    const pdfBlob = await generatePayslipPDF(
+      {
+        full_name: tableData.employeeName,
+        employee_id: tableData.employeeId,
+        designation: tableData.designation,
+        basic_salary: tableData.basic,
+        hra: tableData.hra,
+        other_allowances: tableData.otherAllowance,
+        bonus: tableData.bonus || 0,
+        employee_pf: tableData.pf,
+        esic: tableData.esi,
+        professional_tax: tableData.professionalTax,
+        tds: tableData.tds,
+        insurance: tableData.insurance,
+        gross_salary: tableData.grossEarnings,
+        net_salary: tableData.netSalary,
+      },
+      { month: Number(selectedMonth), year: Number(selectedYear) },
+      {},
+      {},
+      {},
+      templateObj
+    );
 
     const url = URL.createObjectURL(pdfBlob);
     const a = document.createElement("a");
@@ -630,7 +652,7 @@ const buildProcessedTemplate = (tableHtml) => {
   pageContainer.style.width = "210mm";
   pageContainer.style.margin = "0 auto";
   pageContainer.style.boxSizing = "border-box";
-  pageContainer.style.overflow = "hidden";
+ pageContainer.style.overflow = "visible";
 
   let bodyDiv = doc.querySelector(".template-body") || pageContainer;
   bodyDiv.innerHTML = tableHtml;
@@ -662,33 +684,45 @@ const buildProcessedTemplate = (tableHtml) => {
     pageContainer.appendChild(footerDiv);
   }
 
-  // ==================== WATERMARK - FIXED VERSION ====================
-  if (watermarkImgSrc) {
-    doc.querySelectorAll(".pdf-watermark").forEach(el => el.remove());
+ // ==================== WATERMARK - PROPERLY USING TEMPLATE PROPS ====================
+if (watermarkImgSrc) {
+  // Remove any existing watermark
+  doc.querySelectorAll(".pdf-watermark").forEach(el => el.remove());
 
-    const wmWrapper = doc.createElement("div");
-    wmWrapper.className = "pdf-watermark";
-    wmWrapper.style.position = "absolute";
-    wmWrapper.style.top = "50%";
-    wmWrapper.style.left = "50%";
-    wmWrapper.style.width = "70%";
-    wmWrapper.style.height = "70%";
-    wmWrapper.style.transform = "translate(-50%, -50%)";
-    wmWrapper.style.opacity = "3.65";           // Adjust opacity here
-    wmWrapper.style.zIndex = "0";
-    wmWrapper.style.pointerEvents = "none";
-    wmWrapper.style.overflow = "hidden";
+  const wmWrapper = doc.createElement("div");
+  wmWrapper.className = "pdf-watermark";
 
-    const img = doc.createElement("img");
-    img.src = watermarkImgSrc;
-    img.style.width = "100%";
-    img.style.height = "100%";
-    img.style.objectFit = "contain";
-    wmWrapper.appendChild(img);
+  // Use actual props from template (fallback to sensible defaults)
+  const wp = watermarkProps || {
+    xPct: "50%",
+    yPct: "50%",
+    wPct: "60%",
+    hPct: "60%",
+    opacity: 0.3
+  };
 
-    // Insert as FIRST child so it stays behind everything
-    pageContainer.insertBefore(wmWrapper, pageContainer.firstChild);
-  }
+  wmWrapper.style.position = "absolute";
+  wmWrapper.style.top = wp.yPct;
+  wmWrapper.style.left = wp.xPct;
+  wmWrapper.style.width = wp.wPct;
+  wmWrapper.style.height = wp.hPct;
+  wmWrapper.style.transform = "translate(-50%, -50%)";
+  wmWrapper.style.opacity = String(wp.opacity);        // Fixed
+  wmWrapper.style.zIndex = "0";
+  wmWrapper.style.pointerEvents = "none";
+  wmWrapper.style.overflow = "visible";                // Changed from hidden
+
+  const img = doc.createElement("img");
+  img.src = watermarkImgSrc;
+  img.style.width = "100%";
+  img.style.height = "100%";
+  img.style.objectFit = "contain";
+  img.style.opacity = "1"; // Image itself stays full opacity
+  wmWrapper.appendChild(img);
+
+  // Insert as first child so it stays behind content
+  pageContainer.insertBefore(wmWrapper, pageContainer.firstChild);
+}
 
   return doc.documentElement.outerHTML;
 };
@@ -817,7 +851,7 @@ const generatePdfWithTemplate = async (tableData) => {
   container.innerHTML = finalHtml;
 
   // Wait for all images (including watermark)
-  await waitForImagesToLoad(container, 15000);
+  await waitForImagesToLoad(container, 18000);
 
   const html2canvas = (await import("html2canvas")).default;
 
@@ -1286,26 +1320,57 @@ const fieldLabels = {
 const handleDownloadForEmployee = async (employee) => {
   setIsLoading(true);
   try {
-    const tableData = prepareSavedPayslipData(employee);
+    // Map saved employee fields to payrollData shape expected by generatePayslipPDF
+    const payrollData = {
+      full_name: employee.employee_name || employee.employeeName || "N/A",
+      employee_id: employee.employee_id || employee.employeeId || "N/A",
+      basic_salary: Number(employee.basic || 0),
+      hra: Number(employee.hra || 0),
+      other_allowances: Number(employee.other_allowance || employee.otherAllowance || 0),
+      bonus: Number(employee.bonus || 0),
+      advance_recovery: Number(employee.advance_recovery || 0),
+      lop_deduction: Number(employee.lop_deduction || 0),
+      employee_pf: Number(employee.pf || 0),
+      esic: Number(employee.esi || employee.esi_amount || 0),
+      professional_tax: Number(employee.professional_tax || employee.professionalTax || 0),
+      tds: Number(employee.tds || 0),
+      insurance: Number(employee.insurance || 0),
+      gross_salary: Number(employee.gross_earnings || employee.grossEarnings || 0),
+      net_salary: Number(employee.net_salary || employee.netSalary || 0),
+      lop_days: Number(employee.leaves_taken || employee.leavesTaken || 0),
+      pf: Number(employee.pf || 0),
+      esi: Number(employee.esi || 0),
+    };
 
-    // ← CHANGED: Use Default Template instead of Custom
-    const pdfBlob = await generatePayslipPDFDefault(
-      tableData, 
-      employee.month || selectedMonth, 
-      employee.year || selectedYear
+    const selectedDate = {
+      month: Number(employee.month || selectedMonth || new Date().getMonth() + 1),
+      year: Number(employee.year || selectedYear || new Date().getFullYear()),
+    };
+
+    const templateObj = templateHtml ? { html: templateHtml, css: templateCss } : null;
+
+    const pdfBlob = await generatePayslipPDF(
+      payrollData,
+      selectedDate,
+      {}, // bankDetails (not available)
+      {}, // attendance (not available)
+      employee, // employeeDetails
+      templateObj
     );
+
+    if (!pdfBlob) throw new Error("Failed to generate PDF");
 
     const url = URL.createObjectURL(pdfBlob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `${employee.employee_id || employee.employeeId}_${employee.month || selectedMonth}_${employee.year || selectedYear}_Payslip.pdf`;
+    a.download = `${payrollData.employee_id}_${selectedDate.month}_${selectedDate.year}_Payslip.pdf`;
     a.click();
     URL.revokeObjectURL(url);
 
-    showAlert(`Default Payslip downloaded for ${employee.employee_name}`, "Success");
+    showAlert(`Payslip downloaded for ${employee.employee_name || payrollData.employee_id}`, "Success");
   } catch (err) {
-    console.error("Default download error:", err);
-    showAlert("Failed to download Default Payslip", "Error");
+    console.error("Download error:", err);
+    showAlert("Failed to download Payslip", "Error");
   } finally {
     setIsLoading(false);
   }
@@ -1692,14 +1757,13 @@ const fieldOrder = [
         {isLoading ? "Saving..." : "Save to Database"}
       </button>
 
-      {/* Disabled Quick Custom Button */}
+      {/* Quick Custom Button (uses custom template flow) */}
       <button
         onClick={handleDownloadWithCustomTemplate}
         className="generatePayslip-download-btn"
-        disabled={true}           // ← DISABLED
-        style={{ opacity: 0.6, cursor: "not-allowed" }}
+        disabled={isLoading}
       >
-        Quick Custom (Disabled)
+        {isLoading ? "Processing..." : "Quick Custom"}
       </button>
 
       <button
@@ -1729,24 +1793,23 @@ const fieldOrder = [
         Preview
       </button>
 
-      {/* Disabled Quick Custom Button - Non-Preview Mode */}
+      {/* Quick Custom Button - Non-Preview Mode (uses custom template flow) */}
       <button
         onClick={handleDownloadWithCustomTemplate}
         className="generatePayslip-download-btn"
-        disabled={true}           // ← DISABLED
-        style={{ opacity: 0.6, cursor: "not-allowed" }}
+        disabled={isLoading}
       >
-        Using buildtemplate (Disabled)
+        {isLoading ? "Processing..." : "Using buildtemplate"}
       </button>
 
-      <button
+      {/* <button
         onClick={handleDownloadWithDefaultTemplate}
         className="generatePayslip-download-btn"
         style={{ backgroundColor: "#28a745" }}
         disabled={isLoading}
       >
         Quick Default
-      </button>
+      </button> */}
     </>
   )}
 </div>

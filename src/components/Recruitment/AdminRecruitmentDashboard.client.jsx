@@ -76,6 +76,47 @@ function canOpenAssessment(candidate) {
   );
 }
 
+const OFFER_STATUS_EMAIL_STAGES = [
+  "Offer Acceptance",
+  "Offer Released",
+  "Offer Status",
+  "Onboarding",
+];
+
+function getOfferStatusEmailDefaults(status, candidate) {
+  const candidateName = candidate?.name || "Candidate";
+  const position = candidate?.applied_position || "N/A";
+  const decision = candidate?.offer_decision || "Pending";
+
+  switch (status) {
+    case "Offer Acceptance":
+      return {
+        subject: `Offer Acceptance Request - ${candidateName}`,
+        body: `Hi ${candidateName},\n\nCongratulations! You have progressed to the offer acceptance stage for ${position}. Please respond with your acceptance details as soon as possible.\n\nRegards,\nHR Team`,
+      };
+    case "Offer Released":
+      return {
+        subject: `Offer Letter Released - ${candidateName}`,
+        body: `Hi ${candidateName},\n\nYour offer letter has been released. Please review it carefully and share your decision.\n\nRegards,\nHR Team`,
+      };
+    case "Offer Status":
+      return {
+        subject: `Offer Status Update - ${candidateName}`,
+        body: `Hi ${candidateName},\n\nYour offer status has been updated to ${decision}. Please reach out to our team if you need any assistance.\n\nRegards,\nHR Team`,
+      };
+    case "Onboarding":
+      return {
+        subject: `Onboarding Documents Request - ${candidateName}`,
+        body: `Hi ${candidateName},\n\nWelcome to the onboarding stage. Please attach your original documents as requested so we can complete your onboarding.\n\nRegards,\nHR Team`,
+      };
+    default:
+      return {
+        subject: `Update from HR - ${candidateName}`,
+        body: `Hi ${candidateName},\n\nThis is an update regarding your application.\n\nRegards,\nHR Team`,
+      };
+  }
+}
+
 export default function AdminRecruitmentDashboard() {
   const { user } = useAuth();
   const orgId = user?.orgId ?? user?.raw?.org_id ?? null;
@@ -116,6 +157,9 @@ export default function AdminRecruitmentDashboard() {
     candidate: null,
     nextStatus: null,
     offerDecision: "Pending",
+    sendStatusEmail: true,
+    emailSubject: "",
+    emailBody: "",
   });
 
   const fetchCandidates = async () => {
@@ -201,12 +245,16 @@ export default function AdminRecruitmentDashboard() {
 
     const needsOfferDecision = nextStatus === "Offer Status";
 
-    if (needsOfferDecision) {
+    if (OFFER_STATUS_EMAIL_STAGES.includes(nextStatus)) {
+      const defaults = getOfferStatusEmailDefaults(nextStatus, candidate);
       setOfferDecisionModal({
         visible: true,
         candidate,
         nextStatus,
-        offerDecision: "Pending",
+        offerDecision: nextStatus === "Offer Status" ? "Pending" : "Pending",
+        sendStatusEmail: true,
+        emailSubject: defaults.subject,
+        emailBody: defaults.body,
       });
     } else {
       openConfirmModal({
@@ -236,26 +284,40 @@ export default function AdminRecruitmentDashboard() {
   };
 
   const confirmOfferDecision = async () => {
-    const { candidate, nextStatus, offerDecision } = offerDecisionModal;
+    const {
+      candidate,
+      nextStatus,
+      offerDecision,
+      sendStatusEmail,
+      emailSubject,
+      emailBody,
+    } = offerDecisionModal;
 
     try {
-      await axios.put(
-        `${BASE_URL}/recruitment/${candidate.id}`,
-        {
-          status: nextStatus,
-          offer_decision: offerDecision,
-        },
-        {
-          headers,
-          withCredentials: true,
-        },
-      );
+      const payload = {
+        status: nextStatus,
+        send_status_email: sendStatusEmail ? 1 : 0,
+        email_subject: emailSubject || null,
+        email_body: emailBody || null,
+      };
+
+      if (nextStatus === "Offer Status") {
+        payload.offer_decision = offerDecision;
+      }
+
+      await axios.put(`${BASE_URL}/recruitment/${candidate.id}`, payload, {
+        headers,
+        withCredentials: true,
+      });
 
       setOfferDecisionModal({
         visible: false,
         candidate: null,
         nextStatus: null,
         offerDecision: "Pending",
+        sendStatusEmail: true,
+        emailSubject: "",
+        emailBody: "",
       });
       fetchCandidates();
     } catch (err) {
@@ -534,7 +596,7 @@ export default function AdminRecruitmentDashboard() {
         <div className="rf-modal-overlay">
           <div className="rf-modal rf-form-modal">
             <div className="rf-modal-header">
-              <h3>Offer Decision</h3>
+              <h3>{offerDecisionModal.nextStatus} Update</h3>
               <MdOutlineCancel
                 className="rf-close-icon"
                 onClick={closeOfferDecisionModal}
@@ -554,22 +616,73 @@ export default function AdminRecruitmentDashboard() {
               }}
             >
               <div className="rf-grid">
-                <div className="rf-field rf-full">
-                  <label>Offer Decision</label>
-                  <select
-                    value={offerDecisionModal.offerDecision}
+                {offerDecisionModal.nextStatus === "Offer Status" && (
+                  <div className="rf-field rf-full">
+                    <label>Offer Decision</label>
+                    <select
+                      value={offerDecisionModal.offerDecision}
+                      onChange={(e) =>
+                        setOfferDecisionModal((prev) => ({
+                          ...prev,
+                          offerDecision: e.target.value,
+                        }))
+                      }
+                    >
+                      <option value="Pending">Pending</option>
+                      <option value="Accepted">Accepted</option>
+                      <option value="Rejected">Rejected</option>
+                    </select>
+                  </div>
+                )}
+
+                <div style={{ width: "100%" }}>
+                  <input
+                    type="checkbox"
+                    name="send_status_email"
+                    checked={offerDecisionModal.sendStatusEmail}
                     onChange={(e) =>
                       setOfferDecisionModal((prev) => ({
                         ...prev,
-                        offerDecision: e.target.value,
+                        sendStatusEmail: e.target.checked,
                       }))
                     }
-                  >
-                    <option value="Pending">Pending</option>
-                    <option value="Accepted">Accepted</option>
-                    <option value="Rejected">Rejected</option>
-                  </select>
+                  />
+                  <label className="rf-checkbox-label">
+                    <strong> Send status email to candidate</strong>
+                  </label>
                 </div>
+
+                {offerDecisionModal.sendStatusEmail && (
+                  <>
+                    <div className="rf-field rf-full">
+                      <label>Email Subject</label>
+                      <input
+                        type="text"
+                        value={offerDecisionModal.emailSubject}
+                        onChange={(e) =>
+                          setOfferDecisionModal((prev) => ({
+                            ...prev,
+                            emailSubject: e.target.value,
+                          }))
+                        }
+                      />
+                    </div>
+
+                    <div className="rf-field rf-full">
+                      <label>Email Body</label>
+                      <textarea
+                        rows={8}
+                        value={offerDecisionModal.emailBody}
+                        onChange={(e) =>
+                          setOfferDecisionModal((prev) => ({
+                            ...prev,
+                            emailBody: e.target.value,
+                          }))
+                        }
+                      />
+                    </div>
+                  </>
+                )}
               </div>
 
               <div className="rf-actions">

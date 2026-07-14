@@ -133,6 +133,9 @@ const ProjectsDashboard = () => {
     (normalizedRole === "Manager" || normalizedRole === "Financial Manager");
 
   const canAccessGeneralTemplates = isAdmin || isFinanceManager;
+  const orgId =
+    user?.orgId || user?.raw?.org_id || user?.org_id || user?.organization_id;
+  const allowDefaultTemplate = [1, 32].includes(Number(orgId));
 
   const [selectedTemplateKey, setSelectedTemplateKey] = useState("__default__");
   const [pdfReady, setPdfReady] = useState(false);
@@ -316,7 +319,7 @@ const ProjectsDashboard = () => {
   };
 
   const handleDownloadTemplate = async () => {
-    if (!templateSelected) {
+    if (!templateSelected && !allowDefaultTemplate) {
       setDownloadWarning({
         isVisible: true,
         title: "Template Required",
@@ -335,11 +338,11 @@ const ProjectsDashboard = () => {
       }
 
       const canvas = await html2canvas(printRef.current, {
-        scale: 2,
+        scale: 1.5,
         useCORS: true,
         backgroundColor: "#ffffff",
       });
-      const imgData = canvas.toDataURL("image/png");
+      const imgData = canvas.toDataURL("image/jpeg", 0.8);
       const pdf = new jsPDF({
         orientation: "portrait",
         unit: "pt",
@@ -348,7 +351,7 @@ const ProjectsDashboard = () => {
 
       const pdfWidth = pdf.internal.pageSize.getWidth();
       const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
-      pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
+      pdf.addImage(imgData, "JPEG", 0, 0, pdfWidth, pdfHeight);
 
       pdf.save(`${currentInvoiceNo || invoiceNumberDirect || "invoice"}.pdf`);
 

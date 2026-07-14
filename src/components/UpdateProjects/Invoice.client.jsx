@@ -65,6 +65,8 @@ const Invoice = ({ onBack, project }) => {
   const API_KEY = process.env.NEXT_PUBLIC_API_KEY;
   const orgId = user?.orgId ?? user?.org_id ?? null;
   const isOrg32 = Number(orgId) === 32;
+  const isOrg1 = Number(orgId) === 1;
+  const allowDefaultTemplate = isOrg32 || isOrg1;
 
   const buildHeaders = () => {
     const h = {
@@ -149,7 +151,8 @@ const Invoice = ({ onBack, project }) => {
   const printRef = useRef(null);
 
   const canDownloadInvoice =
-    Boolean(selectedInvoice) && selectedTemplateKey !== "__default__";
+    Boolean(selectedInvoice) &&
+    (selectedTemplateKey !== "__default__" || allowDefaultTemplate);
 
   const showAlert = (message, title = "") => {
     setAlertModal({ isVisible: true, title, message });
@@ -742,7 +745,7 @@ const Invoice = ({ onBack, project }) => {
   };
 
   const handleDownloadClick = (invoice) => {
-    if (selectedTemplateKey === "__default__") {
+    if (selectedTemplateKey === "__default__" && !allowDefaultTemplate) {
       showAlert("Please choose a saved template first.");
       return;
     }
@@ -789,12 +792,12 @@ const Invoice = ({ onBack, project }) => {
       await waitForPrintableTemplate(element, 7000);
 
       const canvas = await html2canvas(element, {
-        scale: 2,
+        scale: 1.5,
         useCORS: true,
         backgroundColor: "#ffffff",
       });
 
-      const imgData = canvas.toDataURL("image/png");
+      const imgData = canvas.toDataURL("image/jpeg", 0.8);
 
       const pdf = new jsPDF({
         orientation: "portrait",
@@ -813,7 +816,7 @@ const Invoice = ({ onBack, project }) => {
 
       pdf.addImage(
         imgData,
-        "PNG",
+        "JPEG",
         pdfMargin,
         pdfMargin,
         imgWidth,

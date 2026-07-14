@@ -449,7 +449,9 @@ export default function AttendanceRegularisation() {
         { withCredentials: true, headers },
       );
 
-      const dates = response.data?.data?.lateDates || [];
+      console.log("Late login dates received:", response.data); // ← Add this for debugging
+      const dates =
+        response.data?.data?.lateDates || response.data?.lateDates || [];
       setLateLoginDates(dates);
     } catch (err) {
       console.error("Failed to fetch late login dates:", err);
@@ -896,37 +898,50 @@ export default function AttendanceRegularisation() {
   );
 
   const renderLateLoginCalendar = () => {
-    if (isAdmin) return null;
-    if (lateLoginDates.length === 0 && !lateLoginLoading) return null;
+    if (lateLoginLoading) {
+      return (
+        <div className="ar-table-card" style={{ marginBottom: "24px" }}>
+          <h3 className="ar-table-title">Late Login Dates</h3>
+          <p style={{ textAlign: "center", color: "#6b7280", padding: "20px" }}>
+            Loading late login dates...
+          </p>
+        </div>
+      );
+    }
+
+    if (lateLoginDates.length === 0) {
+      return (
+        <div className="ar-table-card" style={{ marginBottom: "24px" }}>
+          <h3 className="ar-table-title">Late Login Dates</h3>
+          <p
+            style={{
+              textAlign: "center",
+              color: "#10b981",
+              padding: "40px 20px",
+            }}
+          >
+            🎉 No late login dates found. Great job keeping up with attendance!
+          </p>
+        </div>
+      );
+    }
 
     const today = new Date();
     const currentMonth = today.getMonth();
     const currentYear = today.getFullYear();
 
-    const getDaysInMonth = (year, month) => {
-      return new Date(year, month + 1, 0).getDate();
-    };
-
-    const getFirstDayOfMonth = (year, month) => {
-      return new Date(year, month, 1).getDay();
-    };
-
-    const daysInMonth = getDaysInMonth(currentYear, currentMonth);
-    const firstDay = getFirstDayOfMonth(currentYear, currentMonth);
+    const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+    const firstDay = new Date(currentYear, currentMonth, 1).getDay();
 
     const days = [];
-    for (let i = 0; i < firstDay; i++) {
-      days.push(null);
-    }
-    for (let i = 1; i <= daysInMonth; i++) {
-      days.push(i);
-    }
+    for (let i = 0; i < firstDay; i++) days.push(null);
+    for (let i = 1; i <= daysInMonth; i++) days.push(i);
 
     const isLateDateOnDay = (day) => {
       if (!day) return false;
-      const month = String(currentMonth + 1).padStart(2, "0");
+      const monthStr = String(currentMonth + 1).padStart(2, "0");
       const dayStr = String(day).padStart(2, "0");
-      const dateKey = `${currentYear}-${month}-${dayStr}`;
+      const dateKey = `${currentYear}-${monthStr}-${dayStr}`;
       return lateLoginDates.includes(dateKey);
     };
 
@@ -937,95 +952,67 @@ export default function AttendanceRegularisation() {
 
     return (
       <div className="ar-table-card" style={{ marginBottom: "24px" }}>
-        <h3 className="ar-table-title">Late Login Dates</h3>
-        {lateLoginLoading ? (
-          <p style={{ textAlign: "center", color: "#6b7280" }}>
-            Loading late login dates...
-          </p>
-        ) : lateLoginDates.length === 0 ? (
-          <p style={{ textAlign: "center", color: "#6b7280" }}>
-            No late login dates found. Great job!
-          </p>
-        ) : (
-          <div style={{ padding: "12px 0" }}>
-            <div
-              style={{
-                fontSize: "14px",
-                fontWeight: "600",
-                marginBottom: "12px",
-                textAlign: "center",
-                color: "#374151",
-              }}
-            >
-              {monthLabel}
-            </div>
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(7, 1fr)",
-                gap: "4px",
-              }}
-            >
-              {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day) => (
+        <h3 className="ar-table-title">Late Login Dates (This Month)</h3>
+
+        <div style={{ padding: "12px 0" }}>
+          <div
+            style={{
+              fontSize: "15px",
+              fontWeight: "600",
+              textAlign: "center",
+              marginBottom: "12px",
+              color: "#1f2937",
+            }}
+          >
+            {monthLabel}
+          </div>
+
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(7, 1fr)",
+              gap: "4px",
+              textAlign: "center",
+            }}
+          >
+            {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day) => (
+              <div
+                key={day}
+                style={{
+                  fontWeight: "600",
+                  color: "#6b7280",
+                  padding: "8px 0",
+                  fontSize: "13px",
+                }}
+              >
+                {day}
+              </div>
+            ))}
+
+            {days.map((day, idx) => {
+              const isLate = isLateDateOnDay(day);
+              return (
                 <div
-                  key={day}
+                  key={idx}
                   style={{
-                    textAlign: "center",
-                    fontSize: "12px",
-                    fontWeight: "600",
-                    color: "#6b7280",
-                    padding: "8px 0",
+                    padding: "10px 4px",
+                    borderRadius: "6px",
+                    backgroundColor: isLate ? "#fee2e2" : "#f3f4f6",
+                    color: isLate ? "#b91c1c" : "#374151",
+                    fontWeight: isLate ? "700" : "500",
+                    fontSize: "14px",
+                    border: isLate ? "2px solid #ef4444" : "1px solid #e5e7eb",
                   }}
                 >
-                  {day}
+                  {day || ""}
                 </div>
-              ))}
-              {days.map((day, idx) => {
-                const isLateDate = isLateDateOnDay(day);
-                return (
-                  <div
-                    key={idx}
-                    style={{
-                      textAlign: "center",
-                      padding: "8px",
-                      borderRadius: "6px",
-                      backgroundColor: isLateDate ? "#fecaca" : "#f3f4f6",
-                      color: isLateDate ? "#991b1b" : "#6b7280",
-                      fontSize: "13px",
-                      fontWeight: isLateDate ? "600" : "400",
-                      borderLeft: isLateDate ? "3px solid #dc2626" : "none",
-                    }}
-                  >
-                    {day || ""}
-                  </div>
-                );
-              })}
-            </div>
-            <div
-              style={{
-                marginTop: "16px",
-                padding: "12px",
-                backgroundColor: "#fef2f2",
-                borderRadius: "8px",
-                fontSize: "13px",
-                color: "#7c2d12",
-                display: "flex",
-                alignItems: "flex-start",
-                gap: "8px",
-              }}
-            >
-              <span style={{ minWidth: "20px" }}>ℹ️</span>
-              <span>
-                Dates highlighted in red indicate late punch-in records. You can
-                submit late login requests for these dates above.
-              </span>
-            </div>
+              );
+            })}
           </div>
-        )}
+        </div>
       </div>
     );
   };
-
   const renderSelfFlow = () => (
     <section className="ar-self-card">
       {!isAdmin ? (

@@ -1,9 +1,11 @@
 
 "use client";
-//new chnages 
+
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import generatePayslipPDF from "../../utils/generatePayslipPDF";
+
+
 import "./generate_payslip.css";
 import Modal from "../Modal/Modal.client";
 import { useAuth } from "../../context/AuthProvider.client";
@@ -26,17 +28,29 @@ export default function GeneratePayslip() {
   const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL ;
 
   const getHeaders = (extra = {}) => {
-    const base = {
-      "x-api-key": API_KEY,
-      "Content-Type": "application/json",
-      ...extra,
-    };
-
-    if (orgId) base["x-org-id"] = String(orgId);
-    if (meId) base["x-employee-id"] = String(meId);
-
-    return base;
+  const base = {
+    "x-api-key": API_KEY,
+    "Content-Type": "application/json",
+    ...extra,
   };
+
+  if (orgId) base["x-org-id"] = String(orgId);
+  
+  // ✅ Always try to send x-employee-id - fallback to other possible fields
+  const employeeId = 
+    meId || 
+    user?.employee_id || 
+    user?.employeeId || 
+    user?.id || 
+    user?.raw?.id ||
+    null;
+
+  if (employeeId) {
+    base["x-employee-id"] = String(employeeId);
+  }
+
+  return base;
+};
 
   const [showModal, setShowModal] = useState(false);
   const [preview, setPreview] = useState(false);
@@ -188,27 +202,47 @@ const extractDateOnly = (dateString) => {
       reader.readAsDataURL(blob);
     });
 
-  const fetchProtectedImageDataUrl = async (src) => {
-    if (!src) return null;
-    if (src.startsWith("data:")) return src;
+ const fetchProtectedImageDataUrl = async (src) => {
+  if (!src) return null;
+  if (src.startsWith("data:")) return src;
 
-    const normalized = normalizeUploadUrl(src);
-    if (protectedImgCache.has(normalized)) return protectedImgCache.get(normalized);
+  const normalized = normalizeUploadUrl(src);
+  if (protectedImgCache.has(normalized)) return protectedImgCache.get(normalized);
 
-    try {
-      const res = await axios.get(normalized, {
-        responseType: "blob",
-        headers: getHeaders(),
-        withCredentials: true,
-      });
-      const dataUrl = await blobToDataUrl(res.data);
-      protectedImgCache.set(normalized, dataUrl);
-      return dataUrl;
-    } catch (err) {
-      console.warn("Image fetch failed:", err);
-      return null;
+  try {
+    const headers = getHeaders();   // ← Now more reliable
+
+    const res = await axios.get(normalized, {
+      responseType: "blob",
+      headers,
+      withCredentials: true,
+    });
+
+    const dataUrl = await blobToDataUrl(res.data);
+    protectedImgCache.set(normalized, dataUrl);
+    return dataUrl;
+  } catch (err) {
+    console.warn("Image fetch failed:", normalized, err.response?.status, err.message);
+    
+    // Fallback: try without employee-id if it was the cause
+    if (err.response?.status === 401) {
+      try {
+        const res = await axios.get(normalized, {
+          responseType: "blob",
+          headers: { "x-api-key": API_KEY, "x-org-id": orgId },
+          withCredentials: true,
+        });
+        const dataUrl = await blobToDataUrl(res.data);
+        protectedImgCache.set(normalized, dataUrl);
+        return dataUrl;
+      } catch (fallbackErr) {
+        console.warn("Fallback also failed");
+      }
     }
-  };
+    
+    return null;
+  }
+};
 
   const replaceUploadUrlsInHtml = async (html = "") => {
     if (!html || typeof html !== "string") return html;
@@ -1318,57 +1352,30 @@ const fieldLabels = {
 const handleDownloadForEmployee = async (employee) => {
   setIsLoading(true);
   try {
-    // Map saved employee fields to payrollData shape expected by generatePayslipPDF
-    const payrollData = {
-      full_name: employee.employee_name || employee.employeeName || "N/A",
-      employee_id: employee.employee_id || employee.employeeId || "N/A",
-      basic_salary: Number(employee.basic || 0),
-      hra: Number(employee.hra || 0),
-      other_allowances: Number(employee.other_allowance || employee.otherAllowance || 0),
-      bonus: Number(employee.bonus || 0),
-      advance_recovery: Number(employee.advance_recovery || 0),
-      lop_deduction: Number(employee.lop_deduction || 0),
-      employee_pf: Number(employee.pf || 0),
-      esic: Number(employee.esi || employee.esi_amount || 0),
-      professional_tax: Number(employee.professional_tax || employee.professionalTax || 0),
-      tds: Number(employee.tds || 0),
-      insurance: Number(employee.insurance || 0),
-      gross_salary: Number(employee.gross_earnings || employee.grossEarnings || 0),
-      net_salary: Number(employee.net_salary || employee.netSalary || 0),
-      lop_days: Number(employee.leaves_taken || employee.leavesTaken || 0),
-      pf: Number(employee.pf || 0),
-      esi: Number(employee.esi || 0),
-    };
+    // Use the SAME data preparation as the custom template flow
+    const tableData = prepareSavedPayslipData(employee);
 
-    const selectedDate = {
-      month: Number(employee.month || selectedMonth || new Date().getMonth() + 1),
-      year: Number(employee.year || selectedYear || new Date().getFullYear()),
-    };
-
-    const templateObj = templateHtml ? { html: templateHtml, css: templateCss } : null;
-
-    const pdfBlob = await generatePayslipPDF(
-      payrollData,
-      selectedDate,
-      {}, // bankDetails (not available)
-      {}, // attendance (not available)
-      employee, // employeeDetails
-      templateObj
-    );
+    // Generate PDF with custom template (header + footer + watermark)
+    const pdfBlob = await generatePdfWithTemplate(tableData);
 
     if (!pdfBlob) throw new Error("Failed to generate PDF");
 
     const url = URL.createObjectURL(pdfBlob);
     const a = document.createElement("a");
+    
+    // Better filename using saved employee data
+    const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+    const monthYear = `${monthNames[(employee.month || new Date().getMonth() + 1) - 1]}_${employee.year || new Date().getFullYear()}`;
+    
+    a.download = `${tableData.employeeId || employee.employee_id}_${monthYear}_Payslip.pdf`;
     a.href = url;
-    a.download = `${payrollData.employee_id}_${selectedDate.month}_${selectedDate.year}_Payslip.pdf`;
     a.click();
     URL.revokeObjectURL(url);
 
-    showAlert(`Payslip downloaded for ${employee.employee_name || payrollData.employee_id}`, "Success");
+    showAlert(`Payslip downloaded for ${employee.employee_name || tableData.employeeId}`, "Success");
   } catch (err) {
     console.error("Download error:", err);
-    showAlert("Failed to download Payslip", "Error");
+    showAlert("Failed to download Payslip with template", "Error");
   } finally {
     setIsLoading(false);
   }
@@ -1764,14 +1771,14 @@ const fieldOrder = [
         {isLoading ? "Processing..." : "Quick Custom"}
       </button>
 
-      <button
+      {/* <button
         onClick={handleDownloadWithDefaultTemplate}
         className="generatePayslip-download-btn"
         style={{ backgroundColor: "#28a745", color: "white" }}
         disabled={isLoading}
       >
         {isLoading ? "Downloading..." : "Download with Default Template"}
-      </button>
+      </button> */}
     </>
   ) : (
     <>

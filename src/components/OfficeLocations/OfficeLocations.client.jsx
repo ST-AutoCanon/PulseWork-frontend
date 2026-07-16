@@ -1,7 +1,9 @@
 
+
+
 "use client";
 
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import {
   MdAdd,
   MdSearch,
@@ -12,6 +14,7 @@ import {
 } from "react-icons/md";
 import "./OfficeLocations.css";
 import { useAuth } from "../../context/AuthProvider.client";
+import Modal from "../Modal/Modal.client";
 
 const OfficeLocations = () => {
   const [search, setSearch] = useState("");
@@ -28,6 +31,13 @@ const OfficeLocations = () => {
   const [selectedEmployeeIds, setSelectedEmployeeIds] = useState([]);
   const [employeeSearch, setEmployeeSearch] = useState("");
 
+  // Custom Alert Modal State
+  const [alertModal, setAlertModal] = useState({
+    isVisible: false,
+    message: "",
+    type: "success", // success | error
+  });
+
   const { user } = useAuth();
   const orgId = user?.orgId;
 
@@ -42,6 +52,14 @@ const OfficeLocations = () => {
     radius: 100,
     status: "Active",
   });
+
+  const showAlert = (message, type = "success") => {
+    setAlertModal({ isVisible: true, message, type });
+  };
+
+  const closeAlert = () => {
+    setAlertModal({ isVisible: false, message: "", type: "success" });
+  };
 
   const filteredLocations = locations.filter(
     (item) =>
@@ -124,7 +142,7 @@ const OfficeLocations = () => {
       setLocations(formattedLocations);
     } catch (error) {
       console.error("Fetch office locations error:", error);
-      alert(error.message || "Failed to fetch office locations");
+      showAlert(error.message || "Failed to fetch office locations", "error");
     } finally {
       setLoading(false);
     }
@@ -143,17 +161,17 @@ const OfficeLocations = () => {
       !formData.latitude ||
       !formData.longitude
     ) {
-      alert("Please fill Office Name, Address, Latitude and Longitude.");
+      showAlert("Please fill Office Name, Address, Latitude and Longitude.", "error");
       return;
     }
 
     if (!orgId) {
-      alert("Organization ID not found");
+      showAlert("Organization ID not found", "error");
       return;
     }
 
     if (!API_BASE) {
-      alert("NEXT_PUBLIC_BACKEND_URL is missing in frontend .env");
+      showAlert("NEXT_PUBLIC_BACKEND_URL is missing in frontend .env", "error");
       return;
     }
 
@@ -198,11 +216,13 @@ const OfficeLocations = () => {
       }
 
       const savedOffice = {
-        id: result.data?.id,
+        id: result.data?.id || editingOfficeId,
         office: result.data?.office_name || result.data?.office || payload.officeName,
         address: result.data?.address || payload.address,
         radius: Number(result.data?.radius ?? payload.radius),
-        employees: Number(result.data?.employees) || 0,
+        employees: isEdit
+          ? locations.find((loc) => loc.id === editingOfficeId)?.employees || 0
+          : Number(result.data?.employees) || 0,
         status: result.data?.status || payload.status,
         latitude: parseFloat(result.data?.latitude ?? payload.latitude),
         longitude: parseFloat(result.data?.longitude ?? payload.longitude),
@@ -218,9 +238,10 @@ const OfficeLocations = () => {
 
       setShowModal(false);
       resetForm();
+      showAlert(isEdit ? "Office location updated successfully" : "Office location created successfully");
     } catch (error) {
       console.error("Save office location error:", error);
-      alert(error.message || (editingOfficeId ? "Failed to update" : "Failed to create"));
+      showAlert(error.message || (editingOfficeId ? "Failed to update" : "Failed to create"), "error");
     } finally {
       setLoading(false);
     }
@@ -241,7 +262,7 @@ const OfficeLocations = () => {
 
   const handleDelete = async (officeId) => {
     if (!orgId) {
-      alert("Organization ID not found");
+      showAlert("Organization ID not found", "error");
       return;
     }
 
@@ -273,15 +294,16 @@ const OfficeLocations = () => {
       }
 
       setLocations((prev) => prev.filter((item) => item.id !== officeId));
+      showAlert("Office location deleted successfully");
     } catch (error) {
       console.error("Delete office location error:", error);
-      alert(error.message || "Failed to delete office location");
+      showAlert(error.message || "Failed to delete office location", "error");
     } finally {
       setLoading(false);
     }
   };
 
-  // Employee Assignment Logic (unchanged)
+  // Employee Assignment Logic
   const fetchAllEmployees = async () => {
     const response = await fetch(
       `${API_BASE}/api/office-location-employees/employees?orgId=${orgId}`,
@@ -320,7 +342,7 @@ const OfficeLocations = () => {
 
   const handleOpenEmployeesModal = async (office) => {
     if (!orgId || !API_BASE) {
-      alert("Configuration missing");
+      showAlert("Configuration missing", "error");
       return;
     }
 
@@ -346,7 +368,7 @@ const OfficeLocations = () => {
       setSelectedEmployeeIds(assignedEmployees.map((emp) => String(emp.employee_id)));
     } catch (error) {
       console.error("Open employees modal error:", error);
-      alert(error.message || "Failed to load employees");
+      showAlert(error.message || "Failed to load employees", "error");
       resetEmployeesModal();
     } finally {
       setEmployeeLoading(false);
@@ -365,12 +387,12 @@ const OfficeLocations = () => {
 
   const handleSaveEmployees = async () => {
     if (!selectedOffice?.id) {
-      alert("Office not selected");
+      showAlert("Office not selected", "error");
       return;
     }
 
     if (!orgId || !API_BASE) {
-      alert("Configuration missing");
+      showAlert("Configuration missing", "error");
       return;
     }
 
@@ -437,26 +459,26 @@ const OfficeLocations = () => {
         )
       );
 
-      alert(result.message || "Employees assigned successfully");
+      showAlert(result.message || "Employees assigned successfully");
       resetEmployeesModal();
     } catch (error) {
       console.error(error);
-      alert(error.message || "Failed to assign employees");
+      showAlert(error.message || "Failed to assign employees", "error");
     } finally {
       setEmployeeLoading(false);
     }
   };
 
   return (
-    <div className="office-page">
-      <div className="office-header">
+    <div className="office_loc-office-page">
+      <div className="office_loc-office-header">
         <div>
           <h2>Office Locations</h2>
           <p>Manage office locations used for Login and Punch In / Punch Out.</p>
         </div>
 
         <button
-          className="create-btn"
+          className="office_loc-create-btn"
           onClick={() => {
             resetForm();
             setShowModal(true);
@@ -467,9 +489,9 @@ const OfficeLocations = () => {
         </button>
       </div>
 
-      <div className="office-search">
-        <div className="search-box">
-          <MdSearch className="search-icon" />
+      <div className="office_loc-office-search">
+        <div className="office_loc-search-box">
+          <MdSearch className="office_loc-search-icon" />
           <input
             type="text"
             placeholder="Search Office..."
@@ -478,18 +500,18 @@ const OfficeLocations = () => {
           />
         </div>
 
-        <div className="location-count">
+        <div className="office_loc-location-count">
           Total Locations : <strong>{filteredLocations.length}</strong>
         </div>
       </div>
 
       {loading && <div style={{ marginBottom: "12px", color: "#666" }}>Loading...</div>}
 
-      <div className="office-grid">
+      <div className="office_loc-office-grid">
         {filteredLocations.map((location) => (
-          <div className="office-card" key={location.id}>
-            <div className="office-card-header">
-              <div className="office-icon">
+          <div className="office_loc-office-card" key={location.id}>
+            <div className="office_loc-office-card-header">
+              <div className="office_loc-office-icon">
                 <MdLocationOn size={30} />
               </div>
               <div>
@@ -498,33 +520,37 @@ const OfficeLocations = () => {
               </div>
             </div>
 
-            <div className="office-details">
-              <div className="detail-box">
+            <div className="office_loc-office-details">
+              <div className="office_loc-detail-box">
                 <span>Radius</span>
                 <strong>{location.radius} m</strong>
               </div>
-              <div className="detail-box">
+              <div className="office_loc-detail-box">
                 <span>Employees</span>
                 <strong>{location.employees}</strong>
               </div>
-              <div className="detail-box">
+              <div className="office_loc-detail-box">
                 <span>Status</span>
                 <label
-                  className={location.status === "Active" ? "status active" : "status inactive"}
+                  className={
+                    location.status === "Active"
+                      ? "office_loc-status office_loc-active"
+                      : "office_loc-status office_loc-inactive"
+                  }
                 >
                   {location.status}
                 </label>
               </div>
             </div>
 
-            <div className="office-actions">
-              <button className="emp-btn" onClick={() => handleOpenEmployeesModal(location)}>
+            <div className="office_loc-office-actions">
+              <button className="office_loc-emp-btn" onClick={() => handleOpenEmployeesModal(location)}>
                 <MdPeople /> Employees
               </button>
-              <button className="edit-btn" onClick={() => handleEdit(location)}>
+              <button className="office_loc-edit-btn" onClick={() => handleEdit(location)}>
                 <MdEdit /> Edit
               </button>
-              <button className="delete-btn" onClick={() => handleDelete(location.id)}>
+              <button className="office_loc-delete-btn" onClick={() => handleDelete(location.id)}>
                 <MdDelete /> Delete
               </button>
             </div>
@@ -532,16 +558,16 @@ const OfficeLocations = () => {
         ))}
       </div>
 
-      {/* CREATE / EDIT MODAL - WITHOUT MAP */}
+      {/* CREATE / EDIT MODAL */}
       {showModal && (
-        <div className="office-modal-overlay">
-          <div className="office-modal">
-            <div className="office-modal-header">
+        <div className="office_loc-office-modal-overlay">
+          <div className="office_loc-office-modal">
+            <div className="office_loc-office-modal-header">
               <h2>
                 {editingOfficeId ? "Edit Office Location" : "Create Office Location"}
               </h2>
               <button
-                className="close-btn"
+                className="office_loc-close-btn"
                 onClick={() => {
                   setShowModal(false);
                   resetForm();
@@ -551,8 +577,8 @@ const OfficeLocations = () => {
               </button>
             </div>
 
-            <div className="office-modal-body">
-              <div className="office-form-group">
+            <div className="office_loc-office-modal-body">
+              <div className="office_loc-office-form-group">
                 <label>Office Name</label>
                 <input
                   type="text"
@@ -563,7 +589,7 @@ const OfficeLocations = () => {
                 />
               </div>
 
-              <div className="office-form-group">
+              <div className="office_loc-office-form-group">
                 <label>Office Address</label>
                 <input
                   type="text"
@@ -574,8 +600,8 @@ const OfficeLocations = () => {
                 />
               </div>
 
-              <div className="office-row">
-                <div className="office-form-group">
+              <div className="office_loc-office-row">
+                <div className="office_loc-office-form-group">
                   <label>Latitude</label>
                   <input
                     type="number"
@@ -586,7 +612,7 @@ const OfficeLocations = () => {
                     onChange={handleChange}
                   />
                 </div>
-                <div className="office-form-group">
+                <div className="office_loc-office-form-group">
                   <label>Longitude</label>
                   <input
                     type="number"
@@ -599,8 +625,8 @@ const OfficeLocations = () => {
                 </div>
               </div>
 
-              <div className="office-row">
-                <div className="office-form-group">
+              <div className="office_loc-office-row">
+                <div className="office_loc-office-form-group">
                   <label>Radius (Meters)</label>
                   <input
                     type="number"
@@ -610,7 +636,7 @@ const OfficeLocations = () => {
                   />
                 </div>
 
-                <div className="office-form-group">
+                <div className="office_loc-office-form-group">
                   <label>Status</label>
                   <select
                     name="status"
@@ -624,9 +650,9 @@ const OfficeLocations = () => {
               </div>
             </div>
 
-            <div className="office-modal-footer">
+            <div className="office_loc-office-modal-footer">
               <button
-                className="cancel-btn"
+                className="office_loc-cancel-btn"
                 onClick={() => {
                   setShowModal(false);
                   resetForm();
@@ -634,7 +660,7 @@ const OfficeLocations = () => {
               >
                 Cancel
               </button>
-              <button className="save-btn" onClick={handleSave}>
+              <button className="office_loc-save-btn" onClick={handleSave}>
                 {editingOfficeId ? "Update Location" : "Save Location"}
               </button>
             </div>
@@ -644,22 +670,22 @@ const OfficeLocations = () => {
 
       {/* EMPLOYEE ASSIGNMENT MODAL */}
       {showEmployeesModal && (
-        <div className="office-modal-overlay">
-          <div className="office-modal" style={{ maxWidth: "850px", width: "95%" }}>
-            <div className="office-modal-header">
+        <div className="office_loc-office-modal-overlay">
+          <div className="office_loc-office-modal" style={{ maxWidth: "850px", width: "95%" }}>
+            <div className="office_loc-office-modal-header">
               <div>
                 <h2>Assign Employees</h2>
                 <p style={{ margin: "4px 0 0", color: "#666", fontSize: "14px" }}>
                   {selectedOffice?.office || "Office"}
                 </p>
               </div>
-              <button className="close-btn" onClick={resetEmployeesModal}>
+              <button className="office_loc-close-btn" onClick={resetEmployeesModal}>
                 ✕
               </button>
             </div>
 
-            <div className="office-modal-body">
-              <div className="office-form-group" style={{ marginBottom: "16px" }}>
+            <div className="office_loc-office-modal-body">
+              <div className="office_loc-office-form-group" style={{ marginBottom: "16px" }}>
                 <label>Search Employee</label>
                 <input
                   type="text"
@@ -701,9 +727,6 @@ const OfficeLocations = () => {
                           </div>
                           <div style={{ fontSize: "13px", color: "#6b7280", display: "flex", flexWrap: "wrap", gap: "14px" }}>
                             <span>ID: {employee.employee_id}</span>
-                            {employee.email && <span>{employee.email}</span>}
-                            {employee.phone_number && <span>{employee.phone_number}</span>}
-                            <span>Status: {employee.status}</span>
                           </div>
                         </div>
                       </label>
@@ -713,18 +736,34 @@ const OfficeLocations = () => {
               )}
             </div>
 
-            <div className="office-modal-footer">
+            <div className="office_loc-office-modal-footer">
               <div style={{ marginRight: "auto", color: "#555", fontSize: "14px" }}>
                 Selected Employees: <strong>{selectedEmployeeIds.length}</strong>
               </div>
-              <button className="cancel-btn" onClick={resetEmployeesModal}>Cancel</button>
-              <button className="save-btn" onClick={handleSaveEmployees} disabled={employeeLoading}>
+              <button className="office_loc-cancel-btn" onClick={resetEmployeesModal}>Cancel</button>
+              <button className="office_loc-save-btn" onClick={handleSaveEmployees} disabled={employeeLoading}>
                 Save Employees
               </button>
             </div>
           </div>
         </div>
       )}
+
+      {/* Custom Alert Modal */}
+      <Modal
+        isVisible={alertModal.isVisible}
+        onClose={closeAlert}
+        buttons={[{ label: "OK", onClick: closeAlert }]}
+      >
+        <p style={{ 
+          textAlign: "center", 
+          fontSize: "16px", 
+          padding: "10px 0",
+          color: alertModal.type === "error" ? "#dc2626" : "#111827" 
+        }}>
+          {alertModal.message}
+        </p>
+      </Modal>
     </div>
   );
 };

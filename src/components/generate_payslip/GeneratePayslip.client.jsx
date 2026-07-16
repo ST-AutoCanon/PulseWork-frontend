@@ -1,11 +1,9 @@
 
 "use client";
-
+//new chnages 
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import generatePayslipPDF from "../../utils/generatePayslipPDF";
-
-
 import "./generate_payslip.css";
 import Modal from "../Modal/Modal.client";
 import { useAuth } from "../../context/AuthProvider.client";

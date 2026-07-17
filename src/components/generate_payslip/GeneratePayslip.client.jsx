@@ -73,7 +73,9 @@ export default function GeneratePayslip() {
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [manualEmployeeId, setManualEmployeeId] = useState(false);
-
+const [headerImgSrc, setHeaderImgSrc] = useState(null);
+const [footerImgSrc, setFooterImgSrc] = useState(null);
+const [watermarkImgSrc, setWatermarkImgSrc] = useState(null);
   const initialFormData = {
     employeeId: "PW-000001",
     employeeName: "",
@@ -155,12 +157,11 @@ const extractDateOnly = (dateString) => {
 
 // Helper function to safely extract YYYY-MM-DD date string (fixed timezone issue)
 
-
+const [templates, setTemplates] = useState([]); // Store all org templates
+const [selectedTemplateId, setSelectedTemplateId] = useState(null);
   const [templateHtml, setTemplateHtml] = useState(null);
   const [templateCss, setTemplateCss] = useState(null);
-  const [headerImgSrc, setHeaderImgSrc] = useState(null);
-  const [footerImgSrc, setFooterImgSrc] = useState(null);
-  const [watermarkImgSrc, setWatermarkImgSrc] = useState(null);
+ 
   const [watermarkProps, setWatermarkProps] = useState({
     xPct: "50%",
     yPct: "50%",
@@ -171,28 +172,88 @@ const extractDateOnly = (dateString) => {
 
   const protectedImgCache = new Map();
 
- const normalizeUploadUrl = (src) => {
+const normalizeUploadUrl = (src) => {
   if (!src) return src;
 
-  // already valid
-  if (src.startsWith("blob:") || src.startsWith("data:") || src.startsWith("http")) {
+  // Already valid
+  if (
+    src.startsWith("blob:") ||
+    src.startsWith("data:") ||
+    src.startsWith("http")
+  ) {
     return src;
   }
 
   const backend = BACKEND_URL.replace(/\/$/, "");
 
-  // if already api path
+  // If BACKEND_URL already ends with /api don't append another /api
+  const apiBase = backend.endsWith("/api") ? backend : `${backend}/api`;
+
+  // Existing upload path
   if (src.startsWith("/api/")) {
-  return BACKEND_URL.replace(/\/api$/, "") + src;
-}
+    return backend + src;
+  }
 
-
-// if only filename stored in DB
+  // Only filename
   if (!src.includes("/")) {
-    return `${backend}/api/orgs/${orgId}/uploads/${src}`;
+    return `${apiBase}/orgs/${orgId}/${src}`;
   }
 
   return src;
+};
+
+const fetchProtectedImageDataUrl = async (src) => {
+  console.log("axios defaults", axios.defaults.headers.common);
+
+console.log("window employee", window.__EMPLOYEE_ID);
+console.log("window org", window.__ORG_ID);
+
+console.log("localStorage employee", localStorage.getItem("employeeId"));
+console.log("cookie employee", document.cookie);
+  if (!src) return null;
+
+  if (src.startsWith("data:")) {
+    return src;
+  }
+
+  const normalized = normalizeUploadUrl(src);
+
+  console.log("====================================");
+  console.log("Image Source:", src);
+  console.log("Normalized URL:", normalized);
+  console.log("Headers:", getHeaders());
+  console.log("====================================");
+
+  if (protectedImgCache.has(normalized)) {
+    console.log("Using cached image:", normalized);
+    return protectedImgCache.get(normalized);
+  }
+
+  try {
+    const response = await axios.get(normalized, {
+      responseType: "blob",
+      headers: getHeaders(),
+      withCredentials: true,
+    });
+
+    console.log("Image fetched successfully:", normalized);
+    console.log("Status:", response.status);
+    console.log("Blob Size:", response.data.size);
+
+    const dataUrl = await blobToDataUrl(response.data);
+
+    protectedImgCache.set(normalized, dataUrl);
+
+    return dataUrl;
+  } catch (err) {
+    console.error("Image fetch failed");
+    console.error("URL:", normalized);
+    console.error("Status:", err.response?.status);
+    console.error("Response:", err.response?.data);
+    console.error(err);
+
+    return null;
+  }
 };
   const blobToDataUrl = (blob) =>
     new Promise((resolve, reject) => {
@@ -202,51 +263,11 @@ const extractDateOnly = (dateString) => {
       reader.readAsDataURL(blob);
     });
 
- const fetchProtectedImageDataUrl = async (src) => {
-  if (!src) return null;
-  if (src.startsWith("data:")) return src;
-
-  const normalized = normalizeUploadUrl(src);
-  if (protectedImgCache.has(normalized)) return protectedImgCache.get(normalized);
-
-  try {
-    const headers = getHeaders();   // ← Now more reliable
-
-    const res = await axios.get(normalized, {
-      responseType: "blob",
-      headers,
-      withCredentials: true,
-    });
-
-    const dataUrl = await blobToDataUrl(res.data);
-    protectedImgCache.set(normalized, dataUrl);
-    return dataUrl;
-  } catch (err) {
-    console.warn("Image fetch failed:", normalized, err.response?.status, err.message);
-    
-    // Fallback: try without employee-id if it was the cause
-    if (err.response?.status === 401) {
-      try {
-        const res = await axios.get(normalized, {
-          responseType: "blob",
-          headers: { "x-api-key": API_KEY, "x-org-id": orgId },
-          withCredentials: true,
-        });
-        const dataUrl = await blobToDataUrl(res.data);
-        protectedImgCache.set(normalized, dataUrl);
-        return dataUrl;
-      } catch (fallbackErr) {
-        console.warn("Fallback also failed");
-      }
-    }
-    
-    return null;
-  }
-};
+ 
 
   const replaceUploadUrlsInHtml = async (html = "") => {
     if (!html || typeof html !== "string") return html;
-    const uploadRegex = /\/api\/orgs\/\d+\/uploads\/[A-Za-z0-9._-]+/g;
+    const uploadRegex = /\/api\/orgs\/\d+\/\/[A-Za-z0-9._-]+/g;
     const matches = html.match(uploadRegex);
     if (!matches || matches.length === 0) return html;
 
@@ -343,102 +364,140 @@ const handleDownloadWithDefaultTemplate = async () => {
     const str = String(v).trim();
     return str.endsWith("%") ? str : `${str}%`;
   };
+const getFullImageUrl = (src) => {
+  if (!src || typeof src !== "string") return src;
+  if (src.startsWith("http") || src.startsWith("data:") || src.startsWith("blob:")) return src;
 
-  useEffect(() => {
-    const fetchSelectedTemplate = async () => {
-      if (!orgId) return;
+  const backend = BACKEND_URL.replace(/\/$/, "");
+  if (src.startsWith("/api/")) {
+    return backend + src;
+  }
+  return `${backend}/api/orgs/${orgId}/${src}`;
+};
+//   useEffect(() => {
+//   const fetchSelectedTemplate = async () => {
+//     if (!orgId) return;
 
-      try {
-        const prefsRes = await axios.get(`${BACKEND_URL}/api/salary-preferences`, {
-          headers: getHeaders(),
-          withCredentials: true,
-        });
+//     try {
+//       const prefsRes = await axios.get(`${BACKEND_URL}/api/salary-preferences`, {
+//         headers: getHeaders(),
+//         withCredentials: true,
+//       });
 
-        const selectedId = prefsRes.data?.data?.[0]?.selected_template_id;
-        if (!selectedId) return;
+//       const selectedId = prefsRes.data?.data?.[0]?.selected_template_id;
+//       if (!selectedId) return;
 
-        const templatesRes = await axios.get(`${BACKEND_URL}/api/orgs/${orgId}/templates`, {
-          headers: getHeaders(),
-          withCredentials: true,
-        });
+//       const templatesRes = await axios.get(`${BACKEND_URL}/api/orgs/${orgId}/templates`, {
+//         headers: getHeaders(),
+//         withCredentials: true,
+//       });
 
-        const templates = templatesRes.data || [];
-        const selectedTemplate = templates.find((t) => t.id === selectedId);
-        if (!selectedTemplate) return;
+//       const templates = templatesRes.data || [];
+//       const selectedTemplate = templates.find((t) => t.id === selectedId);
+//       if (!selectedTemplate) return;
 
-        let processedHtml = await replaceUploadUrlsInHtml(selectedTemplate.html || "");
-        setTemplateHtml(processedHtml);
-        setTemplateCss(selectedTemplate.css || "");
+//       // Same simple pattern as ProjectsDashboard
+//       setTemplateHtml(selectedTemplate.html || "");
+//       setTemplateCss(selectedTemplate.css || "");
 
-        let grapes = null;
-        const grapesField = selectedTemplate.grapes_json || selectedTemplate.grapesJson;
-        if (grapesField) {
-          try {
-            grapes = typeof grapesField === "string" ? JSON.parse(grapesField) : grapesField;
-          } catch (e) {
-            console.error("Failed to parse grapes_json", e);
-          }
+//       // Watermark props
+//       let wp = { ...watermarkProps };
+//       const grapesField = selectedTemplate.grapes_json || selectedTemplate.grapesJson;
+//       if (grapesField) {
+//         try {
+//           const grapes = typeof grapesField === "string" ? JSON.parse(grapesField) : grapesField;
+//           if (grapes.watermark) {
+//             wp = {
+//               xPct: ensurePercent(grapes.watermark.xPct || "50%"),
+//               yPct: ensurePercent(grapes.watermark.yPct || "50%"),
+//               wPct: ensurePercent(grapes.watermark.wPct || "60%"),
+//               hPct: ensurePercent(grapes.watermark.hPct || "60%"),
+//               opacity: grapes.watermark.opacity ?? 0.12,
+//             };
+//           }
+//         } catch (e) {}
+//       }
+//       setWatermarkProps(wp);
+//     } catch (err) {
+//       console.error("TEMPLATE FETCH ERROR:", err);
+//     }
+//   };
+
+//   fetchSelectedTemplate();
+// }, [orgId, BACKEND_URL]);
+useEffect(() => {
+  const fetchSelectedTemplate = async () => {
+    if (!orgId) return;
+
+    try {
+      const prefsRes = await axios.get(`${BACKEND_URL}/api/salary-preferences`, {
+        headers: getHeaders(),
+        withCredentials: true,
+      });
+
+      const selectedId = prefsRes.data?.data?.[0]?.selected_template_id;
+      if (!selectedId) return;
+
+      const templatesRes = await axios.get(`${BACKEND_URL}/api/orgs/${orgId}/templates`, {
+        headers: getHeaders(),
+        withCredentials: true,
+      });
+
+      const templates = templatesRes.data || [];
+      const selectedTemplate = templates.find((t) => t.id === selectedId);
+      if (!selectedTemplate) return;
+
+      setTemplateHtml(selectedTemplate.html || "");
+      setTemplateCss(selectedTemplate.css || "");
+
+      // Extract images properly
+      let headerSrc = null;
+      let footerSrc = null;
+      let wmSrc = null;
+      let wp = { ...watermarkProps };
+
+      const grapes = selectedTemplate.grapes_json || selectedTemplate.grapesJson;
+      if (grapes) {
+        headerSrc = grapes.headerUrl || grapes.header_url;
+        footerSrc = grapes.footerUrl || grapes.footer_url;
+
+        if (grapes.watermark?.url) {
+          wmSrc = grapes.watermark.url;
+          wp = {
+            xPct: ensurePercent(grapes.watermark.xPct || "50%"),
+            yPct: ensurePercent(grapes.watermark.yPct || "50%"),
+            wPct: ensurePercent(grapes.watermark.wPct || "60%"),
+            hPct: ensurePercent(grapes.watermark.hPct || "60%"),
+            opacity: grapes.watermark.opacity ?? 0.12,
+          };
         }
-
-        let headerSrc = null;
-        let footerSrc = null;
-        let wmUrl = null;
-        let wp = { ...watermarkProps };
-
-        if (grapes) {
-          headerSrc = grapes.headerUrl || grapes.header_url;
-          footerSrc = grapes.footerUrl || grapes.footer_url;
-          if (grapes.watermark?.url) {
-            wmUrl = grapes.watermark.url;
-            wp = {
-              xPct: ensurePercent(grapes.watermark.xPct || "50%"),
-              yPct: ensurePercent(grapes.watermark.yPct || "50%"),
-              wPct: ensurePercent(grapes.watermark.wPct || "60%"),
-              hPct: ensurePercent(grapes.watermark.hPct || "60%"),
-              opacity: grapes.watermark.opacity ?? 0.12,
-            };
-          }
-        }
-
-        let metaObj = null;
-        if (selectedTemplate.meta) {
-          try {
-            metaObj = typeof selectedTemplate.meta === "string" ? JSON.parse(selectedTemplate.meta) : selectedTemplate.meta;
-          } catch {}
-        }
-        if (metaObj?.uploads) {
-          headerSrc = metaObj.uploads.header || headerSrc;
-          footerSrc = metaObj.uploads.footer || footerSrc;
-          wmUrl = metaObj.uploads.watermark || wmUrl;
-        }
-
-        if (!headerSrc && selectedTemplate.thumbnail_url) {
-          headerSrc = `/api/orgs/${orgId}/uploads/${selectedTemplate.thumbnail_url}`;
-        }
-
-        if (headerSrc) {
-          const dataUrl = await fetchProtectedImageDataUrl(headerSrc);
-          if (dataUrl) setHeaderImgSrc(dataUrl);
-        }
-        if (footerSrc) {
-          const dataUrl = await fetchProtectedImageDataUrl(footerSrc);
-          if (dataUrl) setFooterImgSrc(dataUrl);
-        }
-        if (wmUrl) {
-          const dataUrl = await fetchProtectedImageDataUrl(wmUrl);
-          if (dataUrl) {
-            setWatermarkImgSrc(dataUrl);
-            setWatermarkProps(wp);
-          }
-        }
-      } catch (err) {
-        console.error("TEMPLATE FETCH ERROR:", err);
       }
-    };
 
-    fetchSelectedTemplate();
-  }, [orgId, BACKEND_URL]);
+      // Fallback from meta.uploads
+      const meta = selectedTemplate.meta ? 
+        (typeof selectedTemplate.meta === "string" ? JSON.parse(selectedTemplate.meta) : selectedTemplate.meta) : null;
 
+      if (meta?.uploads) {
+        headerSrc = meta.uploads.header || headerSrc;
+        footerSrc = meta.uploads.footer || footerSrc;
+        wmSrc = meta.uploads.watermark || wmSrc;
+      }
+
+      // Set full authenticated URLs
+      if (headerSrc) setHeaderImgSrc(getFullImageUrl(headerSrc));
+      if (footerSrc) setFooterImgSrc(getFullImageUrl(footerSrc));
+      if (wmSrc) {
+        setWatermarkImgSrc(getFullImageUrl(wmSrc));
+        setWatermarkProps(wp);
+      }
+
+    } catch (err) {
+      console.error("TEMPLATE FETCH ERROR:", err);
+    }
+  };
+
+  fetchSelectedTemplate();
+}, [orgId, BACKEND_URL]);
   // ────────────────────────────────────────────────
   // Number to words (Indian style)
   // ────────────────────────────────────────────────
@@ -677,84 +736,47 @@ const buildProcessedTemplate = (tableHtml) => {
   const doc = parser.parseFromString(baseHtml, "text/html");
 
   let pageContainer = doc.querySelector(".template-page") || doc.body;
-
-  // Make sure container can hold watermark properly
   pageContainer.style.position = "relative";
   pageContainer.style.minHeight = "297mm";
   pageContainer.style.width = "210mm";
   pageContainer.style.margin = "0 auto";
   pageContainer.style.boxSizing = "border-box";
- pageContainer.style.overflow = "visible";
 
   let bodyDiv = doc.querySelector(".template-body") || pageContainer;
   bodyDiv.innerHTML = tableHtml;
   bodyDiv.style.padding = "20px 40px";
 
-  // Header
-  if (headerImgSrc) {
-    const headerDiv = doc.createElement("div");
-    headerDiv.className = "template-header";
-    headerDiv.style.textAlign = "center";
-    headerDiv.style.marginBottom = "20px";
-    const img = doc.createElement("img");
-    img.src = headerImgSrc;
-    img.style.maxWidth = "100%";
-    headerDiv.appendChild(img);
-    pageContainer.insertBefore(headerDiv, bodyDiv);
+  // Fix all image sources with full authenticated URLs
+  const images = doc.querySelectorAll("img");
+  images.forEach(img => {
+    if (img.src && img.src.includes("/uploads/")) {
+      img.src = getFullImageUrl(img.getAttribute("src"));
+    }
+  });
+
+  // Watermark (if available)
+  if (watermarkImgSrc) {
+    const wmWrapper = doc.createElement("div");
+    wmWrapper.className = "pdf-watermark";
+    wmWrapper.style.position = "absolute";
+    wmWrapper.style.top = watermarkProps.yPct;
+    wmWrapper.style.left = watermarkProps.xPct;
+    wmWrapper.style.width = watermarkProps.wPct;
+    wmWrapper.style.height = watermarkProps.hPct;
+    wmWrapper.style.transform = "translate(-50%, -50%)";
+    wmWrapper.style.opacity = String(watermarkProps.opacity);
+    wmWrapper.style.zIndex = "0";
+    wmWrapper.style.pointerEvents = "none";
+
+    const wmImg = doc.createElement("img");
+    wmImg.src = watermarkImgSrc;
+    wmImg.style.width = "100%";
+    wmImg.style.height = "100%";
+    wmImg.style.objectFit = "contain";
+    wmWrapper.appendChild(wmImg);
+
+    pageContainer.insertBefore(wmWrapper, pageContainer.firstChild);
   }
-
-  // Footer
-  if (footerImgSrc) {
-    const footerDiv = doc.createElement("div");
-    footerDiv.className = "template-footer";
-    footerDiv.style.textAlign = "center";
-    footerDiv.style.marginTop = "20px";
-    const img = doc.createElement("img");
-    img.src = footerImgSrc;
-    img.style.maxWidth = "100%";
-    footerDiv.appendChild(img);
-    pageContainer.appendChild(footerDiv);
-  }
-
- // ==================== WATERMARK - PROPERLY USING TEMPLATE PROPS ====================
-if (watermarkImgSrc) {
-  // Remove any existing watermark
-  doc.querySelectorAll(".pdf-watermark").forEach(el => el.remove());
-
-  const wmWrapper = doc.createElement("div");
-  wmWrapper.className = "pdf-watermark";
-
-  // Use actual props from template (fallback to sensible defaults)
-  const wp = watermarkProps || {
-    xPct: "50%",
-    yPct: "50%",
-    wPct: "60%",
-    hPct: "60%",
-    opacity: 0.3
-  };
-
-  wmWrapper.style.position = "absolute";
-  wmWrapper.style.top = wp.yPct;
-  wmWrapper.style.left = wp.xPct;
-  wmWrapper.style.width = wp.wPct;
-  wmWrapper.style.height = wp.hPct;
-  wmWrapper.style.transform = "translate(-50%, -50%)";
-  wmWrapper.style.opacity = String(wp.opacity);        // Fixed
-  wmWrapper.style.zIndex = "0";
-  wmWrapper.style.pointerEvents = "none";
-  wmWrapper.style.overflow = "visible";                // Changed from hidden
-
-  const img = doc.createElement("img");
-  img.src = watermarkImgSrc;
-  img.style.width = "100%";
-  img.style.height = "100%";
-  img.style.objectFit = "contain";
-  img.style.opacity = "1"; // Image itself stays full opacity
-  wmWrapper.appendChild(img);
-
-  // Insert as first child so it stays behind content
-  pageContainer.insertBefore(wmWrapper, pageContainer.firstChild);
-}
 
   return doc.documentElement.outerHTML;
 };
@@ -1380,12 +1402,11 @@ const handleDownloadForEmployee = async (employee) => {
     setIsLoading(false);
   }
 };
-  useEffect(() => {
-    return () => {
-      if (pdfUrl) URL.revokeObjectURL(pdfUrl);
-      protectedImgCache.clear();
-    };
-  }, [pdfUrl]);
+useEffect(() => {
+  return () => {
+    if (pdfUrl) URL.revokeObjectURL(pdfUrl);
+  };
+}, [pdfUrl]);
 
   // ────────────────────────────────────────────────
   // Render

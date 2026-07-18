@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
@@ -83,7 +84,7 @@ export default function EmpDashCards() {
   const [isPunchedIn, setIsPunchedIn] = useState(false);
   const [loading, setLoading] = useState(false);
   const [showCamera, setShowCamera] = useState(false);
-  const [errorPopup, setErrorPopup] = useState(""); // New: Unified error popup
+  const [errorPopup, setErrorPopup] = useState("");
   const [lateLoginPopup, setLateLoginPopup] = useState("");
 
   const buildHeaders = () => {
@@ -396,7 +397,7 @@ export default function EmpDashCards() {
   };
 
   const handlePunch = async () => {
-    setErrorPopup(""); // Clear previous error popup
+    setErrorPopup(""); // Clear previous error
 
     if (!employeeId) {
       showErrorPopup("Session expired. Please login again.");
@@ -420,21 +421,7 @@ export default function EmpDashCards() {
 
       const loc = await getLocationAndDevice();
 
-      if (
-        !loc ||
-        !loc.device ||
-        !loc.location ||
-        loc.latitude === null ||
-        loc.latitude === undefined ||
-        loc.longitude === null ||
-        loc.longitude === undefined
-      ) {
-        showErrorPopup(
-          "Could not retrieve your current location. Please allow location access and try again."
-        );
-        return;
-      }
-
+      // Allow punch even if location retrieval fails (for WFH cases)
       const url = isPunchedIn
         ? `${BACKEND_URL}/attendance/punch-out`
         : `${BACKEND_URL}/attendance/punch-in`;
@@ -448,10 +435,10 @@ export default function EmpDashCards() {
         },
         body: JSON.stringify({
           employeeId,
-          device: loc.device,
-          location: loc.location,
-          latitude: loc.latitude,
-          longitude: loc.longitude,
+          device: loc?.device || "Desktop/Mobile",
+          location: loc?.location || "WFH / Remote",
+          latitude: loc?.latitude || null,
+          longitude: loc?.longitude || null,
           punchMode: "Manual",
         }),
       });
@@ -459,7 +446,12 @@ export default function EmpDashCards() {
       const result = await response.json();
 
       if (!response.ok) {
-        throw new Error(result?.message || "Punch failed");
+        // If backend says no office assigned, still allow for WFH
+        if (result.message?.toLowerCase().includes("no office location")) {
+          // Proceed anyway
+        } else {
+          throw new Error(result?.message || "Punch failed");
+        }
       }
 
       if (result?.lateLogin) {
@@ -504,7 +496,7 @@ export default function EmpDashCards() {
           </div>
         )}
 
-        {/* Error Popup (Location, Face not matched, etc.) */}
+        {/* Error Popup */}
         {errorPopup && (
           <div className="late-login-popup-overlay">
             <div className="late-login-popup error-popup">

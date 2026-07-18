@@ -486,6 +486,8 @@ export default function ReportPanel() {
     if (!comp || comp === "select") return null;
     if (comp === "tasks_supervisor") return "tasks/supervisor";
     if (comp === "tasks_employee") return "tasks/employee";
+    if (comp === "attendance_regularisation")
+      return "attendance-regularisation";
     return comp;
   };
 
@@ -813,7 +815,9 @@ export default function ReportPanel() {
     { value: "employees", label: "Employees" },
     ...(isTeamRole ? [] : [{ value: "vendors", label: "Vendors" }]),
     ...(isTeamRole ? [] : [{ value: "assets", label: "Assets" }]),
+    ...(isTeamRole ? [] : [{ value: "recruitment", label: "Recruitment" }]),
     { value: "attendance", label: "Attendance" },
+    { value: "attendance_regularisation", label: "Attendance Regularisation" },
     { value: "tasks_employee", label: "Tasks (Employee Driven)" },
     { value: "tasks_supervisor", label: "Tasks (Supervisor Driven)" },
   ];
@@ -827,7 +831,7 @@ export default function ReportPanel() {
             <h2>Reports</h2>
             <p className="rp-sub">
               Export Leaves, Reimbursements, Employees, Vendors, Assets,
-              Attendance, Tasks — Excel and PDF
+              Recruitment, Attendance, Tasks — Excel and PDF
             </p>
           </div>
         </div>

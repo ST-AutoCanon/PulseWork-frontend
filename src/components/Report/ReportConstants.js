@@ -15,6 +15,7 @@ export const STATUS_OPTIONS = {
   employees: ["All", "Active", "Inactive"],
   assets: ["All", "Assigned", "Unassigned", "Returned", "Decommissioned"],
   attendance: ["All", "Punch In", "Punch Out"],
+  attendance_regularisation: ["All", "Pending", "Approved", "Rejected"],
   tasks_supervisor: [
     "All",
     "Completed",
@@ -23,6 +24,18 @@ export const STATUS_OPTIONS = {
     "on hold",
   ],
   tasks_employee: ["All", "Completed", "Not started", "Working"],
+  recruitment: [
+    "All",
+    "Applied",
+    "Shortlisted",
+    "Manager Round",
+    "Offer Released",
+    "Offer Acceptance",
+    "Onboarding",
+    "Joined",
+    "Rejected",
+    "Pending",
+  ],
 };
 
 export const SUB_OPTIONS = {
@@ -115,6 +128,28 @@ export const SUB_OPTIONS = {
     { key: "created_at", label: "Created At" },
   ],
 
+  recruitment: [
+    { key: "id", label: "Candidate ID" },
+    { key: "name", label: "Name" },
+    { key: "email", label: "Email" },
+    { key: "phone", label: "Phone" },
+    { key: "applied_position", label: "Applied Position" },
+    { key: "department", label: "Department" },
+    { key: "skills", label: "Skills" },
+    { key: "current_ctc", label: "Current CTC" },
+    { key: "expected_ctc", label: "Expected CTC" },
+    { key: "notice_period", label: "Notice Period" },
+    { key: "total_experience", label: "Total Experience" },
+    { key: "source", label: "Source" },
+    { key: "status", label: "Status" },
+    { key: "resume_url", label: "Resume URL" },
+    { key: "offer_ctc", label: "Offer CTC" },
+    { key: "offer_letter_url", label: "Offer Letter URL" },
+    { key: "joining_date", label: "Joining Date" },
+    { key: "created_at", label: "Created At" },
+    { key: "updated_at", label: "Updated At" },
+  ],
+
   vendors: [
     { key: "vendor_id", label: "Vendor ID" },
     { key: "company_name", label: "Company" },
@@ -165,6 +200,25 @@ export const SUB_OPTIONS = {
     { key: "total_login_hours", label: "Total Login Hours" },
     { key: "punchmode", label: "Punch Mode" },
     { key: "created_at", label: "Created At" },
+  ],
+
+  attendance_regularisation: [
+    { key: "id", label: "Request ID" },
+    { key: "org_id", label: "Org ID" },
+    { key: "employee_id", label: "Employee ID" },
+    { key: "employee_name", label: "Employee Name" },
+    { key: "department_id", label: "Department ID" },
+    { key: "department_name", label: "Department" },
+    { key: "regularisation_type", label: "Regularisation Type" },
+    { key: "selected_dates", label: "Selected Dates" },
+    { key: "primary_date", label: "Primary Date" },
+    { key: "comment", label: "Comment" },
+    { key: "status", label: "Status" },
+    { key: "approver_name", label: "Approver Name" },
+    { key: "approver_employee_id", label: "Approver Employee ID" },
+    { key: "approver_comments", label: "Approver Comments" },
+    { key: "created_at", label: "Created At" },
+    { key: "updated_at", label: "Updated At" },
   ],
 
   tasks_supervisor: [

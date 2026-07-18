@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import axios from "axios";
 import {
   MdOutlineCalendarToday,
@@ -421,7 +421,7 @@ export default function EmployeeDetails() {
   const { user } = useAuth();
   const meId = user?.employeeId ?? user?.id ?? null;
   const orgId = user?.orgId ?? user?.raw?.org_id ?? null;
-
+  const folderInput = useRef(null);
   const [employees, setEmployees] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [fromDate, setFromDate] = useState(null);
@@ -872,6 +872,62 @@ export default function EmployeeDetails() {
     URL.revokeObjectURL(url);
   };
 
+  const handleInsuranceFolder = async (e) => {
+    const files = Array.from(e.target.files || []);
+
+    if (!files.length) return;
+
+    const formData = new FormData();
+
+    files.forEach((file) => {
+      if (file.name.toLowerCase().endsWith(".pdf")) {
+        formData.append("files", file);
+      }
+    });
+
+    try {
+      const headers = {
+        "x-api-key": API_KEY,
+      };
+
+      if (meId) headers["x-employee-id"] = meId;
+      if (orgId) headers["x-org-id"] = orgId;
+
+      const res = await axios.post(
+        `${BASE_URL}/admin/employees/upload-insurance-folder`,
+        formData,
+        {
+          withCredentials: true,
+          headers,
+          responseType: "blob", // we'll return the Excel report
+        },
+      );
+
+      const blob = new Blob([res.data], {
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      });
+      const url = window.URL.createObjectURL(blob);
+
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `Insurance_Upload_Report.xlsx`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+
+      setTimeout(() => {
+        window.URL.revokeObjectURL(url);
+      }, 1000);
+
+      showAlert("Insurance upload completed.");
+    } catch (err) {
+      console.error(err);
+      showAlert("Insurance upload failed.");
+    }
+
+    e.target.value = "";
+  };
+
   return (
     <div className="employee-details-container">
       <h2>Employee Details</h2>
@@ -1232,8 +1288,23 @@ export default function EmployeeDetails() {
           </table>
         </div>
       )}
-
+      <input
+        ref={folderInput}
+        type="file"
+        multiple
+        webkitdirectory=""
+        hidden
+        accept=".pdf"
+        onChange={handleInsuranceFolder}
+      />
       <div className="employee-table-footer">
+        <button
+          type="button"
+          className="export-employee-button"
+          onClick={() => folderInput.current.click()}
+        >
+          Upload Insurance Folder
+        </button>
         <button
           type="button"
           className="export-employee-button"

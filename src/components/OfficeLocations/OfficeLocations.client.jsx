@@ -1,6 +1,5 @@
 
 
-
 "use client";
 
 import React, { useState, useEffect } from "react";
@@ -35,8 +34,11 @@ const OfficeLocations = () => {
   const [alertModal, setAlertModal] = useState({
     isVisible: false,
     message: "",
-    type: "success", // success | error
+    type: "success",
   });
+
+  // Form Error State
+  const [formError, setFormError] = useState("");
 
   const { user } = useAuth();
   const orgId = user?.orgId;
@@ -86,6 +88,7 @@ const OfficeLocations = () => {
       status: "Active",
     });
     setEditingOfficeId(null);
+    setFormError("");
   };
 
   const resetEmployeesModal = () => {
@@ -102,6 +105,7 @@ const OfficeLocations = () => {
       ...prev,
       [name]: value,
     }));
+    if (formError) setFormError("");
   };
 
   const fetchOfficeLocations = async () => {
@@ -155,13 +159,15 @@ const OfficeLocations = () => {
   }, [orgId]);
 
   const handleSave = async () => {
+    setFormError("");
+
     if (
       !formData.officeName?.trim() ||
       !formData.address?.trim() ||
       !formData.latitude ||
       !formData.longitude
     ) {
-      showAlert("Please fill Office Name, Address, Latitude and Longitude.", "error");
+      setFormError("Please fill Office Name, Address, Latitude and Longitude.");
       return;
     }
 
@@ -257,6 +263,7 @@ const OfficeLocations = () => {
       radius: location.radius || 100,
       status: location.status || "Active",
     });
+    setFormError("");
     setShowModal(true);
   };
 
@@ -398,9 +405,10 @@ const OfficeLocations = () => {
 
     try {
       setEmployeeLoading(true);
-      const endpoint = `${API_BASE}/api/office-location-employees/${selectedOffice.id}/assign-employees`;
 
-      let response = await fetch(endpoint, {
+      const endpoint = `${API_BASE}/api/office-location-employees/${selectedOffice.id}/sync-employees`;
+
+      const response = await fetch(endpoint, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -410,60 +418,28 @@ const OfficeLocations = () => {
         body: JSON.stringify({
           orgId,
           employeeIds: selectedEmployeeIds,
-          forceAssign: false,
         }),
       });
 
-      let result;
-      const rawText = await response.text();
+      const result = await response.json();
 
-      try {
-        result = JSON.parse(rawText);
-      } catch {
-        throw new Error("Invalid server response");
+      if (!response.ok) {
+        throw new Error(result.message || "Failed to update employees");
       }
-
-      if (response.status === 409 && result.requiresConfirmation) {
-        const confirmAssign = window.confirm(
-          "Some employees are assigned to other offices. Do you want to assign them here also?"
-        );
-        if (!confirmAssign) {
-          setEmployeeLoading(false);
-          return;
-        }
-
-        response = await fetch(endpoint, {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-            ...(API_KEY ? { "x-api-key": API_KEY } : {}),
-          },
-          credentials: "include",
-          body: JSON.stringify({
-            orgId,
-            employeeIds: selectedEmployeeIds,
-            forceAssign: true,
-          }),
-        });
-
-        result = await response.json();
-      }
-
-      if (!response.ok) throw new Error(result.message || "Failed to assign");
 
       setLocations((prev) =>
         prev.map((loc) =>
           loc.id === selectedOffice.id
-            ? { ...loc, employees: result.count ?? selectedEmployeeIds.length }
+            ? { ...loc, employees: selectedEmployeeIds.length }
             : loc
         )
       );
 
-      showAlert(result.message || "Employees assigned successfully");
+      showAlert(result.message || "Employees assignment updated successfully");
       resetEmployeesModal();
     } catch (error) {
       console.error(error);
-      showAlert(error.message || "Failed to assign employees", "error");
+      showAlert(error.message || "Failed to update employees assignment", "error");
     } finally {
       setEmployeeLoading(false);
     }
@@ -578,6 +554,38 @@ const OfficeLocations = () => {
             </div>
 
             <div className="office_loc-office-modal-body">
+              {formError && (
+                <div style={{
+                  background: "#fee2e2",
+                  color: "#dc2626",
+                  padding: "12px 16px",
+                  borderRadius: "8px",
+                  marginBottom: "20px",
+                  fontSize: "14px",
+                  border: "1px solid #fca5a5"
+                }}>
+                  {formError}
+                </div>
+              )}
+
+              {/* Instructions for Latitude & Longitude */}
+              <div style={{
+                background: "#e0f2fe",
+                padding: "12px 16px",
+                borderRadius: "8px",
+                marginBottom: "20px",
+                fontSize: "14px",
+                borderLeft: "4px solid #0ea5e9"
+              }}>
+                <strong>How to get Latitude &amp; Longitude:</strong><br />
+                1. Go to <a href="https://www.google.com/maps" target="_blank" rel="noopener noreferrer" style={{ color: "#0369a1" }}>
+                  Google Maps
+                </a><br />
+                2. Search or click on the exact location<br />
+                3. Right-click on the map → Click <strong>"What's here?"</strong><br />
+                4. Copy the coordinates shown at the bottom
+              </div>
+
               <div className="office_loc-office-form-group">
                 <label>Office Name</label>
                 <input
@@ -607,7 +615,7 @@ const OfficeLocations = () => {
                     type="number"
                     step="0.000001"
                     name="latitude"
-                    placeholder="Enter latitude"
+                    placeholder="e.g. 28.6139"
                     value={formData.latitude}
                     onChange={handleChange}
                   />
@@ -618,7 +626,7 @@ const OfficeLocations = () => {
                     type="number"
                     step="0.000001"
                     name="longitude"
-                    placeholder="Enter longitude"
+                    placeholder="e.g. 77.2090"
                     value={formData.longitude}
                     onChange={handleChange}
                   />

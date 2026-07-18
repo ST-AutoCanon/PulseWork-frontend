@@ -335,11 +335,23 @@
 }
 
 .office_loc-office-form-group input,
-.office_loc-office-form-group select {
+.office_loc-office-form-group select,
+.office_loc-office-form-group textarea {
   width: 100%;
-  padding: 10px;
+  padding: 12px 14px;
   border: 1px solid #d1d5db;
   border-radius: 8px;
+  font-size: 14px;
+  box-sizing: border-box;   /* Important */
+  outline: none;
+  transition: all 0.2s ease;
+}
+
+.office_loc-office-form-group input:focus,
+.office_loc-office-form-group select:focus,
+.office_loc-office-form-group textarea:focus {
+  border-color: #79c42b;
+  box-shadow: 0 0 0 3px rgba(121, 196, 43, 0.15);
 }
 
 .office_loc-office-row {

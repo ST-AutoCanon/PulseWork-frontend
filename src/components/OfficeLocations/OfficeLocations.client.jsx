@@ -52,7 +52,6 @@ const OfficeLocations = () => {
     latitude: "",
     longitude: "",
     radius: 100,
-    status: "Active",
   });
 
   const showAlert = (message, type = "success") => {
@@ -85,7 +84,6 @@ const OfficeLocations = () => {
       latitude: "",
       longitude: "",
       radius: 100,
-      status: "Active",
     });
     setEditingOfficeId(null);
     setFormError("");
@@ -138,7 +136,6 @@ const OfficeLocations = () => {
         address: item.address || "",
         radius: Number(item.radius) || 0,
         employees: Number(item.employees) || 0,
-        status: item.status || "Active",
         latitude: item.latitude ? parseFloat(item.latitude) : "",
         longitude: item.longitude ? parseFloat(item.longitude) : "",
       }));
@@ -158,101 +155,205 @@ const OfficeLocations = () => {
     }
   }, [orgId]);
 
+  // const handleSave = async () => {
+  //   setFormError("");
+
+  //   if (
+  //     !formData.officeName?.trim() ||
+  //     !formData.address?.trim() ||
+  //     !formData.latitude ||
+  //     !formData.longitude
+  //   ) {
+  //     setFormError("Please fill Office Name, Address, Latitude and Longitude.");
+  //     return;
+  //   }
+
+  //   if (!orgId) {
+  //     showAlert("Organization ID not found", "error");
+  //     return;
+  //   }
+
+  //   if (!API_BASE) {
+  //     showAlert("NEXT_PUBLIC_BACKEND_URL is missing in frontend .env", "error");
+  //     return;
+  //   }
+
+  //   try {
+  //     setLoading(true);
+
+  //     const payload = {
+  //       orgId,
+  //       officeName: formData.officeName.trim(),
+  //       address: formData.address.trim(),
+  //       latitude: Number(formData.latitude),
+  //       longitude: Number(formData.longitude),
+  //       radius: Number(formData.radius),
+  //     };
+
+  //     const isEdit = !!editingOfficeId;
+
+  //     const url = isEdit
+  //       ? `${API_BASE}/api/office-locations/update/${editingOfficeId}`
+  //       : `${API_BASE}/api/office-locations/create`;
+
+  //     const method = isEdit ? "PUT" : "POST";
+
+  //     const response = await fetch(url, {
+  //       method,
+  //       headers: {
+  //         "Content-Type": "application/json",
+  //         ...(API_KEY ? { "x-api-key": API_KEY } : {}),
+  //       },
+  //       credentials: "include",
+  //       body: JSON.stringify(payload),
+  //     });
+
+  //     const result = await response.json();
+
+  //     if (!response.ok) {
+  //       throw new Error(
+  //         result.message ||
+  //           (isEdit ? "Failed to update office location" : "Failed to create office location")
+  //       );
+  //     }
+
+  //     const savedOffice = {
+  //       id: result.data?.id || editingOfficeId,
+  //       office: result.data?.office_name || result.data?.office || payload.officeName,
+  //       address: result.data?.address || payload.address,
+  //       radius: Number(result.data?.radius ?? payload.radius),
+  //       employees: isEdit
+  //         ? locations.find((loc) => loc.id === editingOfficeId)?.employees || 0
+  //         : Number(result.data?.employees) || 0,
+  //       latitude: parseFloat(result.data?.latitude ?? payload.latitude),
+  //       longitude: parseFloat(result.data?.longitude ?? payload.longitude),
+  //     };
+
+  //     if (isEdit) {
+  //       setLocations((prev) =>
+  //         prev.map((item) => (item.id === editingOfficeId ? savedOffice : item))
+  //       );
+  //     } else {
+  //       setLocations((prev) => [savedOffice, ...prev]);
+  //     }
+
+  //     setShowModal(false);
+  //     resetForm();
+  //     showAlert(isEdit ? "Office location updated successfully" : "Office location created successfully");
+  //   } catch (error) {
+  //     console.error("Save office location error:", error);
+  //     showAlert(error.message || (editingOfficeId ? "Failed to update" : "Failed to create"), "error");
+  //   } finally {
+  //     setLoading(false);
+  //   }
+  // };
+
+
   const handleSave = async () => {
-    setFormError("");
+  setFormError("");
 
-    if (
-      !formData.officeName?.trim() ||
-      !formData.address?.trim() ||
-      !formData.latitude ||
-      !formData.longitude
-    ) {
-      setFormError("Please fill Office Name, Address, Latitude and Longitude.");
-      return;
+  const errors = [];
+
+  if (!formData.officeName?.trim()) {
+    errors.push("Office Name is required");
+  }
+  if (!formData.address?.trim()) {
+    errors.push("Office Address is required");
+  }
+  if (!formData.latitude || isNaN(formData.latitude)) {
+    errors.push("Valid Latitude is required");
+  }
+  if (!formData.longitude || isNaN(formData.longitude)) {
+    errors.push("Valid Longitude is required");
+  }
+  if (!formData.radius || isNaN(formData.radius) || Number(formData.radius) <= 0) {
+    errors.push("Radius must be a valid positive number");
+  }
+
+  if (errors.length > 0) {
+    setFormError(errors.join(" • "));
+    return;
+  }
+
+  if (!orgId) {
+    showAlert("Organization ID not found", "error");
+    return;
+  }
+
+  if (!API_BASE) {
+    showAlert("NEXT_PUBLIC_BACKEND_URL is missing in frontend .env", "error");
+    return;
+  }
+
+  try {
+    setLoading(true);
+
+    const payload = {
+      orgId,
+      officeName: formData.officeName.trim(),
+      address: formData.address.trim(),
+      latitude: Number(formData.latitude),
+      longitude: Number(formData.longitude),
+      radius: Number(formData.radius),
+    };
+
+    const isEdit = !!editingOfficeId;
+
+    const url = isEdit
+      ? `${API_BASE}/api/office-locations/update/${editingOfficeId}`
+      : `${API_BASE}/api/office-locations/create`;
+
+    const method = isEdit ? "PUT" : "POST";
+
+    const response = await fetch(url, {
+      method,
+      headers: {
+        "Content-Type": "application/json",
+        ...(API_KEY ? { "x-api-key": API_KEY } : {}),
+      },
+      credentials: "include",
+      body: JSON.stringify(payload),
+    });
+
+    const result = await response.json();
+
+    if (!response.ok) {
+      throw new Error(
+        result.message ||
+          (isEdit ? "Failed to update office location" : "Failed to create office location")
+      );
     }
 
-    if (!orgId) {
-      showAlert("Organization ID not found", "error");
-      return;
+    const savedOffice = {
+      id: result.data?.id || editingOfficeId,
+      office: result.data?.office_name || result.data?.office || payload.officeName,
+      address: result.data?.address || payload.address,
+      radius: Number(result.data?.radius ?? payload.radius),
+      employees: isEdit
+        ? locations.find((loc) => loc.id === editingOfficeId)?.employees || 0
+        : Number(result.data?.employees) || 0,
+      latitude: parseFloat(result.data?.latitude ?? payload.latitude),
+      longitude: parseFloat(result.data?.longitude ?? payload.longitude),
+    };
+
+    if (isEdit) {
+      setLocations((prev) =>
+        prev.map((item) => (item.id === editingOfficeId ? savedOffice : item))
+      );
+    } else {
+      setLocations((prev) => [savedOffice, ...prev]);
     }
 
-    if (!API_BASE) {
-      showAlert("NEXT_PUBLIC_BACKEND_URL is missing in frontend .env", "error");
-      return;
-    }
-
-    try {
-      setLoading(true);
-
-      const payload = {
-        orgId,
-        officeName: formData.officeName.trim(),
-        address: formData.address.trim(),
-        latitude: Number(formData.latitude),
-        longitude: Number(formData.longitude),
-        radius: Number(formData.radius),
-        status: formData.status,
-      };
-
-      const isEdit = !!editingOfficeId;
-
-      const url = isEdit
-        ? `${API_BASE}/api/office-locations/update/${editingOfficeId}`
-        : `${API_BASE}/api/office-locations/create`;
-
-      const method = isEdit ? "PUT" : "POST";
-
-      const response = await fetch(url, {
-        method,
-        headers: {
-          "Content-Type": "application/json",
-          ...(API_KEY ? { "x-api-key": API_KEY } : {}),
-        },
-        credentials: "include",
-        body: JSON.stringify(payload),
-      });
-
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(
-          result.message ||
-            (isEdit ? "Failed to update office location" : "Failed to create office location")
-        );
-      }
-
-      const savedOffice = {
-        id: result.data?.id || editingOfficeId,
-        office: result.data?.office_name || result.data?.office || payload.officeName,
-        address: result.data?.address || payload.address,
-        radius: Number(result.data?.radius ?? payload.radius),
-        employees: isEdit
-          ? locations.find((loc) => loc.id === editingOfficeId)?.employees || 0
-          : Number(result.data?.employees) || 0,
-        status: result.data?.status || payload.status,
-        latitude: parseFloat(result.data?.latitude ?? payload.latitude),
-        longitude: parseFloat(result.data?.longitude ?? payload.longitude),
-      };
-
-      if (isEdit) {
-        setLocations((prev) =>
-          prev.map((item) => (item.id === editingOfficeId ? savedOffice : item))
-        );
-      } else {
-        setLocations((prev) => [savedOffice, ...prev]);
-      }
-
-      setShowModal(false);
-      resetForm();
-      showAlert(isEdit ? "Office location updated successfully" : "Office location created successfully");
-    } catch (error) {
-      console.error("Save office location error:", error);
-      showAlert(error.message || (editingOfficeId ? "Failed to update" : "Failed to create"), "error");
-    } finally {
-      setLoading(false);
-    }
-  };
-
+    setShowModal(false);
+    resetForm();
+    showAlert(isEdit ? "Office location updated successfully" : "Office location created successfully");
+  } catch (error) {
+    console.error("Save office location error:", error);
+    showAlert(error.message || (editingOfficeId ? "Failed to update" : "Failed to create"), "error");
+  } finally {
+    setLoading(false);
+  }
+};
   const handleEdit = (location) => {
     setEditingOfficeId(location.id);
     setFormData({
@@ -261,7 +362,6 @@ const OfficeLocations = () => {
       latitude: location.latitude ? String(location.latitude) : "",
       longitude: location.longitude ? String(location.longitude) : "",
       radius: location.radius || 100,
-      status: location.status || "Active",
     });
     setFormError("");
     setShowModal(true);
@@ -310,7 +410,7 @@ const OfficeLocations = () => {
     }
   };
 
-  // Employee Assignment Logic
+  // Employee Assignment Logic (unchanged)
   const fetchAllEmployees = async () => {
     const response = await fetch(
       `${API_BASE}/api/office-location-employees/employees?orgId=${orgId}`,
@@ -505,18 +605,6 @@ const OfficeLocations = () => {
                 <span>Employees</span>
                 <strong>{location.employees}</strong>
               </div>
-              <div className="office_loc-detail-box">
-                <span>Status</span>
-                <label
-                  className={
-                    location.status === "Active"
-                      ? "office_loc-status office_loc-active"
-                      : "office_loc-status office_loc-inactive"
-                  }
-                >
-                  {location.status}
-                </label>
-              </div>
             </div>
 
             <div className="office_loc-office-actions">
@@ -535,151 +623,159 @@ const OfficeLocations = () => {
       </div>
 
       {/* CREATE / EDIT MODAL */}
-      {showModal && (
-        <div className="office_loc-office-modal-overlay">
-          <div className="office_loc-office-modal">
-            <div className="office_loc-office-modal-header">
-              <h2>
-                {editingOfficeId ? "Edit Office Location" : "Create Office Location"}
-              </h2>
-              <button
-                className="office_loc-close-btn"
-                onClick={() => {
-                  setShowModal(false);
-                  resetForm();
-                }}
-              >
-                ✕
-              </button>
-            </div>
+     {/* CREATE / EDIT MODAL */}
+{/* CREATE / EDIT MODAL */}
+{showModal && (
+  <div className="office_loc-office-modal-overlay">
+    <div className="office_loc-office-modal" style={{ width: "650px", maxWidth: "92%", maxHeight: "85vh" }}>
+      <div className="office_loc-office-modal-header">
+        <h2>
+          {editingOfficeId ? "Edit Office Location" : "Create Office Location"}
+        </h2>
+        <button
+          className="office_loc-close-btn"
+          onClick={() => {
+            setShowModal(false);
+            resetForm();
+          }}
+        >
+          ✕
+        </button>
+      </div>
 
-            <div className="office_loc-office-modal-body">
-              {formError && (
-                <div style={{
-                  background: "#fee2e2",
-                  color: "#dc2626",
-                  padding: "12px 16px",
-                  borderRadius: "8px",
-                  marginBottom: "20px",
-                  fontSize: "14px",
-                  border: "1px solid #fca5a5"
-                }}>
-                  {formError}
-                </div>
-              )}
+      <div className="office_loc-office-modal-body">
+        {/* Error Message */}
+        {formError && (
+          <div
+            style={{
+              background: "#fee2e2",
+              color: "#dc2626",
+              padding: "11px 14px",
+              borderRadius: "8px",
+              marginBottom: "16px",
+              fontSize: "13.8px",
+              border: "1px solid #fca5a5",
+            }}
+          >
+            ⚠️ {formError}
+          </div>
+        )}
 
-              {/* Instructions for Latitude & Longitude */}
-              <div style={{
-                background: "#e0f2fe",
-                padding: "12px 16px",
-                borderRadius: "8px",
-                marginBottom: "20px",
-                fontSize: "14px",
-                borderLeft: "4px solid #0ea5e9"
-              }}>
-                <strong>How to get Latitude &amp; Longitude:</strong><br />
-                1. Go to <a href="https://www.google.com/maps" target="_blank" rel="noopener noreferrer" style={{ color: "#0369a1" }}>
-                  Google Maps
-                </a><br />
-                2. Search or click on the exact location<br />
-                3. Right-click on the map → Click <strong>"What's here?"</strong><br />
-                4. Copy the coordinates shown at the bottom
-              </div>
+        {/* Google Maps Link */}
+        <div style={{
+          background: "#f0f9ff",
+          padding: "12px 14px",
+          borderRadius: "8px",
+          marginBottom: "20px",
+          borderLeft: "4px solid #0ea5e9"
+        }}>
+          <strong>Get Coordinates:</strong><br />
+          <a 
+            href="https://www.google.com/maps" 
+            target="_blank" 
+            rel="noopener noreferrer"
+            style={{
+              color: "#1e40af",
+              textDecoration: "none",
+              fontWeight: "600",
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "6px",
+              marginTop: "6px"
+            }}
+          >
+            🗺️ Open Google Maps
+          </a>
+          <span style={{ fontSize: "13px", color: "#555", display: "block", marginTop: "4px" }}>
+            Right-click on location → Click "What's here?" to copy Latitude, Longitude
+          </span>
+        </div>
 
-              <div className="office_loc-office-form-group">
-                <label>Office Name</label>
-                <input
-                  type="text"
-                  name="officeName"
-                  placeholder="Enter office name"
-                  value={formData.officeName}
-                  onChange={handleChange}
-                />
-              </div>
+        <div className="office_loc-office-form-row">
+          <div className="office_loc-office-form-group">
+            <label>Office Name <span style={{color: "red"}}>*</span></label>
+            <input
+              type="text"
+              name="officeName"
+              placeholder="Enter office name"
+              value={formData.officeName}
+              onChange={handleChange}
+            />
+          </div>
 
-              <div className="office_loc-office-form-group">
-                <label>Office Address</label>
-                <input
-                  type="text"
-                  name="address"
-                  placeholder="Enter full address"
-                  value={formData.address}
-                  onChange={handleChange}
-                />
-              </div>
-
-              <div className="office_loc-office-row">
-                <div className="office_loc-office-form-group">
-                  <label>Latitude</label>
-                  <input
-                    type="number"
-                    step="0.000001"
-                    name="latitude"
-                    placeholder="e.g. 28.6139"
-                    value={formData.latitude}
-                    onChange={handleChange}
-                  />
-                </div>
-                <div className="office_loc-office-form-group">
-                  <label>Longitude</label>
-                  <input
-                    type="number"
-                    step="0.000001"
-                    name="longitude"
-                    placeholder="e.g. 77.2090"
-                    value={formData.longitude}
-                    onChange={handleChange}
-                  />
-                </div>
-              </div>
-
-              <div className="office_loc-office-row">
-                <div className="office_loc-office-form-group">
-                  <label>Radius (Meters)</label>
-                  <input
-                    type="number"
-                    name="radius"
-                    value={formData.radius}
-                    onChange={handleChange}
-                  />
-                </div>
-
-                <div className="office_loc-office-form-group">
-                  <label>Status</label>
-                  <select
-                    name="status"
-                    value={formData.status}
-                    onChange={handleChange}
-                  >
-                    <option value="Active">Active</option>
-                    <option value="Inactive">Inactive</option>
-                  </select>
-                </div>
-              </div>
-            </div>
-
-            <div className="office_loc-office-modal-footer">
-              <button
-                className="office_loc-cancel-btn"
-                onClick={() => {
-                  setShowModal(false);
-                  resetForm();
-                }}
-              >
-                Cancel
-              </button>
-              <button className="office_loc-save-btn" onClick={handleSave}>
-                {editingOfficeId ? "Update Location" : "Save Location"}
-              </button>
-            </div>
+          <div className="office_loc-office-form-group">
+            <label>Radius (Meters) <span style={{color: "red"}}>*</span></label>
+            <input
+              type="number"
+              name="radius"
+              value={formData.radius}
+              onChange={handleChange}
+              min="1"
+            />
           </div>
         </div>
-      )}
 
-      {/* EMPLOYEE ASSIGNMENT MODAL */}
+        <div className="office_loc-office-form-row">
+          <div className="office_loc-office-form-group">
+            <label>Office Address <span style={{color: "red"}}>*</span></label>
+            <input
+              type="text"
+              name="address"
+              placeholder="Enter full address"
+              value={formData.address}
+              onChange={handleChange}
+            />
+          </div>
+        </div>
+
+        <div className="office_loc-office-form-row">
+          <div className="office_loc-office-form-group">
+            <label>Latitude <span style={{color: "red"}}>*</span></label>
+            <input
+              type="number"
+              step="0.000001"
+              name="latitude"
+              placeholder="e.g. 28.6139"
+              value={formData.latitude}
+              onChange={handleChange}
+            />
+          </div>
+          <div className="office_loc-office-form-group">
+            <label>Longitude <span style={{color: "red"}}>*</span></label>
+            <input
+              type="number"
+              step="0.000001"
+              name="longitude"
+              placeholder="e.g. 77.2090"
+              value={formData.longitude}
+              onChange={handleChange}
+            />
+          </div>
+        </div>
+      </div>
+
+      <div className="office_loc-office-modal-footer">
+        <button
+          className="office_loc-cancel-btn"
+          onClick={() => {
+            setShowModal(false);
+            resetForm();
+          }}
+        >
+          Cancel
+        </button>
+        <button className="office_loc-save-btn" onClick={handleSave}>
+          {editingOfficeId ? "Update Location" : "Save Location"}
+        </button>
+      </div>
+    </div>
+  </div>
+)}
+
+      {/* EMPLOYEE ASSIGNMENT MODAL - unchanged */}
       {showEmployeesModal && (
         <div className="office_loc-office-modal-overlay">
-          <div className="office_loc-office-modal" style={{ maxWidth: "850px", width: "95%" }}>
+          <div className="office_loc-office-modal office_loc-employee-modal">
             <div className="office_loc-office-modal-header">
               <div>
                 <h2>Assign Employees</h2>
@@ -708,7 +804,7 @@ const OfficeLocations = () => {
               ) : filteredEmployees.length === 0 ? (
                 <div style={{ padding: "20px 0", color: "#666" }}>No employees found.</div>
               ) : (
-                <div style={{ maxHeight: "420px", overflowY: "auto", border: "1px solid #e5e7eb", borderRadius: "10px" }}>
+                <div className="office_loc-employee-list">
                   {filteredEmployees.map((employee) => {
                     const checked = selectedEmployeeIds.includes(String(employee.employee_id));
                     return (

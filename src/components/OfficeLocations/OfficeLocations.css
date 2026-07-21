@@ -295,7 +295,23 @@
   overflow: hidden;
   animation: office_loc-popup .3s ease;
 }
+.office_loc-office-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
 
+.office_loc-office-modal {
+  z-index: 1001;
+  position: relative;
+}
 @keyframes office_loc-popup {
   from { transform: scale(.8); opacity: 0; }
   to { transform: scale(1); opacity: 1; }
@@ -319,13 +335,57 @@
   cursor: pointer;
   font-size: 22px;
 }
-
 .office_loc-office-modal-body {
-  padding: 25px;
+  padding: 18px;
+  flex: 1;
+  overflow-y: auto;
 }
-
 .office_loc-office-form-group {
   margin-bottom: 20px;
+}
+.office_loc-office-modal-body {
+  padding: 20px 24px 10px;
+  overflow-y: auto;
+  max-height: calc(85vh - 140px); /* Keeps modal height controlled */
+}
+
+.office_loc-office-form-row {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.office_loc-office-form-row .office_loc-office-form-group {
+  flex: 1;
+}
+
+.office_loc-office-form-group label {
+  display: block;
+  margin-bottom: 6px;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.office_loc-office-form-group input {
+  padding: 10px 12px;
+  font-size: 14px;
+}
+
+.office_loc-office-modal-footer {
+  padding: 16px 24px;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .office_loc-office-modal {
+    width: 95%;
+    max-height: 90vh;
+  }
+  
+  .office_loc-office-form-row {
+    flex-direction: column;
+    gap: 14px;
+  }
 }
 
 .office_loc-office-form-group label {
@@ -370,7 +430,50 @@
   padding: 20px;
   border-top: 1px solid #e5e7eb;
 }
+.office_loc-employee-modal {
+  width: 90%;
+  max-width: 750px;
+  max-height: 70vh;
+  display: flex;
+  flex-direction: column;
+}
 
+.office_loc-employee-list {
+  max-height: 280px;
+  overflow-y: auto;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+}
+.office_loc-employee-modal {
+  width: 750px;
+  max-width: 90%;
+  max-height: 70vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.office_loc-employee-modal .office_loc-office-modal-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px;
+}
+
+.office_loc-employee-list {
+  max-height: 250px;
+  overflow-y: auto;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+}
+
+.office_loc-employee-modal .office_loc-office-modal-footer {
+  flex-shrink: 0;
+  display: flex;
+  justify-content: flex-end;
+  gap: 15px;
+  padding: 15px 20px;
+  border-top: 1px solid #e5e7eb;
+  background: #fff;
+}
 .office_loc-cancel-btn {
   padding: 10px 20px;
   border: none;

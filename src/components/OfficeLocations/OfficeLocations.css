@@ -321,7 +321,7 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 18px 25px;
+  padding: 16px 20px;
   border-bottom: 1px solid #e5e7eb;
 }
 
@@ -352,7 +352,6 @@
 .office_loc-office-form-row {
   display: flex;
   gap: 16px;
-  margin-bottom: 16px;
 }
 
 .office_loc-office-form-row .office_loc-office-form-group {
@@ -427,8 +426,44 @@
   display: flex;
   justify-content: flex-end;
   gap: 15px;
-  padding: 20px;
+  margin-top: 10px;
+  
+}
+/* Compact Modal Improvements */
+.office_loc-office-modal {
+  max-height: 78vh !important;
+}
+
+.office_loc-office-modal-body {
+  padding: 20px 24px 16px !important;
+  gap: 14px;
+}
+
+.office_loc-office-form-row {
+  display: flex;
+  gap: 14px;
+  margin-bottom: 12px;
+}
+
+.office_loc-office-form-group {
+  margin-bottom: 12px !important;
+}
+
+.office_loc-office-form-group label {
+  margin-bottom: 5px;
+  font-size: 14px;
+}
+
+.office_loc-office-form-group input {
+  padding: 10px 12px;
+  font-size: 14.5px;
+}
+
+/* Footer */
+.office_loc-office-modal-footer {
+  padding: 16px 24px;
   border-top: 1px solid #e5e7eb;
+  margin-top: auto;
 }
 .office_loc-employee-modal {
   width: 90%;

@@ -1,10 +1,14 @@
 "use client";
 
 import React from "react";
+import { useAuth } from "../../../context/AuthProvider.client";
 
 const ACCOUNT_TYPES = ["Savings", "Current", "Salary", "Other"];
 
 export default function StepBankDetails({ data, onChange }) {
+  const { user } = useAuth();
+
+  const canEditBankDetails = ["HR", "Admin"].includes(user?.role);
   return (
     <div className="step-bank">
       <label>
@@ -14,6 +18,7 @@ export default function StepBankDetails({ data, onChange }) {
           name="bank_name"
           value={data.bank_name || ""}
           onChange={(e) => onChange("bank_name", e.target.value)}
+          disabled={!canEditBankDetails}
           required
         />
       </label>
@@ -25,6 +30,7 @@ export default function StepBankDetails({ data, onChange }) {
           name="account_number"
           value={data.account_number || ""}
           onChange={(e) => onChange("account_number", e.target.value)}
+          disabled={!canEditBankDetails}
           required
         />
       </label>
@@ -36,6 +42,7 @@ export default function StepBankDetails({ data, onChange }) {
           name="ifsc_code"
           value={data.ifsc_code || ""}
           onChange={(e) => onChange("ifsc_code", e.target.value)}
+          disabled={!canEditBankDetails}
           required
         />
       </label>
@@ -47,6 +54,7 @@ export default function StepBankDetails({ data, onChange }) {
           name="branch_name"
           value={data.branch_name || ""}
           onChange={(e) => onChange("branch_name", e.target.value)}
+          disabled={!canEditBankDetails}
           required
         />
       </label>

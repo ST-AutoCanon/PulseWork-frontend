@@ -79,8 +79,12 @@ const SalaryDetails = () => {
     // ====================== CONSISTENT GROSS/NET LOGIC (Same as DetailsTab) ======================
    // ====================== FINAL GROSS/NET LOGIC (Consistent with Preview) ======================
     // ====================== FINAL GROSS/NET LOGIC (Consistent with Preview & DetailsTab) ======================
+     // ====================== FINAL GROSS/NET LOGIC (Consistent with Preview & DetailsTab) ======================
  const calculateLocalGrossNet = (salaryDetails, planData, lopDeduction = 0, advanceRecovery = 0) => {
   if (!salaryDetails) return { localGross: 0, localNet: 0 };
+
+  // FIX: Prevent crash when planData is null or undefined
+  const safePlanData = planData || {};
 
   // === ALL Earnings (matches DetailsTab) ===
   const earningsSum = [
@@ -97,13 +101,13 @@ const SalaryDetails = () => {
   // Fixed deductions from plan
   let employeeDeductions = 0;
 
-  if (planData.pfEmployeeIncludeInCtc !== false)
+  if (safePlanData.pfEmployeeIncludeInCtc !== false)
     employeeDeductions += parseFloat(salaryDetails.employeePF || 0);
-  if (planData.esicEmployeeIncludeInCtc !== false)
+  if (safePlanData.esicEmployeeIncludeInCtc !== false)
     employeeDeductions += parseFloat(salaryDetails.esic || 0);
-  if (planData.professionalTaxIncludeInCtc !== false)
+  if (safePlanData.professionalTaxIncludeInCtc !== false)
     employeeDeductions += parseFloat(salaryDetails.professionalTax || 0);
-  if (planData.insuranceEmployeeIncludeInCtc !== false)
+  if (safePlanData.insuranceEmployeeIncludeInCtc !== false)
     employeeDeductions += parseFloat(salaryDetails.insurance || 0);
 
   // Variable deductions

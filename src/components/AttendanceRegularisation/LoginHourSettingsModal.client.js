@@ -120,7 +120,6 @@ function parseActionRoles(value) {
         supervisor: parsed.includes("supervisor"),
       };
     }
-
     if (parsed && typeof parsed === "object") {
       return {
         hr: Boolean(parsed.hr),
@@ -128,10 +127,7 @@ function parseActionRoles(value) {
         supervisor: Boolean(parsed.supervisor),
       };
     }
-  } catch {
-    // fallback below
-  }
-
+  } catch {}
   return { ...DEFAULT_ACTION_ROLES };
 }
 
@@ -163,7 +159,6 @@ export default function LoginHourSettingsModal({ isOpen, onClose }) {
     user?.raw?.orgId ??
     user?.raw?.org_id ??
     null;
-
   const employeeId =
     user?.employeeId ??
     user?.employee_id ??
@@ -182,27 +177,15 @@ export default function LoginHourSettingsModal({ isOpen, onClose }) {
   );
 
   const closeAlert = (closeParent = false) => {
-    setAlertModal({
-      isVisible: false,
-      title: "",
-      message: "",
-      type: "info",
-    });
-
-    if (closeParent) {
-      onClose?.();
-    }
+    setAlertModal({ isVisible: false, title: "", message: "", type: "info" });
+    if (closeParent) onClose?.();
   };
 
   const showAlert = (message, title = "Alert", type = "info") => {
-    setAlertModal({
-      isVisible: true,
-      title,
-      message,
-      type,
-    });
+    setAlertModal({ isVisible: true, title, message, type });
   };
 
+  // Fetch current config
   useEffect(() => {
     if (!isOpen || !BACKEND_URL || !orgId) return;
 
@@ -210,7 +193,6 @@ export default function LoginHourSettingsModal({ isOpen, onClose }) {
 
     const fetchConfig = async () => {
       setIsFetching(true);
-
       try {
         const response = await axios.get(
           `${BACKEND_URL}/attendance/login-hours-config`,
@@ -224,23 +206,37 @@ export default function LoginHourSettingsModal({ isOpen, onClose }) {
 
         if (!cancelled) {
           setValues({
-            punchInStart: normalizeTime(config.punch_in_start),
-            punchOutStart: normalizeTime(config.punch_out_start),
-            bufferMinutes: String(config.buffer_minutes ?? 10),
+            punchInStart: normalizeTime(
+              config.punch_in_start || config.punchInStart,
+            ),
+            punchOutStart: normalizeTime(
+              config.punch_out_start || config.punchOutStart,
+            ),
+            bufferMinutes: String(
+              config.buffer_minutes ?? config.bufferMinutes ?? 10,
+            ),
             lateLoginEnabled: String(config.late_login_enabled ?? "1") !== "0",
-            lateStreakDays: String(config.late_streak_days ?? 3),
-            autoMarkLate: String(config.auto_mark_late ?? "1") !== "0",
-            escalationMode: String(config.escalation_mode ?? "mail_notify"),
+            lateStreakDays: String(
+              config.late_streak_days ?? config.lateStreakDays ?? 3,
+            ),
+            autoMarkLate:
+              String(config.auto_mark_late ?? config.autoMarkLate ?? "1") !==
+              "0",
+            escalationMode: String(
+              config.escalation_mode ?? config.escalationMode ?? "mail_notify",
+            ),
           });
 
-          setActionRoles(parseActionRoles(config.action_roles));
+          setActionRoles(
+            parseActionRoles(config.action_roles || config.late_action_roles),
+          );
         }
       } catch (err) {
-        console.error("Fetch punch login hours failed:", err);
+        console.error("Failed to load attendance settings:", err);
         if (!cancelled) {
           setValues(DEFAULT_VALUES);
           setActionRoles({ ...DEFAULT_ACTION_ROLES });
-          showAlert("Unable to load attendance settings.", "Error", "error");
+          showAlert("Unable to load current settings.", "Error", "error");
         }
       } finally {
         if (!cancelled) setIsFetching(false);
@@ -248,27 +244,12 @@ export default function LoginHourSettingsModal({ isOpen, onClose }) {
     };
 
     fetchConfig();
-
     return () => {
       cancelled = true;
     };
   }, [isOpen, BACKEND_URL, headers, orgId]);
 
   const handleChange = (field, value) => {
-    if (typeof value === "boolean") {
-      setValues((prev) => ({ ...prev, [field]: value }));
-      return;
-    }
-
-    if (typeof value !== "string") return;
-
-    if (["bufferMinutes", "lateStreakDays"].includes(field)) {
-      if (/^[0-9]*$/.test(value)) {
-        setValues((prev) => ({ ...prev, [field]: value }));
-      }
-      return;
-    }
-
     setValues((prev) => ({ ...prev, [field]: value }));
   };
 
@@ -277,42 +258,26 @@ export default function LoginHourSettingsModal({ isOpen, onClose }) {
     const { punchInStart, punchOutStart, bufferMinutes, lateStreakDays } =
       values;
 
-    if (punchInStart && !isValidTime(punchInStart)) {
+    if (punchInStart && !isValidTime(punchInStart))
       errors.push("Punch-in start must be HH:mm.");
-    }
-
-    if (punchOutStart && !isValidTime(punchOutStart)) {
+    if (punchOutStart && !isValidTime(punchOutStart))
       errors.push("Punch-out start must be HH:mm.");
+
+    if (Number(bufferMinutes) < 0 || Number(bufferMinutes) > 120) {
+      errors.push("Buffer time must be between 0 and 120 minutes.");
     }
-
-    const numberFields = [
-      [bufferMinutes, 0, 120, "Buffer time"],
-      [lateStreakDays, 1, 30, "Late streak days"],
-    ];
-
-    for (const [value, min, max, label] of numberFields) {
-      if (value !== "" && (Number(value) < min || Number(value) > max)) {
-        errors.push(`${label} must be between ${min} and ${max}.`);
-      }
+    if (Number(lateStreakDays) < 1 || Number(lateStreakDays) > 30) {
+      errors.push("Late streak days must be between 1 and 30.");
     }
 
     const selectedRoles = Object.values(actionRoles).some(Boolean);
-    if (!selectedRoles) {
-      errors.push("Select at least one role who can take action.");
-    }
+    if (!selectedRoles)
+      errors.push("Select at least one role for escalation actions.");
 
-    if (!values.escalationMode) {
-      errors.push("Select an escalation method.");
-    }
+    if (!values.escalationMode) errors.push("Select an escalation method.");
 
     return errors;
   };
-
-  const saveLoginHoursConfig = async (configData) =>
-    axios.post(`${BACKEND_URL}/attendance/login-hours-config`, configData, {
-      withCredentials: true,
-      headers,
-    });
 
   const handleSave = async () => {
     if (isSaving) return;
@@ -323,15 +288,6 @@ export default function LoginHourSettingsModal({ isOpen, onClose }) {
       return;
     }
 
-    if (!BACKEND_URL || !orgId) {
-      showAlert(
-        "Unable to save settings. Missing backend or organization.",
-        "Error",
-        "error",
-      );
-      return;
-    }
-
     setIsSaving(true);
 
     try {
@@ -339,28 +295,26 @@ export default function LoginHourSettingsModal({ isOpen, onClose }) {
         .filter(([, checked]) => checked)
         .map(([role]) => role);
 
-      await saveLoginHoursConfig({
-        punch_in_start: values.punchInStart || "",
-        punch_out_start: values.punchOutStart || "",
-        buffer_minutes: values.bufferMinutes || "10",
-        late_login_enabled: values.lateLoginEnabled ? "1" : "0",
-        late_streak_days: values.lateStreakDays || "3",
-        auto_mark_late: values.autoMarkLate ? "1" : "0",
-        escalation_mode: values.escalationMode || "mail_notify",
-        late_action_roles: JSON.stringify(selectedActionRoles),
-      });
-
-      showAlert(
-        "Attendance settings saved successfully.",
-        "Success",
-        "success",
+      await axios.post(
+        `${BACKEND_URL}/attendance/login-hours-config`,
+        {
+          punch_in_start: values.punchInStart || "",
+          punch_out_start: values.punchOutStart || "",
+          buffer_minutes: values.bufferMinutes || "10",
+          late_login_enabled: values.lateLoginEnabled ? 1 : 0,
+          late_streak_days: values.lateStreakDays || "3",
+          auto_mark_late: values.autoMarkLate ? 1 : 0,
+          escalation_mode: values.escalationMode || "mail_notify",
+          action_roles: selectedActionRoles, // or late_action_roles depending on backend
+        },
+        { withCredentials: true, headers },
       );
+
+      showAlert("Settings saved successfully!", "Success", "success");
     } catch (err) {
-      console.error("Save punch login hours failed:", err);
+      console.error("Save failed:", err);
       showAlert(
-        err.response?.data?.message ||
-          err.message ||
-          "Failed to save attendance settings.",
+        err.response?.data?.message || "Failed to save settings.",
         "Error",
         "error",
       );
@@ -369,32 +323,25 @@ export default function LoginHourSettingsModal({ isOpen, onClose }) {
     }
   };
 
+  // Live Preview
   const latePreview = useMemo(() => {
     const start = values.punchInStart || "--:--";
     const buffer = values.bufferMinutes || "10";
     const streak = values.lateStreakDays || "3";
     const autoLate = values.autoMarkLate ? "enabled" : "disabled";
-    const selectedRoles = Object.entries(actionRoles)
-      .filter(([, checked]) => checked)
-      .map(([role]) => role.toUpperCase())
-      .join(", ");
+    const selectedRoles =
+      Object.entries(actionRoles)
+        .filter(([, checked]) => checked)
+        .map(([role]) => role.toUpperCase())
+        .join(", ") || "None";
 
     const modeText =
       values.escalationMode === "mail_notify"
-        ? "Send email and notification"
-        : values.escalationMode === "attendance_regularisation"
-          ? "Mark late in attendance regularisation"
-          : "Escalation alert only";
+        ? "Email + Notification"
+        : "Attendance Regularisation";
 
-    return `Punch-in starts at ${start} with ${buffer} min buffer. Late login is ${autoLate}. Late streak is ${streak} day(s). Escalation mode: ${modeText}. Action roles: ${selectedRoles || "None"}.`;
-  }, [
-    values.punchInStart,
-    values.bufferMinutes,
-    values.lateStreakDays,
-    values.autoMarkLate,
-    values.escalationMode,
-    actionRoles,
-  ]);
+    return `Punch-in starts at ${start} (+${buffer} min buffer). Late login auto-mark: ${autoLate}. Escalation after ${streak} consecutive late days. Action roles: ${selectedRoles}. Mode: ${modeText}.`;
+  }, [values, actionRoles]);
 
   if (!isOpen) return null;
 
@@ -403,7 +350,7 @@ export default function LoginHourSettingsModal({ isOpen, onClose }) {
       <div className="attendance-modal-overlay" onClick={onClose}>
         <div
           className="w-full max-w-md rounded-3xl border border-white/20 bg-white p-8 text-center shadow-2xl"
-          onClick={(event) => event.stopPropagation()}
+          onClick={(e) => e.stopPropagation()}
         >
           <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-rose-50 text-rose-600">
             <ShieldAlert className="h-7 w-7" />

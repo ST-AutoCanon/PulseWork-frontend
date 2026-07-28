@@ -396,6 +396,16 @@ export default function ReportPanel() {
       setFilterDepartmentId(null);
     }
 
+    if (component === "recruitment") {
+      setFilterEmployeeId(null);
+      setFilterEmployeeName("");
+      setFilterDepartmentId(null);
+    }
+    if (component !== "vendors" && component !== "recruitment") {
+      setFilterEmployeeId(null);
+      setFilterEmployeeName("");
+    }
+
     setAvailableFields(subsFiltered);
     setSelectedFields(subsFiltered.map((s) => s.key));
     setPreviewOpen(false);
@@ -564,10 +574,8 @@ export default function ReportPanel() {
     }
 
     // Always include employee-friendly and id values where applicable (employees component)
-    if (component !== "vendors") {
-      // employee id (exact) if available
+    if (component !== "vendors" && component !== "recruitment") {
       if (filterEmployeeId) params.append("employee_id", filterEmployeeId);
-      // employee friendly name (helps server build human-readable meta when id wasn't selected)
       if (filterEmployeeName) params.append("employee", filterEmployeeName);
 
       if (isTeamRole) {
@@ -965,7 +973,7 @@ export default function ReportPanel() {
             </div>
           </div>
 
-          {component !== "vendors" ? (
+          {component !== "vendors" && component !== "recruitment" ? (
             <div className="rp-date-field rp-typeahead-field">
               <label className="rp-label">Employee Name</label>
               <EmployeeTypeahead
@@ -995,7 +1003,9 @@ export default function ReportPanel() {
             />
           )}
 
-          {!isTeamRole && component !== "vendors" ? (
+          {!isTeamRole &&
+          component !== "vendors" &&
+          component !== "recruitment" ? (
             <div className="rp-date-field rp-typeahead-field">
               <label className="rp-label">Department</label>
               <div>

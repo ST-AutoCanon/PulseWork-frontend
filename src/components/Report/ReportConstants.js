@@ -27,7 +27,6 @@ export const STATUS_OPTIONS = {
   recruitment: [
     "All",
     "Applied",
-    "Shortlisted",
     "Screening",
     "Technical Round",
     "HR Round",
@@ -37,7 +36,6 @@ export const STATUS_OPTIONS = {
     "Onboarding",
     "Joined",
     "Rejected",
-    "Pending",
   ],
 };
 

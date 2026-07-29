@@ -84,10 +84,10 @@ const Sidebar = ({ setActiveContent }) => {
           icon: "MdOutlineEventAvailable",
         },
         {
-    label: "Office Locations",
-    path: "/OfficeLocations",
-    icon: "MdLocationOn",
-  },
+          label: "Office Locations",
+          path: "/OfficeLocations",
+          icon: "MdLocationOn",
+        },
       ],
       Manager: [
         { label: "Dashboard", path: "/dashboard", icon: "MdOutlineDashboard" },
@@ -155,7 +155,7 @@ const Sidebar = ({ setActiveContent }) => {
       "/OvertimeSummary": () => <OvertimeSupervisor />,
       "/report": () => <Report />,
       "/ExitFlow": () => <ExitFlow />,
-          "/OfficeLocations": () => <OfficeLocations />,
+      "/OfficeLocations": () => <OfficeLocations />,
 
       "/TaskManagement": (role, sub) => {
         if (sub === "admin" && role === "Admin") return <TaskManagementAdmin />;
@@ -187,7 +187,18 @@ const Sidebar = ({ setActiveContent }) => {
         if (resolver) {
           const role = user?.role ?? "Employee";
           // resolver may accept (role, sub) — when navigating via event we don't have sub
-          const content = resolver.length > 0 ? resolver(role) : resolver();
+          const employeeInitialData = e?.detail?.employeeInitialData;
+          const content =
+            path === "/employeeDetails" && employeeInitialData ? (
+              <EmployeeDetails
+                employeeInitialData={employeeInitialData}
+                openAddForm
+              />
+            ) : resolver.length > 0 ? (
+              resolver(role)
+            ) : (
+              resolver()
+            );
           setActiveItem(path);
           setActiveNav(path);
           setActiveContent(content);

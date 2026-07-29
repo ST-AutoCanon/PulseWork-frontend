@@ -417,7 +417,10 @@ function buildEmployeeExcelRow(emp) {
   };
 }
 
-export default function EmployeeDetails() {
+export default function EmployeeDetails({
+  employeeInitialData = null,
+  openAddForm = false,
+}) {
   const { user } = useAuth();
   const meId = user?.employeeId ?? user?.id ?? null;
   const orgId = user?.orgId ?? user?.raw?.org_id ?? null;
@@ -428,7 +431,7 @@ export default function EmployeeDetails() {
   const [toDate, setToDate] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
-  const [departments, setDepartments] = useState([]);
+  const [departments, setDepartments] = useState(null);
   const [modalVisible, setModalVisible] = useState(false);
   const [popupVisible, setPopupVisible] = useState(false);
   const [popupTitle, setPopupTitle] = useState("");
@@ -451,6 +454,29 @@ export default function EmployeeDetails() {
   const BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
 
   useEffect(() => {
+    if (!openAddForm || !employeeInitialData || !departments) return;
+
+    const departmentName = String(
+      employeeInitialData.candidate_department || "",
+    )
+      .trim()
+      .toLowerCase();
+    const matchingDepartment = departments.find(
+      (department) =>
+        String(department.name || "")
+          .trim()
+          .toLowerCase() === departmentName,
+    );
+
+    setSelectedEmployee({
+      ...employeeInitialData,
+      department_id:
+        employeeInitialData.department_id || matchingDepartment?.id || "",
+    });
+    setFormMode("add");
+  }, [departments, employeeInitialData, openAddForm]);
+
+  useEffect(() => {
     const loadDepartments = async () => {
       try {
         const headers = { "x-api-key": API_KEY };
@@ -467,6 +493,7 @@ export default function EmployeeDetails() {
         setDepartments(res.data.departments || []);
       } catch (err) {
         console.error("Failed to load departments:", err);
+        setDepartments([]);
       }
     };
 
@@ -1025,14 +1052,14 @@ export default function EmployeeDetails() {
             </div>
             {formMode && (
               <EmployeeForm
-                initialData={formMode === "edit" ? selectedEmployee : {}}
+                initialData={selectedEmployee || {}}
                 onSubmit={
                   formMode === "edit"
                     ? (fd) => handleUpdate(selectedEmployee.employee_id, fd)
                     : handleAdd
                 }
                 onCancel={closeForm}
-                departments={departments}
+                departments={departments || []}
               />
             )}
           </div>

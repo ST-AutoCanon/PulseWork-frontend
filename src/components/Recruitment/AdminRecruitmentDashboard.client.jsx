@@ -76,6 +76,26 @@ function canOpenAssessment(candidate) {
   );
 }
 
+function candidateToEmployeeInitialData(candidate) {
+  const nameParts = String(candidate?.name || "")
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+
+  return {
+    first_name: nameParts[0] || "",
+    middle_name: nameParts.length > 2 ? nameParts.slice(1, -1).join(" ") : "",
+    last_name: nameParts.length > 1 ? nameParts[nameParts.length - 1] : "",
+    email: candidate?.email || "",
+    phone_number: candidate?.phone || "",
+    position: candidate?.applied_position || "",
+    salary: candidate?.expected_ctc || candidate?.current_ctc || "",
+    total_experience_text: candidate?.total_experience || "0",
+    resume_url: candidate?.resume_url || "",
+    candidate_department: candidate?.department || "",
+  };
+}
+
 const OFFER_STATUS_EMAIL_STAGES = [
   "Offer Acceptance",
   "Offer Released",
@@ -338,22 +358,18 @@ export default function AdminRecruitmentDashboard() {
     openConfirmModal({
       title: "Convert Candidate",
       message: `Convert ${candidate.name} to an employee?`,
-      onConfirm: async () => {
-        try {
-          await axios.post(
-            `${BASE_URL}/recruitment/${candidate.id}/convert-to-employee`,
-            {},
-            {
-              headers,
-              withCredentials: true,
+      onConfirm: () => {
+        closeConfirmModal();
+        setCandidateDetailsOpen(false);
+        setSelectedCandidate(null);
+        window.dispatchEvent(
+          new CustomEvent("app:navigate", {
+            detail: {
+              path: "/employeeDetails",
+              employeeInitialData: candidateToEmployeeInitialData(candidate),
             },
-          );
-
-          closeConfirmModal();
-          fetchCandidates();
-        } catch (err) {
-          console.error("convertCandidate error:", err);
-        }
+          }),
+        );
       },
     });
   };
@@ -563,9 +579,7 @@ export default function AdminRecruitmentDashboard() {
             if (next) advanceCandidate(selectedCandidate, next);
           }}
           onReject={() => advanceCandidate(selectedCandidate, "Rejected")}
-          onMoveToOnboarding={() =>
-            advanceCandidate(selectedCandidate, "Onboarding")
-          }
+          onMoveToOnboarding={() => convertCandidate(selectedCandidate)}
           onOpenAssessment={() => openAssessment(selectedCandidate)}
           onDelete={() => deleteCandidate(selectedCandidate)}
           showAdvanceButton

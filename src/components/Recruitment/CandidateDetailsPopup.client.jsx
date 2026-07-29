@@ -4,6 +4,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { MdOutlineCancel, MdOutlineEdit, MdVisibility } from "react-icons/md";
 import "./RecruitmentFlow.css";
 import { useAuth } from "../../context/AuthProvider.client";
+import { FaStar } from "react-icons/fa";
 
 function valueOrDash(value) {
   if (value === null || value === undefined || value === "") return "—";
@@ -50,6 +51,22 @@ function openFileInNewTabWithHeaders(url, headers) {
       window.open(blobUrl, "_blank", "noopener,noreferrer");
       setTimeout(() => URL.revokeObjectURL(blobUrl), 60_000);
     });
+}
+
+function parseAssessmentFeedback(feedback) {
+  if (!feedback) return {};
+
+  if (typeof feedback === "object") {
+    return feedback;
+  }
+
+  try {
+    return JSON.parse(feedback);
+  } catch {
+    return {
+      notes: feedback,
+    };
+  }
 }
 
 export default function CandidateDetailsPopup({
@@ -136,16 +153,20 @@ export default function CandidateDetailsPopup({
     }, {});
   }, [interviewers]);
 
-  const getInterviewerLabel = (interviewerId) => {
-    const rawValue = String(interviewerId || "").trim();
-    if (!rawValue) return "—";
+  const getInterviewers = (interviewerIds) => {
+    if (!interviewerIds) return [];
 
-    const interviewer = interviewerLookup[rawValue];
-    if (interviewer?.name) {
-      return `${interviewer.name} (${rawValue})`;
-    }
+    const ids = Array.isArray(interviewerIds)
+      ? interviewerIds
+      : String(interviewerIds).split(",");
 
-    return rawValue;
+    return ids
+      .map((id) => String(id).trim())
+      .filter(Boolean)
+      .map((id) => ({
+        id,
+        name: interviewerLookup[id]?.name || null,
+      }));
   };
 
   const openResume = async () => {
@@ -237,6 +258,7 @@ export default function CandidateDetailsPopup({
           {assessments.length > 0 ? (
             <div className="rf-assessment-list">
               {assessments.map((a, index) => {
+                const feedback = parseAssessmentFeedback(a.feedback);
                 const tone = getDecisionTone(a.decision);
                 const isLatest = index === 0;
 
@@ -272,7 +294,25 @@ export default function CandidateDetailsPopup({
                       </div>
                       <div>
                         <span className="rf-label">Interviewer</span>
-                        <strong>{getInterviewerLabel(a.interviewer_id)}</strong>
+                        <div className="rf-interviewer-list">
+                          {getInterviewers(a.interviewer_ids).length ? (
+                            getInterviewers(a.interviewer_ids).map((person) => (
+                              <div
+                                key={person.id}
+                                className="rf-interviewer-chip"
+                              >
+                                <span className="rf-interviewer-name">
+                                  {person.name || "Unknown"}
+                                </span>
+                                <span className="rf-interviewer-id">
+                                  ({person.id})
+                                </span>
+                              </div>
+                            ))
+                          ) : (
+                            <strong>—</strong>
+                          )}
+                        </div>
                       </div>
                       <div>
                         <span className="rf-label">Interview Date</span>
@@ -301,8 +341,92 @@ export default function CandidateDetailsPopup({
                     </div>
 
                     <div className="rf-assessment-feedback">
-                      <span className="rf-label">Feedback</span>
-                      <p>{valueOrDash(a.feedback)}</p>
+                      <div className="rf-feedback-header">
+                        <div>
+                          <span className="rf-label">Evaluation Summary</span>
+                          <h4>Interview Feedback</h4>
+                        </div>
+
+                        <div className="rf-feedback-score">
+                          {valueOrDash(a.score)}
+                          <span>/10</span>
+                        </div>
+                      </div>
+
+                      <div className="rf-feedback-section">
+                        <span className="rf-label">Evaluation Criteria</span>
+
+                        <div className="rf-rating-grid">
+                          {Object.entries(feedback.ratings || {}).length ? (
+                            Object.entries(feedback.ratings).map(
+                              ([key, value]) => (
+                                <div key={key} className="rf-rating-card">
+                                  <div className="rf-rating-top">
+                                    <strong>{key}</strong>
+
+                                    <span className="rf-rating-number">
+                                      {value}/5
+                                    </span>
+                                  </div>
+
+                                  <div className="rf-stars">
+                                    {[1, 2, 3, 4, 5].map((star) => (
+                                      <FaStar
+                                        key={star}
+                                        className={
+                                          star <= value
+                                            ? "rf-star active"
+                                            : "rf-star"
+                                        }
+                                      />
+                                    ))}
+                                  </div>
+                                </div>
+                              ),
+                            )
+                          ) : (
+                            <div className="rf-empty-feedback">
+                              No ratings provided
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="rf-feedback-section">
+                        <span className="rf-label">Strengths</span>
+
+                        <div className="rf-feedback-tags success">
+                          {(feedback.strengths || []).length ? (
+                            feedback.strengths.map((item) => (
+                              <span key={item}>✓ {item}</span>
+                            ))
+                          ) : (
+                            <small>No strengths added</small>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="rf-feedback-section">
+                        <span className="rf-label">Areas of Improvement</span>
+
+                        <div className="rf-feedback-tags warning">
+                          {(feedback.improvements || []).length ? (
+                            feedback.improvements.map((item) => (
+                              <span key={item}>! {item}</span>
+                            ))
+                          ) : (
+                            <small>No improvements added</small>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="rf-feedback-section">
+                        <span className="rf-label">Additional Notes</span>
+
+                        <div className="rf-notes-box">
+                          {valueOrDash(feedback.notes)}
+                        </div>
+                      </div>
                     </div>
                   </div>
                 );

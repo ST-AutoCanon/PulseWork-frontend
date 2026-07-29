@@ -865,6 +865,268 @@
   gap: 0.4rem;
 }
 
+.rf-interviewer-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.rf-interviewer-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  width: fit-content;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: #f3f6fb;
+  border: 1px solid #d8e2f0;
+}
+
+.rf-interviewer-name {
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.rf-interviewer-id {
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.rf-stars {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.rf-star {
+  font-size: 20px;
+  cursor: pointer;
+  color: #d5d5d5;
+  transition: 0.2s;
+}
+
+.rf-star:hover {
+  transform: scale(1.15);
+}
+
+.rf-star.active {
+  color: #f6b400;
+}
+
+.rf-rating-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 18px;
+  margin-top: 15px;
+}
+
+.rf-rating-card {
+  padding: 16px;
+  background: #fff;
+  border: 1px solid #ddd;
+  border-radius: 10px;
+}
+
+.rf-section-title {
+  margin: 20px 0 10px;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.rf-chip-selector {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.rf-chip-option {
+  padding: 8px 14px;
+  border: 1px solid #ccc;
+  background: #fff;
+  border-radius: 50px;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.rf-chip-selected {
+  padding: 8px 14px;
+  border-radius: 50px;
+  background: #79c42b;
+  color: #fff;
+  border: 1px solid #79c42b;
+  cursor: pointer;
+}
+
+.rf-score-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 8px;
+  border-radius: 999px;
+  background: #d9d9d9;
+  outline: none;
+  margin: 15px 0;
+  cursor: pointer;
+}
+
+/* Chrome / Edge / Safari */
+.rf-score-slider::-webkit-slider-runnable-track {
+  height: 8px;
+  border-radius: 999px;
+  background: #d9d9d9;
+}
+
+.rf-score-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #79c42b;
+  border: 3px solid #fff;
+  box-shadow: 0 0 4px rgba(0, 0, 0, 0.25);
+  margin-top: -6px;
+  cursor: pointer;
+}
+
+/* Firefox */
+.rf-score-slider::-moz-range-track {
+  height: 8px;
+  border-radius: 999px;
+  background: #d9d9d9;
+}
+
+.rf-score-slider::-moz-range-thumb {
+  width: 20px;
+  height: 20px;
+  border: none;
+  border-radius: 50%;
+  background: #79c42b;
+  cursor: pointer;
+}
+
+.rf-slider-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  color: #666;
+  margin-top: 4px;
+}
+
+.rf-assessment-feedback {
+  margin-top: 1rem;
+  border: 1px solid #e5e7eb;
+  background: #ffffff;
+  border-radius: 14px;
+  padding: 1rem;
+}
+
+.rf-feedback-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 1rem;
+  margin-bottom: 1rem;
+  border-bottom: 1px solid #eee;
+}
+
+.rf-feedback-header h4 {
+  margin: 4px 0 0;
+  font-size: 1.05rem;
+}
+
+.rf-feedback-score {
+  background: #00468c;
+  color: white;
+  padding: 0.5rem 0.9rem;
+  border-radius: 10px;
+  font-size: 1.2rem;
+  font-weight: 700;
+}
+
+.rf-feedback-score span {
+  font-size: 0.8rem;
+  opacity: 0.8;
+}
+
+.rf-feedback-section {
+  margin-top: 1rem;
+}
+
+.rf-rating-card {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 14px;
+  transition: 0.2s;
+}
+
+.rf-rating-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
+}
+
+.rf-rating-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.rf-rating-number {
+  background: #eef6ff;
+  color: #00468c;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.rf-feedback-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 0.6rem;
+}
+
+.rf-feedback-tags span {
+  padding: 8px 14px;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.rf-feedback-tags.success span {
+  background: #ecfdf3;
+  color: #15803d;
+  border: 1px solid #bbf7d0;
+}
+
+.rf-feedback-tags.warning span {
+  background: #fff7ed;
+  color: #c2410c;
+  border: 1px solid #fed7aa;
+}
+
+.rf-notes-box {
+  margin-top: 0.6rem;
+  padding: 1rem;
+  background: #f9fafb;
+  border-left: 4px solid #79c42b;
+  border-radius: 8px;
+  line-height: 1.6;
+  color: #374151;
+  white-space: pre-wrap;
+}
+
+.rf-empty-feedback {
+  padding: 1rem;
+  text-align: center;
+  color: #777;
+  border: 1px dashed #ccc;
+  border-radius: 10px;
+}
+
 @media (max-width: 768px) {
   .rf-candidate-grid {
     grid-template-columns: 1fr;

@@ -5,6 +5,40 @@ import axios from "axios";
 import { MdOutlineCancel } from "react-icons/md";
 import "./RecruitmentFlow.css";
 import { useAuth } from "../../context/AuthProvider.client";
+import Select from "react-select";
+import { FaStar } from "react-icons/fa";
+
+const ASSESSMENT_PARAMETERS = [
+  "Communication",
+  "Technical Knowledge",
+  "Problem Solving",
+  "Coding Skills",
+  "System Design",
+  "Confidence",
+  "Body Language",
+  "Learning Ability",
+  "Culture Fit",
+];
+
+const STRENGTH_OPTIONS = [
+  "Strong Fundamentals",
+  "Excellent Communication",
+  "Quick Learner",
+  "Problem Solving",
+  "Leadership",
+  "Positive Attitude",
+  "Team Player",
+];
+
+const IMPROVEMENT_OPTIONS = [
+  "Needs DSA Practice",
+  "Needs Better Communication",
+  "Needs More Confidence",
+  "System Design",
+  "Time Management",
+  "Coding Speed",
+  "Practical Exposure",
+];
 
 function formatDateTimeForInput(value) {
   if (!value) return "";
@@ -160,17 +194,45 @@ export default function InterviewAssessment({
   }, [assessment, candidate, roundMeta.roundName]);
 
   const [formData, setFormData] = useState({
-    interviewer_id: "",
+    interviewer_ids: [],
     interview_date: "",
     interview_link: "",
     send_interview_email: false,
     email_subject: "",
     email_body: "",
-    score: "",
     decision: "",
+    score: "",
+    ratings: {},
+    strengths: [],
+    improvements: [],
     feedback: "",
-    next_round_date: "",
   });
+
+  const StarRating = ({ value, onChange }) => {
+    return (
+      <div className="rf-stars">
+        {[1, 2, 3, 4, 5].map((star) => (
+          <FaStar
+            key={star}
+            className={star <= value ? "rf-star active" : "rf-star"}
+            onClick={() => onChange(star)}
+          />
+        ))}
+      </div>
+    );
+  };
+
+  const parsedFeedback =
+    latestAssessment?.feedback_json ||
+    (() => {
+      try {
+        return latestAssessment?.feedback
+          ? JSON.parse(latestAssessment.feedback)
+          : {};
+      } catch {
+        return {};
+      }
+    })();
 
   const headers = useMemo(() => {
     const h = { "x-api-key": API_KEY };
@@ -223,52 +285,56 @@ export default function InterviewAssessment({
 
     if (isScheduleMode) {
       setFormData({
-        interviewer_id: latestAssessment?.interviewer_id || "",
+        interviewer_ids: latestAssessment?.interviewer_ids
+          ? String(latestAssessment.interviewer_ids).split(",")
+          : [],
         interview_date: latestAssessment?.interview_date
           ? formatDateTimeForInput(latestAssessment.interview_date)
           : "",
         interview_link: latestAssessment?.interview_link || "",
         send_interview_email: !!latestAssessment?.send_interview_email,
         email_subject: latestAssessment?.email_subject || "",
-        email_body:
-          latestAssessment?.email_body ||
-          buildEmailBody({
-            candidateName: candidate?.name,
-            position: candidate?.applied_position,
-            interviewerName: "",
-            interviewDate: latestAssessment?.interview_date
-              ? formatDateTime(latestAssessment.interview_date)
-              : "",
-            interviewLink: latestAssessment?.interview_link || "",
-            organizationName: organization?.name,
-            organizationEmail:
-              organization?.contact_email_id || organization?.admin_email,
-            organizationAddress: organization?.company_address,
-            roundLabel: roundMeta.label,
-          }),
-        score: "",
-        decision: "",
-        feedback: "",
-        next_round_date: "",
+        email_body: latestAssessment?.email_body || "",
+
+        score: latestAssessment?.score ?? "",
+        decision: latestAssessment?.decision ?? "",
+
+        ratings: parsedFeedback.ratings || {},
+        strengths: parsedFeedback.strengths || [],
+        improvements: parsedFeedback.improvements || [],
+        feedback: parsedFeedback.notes || "",
       });
       return;
     }
 
     setFormData({
-      interviewer_id: latestAssessment?.interviewer_id || "",
+      interviewer_ids: latestAssessment?.interviewer_ids
+        ? String(latestAssessment.interviewer_ids).split(",")
+        : [],
+
       interview_date: latestAssessment?.interview_date
         ? formatDateTimeForInput(latestAssessment.interview_date)
         : "",
+
       interview_link: latestAssessment?.interview_link || "",
+
       send_interview_email: !!latestAssessment?.send_interview_email,
+
       email_subject: latestAssessment?.email_subject || "",
+
       email_body: latestAssessment?.email_body || "",
+
       score: latestAssessment?.score ?? "",
+
       decision: latestAssessment?.decision ?? "",
-      feedback: latestAssessment?.feedback ?? "",
-      next_round_date: latestAssessment?.next_round_date
-        ? formatDateTimeForInput(latestAssessment.next_round_date)
-        : "",
+
+      ratings: parsedFeedback.ratings || {},
+
+      strengths: parsedFeedback.strengths || [],
+
+      improvements: parsedFeedback.improvements || [],
+
+      feedback: parsedFeedback.notes || "",
     });
   }, [
     candidate,
@@ -284,11 +350,14 @@ export default function InterviewAssessment({
     if (bodyTouched && subjectTouched) return;
 
     const interviewerLabel =
-      employees.find(
-        (e) =>
-          String(e.employee_id ?? e.id ?? "") ===
-          String(formData.interviewer_id),
-      )?.name || "TBA";
+      employees
+        .filter((e) =>
+          formData.interviewer_ids.includes(
+            String(e.employee_id ?? e.id ?? ""),
+          ),
+        )
+        .map((e) => e.name)
+        .join(", ") || "TBA";
 
     const nextSubject =
       formData.email_subject ||
@@ -319,7 +388,7 @@ export default function InterviewAssessment({
     candidate,
     employees,
     formData.send_interview_email,
-    formData.interviewer_id,
+    formData.interviewer_ids,
     formData.interview_date,
     formData.interview_link,
     formData.email_subject,
@@ -331,24 +400,11 @@ export default function InterviewAssessment({
   ]);
 
   const interviewerOptions = useMemo(() => {
-    const list = (employees || []).map((emp) => {
-      const value = String(emp.employee_id ?? emp.id ?? "");
-      const label = emp.name || emp.first_name || emp.email || value;
-      return { value, label };
-    });
-
-    if (
-      formData.interviewer_id &&
-      !list.some((item) => item.value === String(formData.interviewer_id))
-    ) {
-      list.unshift({
-        value: String(formData.interviewer_id),
-        label: `Current: ${formData.interviewer_id}`,
-      });
-    }
-
-    return list;
-  }, [employees, formData.interviewer_id]);
+    return (employees || []).map((emp) => ({
+      value: String(emp.employee_id ?? emp.id ?? ""),
+      label: emp.name || emp.first_name || emp.email,
+    }));
+  }, [employees]);
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -385,7 +441,9 @@ export default function InterviewAssessment({
       const payload = isScheduleMode
         ? {
             round_name: getScheduleRoundFromStatus(candidate?.status),
-            interviewer_id: formData.interviewer_id || null,
+            interviewer_ids: formData.interviewer_ids.length
+              ? formData.interviewer_ids
+              : [],
             interview_date: formData.interview_date || null,
             interview_link: formData.interview_link || null,
             send_interview_email: formData.send_interview_email ? 1 : 0,
@@ -397,9 +455,20 @@ export default function InterviewAssessment({
             round_name: roundMeta.roundName,
             score: formData.score || null,
             decision: formData.decision || null,
-            feedback: formData.feedback || null,
-            next_round_date: formData.next_round_date || null,
-            interviewer_id: formData.interviewer_id || null,
+            feedback: JSON.stringify({
+              overallScore: formData.score,
+
+              ratings: formData.ratings,
+
+              strengths: formData.strengths,
+
+              improvements: formData.improvements,
+
+              notes: formData.feedback,
+            }),
+            interviewer_ids: formData.interviewer_ids.length
+              ? formData.interviewer_ids
+              : latestAssessment?.interviewer_ids || null,
             interview_date: formData.interview_date || null,
             interview_link: formData.interview_link || null,
           };
@@ -441,18 +510,24 @@ export default function InterviewAssessment({
               <>
                 <div className="rf-field">
                   <label>Assigned Interviewer</label>
-                  <select
-                    name="interviewer_id"
-                    value={formData.interviewer_id}
-                    onChange={handleChange}
-                  >
-                    <option value="">Select interviewer</option>
-                    {interviewerOptions.map((emp) => (
-                      <option key={emp.value} value={emp.value}>
-                        {emp.label}
-                      </option>
-                    ))}
-                  </select>
+                  <Select
+                    isMulti
+                    isSearchable
+                    placeholder="Search interviewers..."
+                    options={interviewerOptions}
+                    value={interviewerOptions.filter((option) =>
+                      formData.interviewer_ids.includes(option.value),
+                    )}
+                    onChange={(selected) => {
+                      setFormData((prev) => ({
+                        ...prev,
+                        interviewer_ids: selected
+                          ? selected.map((item) => item.value)
+                          : [],
+                      }));
+                    }}
+                    closeMenuOnSelect={false}
+                  />
                 </div>
 
                 <div className="rf-field">
@@ -514,17 +589,144 @@ export default function InterviewAssessment({
               </>
             ) : (
               <>
-                <div className="rf-field">
-                  <label>Overall Score (1-10)</label>
+                <div className="rf-field rf-full">
+                  <label>
+                    Overall Score <strong>{formData.score || 1}/10</strong>
+                  </label>
+
                   <input
-                    type="number"
-                    name="score"
-                    value={formData.score}
-                    onChange={handleChange}
-                    min="0"
+                    type="range"
+                    min="1"
                     max="10"
-                    step="1"
+                    value={formData.score}
+                    className="rf-score-slider"
+                    style={{
+                      background: `linear-gradient(to right,
+      #79c42b 0%,
+      #79c42b ${((formData.score - 1) / 9) * 100}%,
+      #ddd ${((formData.score - 1) / 9) * 100}%,
+      #ddd 100%)`,
+                    }}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        score: Number(e.target.value),
+                      }))
+                    }
                   />
+
+                  <div className="rf-slider-labels">
+                    {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((num) => (
+                      <span key={num}>{num}</span>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="rf-full">
+                  <h4 className="rf-section-title">Evaluation Criteria</h4>
+
+                  <div className="rf-rating-grid">
+                    {ASSESSMENT_PARAMETERS.map((item) => (
+                      <div key={item} className="rf-rating-card">
+                        <label>{item}</label>
+
+                        <StarRating
+                          value={formData.ratings?.[item] || 0}
+                          onChange={(rating) =>
+                            setFormData((prev) => ({
+                              ...prev,
+                              ratings: {
+                                ...prev.ratings,
+                                [item]: rating,
+                              },
+                            }))
+                          }
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="rf-full">
+                  <h4 className="rf-section-title">Strengths</h4>
+
+                  <div className="rf-chip-selector">
+                    {STRENGTH_OPTIONS.map((item) => {
+                      const selected = (formData.strengths || []).includes(
+                        item,
+                      );
+
+                      return (
+                        <button
+                          type="button"
+                          key={item}
+                          className={
+                            selected ? "rf-chip-selected" : "rf-chip-option"
+                          }
+                          onClick={() => {
+                            setFormData((prev) => {
+                              const exists = (prev.strengths || []).includes(
+                                item,
+                              );
+
+                              return {
+                                ...prev,
+
+                                strengths: exists
+                                  ? (prev.strengths || []).filter(
+                                      (i) => i !== item,
+                                    )
+                                  : [...(prev.strengths || []), item],
+                              };
+                            });
+                          }}
+                        >
+                          {item}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div className="rf-full">
+                  <h4 className="rf-section-title">Improvements</h4>
+
+                  <div className="rf-chip-selector">
+                    {IMPROVEMENT_OPTIONS.map((item) => {
+                      const selected = (formData.improvements || []).includes(
+                        item,
+                      );
+
+                      return (
+                        <button
+                          type="button"
+                          key={item}
+                          className={
+                            selected ? "rf-chip-selected" : "rf-chip-option"
+                          }
+                          onClick={() => {
+                            setFormData((prev) => {
+                              const exists = (prev.improvements || []).includes(
+                                item,
+                              );
+
+                              return {
+                                ...prev,
+
+                                improvements: exists
+                                  ? (prev.improvements || []).filter(
+                                      (i) => i !== item,
+                                    )
+                                  : [...(prev.improvements || []), item],
+                              };
+                            });
+                          }}
+                        >
+                          {item}
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
 
                 <div className="rf-field">
@@ -542,7 +744,7 @@ export default function InterviewAssessment({
                 </div>
 
                 <div className="rf-field rf-full">
-                  <label>Feedback</label>
+                  <label>Additional Interview Notes</label>
                   <textarea
                     name="feedback"
                     value={formData.feedback}

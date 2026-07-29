@@ -56,7 +56,7 @@ export function SocketProvider({ children }) {
     setConnecting(true);
 
     let socketUrl = BACKEND_URL;
-    let socketPath = "/socket.io";
+    let socketPath = "/api/socket.io";
 
     try {
       const parsed = new URL(BACKEND_URL);

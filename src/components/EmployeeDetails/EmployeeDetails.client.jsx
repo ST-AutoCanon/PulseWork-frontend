@@ -446,7 +446,8 @@ export default function EmployeeDetails({
     docs: [],
     employeeName: "",
   });
-
+  const [showUploadTypeModal, setShowUploadTypeModal] = useState(false);
+  const [uploadType, setUploadType] = useState("Insurance");
   const [formMode, setFormMode] = useState(null);
   const [selectedEmployee, setSelectedEmployee] = useState(null);
 
@@ -906,6 +907,8 @@ export default function EmployeeDetails({
 
     const formData = new FormData();
 
+    formData.append("uploadType", uploadType);
+
     files.forEach((file) => {
       if (file.name.toLowerCase().endsWith(".pdf")) {
         formData.append("files", file);
@@ -926,30 +929,30 @@ export default function EmployeeDetails({
         {
           withCredentials: true,
           headers,
-          responseType: "blob", // we'll return the Excel report
+          responseType: "blob",
         },
       );
 
       const blob = new Blob([res.data], {
         type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
       });
+
       const url = window.URL.createObjectURL(blob);
 
       const link = document.createElement("a");
       link.href = url;
-      link.download = `Insurance_Upload_Report.xlsx`;
+      link.download = `${uploadType}_Upload_Report.xlsx`;
+
       document.body.appendChild(link);
       link.click();
       link.remove();
 
-      setTimeout(() => {
-        window.URL.revokeObjectURL(url);
-      }, 1000);
+      window.URL.revokeObjectURL(url);
 
-      showAlert("Insurance upload completed.");
+      showAlert(`${uploadType} upload completed.`);
     } catch (err) {
       console.error(err);
-      showAlert("Insurance upload failed.");
+      showAlert(`${uploadType} upload failed.`);
     }
 
     e.target.value = "";
@@ -1328,9 +1331,9 @@ export default function EmployeeDetails({
         <button
           type="button"
           className="export-employee-button"
-          onClick={() => folderInput.current.click()}
+          onClick={() => setShowUploadTypeModal(true)}
         >
-          Upload Insurance Folder
+          Upload Folder
         </button>
         <button
           type="button"
@@ -1374,6 +1377,63 @@ export default function EmployeeDetails({
             </div>
           </div>
         </div>
+      )}
+
+      {showUploadTypeModal && (
+        <Modal
+          isVisible
+          onClose={() => setShowUploadTypeModal(false)}
+          buttons={[
+            {
+              label: "Cancel",
+              onClick: () => setShowUploadTypeModal(false),
+            },
+            {
+              label: "Continue",
+              onClick: () => {
+                setShowUploadTypeModal(false);
+                folderInput.current?.click();
+              },
+            },
+          ]}
+        >
+          <h3>Select Upload Type</h3>
+
+          <div style={{ marginTop: 16 }}>
+            <label
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+                marginBottom: 10,
+              }}
+            >
+              <input
+                type="radio"
+                value="Insurance"
+                checked={uploadType === "Insurance"}
+                onChange={(e) => setUploadType(e.target.value)}
+              />
+              Insurance
+            </label>
+
+            <label
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+              }}
+            >
+              <input
+                type="radio"
+                value="Form16"
+                checked={uploadType === "Form16"}
+                onChange={(e) => setUploadType(e.target.value)}
+              />
+              Form 16
+            </label>
+          </div>
+        </Modal>
       )}
 
       {alertModal.isVisible && (

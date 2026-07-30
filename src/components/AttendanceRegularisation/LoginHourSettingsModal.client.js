@@ -29,9 +29,8 @@ const DEFAULT_VALUES = {
 };
 
 const DEFAULT_ACTION_ROLES = {
+  admin: true,
   hr: true,
-  manager: true,
-  supervisor: false,
 };
 
 function isValidTime(value) {
@@ -115,16 +114,14 @@ function parseActionRoles(value) {
     const parsed = typeof value === "string" ? JSON.parse(value) : value;
     if (Array.isArray(parsed)) {
       return {
+        admin: parsed.includes("admin"),
         hr: parsed.includes("hr"),
-        manager: parsed.includes("manager"),
-        supervisor: parsed.includes("supervisor"),
       };
     }
     if (parsed && typeof parsed === "object") {
       return {
+        admin: Boolean(parsed.admin),
         hr: Boolean(parsed.hr),
-        manager: Boolean(parsed.manager),
-        supervisor: Boolean(parsed.supervisor),
       };
     }
   } catch {}
@@ -529,6 +526,17 @@ export default function LoginHourSettingsModal({ isOpen, onClose }) {
                       }}
                     >
                       <CheckboxRow
+                        label="Admin"
+                        checked={actionRoles.admin}
+                        onChange={(checked) =>
+                          setActionRoles((prev) => ({
+                            ...prev,
+                            admin: checked,
+                          }))
+                        }
+                        disabled={isFetching || isSaving}
+                      />
+                      <CheckboxRow
                         label="HR"
                         checked={actionRoles.hr}
                         onChange={(checked) =>
@@ -539,32 +547,10 @@ export default function LoginHourSettingsModal({ isOpen, onClose }) {
                         }
                         disabled={isFetching || isSaving}
                       />
-                      <CheckboxRow
-                        label="Manager"
-                        checked={actionRoles.manager}
-                        onChange={(checked) =>
-                          setActionRoles((prev) => ({
-                            ...prev,
-                            manager: checked,
-                          }))
-                        }
-                        disabled={isFetching || isSaving}
-                      />
-                      <CheckboxRow
-                        label="Supervisor"
-                        checked={actionRoles.supervisor}
-                        onChange={(checked) =>
-                          setActionRoles((prev) => ({
-                            ...prev,
-                            supervisor: checked,
-                          }))
-                        }
-                        disabled={isFetching || isSaving}
-                      />
                     </div>
                     <p className="field__hint">
-                      Choose the roles allowed to respond when the late streak
-                      limit is broken.
+                      Only HR and Admin receive a mail when the configured late
+                      streak threshold is reached.
                     </p>
                   </div>
 

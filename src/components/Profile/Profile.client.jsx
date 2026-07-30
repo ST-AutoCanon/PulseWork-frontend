@@ -516,14 +516,14 @@ const Profile = ({ onClose, notificationId = null }) => {
               <div className="field-row assets-row">
                 <span className="field-label">Assigned Assets</span>
                 <span className="field-value assets-list">
-                 {assignedAssets.length > 0
-  ? assignedAssets
-      .map(
-        (a) =>
-          `${a.asset_code} (${a.status === "Returned" ? "Returned" : "Assigned"})`
-      )
-      .join(", ")
-  : "None"}
+                  {assignedAssets.length > 0
+                    ? assignedAssets
+                        .map(
+                          (a) =>
+                            `${a.asset_code} (${a.status === "Returned" ? "Returned" : "Assigned"})`,
+                        )
+                        .join(", ")
+                    : "None"}
                 </span>
               </div>
             </div>
@@ -536,6 +536,7 @@ const Profile = ({ onClose, notificationId = null }) => {
                 ["Aadhaar", profile.aadhaar_doc_url],
                 ["PAN", profile.pan_doc_url],
                 ["Insurance", profile.insurance_doc],
+                ["Form 16", profile.form16_doc],
               ].map(([label, url]) => (
                 <div className="field-row docs-row" key={label}>
                   <span className="field-label">{label}</span>
@@ -545,7 +546,7 @@ const Profile = ({ onClose, notificationId = null }) => {
                       <button onClick={() => viewDoc(url)}>View</button>
                       <button onClick={() => downloadDoc(url)}>Download</button>
                     </span>
-                  ) : label === "Insurance" ? (
+                  ) : label === "Insurance" || label === "Form 16" ? (
                     <span className="field-value">Not Available</span>
                   ) : label === "Aadhaar" || label === "PAN" ? (
                     <span className="field-value">Not Uploaded</span>

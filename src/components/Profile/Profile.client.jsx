@@ -536,7 +536,8 @@ const Profile = ({ onClose, notificationId = null }) => {
                 ["Aadhaar", profile.aadhaar_doc_url],
                 ["PAN", profile.pan_doc_url],
                 ["Insurance", profile.insurance_doc],
-                ["Form 16", profile.form16_doc],
+                ["Form 16 - Part A", profile.form16_part_a_doc],
+                ["Form 16 - Part B", profile.form16_part_b_doc],
               ].map(([label, url]) => (
                 <div className="field-row docs-row" key={label}>
                   <span className="field-label">{label}</span>

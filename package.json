@@ -19,6 +19,7 @@
     "country-state-city": "^3.2.1",
     "currency-codes": "^2.2.0",
     "date-fns": "^4.1.0",
+    "docx-preview": "^0.4.0",
     "emoji-picker-react": "^4.13.3",
     "encoding": "^0.1.13",
     "face-api.js": "^0.22.2",

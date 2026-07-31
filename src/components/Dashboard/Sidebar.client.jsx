@@ -44,6 +44,8 @@ import ExitFlow from "../ExitFlow/ExitFlow.client";
 import TaskManagementHr from "../TaskManagementHr/TaskManagementHr.jsx";
 import DynamicFormBuilder from "../DynamicFormBuilder/DynamicFormBuilder.client";
 import OfficeLocations from "../OfficeLocations/OfficeLocations.client.jsx";
+import CreatePolicies from "../Policies/createPolicies/createPolicies";
+import EmployeePolicies from "../Policies/employeePolicies/employeePoilicies";
 const Sidebar = ({ setActiveContent }) => {
   const { user, hydrated } = useAuth();
   const [menuItems, setMenuItems] = useState([]);
@@ -134,6 +136,8 @@ const Sidebar = ({ setActiveContent }) => {
       "/messenger": () => <Chat />,
       "/EmployeeLogin": () => <EmployeeLogin />,
       "/Formify": () => <DynamicFormBuilder />,
+       "/CreatePolicies": () => <CreatePolicies />,
+       "/EmployeePolicies": () => <EmployeePolicies />,
       "/AttendanceRegularisation": () => <AttendanceRegularisation />,
       "/reimbursement": (role) => {
         if (role === "Admin") return <RbAdmin />;

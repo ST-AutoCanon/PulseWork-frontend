@@ -196,9 +196,10 @@
 
 .candidate-actions {
   display: flex;
-  justify-content: space-between;
   align-items: center;
   flex-wrap: wrap;
+  gap: 0.8rem;
+  justify-content: flex-start;
 }
 
 .candidate-actions button {
@@ -704,6 +705,43 @@
   background: #fff;
   border-radius: 10px;
   padding: 0.75rem;
+}
+
+.rf-interviewer-summary-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.rf-interviewer-summary-card {
+  border: 1px solid #e3e3e3;
+  border-radius: 10px;
+  background: #fff;
+  overflow: hidden;
+}
+
+.rf-interviewer-summary-toggle {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.7rem 0.85rem;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-weight: 600;
+  text-align: left;
+  color: #2f4f4f;
+}
+
+.rf-interviewer-summary-arrow {
+  font-size: 1rem;
+  color: #79c42b;
+}
+
+.rf-interviewer-summary-body {
+  padding: 0 0.85rem 0.85rem;
+  border-top: 1px solid #f0f0f0;
 }
 
 .rf-label {

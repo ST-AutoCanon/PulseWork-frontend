@@ -222,17 +222,34 @@ export default function InterviewAssessment({
     );
   };
 
-  const parsedFeedback =
-    latestAssessment?.feedback_json ||
-    (() => {
-      try {
-        return latestAssessment?.feedback
-          ? JSON.parse(latestAssessment.feedback)
-          : {};
-      } catch {
-        return {};
-      }
-    })();
+  const parsedFeedback = useMemo(() => {
+    if (latestAssessment?.feedback_json) {
+      return latestAssessment.feedback_json;
+    }
+
+    try {
+      return latestAssessment?.feedback
+        ? JSON.parse(latestAssessment.feedback)
+        : {};
+    } catch {
+      return {};
+    }
+  }, [latestAssessment?.feedback_json, latestAssessment?.feedback]);
+
+  const currentInterviewerScore = useMemo(() => {
+    const interviewerKey = meId ? String(meId) : "";
+    const scoreMap = parsedFeedback?.interviewer_scores || {};
+    if (!interviewerKey) return latestAssessment?.score ?? "";
+    return scoreMap[interviewerKey] ?? latestAssessment?.score ?? "";
+  }, [meId, parsedFeedback, latestAssessment?.score]);
+
+  const currentInterviewerFeedback = useMemo(() => {
+    const interviewerKey = meId ? String(meId) : "";
+    if (!interviewerKey) return {};
+
+    const interviewerFeedbackMap = parsedFeedback?.interviewer_feedback || {};
+    return interviewerFeedbackMap[interviewerKey] || {};
+  }, [meId, parsedFeedback]);
 
   const headers = useMemo(() => {
     const h = { "x-api-key": API_KEY };
@@ -296,13 +313,13 @@ export default function InterviewAssessment({
         email_subject: latestAssessment?.email_subject || "",
         email_body: latestAssessment?.email_body || "",
 
-        score: latestAssessment?.score ?? "",
+        score: currentInterviewerScore ?? "",
         decision: latestAssessment?.decision ?? "",
 
-        ratings: parsedFeedback.ratings || {},
-        strengths: parsedFeedback.strengths || [],
-        improvements: parsedFeedback.improvements || [],
-        feedback: parsedFeedback.notes || "",
+        ratings: currentInterviewerFeedback.ratings || {},
+        strengths: currentInterviewerFeedback.strengths || [],
+        improvements: currentInterviewerFeedback.improvements || [],
+        feedback: currentInterviewerFeedback.notes || "",
       });
       return;
     }
@@ -324,25 +341,19 @@ export default function InterviewAssessment({
 
       email_body: latestAssessment?.email_body || "",
 
-      score: latestAssessment?.score ?? "",
+      score: currentInterviewerScore ?? "",
 
       decision: latestAssessment?.decision ?? "",
 
-      ratings: parsedFeedback.ratings || {},
+      ratings: currentInterviewerFeedback.ratings || {},
 
-      strengths: parsedFeedback.strengths || [],
+      strengths: currentInterviewerFeedback.strengths || [],
 
-      improvements: parsedFeedback.improvements || [],
+      improvements: currentInterviewerFeedback.improvements || [],
 
-      feedback: parsedFeedback.notes || "",
+      feedback: currentInterviewerFeedback.notes || "",
     });
-  }, [
-    candidate,
-    latestAssessment,
-    isScheduleMode,
-    organization,
-    roundMeta.label,
-  ]);
+  }, [latestAssessment?.id, isScheduleMode, meId]);
 
   useEffect(() => {
     if (!isScheduleMode) return;
@@ -391,7 +402,6 @@ export default function InterviewAssessment({
     formData.interviewer_ids,
     formData.interview_date,
     formData.interview_link,
-    formData.email_subject,
     bodyTouched,
     subjectTouched,
     organization,
@@ -465,10 +475,20 @@ export default function InterviewAssessment({
               improvements: formData.improvements,
 
               notes: formData.feedback,
+              interviewer_feedback: meId
+                ? {
+                    [String(meId)]: {
+                      overallScore: formData.score,
+                      ratings: formData.ratings,
+                      strengths: formData.strengths,
+                      improvements: formData.improvements,
+                      notes: formData.feedback,
+                    },
+                  }
+                : undefined,
             }),
-            interviewer_ids: formData.interviewer_ids.length
-              ? formData.interviewer_ids
-              : latestAssessment?.interviewer_ids || null,
+            interviewer_id: meId ? String(meId) : null,
+            interviewer_ids: formData.interviewer_ids,
             interview_date: formData.interview_date || null,
             interview_link: formData.interview_link || null,
           };

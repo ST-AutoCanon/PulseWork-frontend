@@ -93,6 +93,7 @@ function candidateToEmployeeInitialData(candidate) {
     total_experience_text: candidate?.total_experience || "0",
     resume_url: candidate?.resume_url || "",
     candidate_department: candidate?.department || "",
+    candidate_id: candidate?.id || "",
   };
 }
 

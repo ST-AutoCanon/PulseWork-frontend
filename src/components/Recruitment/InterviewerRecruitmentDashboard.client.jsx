@@ -22,20 +22,52 @@ function IconActionButton({ label, onClick, children, className = "" }) {
   );
 }
 
+function getInterviewerIds(assessment = {}) {
+  const values = [];
+
+  if (Array.isArray(assessment?.interviewer_ids)) {
+    values.push(...assessment.interviewer_ids);
+  } else if (assessment?.interviewer_ids) {
+    values.push(assessment.interviewer_ids);
+  }
+
+  if (assessment?.interviewer_id) {
+    values.push(assessment.interviewer_id);
+  }
+
+  return values
+    .flatMap((value) => String(value).split(","))
+    .map((value) => String(value).trim())
+    .filter(Boolean);
+}
+
 function getLatestAssessmentForMe(candidate, meId) {
   const assessments = Array.isArray(candidate?.assessments)
     ? candidate.assessments
     : [];
 
-  const mine = assessments.filter(
-    (a) => String(a?.interviewer_id || "") === String(meId || ""),
-  );
+  const mine = assessments.filter((assessment) => {
+    if (!meId) return false;
+    const ids = getInterviewerIds(assessment);
+    return ids.includes(String(meId));
+  });
 
   if (!mine.length) return null;
 
   return [...mine].sort(
     (a, b) => new Date(b.created_at) - new Date(a.created_at),
   )[0];
+}
+
+function getMyFeedback(assessment, meId) {
+  const feedback = Array.isArray(assessment?.feedback)
+    ? assessment.feedback
+    : [];
+
+  return (
+    feedback.find((item) => String(item.interviewer_id) === String(meId)) ||
+    null
+  );
 }
 
 export default function InterviewerRecruitmentDashboard() {
@@ -181,6 +213,7 @@ export default function InterviewerRecruitmentDashboard() {
             ) : (
               candidates.map((candidate) => {
                 const latest = getLatestAssessmentForMe(candidate, meId);
+                const myFeedback = getMyFeedback(latest, meId);
 
                 return (
                   <div className="rf-interviewer-card" key={candidate.id}>
@@ -203,12 +236,12 @@ export default function InterviewerRecruitmentDashboard() {
 
                       <div>
                         <label>Decision</label>
-                        <span>{latest?.decision || "Pending"}</span>
+                        <span>{myFeedback?.decision || "Pending"}</span>
                       </div>
 
                       <div>
                         <label>Score</label>
-                        <span>{latest?.score ?? "—"}</span>
+                        <span>{myFeedback?.score ?? "—"}</span>
                       </div>
 
                       <div>

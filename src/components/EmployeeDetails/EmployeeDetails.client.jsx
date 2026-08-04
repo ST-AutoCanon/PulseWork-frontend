@@ -770,6 +770,32 @@ export default function EmployeeDetails({
         });
       }
 
+      const recruitmentCandidateId =
+        employeeInitialData?.candidate_id ||
+        employeeInitialData?.recruitment_candidate_id ||
+        employeeInitialData?.id;
+
+      if (recruitmentCandidateId) {
+        try {
+          await axios.put(
+            `${BASE_URL}/recruitment/${recruitmentCandidateId}`,
+            { status: "Joined" },
+            {
+              withCredentials: true,
+              headers: {
+                ...baseHeaders,
+                "Content-Type": "application/json",
+              },
+            },
+          );
+        } catch (recruitmentErr) {
+          console.error(
+            "Failed to update recruitment candidate status:",
+            recruitmentErr,
+          );
+        }
+      }
+
       showAlert("Employee added successfully.");
       closeForm();
       fetchEmployees();

@@ -1,14 +1,13 @@
-* {
-  margin: 0;
-  padding: 0;
+.employee-policy-page,
+.employee-policy-page * {
   box-sizing: border-box;
-  font-family: "Segoe UI", sans-serif;
 }
 
 .employee-policy-page {
   background: #f4f6fb;
   padding: 20px;
   min-height: 100vh;
+  font-family: "Segoe UI", sans-serif;
 }
 
 .policy-grid {
@@ -56,13 +55,131 @@
   flex-shrink: 0;
 }
 
+/* ===== Viewer layout (clean version) ===== */
+.viewer-section {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  height: 100%;
+}
+
+.viewer-header {
+  background: #0f4c81;
+  color: white;
+  padding: 15px;
+  font-size: 17px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+}
+
 .viewer-body {
   flex: 1;
-  min-height: 0;              /* critical */
+  min-height: 0;
+  position: relative;          /* critical for floating ack */
   overflow: hidden;
   background: #fafafa;
+  display: block;              /* not flex – let children size themselves */
+}
+
+/* Floating acknowledgement – sits on top of the file at the bottom */
+.viewer-body .floating-ack {
+  position: absolute;
+  left: 24px;
+  right: 24px;
+  bottom: 24px;
+  z-index: 9999;
+  max-width: calc(100% - 48px);
+  margin: 0 auto;
+  border: 1px solid #dc2626;
+  background: rgba(220, 38, 38, 0.92);
+  color: #fff;
+  padding: 16px 20px;
+  border-radius: 10px;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.25);
+  pointer-events: auto;
+}
+
+.viewer-body .floating-ack .ack-message-title {
+  color: #fff;
+  margin-bottom: 8px;
+  font-weight: 700;
+}
+
+.viewer-body .floating-ack p {
+  color: rgba(255, 255, 255, 0.95);
+  margin: 8px 0;
+  line-height: 1.5;
+}
+
+.viewer-body .floating-ack .ac-modal-btn-primary {
+  background: #fff;
+  color: #0f4c81;
+  margin-top: 12px;
+}
+
+/* Keep media behind the floating box */
+.viewer-body iframe,
+.viewer-body video,
+.viewer-body img,
+.viewer-body .docx-viewer-wrapper {
   position: relative;
-  display: block;             /* not flex center for docs */
+  z-index: 1;
+}
+
+/* Footer stays at the very bottom of the panel */
+.viewer-footer {
+  flex-shrink: 0;
+  padding: 12px 15px;
+  background: #f1f5f9;
+  border-top: 1px solid #d8dde5;
+}
+
+.viewer-footer-text {
+  font-size: 14px;
+  color: #334155;
+}
+
+.viewer-body .floating-ack {
+  position: absolute;
+  left: 24px;
+  right: 24px;
+  bottom: 24px;
+  z-index: 9999;
+  max-width: calc(100% - 48px);
+  margin: 0 auto;
+  border: 1px solid #dc2626;
+  background: rgba(220, 38, 38, 0.92);
+  color: #fff;
+  padding: 16px 20px;
+  border-radius: 10px;
+  box-shadow: 0 12px 30px rgba(0,0,0,0.25);
+  pointer-events: auto;
+}
+
+.viewer-body .floating-ack .ack-message-title {
+  color: #fff;
+}
+
+.viewer-body .floating-ack p {
+  color: rgba(255,255,255,0.95);
+  margin: 8px 0;
+}
+
+.viewer-body .floating-ack .ac-modal-btn-primary {
+  background: #fff;
+  color: #0f4c81;
+}
+
+/* Ensure embedded viewers sit behind the floating ack */
+.viewer-body iframe,
+.viewer-body video,
+.viewer-body img,
+.viewer-body .docx-viewer-wrapper {
+  position: relative;
+  z-index: 1;
 }
 
 /* DOCX wrapper – only scroll area */
@@ -137,6 +254,90 @@
   font-size: 18px;
   font-weight: 600;
   letter-spacing: 0.5px;
+}
+
+.section-title-with-close {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #0f4c81;
+  padding: 15px;
+}
+
+.close-panel-btn {
+  background: rgba(255, 255, 255, 0.18);
+  border: none;
+  color: #fff;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.close-panel-btn:hover {
+  background: rgba(255, 255, 255, 0.28);
+}
+
+.policy-status-badge {
+  margin-top: 12px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #fff;
+}
+
+.policy-status-badge.pending {
+  background: #dc2626;
+}
+
+.policy-status-badge.acknowledged {
+  background: #047857;
+}
+
+.viewer-header {
+  background: #0f4c81;
+  color: white;
+  padding: 15px;
+  font-size: 17px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.viewer-footer {
+  padding: 12px 15px;
+  background: #f1f5f9;
+  border-top: 1px solid #d8dde5;
+}
+
+.viewer-footer-text {
+  font-size: 14px;
+  color: #334155;
+}
+
+.ack-message-box {
+  border: 1px solid #dc2626;
+  background: rgba(220, 38, 38, 0.08);
+  padding: 18px;
+  border-radius: 12px;
+}
+
+.ack-message-title {
+  margin-bottom: 10px;
+  color: #b91c1c;
+  font-weight: 700;
+}
+
+.ack-message-box p {
+  color: #1f2937;
+  line-height: 1.6;
 }
 
 /* LEFT – Policy cards (STRICT equal size) */
@@ -342,16 +543,6 @@
   font-weight: 600;
 }
 
-.viewer-body {
-  flex: 1;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  color: #888;
-  font-size: 22px;
-  background: #fafafa;
-  min-height: 500px;
-}
 
 /* Responsive */
 @media (max-width: 1100px) {
@@ -364,62 +555,7 @@
   }
 }
 
-/* Acknowledgement modal */
-.ack-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.45);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: 9999;
-}
-
-.ack-modal {
-  width: 420px;
-  background: #fff;
-  border-radius: 10px;
-  padding: 24px;
-}
-
-.ack-buttons {
-  display: flex;
-  justify-content: flex-end;
-  gap: 12px;
-  margin-top: 20px;
-}
-
-/* Acknowledgement modal */
-.ack-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(15, 76, 129, 0.45);
-  backdrop-filter: blur(4px);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: 9999;
-  padding: 20px;
-  animation: fadeIn 0.2s ease;
-}
-
-.ack-modal {
-  width: 100%;
-  max-width: 440px;
-  background: #fff;
-  border-radius: 14px;
-  padding: 28px 28px 24px;
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.18);
-  animation: slideUp 0.25s ease;
-}
-
-.ack-modal h3 {
-  margin: 0 0 12px;
-  font-size: 20px;
-  font-weight: 600;
-  color: #0f4c81;
-  letter-spacing: 0.2px;
-}
+ 
 
 .ack-modal p {
   margin: 0;
@@ -497,7 +633,112 @@
 .ack-buttons button:active {
   transform: scale(0.98);
 }
+/* ========== DYNAMIC LAYOUT ========== */
+.policy-grid {
+  display: grid;
+  gap: 20px;
+  height: calc(100vh - 40px);
+  max-height: calc(100vh - 40px);
+  transition: grid-template-columns 0.35s ease;
+}
 
+/* Initial – only policies */
+.policy-grid.layout-one {
+  grid-template-columns: 1fr;
+}
+
+/* After selecting a policy – cards left + files right */
+.policy-grid.layout-two {
+  grid-template-columns: 38% 62%;
+}
+
+/* After selecting a file – 3 columns */
+.policy-grid.layout-three {
+  grid-template-columns: 24% 24% 52%;
+}
+
+/* ========== POLICY CARDS ========== */
+.policy-cards {
+  display: grid;
+  gap: 15px;
+  padding: 18px;
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
+  align-content: start;
+}
+
+/* Initial – 4 cards per row */
+.policy-cards.four-col {
+  grid-template-columns: repeat(4, 1fr);
+  grid-auto-rows: 130px;
+}
+
+/* After selection – 2 cards per row (moves left) */
+.policy-cards.two-col {
+  grid-template-columns: repeat(2, 1fr);
+  grid-auto-rows: 120px;
+}
+
+/* Keep your existing .policy-card, .active-card, .policy-icon, .policy-name styles */
+/* Just make sure height is controlled by grid-auto-rows */
+
+.policy-card {
+  /* ... your existing styles ... */
+  height: 100%;          /* important so grid-auto-rows controls height */
+  min-height: unset;
+  max-height: unset;
+}
+/* ========== HEADER + TABS ========== */
+.policies-header {
+  margin-bottom: 20px;margin-bottom: 20px;
+  background: transparent;
+}
+
+.policies-title-emp {
+  font-size: 26px;
+  font-weight: 700;
+  color: #0f4c81;
+  margin: 0 0 18px 0;background: transparent;
+}
+
+.policies-tabs {
+  display: flex;
+  gap: 32px;
+  border-bottom: 1px solid #e2e8f0;
+  padding-bottom: 0;
+}
+
+.tab-item {
+  position: relative;
+  padding: 10px 2px 14px;
+  font-size: 15px;
+  font-weight: 500;
+  color: #64748b;
+  cursor: pointer;
+  transition: color 0.2s ease;
+  user-select: none;
+}
+
+.tab-item:hover {
+  color: #0f4c81;
+}
+
+.tab-item.active {
+  color: #0f4c81;
+  font-weight: 600;
+}
+
+/* Active underline bar */
+.active-line {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 3px;
+  background: #0f4c81;
+  border-radius: 3px 3px 0 0;
+}
 /* Optional subtle entrance animations */
 @keyframes fadeIn {
   from { opacity: 0; }

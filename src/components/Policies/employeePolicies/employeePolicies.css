@@ -1,8 +1,151 @@
-.employee-policy-page,
-.employee-policy-page * {
+.employee-policy-page {
+  background: #f4f6fb;
+  padding: 20px;
+  height: 100vh;
+  max-height: 100vh;
+  overflow: hidden;                 /* keep page from scrolling */
   box-sizing: border-box;
+  display: flex;
+  flex-direction: column;           /* critical */
+  gap: 0;
+}
+/* ========== HEADER + TABS + SEARCH ========== */
+.employee-policy-header {
+  margin-bottom: 20px;
 }
 
+.employee-policy-title {
+  font-size: 26px;
+  font-weight: 700;
+  color: #0f4c81;
+  margin: 0 0 18px 0;
+}
+
+.employee-policy-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  border-bottom: 1px solid #e2e8f0;
+  padding-bottom: 0;
+}
+
+/* Tabs (left) */
+.employee-policy-tabs {
+  display: flex;
+  gap: 28px;
+  flex-shrink: 0;
+}
+
+.employee-policy-tab {
+  position: relative;
+  padding: 10px 2px 14px;
+  font-size: 15px;
+  font-weight: 500;
+  color: #64748b;
+  cursor: pointer;
+  transition: color 0.2s ease;
+  user-select: none;
+  white-space: nowrap;
+}
+
+.employee-policy-tab:hover {
+  color: #0f4c81;
+}
+
+.employee-policy-tab.active {
+  color: #0f4c81;
+  font-weight: 600;
+}
+
+.employee-policy-tab-line {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 3px;
+  background: #0f4c81;
+  border-radius: 3px 3px 0 0;
+}
+
+/* Search (right) */
+.employee-policy-search {
+  position: relative;
+  display: flex;
+  align-items: center;
+  max-width: 280px;
+  width: 100%;
+  margin-bottom: 10px; /* aligns nicely with tabs */
+}
+
+.employee-policy-search-icon {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #94a3b8;
+  font-size: 15px;
+  pointer-events: none;
+  z-index: 1;
+}
+.employee-policy-header,
+.employee-policy-title {
+  background: transparent !important;
+  background-color: transparent !important;
+  box-shadow: none !important;
+}
+.employee-policy-search-input {
+  width: 100%;
+  padding: 9px 36px 9px 40px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 14px;
+  color: #1e293b;
+  background: #fff;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.employee-policy-search-input::placeholder {
+  color: #94a3b8;
+}
+
+.employee-policy-search-input:focus {
+  border-color: #0f4c81;
+  box-shadow: 0 0 0 3px rgba(15, 76, 129, 0.12);
+}
+
+.employee-policy-search-clear {
+  position: absolute;
+  right: 10px;
+  background: none;
+  border: none;
+  color: #94a3b8;
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 4px;
+  border-radius: 4px;
+}
+
+.employee-policy-search-clear:hover {
+  color: #64748b;
+  background: #f1f5f9;
+}
+
+/* Responsive – stack on smaller screens */
+@media (max-width: 768px) {
+  .employee-policy-header-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+
+  .employee-policy-search {
+    max-width: 100%;
+    margin-bottom: 0;
+  }
+}
 .employee-policy-page {
   background: #f4f6fb;
   padding: 20px;
@@ -12,8 +155,12 @@
 
 .policy-grid {
   display: grid;
-  grid-template-columns: 26% 25% 49%;
   gap: 20px;
+  flex: 1;                          /* take all remaining space */
+  min-height: 0;                    /* allow children to scroll */
+  height: auto !important;          /* override old fixed heights */
+  max-height: none !important;
+  transition: grid-template-columns 0.35s ease;
 }
 /* Full height chain */
 .employee-policy-page {
@@ -94,7 +241,7 @@
   max-width: calc(100% - 48px);
   margin: 0 auto;
   border: 1px solid #dc2626;
-  background: rgba(220, 38, 38, 0.92);
+  background: rgba(246, 181, 181, 0.92);
   color: #fff;
   padding: 16px 20px;
   border-radius: 10px;
@@ -150,8 +297,8 @@
   z-index: 9999;
   max-width: calc(100% - 48px);
   margin: 0 auto;
-  border: 1px solid #dc2626;
-  background: rgba(220, 38, 38, 0.92);
+  border: 1px solid #cd0d0d;
+  background: rgba(241, 119, 119, 0.92);
   color: #fff;
   padding: 16px 20px;
   border-radius: 10px;
@@ -257,14 +404,29 @@
 }
 
 .section-title-with-close {
-  display: flex;
+  display: flex;                    /* ← this was missing */
   align-items: center;
-  justify-content: space-between;
+  justify-content: space-between;   /* title left, close right */
+  gap: 12px;
   background: #0f4c81;
-  padding: 15px;
+  color: #fff;
+  padding: 12px 15px;
+  font-size: 18px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.section-title-with-close > span {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .close-panel-btn {
+  flex-shrink: 0;
+  margin-left: auto;
   background: rgba(255, 255, 255, 0.18);
   border: none;
   color: #fff;
@@ -277,16 +439,34 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  transition: background 0.2s;
 }
 
 .close-panel-btn:hover {
   background: rgba(255, 255, 255, 0.28);
 }
-
+.policy-description {
+  margin: 4px 0 0;
+  font-size: 12px;
+  line-height: 1.35;
+  color: #64748b;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;          /* max 2 lines */
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.employee-policy-page .policies-header,
+.employee-policy-page .policies-title-emp,
+.main-content .employee-policy-page .policies-header,
+.main-content .employee-policy-page .policies-title-emp {
+  background: transparent !important;
+  background-color: transparent !important;
+  box-shadow: none !important;
+}
 .policy-status-badge {
   margin-top: 0;
   padding: 3px 8px;
-  border-radius: 999px;
+ 
   font-size: 11px;
   font-weight: 600;
   color: #fff;
@@ -341,16 +521,27 @@
 }
 
 /* LEFT – Policy cards (STRICT equal size) */
+/* ========== POLICY CARDS – clean version ========== */
 .policy-cards {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  grid-auto-rows: 130px;
   gap: 15px;
   padding: 18px;
   overflow-y: auto;
   flex: 1;
   min-height: 0;
   align-content: start;
+}
+
+/* 4 cards per row when nothing is selected */
+.policy-cards.four-col {
+  grid-template-columns: repeat(4, 1fr);
+  grid-auto-rows: auto;          /* ← important */
+}
+
+/* 2 cards per row after a policy is selected */
+.policy-cards.two-col {
+  grid-template-columns: repeat(2, 1fr);
+  grid-auto-rows: auto;          /* ← important */
 }
 
 .policy-card {
@@ -365,8 +556,10 @@
   cursor: pointer;
   transition: transform 0.25s ease, box-shadow 0.25s ease,
     border-color 0.25s ease, background 0.25s ease;
-  overflow: hidden;
+  overflow: visible;             /* ← was hidden – this was clipping content */
   box-sizing: border-box;
+  height: auto;                  /* never force a fixed height */
+  min-height: 0;
 }
 
 .policy-card:hover {
@@ -378,7 +571,7 @@
 .policy-card-header {
   display: flex;
   gap: 14px;
-  margin-bottom: 14px;
+  margin-bottom: 12px;
   align-items: flex-start;
 }
 
@@ -404,7 +597,7 @@
   font-size: 14px;
   line-height: 1.35;
   display: -webkit-box;
-  -webkit-line-clamp: 1;
+  -webkit-line-clamp: 2;         /* allow a bit more space when narrow */
   -webkit-box-orient: vertical;
   overflow: hidden;
   word-break: break-word;
@@ -436,6 +629,7 @@
   gap: 8px;
   flex-shrink: 0;
   font-size: 12px;
+  margin-top: auto;              /* pushes footer to bottom when card is taller */
 }
 
 .policy-icon {
@@ -733,28 +927,36 @@
   max-height: calc(100vh - 40px);
   transition: grid-template-columns 0.35s ease;
 }
-
-/* Initial – only policies */
 .policy-grid.layout-one {
   grid-template-columns: 1fr;
 }
-
-/* After selecting a policy – cards left + files right */
 .policy-grid.layout-two {
   grid-template-columns: 38% 62%;
 }
-
-/* After selecting a file – 3 columns */
 .policy-grid.layout-three {
   grid-template-columns: 24% 24% 52%;
 }
 
-/* ========== POLICY CARDS ========== */
+/* Each column must also allow internal scrolling */
+.policy-section,
+.file-section,
+.viewer-section {
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 5px 18px rgba(0, 0, 0, 0.08);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;                    /* critical for nested scroll */
+  height: 100%;
+}
+
+/* Policy cards list scrolls inside its section */
 .policy-cards {
   display: grid;
   gap: 15px;
   padding: 18px;
-  overflow-y: auto;
+  overflow-y: auto;                 /* this is the scroll area */
   flex: 1;
   min-height: 0;
   align-content: start;

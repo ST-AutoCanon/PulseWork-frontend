@@ -32,6 +32,7 @@ const CreatePolicyForm = ({
   handleAddNewFile,
   handleRemoveNewFile,selectionType,        // ← add
   setSelectionType,
+  isEditing,
 }) => {
   const [selectedEmployee, setSelectedEmployee] = useState("");
   const [selectedDepartment, setSelectedDepartment] = useState("");
@@ -40,6 +41,7 @@ const CreatePolicyForm = ({
   const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
   const API_KEY = process.env.NEXT_PUBLIC_API_KEY;
   const meId = user?.employeeId ?? user?.id ?? user?.employee_id ?? null;
+
 
   const headers = {
     "x-api-key": API_KEY,
@@ -147,7 +149,9 @@ const appendFilesToFormData = (filesArray, formData) => {
   <div className="admin-policy-card">
     {/* ===== DARK BLUE HEADER ===== */}
     <div className="admin-policy-header">
-      <h3 className="admin-policy-form-title">Create New Policy</h3>
+     <h3 className="admin-policy-form-title">
+  {isEditing ? "Update Policy" : "Create New Policy"}
+</h3>
       <button
         type="button"
         className="admin-policy-close-btn"
@@ -162,17 +166,26 @@ const appendFilesToFormData = (filesArray, formData) => {
     <div className="admin-policy-body">
       <form onSubmit={handleSubmit}>
         {/* Policy Name */}
-        <div className="admin-policy-form-group">
-          <label>Policy Name <span className="required">*</span></label>
-          <input
-            type="text"
-            value={formData.policyName}
-            onChange={(e) => setFormData({ ...formData, policyName: e.target.value })}
-            required
-            placeholder="Enter policy name"
-          />
-        </div>
+        
         {/* Policy Description */}
+        <div className="admin-policy-form-group">
+  <label>
+    Policy Name <span style={{ color: "red" }}>*</span>
+  </label>
+  <input
+    type="text"
+    value={formData.policyName || ""}
+    onChange={(e) =>
+      setFormData({
+        ...formData,
+        policyName: e.target.value,
+      })
+    }
+    placeholder="Enter policy name"
+    className="admin-policy-input"
+    required
+  />
+</div>
 <div className="admin-policy-form-group">
   <label>Description</label>
   <textarea
@@ -375,8 +388,14 @@ const appendFilesToFormData = (filesArray, formData) => {
             Cancel
           </button>
           <button type="submit" className="admin-policy-submit-btn" disabled={loading}>
-            {loading ? "Creating Policy..." : "Create Policy"}
-          </button>
+  {loading
+    ? isEditing
+      ? "Updating Policy..."
+      : "Creating Policy..."
+    : isEditing
+    ? "Update Policy"
+    : "Create Policy"}
+</button>
         </div>
       </form>
     </div>
@@ -430,38 +449,11 @@ const ViewPolicyModal = ({
           ✕
         </button>
       </div>
-<div className="admin-policy-form-group">
-  <label>Description</label>
-  <textarea
-    value={viewPolicy.description || ""}
-    onChange={(e) =>
-      setViewPolicy((p) => ({ ...p, description: e.target.value }))
-    }
-    placeholder="Enter policy description..."
-    rows={4}
-    style={{ width: "100%", resize: "vertical" }}
-  />
-</div>
+
       {/* ===== BODY ===== */}
       <div className="admin-policy-view-body">
 
-        {/* Policy Details */}
-        <div className="admin-policy-section">
-          <h3 className="admin-policy-section-title">Policy Details</h3>
-          <div className="admin-policy-form-group">
-            <label>Policy Name</label>
-            <input
-              type="text"
-              value={viewPolicy.policy_name || ""}
-              onChange={(e) =>
-                setViewPolicy((p) => ({ ...p, policy_name: e.target.value }))
-              }
-              placeholder="Enter policy name"
-            />
-          </div>
-        </div>
-
-        {/* Existing Files */}
+       
         <div className="admin-policy-section">
           <h3 className="admin-policy-section-title">
             Existing Files ({viewPolicy.files?.length || 0})
@@ -479,20 +471,8 @@ const ViewPolicyModal = ({
                       </div>
                       <div className="admin-policy-file-type">{file.file_type}</div>
 
-                      {file.acknowledgement_required === 1 && (
-                        <div className="admin-policy-ack-badge">
-                          ✓ Acknowledgement Required
-                        </div>
-                      )}
-
-                      {file.acknowledgement_message && (
-                        <div className="admin-policy-ack-message">
-                          “
-                          {file.acknowledgement_message.substring(0, 60)}
-                          {file.acknowledgement_message.length > 60 ? "..." : ""}
-                          ”
-                        </div>
-                      )}
+                    
+                    
                     </div>
                   </div>
 
@@ -503,12 +483,7 @@ const ViewPolicyModal = ({
                     >
                       Replace
                     </button>
-                    <button
-                      className="admin-policy-btn admin-policy-btn-edit"
-                      onClick={() => handleEditFile(file)}
-                    >
-                      Edit
-                    </button>
+                    
                     <button
                       className="admin-policy-btn admin-policy-btn-delete"
                       onClick={() => handleDeleteFile(file.id)}
@@ -525,158 +500,130 @@ const ViewPolicyModal = ({
         </div>
 
         {/* Add New Files */}
-        <div className="admin-policy-upload-card">
-          <h3 className="admin-policy-section-title">Add New Files</h3>
+       {/* Add New Files */}
+<div className="admin-policy-upload-card">
+  <h3 className="admin-policy-section-title">Add New Files</h3>
 
-          <div className="admin-policy-upload-row">
-            <select
-              className="admin-policy-upload-select"
-              value={newFile.file_type}
-              onChange={(e) =>
-                setNewFile((prev) => ({
-                  ...prev,
-                  file_type: e.target.value,
-                  file: null,
-                }))
-              }
-            >
-              <option value="document">Document (PDF / Word)</option>
-              <option value="ppt">PPT</option>
-              <option value="video">Video</option>
-              <option value="image">Image</option>
-            </select>
+  <div className="admin-policy-upload-row">
+    <select
+      className="admin-policy-upload-select"
+      value={newFile.file_type}
+      onChange={(e) =>
+        setNewFile((prev) => ({
+          ...prev,
+          file_type: e.target.value,
+          file: null,
+        }))
+      }
+    >
+      <option value="document">Document (PDF / Word)</option>
+      <option value="ppt">PPT</option>
+      <option value="video">Video</option>
+      <option value="image">Image</option>
+    </select>
 
-            <input
-              className="admin-policy-upload-input"
-              type="file"
-              key={newFile.file_type}
-              onChange={(e) =>
-                setNewFile((prev) => ({
-                  ...prev,
-                  file: e.target.files?.[0] || null,
-                }))
-              }
-              accept={
-                newFile.file_type === "document"
-                  ? ".pdf,.doc,.docx"
-                  : newFile.file_type === "ppt"
-                  ? ".ppt,.pptx"
-                  : newFile.file_type === "video"
-                  ? ".mp4,.avi,.mov,.webm"
-                  : ".jpg,.jpeg,.png,.gif,.webp"
-              }
-            />
+    <input
+      className="admin-policy-upload-input"
+      type="file"
+      key={newFile.file_type}
+      onChange={(e) =>
+        setNewFile((prev) => ({
+          ...prev,
+          file: e.target.files?.[0] || null,
+        }))
+      }
+      accept={
+        newFile.file_type === "document"
+          ? ".pdf,.doc,.docx"
+          : newFile.file_type === "ppt"
+          ? ".ppt,.pptx"
+          : newFile.file_type === "video"
+          ? ".mp4,.avi,.mov,.webm"
+          : ".jpg,.jpeg,.png,.gif,.webp"
+      }
+    />
 
-            <label className="admin-policy-upload-checkbox">
-              <input
-                type="checkbox"
-                checked={newFile.acknowledgement || false}
-                onChange={(e) =>
-                  setNewFile((prev) => ({
-                    ...prev,
-                    acknowledgement: e.target.checked,
-                  }))
-                }
-              />
-              Require Acknowledgement
-            </label>
+    <label className="admin-policy-upload-checkbox">
+      <input
+        type="checkbox"
+        checked={newFile.allowView !== false}
+        onChange={(e) =>
+          setNewFile((prev) => ({
+            ...prev,
+            allowView: e.target.checked,
+          }))
+        }
+      />
+      Allow View
+    </label>
 
-            <label className="admin-policy-upload-checkbox">
-              <input
-                type="checkbox"
-                checked={newFile.allowView !== false}
-                onChange={(e) =>
-                  setNewFile((prev) => ({
-                    ...prev,
-                    allowView: e.target.checked,
-                  }))
-                }
-              />
-              Allow View
-            </label>
-
-            <label className="admin-policy-upload-checkbox">
-              <input
-                type="checkbox"
-                checked={newFile.allowDownload !== false}
-                onChange={(e) =>
-                  setNewFile((prev) => ({
-                    ...prev,
-                    allowDownload: e.target.checked,
-                  }))
-                }
-              />
-              Allow Download
-            </label>
-          </div>
-{(newFile.file_type === "document" || newFile.file_type === "ppt") && (
-  <div className="admin-policy-convert-notice">
-    <span className="admin-policy-convert-icon">ℹ️</span>
-    <span>
-      Word / PowerPoint files will be <strong>automatically converted to PDF</strong> when you save.
-    </span>
+    <label className="admin-policy-upload-checkbox">
+      <input
+        type="checkbox"
+        checked={!!newFile.allowDownload}
+        onChange={(e) =>
+          setNewFile((prev) => ({
+            ...prev,
+            allowDownload: e.target.checked,
+          }))
+        }
+      />
+      Allow Download
+    </label>
   </div>
-)}
-          {newFile.acknowledgement && (
-            <textarea
-              className="admin-policy-upload-message"
-              placeholder="Enter acknowledgement message for employees..."
-              value={newFile.acknowledgementMessage || ""}
-              onChange={(e) =>
-                setNewFile((prev) => ({
-                  ...prev,
-                  acknowledgementMessage: e.target.value,
-                }))
-              }
-            />
-          )}
 
-          <button
-            type="button"
-            onClick={handleAddNewFile}
-            className="admin-policy-upload-add-btn"
-          >
-            + Add to Upload List
-          </button>
+  {(newFile.file_type === "document" || newFile.file_type === "ppt") && (
+    <div className="admin-policy-convert-notice">
+      <span className="admin-policy-convert-icon">ℹ️</span>
+      <span>
+        Word / PowerPoint files will be <strong>automatically converted to PDF</strong> when you save.
+      </span>
+    </div>
+  )}
 
-          {/* Files Ready to Upload */}
-          {newFilesToAdd.length > 0 && (
-            <div className="admin-policy-new-files">
-              <h4>Files Ready to Upload ({newFilesToAdd.length})</h4>
-              {newFilesToAdd.map((fileItem, index) => (
-                <div key={index} className="admin-policy-new-file-card">
-                  <div className="admin-policy-new-file-header">
-                    <div>
-                      <div className="admin-policy-new-file-name">
-                        {fileItem.file.name}
-                      </div>
-                      <div className="admin-policy-new-file-type">
-                        ({fileItem.file_type})
-                      </div>
-                    </div>
-                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                      {fileItem.acknowledgement && (
-                        <span className="admin-policy-ack-badge">✓ Ack</span>
-                      )}
-                      {fileItem.allowView && (
-                        <span className="admin-policy-permission-badge view">👁 View</span>
-                      )}
-                      {fileItem.allowDownload && (
-                        <span className="admin-policy-permission-badge download">⬇ Download</span>
-                      )}
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => handleRemoveNewFile(index)}
-                    className="admin-policy-remove-file-btn"
-                  >
-                    Remove
-                  </button>
-                </div>
-              ))}
+  <button
+    type="button"
+    onClick={handleAddNewFile}
+    className="admin-policy-upload-add-btn"
+  >
+    + Add to Upload List
+  </button>
+
+  {/* Files Ready to Upload */}
+  {newFilesToAdd.length > 0 && (
+    <div className="admin-policy-new-files">
+      <h4>Files Ready to Upload ({newFilesToAdd.length})</h4>
+      {newFilesToAdd.map((fileItem, index) => (
+        <div key={index} className="admin-policy-new-file-card">
+          <div className="admin-policy-new-file-header">
+            <div>
+              <div className="admin-policy-new-file-name">
+                {fileItem.file.name}
+              </div>
+              <div className="admin-policy-new-file-type">
+                ({fileItem.file_type})
+              </div>
             </div>
-          )}
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              {fileItem.allowView !== false && (
+                <span className="admin-policy-permission-badge view">👁 View</span>
+              )}
+              {fileItem.allowDownload && (
+                <span className="admin-policy-permission-badge download">⬇ Download</span>
+              )}
+            </div>
+          </div>
+          <button
+            onClick={() => handleRemoveNewFile(index)}
+            className="admin-policy-remove-file-btn"
+          >
+            Remove
+          </button>
         </div>
+      ))}
+    </div>
+  )}
+</div>
       </div>
 
       {/* ===== FOOTER ===== */}
@@ -701,9 +648,9 @@ const ViewPolicyModal = ({
         <div className="admin-policy-modal-overlay" onClick={() => setEditingFile(null)}>
           <div className="admin-policy-edit-modal" onClick={(e) => e.stopPropagation()}>
             <div className="admin-policy-header">
-              <h3 className="admin-policy-form-title">
-                Edit File: {editingFile.original_file_name || editingFile.file_name}
-              </h3>
+             <h3 className="admin-policy-form-title">
+  {isEditing ? "Update Policy" : "Create New Policy"}
+</h3>
               <button
                 type="button"
                 className="admin-policy-close-btn"
@@ -900,13 +847,16 @@ const CreatePolicies = () => {
   const [loading, setLoading] = useState(false);
   const [policies, setPolicies] = useState([]);
   const [viewPolicy, setViewPolicy] = useState(null);
-
-  const [newFile, setNewFile] = useState({
-    file: null,
-    file_type: "document",
-    acknowledgement: false,
-    acknowledgementMessage: "",
-  });
+const [isEditing, setIsEditing] = useState(false);
+const [editingPolicyId, setEditingPolicyId] = useState(null);
+ const [newFile, setNewFile] = useState({
+  file: null,
+  file_type: "document",
+  acknowledgement: false,
+  acknowledgementMessage: "",
+  allowView: true,
+  allowDownload: false,
+});
 
   const [newFilesToAdd, setNewFilesToAdd] = useState([]);
 
@@ -1176,23 +1126,60 @@ const handleAddNewFile = () => {
     file_type: newFile.file_type,
     acknowledgement: Boolean(newFile.acknowledgement),
     acknowledgementMessage: newFile.acknowledgementMessage || "",
+    allowView: newFile.allowView !== false,      // ← NEW
+    allowDownload: Boolean(newFile.allowDownload), // ← NEW
   };
 
   setNewFilesToAdd(prev => [...prev, fileToAdd]);
 
-  // Reset only the file input, keep other fields if needed
   setNewFile({
     file: null,
-    file_type: newFile.file_type,           // Keep selected type
+    file_type: newFile.file_type,
     acknowledgement: false,
     acknowledgementMessage: "",
+    allowView: true,
+    allowDownload: false,
   });
 };
   const handleRemoveNewFile = (index) => {
     setNewFilesToAdd(prev => prev.filter((_, i) => i !== index));
   };
+const handleEditPolicy = (policy) => {
+  setFormData({
+    policyName: policy.policy_name || "",
+    description: policy.description || "",
+    allowView:
+      policy.allow_view === 1 || policy.allow_view === true,
+    allowDownload:
+      policy.allow_download === 1 ||
+      policy.allow_download === true,
+  });
 
- const handleSubmit = async (e) => {
+  setSelectedEmployees([]);
+  setSelectedDepartments([]);
+  setSelectionType(
+    policy.assign_to_all === 1 ? "all" : "employee"
+  );
+
+  setSearchTerm("");
+  setDepartmentSearchTerm("");
+
+  setNewFilesToAdd([]);
+
+  setNewFile({
+    file: null,
+    file_type: "document",
+    acknowledgement: false,
+    acknowledgementMessage: "",
+    allowView: true,
+    allowDownload: false,
+  });
+
+  setEditingPolicyId(policy.id);
+  setIsEditing(true);
+  setShowForm(true);
+};
+const handleSubmit = async (e) => {
   e.preventDefault();
   if (!formData.policyName.trim()) {
     return showAlert("Policy name is required", "Error");
@@ -1200,62 +1187,86 @@ const handleAddNewFile = () => {
 
   setLoading(true);
   try {
-    const createResp = await axios.post(
-      `${BACKEND}/api/policies/create`,
-      {
-        policy_name: formData.policyName,
-        description: formData.description || "",
-        allow_view: formData.allowView,
-        allow_download: formData.allowDownload,
-        employeeIds:
-          selectionType === "employee"
-            ? selectedEmployees.map((emp) => emp.employee_id || emp.id)
-            : [],
-        departmentIds:
-          selectionType === "department"
-            ? selectedDepartments.map((dept) => dept.id)
-            : [],
-        assign_to_all: selectionType === "all" ? 1 : 0,
-        created_by: user?.name || user?.email || "System",
-      },
-      {
-        withCredentials: true,
-        headers: { "x-org-id": orgId },
-      }
-    );
+    if (isEditing && editingPolicyId) {
+  // ========== UPDATE POLICY ==========
+  await axios.put(
+    `${BACKEND}/api/policies/update/${editingPolicyId}`,
+    {
+      policy_name: formData.policyName,
+      description: formData.description || "",
+      allow_view: formData.allowView,
+      allow_download: formData.allowDownload,
+      assign_to_all: selectionType === "all" ? 1 : 0,   // ← ADD THIS
+      // Optional: if you later want to support changing assignments on edit
+      // employeeIds: selectionType === "employee" ? selectedEmployees.map(...) : [],
+      // departmentIds: selectionType === "department" ? selectedDepartments.map(...) : [],
+    },
+    {
+      withCredentials: true,
+      headers: { "x-org-id": orgId },
+    }
+  );
 
-    const policyId = createResp.data?.data?.id;
-
-    if (newFilesToAdd.length > 0 && policyId) {
-      const fileFormData = new FormData();
-
-      newFilesToAdd.forEach((nf, index) => {
-        const fieldName = getFieldName(nf.file_type);
-        fileFormData.append(fieldName, nf.file);
-        fileFormData.append(`acknowledgement_${index}`, nf.acknowledgement);
-        fileFormData.append(
-          `acknowledgement_message_${index}`,
-          nf.acknowledgementMessage || ""
-        );
-      });
-
-      await axios.post(
-        `${BACKEND}/api/policies/upload-files/${policyId}`,
-        fileFormData,
+  showAlert("Policy updated successfully!");
+} else {
+      // ========== CREATE POLICY ==========
+      const createResp = await axios.post(
+        `${BACKEND}/api/policies/create`,
+        {
+          policy_name: formData.policyName,
+          description: formData.description || "",
+          allow_view: formData.allowView,
+          allow_download: formData.allowDownload,
+          employeeIds:
+            selectionType === "employee"
+              ? selectedEmployees.map((emp) => emp.employee_id || emp.id)
+              : [],
+          departmentIds:
+            selectionType === "department"
+              ? selectedDepartments.map((dept) => dept.id)
+              : [],
+          assign_to_all: selectionType === "all" ? 1 : 0,
+          created_by: user?.name || user?.email || "System",
+        },
         {
           withCredentials: true,
           headers: { "x-org-id": orgId },
         }
       );
+
+      const policyId = createResp.data?.data?.id;
+
+      if (newFilesToAdd.length > 0 && policyId) {
+        const fileFormData = new FormData();
+
+        newFilesToAdd.forEach((nf, index) => {
+          const fieldName = getFieldName(nf.file_type);
+          fileFormData.append(fieldName, nf.file);
+          fileFormData.append(`acknowledgement_${index}`, nf.acknowledgement ? "true" : "false");
+          fileFormData.append(`acknowledgement_message_${index}`, nf.acknowledgementMessage || "");
+          fileFormData.append(`allow_view_${index}`, nf.allowView !== false ? "1" : "0");
+          fileFormData.append(`allow_download_${index}`, nf.allowDownload ? "1" : "0");
+        });
+
+        await axios.post(
+          `${BACKEND}/api/policies/upload-files/${policyId}`,
+          fileFormData,
+          {
+            withCredentials: true,
+            headers: { "x-org-id": orgId },
+          }
+        );
+      }
+
+      showAlert("Policy created successfully!");
     }
 
-    showAlert("Policy created successfully!");
     resetForm();
     setShowForm(false);
     fetchPolicies();
   } catch (error) {
     showAlert(
-      error.response?.data?.message || "Failed to create policy",
+      error.response?.data?.message || (isEditing ? "Failed to update policy" : "Failed to create policy"),
       "Error"
     );
   } finally {
@@ -1264,16 +1275,29 @@ const handleAddNewFile = () => {
 };
 
   const resetForm = () => {
-    setFormData({ policyName: "", allowView: true, allowDownload: false });
-    setSelectedEmployees([]);
-    setSelectedDepartments([]);
-    setNewFilesToAdd([]);
-    setNewFile({ file: null, file_type: "document", acknowledgement: false, acknowledgementMessage: "" });
-    setSearchTerm("");
-    setDepartmentSearchTerm("");
-    setSelectionType("employee");
-  };
-
+  setFormData({
+    policyName: "",
+    description: "",
+    allowView: true,
+    allowDownload: false,
+  });
+  setSelectedEmployees([]);
+  setSelectedDepartments([]);
+  setNewFilesToAdd([]);
+  setNewFile({
+    file: null,
+    file_type: "document",
+    acknowledgement: false,
+    acknowledgementMessage: "",
+    allowView: true,
+    allowDownload: false,
+  });
+  setSearchTerm("");
+  setDepartmentSearchTerm("");
+  setSelectionType("employee");
+  setIsEditing(false);
+  setEditingPolicyId(null);
+};
 const handleSaveEdits = async () => {
   if (!viewPolicy) return;
   setLoading(true);
@@ -1293,15 +1317,17 @@ const handleSaveEdits = async () => {
     const filesToUpload = [...newFilesToAdd];
 
     // If user selected a file but didn't click "Add to List", include it now
-    if (newFile.file) {
-      filesToUpload.push({
-        id: Date.now(),
-        file: newFile.file,
-        file_type: newFile.file_type,
-        acknowledgement: Boolean(newFile.acknowledgement),
-        acknowledgementMessage: newFile.acknowledgementMessage || "",
-      });
-    }
+   if (newFile.file) {
+  filesToUpload.push({
+    id: Date.now(),
+    file: newFile.file,
+    file_type: newFile.file_type,
+    acknowledgement: Boolean(newFile.acknowledgement),
+    acknowledgementMessage: newFile.acknowledgementMessage || "",
+    allowView: newFile.allowView !== false,
+    allowDownload: Boolean(newFile.allowDownload),
+  });
+}
 
     console.log(`Uploading ${filesToUpload.length} file(s)`);
 
@@ -1309,12 +1335,14 @@ const handleSaveEdits = async () => {
 if (filesToUpload.length > 0) {
   const fileFormData = new FormData();
 
-  filesToUpload.forEach((nf, index) => {
-    const fieldName = getFieldName(nf.file_type);
-    fileFormData.append(fieldName, nf.file);
-    fileFormData.append(`acknowledgement_${index}`, nf.acknowledgement);
-    fileFormData.append(`acknowledgement_message_${index}`, nf.acknowledgementMessage || "");
-  });
+filesToUpload.forEach((nf, index) => {
+  const fieldName = getFieldName(nf.file_type);
+  fileFormData.append(fieldName, nf.file);
+  fileFormData.append(`acknowledgement_${index}`, nf.acknowledgement ? "true" : "false");
+  fileFormData.append(`acknowledgement_message_${index}`, nf.acknowledgementMessage || "");
+  fileFormData.append(`allow_view_${index}`, nf.allowView !== false ? "1" : "0"); // ← NEW
+  fileFormData.append(`allow_download_${index}`, nf.allowDownload ? "1" : "0");   // ← NEW
+});
 
   const uploadRes = await axios.post(
     `${BACKEND}/api/policies/upload-files/${viewPolicy.id}`,
@@ -1408,6 +1436,9 @@ if (filesToUpload.length > 0) {
         orgId={orgId}
         selectionType={selectionType}
   setSelectionType={setSelectionType}
+  
+isEditing={isEditing}                 // ← NEW
+  setIsEditing={setIsEditing}
       />
     </div>
   </div>
@@ -1416,24 +1447,53 @@ if (filesToUpload.length > 0) {
       <div className="policies-list">
         <h3>Existing Policies ({policies.length})</h3>
         <div className="policies-grid">
-          {policies.map((policy) => (
-            <div key={policy.id} className="policy-card-item">
-              <h4>{policy.policy_name}</h4>
-              {policy.description && (
-    <p className="policy-description" style={{ fontSize: "13px", color: "#666" }}>
-      {policy.description.length > 80
-        ? policy.description.substring(0, 80) + "..."
-        : policy.description}
-    </p>
-  )}
-              <div className="policy-meta">
-                Created: {new Date(policy.created_at).toLocaleDateString()}
-              </div>
-              <button className="upload-view-btn" onClick={() => handleUploadAndView(policy)}>
-                Upload & View Documents
-              </button>
-            </div>
-          ))}
+         {policies.map((policy) => (
+  <div key={policy.id} className="policy-card-item" style={{ position: "relative" }}>
+    {/* Edit Icon - Top Right */}
+    <button
+  type="button"
+  onClick={() => handleEditPolicy(policy)}
+  title="Edit Policy"
+  className="policy-edit-btn"
+>
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="18"
+    height="18"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <path d="M12 20h9"/>
+    <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/>
+  </svg>
+</button>
+
+    <h4 style={{ paddingRight: "40px" }}>{policy.policy_name}</h4>
+
+    {policy.description && (
+      <p className="policy-description" style={{ fontSize: "13px", color: "#666" }}>
+        {policy.description.length > 80
+          ? policy.description.substring(0, 80) + "..."
+          : policy.description}
+      </p>
+    )}
+
+    <div className="policy-meta">
+      Created: {new Date(policy.created_at).toLocaleDateString()}
+    </div>
+
+    <button
+      className="upload-view-btn"
+      onClick={() => handleUploadAndView(policy)}
+    >
+      Upload Documents
+    </button>
+  </div>
+))}
         </div>
       </div>
 

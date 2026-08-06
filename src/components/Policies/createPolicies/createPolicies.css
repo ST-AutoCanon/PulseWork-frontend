@@ -129,7 +129,37 @@
   margin-bottom: 12px;
   background: #f8fafc;
 }
+.policy-edit-btn {
+  position: absolute;
+  top: 12px;
+  right: 12px;
 
+  width: 30px;
+  height: 30px;
+
+  border: none;
+  border-radius: 50%;
+
+  background: #00468c;
+  color: white;
+
+  display: flex;
+  justify-content: center;
+  align-items: center;
+
+  cursor: pointer;
+  transition: .25s;
+}
+
+.policy-edit-btn:hover{
+  background:#1d4ed8;
+  transform:scale(1.05);
+}
+
+.policy-edit-btn svg{
+  width:15px;
+  height:15px;
+}
 .admin-policy-department-header {
   display: flex;
   justify-content: space-between;
@@ -142,7 +172,7 @@
 
 .admin-policy-employees-under-dept {
   padding-left: 12px;
-  border-left: 3px solid #3b82f6;
+  border-left: 3px solid #00468c;
 }
 
 .admin-policy-employee-under-dept {
@@ -235,7 +265,7 @@
 }
 
 .create-policy-btn {
-  background: linear-gradient(90deg, #2563eb, #1d4ed8);
+  background: linear-gradient(90deg, #00468c, #1d4ed8);
   color: white;
   border: none;
   padding: 12px 20px;
@@ -281,7 +311,7 @@
 
 .form-group input[type="text"]:focus {
   outline: none;
-  border-color: #2563eb;
+  border-color: #00468c;
   box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.1);
 }
 
@@ -484,7 +514,7 @@
 
 /* ===== DARK BLUE HEADER ===== */
 .admin-policy-header {
-  background: #0f4c81;          /* dark blue */
+  background: #00468c;          /* dark blue */
   color: #ffffff;
   padding: 18px 24px;
   display: flex;
@@ -636,7 +666,7 @@
 .upload-view-btn {
   width: 100%;
   padding: 12px;
-  background: #2563eb;
+  background: #00468c;
   color: white;
   border: none;
   border-radius: 10px;
@@ -645,7 +675,7 @@
 }
 
 .upload-view-btn:hover {
-  background: #1d4ed8;
+  background: #00468c;
 }
 
 /* Edit Modal */
@@ -798,7 +828,7 @@
 }
 
 .policies-btn-view{
-    background:#2563eb;
+    background:#00468c;
     color:white;
 }
 
@@ -808,12 +838,12 @@
 }
 
 .policies-btn-replace{
-    background:#f59e0b;
+    background:#16a34a;
     color:white;
 }
 
 .policies-btn-delete{
-    background:#ef4444;
+    background:#16a34a;
     color:white;
 }
 
@@ -886,7 +916,7 @@
 }
 
 .policies-new-file-type{
-    color:#2563eb;
+    color:#00468c;
     font-weight:600;
 }
 
@@ -918,7 +948,7 @@
 }
 
 .policies-save-btn{
-    background:#2563eb;
+    background:#00468c;
     color:white;
     border:none;
     padding:12px 24px;
@@ -1026,7 +1056,7 @@
 }
 
 .admin-policy-permission-badge.view {
-  color: #2563eb;
+  color: #00468c;
   background: #eff6ff;
 }
 
@@ -1082,7 +1112,7 @@
 }
 
 .alert-modal button:hover {
-  background: #0056b3;
+  background: #00468c;
 }
 /* ==================== FILE EDIT STYLES ==================== */
 .policies-file-actions {
@@ -1198,7 +1228,7 @@
 .file-replace-body select:focus,
 .file-replace-body input[type="file"]:focus {
   outline: none;
-  border-color: #3b82f6;
+  border-color: #00468c;
   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
 }
 
@@ -1275,7 +1305,7 @@
     transform: scale(1) translateY(0);
   }
 }
-.department-card {
+.admin-policy-department-card{
   border: 1px solid #e2e8f0;
   border-radius: 8px;
   padding: 12px;
@@ -1283,7 +1313,7 @@
   background: #f8fafc;
 }
 
-.department-header {
+.admin-policy-department-card-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -1396,7 +1426,7 @@
   background: #ffffff !important;
 }
 
-.selected-item, .department-card {
+.selected-item, .admin-policy-department-card{
   background: white;
   padding: 12px 16px;
   margin: 6px 0;
@@ -1690,10 +1720,10 @@
 }
 
 .admin-policy-btn-replace {
-  background: #f59e0b;
+  background: #7fbd2c;
 }
 .admin-policy-btn-replace:hover {
-  background: #d97706;
+  background: #7fbd2c;
 }
 
 .admin-policy-btn-edit {
@@ -1704,10 +1734,10 @@
 }
 
 .admin-policy-btn-delete {
-  background: #ef4444;
+  background: #7fbd2c;
 }
 .admin-policy-btn-delete:hover {
-  background: #dc2626;
+  background: #7fbd2c;
 }
 
 /* ========== UPLOAD SECTION ========== */

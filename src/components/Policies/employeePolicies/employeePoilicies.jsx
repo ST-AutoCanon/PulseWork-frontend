@@ -22,7 +22,8 @@ import {
   FaLock,
   FaUsers,
   FaClipboardList,
-  FaChevronRight,FaDownload,
+  FaChevronRight,FaDownload,FaSearch,FaEye,
+  FaEyeSlash,
 } from "react-icons/fa";
 
 export default function EmployeePolicies() {
@@ -38,7 +39,20 @@ export default function EmployeePolicies() {
 const [activeTab, setActiveTab] = useState("all"); // "all" | "pending" | "acknowledged"
   const [fileUrl, setFileUrl] = useState(null);
   const [loadingFile, setLoadingFile] = useState(false);
+const [searchTerm, setSearchTerm] = useState("");
+const [alertModal, setAlertModal] = useState({
+  isVisible: false,
+  title: "",
+  message: "",
+});
 
+const showAlert = (message, title = "Success") => {
+  setAlertModal({ isVisible: true, title, message });
+};
+
+const closeAlert = () => {
+  setAlertModal({ isVisible: false, title: "", message: "" });
+};
   // helpers
   const getFileName = (file) =>
     file?.original_file_name || file?.file_name || "";
@@ -281,24 +295,28 @@ const handleDownload = async (file) => {
     URL.revokeObjectURL(url);
   } catch (err) {
     console.error("Download failed:", err.response?.data || err);
-    alert("Failed to download file");
+    showAlert("Failed to download file");
   }
 };
 const filteredPolicies = policies.filter((policy) => {
+  // ----- Search filter -----
+  const term = searchTerm.trim().toLowerCase();
+  if (term) {
+    const name = (policy.policy_name || "").toLowerCase();
+    const desc = (policy.description || policy.policy_description || "").toLowerCase();
+    if (!name.includes(term) && !desc.includes(term)) return false;
+  }
+
+  // ----- Tab filter -----
   if (activeTab === "all") return true;
 
   const files = policy.files || [];
-
   const hasPending = files.some(
     (f) => Number(f.acknowledgement_required) === 1 && Number(f.is_acknowledged) === 0
   );
 
-  const hasAcknowledged = files.some(
-    (f) => Number(f.acknowledgement_required) === 1 && Number(f.is_acknowledged) === 1
-  );
-
   if (activeTab === "pending") return hasPending;
-  if (activeTab === "acknowledged") return hasAcknowledged;
+  if (activeTab === "acknowledged") return !hasPending;
 
   return true;
 });
@@ -331,10 +349,10 @@ const handleAcknowledgement = async () => {
     setSelectedFile({ ...pendingFile, is_acknowledged: 1 });
     setPendingFile(null);
 
-    alert("Acknowledgement saved successfully.");
+   showAlert("Acknowledgement saved successfully.");
   } catch (err) {
     console.error("Acknowledgement Error:", err.response?.data || err);
-    alert(err.response?.data?.message || "Failed to save acknowledgement.");
+    showAlert(err.response?.data?.message || "Failed to save acknowledgement.");
   }
 };
 
@@ -351,33 +369,59 @@ const handleFileClick = (file) => {
  return (
   <div className="employee-policy-page">
     {/* ========== HEADER + TABS ========== */}
-   <div className="policies-header">
-  <h1 className="policies-title-emp">Policies</h1>
+  {/* ========== HEADER + TABS + SEARCH ========== */}
+<div className="employee-policy-header">
+  <h1 className="employee-policy-title">Policies</h1>
 
-  <div className="policies-tabs">
-    <div
-      className={`tab-item ${activeTab === "all" ? "active" : ""}`}
-      onClick={() => setActiveTab("all")}
-    >
-      All Policies
-      {activeTab === "all" && <div className="active-line" />}
+  <div className="employee-policy-header-row">
+    {/* Left – Tabs */}
+    <div className="employee-policy-tabs">
+      <div
+        className={`employee-policy-tab ${activeTab === "all" ? "active" : ""}`}
+        onClick={() => setActiveTab("all")}
+      >
+        All Policies
+        {activeTab === "all" && <div className="employee-policy-tab-line" />}
+      </div>
+
+      <div
+        className={`employee-policy-tab ${activeTab === "pending" ? "active" : ""}`}
+        onClick={() => setActiveTab("pending")}
+      >
+        Acknowledgement Pending
+        {activeTab === "pending" && <div className="employee-policy-tab-line" />}
+      </div>
+
+      <div
+        className={`employee-policy-tab ${activeTab === "acknowledged" ? "active" : ""}`}
+        onClick={() => setActiveTab("acknowledged")}
+      >
+        Policies Acknowledged
+        {activeTab === "acknowledged" && <div className="employee-policy-tab-line" />}
+      </div>
     </div>
 
-    <div
-      className={`tab-item ${activeTab === "pending" ? "active" : ""}`}
-      onClick={() => setActiveTab("pending")}
+    {/* Right – Search */}
+  {/* Right – Search */}
+<div className="employee-policy-search">
+  <FaSearch className="employee-policy-search-icon" />
+  <input
+    type="text"
+    className="employee-policy-search-input"
+    placeholder="Search policies..."
+    value={searchTerm}
+    onChange={(e) => setSearchTerm(e.target.value)}
+  />
+  {searchTerm && (
+    <button
+      className="employee-policy-search-clear"
+      onClick={() => setSearchTerm("")}
+      aria-label="Clear search"
     >
-      Acknowledgement Pending
-      {activeTab === "pending" && <div className="active-line" />}
-    </div>
-
-    <div
-      className={`tab-item ${activeTab === "acknowledged" ? "active" : ""}`}
-      onClick={() => setActiveTab("acknowledged")}
-    >
-      Policies Acknowledged
-      {activeTab === "acknowledged" && <div className="active-line" />}
-    </div>
+      ×
+    </button>
+  )}
+</div>
   </div>
 </div>
 
@@ -414,10 +458,15 @@ const handleFileClick = (file) => {
                 <div className="policy-card-header">
                   <div className="policy-card-icon">{getPolicyIcon(policy.policy_name)}</div>
                   <div className="policy-card-info">
-                    <span className="policy-name">{policy.policy_name}</span>
-                    {policy.policy_description && (
-                      <p className="policy-description">{policy.policy_description}</p>
-                    )}
+                   <span className="policy-name">{policy.policy_name}</span>
+
+{(policy.description || policy.policy_description) && (
+      <p className="policy-description">
+        {(policy.description || policy.policy_description).length > 80
+          ? (policy.description || policy.policy_description).substring(0, 80) + "..."
+          : (policy.description || policy.policy_description)}
+      </p>
+    )}
                   </div>
                 </div>
                 <div className="policy-card-divider" />
@@ -442,18 +491,18 @@ const handleFileClick = (file) => {
       {selectedPolicy && (
         <div className="file-section">
           <div className="section-title-with-close">
-          <span className="section-title">Files</span>
-          <button
-            className="close-panel-btn"
-            onClick={() => {
-              setSelectedPolicy(null);
-              setSelectedFile(null);
-            }}
-            aria-label="Close files panel"
-          >
-            ×
-          </button>
-        </div>
+  <span>Files</span>
+  <button
+    className="close-panel-btn"
+    onClick={() => {
+      setSelectedPolicy(null);
+      setSelectedFile(null);
+    }}
+    aria-label="Close files panel"
+  >
+    ×
+  </button>
+</div>
          {selectedPolicy.files && selectedPolicy.files.length > 0 ? (
   <div style={{ flex: 1, overflowY: "auto", minHeight: 0 }}>
     {selectedPolicy.files.map((file) => {
@@ -484,17 +533,25 @@ const handleFileClick = (file) => {
             {getFileIcon(file)}
             <span>{getFileName(file)}</span>
 
-            {!canView && (
-              <span
-                style={{
-                  fontSize: 12,
-                  color: "#ef4444",
-                  marginLeft: "auto",
-                }}
-              >
-                Not allowed to view
-              </span>
-            )}
+          <div
+  style={{
+    marginLeft: "auto",
+    display: "flex",
+    alignItems: "center",
+  }}
+>
+  {canView ? (
+    <FaEye
+      title="View allowed"
+      className="file-permission-icon view"
+    />
+  ) : (
+    <FaEyeSlash
+      title="View not allowed"
+      className="file-permission-icon no-view"
+    />
+  )}
+</div>
           </div>
 
           {canView && <FaChevronRight className="arrow" />}
@@ -672,7 +729,24 @@ const handleFileClick = (file) => {
         </div>
       )}
     </div>
-
+{/* Alert Modal */}
+{alertModal.isVisible && (
+  <div
+    className="alert-modal-overlay"
+    onClick={closeAlert}
+    style={{ zIndex: 99999 }}
+  >
+    <div
+      className="alert-modal"
+      onClick={(e) => e.stopPropagation()}
+      style={{ zIndex: 100000 }}
+    >
+      <h2>{alertModal.title}</h2>
+      <p>{alertModal.message}</p>
+      <button onClick={closeAlert}>Close</button>
+    </div>
+  </div>
+)}
   </div>
 );
     

@@ -284,11 +284,11 @@
 }
 
 .policy-status-badge {
-  margin-top: 12px;
-  padding: 4px 10px;
+  margin-top: 0;
+  padding: 3px 8px;
   border-radius: 999px;
-  font-size: 12px;
-  font-weight: 700;
+  font-size: 11px;
+  font-weight: 600;
   color: #fff;
 }
 
@@ -357,16 +357,11 @@
   background: #fff;
   border: 2px solid #e3e7ed;
   border-radius: 12px;
-  height: 130px;
-  min-height: 130px;
-  max-height: 130px;
   width: 100%;
-  min-width: 0;              /* ← critical – stops long names from stretching the card */
-  padding: 12px 10px;
+  min-width: 0;
+  padding: 14px 12px;
   display: flex;
   flex-direction: column;
-  justify-content: center;
-  align-items: center;
   cursor: pointer;
   transition: transform 0.25s ease, box-shadow 0.25s ease,
     border-color 0.25s ease, background 0.25s ease;
@@ -380,34 +375,101 @@
   border-color: #4b82d8;
 }
 
-.policy-icon {
-  font-size: 32px;
-  color: #0f4c81;
-  margin-bottom: 10px;
-  flex-shrink: 0;
-  line-height: 1;
+.policy-card-header {
+  display: flex;
+  gap: 14px;
+  margin-bottom: 14px;
+  align-items: flex-start;
 }
 
-.policy-name {
+.policy-card-icon {
+  flex-shrink: 0;
+  font-size: 30px;
+  color: #0f4c81;
+  line-height: 1;
+  margin-top: 1px;
+}
+
+.policy-card-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.policy-card-info .policy-name {
   font-weight: 600;
-  color: #444;
-  text-align: center;
+  color: #1e293b;
   font-size: 14px;
-  line-height: 1.3;
+  line-height: 1.35;
   display: -webkit-box;
-  -webkit-line-clamp: 2;
+  -webkit-line-clamp: 1;
   -webkit-box-orient: vertical;
   overflow: hidden;
   word-break: break-word;
-  overflow-wrap: break-word;  /* ← extra safety for long words */
-  max-width: 100%;
-  max-height: 2.6em;
+}
+
+.policy-description {
+  font-size: 12px;
+  color: #64748b;
+  line-height: 1.35;
+  margin: 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  word-break: break-word;
+}
+
+.policy-card-divider {
+  height: 1px;
+  background: #e2e8f0;
+  margin: 10px 0;
+  flex-shrink: 0;
+}
+
+.policy-card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-shrink: 0;
+  font-size: 12px;
+}
+
+.policy-icon {
+  font-size: 24px;
+  color: #0f4c81;
+  flex-shrink: 0;
+  line-height: 1;
 }
 
 .active-card {
   border-color: #0f4c81;
   background: #edf5ff;
   box-shadow: 0 8px 20px rgba(15, 76, 129, 0.2);
+}
+
+.viewer-download-btn {
+  flex-shrink: 0;
+  padding: 8px 14px;
+  background: #fff;
+  color: #0f4c81;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.viewer-download-btn:hover {
+  background: #f1f5f9;
+  border-color: #0f4c81;
 }
 /* FILE section */
 .file-section {
@@ -555,6 +617,36 @@
   }
 }
 
+/* Access Restricted Message */
+.viewer-body-restricted {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  padding: 40px 20px;
+  text-align: center;
+  background: #f8fafc;
+}
+
+.viewer-body-restricted-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+}
+
+.viewer-body-restricted-title {
+  color: #1f2937;
+  font-size: 18px;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.viewer-body-restricted-text {
+  color: #64748b;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
  
 
 .ack-modal p {
@@ -671,13 +763,13 @@
 /* Initial – 4 cards per row */
 .policy-cards.four-col {
   grid-template-columns: repeat(4, 1fr);
-  grid-auto-rows: 130px;
+  grid-auto-rows: auto;
 }
 
 /* After selection – 2 cards per row (moves left) */
 .policy-cards.two-col {
   grid-template-columns: repeat(2, 1fr);
-  grid-auto-rows: 120px;
+  grid-auto-rows: auto;
 }
 
 /* Keep your existing .policy-card, .active-card, .policy-icon, .policy-name styles */
@@ -685,7 +777,7 @@
 
 .policy-card {
   /* ... your existing styles ... */
-  height: 100%;          /* important so grid-auto-rows controls height */
+  height: auto;
   min-height: unset;
   max-height: unset;
 }

@@ -501,6 +501,7 @@ const ViewPolicyModal = ({
 
         {/* Add New Files */}
        {/* Add New Files */}
+{/* Add New Files */}
 <div className="admin-policy-upload-card">
   <h3 className="admin-policy-section-title">Add New Files</h3>
 
@@ -543,43 +544,79 @@ const ViewPolicyModal = ({
       }
     />
 
-    <label className="admin-policy-upload-checkbox">
-      <input
-        type="checkbox"
-        checked={newFile.allowView !== false}
-        onChange={(e) =>
-          setNewFile((prev) => ({
-            ...prev,
-            allowView: e.target.checked,
-          }))
-        }
-      />
-      Allow View
-    </label>
+    {/* ✅ ADD THIS – Require Acknowledgement */}
+   {/* Checkboxes stacked vertically */}
+<div style={{ display: "flex", flexDirection: "column", gap: "8px", marginTop: "8px" }}>
+  <label className="admin-policy-upload-checkbox">
+    <input
+      type="checkbox"
+      checked={newFile.acknowledgement || false}
+      onChange={(e) =>
+        setNewFile((prev) => ({
+          ...prev,
+          acknowledgement: e.target.checked,
+        }))
+      }
+    />
+    Require Acknowledgement
+  </label>
 
-    <label className="admin-policy-upload-checkbox">
-      <input
-        type="checkbox"
-        checked={!!newFile.allowDownload}
-        onChange={(e) =>
-          setNewFile((prev) => ({
-            ...prev,
-            allowDownload: e.target.checked,
-          }))
-        }
-      />
-      Allow Download
-    </label>
+  <label className="admin-policy-upload-checkbox">
+    <input
+      type="checkbox"
+      checked={newFile.allowView !== false}
+      onChange={(e) =>
+        setNewFile((prev) => ({
+          ...prev,
+          allowView: e.target.checked,
+        }))
+      }
+    />
+    Allow View
+  </label>
+
+  <label className="admin-policy-upload-checkbox">
+    <input
+      type="checkbox"
+      checked={!!newFile.allowDownload}
+      onChange={(e) =>
+        setNewFile((prev) => ({
+          ...prev,
+          allowDownload: e.target.checked,
+        }))
+      }
+    />
+    Allow Download
+  </label>
+</div>
   </div>
 
-  {(newFile.file_type === "document" || newFile.file_type === "ppt") && (
-    <div className="admin-policy-convert-notice">
-      <span className="admin-policy-convert-icon">ℹ️</span>
-      <span>
-        Word / PowerPoint files will be <strong>automatically converted to PDF</strong> when you save.
-      </span>
-    </div>
-  )}
+  {/* Convert notice (keep as is) */}
+ {/* Acknowledgement message – appears above the note */}
+{newFile.acknowledgement && (
+  <textarea
+    className="admin-policy-upload-message"
+    placeholder="Enter acknowledgement message for employees..."
+    value={newFile.acknowledgementMessage || ""}
+    onChange={(e) =>
+      setNewFile((prev) => ({
+        ...prev,
+        acknowledgementMessage: e.target.value,
+      }))
+    }
+    rows={3}
+  />
+)}
+
+{/* Convert notice */}
+{(newFile.file_type === "document" || newFile.file_type === "ppt") && (
+  <div className="admin-policy-convert-notice">
+    <span className="admin-policy-convert-icon">ℹ️</span>
+    <span>
+      Word / PowerPoint files will be <strong>automatically converted to PDF</strong> when you save.
+    </span>
+  </div>
+)}
 
   <button
     type="button"
@@ -588,7 +625,6 @@ const ViewPolicyModal = ({
   >
     + Add to Upload List
   </button>
-
   {/* Files Ready to Upload */}
   {newFilesToAdd.length > 0 && (
     <div className="admin-policy-new-files">
@@ -604,14 +640,14 @@ const ViewPolicyModal = ({
                 ({fileItem.file_type})
               </div>
             </div>
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            {/* <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
               {fileItem.allowView !== false && (
                 <span className="admin-policy-permission-badge view">👁 View</span>
               )}
               {fileItem.allowDownload && (
                 <span className="admin-policy-permission-badge download">⬇ Download</span>
               )}
-            </div>
+            </div> */}
           </div>
           <button
             onClick={() => handleRemoveNewFile(index)}
@@ -634,13 +670,15 @@ const ViewPolicyModal = ({
         >
           Cancel
         </button>
-        <button
-          className="admin-policy-submit-btn"
-          onClick={handleSaveEdits}
-          disabled={loading}
-        >
-          {loading ? "Uploading..." : `Save & Upload (${newFilesToAdd.length})`}
-        </button>
+      <button
+  className="admin-policy-submit-btn"
+  onClick={handleSaveEdits}
+  disabled={loading}
+>
+  {loading
+    ? "Uploading..."
+    : `Save & Upload (${newFilesToAdd.length + (newFile.file ? 1 : 0)})`}
+</button>
       </div>
 
       {/* ==================== FILE EDIT MODAL ==================== */}
@@ -1126,11 +1164,11 @@ const handleAddNewFile = () => {
     file_type: newFile.file_type,
     acknowledgement: Boolean(newFile.acknowledgement),
     acknowledgementMessage: newFile.acknowledgementMessage || "",
-    allowView: newFile.allowView !== false,      // ← NEW
-    allowDownload: Boolean(newFile.allowDownload), // ← NEW
+    allowView: newFile.allowView !== false,
+    allowDownload: Boolean(newFile.allowDownload),
   };
 
-  setNewFilesToAdd(prev => [...prev, fileToAdd]);
+  setNewFilesToAdd((prev) => [...prev, fileToAdd]);
 
   setNewFile({
     file: null,

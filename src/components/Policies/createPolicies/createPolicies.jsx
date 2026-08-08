@@ -199,7 +199,7 @@ const appendFilesToFormData = (filesArray, formData) => {
   />
 </div>
 
-        {/* Permissions */}
+        {/* Permissions
         <div className="admin-policy-permissions-section">
           <h4 className="admin-policy-section-subtitle">Permissions</h4>
           <div className="admin-policy-checkbox-group">
@@ -220,7 +220,7 @@ const appendFilesToFormData = (filesArray, formData) => {
               Allow Download
             </label>
           </div>
-        </div>
+        </div> */}
 
         {/* Selection Type */}
         {/* Selection Type */}
@@ -858,14 +858,7 @@ const ViewPolicyModal = ({
               </button>
             </div>
           </div>
-          {(replaceNewFile?.file_type === "document" || replaceNewFile?.file_type === "ppt") && (
-  <div className="admin-policy-convert-notice">
-    <span className="admin-policy-convert-icon">ℹ️</span>
-    <span>
-      Word / PowerPoint files will be <strong>automatically converted to PDF</strong> when you replace.
-    </span>
-  </div>
-)}
+          
         </div>
       )}
     </div>

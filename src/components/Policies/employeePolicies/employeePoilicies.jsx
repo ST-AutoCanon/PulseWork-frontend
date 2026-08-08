@@ -335,28 +335,38 @@ const handleAcknowledgement = async () => {
       }
     );
 
-    // Update the file in selectedPolicy so UI updates immediately
+    // 1. Update the files inside the currently selected policy
     const updatedFiles = selectedPolicy.files.map((f) =>
       f.id === pendingFile.id
         ? { ...f, is_acknowledged: 1 }
         : f
     );
 
-    setSelectedPolicy({
+    const updatedSelectedPolicy = {
       ...selectedPolicy,
       files: updatedFiles,
-    });
+    };
 
+    setSelectedPolicy(updatedSelectedPolicy);
     setSelectedFile({ ...pendingFile, is_acknowledged: 1 });
     setPendingFile(null);
 
-   showAlert("Acknowledgement saved successfully.");
+    // 2. Also update the same policy in the main policies list
+    //    (this is what drives the badges + tabs)
+    setPolicies((prev) =>
+      prev.map((p) =>
+        p.policy_id === selectedPolicy.policy_id
+          ? updatedSelectedPolicy
+          : p
+      )
+    );
+
+    showAlert("Acknowledgement saved successfully.");
   } catch (err) {
     console.error("Acknowledgement Error:", err.response?.data || err);
     showAlert(err.response?.data?.message || "Failed to save acknowledgement.");
   }
 };
-
 const handleFileClick = (file) => {
   setSelectedFile(file);
   setAckChecked(false); // reset checkbox

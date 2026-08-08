@@ -166,7 +166,13 @@ doc.setFont("helvetica", "bold").text("Employee ID:", rightX, 75);
 doc.setFont("helvetica", "normal").text(getVal(employeeId), rightX + 30, 75);
 
 doc.setFont("helvetica", "bold").text("Designation:", rightX, 82);
-doc.setFont("helvetica", "normal").text(getVal(designation).toUpperCase().substring(0, 25), rightX + 30, 82);
+doc.setFont("helvetica", "bold").text("Designation:", rightX, 82);
+doc.setFont("helvetica", "normal").text(
+  getVal(designation).toUpperCase(),
+  rightX + 30,
+  82,
+  { maxWidth: 48 }   // safe width so it wraps cleanly
+);
 
 doc.setFont("helvetica", "bold").text("Account No:", rightX, 89);
 doc.setFont("helvetica", "normal").text(getVal(accountNo), rightX + 30, 89);

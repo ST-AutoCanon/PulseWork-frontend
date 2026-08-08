@@ -86,7 +86,33 @@ const logoBase64 = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAFoAAABZCAYAAA
   
   doc.setFillColor(15, 102, 121);
   doc.rect(margin, 10, pageWidth - 2 * margin, 25, "F");
+// const logoBase64 = "data:image/png;base64,....";  // keep your existing base64
 
+// ====================== WATERMARK – same logo, large & faint ======================
+const addWatermark = () => {
+  doc.saveGraphicsState();
+  doc.setGState(new doc.GState({ opacity: 0.15 })); // adjust 0.06–0.12 if needed
+
+  const wmSize = 140;
+  const wmX = (pageWidth - wmSize) / 2;
+  const wmY = (pageHeight - wmSize) / 2 - 10;
+
+  doc.addImage(logoBase64, "PNG", wmX, wmY, wmSize, wmSize);
+  doc.restoreGraphicsState();
+};
+
+addWatermark();   // ← must be called before drawing the header & content
+
+// Header bar
+doc.setFillColor(15, 102, 121);
+doc.rect(margin, 10, pageWidth - 2 * margin, 25, "F");
+
+doc.setFillColor(255, 255, 255);
+doc.rect(10.5, 10.5, 25, 24, "F");
+
+doc.addImage(logoBase64, "PNG", 11, 11, 23, 23);
+
+// … rest of the code stays the same …
   doc.setFillColor(255, 255, 255);
   doc.rect(10.5, 10.5, 25, 24, "F");
 

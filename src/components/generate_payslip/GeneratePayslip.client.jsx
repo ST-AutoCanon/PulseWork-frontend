@@ -11,6 +11,7 @@ import Modal from "../Modal/Modal.client";
 import { useAuth } from "../../context/AuthProvider.client";
 import '@fortawesome/fontawesome-free/css/all.min.css';
 
+import generatePayslipPDFDefault from "../../components/generate_payslip/generatePayslipPDFDefault"; // ← ADD THIS
 export default function GeneratePayslip() {
   const { user } = useAuth();
 
@@ -51,7 +52,22 @@ export default function GeneratePayslip() {
 
   return base;
 };
+// Force default design (header + footer + watermark) for organisation_id 1
+const isDefaultOrg = () => String(orgId) === "1";
 
+const generatePayslipBlob = async (tableData) => {
+  if (isDefaultOrg()) {
+    // Use the hardcoded default design (logo header, company details, watermark logo, footer)
+    return generatePayslipPDFDefault(
+      tableData,
+      Number(selectedMonth),
+      Number(selectedYear)
+    );
+  }
+
+  // Everyone else → existing custom template flow
+  return generatePdfWithTemplate(tableData);
+};
   const [showModal, setShowModal] = useState(false);
   const [preview, setPreview] = useState(false);
   const [pdfUrl, setPdfUrl] = useState(null);
@@ -296,7 +312,7 @@ const handleDownloadWithCustomTemplate = async () => {
   setIsLoading(true);
   try {
     const tableData = prepareManualPayslipData();
-    const pdfBlob = await generatePdfWithTemplate(tableData);
+    const pdfBlob = await generatePayslipBlob(tableData); // ← CHANGED
 
     const url = URL.createObjectURL(pdfBlob);
     const a = document.createElement("a");
@@ -304,9 +320,14 @@ const handleDownloadWithCustomTemplate = async () => {
     a.download = `${formData.employeeId}_Custom.pdf`;
     a.click();
     URL.revokeObjectURL(url);
-    showAlert("Downloaded with Custom Template (with Watermark)", "Success");
+    showAlert(
+      isDefaultOrg()
+        ? "Downloaded with Default Template (org 1)"
+        : "Downloaded with Custom Template (with Watermark)",
+      "Success"
+    );
   } catch (e) {
-    showAlert("Failed to generate Custom PDF", "Error");
+    showAlert("Failed to generate PDF", "Error");
   } finally {
     setIsLoading(false);
   }
@@ -320,29 +341,11 @@ const handleDownloadWithDefaultTemplate = async () => {
   setIsLoading(true);
   try {
     const tableData = prepareManualPayslipData();
-    const templateObj = templateHtml ? { html: templateHtml, css: templateCss } : null;
-    const pdfBlob = await generatePayslipPDF(
-      {
-        full_name: tableData.employeeName,
-        employee_id: tableData.employeeId,
-        designation: tableData.designation,
-        basic_salary: tableData.basic,
-        hra: tableData.hra,
-        other_allowances: tableData.otherAllowance,
-        bonus: tableData.bonus || 0,
-        employee_pf: tableData.pf,
-        esic: tableData.esi,
-        professional_tax: tableData.professionalTax,
-        tds: tableData.tds,
-        insurance: tableData.insurance,
-        gross_salary: tableData.grossEarnings,
-        net_salary: tableData.netSalary,
-      },
-      { month: Number(selectedMonth), year: Number(selectedYear) },
-      {},
-      {},
-      {},
-      templateObj
+    // Always force default for this button, or still respect org 1
+    const pdfBlob = await generatePayslipPDFDefault(
+      tableData,
+      Number(selectedMonth),
+      Number(selectedYear)
     );
 
     const url = URL.createObjectURL(pdfBlob);
@@ -351,7 +354,7 @@ const handleDownloadWithDefaultTemplate = async () => {
     a.download = `${formData.employeeId}_Default.pdf`;
     a.click();
     URL.revokeObjectURL(url);
-    showAlert("Downloaded with Default Template (with Watermark)", "Success");
+    showAlert("Downloaded with Default Template", "Success");
   } catch (e) {
     showAlert("Failed to generate Default PDF", "Error");
   } finally {
@@ -1311,61 +1314,60 @@ const fieldLabels = {
       setIsLoading(false);
     }
   };
+const handlePreview = async () => {
+  const validationError = validateForm();
+  if (validationError) {
+    setError(validationError);
+    showAlert(validationError, "Validation Error");
+    return;
+  }
 
-  const handlePreview = async () => {
-    const validationError = validateForm();
-    if (validationError) {
-      setError(validationError);
-      showAlert(validationError, "Validation Error");
-      return;
-    }
+  setIsLoading(true);
+  setError(null);
 
-    setIsLoading(true);
-    setError(null);
+  try {
+    const tableData = prepareManualPayslipData();
+    const pdfBlob = await generatePayslipBlob(tableData); // ← CHANGED
 
-    try {
-      const tableData = prepareManualPayslipData();
-      const pdfBlob = await generatePdfWithTemplate(tableData);
+    const url = URL.createObjectURL(pdfBlob);
+    setPdfUrl(url);
+    setPreview(true);
+  } catch (err) {
+    console.error("Preview error:", err);
+    showAlert("Failed to generate preview", "Error");
+  } finally {
+    setIsLoading(false);
+  }
+};
 
-      const url = URL.createObjectURL(pdfBlob);
-      setPdfUrl(url);
-      setPreview(true);
-    } catch (err) {
-      console.error("Preview error:", err);
-      showAlert("Failed to generate preview", "Error");
-    } finally {
-      setIsLoading(false);
-    }
-  };
+ const handleDownloadPDF = async () => {
+  const validationError = validateForm();
+  if (validationError) {
+    showAlert(validationError, "Validation Error");
+    return;
+  }
 
-  const handleDownloadPDF = async () => {
-    const validationError = validateForm();
-    if (validationError) {
-      showAlert(validationError, "Validation Error");
-      return;
-    }
+  setIsLoading(true);
 
-    setIsLoading(true);
+  try {
+    const tableData = prepareManualPayslipData();
+    const pdfBlob = await generatePayslipBlob(tableData); // ← CHANGED
 
-    try {
-      const tableData = prepareManualPayslipData();
-      const pdfBlob = await generatePdfWithTemplate(tableData);
+    const url = URL.createObjectURL(pdfBlob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${formData.employeeId}_${selectedMonth}_${selectedYear}_Payslip.pdf`;
+    a.click();
+    URL.revokeObjectURL(url);
 
-      const url = URL.createObjectURL(pdfBlob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `${formData.employeeId}_${selectedMonth}_${selectedYear}_Payslip.pdf`;
-      a.click();
-      URL.revokeObjectURL(url);
-
-      showAlert("Payslip downloaded!", "Success");
-    } catch (err) {
-      console.error(err);
-      showAlert("Failed to download PDF", "Error");
-    } finally {
-      setIsLoading(false);
-    }
-  };
+    showAlert("Payslip downloaded!", "Success");
+  } catch (err) {
+    console.error(err);
+    showAlert("Failed to download PDF", "Error");
+  } finally {
+    setIsLoading(false);
+  }
+};
 
   // const handleDownloadForEmployee = async (employee) => {
   //   setIsLoading(true);
@@ -1374,30 +1376,34 @@ const fieldLabels = {
 const handleDownloadForEmployee = async (employee) => {
   setIsLoading(true);
   try {
-    // Use the SAME data preparation as the custom template flow
     const tableData = prepareSavedPayslipData(employee);
 
-    // Generate PDF with custom template (header + footer + watermark)
-    const pdfBlob = await generatePdfWithTemplate(tableData);
+    // Force default design for org 1
+    const pdfBlob = await generatePayslipBlob(tableData); // ← CHANGED
 
     if (!pdfBlob) throw new Error("Failed to generate PDF");
 
     const url = URL.createObjectURL(pdfBlob);
     const a = document.createElement("a");
-    
-    // Better filename using saved employee data
-    const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+
+    const monthNames = [
+      "January", "February", "March", "April", "May", "June",
+      "July", "August", "September", "October", "November", "December"
+    ];
     const monthYear = `${monthNames[(employee.month || new Date().getMonth() + 1) - 1]}_${employee.year || new Date().getFullYear()}`;
-    
+
     a.download = `${tableData.employeeId || employee.employee_id}_${monthYear}_Payslip.pdf`;
     a.href = url;
     a.click();
     URL.revokeObjectURL(url);
 
-    showAlert(`Payslip downloaded for ${employee.employee_name || tableData.employeeId}`, "Success");
+    showAlert(
+      `Payslip downloaded for ${employee.employee_name || tableData.employeeId}`,
+      "Success"
+    );
   } catch (err) {
     console.error("Download error:", err);
-    showAlert("Failed to download Payslip with template", "Error");
+    showAlert("Failed to download Payslip", "Error");
   } finally {
     setIsLoading(false);
   }

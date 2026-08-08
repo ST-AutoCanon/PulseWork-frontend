@@ -1187,17 +1187,25 @@ const handleEditPolicy = (policy) => {
     policyName: policy.policy_name || "",
     description: policy.description || "",
     allowView:
-      policy.allow_view === 1 || policy.allow_view === true,
+      policy.allow_view === 1 ||
+      policy.allow_view === true ||
+      policy.allow_view === "1",
     allowDownload:
       policy.allow_download === 1 ||
-      policy.allow_download === true,
+      policy.allow_download === true ||
+      policy.allow_download === "1",
   });
 
   setSelectedEmployees([]);
   setSelectedDepartments([]);
-  setSelectionType(
-    policy.assign_to_all === 1 ? "all" : "employee"
-  );
+
+  // Robust check for "Assign to All"
+  const isAssignToAll =
+    Number(policy.assign_to_all) === 1 ||
+    policy.assign_to_all === true ||
+    policy.assign_to_all === "1";
+
+  setSelectionType(isAssignToAll ? "all" : "employee");
 
   setSearchTerm("");
   setDepartmentSearchTerm("");

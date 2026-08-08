@@ -987,12 +987,10 @@ const Vendors = () => {
                 <legend>Documents Required (Attach Copies)</legend>
                 <div className="contact-row three-columns">
                   <div className="contact-field">
-                    <label htmlFor="gst_certificate">
-                      GST Certificate:
-                      {!isEditing && (
-                        <span className="vendor-required-asterisk">*</span>
-                      )}
-                    </label>
+                  <label htmlFor="gst_certificate">
+  GST Certificate:
+  <span className="vendor-required-asterisk">*</span>
+</label>
                     <input
                       id="gst_certificate"
                       type="file"
@@ -1003,12 +1001,10 @@ const Vendors = () => {
                     />
                   </div>
                   <div className="contact-field">
-                    <label htmlFor="pan_card">
-                      PAN Card:
-                      {!isEditing && (
-                        <span className="vendor-required-asterisk">*</span>
-                      )}
-                    </label>
+                   <label htmlFor="pan_card">
+  PAN Card:
+  <span className="vendor-required-asterisk">*</span>
+</label>
                     <input
                       id="pan_card"
                       type="file"

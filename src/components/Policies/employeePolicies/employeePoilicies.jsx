@@ -40,6 +40,7 @@ const [activeTab, setActiveTab] = useState("all"); // "all" | "pending" | "ackno
   const [fileUrl, setFileUrl] = useState(null);
   const [loadingFile, setLoadingFile] = useState(false);
 const [searchTerm, setSearchTerm] = useState("");
+const [ackChecked, setAckChecked] = useState(false);
 const [alertModal, setAlertModal] = useState({
   isVisible: false,
   title: "",
@@ -358,6 +359,7 @@ const handleAcknowledgement = async () => {
 
 const handleFileClick = (file) => {
   setSelectedFile(file);
+  setAckChecked(false); // reset checkbox
 
   if (Number(file.acknowledgement_required) === 1 && Number(file.is_acknowledged) === 0) {
     setPendingFile(file);
@@ -685,7 +687,35 @@ const handleFileClick = (file) => {
             )}
 
             {/* Floating acknowledgement – now correctly overlays the file */}
-            {Number(selectedFile.allow_view) === 1 && pendingFile && (
+  {Number(selectedFile.allow_view) === 1 && pendingFile && (
+  <div className="ack-message-box floating-ack">
+    <div className="ack-message-title">
+      Acknowledgement Required
+    </div>
+
+    <label className="ack-checkbox-label">
+      <input
+        type="checkbox"
+        checked={ackChecked}
+        onChange={(e) => setAckChecked(e.target.checked)}
+      />
+
+      <span>
+        {pendingFile?.acknowledgement_message ||
+          "This file requires acknowledgement before it can be marked as read."}
+      </span>
+    </label>
+
+    <button
+      className="ac-modal-btn ac-modal-btn-primary"
+      onClick={handleAcknowledgement}
+      disabled={!ackChecked}
+    >
+      Acknowledge
+    </button>
+  </div>
+)}
+            {/* {pendingFile && (
               <div className="ack-message-box floating-ack">
                 <div className="ack-message-title">Acknowledgement required</div>
                 <p>
@@ -699,22 +729,7 @@ const handleFileClick = (file) => {
                   Acknowledge
                 </button>
               </div>
-            )}
-            {pendingFile && (
-              <div className="ack-message-box floating-ack">
-                <div className="ack-message-title">Acknowledgement required</div>
-                <p>
-                  {pendingFile?.acknowledgement_message ||
-                    "This file requires acknowledgement before it can be marked as read."}
-                </p>
-                <button
-                  className="ac-modal-btn ac-modal-btn-primary"
-                  onClick={handleAcknowledgement}
-                >
-                  Acknowledge
-                </button>
-              </div>
-            )}
+            )} */}
           </div>
 
           {/* Footer is a sibling of viewer-body, not inside it */}

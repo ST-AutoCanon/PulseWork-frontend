@@ -487,11 +487,16 @@ const handleFileClick = (file) => {
                     <FaFilePdf style={{ fontSize: "14px" }} />
                     <span style={{ fontSize: 11, fontWeight: 500 }}>{fileCount} file{fileCount !== 1 ? "s" : ""}</span>
                   </div>
-                  {(hasPending || hasAcknowledged) && (
-                    <span className={`policy-status-badge ${hasPending ? "pending" : "acknowledged"}`}>
-                      {hasPending ? "Pending" : "Acknowledged"}
-                    </span>
-                  )}
+                 {(hasPending || hasAcknowledged) && (
+  <span
+    className={`policy-status-badge ${hasPending ? "pending" : "acknowledged"}`}
+    title={hasPending ? "Pending" : "Acknowledged"}   // tooltip on hover
+  >
+    <span className="policy-status-text">
+      {hasPending ? "Pending" : "Acknowledged"}
+    </span>
+  </span>
+)}
                 </div>
               </div>
             );
@@ -666,31 +671,36 @@ const handleFileClick = (file) => {
                     </div>
                   );
                 }
-                return (
-                  <div style={{ padding: 32, textAlign: "center" }}>
-                    <p style={{ fontSize: 16, marginBottom: 8 }}>
-                      Preview is not available for this file type.
-                    </p>
-                    <p style={{ color: "#64748b", marginBottom: 24 }}>
-                      Please download the file to view it.
-                    </p>
-                    <a
-                      href={fileUrl}
-                      download={name}
-                      style={{
-                        display: "inline-block",
-                        padding: "12px 24px",
-                        background: "#2563eb",
-                        color: "white",
-                        borderRadius: 8,
-                        textDecoration: "none",
-                        fontWeight: 500,
-                      }}
-                    >
-                      Download {name}
-                    </a>
-                  </div>
-                );
+              return (
+  <div style={{ padding: 32, textAlign: "center" }}>
+    <p style={{ fontSize: 16, marginBottom: 8 }}>
+      Preview is not available for this file type.
+    </p>
+    <p style={{ color: "#64748b", marginBottom: 24 }}>
+      {Number(selectedFile.allow_download) === 1
+        ? "Please download the file to view it."
+        : "Download is not allowed for this file."}
+    </p>
+
+    {Number(selectedFile.allow_download) === 1 && (
+      <a
+        href={fileUrl}
+        download={name}
+        style={{
+          display: "inline-block",
+          padding: "12px 24px",
+          background: "#2563eb",
+          color: "white",
+          borderRadius: 8,
+          textDecoration: "none",
+          fontWeight: 500,
+        }}
+      >
+        Download {name}
+      </a>
+    )}
+  </div>
+);
               })()
             ) : (
               <p>No file available.</p>

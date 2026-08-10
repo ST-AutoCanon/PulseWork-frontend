@@ -1400,7 +1400,24 @@
   font-size: 1rem;
   cursor: pointer;
 }
-
+.admin-policy-permission-badge {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-weight: 600;
+}
+.admin-policy-permission-badge.view {
+  background: #e0f2fe;
+  color: #0369a1;
+}
+.admin-policy-permission-badge.download {
+  background: #dcfce7;
+  color: #15803d;
+}
+.admin-policy-permission-badge.ack {
+  background: #fef3c7;
+  color: #b45309;
+}
 .admin-policy-search-input, .selection-dropdown {
   width: 100%;
   padding: 12px;

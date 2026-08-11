@@ -35,6 +35,75 @@ const PIPELINE = [
   "Rejected",
 ];
 
+const STAGE_COLORS = {
+  Applied: {
+    bg: "#eff6ff",
+    border: "#bfdbfe",
+    text: "#1d4ed8",
+    count: "#2563eb",
+  },
+  Screening: {
+    bg: "#eef2ff",
+    border: "#c7d2fe",
+    text: "#4338ca",
+    count: "#4f46e5",
+  },
+  "Technical Round": {
+    bg: "#f5f3ff",
+    border: "#ddd6fe",
+    text: "#6d28d9",
+    count: "#7c3aed",
+  },
+  "HR Round": {
+    bg: "#faf5ff",
+    border: "#e9d5ff",
+    text: "#7e22ce",
+    count: "#9333ea",
+  },
+  "Manager Round": {
+    bg: "#ecfeff",
+    border: "#a5f3fc",
+    text: "#0e7490",
+    count: "#0891b2",
+  },
+  "Offer Acceptance": {
+    bg: "#fffbeb",
+    border: "#fde68a",
+    text: "#a16207",
+    count: "#d97706",
+  },
+  "Offer Released": {
+    bg: "#fff7ed",
+    border: "#fed7aa",
+    text: "#c2410c",
+    count: "#ea580c",
+  },
+  "Offer Status": {
+    bg: "#ecfeff",
+    border: "#a5f3fc",
+    text: "#0f766e",
+    count: "#0d9488",
+  },
+  Onboarding: {
+    bg: "#ecfdf5",
+    border: "#a7f3d0",
+    text: "#047857",
+    count: "#059669",
+  },
+  Joined: {
+    bg: "#f0fdf4",
+    border: "#bbf7d0",
+    text: "#15803d",
+    count: "#16a34a",
+  },
+  Rejected: {
+    bg: "#fef2f2",
+    border: "#fecaca",
+    text: "#b91c1c",
+    count: "#dc2626",
+  },
+};
+
 function IconActionButton({ label, onClick, children, className = "" }) {
   return (
     <button
@@ -421,7 +490,16 @@ export default function AdminRecruitmentDashboard() {
             );
 
             return (
-              <div className="pipeline-column" key={stage}>
+              <div
+                className="pipeline-column"
+                key={stage}
+                style={{
+                  "--stage-bg": STAGE_COLORS[stage]?.bg || "#f8fafc",
+                  "--stage-border": STAGE_COLORS[stage]?.border || "#e2e8f0",
+                  "--stage-text": STAGE_COLORS[stage]?.text || "#334155",
+                  "--stage-count": STAGE_COLORS[stage]?.count || "#64748b",
+                }}
+              >
                 <div className="pipeline-header">
                   <h3>{stage}</h3>
                   <span>{stageCandidates.length}</span>
@@ -703,7 +781,7 @@ export default function AdminRecruitmentDashboard() {
               <div className="rf-actions">
                 <button
                   type="button"
-                  className="rf-secondary-btn"
+                  className="rf-secondary-btn2"
                   onClick={closeOfferDecisionModal}
                 >
                   Cancel

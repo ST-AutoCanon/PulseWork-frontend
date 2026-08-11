@@ -70,6 +70,29 @@ function getMyFeedback(assessment, meId) {
   );
 }
 
+function getOverallScore(assessment) {
+  const feedback = Array.isArray(assessment?.feedback)
+    ? assessment.feedback
+    : [];
+
+  const scoredFeedback = feedback.filter(
+    (item) =>
+      item?.score !== null &&
+      item?.score !== undefined &&
+      item?.score !== "" &&
+      !Number.isNaN(Number(item.score)),
+  );
+
+  if (!scoredFeedback.length) return null;
+
+  const total = scoredFeedback.reduce(
+    (sum, item) => sum + Number(item.score),
+    0,
+  );
+
+  return total / scoredFeedback.length;
+}
+
 export default function InterviewerRecruitmentDashboard() {
   const { user } = useAuth();
   const orgId = user?.orgId ?? user?.raw?.org_id ?? null;
@@ -186,6 +209,28 @@ export default function InterviewerRecruitmentDashboard() {
     setAssessmentToEdit(latest);
   };
 
+  const openInterviewerAssessmentForEdit = ({
+    candidate,
+    assessment,
+    interviewerId,
+  }) => {
+    setAssessmentCandidate(candidate);
+    setAssessmentRound(
+      assessment?.round_name || candidate?.status || "Technical Round",
+    );
+    setAssessmentToEdit(assessment);
+  };
+
+  const openMyAssessmentForEdit = ({ assessment }) => {
+    if (!selectedCandidate || !assessment) return;
+
+    setAssessmentCandidate(selectedCandidate);
+    setAssessmentRound(
+      assessment.round_name || selectedCandidate.status || "Technical Round",
+    );
+    setAssessmentToEdit(assessment);
+  };
+
   return (
     <div className="recruitment-container">
       <div className="recruitment-header">
@@ -214,6 +259,7 @@ export default function InterviewerRecruitmentDashboard() {
               candidates.map((candidate) => {
                 const latest = getLatestAssessmentForMe(candidate, meId);
                 const myFeedback = getMyFeedback(latest, meId);
+                const overallScore = getOverallScore(latest);
 
                 return (
                   <div className="rf-interviewer-card" key={candidate.id}>
@@ -240,8 +286,12 @@ export default function InterviewerRecruitmentDashboard() {
                       </div>
 
                       <div>
-                        <label>Score</label>
-                        <span>{myFeedback?.score ?? "—"}</span>
+                        <label>Overall Score</label>
+                        <span>
+                          {overallScore !== null
+                            ? `${overallScore.toFixed(1)}/10`
+                            : "Pending"}
+                        </span>
                       </div>
 
                       <div>
@@ -286,6 +336,7 @@ export default function InterviewerRecruitmentDashboard() {
             setSelectedCandidate(null);
           }}
           onEdit={null}
+          onEditInterviewerAssessment={openMyAssessmentForEdit}
           onAdvanceStatus={null}
           onReject={null}
           onMoveToOnboarding={null}

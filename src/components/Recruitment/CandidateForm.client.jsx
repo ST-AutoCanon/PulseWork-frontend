@@ -420,7 +420,7 @@ export default function CandidateForm({
           <div className="rf-actions">
             <button
               type="button"
-              className="rf-secondary-btn"
+              className="rf-secondary-btn2"
               onClick={onClose}
             >
               Cancel

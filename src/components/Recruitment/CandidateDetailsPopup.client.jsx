@@ -73,6 +73,7 @@ export default function CandidateDetailsPopup({
   candidate,
   onClose,
   onEdit,
+  onEditInterviewerAssessment,
   onAdvanceStatus,
   onReject,
   onMoveToOnboarding,
@@ -179,7 +180,7 @@ export default function CandidateDetailsPopup({
 
     return interviewerList.map((person) => {
       const feedbackItem = feedbackEntries.find(
-        (f) => f.interviewer_id === person.id,
+        (f) => String(f.interviewer_id) === String(person.id),
       );
 
       return {
@@ -190,6 +191,27 @@ export default function CandidateDetailsPopup({
         decision: feedbackItem?.decision,
       };
     });
+  };
+
+  const getOverallScore = (assessment) => {
+    const entries = getInterviewerScoreEntries(assessment);
+
+    const scoredEntries = entries.filter(
+      (person) =>
+        person.score !== null &&
+        person.score !== undefined &&
+        person.score !== "" &&
+        !Number.isNaN(Number(person.score)),
+    );
+
+    if (!scoredEntries.length) return null;
+
+    const total = scoredEntries.reduce(
+      (sum, person) => sum + Number(person.score),
+      0,
+    );
+
+    return total / scoredEntries.length;
   };
 
   const openResume = async () => {
@@ -297,6 +319,8 @@ export default function CandidateDetailsPopup({
                     ? feedbackEntries[feedbackEntries.length - 1]
                     : null;
 
+                const overallScore = getOverallScore(a);
+
                 const tone = getDecisionTone(latestFeedback?.decision);
                 const isLatest = index === 0;
 
@@ -328,7 +352,11 @@ export default function CandidateDetailsPopup({
                     <div className="rf-assessment-grid">
                       <div>
                         <span className="rf-label">Overall Score</span>
-                        <strong>{valueOrDash(latestFeedback?.score)}</strong>
+                        <strong>
+                          {overallScore !== null
+                            ? `${overallScore.toFixed(1)}/10`
+                            : "Pending"}
+                        </strong>
                       </div>
                       <div>
                         <span className="rf-label">Interviewers</span>
@@ -415,7 +443,9 @@ export default function CandidateDetailsPopup({
                         </div>
 
                         <div className="rf-feedback-score">
-                          {valueOrDash(latestFeedback?.score)}
+                          {overallScore !== null
+                            ? overallScore.toFixed(1)
+                            : "—"}
                           <span>/10</span>
                         </div>
                       </div>
@@ -435,25 +465,46 @@ export default function CandidateDetailsPopup({
                                   key={`${a.id}-${person.id}`}
                                   className="rf-interviewer-summary-card"
                                 >
-                                  <button
-                                    type="button"
-                                    className="rf-interviewer-summary-toggle"
-                                    onClick={() =>
-                                      toggleInterviewerExpanded(
-                                        `${a.id}-${person.id}`,
-                                      )
-                                    }
-                                  >
-                                    <span>
-                                      {person.name || person.id}
-                                      {person.score != null
-                                        ? ` • ${person.score}/10`
-                                        : " • Pending"}
-                                    </span>
-                                    <span className="rf-interviewer-summary-arrow">
-                                      {isExpanded ? "▾" : "▸"}
-                                    </span>
-                                  </button>
+                                  <div className="rf-interviewer-summary-header">
+                                    <button
+                                      type="button"
+                                      className="rf-interviewer-summary-toggle"
+                                      onClick={() =>
+                                        toggleInterviewerExpanded(
+                                          `${a.id}-${person.id}`,
+                                        )
+                                      }
+                                    >
+                                      <span>
+                                        {person.name || person.id}
+                                        {person.score != null
+                                          ? ` • ${person.score}/10`
+                                          : " • Pending"}
+                                      </span>
+                                      {String(person.id) === String(meId) &&
+                                        onEditInterviewerAssessment && (
+                                          <button
+                                            type="button"
+                                            className="rf-interviewer-edit-btn"
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+
+                                              onEditInterviewerAssessment({
+                                                assessment: a,
+                                                interviewerId: person.id,
+                                              });
+                                            }}
+                                            title="Edit my assessment"
+                                          >
+                                            <MdOutlineEdit />
+                                            Edit
+                                          </button>
+                                        )}
+                                      <span className="rf-interviewer-summary-arrow">
+                                        {isExpanded ? "▾" : "▸"}
+                                      </span>
+                                    </button>
+                                  </div>
 
                                   {isExpanded && (
                                     <div className="rf-interviewer-summary-body">

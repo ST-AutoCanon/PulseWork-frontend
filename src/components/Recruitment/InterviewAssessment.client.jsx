@@ -163,6 +163,22 @@ function pickLatestAssessment(candidate, roundName) {
   );
 }
 
+function parseAssessmentFeedback(feedback) {
+  if (!feedback) return {};
+
+  if (typeof feedback === "object") {
+    return feedback;
+  }
+
+  try {
+    return JSON.parse(feedback);
+  } catch {
+    return {
+      notes: feedback,
+    };
+  }
+}
+
 export default function InterviewAssessment({
   candidate,
   round = "Technical Round",
@@ -238,18 +254,70 @@ export default function InterviewAssessment({
 
   const currentInterviewerScore = useMemo(() => {
     const interviewerKey = meId ? String(meId) : "";
+
+    if (!interviewerKey) {
+      return latestAssessment?.score ?? "";
+    }
+
+    // Preferred source: feedback array
+    const feedbackEntries = Array.isArray(latestAssessment?.feedback)
+      ? latestAssessment.feedback
+      : [];
+
+    const myFeedbackEntry = feedbackEntries.find(
+      (item) => String(item?.interviewer_id) === interviewerKey,
+    );
+
+    if (
+      myFeedbackEntry?.score !== null &&
+      myFeedbackEntry?.score !== undefined &&
+      myFeedbackEntry?.score !== ""
+    ) {
+      return Number(myFeedbackEntry.score);
+    }
+
+    // Backward-compatible source
     const scoreMap = parsedFeedback?.interviewer_scores || {};
-    if (!interviewerKey) return latestAssessment?.score ?? "";
-    return scoreMap[interviewerKey] ?? latestAssessment?.score ?? "";
-  }, [meId, parsedFeedback, latestAssessment?.score]);
+
+    if (scoreMap[interviewerKey] !== undefined) {
+      return Number(scoreMap[interviewerKey]);
+    }
+
+    return latestAssessment?.score ?? "";
+  }, [
+    meId,
+    latestAssessment?.feedback,
+    latestAssessment?.score,
+    parsedFeedback,
+  ]);
 
   const currentInterviewerFeedback = useMemo(() => {
     const interviewerKey = meId ? String(meId) : "";
+
     if (!interviewerKey) return {};
 
+    // Preferred source: feedback array
+    const feedbackEntries = Array.isArray(latestAssessment?.feedback)
+      ? latestAssessment.feedback
+      : [];
+
+    const myFeedbackEntry = feedbackEntries.find(
+      (item) => String(item?.interviewer_id) === interviewerKey,
+    );
+
+    if (myFeedbackEntry?.feedback) {
+      const parsed = parseAssessmentFeedback(myFeedbackEntry.feedback);
+
+      if (parsed && Object.keys(parsed).length) {
+        return parsed;
+      }
+    }
+
+    // Backward-compatible JSON structure
     const interviewerFeedbackMap = parsedFeedback?.interviewer_feedback || {};
+
     return interviewerFeedbackMap[interviewerKey] || {};
-  }, [meId, parsedFeedback]);
+  }, [meId, latestAssessment?.feedback, parsedFeedback]);
 
   const headers = useMemo(() => {
     const h = { "x-api-key": API_KEY };
@@ -547,6 +615,7 @@ export default function InterviewAssessment({
                       }));
                     }}
                     closeMenuOnSelect={false}
+                    required
                   />
                 </div>
 
@@ -557,6 +626,7 @@ export default function InterviewAssessment({
                     name="interview_date"
                     value={formData.interview_date}
                     onChange={handleChange}
+                    required
                   />
                 </div>
 
@@ -568,6 +638,7 @@ export default function InterviewAssessment({
                     value={formData.interview_link}
                     onChange={handleChange}
                     placeholder="https://meet.google.com/..."
+                    required
                   />
                 </div>
 
@@ -782,7 +853,7 @@ export default function InterviewAssessment({
           <div className="rf-actions">
             <button
               type="button"
-              className="rf-secondary-btn"
+              className="rf-secondary-btn2"
               onClick={onClose}
             >
               Cancel

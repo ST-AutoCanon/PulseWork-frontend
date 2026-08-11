@@ -61,15 +61,15 @@ const CreatePolicyForm = ({
   // ==================== DEPARTMENT DOUBLE CLICK ====================
   const handleDepartmentDoubleClick = async () => {
     if (!selectedDepartment || selectionType !== "department") {
-      alert("Please select a department");
+     showAlert("Please select a department");
       return;
     }
 
     const department = departmentList.find(d => String(d.id) === String(selectedDepartment));
-    if (!department) return alert("Invalid department");
+    if (!department) return showAlert("Invalid department");
 
     if (selectedDepartments.some(d => d.id === department.id)) {
-      return alert("Department already selected");
+      return showAlert("Department already selected");
     }
 
     try {
@@ -81,7 +81,7 @@ const CreatePolicyForm = ({
       if (response.data.success) {
         const employees = Array.isArray(response.data.data) ? response.data.data : [];
         if (employees.length === 0) {
-          alert("No employees found in this department.");
+          showAlert("No employees found in this department.");
           return;
         }
 
@@ -94,7 +94,7 @@ const CreatePolicyForm = ({
       }
     } catch (error) {
       console.error("Department fetch error:", error);
-      alert("Failed to load employees for this department.");
+      showAlert("Failed to load employees for this department.");
     }
   };
 const appendFilesToFormData = (filesArray, formData) => {
@@ -199,31 +199,7 @@ const appendFilesToFormData = (filesArray, formData) => {
   />
 </div>
 
-        {/* Permissions
-        <div className="admin-policy-permissions-section">
-          <h4 className="admin-policy-section-subtitle">Permissions</h4>
-          <div className="admin-policy-checkbox-group">
-            <label className="admin-policy-checkbox-label">
-              <input
-                type="checkbox"
-                checked={formData.allowView}
-                onChange={(e) => setFormData({ ...formData, allowView: e.target.checked })}
-              />
-              Allow View
-            </label>
-            <label className="admin-policy-checkbox-label">
-              <input
-                type="checkbox"
-                checked={formData.allowDownload}
-                onChange={(e) => setFormData({ ...formData, allowDownload: e.target.checked })}
-              />
-              Allow Download
-            </label>
-          </div>
-        </div> */}
-
-        {/* Selection Type */}
-        {/* Selection Type */}
+       
 <div className="admin-policy-selection-type">
   <h4 className="admin-policy-section-subtitle">Assign To</h4>
   <div className="admin-policy-radio-group">
@@ -430,6 +406,7 @@ const ViewPolicyModal = ({
   setReplaceNewFile,
   handleReplaceFile,
   handleSaveReplace,
+  fileInputKey,
 }) => {
  return (
   <div className="admin-policy-modal-overlay" onClick={() => setViewPolicy(null)}>
@@ -526,7 +503,8 @@ const ViewPolicyModal = ({
     <input
       className="admin-policy-upload-input"
       type="file"
-      key={newFile.file_type}
+  key={fileInputKey}
+      
       onChange={(e) =>
         setNewFile((prev) => ({
           ...prev,
@@ -629,34 +607,37 @@ const ViewPolicyModal = ({
   {newFilesToAdd.length > 0 && (
     <div className="admin-policy-new-files">
       <h4>Files Ready to Upload ({newFilesToAdd.length})</h4>
-      {newFilesToAdd.map((fileItem, index) => (
-        <div key={index} className="admin-policy-new-file-card">
-          <div className="admin-policy-new-file-header">
-            <div>
-              <div className="admin-policy-new-file-name">
-                {fileItem.file.name}
-              </div>
-              <div className="admin-policy-new-file-type">
-                ({fileItem.file_type})
-              </div>
-            </div>
-            {/* <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-              {fileItem.allowView !== false && (
-                <span className="admin-policy-permission-badge view">👁 View</span>
-              )}
-              {fileItem.allowDownload && (
-                <span className="admin-policy-permission-badge download">⬇ Download</span>
-              )}
-            </div> */}
-          </div>
-          <button
-            onClick={() => handleRemoveNewFile(index)}
-            className="admin-policy-remove-file-btn"
-          >
-            Remove
-          </button>
+    {newFilesToAdd.map((fileItem, index) => (
+  <div key={index} className="admin-policy-new-file-card">
+    <div className="admin-policy-new-file-header">
+      <div>
+        <div className="admin-policy-new-file-name">
+          {fileItem.file.name}
         </div>
-      ))}
+        <div className="admin-policy-new-file-type">
+          ({fileItem.file_type})
+        </div>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 6 }}>
+          {fileItem.allowView !== false && (
+            <span className="admin-policy-permission-badge view">👁 View</span>
+          )}
+          {fileItem.allowDownload && (
+            <span className="admin-policy-permission-badge download">⬇ Download</span>
+          )}
+          {fileItem.acknowledgement && (
+            <span className="admin-policy-permission-badge ack">✓ Ack</span>
+          )}
+        </div>
+      </div>
+    </div>
+    <button
+      onClick={() => handleRemoveNewFile(index)}
+      className="admin-policy-remove-file-btn"
+    >
+      Remove
+    </button>
+  </div>
+))}
     </div>
   )}
 </div>
@@ -898,7 +879,7 @@ const [editingPolicyId, setEditingPolicyId] = useState(null);
   const [departmentList, setDepartmentList] = useState([]);
   const [selectedDepartments, setSelectedDepartments] = useState([]);
   const [departmentSearchTerm, setDepartmentSearchTerm] = useState("");
-
+const [fileInputKey, setFileInputKey] = useState(0);
   const [formData, setFormData] = useState({
     policyName: "",
     description: "",
@@ -1166,11 +1147,13 @@ const handleAddNewFile = () => {
   setNewFile({
     file: null,
     file_type: newFile.file_type,
+    
     acknowledgement: false,
     acknowledgementMessage: "",
     allowView: true,
     allowDownload: false,
   });
+  setFileInputKey((prev) => prev + 1);
 };
   const handleRemoveNewFile = (index) => {
     setNewFilesToAdd(prev => prev.filter((_, i) => i !== index));
@@ -1396,13 +1379,16 @@ filesToUpload.forEach((nf, index) => {
     setViewPolicy(prev => ({ ...prev, files: latestFiles }));
 
     // Reset upload states
-    setNewFilesToAdd([]);
-    setNewFile({
-      file: null,
-      file_type: "document",
-      acknowledgement: false,
-      acknowledgementMessage: "",
-    });
+   setNewFilesToAdd([]);
+setNewFile({
+  file: null,
+  file_type: "document",
+  acknowledgement: false,
+  acknowledgementMessage: "",
+  allowView: true,        // keep these consistent
+  allowDownload: false,
+});
+setFileInputKey((prev) => prev + 1);
 
     showAlert("Policy updated successfully!");
   } catch (err) {
@@ -1413,10 +1399,10 @@ filesToUpload.forEach((nf, index) => {
   }
 };
 
-  const handleDeleteFile = async (fileId) => {
-  if (!confirm("Are you sure you want to delete this file?")) return;
 
+const handleDeleteFile = async (fileId) => {
   setLoading(true);
+
   try {
     await axios.delete(`${BACKEND}/api/policies/file/${fileId}`, {
       withCredentials: true,
@@ -1425,16 +1411,26 @@ filesToUpload.forEach((nf, index) => {
 
     // Refresh files
     const latestFiles = await fetchPolicyFiles(viewPolicy.id);
-    setViewPolicy(prev => ({ ...prev, files: latestFiles }));
+
+    setViewPolicy(prev => ({
+      ...prev,
+      files: latestFiles
+    }));
 
     showAlert("File deleted successfully!");
   } catch (err) {
     console.error(err);
-    showAlert(err.response?.data?.message || "Failed to delete file", "Error");
+
+    showAlert(
+      err.response?.data?.message || "Failed to delete file",
+      "Error"
+    );
   } finally {
     setLoading(false);
   }
 };
+
+
 
   return (
     <div className="create-policy-container">
@@ -1559,6 +1555,8 @@ isEditing={isEditing}                 // ← NEW
     setReplaceNewFile={setReplaceNewFile}
     handleReplaceFile={handleReplaceFile}
     handleSaveReplace={handleSaveReplace}
+    fileInputKey={fileInputKey}          // ← add this
+  setFileInputKey={setFileInputKey}    // optional, only if you need it inside
   />
 )}
 

@@ -543,11 +543,59 @@
   overflow: hidden;        /* change from visible */
 }
 
+/* ========== Status badge ========== */
+.policy-status-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  white-space: nowrap;
+  line-height: 1;
+  border-radius: 999px;
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+
+/* Full text version (default – when cards are wide) */
+.policy-status-badge {
+  padding: 3px 8px;
+  font-size: 10px;
+  color: #fff;
+}
+
 .policy-status-badge.pending {
   background: #dc2626;
 }
 
 .policy-status-badge.acknowledged {
+  background: #047857;
+}
+
+/* Text inside the badge */
+.policy-status-text {
+  display: inline;
+}
+
+/* ===== When cards are minimized (two-col layout) → show only a dot ===== */
+.policy-cards.two-col .policy-status-badge {
+  width: 10px;
+  height: 10px;
+  padding: 0;
+  font-size: 0;          /* hide any leftover text */
+  border-radius: 50%;
+  min-width: 10px;
+}
+
+.policy-cards.two-col .policy-status-text {
+  display: none;         /* completely hide the text */
+}
+
+/* Keep the colors */
+.policy-cards.two-col .policy-status-badge.pending {
+  background: #dc2626;
+}
+
+.policy-cards.two-col .policy-status-badge.acknowledged {
   background: #047857;
 }
 

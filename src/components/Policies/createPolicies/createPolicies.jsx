@@ -15,6 +15,8 @@ const CreatePolicyForm = ({
   setSelectedEmployees,
   selectedDepartments,
   setSelectedDepartments,
+  employeesByDepartment,        // ← ADD
+  setEmployeesByDepartment,     // ← ADD
   employeeList,
   departmentList,
   searchTerm,
@@ -33,10 +35,11 @@ const CreatePolicyForm = ({
   handleRemoveNewFile,selectionType,        // ← add
   setSelectionType,
   isEditing,
+  showAlert,
 }) => {
   const [selectedEmployee, setSelectedEmployee] = useState("");
   const [selectedDepartment, setSelectedDepartment] = useState("");
-  const [employeesByDepartment, setEmployeesByDepartment] = useState({});
+
 
   const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
   const API_KEY = process.env.NEXT_PUBLIC_API_KEY;
@@ -208,9 +211,10 @@ const appendFilesToFormData = (filesArray, formData) => {
         type="radio"
         checked={selectionType === "employee"}
         onChange={() => {
-          setSelectionType("employee");
-          setSelectedDepartments([]);
-          setEmployeesByDepartment({});
+setSelectionType("all");
+  setSelectedEmployees([]);
+  setSelectedDepartments([]);
+  setEmployeesByDepartment({});
         }}
       />
       Individual Employees
@@ -762,20 +766,21 @@ const ViewPolicyModal = ({
             <div className="admin-policy-replace-body">
               <div className="admin-policy-form-group">
                 <label>File Type</label>
-                <select
-                  value={replaceNewFile?.file_type || "document"}
-                  onChange={(e) =>
-                    setReplaceNewFile((prev) => ({
-                      ...prev,
-                      file_type: e.target.value,
-                    }))
-                  }
-                >
-                  <option value="document">Document</option>
-                  <option value="ppt">PPT</option>
-                  <option value="video">Video</option>
-                  <option value="image">Image</option>
-                </select>
+               <select
+  value={replaceNewFile?.file_type || "document"}
+  onChange={(e) => {
+    setReplaceNewFile((prev) => ({
+      ...prev,
+      file_type: e.target.value,
+      file: null,
+    }));
+  }}
+>
+  <option value="document">Document</option>
+  <option value="ppt">PPT</option>
+  <option value="video">Video</option>
+  <option value="image">Image</option>
+</select>
               </div>
 
               <div className="admin-policy-form-group">
@@ -789,7 +794,15 @@ const ViewPolicyModal = ({
                       file_type: prev?.file_type || "document",
                     }))
                   }
-                  accept=".pdf,.doc,.docx,.ppt,.pptx,.mp4,.avi,.jpg,.jpeg,.png"
+                accept={
+  replaceNewFile?.file_type === "document"
+    ? ".pdf,.doc,.docx"
+    : replaceNewFile?.file_type === "ppt"
+    ? ".ppt,.pptx"
+    : replaceNewFile?.file_type === "video"
+    ? ".mp4,.avi,.mov,.webm"
+    : ".jpg,.jpeg,.png,.gif,.webp"
+}
                 />
               </div>
 
@@ -807,20 +820,27 @@ const ViewPolicyModal = ({
                 Require Acknowledgement
               </label>
 
-              {replaceNewFile?.acknowledgement && (
-                <textarea
-                  className="admin-policy-upload-message"
-                  placeholder="Enter acknowledgement message..."
-                  value={replaceNewFile.acknowledgementMessage || ""}
-                  onChange={(e) =>
-                    setReplaceNewFile((prev) => ({
-                      ...prev,
-                      acknowledgementMessage: e.target.value,
-                    }))
-                  }
-                  rows={3}
-                />
-              )}
+   {replaceNewFile?.acknowledgement && (
+  <div
+    className="admin-policy-form-group"
+    style={{ marginTop: "15px" }}
+  >
+    <label>Acknowledgement</label>
+
+    <input
+      type="text"
+      className="admin-policy-upload-message"
+      placeholder="Enter acknowledgement message..."
+      value={replaceNewFile.acknowledgementMessage || ""}
+      onChange={(e) =>
+        setReplaceNewFile((prev) => ({
+          ...prev,
+          acknowledgementMessage: e.target.value,
+        }))
+      }
+    />
+  </div>
+)}
             </div>
 
             <div className="admin-policy-footer">
@@ -878,6 +898,7 @@ const [editingPolicyId, setEditingPolicyId] = useState(null);
 
   const [departmentList, setDepartmentList] = useState([]);
   const [selectedDepartments, setSelectedDepartments] = useState([]);
+  const [employeesByDepartment, setEmployeesByDepartment] = useState({});
   const [departmentSearchTerm, setDepartmentSearchTerm] = useState("");
 const [fileInputKey, setFileInputKey] = useState(0);
   const [formData, setFormData] = useState({
@@ -945,45 +966,131 @@ const handleReplaceFile = (file) => {
     acknowledgementMessage: file.acknowledgement_message || ""
   });
 };
+const validateReplaceFileType = (file, selectedType) => {
+  if (!file || !selectedType) return false;
+
+  const fileName = file.name.toLowerCase();
+  const extension = fileName.substring(fileName.lastIndexOf("."));
+
+  const allowedExtensions = {
+    document: [".pdf", ".doc", ".docx"],
+    ppt: [".ppt", ".pptx"],
+    video: [".mp4", ".avi", ".mov", ".webm"],
+    image: [".jpg", ".jpeg", ".png", ".gif", ".webp"],
+  };
+
+  return allowedExtensions[selectedType]?.includes(extension);
+};
+// const validateReplaceFileType = (file, selectedType) => {
+//   if (!file || !selectedType) return false;
+
+//   const fileName = file.name.toLowerCase();
+//   const extension = fileName.substring(fileName.lastIndexOf("."));
+
+//   const allowedExtensions = {
+//     document: [".pdf", ".doc", ".docx"],
+//     ppt: [".ppt", ".pptx"],
+//     video: [".mp4", ".avi", ".mov", ".webm"],
+//     image: [".jpg", ".jpeg", ".png", ".gif", ".webp"],
+//   };
+
+//   return allowedExtensions[selectedType]?.includes(extension);
+// };
+
 
 const handleSaveReplace = async () => {
   if (!replacingFile || !replaceNewFile?.file) {
-    return showAlert("Please select a new file to replace", "Error");
+    return showAlert(
+      "Please select a new file to replace",
+      "Error"
+    );
   }
 
+  // ==============================
+  // VALIDATE FILE TYPE
+  // ==============================
+
+  const isValidFileType = validateReplaceFileType(
+    replaceNewFile.file,
+    replaceNewFile.file_type
+  );
+
+  if (!isValidFileType) {
+    const typeNames = {
+      document: "PDF / Word",
+      ppt: "PowerPoint",
+      video: "Video",
+      image: "Image",
+    };
+
+    return showAlert(
+      `Wrong file type. You selected "${typeNames[replaceNewFile.file_type]}" but selected file "${replaceNewFile.file.name}" is not a valid ${typeNames[replaceNewFile.file_type]} file.`,
+      "Invalid File Type"
+    );
+  }
+
+  // ==============================
+  // START UPLOAD
+  // ==============================
+
   setLoading(true);
+
   try {
     const formData = new FormData();
 
     const fieldName = getFieldName(replaceNewFile.file_type);
+
     formData.append(fieldName, replaceNewFile.file);
-    formData.append("acknowledgement", replaceNewFile.acknowledgement);
-    formData.append("acknowledgementMessage", replaceNewFile.acknowledgementMessage || "");
+
+    formData.append(
+      "acknowledgement",
+      replaceNewFile.acknowledgement
+    );
+
+    formData.append(
+      "acknowledgementMessage",
+      replaceNewFile.acknowledgementMessage || ""
+    );
 
     await axios.put(
       `${BACKEND}/api/policies/file/replace/${viewPolicy.id}/${replacingFile.id}`,
       formData,
       {
         withCredentials: true,
-        headers: { "x-org-id": orgId },
+        headers: {
+          "x-org-id": orgId,
+        },
       }
     );
 
+    // Refresh files
     const latestFiles = await fetchPolicyFiles(viewPolicy.id);
-    setViewPolicy((prev) => ({ ...prev, files: latestFiles }));
 
-    showAlert("File replaced successfully!");
+    setViewPolicy((prev) => ({
+      ...prev,
+      files: latestFiles,
+    }));
+
+    showAlert(
+      "File replaced successfully!"
+    );
 
     setReplacingFile(null);
     setReplaceNewFile(null);
+
   } catch (err) {
     console.error(err);
-    showAlert(err.response?.data?.message || "Failed to replace file", "Error");
+
+    showAlert(
+      err.response?.data?.message ||
+        "Failed to replace file",
+      "Error"
+    );
+
   } finally {
     setLoading(false);
   }
 };
-
 const getFieldName = (type) => {
   if (type === "image") return "image";
   if (type === "video") return "video";
@@ -1174,6 +1281,7 @@ const handleEditPolicy = (policy) => {
 
   setSelectedEmployees([]);
   setSelectedDepartments([]);
+  setEmployeesByDepartment({});
 
   // Robust check for "Assign to All"
   const isAssignToAll =
@@ -1240,14 +1348,19 @@ const handleSubmit = async (e) => {
           allow_view: formData.allowView,
           allow_download: formData.allowDownload,
           employeeIds:
-            selectionType === "employee"
-              ? selectedEmployees.map((emp) => emp.employee_id || emp.id)
-              : [],
-          departmentIds:
-            selectionType === "department"
-              ? selectedDepartments.map((dept) => dept.id)
-              : [],
-          assign_to_all: selectionType === "all" ? 1 : 0,
+  selectionType === "employee"
+    ? selectedEmployees.map((emp) => emp.employee_id || emp.id)
+    : selectionType === "department"
+    ? Object.values(employeesByDepartment)
+        .flat()
+        .map((emp) => emp.employee_id || emp.id)
+        .filter(Boolean)                    // safety
+    : [],
+departmentIds:
+  selectionType === "department"
+    ? selectedDepartments.map((dept) => dept.id)
+    : [],
+assign_to_all: selectionType === "all" ? 1 : 0,
           created_by: user?.name || user?.email || "System",
         },
         {
@@ -1333,6 +1446,7 @@ const handleSaveEdits = async () => {
       description: viewPolicy.description || "",
       allow_view: viewPolicy.allow_view,
       allow_download: viewPolicy.allow_download,
+      assign_to_all: viewPolicy.assign_to_all ?? 0,
     }, { withCredentials: true, headers: { "x-org-id": orgId } });
 
     // === COLLECT ALL FILES TO UPLOAD ===
@@ -1458,6 +1572,8 @@ const handleDeleteFile = async (fileId) => {
         setSelectedEmployees={setSelectedEmployees}
         selectedDepartments={selectedDepartments}
         setSelectedDepartments={setSelectedDepartments}
+        employeesByDepartment={employeesByDepartment}           // ← ADD
+  setEmployeesByDepartment={setEmployeesByDepartment}
         employeeList={employeeList}
         departmentList={departmentList}
         searchTerm={searchTerm}

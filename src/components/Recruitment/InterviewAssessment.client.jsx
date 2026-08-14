@@ -293,6 +293,39 @@ export default function InterviewAssessment({
     parsedFeedback,
   ]);
 
+  const currentInterviewerDecision = useMemo(() => {
+    const interviewerKey = meId ? String(meId) : "";
+
+    if (!interviewerKey) {
+      return "";
+    }
+
+    const feedbackEntries = Array.isArray(latestAssessment?.feedback)
+      ? latestAssessment.feedback
+      : [];
+
+    const myFeedbackEntry = feedbackEntries.find(
+      (item) => String(item?.interviewer_id) === interviewerKey,
+    );
+
+    if (
+      myFeedbackEntry?.decision !== null &&
+      myFeedbackEntry?.decision !== undefined &&
+      myFeedbackEntry?.decision !== ""
+    ) {
+      return myFeedbackEntry.decision;
+    }
+
+    // Backward-compatible fallback
+    const interviewerDecisionMap = parsedFeedback?.interviewer_decisions || {};
+
+    if (interviewerDecisionMap[interviewerKey] !== undefined) {
+      return interviewerDecisionMap[interviewerKey];
+    }
+
+    return "";
+  }, [meId, latestAssessment?.feedback, parsedFeedback]);
+
   const currentInterviewerFeedback = useMemo(() => {
     const interviewerKey = meId ? String(meId) : "";
 
@@ -384,7 +417,7 @@ export default function InterviewAssessment({
         email_body: latestAssessment?.email_body || "",
 
         score: currentInterviewerScore ?? "",
-        decision: latestAssessment?.decision ?? "",
+        decision: currentInterviewerDecision || "",
 
         ratings: currentInterviewerFeedback.ratings || {},
         strengths: currentInterviewerFeedback.strengths || [],
@@ -413,7 +446,7 @@ export default function InterviewAssessment({
 
       score: currentInterviewerScore ?? "",
 
-      decision: latestAssessment?.decision ?? "",
+      decision: currentInterviewerDecision || "",
 
       ratings: currentInterviewerFeedback.ratings || {},
 
@@ -423,7 +456,14 @@ export default function InterviewAssessment({
 
       feedback: currentInterviewerFeedback.notes || "",
     });
-  }, [latestAssessment?.id, isScheduleMode, meId]);
+  }, [
+    latestAssessment?.id,
+    isScheduleMode,
+    meId,
+    currentInterviewerScore,
+    currentInterviewerDecision,
+    currentInterviewerFeedback,
+  ]);
 
   useEffect(() => {
     if (!isScheduleMode) return;

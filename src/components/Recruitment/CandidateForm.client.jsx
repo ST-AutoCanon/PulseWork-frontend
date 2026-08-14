@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import axios from "axios";
 import { MdOutlineCancel, MdOutlineRefresh } from "react-icons/md";
 import "./RecruitmentFlow.css";
@@ -51,7 +51,7 @@ export default function CandidateForm({
   const BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
 
   const isEdit = !!initialData;
-
+  const resumeInputRef = useRef(null);
   const [formData, setFormData] = useState(EMPTY_FORM);
   const [resumeFile, setResumeFile] = useState(null);
   const [parseLoading, setParseLoading] = useState(false);
@@ -208,6 +208,14 @@ export default function CandidateForm({
     );
   };
 
+  const handleReuploadClick = () => {
+    // Reset the input so selecting the same file again still triggers onChange
+    if (resumeInputRef.current) {
+      resumeInputRef.current.value = "";
+      resumeInputRef.current.click();
+    }
+  };
+
   return (
     <div className="rf-modal-overlay">
       <div className="rf-modal rf-form-modal">
@@ -222,6 +230,7 @@ export default function CandidateForm({
               <div className="rf-field rf-full">
                 <label>Upload Resume First</label>
                 <input
+                  ref={resumeInputRef}
                   type="file"
                   accept=".pdf,.doc,.docx"
                   onChange={handleResumeChange}
@@ -240,7 +249,7 @@ export default function CandidateForm({
                     <button
                       type="button"
                       className="rf-secondary-btn"
-                      onClick={resetResume}
+                      onClick={handleReuploadClick}
                     >
                       <MdOutlineRefresh /> Re-upload
                     </button>
@@ -407,6 +416,7 @@ export default function CandidateForm({
               <div className="rf-field rf-full">
                 <label>Replace Resume</label>
                 <input
+                  ref={resumeInputRef}
                   type="file"
                   accept=".pdf,.doc,.docx"
                   onChange={handleResumeChange}

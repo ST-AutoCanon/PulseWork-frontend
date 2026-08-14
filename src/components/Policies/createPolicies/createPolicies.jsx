@@ -204,22 +204,26 @@ const appendFilesToFormData = (filesArray, formData) => {
 
        
 <div className="admin-policy-selection-type">
-  <h4 className="admin-policy-section-subtitle">Assign To</h4>
+  <h4 className="admin-policy-section-subtitle">
+    Assign To <span style={{ color: "red" }}>*</span>
+  </h4>
+
   <div className="admin-policy-radio-group">
+    {/* Individual Employees */}
     <label className="admin-policy-radio-label">
       <input
         type="radio"
         checked={selectionType === "employee"}
         onChange={() => {
-setSelectionType("all");
-  setSelectedEmployees([]);
-  setSelectedDepartments([]);
-  setEmployeesByDepartment({});
+          setSelectionType("employee");
+          setSelectedDepartments([]);
+          setEmployeesByDepartment({});
         }}
       />
       Individual Employees
     </label>
 
+    {/* Departments */}
     <label className="admin-policy-radio-label">
       <input
         type="radio"
@@ -232,6 +236,7 @@ setSelectionType("all");
       Departments (with employees)
     </label>
 
+    {/* Assign to All */}
     <label className="admin-policy-radio-label">
       <input
         type="radio"
@@ -402,7 +407,7 @@ const ViewPolicyModal = ({
   setEditingFile,
   handleSaveFileEdit,
   loading,
-
+replaceLoading,
   // ==================== NEW PROPS FOR REPLACE ====================
   replacingFile,
   setReplacingFile,
@@ -851,12 +856,12 @@ const ViewPolicyModal = ({
                 Cancel
               </button>
               <button
-                className="admin-policy-submit-btn"
-                onClick={handleSaveReplace}
-                disabled={!replaceNewFile?.file || loading}
-              >
-                {loading ? "Replacing..." : "Replace File"}
-              </button>
+    className="admin-policy-submit-btn"
+    onClick={handleSaveReplace}
+    disabled={!replaceNewFile?.file || replaceLoading}
+  >
+    {replaceLoading ? "Replacing..." : "Replace File"}
+  </button>
             </div>
           </div>
           
@@ -880,6 +885,7 @@ const CreatePolicies = () => {
   const [policies, setPolicies] = useState([]);
   const [viewPolicy, setViewPolicy] = useState(null);
 const [isEditing, setIsEditing] = useState(false);
+const [replaceLoading, setReplaceLoading] = useState(false);
 const [editingPolicyId, setEditingPolicyId] = useState(null);
  const [newFile, setNewFile] = useState({
   file: null,
@@ -1000,15 +1006,8 @@ const validateReplaceFileType = (file, selectedType) => {
 
 const handleSaveReplace = async () => {
   if (!replacingFile || !replaceNewFile?.file) {
-    return showAlert(
-      "Please select a new file to replace",
-      "Error"
-    );
+    return showAlert("Please select a new file to replace", "Error");
   }
-
-  // ==============================
-  // VALIDATE FILE TYPE
-  // ==============================
 
   const isValidFileType = validateReplaceFileType(
     replaceNewFile.file,
@@ -1022,31 +1021,20 @@ const handleSaveReplace = async () => {
       video: "Video",
       image: "Image",
     };
-
     return showAlert(
       `Wrong file type. You selected "${typeNames[replaceNewFile.file_type]}" but selected file "${replaceNewFile.file.name}" is not a valid ${typeNames[replaceNewFile.file_type]} file.`,
       "Invalid File Type"
     );
   }
 
-  // ==============================
-  // START UPLOAD
-  // ==============================
-
-  setLoading(true);
+  setReplaceLoading(true);          // ← use dedicated state
 
   try {
     const formData = new FormData();
-
     const fieldName = getFieldName(replaceNewFile.file_type);
 
     formData.append(fieldName, replaceNewFile.file);
-
-    formData.append(
-      "acknowledgement",
-      replaceNewFile.acknowledgement
-    );
-
+    formData.append("acknowledgement", replaceNewFile.acknowledgement);
     formData.append(
       "acknowledgementMessage",
       replaceNewFile.acknowledgementMessage || ""
@@ -1057,38 +1045,24 @@ const handleSaveReplace = async () => {
       formData,
       {
         withCredentials: true,
-        headers: {
-          "x-org-id": orgId,
-        },
+        headers: { "x-org-id": orgId },
       }
     );
 
-    // Refresh files
     const latestFiles = await fetchPolicyFiles(viewPolicy.id);
+    setViewPolicy((prev) => ({ ...prev, files: latestFiles }));
 
-    setViewPolicy((prev) => ({
-      ...prev,
-      files: latestFiles,
-    }));
-
-    showAlert(
-      "File replaced successfully!"
-    );
-
+    showAlert("File replaced successfully!");
     setReplacingFile(null);
     setReplaceNewFile(null);
-
   } catch (err) {
     console.error(err);
-
     showAlert(
-      err.response?.data?.message ||
-        "Failed to replace file",
+      err.response?.data?.message || "Failed to replace file",
       "Error"
     );
-
   } finally {
-    setLoading(false);
+    setReplaceLoading(false);       // ← clear dedicated state
   }
 };
 const getFieldName = (type) => {
@@ -1314,7 +1288,15 @@ const handleSubmit = async (e) => {
   if (!formData.policyName.trim()) {
     return showAlert("Policy name is required", "Error");
   }
+// ========== MANDATORY ASSIGNMENT VALIDATION ==========
+if (selectionType === "employee" && selectedEmployees.length === 0) {
+  return showAlert("Please select at least one employee", "Error");
+}
 
+if (selectionType === "department" && selectedDepartments.length === 0) {
+  return showAlert("Please select at least one department", "Error");
+}
+// (when selectionType === "all" → no extra check needed)
   setLoading(true);
   try {
     if (isEditing && editingPolicyId) {

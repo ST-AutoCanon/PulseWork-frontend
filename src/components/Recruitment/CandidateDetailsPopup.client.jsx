@@ -37,6 +37,37 @@ function getDecisionTone(decision = "") {
   return "neutral";
 }
 
+function getOverallDecision(assessment) {
+  const feedbackEntries = Array.isArray(assessment?.feedback)
+    ? assessment.feedback
+    : [];
+
+  const decisions = feedbackEntries
+    .map((item) => String(item?.decision || "").trim())
+    .filter(Boolean);
+
+  if (!decisions.length) return null;
+
+  const normalized = decisions.map((decision) => decision.toLowerCase());
+
+  // Highest priority: Rejected
+  if (normalized.some((decision) => decision === "rejected")) {
+    return "Rejected";
+  }
+
+  // Next priority: Hold
+  if (normalized.some((decision) => decision === "hold")) {
+    return "Hold";
+  }
+
+  // Selected only when every submitted decision is Selected
+  if (normalized.every((decision) => decision === "selected")) {
+    return "Selected";
+  }
+
+  return "Pending";
+}
+
 function openFileInNewTabWithHeaders(url, headers) {
   return fetch(url, {
     headers,
@@ -314,14 +345,10 @@ export default function CandidateDetailsPopup({
                   ? a.feedback
                   : [];
 
-                const latestFeedback =
-                  feedbackEntries.length > 0
-                    ? feedbackEntries[feedbackEntries.length - 1]
-                    : null;
-
+                const overallDecision = getOverallDecision(a);
                 const overallScore = getOverallScore(a);
 
-                const tone = getDecisionTone(latestFeedback?.decision);
+                const tone = getDecisionTone(overallDecision);
                 const isLatest = index === 0;
 
                 return (
@@ -345,7 +372,7 @@ export default function CandidateDetailsPopup({
                       </div>
 
                       <span className={`rf-chip rf-chip-${tone}`}>
-                        {valueOrDash(latestFeedback?.decision)}
+                        {overallDecision || "Pending"}
                       </span>
                     </div>
 
@@ -477,9 +504,14 @@ export default function CandidateDetailsPopup({
                                     >
                                       <span>
                                         {person.name || person.id}
+
                                         {person.score != null
                                           ? ` • ${person.score}/10`
                                           : " • Pending"}
+
+                                        {person.decision
+                                          ? ` • ${person.decision}`
+                                          : " • Decision Pending"}
                                       </span>
                                       {String(person.id) === String(meId) &&
                                         onEditInterviewerAssessment && (

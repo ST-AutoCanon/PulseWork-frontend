@@ -7,6 +7,7 @@ import "./RecruitmentFlow.css";
 import { useAuth } from "../../context/AuthProvider.client";
 import Select from "react-select";
 import { FaStar } from "react-icons/fa";
+import Modal from "../Modal/Modal.client";
 
 const ASSESSMENT_PARAMETERS = [
   "Communication",
@@ -201,6 +202,7 @@ export default function InterviewAssessment({
   const [organization, setOrganization] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [successMessage, setSuccessMessage] = useState("");
   const [subjectTouched, setSubjectTouched] = useState(false);
   const [bodyTouched, setBodyTouched] = useState(false);
 
@@ -566,7 +568,11 @@ export default function InterviewAssessment({
         withCredentials: true,
       });
 
-      onSuccess?.();
+      setSuccessMessage(
+        isScheduleMode
+          ? `${roundMeta.label} scheduled successfully.`
+          : `${roundMeta.label} assessment saved successfully.`,
+      );
     } catch (err) {
       console.error("InterviewAssessment submit error:", err);
       setError(err.response?.data?.message || "Failed to save assessment.");
@@ -575,299 +581,324 @@ export default function InterviewAssessment({
     }
   };
 
+  const handleSuccessClose = () => {
+    setSuccessMessage("");
+    onSuccess?.();
+  };
+
   return (
-    <div className="rf-modal-overlay">
-      <div className="rf-modal rf-form-modal">
-        <div className="rf-modal-header">
-          <h3>
-            {isScheduleMode
-              ? `${roundMeta.label} Schedule`
-              : `${roundMeta.label} Assessment`}
-          </h3>
-          <MdOutlineCancel className="rf-close-icon" onClick={onClose} />
-        </div>
+    <>
+      <div className="rf-modal-overlay">
+        <div className="rf-modal rf-form-modal">
+          <div className="rf-modal-header">
+            <h3>
+              {isScheduleMode
+                ? `${roundMeta.label} Schedule`
+                : `${roundMeta.label} Assessment`}
+            </h3>
+            <MdOutlineCancel className="rf-close-icon" onClick={onClose} />
+          </div>
 
-        <div className="rf-candidate-strip">
-          <strong>{candidate?.name}</strong>
-          <span>{candidate?.applied_position}</span>
-        </div>
+          <div className="rf-candidate-strip">
+            <strong>{candidate?.name}</strong>
+            <span>{candidate?.applied_position}</span>
+          </div>
 
-        <form className="rf-form" onSubmit={handleSubmit}>
-          <div className="rf-grid">
-            {isScheduleMode ? (
-              <>
-                <div className="rf-field">
-                  <label>Assigned Interviewer</label>
-                  <Select
-                    isMulti
-                    isSearchable
-                    placeholder="Search interviewers..."
-                    options={interviewerOptions}
-                    value={interviewerOptions.filter((option) =>
-                      formData.interviewer_ids.includes(option.value),
-                    )}
-                    onChange={(selected) => {
-                      setFormData((prev) => ({
-                        ...prev,
-                        interviewer_ids: selected
-                          ? selected.map((item) => item.value)
-                          : [],
-                      }));
-                    }}
-                    closeMenuOnSelect={false}
-                    required
-                  />
-                </div>
+          <form className="rf-form" onSubmit={handleSubmit}>
+            <div className="rf-grid">
+              {isScheduleMode ? (
+                <>
+                  <div className="rf-field">
+                    <label>Assigned Interviewer</label>
+                    <Select
+                      isMulti
+                      isSearchable
+                      placeholder="Search interviewers..."
+                      options={interviewerOptions}
+                      value={interviewerOptions.filter((option) =>
+                        formData.interviewer_ids.includes(option.value),
+                      )}
+                      onChange={(selected) => {
+                        setFormData((prev) => ({
+                          ...prev,
+                          interviewer_ids: selected
+                            ? selected.map((item) => item.value)
+                            : [],
+                        }));
+                      }}
+                      closeMenuOnSelect={false}
+                      required
+                    />
+                  </div>
 
-                <div className="rf-field">
-                  <label>Interview Date</label>
-                  <input
-                    type="datetime-local"
-                    name="interview_date"
-                    value={formData.interview_date}
-                    onChange={handleChange}
-                    required
-                  />
-                </div>
+                  <div className="rf-field">
+                    <label>Interview Date</label>
+                    <input
+                      type="datetime-local"
+                      name="interview_date"
+                      value={formData.interview_date}
+                      onChange={handleChange}
+                      required
+                    />
+                  </div>
 
-                <div className="rf-field rf-full">
-                  <label>Interview Link</label>
-                  <input
-                    type="url"
-                    name="interview_link"
-                    value={formData.interview_link}
-                    onChange={handleChange}
-                    placeholder="https://meet.google.com/..."
-                    required
-                  />
-                </div>
+                  <div className="rf-field rf-full">
+                    <label>Interview Link</label>
+                    <input
+                      type="url"
+                      name="interview_link"
+                      value={formData.interview_link}
+                      onChange={handleChange}
+                      placeholder="https://meet.google.com/..."
+                      required
+                    />
+                  </div>
 
-                <div style={{ width: "100%" }}>
-                  <input
-                    type="checkbox"
-                    name="send_interview_email"
-                    checked={formData.send_interview_email}
-                    onChange={handleChange}
-                  />
-                  <label className="rf-checkbox-label">
-                    <strong> Send interview email to candidate</strong>
-                  </label>
-                </div>
+                  <div style={{ width: "100%" }}>
+                    <input
+                      type="checkbox"
+                      name="send_interview_email"
+                      checked={formData.send_interview_email}
+                      onChange={handleChange}
+                    />
+                    <label className="rf-checkbox-label">
+                      <strong> Send interview email to candidate</strong>
+                    </label>
+                  </div>
 
-                {formData.send_interview_email && (
-                  <>
-                    <div className="rf-field rf-full">
-                      <label>Email Subject</label>
-                      <input
-                        type="text"
-                        name="email_subject"
-                        value={formData.email_subject}
-                        onChange={handleChange}
-                      />
-                    </div>
+                  {formData.send_interview_email && (
+                    <>
+                      <div className="rf-field rf-full">
+                        <label>Email Subject</label>
+                        <input
+                          type="text"
+                          name="email_subject"
+                          value={formData.email_subject}
+                          onChange={handleChange}
+                        />
+                      </div>
 
-                    <div className="rf-field rf-full">
-                      <label>Email Body</label>
-                      <textarea
-                        name="email_body"
-                        value={formData.email_body}
-                        onChange={handleChange}
-                        rows={8}
-                      />
-                    </div>
-                  </>
-                )}
-              </>
-            ) : (
-              <>
-                <div className="rf-field rf-full">
-                  <label>
-                    Overall Score <strong>{formData.score || 1}/10</strong>
-                  </label>
+                      <div className="rf-field rf-full">
+                        <label>Email Body</label>
+                        <textarea
+                          name="email_body"
+                          value={formData.email_body}
+                          onChange={handleChange}
+                          rows={8}
+                        />
+                      </div>
+                    </>
+                  )}
+                </>
+              ) : (
+                <>
+                  <div className="rf-field rf-full">
+                    <label>
+                      Overall Score <strong>{formData.score || 1}/10</strong>
+                    </label>
 
-                  <input
-                    type="range"
-                    min="1"
-                    max="10"
-                    value={formData.score}
-                    className="rf-score-slider"
-                    style={{
-                      background: `linear-gradient(to right,
+                    <input
+                      type="range"
+                      min="1"
+                      max="10"
+                      value={formData.score}
+                      className="rf-score-slider"
+                      style={{
+                        background: `linear-gradient(to right,
       #79c42b 0%,
       #79c42b ${((formData.score - 1) / 9) * 100}%,
       #ddd ${((formData.score - 1) / 9) * 100}%,
       #ddd 100%)`,
-                    }}
-                    onChange={(e) =>
-                      setFormData((prev) => ({
-                        ...prev,
-                        score: Number(e.target.value),
-                      }))
-                    }
-                  />
+                      }}
+                      onChange={(e) =>
+                        setFormData((prev) => ({
+                          ...prev,
+                          score: Number(e.target.value),
+                        }))
+                      }
+                    />
 
-                  <div className="rf-slider-labels">
-                    {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((num) => (
-                      <span key={num}>{num}</span>
-                    ))}
+                    <div className="rf-slider-labels">
+                      {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((num) => (
+                        <span key={num}>{num}</span>
+                      ))}
+                    </div>
                   </div>
-                </div>
 
-                <div className="rf-full">
-                  <h4 className="rf-section-title">Evaluation Criteria</h4>
+                  <div className="rf-full">
+                    <h4 className="rf-section-title">Evaluation Criteria</h4>
 
-                  <div className="rf-rating-grid">
-                    {ASSESSMENT_PARAMETERS.map((item) => (
-                      <div key={item} className="rf-rating-card">
-                        <label>{item}</label>
+                    <div className="rf-rating-grid">
+                      {ASSESSMENT_PARAMETERS.map((item) => (
+                        <div key={item} className="rf-rating-card">
+                          <label>{item}</label>
 
-                        <StarRating
-                          value={formData.ratings?.[item] || 0}
-                          onChange={(rating) =>
-                            setFormData((prev) => ({
-                              ...prev,
-                              ratings: {
-                                ...prev.ratings,
-                                [item]: rating,
-                              },
-                            }))
-                          }
-                        />
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="rf-full">
-                  <h4 className="rf-section-title">Strengths</h4>
-
-                  <div className="rf-chip-selector">
-                    {STRENGTH_OPTIONS.map((item) => {
-                      const selected = (formData.strengths || []).includes(
-                        item,
-                      );
-
-                      return (
-                        <button
-                          type="button"
-                          key={item}
-                          className={
-                            selected ? "rf-chip-selected" : "rf-chip-option"
-                          }
-                          onClick={() => {
-                            setFormData((prev) => {
-                              const exists = (prev.strengths || []).includes(
-                                item,
-                              );
-
-                              return {
+                          <StarRating
+                            value={formData.ratings?.[item] || 0}
+                            onChange={(rating) =>
+                              setFormData((prev) => ({
                                 ...prev,
-
-                                strengths: exists
-                                  ? (prev.strengths || []).filter(
-                                      (i) => i !== item,
-                                    )
-                                  : [...(prev.strengths || []), item],
-                              };
-                            });
-                          }}
-                        >
-                          {item}
-                        </button>
-                      );
-                    })}
+                                ratings: {
+                                  ...prev.ratings,
+                                  [item]: rating,
+                                },
+                              }))
+                            }
+                          />
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                </div>
 
-                <div className="rf-full">
-                  <h4 className="rf-section-title">Improvements</h4>
+                  <div className="rf-full">
+                    <h4 className="rf-section-title">Strengths</h4>
 
-                  <div className="rf-chip-selector">
-                    {IMPROVEMENT_OPTIONS.map((item) => {
-                      const selected = (formData.improvements || []).includes(
-                        item,
-                      );
+                    <div className="rf-chip-selector">
+                      {STRENGTH_OPTIONS.map((item) => {
+                        const selected = (formData.strengths || []).includes(
+                          item,
+                        );
 
-                      return (
-                        <button
-                          type="button"
-                          key={item}
-                          className={
-                            selected ? "rf-chip-selected" : "rf-chip-option"
-                          }
-                          onClick={() => {
-                            setFormData((prev) => {
-                              const exists = (prev.improvements || []).includes(
-                                item,
-                              );
+                        return (
+                          <button
+                            type="button"
+                            key={item}
+                            className={
+                              selected ? "rf-chip-selected" : "rf-chip-option"
+                            }
+                            onClick={() => {
+                              setFormData((prev) => {
+                                const exists = (prev.strengths || []).includes(
+                                  item,
+                                );
 
-                              return {
-                                ...prev,
+                                return {
+                                  ...prev,
 
-                                improvements: exists
-                                  ? (prev.improvements || []).filter(
-                                      (i) => i !== item,
-                                    )
-                                  : [...(prev.improvements || []), item],
-                              };
-                            });
-                          }}
-                        >
-                          {item}
-                        </button>
-                      );
-                    })}
+                                  strengths: exists
+                                    ? (prev.strengths || []).filter(
+                                        (i) => i !== item,
+                                      )
+                                    : [...(prev.strengths || []), item],
+                                };
+                              });
+                            }}
+                          >
+                            {item}
+                          </button>
+                        );
+                      })}
+                    </div>
                   </div>
-                </div>
 
-                <div className="rf-field">
-                  <label>Decision</label>
-                  <select
-                    name="decision"
-                    value={formData.decision}
-                    onChange={handleChange}
-                  >
-                    <option value="">Select</option>
-                    <option value="Hold">Hold</option>
-                    <option value="Selected">Selected</option>
-                    <option value="Rejected">Rejected</option>
-                  </select>
-                </div>
+                  <div className="rf-full">
+                    <h4 className="rf-section-title">Improvements</h4>
 
-                <div className="rf-field rf-full">
-                  <label>Additional Interview Notes</label>
-                  <textarea
-                    name="feedback"
-                    value={formData.feedback}
-                    onChange={handleChange}
-                    rows={5}
-                    placeholder="Write assessment feedback here..."
-                  />
-                </div>
-              </>
-            )}
-          </div>
+                    <div className="rf-chip-selector">
+                      {IMPROVEMENT_OPTIONS.map((item) => {
+                        const selected = (formData.improvements || []).includes(
+                          item,
+                        );
 
-          {error && <p className="rf-error">{error}</p>}
+                        return (
+                          <button
+                            type="button"
+                            key={item}
+                            className={
+                              selected ? "rf-chip-selected" : "rf-chip-option"
+                            }
+                            onClick={() => {
+                              setFormData((prev) => {
+                                const exists = (
+                                  prev.improvements || []
+                                ).includes(item);
 
-          <div className="rf-actions">
-            <button
-              type="button"
-              className="rf-secondary-btn2"
-              onClick={onClose}
-            >
-              Cancel
-            </button>
-            <button type="submit" className="rf-primary-btn" disabled={loading}>
-              {loading
-                ? "Saving..."
-                : isScheduleMode
-                  ? "Save Schedule"
-                  : "Save Assessment"}
-            </button>
-          </div>
-        </form>
+                                return {
+                                  ...prev,
+
+                                  improvements: exists
+                                    ? (prev.improvements || []).filter(
+                                        (i) => i !== item,
+                                      )
+                                    : [...(prev.improvements || []), item],
+                                };
+                              });
+                            }}
+                          >
+                            {item}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  <div className="rf-field">
+                    <label>Decision</label>
+                    <select
+                      name="decision"
+                      value={formData.decision}
+                      onChange={handleChange}
+                    >
+                      <option value="">Select</option>
+                      <option value="Hold">Hold</option>
+                      <option value="Selected">Selected</option>
+                      <option value="Rejected">Rejected</option>
+                    </select>
+                  </div>
+
+                  <div className="rf-field rf-full">
+                    <label>Additional Interview Notes</label>
+                    <textarea
+                      name="feedback"
+                      value={formData.feedback}
+                      onChange={handleChange}
+                      rows={5}
+                      placeholder="Write assessment feedback here..."
+                    />
+                  </div>
+                </>
+              )}
+            </div>
+
+            {error && <p className="rf-error">{error}</p>}
+
+            <div className="rf-actions">
+              <button
+                type="button"
+                className="rf-secondary-btn2"
+                onClick={onClose}
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className="rf-primary-btn"
+                disabled={loading}
+              >
+                {loading
+                  ? "Saving..."
+                  : isScheduleMode
+                    ? "Save Schedule"
+                    : "Save Assessment"}
+              </button>
+            </div>
+          </form>
+        </div>
       </div>
-    </div>
+      <Modal
+        title="Success"
+        isVisible={!!successMessage}
+        onClose={handleSuccessClose}
+        buttons={[
+          {
+            label: "OK",
+            className: "ac-modal-btn",
+            onClick: handleSuccessClose,
+          },
+        ]}
+      >
+        <p>{successMessage}</p>
+      </Modal>
+    </>
   );
 }

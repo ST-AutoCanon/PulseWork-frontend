@@ -662,6 +662,18 @@ export default function EmployeeDetails({
 
       const professional = [
         ...toUrlArray(d.resume_url).map((u) => ({ label: "Resume", url: u })),
+        ...toUrlArray(d.insurance_doc).map((u) => ({
+          label: "Insurance",
+          url: u,
+        })),
+        ...toUrlArray(d.form16_part_a_doc).map((u) => ({
+          label: "Form-16 Part A",
+          url: u,
+        })),
+        ...toUrlArray(d.form16_part_b_doc).map((u) => ({
+          label: "Form-16 Part B",
+          url: u,
+        })),
       ];
 
       if (Array.isArray(d.experience)) {

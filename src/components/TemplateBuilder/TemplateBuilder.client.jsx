@@ -339,6 +339,9 @@ export default function TemplateBuilder() {
   const [currentPayload, setCurrentPayload] = useState(null);
   const [editingUploadTemplateId, setEditingUploadTemplateId] = useState(null);
   const [activeArea, setActiveArea] = useState("header");
+  const [existingHeaderUrl, setExistingHeaderUrl] = useState(null);
+  const [existingFooterUrl, setExistingFooterUrl] = useState(null);
+  const [existingWatermarkUrl, setExistingWatermarkUrl] = useState(null);
   const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "";
   const API_KEY = process.env.NEXT_PUBLIC_API_KEY || "";
   const orgId =
@@ -479,9 +482,15 @@ export default function TemplateBuilder() {
     if (newMode === "upload") {
       if (!hydratingSavedTemplateRef.current) {
         setEditingUploadTemplateId(null);
+
         setPreviewHeaderUrl(null);
         setPreviewFooterUrl(null);
         setPreviewWatermarkUrl(null);
+
+        // Clear persisted asset references when starting a NEW upload
+        setExistingHeaderUrl(null);
+        setExistingFooterUrl(null);
+        setExistingWatermarkUrl(null);
       }
     }
 
@@ -1409,8 +1418,11 @@ export default function TemplateBuilder() {
   }
 
   function openSavePrompt() {
-    const stamp = new Date().toLocaleString();
-    setSaveName(`Template ${stamp}`);
+    if (!editingUploadTemplateId) {
+      const stamp = new Date().toLocaleString();
+      setSaveName(`Template ${stamp}`);
+    }
+
     if (mode === "scratch" || mode === "basic") {
       const r = getActiveEditorRef();
       if (r && r.current && r.current.getData) {
@@ -1428,9 +1440,12 @@ export default function TemplateBuilder() {
 
   async function editSavedTemplate(entry) {
     if (!entry) return;
+
     let resolved = null;
 
-    console.log("editSavedTemplate original entry:", entry);
+    console.log("========================================");
+    console.log("[EDIT TEMPLATE] Original entry:", entry);
+    console.log("========================================");
 
     try {
       try {
@@ -1441,19 +1456,29 @@ export default function TemplateBuilder() {
           employeeId,
         );
       } catch (e) {
-        console.warn("resolveTemplateProtectedAssets failed", e);
+        console.warn(
+          "[EDIT TEMPLATE] resolveTemplateProtectedAssets failed:",
+          e,
+        );
         resolved = entry;
       }
 
-      console.log("editSavedTemplate resolved object:", resolved);
+      console.log("[EDIT TEMPLATE] Resolved object:", resolved);
 
       const cat = entry.category || inferCategory(entry);
+
       const isUpload =
         cat === "saved_uploads" ||
         String(entry.template_type || "").toLowerCase() === "scan";
 
       if (isUpload) {
         try {
+          setSaveName(entry.name || "");
+
+          // ============================================================
+          // HEADER
+          // ============================================================
+
           const headerCandidates = [
             resolved.header_url,
             resolved.headerUrl,
@@ -1464,12 +1489,18 @@ export default function TemplateBuilder() {
             resolved._headerBlob,
             resolved.imageUrl,
             resolved.cleanedUrl,
+
+            // Original entry fallbacks
             entry.header_url,
             entry.headerUrl,
             entry.header,
             entry.grapesJson?.headerUrl,
             entry.meta?.uploads?.header,
           ].filter(Boolean);
+
+          // ============================================================
+          // FOOTER
+          // ============================================================
 
           const footerCandidates = [
             resolved.footer_url,
@@ -1478,12 +1509,25 @@ export default function TemplateBuilder() {
             resolved.grapesJson?.footerUrl,
             resolved.meta?.uploads?.footer,
             resolved._footerBlob,
+
+            // Original entry fallbacks
+            entry.footer_url,
+            entry.footerUrl,
+            entry.footer,
+            entry.grapesJson?.footerUrl,
+            entry.meta?.uploads?.footer,
           ].filter(Boolean);
+
+          console.log("[EDIT TEMPLATE] Header candidates:", headerCandidates);
+          console.log("[EDIT TEMPLATE] Footer candidates:", footerCandidates);
 
           let rawHeader = headerCandidates[0] || null;
           let rawFooter = footerCandidates[0] || null;
 
-          // fallback: scan object for images
+          // ============================================================
+          // FALLBACK: SEARCH ENTIRE OBJECT FOR UPLOAD FILES
+          // ============================================================
+
           function collectUploadStrings(obj, out = new Set()) {
             if (!obj) return out;
 
@@ -1494,6 +1538,7 @@ export default function TemplateBuilder() {
               ) {
                 out.add(obj);
               }
+
               return out;
             }
 
@@ -1512,9 +1557,23 @@ export default function TemplateBuilder() {
           if (!rawHeader || !rawFooter) {
             const found = Array.from(collectUploadStrings(resolved));
 
-            if (!rawHeader && found.length >= 1) rawHeader = found[0];
-            if (!rawFooter && found.length >= 2) rawFooter = found[1];
+            console.log(
+              "[EDIT TEMPLATE] Fallback upload strings found:",
+              found,
+            );
+
+            if (!rawHeader && found.length >= 1) {
+              rawHeader = found[0];
+            }
+
+            if (!rawFooter && found.length >= 2) {
+              rawFooter = found[1];
+            }
           }
+
+          // ============================================================
+          // HELPER: CONVERT ORIGINAL URL INTO BLOB URL FOR PREVIEW ONLY
+          // ============================================================
 
           async function ensureBlobUrl(src) {
             if (!src) return null;
@@ -1532,7 +1591,10 @@ export default function TemplateBuilder() {
               /^[^\/\\]+\.(png|jpe?g|svg|gif|webp)$/i.test(src)
             ) {
               if (BACKEND_URL && orgId) {
-                src = `${BACKEND_URL.replace(/\/$/, "")}/api/orgs/${orgId}/uploads/${src}`;
+                src = `${BACKEND_URL.replace(
+                  /\/$/,
+                  "",
+                )}/api/orgs/${orgId}/uploads/${src}`;
               }
             }
 
@@ -1546,23 +1608,39 @@ export default function TemplateBuilder() {
                 API_KEY,
                 employeeId,
               );
+
               return blobUrl || src;
             } catch (e) {
-              console.warn(
-                "editSavedTemplate.ensureBlobUrl failed for",
-                src,
-                e,
-              );
+              console.warn("[EDIT TEMPLATE] ensureBlobUrl failed:", src, e);
+
               return src;
             }
           }
 
+          // ============================================================
+          // IMPORTANT:
+          // SAVE THE ORIGINAL URL SEPARATELY.
+          //
+          // previewHeaderUrl / previewFooterUrl are ONLY for display.
+          // existingHeaderUrl / existingFooterUrl are used when saving.
+          // ============================================================
+
+          setExistingHeaderUrl(rawHeader);
+          setExistingFooterUrl(rawFooter);
+
+          console.log("[EDIT TEMPLATE] Existing persisted assets:", {
+            existingHeaderUrl: rawHeader,
+            existingFooterUrl: rawFooter,
+          });
+
+          // ============================================================
+          // CREATE BLOB URLS FOR PREVIEW
+          // ============================================================
+
           const headerUrlResolved = await ensureBlobUrl(rawHeader);
           const footerUrlResolved = await ensureBlobUrl(rawFooter);
 
-          console.log("editSavedTemplate resolved URLs:", {
-            rawHeader,
-            rawFooter,
+          console.log("[EDIT TEMPLATE] Preview URLs:", {
             headerUrlResolved,
             footerUrlResolved,
           });
@@ -1570,11 +1648,18 @@ export default function TemplateBuilder() {
           setPreviewHeaderUrl(headerUrlResolved);
           setPreviewFooterUrl(footerUrlResolved);
 
+          // ============================================================
+          // WATERMARK
+          // ============================================================
+
           let watermarkUrl = null;
           let watermarkPlacementProps = null;
-          if (resolved.grapesJson && resolved.grapesJson.watermark) {
+
+          if (resolved.grapesJson?.watermark) {
             const wm = resolved.grapesJson.watermark;
+
             watermarkUrl = wm?.url || null;
+
             watermarkPlacementProps = {
               xPct: wm?.xPct || "50%",
               yPct: wm?.yPct || "50%",
@@ -1582,45 +1667,79 @@ export default function TemplateBuilder() {
               hPct: wm?.hPct || "60%",
               opacity: typeof wm?.opacity === "number" ? wm.opacity : 0.12,
             };
-          } else if (resolved.meta && resolved.meta.watermark) {
+          } else if (resolved.meta?.watermark) {
             watermarkUrl =
               typeof resolved.meta.watermark === "string"
                 ? resolved.meta.watermark
                 : null;
+
             const wp = resolved.meta.watermarkPlacement;
-            if (wp)
+
+            if (wp) {
               watermarkPlacementProps = {
                 xPct: wp.xPct || "50%",
                 yPct: wp.yPct || "50%",
                 wPct: wp.wPct || "60%",
-                hPct: wp.wPct || "60%",
+                hPct: wp.hPct || "60%",
                 opacity: typeof wp.opacity === "number" ? wp.opacity : 0.12,
               };
+            }
           }
+
+          // Also check other possible watermark locations
+          if (!watermarkUrl) {
+            watermarkUrl =
+              resolved.watermark_url ||
+              resolved.watermarkUrl ||
+              resolved.meta?.uploads?.watermark ||
+              entry.watermark_url ||
+              entry.watermarkUrl ||
+              entry.meta?.uploads?.watermark ||
+              null;
+          }
+
+          // Save original watermark URL
+          setExistingWatermarkUrl(watermarkUrl);
 
           const watermarkUrlResolved = watermarkUrl
             ? await ensureBlobUrl(watermarkUrl)
             : null;
 
+          console.log("[EDIT TEMPLATE] Watermark:", {
+            existingWatermarkUrl: watermarkUrl,
+            previewWatermarkUrl: watermarkUrlResolved,
+          });
+
           setPreviewHeaderUrl(headerUrlResolved);
           setPreviewFooterUrl(footerUrlResolved);
           setPreviewWatermarkUrl(watermarkUrlResolved);
-          if (watermarkPlacementProps)
+
+          if (watermarkPlacementProps) {
             setWatermarkProps(watermarkPlacementProps);
+          }
 
           if (watermarkUrlResolved) {
             setWatermarkEnabled(true);
+          } else {
+            setWatermarkEnabled(false);
           }
+
+          // ============================================================
+          // ENTER EDIT MODE
+          // ============================================================
 
           setEditingUploadTemplateId(entry.id);
 
           setViewingTemplate(null);
           setShowSavedPane(false);
           setMode("upload");
+
+          console.log("[EDIT TEMPLATE] Edit mode initialized successfully");
+
           return;
         } catch (err) {
           console.warn(
-            "editSavedTemplate upload branch failed, falling back to basic",
+            "[EDIT TEMPLATE] Upload branch failed, falling back to basic:",
             err,
           );
         }
@@ -1629,10 +1748,11 @@ export default function TemplateBuilder() {
       setGenerated(resolved || entry);
       setAppMode("basic");
     } catch (err) {
-      console.error("editSavedTemplate top-level failure", err, {
+      console.error("[EDIT TEMPLATE] Top-level failure:", err, {
         entry,
         resolved,
       });
+
       if (resolved || entry) {
         setGenerated(resolved || entry);
         setAppMode("basic");
@@ -1696,8 +1816,12 @@ export default function TemplateBuilder() {
     let data = null;
 
     if (mode === "upload") {
-      // For upload mode, upload files and save template
-      if (!headerFile && !footerFile && !watermarkFile) {
+      const hasExistingImage =
+        !!previewHeaderUrl || !!previewFooterUrl || !!previewWatermarkUrl;
+
+      const hasNewImage = !!headerFile || !!footerFile || !!watermarkFile;
+
+      if (!hasExistingImage && !hasNewImage) {
         showError(
           "Please select at least one image (header, footer or watermark).",
         );
@@ -1718,11 +1842,55 @@ export default function TemplateBuilder() {
       try {
         const fd = new FormData();
 
-        if (headerFile) fd.append("header", headerFile);
-        if (footerFile) fd.append("footer", footerFile);
+        // ============================================================
+        // HEADER
+        // ============================================================
+
+        if (headerFile) {
+          // User selected a NEW header
+          fd.append("header", headerFile);
+          console.log("[SAVE TEMPLATE] Using NEW header file");
+        } else if (existingHeaderUrl) {
+          // User did NOT replace header, preserve existing header
+          fd.append("existingHeaderUrl", existingHeaderUrl);
+          console.log(
+            "[SAVE TEMPLATE] Preserving EXISTING header:",
+            existingHeaderUrl,
+          );
+        }
+
+        // ============================================================
+        // FOOTER
+        // ============================================================
+
+        if (footerFile) {
+          // User selected a NEW footer
+          fd.append("footer", footerFile);
+          console.log("[SAVE TEMPLATE] Using NEW footer file");
+        } else if (existingFooterUrl) {
+          // User did NOT replace footer, preserve existing footer
+          fd.append("existingFooterUrl", existingFooterUrl);
+          console.log(
+            "[SAVE TEMPLATE] Preserving EXISTING footer:",
+            existingFooterUrl,
+          );
+        }
+
+        // ============================================================
+        // WATERMARK
+        // ============================================================
 
         if (watermarkFile && watermarkEnabled) {
+          // User selected a NEW watermark
           fd.append("watermark", watermarkFile);
+          console.log("[SAVE TEMPLATE] Using NEW watermark file");
+        } else if (watermarkEnabled && existingWatermarkUrl) {
+          // User did NOT replace watermark, preserve existing watermark
+          fd.append("existingWatermarkUrl", existingWatermarkUrl);
+          console.log(
+            "[SAVE TEMPLATE] Preserving EXISTING watermark:",
+            existingWatermarkUrl,
+          );
         }
 
         fd.append("name", saveName.trim());
@@ -1731,8 +1899,6 @@ export default function TemplateBuilder() {
           fd.append("templateId", editingUploadTemplateId);
         }
 
-        const wp = watermarkProps;
-
         fd.append(
           "meta",
           JSON.stringify({
@@ -1740,13 +1906,9 @@ export default function TemplateBuilder() {
               watermarkEnabled &&
               (watermarkFile || previewWatermarkUrl)
             ),
-            watermarkPlacement: wp,
+            watermarkPlacement: watermarkProps,
           }),
         );
-
-        if (watermarkEnabled && previewWatermarkUrl && !watermarkFile) {
-          fd.append("existingWatermarkUrl", previewWatermarkUrl);
-        }
 
         const base = BACKEND_URL.replace(/\/$/, "");
         const url = `${base}/api/orgs/${orgId}/templates/upload-scan`;

@@ -135,56 +135,98 @@ doc.text("Phone: +91 831 406 9203  Email: hr@sukalpatechsolutions.com", pageWidt
   doc.setFontSize(14).setFont("helvetica", "bold");
   doc.text(`Payslip for ${monthName} ${selectedYear}`, pageWidth / 2, 60, { align: "center" });
 
-  // ====================== EMPLOYEE DETAILS ======================// ====================== EMPLOYEE DETAILS ======================
+ // ====================== EMPLOYEE DETAILS ======================
 const getVal = (val, fallback = "N/A") => (val ? String(val).trim() : fallback);
 doc.setFontSize(9);
 
-// ─── LEFT COLUMN ─── (moved ~8–10 units right)
-const leftX = 28;          // ← was 20, now shifted right
-const rightX = 118;        // ← was 110, also shifted right to maintain balance
+const leftX = 28;
+const rightX = 118;
+const labelOffsetLeft = 32;
+const labelOffsetRight = 30;
 
-doc.setFont("helvetica", "bold").text("Employee Name:", leftX, 75);
-doc.setFont("helvetica", "normal").text(getVal(employeeName).toUpperCase().substring(0, 30), leftX + 32, 75);
+// Starting Y position
+let y = 75;
+const lineHeight = 7; // normal row spacing
 
-doc.setFont("helvetica", "bold").text("Gender:", leftX, 82);
-doc.setFont("helvetica", "normal").text(getVal(gender).toUpperCase(), leftX + 32, 82);
+// Helper to draw a row (keeps left & right aligned)
+const drawRow = (leftLabel, leftValue, rightLabel, rightValue) => {
+  // Left side
+  doc.setFont("helvetica", "bold");
+  doc.text(leftLabel, leftX, y);
+  doc.setFont("helvetica", "normal");
+  doc.text(leftValue, leftX + labelOffsetLeft, y);
 
-doc.setFont("helvetica", "bold").text("Date of Joining:", leftX, 89);
-doc.setFont("helvetica", "normal").text(getVal(dateOfJoining), leftX + 32, 89);
+  // Right side
+  doc.setFont("helvetica", "bold");
+  doc.text(rightLabel, rightX, y);
+  doc.setFont("helvetica", "normal");
+  doc.text(rightValue, rightX + labelOffsetRight, y);
 
-doc.setFont("helvetica", "bold").text("Working Days:", leftX, 96);
-doc.setFont("helvetica", "normal").text(String(workingDays), leftX +32, 96);
+  y += lineHeight;
+};
 
-doc.setFont("helvetica", "bold").text("UAN No:", leftX, 103);
-doc.setFont("helvetica", "normal").text(getVal(uinNo), leftX + 32, 103);
-
-doc.setFont("helvetica", "bold").text("ESI Number:", leftX, 110);
-doc.setFont("helvetica", "normal").text(getVal(esiNumber), leftX + 32, 110);
-
-// ─── RIGHT COLUMN ─── (also moved right to keep symmetry)
-doc.setFont("helvetica", "bold").text("Employee ID:", rightX, 75);
-doc.setFont("helvetica", "normal").text(getVal(employeeId), rightX + 30, 75);
-
-doc.setFont("helvetica", "bold").text("Designation:", rightX, 82);
-doc.setFont("helvetica", "bold").text("Designation:", rightX, 82);
-doc.setFont("helvetica", "normal").text(
-  getVal(designation).toUpperCase(),
-  rightX + 30,
-  82,
-  { maxWidth: 48 }   // safe width so it wraps cleanly
+// ---------- Row 1 ----------
+drawRow(
+  "Employee Name:",
+  getVal(employeeName).toUpperCase().substring(0, 30),
+  "Employee ID:",
+  getVal(employeeId)
 );
 
-doc.setFont("helvetica", "bold").text("Account No:", rightX, 89);
-doc.setFont("helvetica", "normal").text(getVal(accountNo), rightX + 30, 89);
+// ---------- Row 2 (Designation can wrap) ----------
+doc.setFont("helvetica", "bold");
+doc.text("Gender:", leftX, y);
+doc.setFont("helvetica", "normal");
+doc.text(getVal(gender).toUpperCase(), leftX + labelOffsetLeft, y);
 
-doc.setFont("helvetica", "bold").text("No of leaves :", rightX, 96);
-doc.setFont("helvetica", "normal").text(String(leavesTaken || 0), rightX + 30, 96);
+doc.setFont("helvetica", "bold");
+doc.text("Designation:", rightX, y);
 
-doc.setFont("helvetica", "bold").text("PAN Number:", rightX, 103);
-doc.setFont("helvetica", "normal").text(getVal(panNumber), rightX + 30, 103);
+// Designation value – allow wrapping and measure height
+const designationText = getVal(designation).toUpperCase();
+const designationMaxWidth = 48;
+const designationLines = doc.splitTextToSize(designationText, designationMaxWidth);
 
-doc.setFont("helvetica", "bold").text("PF Number:", rightX, 110);
-doc.setFont("helvetica", "normal").text(getVal(pfNumber), rightX + 30, 110);
+doc.setFont("helvetica", "normal");
+doc.text(designationLines, rightX + labelOffsetRight, y);
+
+// Calculate how many extra lines the designation took
+const designationHeight = designationLines.length * lineHeight;
+
+if (designationLines.length > 1) {
+  y += designationHeight - lineHeight;
+} else {
+  y += lineHeight;
+}
+
+// ---------- Remaining rows (now correctly spaced) ----------
+drawRow(
+  "Date of Joining:",
+  getVal(dateOfJoining),
+  "Account No:",
+  getVal(accountNo)
+);
+
+drawRow(
+  "Working Days:",
+  String(workingDays),
+  "No of leaves :",
+  String(leavesTaken || 0)
+);
+
+drawRow(
+  "UAN No:",
+  getVal(uinNo),
+  "PAN Number:",
+  getVal(panNumber)
+);
+
+drawRow(
+  "ESI Number:",
+  getVal(esiNumber),
+  "PF Number:",
+  getVal(pfNumber)
+);
 
   // ====================== SALARY TABLE (Transparent Background) ======================
   const getAmt = (val) => Math.round(parseFloat(val) || 0);

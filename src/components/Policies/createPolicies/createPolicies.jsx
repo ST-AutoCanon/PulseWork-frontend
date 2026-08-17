@@ -1218,22 +1218,24 @@ const handleAddNewFile = () => {
     file: newFile.file,
     file_type: newFile.file_type,
     acknowledgement: Boolean(newFile.acknowledgement),
-    acknowledgementMessage: newFile.acknowledgementMessage || "",
+    acknowledgementMessage: newFile.acknowledgement ? (newFile.acknowledgementMessage || "") : "",
     allowView: newFile.allowView !== false,
     allowDownload: Boolean(newFile.allowDownload),
   };
 
   setNewFilesToAdd((prev) => [...prev, fileToAdd]);
 
+  // Hard reset – create a brand new object so React treats it as a new state
   setNewFile({
     file: null,
-    file_type: newFile.file_type,
-    
+    file_type: newFile.file_type, // keep the last selected type for convenience
     acknowledgement: false,
-    acknowledgementMessage: "",
+    acknowledgementMessage: "",   // force empty
     allowView: true,
     allowDownload: false,
   });
+
+  // Force the file input to remount (you already do this)
   setFileInputKey((prev) => prev + 1);
 };
   const handleRemoveNewFile = (index) => {

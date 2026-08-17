@@ -1,4 +1,6 @@
 
+
+
 "use client";
 import React, { useState, useEffect } from "react";
 import axios from "axios";
@@ -55,61 +57,62 @@ const PayrollSummary = () => {
   };
 
   const protectedImgCache = new Map();
+const buildAdvanceDetailText = (
+  advances,
+  employeeId,
+  selectedMonth,
+  selectedYear
+) => {
+  if (!Array.isArray(advances) || advances.length === 0) return "None";
 
-  const buildAdvanceDetailText = (
-    advances,
-    employeeId,
-    selectedMonth,
-    selectedYear
-  ) => {
-    if (!Array.isArray(advances) || advances.length === 0) return "None";
+  const currentDate = new Date(selectedYear, selectedMonth - 1);
 
-    const currentDate = new Date(selectedYear, selectedMonth - 1);
+  const employeeAdvances = advances.filter(
+    (adv) => String(adv.employee_id) === String(employeeId)
+  );
 
-    const employeeAdvances = advances.filter(
-      (adv) => String(adv.employee_id) === String(employeeId)
-    );
+  if (employeeAdvances.length === 0) return "None";
 
-    if (employeeAdvances.length === 0) return "None";
+  const details = [];
 
-    const details = [];
+  employeeAdvances.forEach((adv) => {
+    if (!adv.applicable_months || !adv.recovery_months) return;
 
-    employeeAdvances.forEach((adv) => {
-      if (!adv.applicable_months || !adv.recovery_months) return;
+    const [startYear, startMonth] = adv.applicable_months.split("-");
+    const startDate = new Date(parseInt(startYear), parseInt(startMonth) - 1);
 
-      const [startYear, startMonth] = adv.applicable_months.split("-");
-      const startDate = new Date(parseInt(startYear), parseInt(startMonth) - 1);
+    const totalMonths = parseInt(adv.recovery_months);
+    const totalAmount = parseFloat(adv.advance_amount);
 
-      const totalMonths = parseInt(adv.recovery_months);
-      const totalAmount = parseFloat(adv.advance_amount);
+    if (totalMonths <= 0 || totalAmount <= 0) return;
 
-      if (totalMonths <= 0 || totalAmount <= 0) return;
+    // Calculate which installment month this is
+    const monthsElapsed =
+      (currentDate.getFullYear() - startDate.getFullYear()) * 12 +
+      (currentDate.getMonth() - startDate.getMonth()) +
+      1;
 
-      const monthsElapsed =
-        (currentDate.getFullYear() - startDate.getFullYear()) * 12 +
-        (currentDate.getMonth() - startDate.getMonth()) +
-        1;
+    // Only show if this month is within recovery period
+    if (monthsElapsed < 1 || monthsElapsed > totalMonths) return;
 
-      if (monthsElapsed < 1 || monthsElapsed > totalMonths) return;
+    const monthlyAmount = totalAmount / totalMonths;
 
-      const monthlyAmount = totalAmount / totalMonths;
+    const suffix =
+      monthsElapsed === 1
+        ? "st"
+        : monthsElapsed === 2
+        ? "nd"
+        : monthsElapsed === 3
+        ? "rd"
+        : "th";
 
-      const suffix =
-        monthsElapsed === 1
-          ? "st"
-          : monthsElapsed === 2
-          ? "nd"
-          : monthsElapsed === 3
-          ? "rd"
-          : "th";
+    const text = `(${monthsElapsed}${suffix} month of ${totalMonths}, from ${adv.applicable_months})`;
 
-      const text = `(${monthsElapsed}${suffix} month of ${totalMonths}, from ${adv.applicable_months})`;
+    details.push(text);
+  });
 
-      details.push(text);
-    });
-
-    return details.length > 0 ? details.join(", ") : "None";
-  };
+  return details.length > 0 ? details.join(", ") : "None";
+};
 
   function normalizeUploadUrl(src, backendBase = BACKEND_URL) {
     if (!src) return src;
@@ -174,6 +177,7 @@ const PayrollSummary = () => {
       return dataUrl;
     } catch (err) {
       console.error("❌ [IMAGE FETCH] FAILED:", normalized, err.message || err);
+      // Return null instead of data URL - image will fail to load gracefully
       return null;
     }
   }
@@ -210,6 +214,7 @@ const PayrollSummary = () => {
         let src = img.getAttribute("src");
         if (!src || src.startsWith("data:") || src.startsWith("blob:")) return;
         try {
+          // Try to fetch with credentials for protected images
           const res = await fetch(src, {
             credentials: "include",
             headers,
@@ -220,6 +225,7 @@ const PayrollSummary = () => {
           img.setAttribute("src", dataUrl);
         } catch (err) {
           console.warn("Failed to inline image", src, err);
+          // Don't remove - keep the original src, might work in PDF generation
         }
       })
     );
@@ -233,6 +239,22 @@ const PayrollSummary = () => {
     return str.endsWith("%") ? str : `${str}%`;
   }
 
+  const parseApplicableMonth = (monthString) => {
+    if (!monthString || typeof monthString !== "string") return null;
+    const parts = monthString.split("-");
+    if (parts.length !== 2) return null;
+    const year = parseInt(parts[0], 10);
+    const month = parseInt(parts[1], 10);
+    if (isNaN(year) || isNaN(month)) return null;
+    return new Date(year, month - 1, 1);
+  };
+
+  const getOrdinal = (n) => {
+    const s = ["th", "st", "nd", "rd"];
+    const v = n % 100;
+    return n + (s[(v - 20) % 10] || s[v] || s[0]);
+  };
+
   const handleDateChange = (event) => {
     const [year, month] = event.target.value.split("-");
     setSelectedDate({
@@ -241,37 +263,60 @@ const PayrollSummary = () => {
     });
   };
 
-  useEffect(() => {
-    console.log("━━━━━━━━ ADVANCE DETAIL CALCULATION ━━━━━━━━");
-    console.log("Selected:", selectedDate);
-    console.log("employeeId:", employeeId);
-    console.log("payrollData?.advance_recovery:", payrollData?.advance_recovery);
-    console.log("advances:", advances);
+ useEffect(() => {
+  console.log("━━━━━━━━ ADVANCE DETAIL CALCULATION ━━━━━━━━");
+  console.log("Selected:", selectedDate);
+  console.log("employeeId:", employeeId);
+  console.log("payrollData?.advance_recovery:", payrollData?.advance_recovery);
+  console.log("advances:", advances);
 
-    const advanceAmount = Number(payrollData?.advance_recovery || 0);
+  const advanceAmount = Number(payrollData?.advance_recovery || 0);
 
-    if (advanceAmount <= 0 || advances.length === 0) {
-      console.log("EARLY EXIT → no amount or no advances");
-      setAdvanceDetailText("None");
-      return;
-    }
+  if (advanceAmount <= 0 || advances.length === 0) {
+    console.log("EARLY EXIT → no amount or no advances");
+    setAdvanceDetailText("None");
+    return;
+  }
 
-    const text = buildAdvanceDetailText(
-      advances,
-      employeeId,
-      selectedDate.month,
-      selectedDate.year
-    );
+  const text = buildAdvanceDetailText(
+    advances,
+    employeeId,
+    selectedDate.month,
+    selectedDate.year
+  );
 
-    console.log("FINAL ADVANCE TEXT:", text);
-    setAdvanceDetailText(text);
-  }, [payrollData, advances, selectedDate, employeeId]);
+  console.log("FINAL ADVANCE TEXT:", text);
+  setAdvanceDetailText(text);
+}, [payrollData, advances, selectedDate, employeeId]);
+
 
   const handleDownload = async () => {
     try {
       if (!payrollData) {
         alert("No payroll data available to download.");
         return;
+      }
+      console.log("🚀 DOWNLOAD STARTED");
+      console.log("Header data URL present:", !!headerImgSrc);
+      console.log("Header data URL (first 100 chars):", headerImgSrc?.substring(0, 100));
+      console.log("Footer data URL present:", !!footerImgSrc);
+      console.log("Footer data URL (first 100 chars):", footerImgSrc?.substring(0, 100));
+      console.log("Watermark data URL present:", !!watermarkImgSrc);
+      console.log("Watermark data URL (first 100 chars):", watermarkImgSrc?.substring(0, 100));
+      console.log("Watermark props:", watermarkProps);
+
+      // Check if any required images failed to load
+      const missingImages = [];
+      if (!headerImgSrc) missingImages.push("Header");
+      if (!footerImgSrc) missingImages.push("Footer");
+      if (!watermarkImgSrc) missingImages.push("Watermark");
+      
+      if (missingImages.length > 0) {
+        console.warn("⚠️ WARNING: The following template images failed to load and will not appear in the PDF:", missingImages.join(", "));
+        const shouldContinue = confirm(
+          `Template images are missing (${missingImages.join(", ")}). PDF will be generated without them. Continue?`
+        );
+        if (!shouldContinue) return;
       }
 
       const employeeName = payrollData.full_name || employeeDetails?.full_name || employeeDetails?.name || "N/A";
@@ -298,41 +343,48 @@ const PayrollSummary = () => {
       const overtime = Number(payrollData.overtime || payrollData.overtimePay || 0);
       const statutoryBonus = Number(payrollData.statutory_bonus || payrollData.statutoryBonus || 0);
       const bonus = Number(payrollData.bonus || 0);
-
       const grossSalary = Number(
-        payrollData.gross_salary ||
-        (
-          basicSalary +
-          hra +
-          lta +
-          allowance +
-          incentives +
-          overtime +
-          statutoryBonus +
-          bonus
-        )
-      );
-
+  payrollData.gross_salary ||
+  (
+    basicSalary +
+    hra +
+    lta +
+    allowance +
+    incentives +
+    overtime +
+    statutoryBonus +
+    bonus
+  )
+);
       const advanceRecovery = Number(payrollData.advance_recovery || 0);
+      const lopDeduction = Number(payrollData.lop_deduction || 0);
       const employeePf = Number(payrollData.employee_pf || payrollData.pf || 0);
-      const employerPf = Number(payrollData.employer_pf || payrollData.employerPF || 0);
-      const employeeEsic = Number(payrollData.esic_employee || 0);
-      const employerEsic = Number(payrollData.esic_employer || 0);
-      const gratuity = Number(payrollData.gratuity || 0);
-      const professionalTax = Number(payrollData.professional_tax || 0);
-      const tds = Number(payrollData.tds || 0);
-      const employeeInsurance = Number(payrollData.insurance_employee || 0);
-      const employerInsurance = Number(payrollData.insurance_employer || 0);
+const employerPf = Number(payrollData.employer_pf || payrollData.employerPF || 0);
 
-      const totalDeductions =
-        employeePf +
-        employeeEsic +
-        professionalTax +
-        tds +
-        employeeInsurance +
-        advanceRecovery;
+const employeeEsic = Number(payrollData.esic_employee || 0);
+const employerEsic = Number(payrollData.esic_employer || 0);
+
+const gratuity = Number(payrollData.gratuity || 0);
+
+const professionalTax = Number(payrollData.professional_tax || 0);
+const tds = Number(payrollData.tds || 0);
+
+const employeeInsurance = Number(payrollData.insurance_employee || 0);
+const employerInsurance = Number(payrollData.insurance_employer || 0);
+     const totalDeductions =
+  employeePf +
+  employeeEsic +
+  professionalTax +
+  tds +
+  employeeInsurance +
+  advanceRecovery +
+  lopDeduction;
 
       const netSalary = Number(payrollData.net_salary || grossSalary - totalDeductions);
+
+      const leavesTaken = Number(payrollData.lop_days || 0);
+      const totalWorkingDays =
+        attendance?.total_working_days || (leavesTaken > 0 ? 30 - leavesTaken : 30);
 
       const monthNames = [
         "January", "February", "March", "April", "May", "June", "July", "August",
@@ -425,27 +477,62 @@ const PayrollSummary = () => {
                 <strong style="display: inline-block; width: 130px; color: #333;">Account No:</strong>
                 ${accountNo}${bankName && bankName !== "N/A" ? ` (${bankName})` : ''}
               </div>` : ''}
+              <div style="margin-bottom: 10px;">
+                <strong style="display: inline-block; width: 130px; color: #333;">Working Days:</strong>
+                ${totalWorkingDays}
+              </div>
+              ${leavesTaken > 0 ? `
+              <div style="margin-bottom: 10px;">
+                <strong style="display: inline-block; width: 130px; color: #333;">LOP Days:</strong>
+                ${leavesTaken}
+              </div>` : ''}
+              ${doj && doj !== "N/A" ? `
+              <div style="margin-bottom: 10px;">
+                <strong style="display: inline-block; width: 130px; color: #333;">Date of Joining:</strong>
+                ${doj}
+              </div>` : ''}
             </div>
           </div>
         </div>
       `;
 
-      const earnings = [];
-      if (basicSalary > 0) earnings.push({ name: "Basic Salary", amount: basicSalary });
-      if (hra > 0) earnings.push({ name: "HRA", amount: hra });
-      if (lta > 0) earnings.push({ name: "LTA", amount: lta });
-      if (allowance > 0) earnings.push({ name: "Other Allowances", amount: allowance });
-      if (incentives > 0) earnings.push({ name: "Incentives", amount: incentives });
-      if (overtime > 0) earnings.push({ name: "Overtime", amount: overtime });
-      if (statutoryBonus > 0) earnings.push({ name: "Statutory Bonus", amount: statutoryBonus });
-      if (bonus > 0) earnings.push({ name: "Bonus", amount: bonus });
+    // === INSIDE handleDownload() ===
+const earnings = [];
+if (basicSalary > 0) earnings.push({ name: "Basic Salary", amount: basicSalary });
+if (hra > 0) earnings.push({ name: "HRA", amount: hra });
+if (lta > 0) earnings.push({ name: "LTA", amount: lta });
+if (allowance > 0) earnings.push({ name: "Other Allowances", amount: allowance });
+if (incentives > 0) earnings.push({ name: "Incentives", amount: incentives });
+if (overtime > 0) earnings.push({ name: "Overtime", amount: overtime });
+if (statutoryBonus > 0) earnings.push({ name: "Statutory Bonus", amount: statutoryBonus });
+if (bonus > 0) earnings.push({ name: "Bonus", amount: bonus });
 
-      const deductions = [];
-      if (employeePf > 0) deductions.push({ name: "Employee PF", amount: employeePf });
-      if (employeeEsic > 0) deductions.push({ name: "Employee ESIC", amount: employeeEsic });
-      if (professionalTax > 0) deductions.push({ name: "Professional Tax", amount: professionalTax });
-      if (tds > 0) deductions.push({ name: "TDS", amount: tds });
-      if (employeeInsurance > 0) deductions.push({ name: "Employee Insurance", amount: employeeInsurance });
+// === UPDATED DEDUCTIONS (Employee Side only - matching DetailsTab) ===
+const deductions = [];
+
+if (employeePf > 0)
+  deductions.push({ name: "Employee PF", amount: employeePf });
+
+if (employeeEsic > 0)
+  deductions.push({ name: "Employee ESIC", amount: employeeEsic });
+
+if (professionalTax > 0)
+  deductions.push({ name: "Professional Tax", amount: professionalTax });
+
+if (tds > 0)
+  deductions.push({ name: "TDS", amount: tds });
+
+if (employeeInsurance > 0)
+  deductions.push({ name: "Employee Insurance", amount: employeeInsurance });
+
+if (lopDeduction > 0)
+  deductions.push({ name: "LOP Deduction", amount: lopDeduction });
+
+// Advance Recovery is handled separately with details
+// (We already have advanceBlockHtml)
+
+
+
 
       const maxRows = Math.max(earnings.length, deductions.length);
       let detailRows = "";
@@ -545,32 +632,37 @@ const PayrollSummary = () => {
       bodyDiv.style.padding = "20px 40px";
 
       if (headerImgSrc && !doc.querySelector(".template-header")) {
+        console.log("➕ Adding header image to DOM");
         const headerDiv = doc.createElement("div");
         headerDiv.className = "template-header";
         headerDiv.style.marginBottom = "20px";
         headerDiv.style.textAlign = "center";
         const img = doc.createElement("img");
-        img.src = headerImgSrc;
+        img.src = headerImgSrc; // This should already be a data URL
         img.style.maxWidth = "100%";
         img.style.display = "block";
         headerDiv.appendChild(img);
         pageContainer.insertBefore(headerDiv, bodyDiv);
+        console.log("✅ Header image added");
       }
 
       if (footerImgSrc && !doc.querySelector(".template-footer")) {
+        console.log("➕ Adding footer image to DOM");
         const footerDiv = doc.createElement("div");
         footerDiv.className = "template-footer";
         footerDiv.style.marginTop = "20px";
         footerDiv.style.textAlign = "center";
         const img = doc.createElement("img");
-        img.src = footerImgSrc;
+        img.src = footerImgSrc; // This should already be a data URL
         img.style.maxWidth = "100%";
         img.style.display = "block";
         footerDiv.appendChild(img);
         pageContainer.appendChild(footerDiv);
+        console.log("✅ Footer image added");
       }
 
       if (watermarkImgSrc) {
+        console.log("➕ Adding watermark image to DOM");
         doc.querySelectorAll(".pdf-watermark").forEach((el) => el.remove());
         const wmWrapper = doc.createElement("div");
         wmWrapper.className = "pdf-watermark";
@@ -584,15 +676,17 @@ const PayrollSummary = () => {
         wmWrapper.style.pointerEvents = "none";
         wmWrapper.style.zIndex = "-1";
         const img = doc.createElement("img");
-        img.src = watermarkImgSrc;
+        img.src = watermarkImgSrc; // This should already be a data URL
         img.style.width = "100%";
         img.style.height = "100%";
         img.style.objectFit = "contain";
         wmWrapper.appendChild(img);
         pageContainer.insertBefore(wmWrapper, pageContainer.firstChild);
+        console.log("✅ Watermark image added");
       }
 
       let finalHtml = doc.documentElement.outerHTML;
+      console.log("📝 Final HTML includes images:", finalHtml.includes("data:image"));
       finalHtml = await inlineAllImages(finalHtml);
 
       const processedTemplate = {
@@ -628,7 +722,6 @@ const PayrollSummary = () => {
     }
   };
 
-  // Template fetching useEffect (unchanged)
   useEffect(() => {
     const fetchSelectedTemplate = async () => {
       if (!orgId) return;
@@ -700,18 +793,49 @@ const PayrollSummary = () => {
         }
 
         if (headerSrc) {
+          console.log("📷 [TEMPLATE] Loading header from:", headerSrc);
           const dataUrl = await fetchProtectedImageDataUrl(headerSrc);
-          if (dataUrl) setHeaderImgSrc(dataUrl);
+          if (dataUrl) {
+            console.log("✅ [TEMPLATE] Header loaded successfully");
+            setHeaderImgSrc(dataUrl);
+          } else {
+            console.warn("⚠️ [TEMPLATE] Failed to load header image - file may not exist at:", headerSrc);
+          }
         }
         if (footerSrc) {
+          console.log("📷 [TEMPLATE] Loading footer from:", footerSrc);
           const dataUrl = await fetchProtectedImageDataUrl(footerSrc);
-          if (dataUrl) setFooterImgSrc(dataUrl);
+          if (dataUrl) {
+            console.log("✅ [TEMPLATE] Footer loaded successfully");
+            setFooterImgSrc(dataUrl);
+          } else {
+            console.warn("⚠️ [TEMPLATE] Failed to load footer image - file may not exist at:", footerSrc);
+          }
         }
         if (wmUrl) {
+          console.log("📷 [TEMPLATE] Loading watermark from:", wmUrl);
           const dataUrl = await fetchProtectedImageDataUrl(wmUrl);
           if (dataUrl) {
+            console.log("✅ [TEMPLATE] Watermark loaded successfully");
             setWatermarkImgSrc(dataUrl);
             setWatermarkProps(wp);
+          } else {
+            console.warn("⚠️ [TEMPLATE] Failed to load watermark image - file may not exist at:", wmUrl);
+          }
+        }
+
+        if (selectedTemplate.html) {
+          const parser = new DOMParser();
+          const doc = parser.parseFromString(selectedTemplate.html, "text/html");
+          const headerImg = doc.querySelector(".template-header img");
+          const footerImg = doc.querySelector(".template-footer img");
+          if (headerImg && !headerImgSrc) {
+            const dataUrl = await fetchProtectedImageDataUrl(headerImg.getAttribute("src"));
+            if (dataUrl) setHeaderImgSrc(dataUrl);
+          }
+          if (footerImg && !footerImgSrc) {
+            const dataUrl = await fetchProtectedImageDataUrl(footerImg.getAttribute("src"));
+            if (dataUrl) setFooterImgSrc(dataUrl);
           }
         }
       } catch (err) {
@@ -750,7 +874,10 @@ const PayrollSummary = () => {
         try {
           const attendanceRes = await axios.get(
             `${BACKEND_URL.replace(/\/$/, "")}/attendance/${encodeURIComponent(employeeId)}`,
-            { headers, withCredentials: true }
+            {
+              headers,
+              withCredentials: true,
+            }
           );
           setAttendance(attendanceRes.data?.attendanceStats || null);
         } catch (attendanceErr) {
@@ -768,20 +895,33 @@ const PayrollSummary = () => {
           setBankDetails({});
         }
 
-        try {
-          const advRes = await axios.get(
-            `${BACKEND_URL}/api/compensation/advance-details`,
-            { headers, withCredentials: true }
-          );
-          const allAdvances = Array.isArray(advRes.data) ? advRes.data : advRes.data?.data || [];
-          const employeeAdvances = allAdvances.filter(
-            (adv) => String(adv.employee_id) === String(employeeId)
-          );
-          setAdvances(employeeAdvances);
-        } catch (err) {
-          console.warn("Advance details fetch failed:", err);
-          setAdvances([]);
-        }
+       try {
+  const advRes = await axios.get(
+    `${BACKEND_URL}/api/compensation/advance-details`,
+    {
+      headers,
+      withCredentials: true,
+    }
+  );
+
+  console.log("RAW ADVANCE DETAILS RESPONSE:", advRes.data);
+
+  const allAdvances = Array.isArray(advRes.data)
+    ? advRes.data
+    : advRes.data?.data || [];
+
+  const employeeAdvances = allAdvances.filter(
+    (adv) => String(adv.employee_id) === String(employeeId)
+  );
+
+  console.log("FILTERED EMPLOYEE ADVANCES:", employeeAdvances);
+
+  setAdvances(employeeAdvances);
+} catch (err) {
+  console.warn("Advance details fetch failed:", err);
+  setAdvances([]);
+}
+
 
         try {
           const salaryRes = await axios.get(
@@ -807,29 +947,38 @@ const PayrollSummary = () => {
     fetchAllData();
   }, [selectedDate, employeeId, orgId]);
 
-  // Preview calculations (LOP removed)
   const previewName = payrollData?.full_name || employeeDetails?.full_name || employeeDetails?.name || "N/A";
   const previewBasic = Number(payrollData?.basic_salary || 0);
   const previewHra = Number(payrollData?.hra || 0);
   const previewAllowance = Number(payrollData?.other_allowances || 0);
   const previewBonus = Number(payrollData?.bonus || 0);
   const previewPf = Number(payrollData?.employee_pf || payrollData?.pf || 0);
-  const previewEmployeeEsic = Number(payrollData?.esic_employee || 0);
-  const previewEmployeeInsurance = Number(payrollData?.insurance_employee || 0);
-  const previewPt = Number(payrollData?.professional_tax || 0);
+const previewEmployeeEsic = Number(payrollData?.esic_employee || 0);
+const previewEmployerEsic = Number(payrollData?.esic_employer || 0);
+
+const previewEmployeeInsurance = Number(
+  payrollData?.insurance_employee || 0
+);
+
+const previewEmployerInsurance = Number(
+  payrollData?.insurance_employer || 0
+);  const previewPt = Number(payrollData?.professional_tax || 0);
   const previewTds = Number(payrollData?.tds || 0);
   const previewAdvanceRecovery = Number(payrollData?.advance_recovery || 0);
-
+  const previewLopDeduction = Number(payrollData?.lop_deduction || 0);
   const previewGross = Number(payrollData?.gross_salary || 0);
-  const previewTotalDed =
-    previewPf +
-    previewEmployeeEsic +
-    previewPt +
-    previewTds +
-    previewEmployeeInsurance +
-    previewAdvanceRecovery;
-
+ const previewTotalDed =
+  previewPf +
+  previewEmployeeEsic +
+  previewPt +
+  previewTds +
+  previewEmployeeInsurance +
+  previewAdvanceRecovery +
+  previewLopDeduction;
   const previewNet = Number(payrollData?.net_salary || previewGross - previewTotalDed);
+  const previewTotalWorkingDays =
+    attendance?.total_working_days ??
+    (Number(payrollData?.lop_days || 0) > 0 ? 30 - Number(payrollData?.lop_days || 0) : 30);
 
   const previewEarningsRows = [
     { label: "Basic Salary", amount: previewBasic },
@@ -844,6 +993,7 @@ const PayrollSummary = () => {
   if (previewPt > 0) previewDeductionRows.push({ label: "Professional Tax", amount: previewPt });
   if (previewTds > 0) previewDeductionRows.push({ label: "TDS", amount: previewTds });
   if (previewEmployeeInsurance > 0) previewDeductionRows.push({ label: "Employee Insurance", amount: previewEmployeeInsurance });
+  if (previewLopDeduction > 0) previewDeductionRows.push({ label: "LOP Deduction", amount: previewLopDeduction });
 
   const previewTableRows = Array.from({ length: Math.max(previewEarningsRows.length, previewDeductionRows.length) }, (_, i) => ({
     earning: previewEarningsRows[i] ?? null,
@@ -897,52 +1047,53 @@ const PayrollSummary = () => {
             </tbody>
           </table>
 
-          <table className="payslip-table">
-            <thead>
-              <tr>
-                <th>Earnings</th>
-                <th>Amount (₹)</th>
-                <th>Deductions</th>
-                <th>Amount (₹)</th>
-              </tr>
-            </thead>
-            <tbody>
-              {previewTableRows.map((row, index) => (
-                <tr key={index}>
-                  <td>{row.earning ? row.earning.label : "\u00A0"}</td>
-                  <td>{row.earning ? `₹${row.earning.amount.toFixed(2)}` : "\u00A0"}</td>
-                  <td>{row.deduction ? row.deduction.label : "\u00A0"}</td>
-                  <td>{row.deduction ? `₹${row.deduction.amount.toFixed(2)}` : "\u00A0"}</td>
-                </tr>
-              ))}
+       <table className="payslip-table">
+  <thead>
+    <tr>
+      <th>Earnings</th>
+      <th>Amount (₹)</th>
+      <th>Deductions</th>
+      <th>Amount (₹)</th>
+    </tr>
+  </thead>
+  <tbody>
+    {previewTableRows.map((row, index) => (
+      <tr key={index}>
+        <td>{row.earning ? row.earning.label : "\u00A0"}</td>
+        <td>{row.earning ? `₹${row.earning.amount.toFixed(2)}` : "\u00A0"}</td>
+        <td>{row.deduction ? row.deduction.label : "\u00A0"}</td>
+        <td>{row.deduction ? `₹${row.deduction.amount.toFixed(2)}` : "\u00A0"}</td>
+      </tr>
+    ))}
 
-              <tr style={{ backgroundColor: "#f0f0f0" }}>
-                <td><strong>Gross Salary</strong></td>
-                <td><strong>₹{previewGross.toFixed(2)}</strong></td>
-                <td><strong>Total Deductions</strong></td>
-                <td><strong>₹{previewTotalDed.toFixed(2)}</strong></td>
-              </tr>
+    <tr style={{ backgroundColor: "#f0f0f0" }}>
+      <td><strong>Gross Salary</strong></td>
+      <td><strong>₹{previewGross.toFixed(2)}</strong></td>
+      <td><strong>Total Deductions</strong></td>
+      <td><strong>₹{previewTotalDed.toFixed(2)}</strong></td>
+    </tr>
 
-              {previewAdvanceRecovery > 0 && (
-                <>
-                  <tr><td colSpan="4" style={{ height: "30px", border: "none" }}></td></tr>
-                  <tr style={{ backgroundColor: "#e0e0e0", fontSize: "15px" }}>
-                    <td colSpan="2" style={{ padding: "15px 12px", fontWeight: "bold", color: "#1a3c6d" }}>
-                      Advance Recovery {advanceDetailText !== "None" ? advanceDetailText : ""}
-                    </td>
-                    <td colSpan="2" style={{ padding: "15px 12px", textAlign: "right", fontWeight: "bold", color: "#1a3c6d" }}>
-                      ₹{previewAdvanceRecovery.toFixed(2)}
-                    </td>
-                  </tr>
-                </>
-              )}
+    {/* Advance Recovery */}
+    {previewAdvanceRecovery > 0 && (
+      <>
+        <tr><td colSpan="4" style={{ height: "30px", border: "none" }}></td></tr>
+        <tr style={{ backgroundColor: "#e0e0e0", fontSize: "15px" }}>
+          <td colSpan="2" style={{ padding: "15px 12px", fontWeight: "bold", color: "#1a3c6d" }}>
+            Advance Recovery {advanceDetailText !== "None" ? advanceDetailText : ""}
+          </td>
+          <td colSpan="2" style={{ padding: "15px 12px", textAlign: "right", fontWeight: "bold", color: "#1a3c6d" }}>
+            ₹{previewAdvanceRecovery.toFixed(2)}
+          </td>
+        </tr>
+      </>
+    )}
 
-              <tr className="net-salary-row">
-                <td colSpan="2"><strong>Net Salary</strong></td>
-                <td colSpan="2"><strong>₹{previewNet.toFixed(2)}</strong></td>
-              </tr>
-            </tbody>
-          </table>
+    <tr className="net-salary-row">
+      <td colSpan="2"><strong>Net Salary</strong></td>
+      <td colSpan="2"><strong>₹{previewNet.toFixed(2)}</strong></td>
+    </tr>
+  </tbody>
+</table>
 
           <button onClick={handleDownload} className="payroll-download-btn">
             Download PDF

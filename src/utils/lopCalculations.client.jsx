@@ -76,93 +76,170 @@ export const calculateLOPEffect = async ({
   if (!employeeId) return emptyLOPResult();
 
   let lopRecords;
+
   try {
-    lopRecords = await fetchLOPData({ employeeId, meId, orgId });
+    lopRecords = await fetchLOPData({
+      employeeId,
+      meId,
+      orgId,
+    });
   } catch (err) {
     console.warn(
       `calculateLOPEffect: failed to fetch LOP for ${employeeId}:`,
       err
     );
+
     return emptyLOPResult();
   }
 
   const today = new Date();
+
   let refMonth = today.getMonth() + 1;
   let refYear = today.getFullYear();
 
   if (referenceMonthYear) {
-    const [year, month] = referenceMonthYear.split("-").map(Number);
+    const [year, month] = referenceMonthYear
+      .split("-")
+      .map(Number);
+
     if (!isNaN(year) && !isNaN(month)) {
       refMonth = month;
       refYear = year;
     }
   }
 
+  // Get LOP records for this employee
   const employeeLOP = lopRecords.currentMonthLOP || [];
-  const currentMonthFiltered = employeeLOP.filter(
-    (lop) => Number(lop.month) === refMonth && Number(lop.year) === refYear
-  );
 
-  const effectiveLOP =
-    currentMonthFiltered.length > 0
-      ? currentMonthFiltered[0]
-      : employeeLOP.slice(-1)[0] || {
-          total_lop: 0,
-          total_lop_value: "0.00",
-          per_day_value: 0,
-        };
+const effectiveLOP =
+  employeeLOP.find(
+    (lop) =>
+      Number(lop.month) === refMonth &&
+      Number(lop.year) === refYear
+  ) || {
+    total_lop: 0,
+    total_lop_value: "0.00",
+    per_day_value: 0,
+  };
+
+console.log("========== LOP DEBUG ==========");
+console.log("Employee ID:", employeeId);
+console.log("Reference Month:", refMonth);
+console.log("Reference Year:", refYear);
+console.log("Employee LOP:", employeeLOP);
+console.log("Effective LOP:", effectiveLOP);
+console.log("Total LOP:", Number(effectiveLOP.total_lop || 0));
+console.log("================================");
+  console.log("========== LOP DEBUG ==========");
+  console.log("Employee ID:", employeeId);
+  console.log("Reference Month:", refMonth);
+  console.log("Reference Year:", refYear);
+  console.log("Employee LOP:", employeeLOP);
+  console.log("Effective LOP:", effectiveLOP);
+  console.log(
+    "Total LOP:",
+    Number(effectiveLOP.total_lop || 0)
+  );
+  console.log("================================");
 
   let valueStr = effectiveLOP.total_lop_value || "0.00";
+
   try {
-    if ((!valueStr || valueStr === "0.00") && Number(effectiveLOP.total_lop)) {
+    if (
+      (!valueStr || valueStr === "0.00") &&
+      Number(effectiveLOP.total_lop)
+    ) {
       const API_KEY = process.env.NEXT_PUBLIC_API_KEY;
-      const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
+      const BACKEND_URL =
+        process.env.NEXT_PUBLIC_BACKEND_URL;
+
       const headers = {
         "x-api-key": API_KEY || "",
         "x-employee-id": meId,
         ...(orgId ? { "x-org-id": orgId } : {}),
       };
 
-      const [employeeRes, workingDaysRes] = await Promise.all([
-        axios.get(`${BACKEND_URL}/api/compensation/assigned`, {
-          withCredentials: true,
-          headers,
-        }),
-        axios
-          .get(`${BACKEND_URL}/api/compensation/working-days`, {
-            withCredentials: true,
-            headers,
-          })
-          .catch(() => ({ data: { data: { totalWorkingDays: 22 } } })),
-      ]);
+      const [employeeRes, workingDaysRes] =
+        await Promise.all([
+          axios.get(
+            `${BACKEND_URL}/api/compensation/assigned`,
+            {
+              withCredentials: true,
+              headers,
+            }
+          ),
 
-      const employee = (employeeRes.data?.data || []).find(
-        (e) => String(e.employee_id) === String(employeeId)
+          axios
+            .get(
+              `${BACKEND_URL}/api/compensation/working-days`,
+              {
+                withCredentials: true,
+                headers,
+              }
+            )
+            .catch(() => ({
+              data: {
+                data: {
+                  totalWorkingDays: 22,
+                },
+              },
+            })),
+        ]);
+
+      const employee = (
+        employeeRes.data?.data || []
+      ).find(
+        (e) =>
+          String(e.employee_id) ===
+          String(employeeId)
       );
-      const workingDays = workingDaysRes.data?.data?.totalWorkingDays
-        ? Number(workingDaysRes.data.data.totalWorkingDays)
-        : 22;
+
+      const workingDays =
+        workingDaysRes.data?.data?.totalWorkingDays
+          ? Number(
+              workingDaysRes.data.data.totalWorkingDays
+            )
+          : 22;
 
       const monthlyCTC =
-        employee && employee.ctc ? Number(employee.ctc) / 12 : 0;
-      const lopPerDay = workingDays ? monthlyCTC / workingDays : 0;
-      const computedValue = Number(effectiveLOP.total_lop || 0) * lopPerDay;
-      valueStr = computedValue ? computedValue.toFixed(2) : valueStr;
+        employee && employee.ctc
+          ? Number(employee.ctc) / 12
+          : 0;
+
+      const lopPerDay = workingDays
+        ? monthlyCTC / workingDays
+        : 0;
+
+      const computedValue =
+        Number(effectiveLOP.total_lop || 0) *
+        lopPerDay;
+
+      valueStr = computedValue
+        ? computedValue.toFixed(2)
+        : valueStr;
     }
-  } catch (e) {}
+  } catch (e) {
+    console.warn(
+      "LOP value calculation failed:",
+      e
+    );
+  }
 
   return {
     currentMonth: {
-      days: effectiveLOP.total_lop || 0,
+      days: Number(effectiveLOP.total_lop || 0),
       value: valueStr || "0.00",
       currency: "INR",
     },
+
     yearly: {
-      days: effectiveLOP.total_lop || 0,
+      days: Number(effectiveLOP.total_lop || 0),
       value: valueStr || "0.00",
       currency: "INR",
     },
+
     deferred: lopRecords.deferredLOP || [],
+
     nextMonth: lopRecords.nextMonthLOP || [],
   };
 };

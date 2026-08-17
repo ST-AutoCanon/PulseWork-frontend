@@ -144,22 +144,22 @@ const leftX = 28;          // ← was 20, now shifted right
 const rightX = 118;        // ← was 110, also shifted right to maintain balance
 
 doc.setFont("helvetica", "bold").text("Employee Name:", leftX, 75);
-doc.setFont("helvetica", "normal").text(getVal(employeeName).toUpperCase().substring(0, 30), leftX + 40, 75);
+doc.setFont("helvetica", "normal").text(getVal(employeeName).toUpperCase().substring(0, 30), leftX + 32, 75);
 
 doc.setFont("helvetica", "bold").text("Gender:", leftX, 82);
-doc.setFont("helvetica", "normal").text(getVal(gender).toUpperCase(), leftX + 40, 82);
+doc.setFont("helvetica", "normal").text(getVal(gender).toUpperCase(), leftX + 32, 82);
 
 doc.setFont("helvetica", "bold").text("Date of Joining:", leftX, 89);
-doc.setFont("helvetica", "normal").text(getVal(dateOfJoining), leftX + 40, 89);
+doc.setFont("helvetica", "normal").text(getVal(dateOfJoining), leftX + 32, 89);
 
 doc.setFont("helvetica", "bold").text("Working Days:", leftX, 96);
-doc.setFont("helvetica", "normal").text(String(workingDays), leftX + 40, 96);
+doc.setFont("helvetica", "normal").text(String(workingDays), leftX +32, 96);
 
 doc.setFont("helvetica", "bold").text("UAN No:", leftX, 103);
-doc.setFont("helvetica", "normal").text(getVal(uinNo), leftX + 40, 103);
+doc.setFont("helvetica", "normal").text(getVal(uinNo), leftX + 32, 103);
 
 doc.setFont("helvetica", "bold").text("ESI Number:", leftX, 110);
-doc.setFont("helvetica", "normal").text(getVal(esiNumber), leftX + 40, 110);
+doc.setFont("helvetica", "normal").text(getVal(esiNumber), leftX + 32, 110);
 
 // ─── RIGHT COLUMN ─── (also moved right to keep symmetry)
 doc.setFont("helvetica", "bold").text("Employee ID:", rightX, 75);
@@ -177,7 +177,7 @@ doc.setFont("helvetica", "normal").text(
 doc.setFont("helvetica", "bold").text("Account No:", rightX, 89);
 doc.setFont("helvetica", "normal").text(getVal(accountNo), rightX + 30, 89);
 
-doc.setFont("helvetica", "bold").text("No of leaves Days:", rightX, 96);
+doc.setFont("helvetica", "bold").text("No of leaves :", rightX, 96);
 doc.setFont("helvetica", "normal").text(String(leavesTaken || 0), rightX + 30, 96);
 
 doc.setFont("helvetica", "bold").text("PAN Number:", rightX, 103);

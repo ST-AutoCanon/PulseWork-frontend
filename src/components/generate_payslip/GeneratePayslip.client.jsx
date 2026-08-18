@@ -89,6 +89,9 @@ const generatePayslipBlob = async (tableData) => {
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [manualEmployeeId, setManualEmployeeId] = useState(false);
+
+const [empSearch, setEmpSearch] = useState("");
+const [showEmpDropdown, setShowEmpDropdown] = useState(false);
 const [headerImgSrc, setHeaderImgSrc] = useState(null);
 const [footerImgSrc, setFooterImgSrc] = useState(null);
 const [watermarkImgSrc, setWatermarkImgSrc] = useState(null);
@@ -1041,7 +1044,26 @@ const generatePdfWithTemplate = async (tableData) => {
   // ────────────────────────────────────────────────
   // Form handlers
   // ────────────────────────────────────────────────
-
+const selectEmployee = (emp) => {
+  const value = emp.employee_id || emp.employeeId || "";
+  setFormData((p) => ({
+    ...p,
+    employeeId: value,
+    employeeName: emp.employee_name || "",
+    gender: emp.gender || "",
+    designation:
+      (emp.position || emp.designation || "") +
+      (emp.department_name ? ` (${emp.department_name})` : ""),
+    dateOfJoining: extractDateOnly(emp.date_of_joining) || "",
+    accountNo: emp.account_no || "",
+    uinNo: emp.uin_no || "",
+    panNumber: emp.pan_number || "",
+    esiNumber: emp.esi_number || "",
+    pfNumber: emp.pf_number || "",
+  }));
+  setEmpSearch("");
+  setShowEmpDropdown(false);
+};
   const handleChange = (e) => {
     const { name, value } = e.target;
 
@@ -1086,7 +1108,19 @@ const generatePdfWithTemplate = async (tableData) => {
   };
 
   const handleSearchChange = (e) => setSearchQuery(e.target.value);
+const filteredFormEmployees = formEmployeeList.filter((emp) => {
+  const search = empSearch.trim().toLowerCase();
 
+  if (!search) return true;
+
+  const employeeId = String(emp.employee_id || emp.employeeId || "").toLowerCase();
+  const employeeName = String(emp.employee_name || "").toLowerCase();
+
+  return (
+    employeeId.includes(search) ||
+    employeeName.includes(search)
+  );
+});
   const calculateSummary = () => {
     const earnings = [
       parseFloat(formData.basic) || 0,
@@ -1626,34 +1660,115 @@ const fieldOrder = [
 
                         {field === "employeeId" ? (
                           <>
-                            {!manualEmployeeId ? (
-                              <select
-                                id="employeeId"
-                                name="employeeId"
-                                value={formData.employeeId}
-                                onChange={handleChange}
-                                className="generatePayslip-popup-input"
-                              >
-                                <option value="">Select Employee ID</option>
-                                {formEmployeeList.map((emp) => (
-                                  <option
-                                    key={emp.employee_id || emp.id}
-                                    value={emp.employee_id || emp.employeeId}
-                                  >
-                                    {`${emp.employee_id || emp.employeeId} - ${emp.employee_name || ""}`}
-                                  </option>
-                                ))}
-                              </select>
-                            ) : (
-                              <input
-                                type="text"
-                                name="employeeId"
-                                value={formData.employeeId}
-                                onChange={handleChange}
-                                className="generatePayslip-popup-input"
-                                placeholder="Enter Employee ID manually"
-                              />
-                            )}
+                          {!manualEmployeeId ? (
+  <div
+    style={{
+      position: "relative",
+      width: "100%",
+    }}
+  >
+    {/* Search input */}
+    <input
+      type="text"
+      value={empSearch}
+      onChange={(e) => {
+        setEmpSearch(e.target.value);
+        setShowEmpDropdown(true);
+      }}
+      onFocus={() => setShowEmpDropdown(true)}
+      className="generatePayslip-popup-input"
+      placeholder="Search Employee ID..."
+      autoComplete="off"
+    />
+
+    {/* Selected employee */}
+    {formData.employeeId && !showEmpDropdown && (
+      <div
+        style={{
+          marginTop: "5px",
+          fontSize: "13px",
+          color: "#555",
+        }}
+      >
+        Selected: <strong>{formData.employeeId}</strong>
+      </div>
+    )}
+
+    {/* Dropdown */}
+    {showEmpDropdown && (
+      <div
+        style={{
+          position: "absolute",
+          top: "100%",
+          left: 0,
+          right: 0,
+          background: "#fff",
+          border: "1px solid #ccc",
+          borderRadius: "4px",
+          maxHeight: "220px",
+          overflowY: "auto",
+          zIndex: 9999,
+          boxShadow: "0 4px 8px rgba(0,0,0,0.15)",
+        }}
+      >
+        {filteredFormEmployees.length > 0 ? (
+          filteredFormEmployees.map((emp) => {
+            const employeeId =
+              emp.employee_id || emp.employeeId || "";
+
+            const employeeName =
+              emp.employee_name || "";
+
+            return (
+              <div
+                key={employeeId || emp.id}
+                onClick={() => {
+                  selectEmployee(emp);
+                  setEmpSearch("");
+                  setShowEmpDropdown(false);
+                }}
+                style={{
+                  padding: "10px 12px",
+                  cursor: "pointer",
+                  borderBottom: "1px solid #eee",
+                  fontSize: "14px",
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = "#f5f5f5";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = "#fff";
+                }}
+              >
+                <strong>{employeeId}</strong>
+                {employeeName && ` - ${employeeName}`}
+              </div>
+            );
+          })
+        ) : (
+          <div
+            style={{
+              padding: "10px",
+              color: "#888",
+              textAlign: "center",
+            }}
+          >
+            No employee found
+          </div>
+        )}
+      </div>
+    )}
+  </div>
+) : (
+  <input
+    type="text"
+    name="employeeId"
+    value={formData.employeeId}
+    onChange={handleChange}
+    className="generatePayslip-popup-input"
+    placeholder="Enter Employee ID manually"
+  />
+)}
 
                             <small
                               style={{

@@ -1065,12 +1065,53 @@ const handleSaveReplace = async () => {
     setReplaceLoading(false);       // ← clear dedicated state
   }
 };
+// const getFieldName = (type) => {
+//   if (type === "image") return "image";
+//   if (type === "video") return "video";
+//   if (type === "ppt") return "ppt";
+//   return "document"; // default for pdf, doc, docx etc.
+// };
 const getFieldName = (type) => {
   if (type === "image") return "image";
   if (type === "video") return "video";
   if (type === "ppt") return "ppt";
-  return "document"; // default for pdf, doc, docx etc.
+  return "document";
 };
+
+// ========== FINAL HELPER – matches backend type order ==========
+const appendFilesWithPerTypeIndex = (filesArray, formData) => {
+  // Backend almost always processes in this order
+  const typeOrder = ["document", "ppt", "video", "image"];
+
+  // Sort files so they are appended in the same order the backend reads them
+  const sortedFiles = [...filesArray].sort((a, b) => {
+    return typeOrder.indexOf(a.file_type) - typeOrder.indexOf(b.file_type);
+  });
+
+  sortedFiles.forEach((nf, index) => {
+    const fieldName = getFieldName(nf.file_type);
+
+    formData.append(fieldName, nf.file);
+    formData.append(
+      `acknowledgement_${index}`,
+      nf.acknowledgement ? "true" : "false"
+    );
+    formData.append(
+      `acknowledgement_message_${index}`,
+      nf.acknowledgementMessage || ""
+    );
+    formData.append(
+      `allow_view_${index}`,
+      nf.allowView !== false ? "1" : "0"
+    );
+    formData.append(
+      `allow_download_${index}`,
+      nf.allowDownload ? "1" : "0"
+    );
+  });
+};
+
+// ========== SAFE VERSION (global sequential index) ==========
 
 const handleSaveFileEdit = async () => {
   if (!editingFile || !viewPolicy) return;
@@ -1290,39 +1331,36 @@ const handleSubmit = async (e) => {
   if (!formData.policyName.trim()) {
     return showAlert("Policy name is required", "Error");
   }
-// ========== MANDATORY ASSIGNMENT VALIDATION ==========
-if (selectionType === "employee" && selectedEmployees.length === 0) {
-  return showAlert("Please select at least one employee", "Error");
-}
+  // ========== MANDATORY ASSIGNMENT VALIDATION ==========
+  if (selectionType === "employee" && selectedEmployees.length === 0) {
+    return showAlert("Please select at least one employee", "Error");
+  }
 
-if (selectionType === "department" && selectedDepartments.length === 0) {
-  return showAlert("Please select at least one department", "Error");
-}
-// (when selectionType === "all" → no extra check needed)
+  if (selectionType === "department" && selectedDepartments.length === 0) {
+    return showAlert("Please select at least one department", "Error");
+  }
+  // (when selectionType === "all" → no extra check needed)
   setLoading(true);
   try {
     if (isEditing && editingPolicyId) {
-  // ========== UPDATE POLICY ==========
-  await axios.put(
-    `${BACKEND}/api/policies/update/${editingPolicyId}`,
-    {
-      policy_name: formData.policyName,
-      description: formData.description || "",
-      allow_view: formData.allowView,
-      allow_download: formData.allowDownload,
-      assign_to_all: selectionType === "all" ? 1 : 0,   // ← ADD THIS
-      // Optional: if you later want to support changing assignments on edit
-      // employeeIds: selectionType === "employee" ? selectedEmployees.map(...) : [],
-      // departmentIds: selectionType === "department" ? selectedDepartments.map(...) : [],
-    },
-    {
-      withCredentials: true,
-      headers: { "x-org-id": orgId },
-    }
-  );
+      // ========== UPDATE POLICY ==========
+      await axios.put(
+        `${BACKEND}/api/policies/update/${editingPolicyId}`,
+        {
+          policy_name: formData.policyName,
+          description: formData.description || "",
+          allow_view: formData.allowView,
+          allow_download: formData.allowDownload,
+          assign_to_all: selectionType === "all" ? 1 : 0,
+        },
+        {
+          withCredentials: true,
+          headers: { "x-org-id": orgId },
+        }
+      );
 
-  showAlert("Policy updated successfully!");
-} else {
+      showAlert("Policy updated successfully!");
+    } else {
       // ========== CREATE POLICY ==========
       const createResp = await axios.post(
         `${BACKEND}/api/policies/create`,
@@ -1332,19 +1370,19 @@ if (selectionType === "department" && selectedDepartments.length === 0) {
           allow_view: formData.allowView,
           allow_download: formData.allowDownload,
           employeeIds:
-  selectionType === "employee"
-    ? selectedEmployees.map((emp) => emp.employee_id || emp.id)
-    : selectionType === "department"
-    ? Object.values(employeesByDepartment)
-        .flat()
-        .map((emp) => emp.employee_id || emp.id)
-        .filter(Boolean)                    // safety
-    : [],
-departmentIds:
-  selectionType === "department"
-    ? selectedDepartments.map((dept) => dept.id)
-    : [],
-assign_to_all: selectionType === "all" ? 1 : 0,
+            selectionType === "employee"
+              ? selectedEmployees.map((emp) => emp.employee_id || emp.id)
+              : selectionType === "department"
+              ? Object.values(employeesByDepartment)
+                  .flat()
+                  .map((emp) => emp.employee_id || emp.id)
+                  .filter(Boolean)
+              : [],
+          departmentIds:
+            selectionType === "department"
+              ? selectedDepartments.map((dept) => dept.id)
+              : [],
+          assign_to_all: selectionType === "all" ? 1 : 0,
           created_by: user?.name || user?.email || "System",
         },
         {
@@ -1357,15 +1395,7 @@ assign_to_all: selectionType === "all" ? 1 : 0,
 
       if (newFilesToAdd.length > 0 && policyId) {
         const fileFormData = new FormData();
-
-        newFilesToAdd.forEach((nf, index) => {
-          const fieldName = getFieldName(nf.file_type);
-          fileFormData.append(fieldName, nf.file);
-          fileFormData.append(`acknowledgement_${index}`, nf.acknowledgement ? "true" : "false");
-          fileFormData.append(`acknowledgement_message_${index}`, nf.acknowledgementMessage || "");
-          fileFormData.append(`allow_view_${index}`, nf.allowView !== false ? "1" : "0");
-          fileFormData.append(`allow_download_${index}`, nf.allowDownload ? "1" : "0");
-        });
+        appendFilesWithPerTypeIndex(newFilesToAdd, fileFormData); // ← uses helper
 
         await axios.post(
           `${BACKEND}/api/policies/upload-files/${policyId}`,
@@ -1385,7 +1415,8 @@ assign_to_all: selectionType === "all" ? 1 : 0,
     fetchPolicies();
   } catch (error) {
     showAlert(
-      error.response?.data?.message || (isEditing ? "Failed to update policy" : "Failed to create policy"),
+      error.response?.data?.message ||
+        (isEditing ? "Failed to update policy" : "Failed to create policy"),
       "Error"
     );
   } finally {
@@ -1425,68 +1456,65 @@ const handleSaveEdits = async () => {
     console.log("=== SAVE EDITS STARTED ===");
 
     // Update Policy Details
-    await axios.put(`${BACKEND}/api/policies/update/${viewPolicy.id}`, {
-      policy_name: viewPolicy.policy_name,
-      description: viewPolicy.description || "",
-      allow_view: viewPolicy.allow_view,
-      allow_download: viewPolicy.allow_download,
-      assign_to_all: viewPolicy.assign_to_all ?? 0,
-    }, { withCredentials: true, headers: { "x-org-id": orgId } });
+    await axios.put(
+      `${BACKEND}/api/policies/update/${viewPolicy.id}`,
+      {
+        policy_name: viewPolicy.policy_name,
+        description: viewPolicy.description || "",
+        allow_view: viewPolicy.allow_view,
+        allow_download: viewPolicy.allow_download,
+        assign_to_all: viewPolicy.assign_to_all ?? 0,
+      },
+      { withCredentials: true, headers: { "x-org-id": orgId } }
+    );
 
     // === COLLECT ALL FILES TO UPLOAD ===
     const filesToUpload = [...newFilesToAdd];
 
     // If user selected a file but didn't click "Add to List", include it now
-   if (newFile.file) {
-  filesToUpload.push({
-    id: Date.now(),
-    file: newFile.file,
-    file_type: newFile.file_type,
-    acknowledgement: Boolean(newFile.acknowledgement),
-    acknowledgementMessage: newFile.acknowledgementMessage || "",
-    allowView: newFile.allowView !== false,
-    allowDownload: Boolean(newFile.allowDownload),
-  });
-}
+    if (newFile.file) {
+      filesToUpload.push({
+        id: Date.now(),
+        file: newFile.file,
+        file_type: newFile.file_type,
+        acknowledgement: Boolean(newFile.acknowledgement),
+        acknowledgementMessage: newFile.acknowledgementMessage || "",
+        allowView: newFile.allowView !== false,
+        allowDownload: Boolean(newFile.allowDownload),
+      });
+    }
 
     console.log(`Uploading ${filesToUpload.length} file(s)`);
 
     // Upload Files (if any)
-if (filesToUpload.length > 0) {
-  const fileFormData = new FormData();
+    if (filesToUpload.length > 0) {
+      const fileFormData = new FormData();
+      appendFilesWithPerTypeIndex(filesToUpload, fileFormData); // ← uses helper
 
-filesToUpload.forEach((nf, index) => {
-  const fieldName = getFieldName(nf.file_type);
-  fileFormData.append(fieldName, nf.file);
-  fileFormData.append(`acknowledgement_${index}`, nf.acknowledgement ? "true" : "false");
-  fileFormData.append(`acknowledgement_message_${index}`, nf.acknowledgementMessage || "");
-  fileFormData.append(`allow_view_${index}`, nf.allowView !== false ? "1" : "0"); // ← NEW
-  fileFormData.append(`allow_download_${index}`, nf.allowDownload ? "1" : "0");   // ← NEW
-});
+      const uploadRes = await axios.post(
+        `${BACKEND}/api/policies/upload-files/${viewPolicy.id}`,
+        fileFormData,
+        { withCredentials: true, headers: { "x-org-id": orgId } }
+      );
 
-  const uploadRes = await axios.post(
-    `${BACKEND}/api/policies/upload-files/${viewPolicy.id}`,
-    fileFormData,
-    { withCredentials: true, headers: { "x-org-id": orgId } }
-  );
+      console.log("Upload Response:", uploadRes.data);
+    }
 
-  console.log("Upload Response:", uploadRes.data);
-}
     // Refresh files
     const latestFiles = await fetchPolicyFiles(viewPolicy.id);
-    setViewPolicy(prev => ({ ...prev, files: latestFiles }));
+    setViewPolicy((prev) => ({ ...prev, files: latestFiles }));
 
     // Reset upload states
-   setNewFilesToAdd([]);
-setNewFile({
-  file: null,
-  file_type: "document",
-  acknowledgement: false,
-  acknowledgementMessage: "",
-  allowView: true,        // keep these consistent
-  allowDownload: false,
-});
-setFileInputKey((prev) => prev + 1);
+    setNewFilesToAdd([]);
+    setNewFile({
+      file: null,
+      file_type: "document",
+      acknowledgement: false,
+      acknowledgementMessage: "",
+      allowView: true,
+      allowDownload: false,
+    });
+    setFileInputKey((prev) => prev + 1);
 
     showAlert("Policy updated successfully!");
   } catch (err) {

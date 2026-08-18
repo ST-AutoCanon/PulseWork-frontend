@@ -1,6 +1,6 @@
 "use client";
 import axios from "axios";
-
+import { getPayrollFilter } from "../utils/SalaryCalculations"; // adjust the path if needed
 const emptyLOPResult = () => ({
   currentMonth: { days: 0, value: "0.00", currency: "INR" },
   deferred: { days: 0, value: "0.00", currency: "INR" },
@@ -92,21 +92,25 @@ export const calculateLOPEffect = async ({
     return emptyLOPResult();
   }
 
-  const today = new Date();
-
-  let refMonth = today.getMonth() + 1;
-  let refYear = today.getFullYear();
+  // ---------- CUT-OFF AWARE MONTH/YEAR ----------
+  let refMonth, refYear;
 
   if (referenceMonthYear) {
-    const [year, month] = referenceMonthYear
-      .split("-")
-      .map(Number);
-
+    // Manual override still works
+    const [year, month] = referenceMonthYear.split("-").map(Number);
     if (!isNaN(year) && !isNaN(month)) {
       refMonth = month;
       refYear = year;
     }
   }
+
+  if (refMonth == null || refYear == null) {
+    // Use the SAME cut-off logic as overtime / getPayrollFilter
+    const { targetMonthStr, targetYear } = getPayrollFilter();
+    refMonth = Number(targetMonthStr);
+    refYear = targetYear;
+  }
+  // ----------------------------------------------
 
   // Get LOP records for this employee
   const employeeLOP = lopRecords.currentMonthLOP || [];

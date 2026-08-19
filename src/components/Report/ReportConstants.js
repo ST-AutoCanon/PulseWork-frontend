@@ -2,6 +2,19 @@ export const MAX_DOWNLOAD_FIELDS = 13;
 export const PREVIEW_PAGE_SIZE = 10;
 export const MAX_RANGE_DAYS = 62;
 
+export const REPORT_COMPONENT_OPTIONS = [
+  { value: "leaves", label: "Leaves" },
+  { value: "reimbursements", label: "Reimbursements" },
+  { value: "employees", label: "Employees" },
+  { value: "vendors", label: "Vendors" },
+  { value: "assets", label: "Assets" },
+  { value: "recruitment", label: "Recruitment" },
+  { value: "attendance", label: "Attendance" },
+  { value: "attendance_regularisation", label: "Attendance Regularisation" },
+  { value: "tasks_employee", label: "Tasks (Employee Driven)" },
+  { value: "tasks_supervisor", label: "Tasks (Supervisor Driven)" },
+];
+
 export const STATUS_OPTIONS = {
   leaves: ["All", "Pending", "Approved", "Rejected"],
   reimbursements: [
@@ -291,6 +304,7 @@ export default {
   MAX_DOWNLOAD_FIELDS,
   PREVIEW_PAGE_SIZE,
   MAX_RANGE_DAYS,
+  REPORT_COMPONENT_OPTIONS,
   STATUS_OPTIONS,
   SUB_OPTIONS,
   getFieldDisplayMap,

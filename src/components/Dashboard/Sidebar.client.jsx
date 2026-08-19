@@ -46,6 +46,7 @@ import DynamicFormBuilder from "../DynamicFormBuilder/DynamicFormBuilder.client"
 import OfficeLocations from "../OfficeLocations/OfficeLocations.client.jsx";
 import CreatePolicies from "../Policies/createPolicies/createPolicies";
 import EmployeePolicies from "../Policies/employeePolicies/employeePoilicies";
+import EmailManagement from "../EmailManagement/EmailManagement.client.jsx";
 const Sidebar = ({ setActiveContent }) => {
   const { user, hydrated } = useAuth();
   const [menuItems, setMenuItems] = useState([]);
@@ -89,6 +90,11 @@ const Sidebar = ({ setActiveContent }) => {
           label: "Office Locations",
           path: "/OfficeLocations",
           icon: "MdLocationOn",
+        },
+        {
+          label: "Email Management",
+          path: "/EmailManagement",
+          icon: "MdOutlineEmail",
         },
       ],
       Manager: [
@@ -136,8 +142,8 @@ const Sidebar = ({ setActiveContent }) => {
       "/messenger": () => <Chat />,
       "/EmployeeLogin": () => <EmployeeLogin />,
       "/Formify": () => <DynamicFormBuilder />,
-       "/CreatePolicies": () => <CreatePolicies />,
-       "/EmployeePolicies": () => <EmployeePolicies />,
+      "/CreatePolicies": () => <CreatePolicies />,
+      "/EmployeePolicies": () => <EmployeePolicies />,
       "/AttendanceRegularisation": () => <AttendanceRegularisation />,
       "/reimbursement": (role) => {
         if (role === "Admin") return <RbAdmin />;
@@ -145,6 +151,8 @@ const Sidebar = ({ setActiveContent }) => {
         if (role === "HR") return <RbAdmin />;
         return <Reimbursement />;
       },
+      "/EmailManagement": () => <EmailManagement />,
+
       "/employeeQueries": (role) => {
         if (role === "Admin") return <AdminQuery />;
         return <EmployeeQuery />;

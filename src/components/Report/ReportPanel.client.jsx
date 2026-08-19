@@ -19,6 +19,7 @@ import {
   MAX_DOWNLOAD_FIELDS,
   PREVIEW_PAGE_SIZE,
   MAX_RANGE_DAYS,
+  REPORT_COMPONENT_OPTIONS,
 } from "./ReportConstants";
 
 function formatDateLocal(d) {
@@ -817,18 +818,12 @@ export default function ReportPanel() {
   );
   const goToPage = (p) => setPreviewPage(Math.min(Math.max(1, p), totalPages));
 
-  const componentOptions = [
-    { value: "leaves", label: "Leaves" },
-    { value: "reimbursements", label: "Reimbursements" },
-    { value: "employees", label: "Employees" },
-    ...(isTeamRole ? [] : [{ value: "vendors", label: "Vendors" }]),
-    ...(isTeamRole ? [] : [{ value: "assets", label: "Assets" }]),
-    ...(isTeamRole ? [] : [{ value: "recruitment", label: "Recruitment" }]),
-    { value: "attendance", label: "Attendance" },
-    { value: "attendance_regularisation", label: "Attendance Regularisation" },
-    { value: "tasks_employee", label: "Tasks (Employee Driven)" },
-    { value: "tasks_supervisor", label: "Tasks (Supervisor Driven)" },
-  ];
+  const componentOptions = REPORT_COMPONENT_OPTIONS.filter((opt) => {
+    if (isTeamRole) {
+      return !["vendors", "assets", "recruitment"].includes(opt.value);
+    }
+    return true;
+  });
 
   return (
     <div className="rp-container">

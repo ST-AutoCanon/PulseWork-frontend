@@ -1,46 +1,380 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { REPORT_COMPONENT_OPTIONS as REPORT_TYPES } from "../Report/ReportConstants";
+import {
+  REPORT_COMPONENT_OPTIONS as REPORT_TYPES,
+  SUB_OPTIONS,
+} from "../Report/ReportConstants";
 import "./EmailManagement.css";
 
-const CATEGORY_OPTIONS = [
-  {
-    id: "project_status",
-    label: "Project Status Report",
-    description: "Overall status of projects, tasks, milestones and progress.",
-  },
-  {
-    id: "reimbursement",
-    label: "Reimbursement Details",
-    description: "Employee reimbursement requests and approvals.",
-  },
-  {
-    id: "asset_details",
-    label: "Asset Details & Utilization",
-    description: "IT/hardware assets and utilization summary.",
-  },
-  {
-    id: "task_time_frame",
-    label: "Time Frame Task Report",
-    description: "Tasks completed within a selected time frame.",
-  },
-  {
-    id: "status_update",
-    label: "Status Update Report",
-    description: "Overall status updates for projects or tasks.",
-  },
-  {
-    id: "department",
-    label: "Department Report",
-    description: "General report for a specific department.",
-  },
-  {
-    id: "general",
-    label: "General / Other Report",
-    description: "Create a custom report with selected fields and filters.",
-  },
-];
+const CATEGORY_TEMPLATES = {
+  leaves: [
+    {
+      id: "leave_summary",
+      label: "Leave Summary",
+      description: "Leave requests, dates, type and approval status.",
+      fieldKeys: [
+        "leave_id",
+        "employee_id",
+        "employee_name",
+        "leave_type",
+        "start_date",
+        "end_date",
+        "status",
+      ],
+    },
+    {
+      id: "leave_balance",
+      label: "Leave Balance",
+      description: "Compensated, deducted and loss-of-pay leave details.",
+      fieldKeys: [
+        "employee_id",
+        "employee_name",
+        "leave_type",
+        "compensated_days",
+        "deducted_days",
+        "loss_of_pay_days",
+        "preserved_leave_days",
+      ],
+    },
+    {
+      id: "custom",
+      label: "Create Custom Report",
+      description: "Choose any available leave fields and design your email.",
+      isCustom: true,
+    },
+  ],
+  reimbursements: [
+    {
+      id: "reimbursement_summary",
+      label: "Reimbursement Summary",
+      description: "Claims, amounts, travel details and approval status.",
+      fieldKeys: [
+        "id",
+        "employee_id",
+        "employee_name",
+        "claim_type",
+        "approval_status",
+        "payment_status",
+        "total_amount",
+      ],
+    },
+    {
+      id: "reimbursement_approvals",
+      label: "Approval & Payment Status",
+      description: "Approver, comments, approval and payment dates.",
+      fieldKeys: [
+        "id",
+        "employee_name",
+        "approval_status",
+        "payment_status",
+        "approver_name",
+        "approver_comments",
+        "approved_date",
+        "paid_date",
+      ],
+    },
+    {
+      id: "custom",
+      label: "Create Custom Report",
+      description:
+        "Choose any available reimbursement fields and design your email.",
+      isCustom: true,
+    },
+  ],
+  employees: [
+    {
+      id: "employee_directory",
+      label: "Employee Directory",
+      description: "Identity, contact, role and department details.",
+      fieldKeys: [
+        "employee_id",
+        "employee_name",
+        "email",
+        "phone_number",
+        "employee_type",
+        "role",
+        "department_name",
+        "position",
+        "status",
+      ],
+    },
+    {
+      id: "department",
+      label: "Department Report",
+      description: "Employees grouped by department and position.",
+      fieldKeys: [
+        "employee_id",
+        "employee_name",
+        "department_id",
+        "department_name",
+        "position",
+        "supervisor_id",
+        "status",
+      ],
+    },
+    {
+      id: "custom",
+      label: "Create Custom Report",
+      description:
+        "Choose any available employee fields and design your email.",
+      isCustom: true,
+    },
+  ],
+  vendors: [
+    {
+      id: "vendor_directory",
+      label: "Vendor Directory",
+      description: "Company, contacts, tax and banking details.",
+      fieldKeys: [
+        "vendor_id",
+        "company_name",
+        "city",
+        "state",
+        "gst_number",
+        "pan_number",
+        "contact1_mobile",
+        "contact1_email",
+      ],
+    },
+    {
+      id: "vendor_products",
+      label: "Products & Experience",
+      description: "Product categories and vendor experience details.",
+      fieldKeys: [
+        "vendor_id",
+        "company_name",
+        "company_type",
+        "product_category",
+        "years_of_experience",
+        "created_at",
+      ],
+    },
+    {
+      id: "custom",
+      label: "Create Custom Report",
+      description: "Choose any available vendor fields and design your email.",
+      isCustom: true,
+    },
+  ],
+  assets: [
+    {
+      id: "asset_utilization",
+      label: "Asset Utilization",
+      description: "Assignment, category, valuation and current status.",
+      fieldKeys: [
+        "asset_id",
+        "asset_code",
+        "asset_name",
+        "category",
+        "sub_category",
+        "assigned_to",
+        "status",
+      ],
+    },
+    {
+      id: "asset_inventory",
+      label: "Asset Inventory",
+      description: "Asset configuration, valuation and inventory count.",
+      fieldKeys: [
+        "asset_id",
+        "asset_code",
+        "asset_name",
+        "configuration",
+        "category",
+        "valuation_date",
+        "count",
+      ],
+    },
+    {
+      id: "custom",
+      label: "Create Custom Report",
+      description: "Choose any available asset fields and design your email.",
+      isCustom: true,
+    },
+  ],
+  recruitment: [
+    {
+      id: "candidate_pipeline",
+      label: "Candidate Pipeline",
+      description: "Candidates, positions, skills and recruitment status.",
+      fieldKeys: [
+        "id",
+        "name",
+        "email",
+        "phone",
+        "applied_position",
+        "department",
+        "status",
+      ],
+    },
+    {
+      id: "offer_onboarding",
+      label: "Offer & Onboarding",
+      description: "Offer details, joining dates and candidate status.",
+      fieldKeys: [
+        "id",
+        "name",
+        "applied_position",
+        "offer_ctc",
+        "offer_letter_url",
+        "joining_date",
+        "status",
+      ],
+    },
+    {
+      id: "custom",
+      label: "Create Custom Report",
+      description:
+        "Choose any available recruitment fields and design your email.",
+      isCustom: true,
+    },
+  ],
+  attendance: [
+    {
+      id: "attendance_summary",
+      label: "Attendance Summary",
+      description: "Punch times, devices, location and total login hours.",
+      fieldKeys: [
+        "punch_id",
+        "employee_id",
+        "employee_name",
+        "punch_status",
+        "punchin_time",
+        "punchout_time",
+        "total_login_hours",
+      ],
+    },
+    {
+      id: "late_login",
+      label: "Late Login Report",
+      description: "Employees who logged in after the allowed time.",
+      fieldKeys: [
+        "employee_id",
+        "employee_name",
+        "punchin_time",
+        "punchin_device",
+        "punchin_location",
+      ],
+    },
+    {
+      id: "custom",
+      label: "Create Custom Report",
+      description:
+        "Choose any available attendance fields and design your email.",
+      isCustom: true,
+    },
+  ],
+  attendance_regularisation: [
+    {
+      id: "regularisation_status",
+      label: "Regularisation Status",
+      description: "Requests, dates, comments and approval status.",
+      fieldKeys: [
+        "id",
+        "employee_id",
+        "employee_name",
+        "regularisation_type",
+        "selected_dates",
+        "status",
+        "approver_name",
+      ],
+    },
+    {
+      id: "regularisation_approvals",
+      label: "Approval Details",
+      description: "Approver information and approval comments.",
+      fieldKeys: [
+        "id",
+        "employee_name",
+        "status",
+        "approver_name",
+        "approver_employee_id",
+        "approver_comments",
+        "updated_at",
+      ],
+    },
+    {
+      id: "custom",
+      label: "Create Custom Report",
+      description:
+        "Choose any available regularisation fields and design your email.",
+      isCustom: true,
+    },
+  ],
+  tasks_employee: [
+    {
+      id: "task_progress",
+      label: "Task Progress",
+      description: "Weekly tasks, projects, status and ratings.",
+      fieldKeys: [
+        "task_date",
+        "project_name",
+        "task_name",
+        "employee_name",
+        "emp_status",
+        "sup_status",
+        "star_rating",
+      ],
+    },
+    {
+      id: "task_reviews",
+      label: "Task Reviews",
+      description: "Employee and supervisor comments and review status.",
+      fieldKeys: [
+        "task_name",
+        "employee_name",
+        "emp_comment",
+        "sup_comment",
+        "sup_review_status",
+        "star_rating",
+      ],
+    },
+    {
+      id: "custom",
+      label: "Create Custom Report",
+      description: "Choose any available task fields and design your email.",
+      isCustom: true,
+    },
+  ],
+  tasks_supervisor: [
+    {
+      id: "task_progress",
+      label: "Task Progress",
+      description: "Assigned tasks, due dates, status and completion.",
+      fieldKeys: [
+        "task_id",
+        "employee_id",
+        "employee_name",
+        "task_title",
+        "start_date",
+        "due_date",
+        "status",
+        "percentage",
+      ],
+    },
+    {
+      id: "status_update",
+      label: "Status Update",
+      description: "Task descriptions, progress and current status.",
+      fieldKeys: [
+        "task_id",
+        "task_title",
+        "description",
+        "status",
+        "percentage",
+        "progress_percentage",
+        "updated_at",
+      ],
+    },
+    {
+      id: "custom",
+      label: "Create Custom Report",
+      description: "Choose any available task fields and design your email.",
+      isCustom: true,
+    },
+  ],
+};
 
 const AVAILABLE_PROJECTS = ["Project Alpha", "Project Omega", "Project Nova"];
 const AVAILABLE_DEPARTMENTS = ["Finance", "Operations", "HR", "Sales"];
@@ -135,11 +469,32 @@ function parseChips(rawValue) {
     .filter(Boolean);
 }
 
+function getReportCategories(reportType) {
+  return CATEGORY_TEMPLATES[reportType] || CATEGORY_TEMPLATES.employees;
+}
+
+function getReportFields(reportType, categoryId) {
+  const fields = SUB_OPTIONS[reportType] || [];
+  const category = getReportCategories(reportType).find(
+    (item) => item.id === categoryId,
+  );
+  if (!category?.fieldKeys) return fields;
+  const keys = new Set(category.fieldKeys);
+  const filtered = fields.filter((field) => keys.has(field.key));
+  return filtered.length > 0 ? filtered : fields;
+}
+
 export default function EmailManagement() {
-  const [selectedReportType, setSelectedReportType] = useState("custom");
+  const [selectedReportType, setSelectedReportType] = useState("attendance");
   const [reportTypePage, setReportTypePage] = useState(0);
-  const [selectedCategory, setSelectedCategory] = useState("reimbursement");
+  const [selectedCategory, setSelectedCategory] =
+    useState("attendance_summary");
   const [categoryPage, setCategoryPage] = useState(0);
+  const [selectedFields, setSelectedFields] = useState(
+    getReportFields("attendance", "attendance_summary")
+      .slice(0, 7)
+      .map((field) => field.key),
+  );
   const [selectedReportScope, setSelectedReportScope] =
     useState("All Employees");
   const [selectedProjects, setSelectedProjects] = useState([
@@ -167,6 +522,11 @@ export default function EmailManagement() {
   const [endAfterOccurrences, setEndAfterOccurrences] = useState(10);
   const [noEndDate, setNoEndDate] = useState(true);
   const [previewEmail] = useState("john.doe@company.com");
+  const [emailSubject, setEmailSubject] = useState("Weekly Attendance Report");
+  const [emailBody, setEmailBody] = useState(
+    "Please find attached the selected report fields for the scheduled period.",
+  );
+  const [sendingEnabled, setSendingEnabled] = useState(true);
 
   /* ── Report types pagination ── */
   const totalReportPages = Math.max(
@@ -187,49 +547,94 @@ export default function EmailManagement() {
     }));
   }, [reportTypePage]);
 
-  /* ── Categories pagination (includes Create New) ── */
-  const ALL_CATEGORY_ITEMS = useMemo(
-    () => [
-      ...CATEGORY_OPTIONS,
-      {
-        id: "__new__",
-        label: "Create New Custom Report",
-        description: "Build your own report from available data and filters.",
-        isNew: true,
-      },
-    ],
-    [],
+  const reportCategories = useMemo(
+    () => getReportCategories(selectedReportType),
+    [selectedReportType],
   );
 
   const totalCategoryPages = Math.max(
     1,
-    Math.ceil(ALL_CATEGORY_ITEMS.length / CATEGORIES_PER_PAGE),
+    Math.ceil(reportCategories.length / CATEGORIES_PER_PAGE),
   );
 
   const visibleCategories = useMemo(() => {
     const start = categoryPage * CATEGORIES_PER_PAGE;
-    return ALL_CATEGORY_ITEMS.slice(start, start + CATEGORIES_PER_PAGE);
-  }, [categoryPage, ALL_CATEGORY_ITEMS]);
+    return reportCategories.slice(start, start + CATEGORIES_PER_PAGE);
+  }, [categoryPage, reportCategories]);
 
   const categoryLabel = useMemo(() => {
-    const found = CATEGORY_OPTIONS.find((item) => item.id === selectedCategory);
-    return found?.label || "Reimbursement Details";
-  }, [selectedCategory]);
+    const found = reportCategories.find((item) => item.id === selectedCategory);
+    return found?.label || reportCategories[0]?.label || "Report";
+  }, [reportCategories, selectedCategory]);
 
-  const reportOptionConfig =
-    REPORT_OPTION_CONFIG[selectedCategory] ||
-    REPORT_OPTION_CONFIG.reimbursement;
+  const selectedCategoryTemplate = reportCategories.find(
+    (item) => item.id === selectedCategory,
+  );
+
+  const availableReportFields = useMemo(
+    () => getReportFields(selectedReportType, selectedCategory),
+    [selectedReportType, selectedCategory],
+  );
+
+  const selectedFieldDetails = useMemo(
+    () =>
+      availableReportFields.filter((field) =>
+        selectedFields.includes(field.key),
+      ),
+    [availableReportFields, selectedFields],
+  );
+
+  const reportOptionConfig = REPORT_OPTION_CONFIG[selectedCategory] || {
+    scopeLabel: "Report Scope",
+    projectLabel: "Select Projects (Optional)",
+    departmentLabel: "Select Departments (Optional)",
+    showProjects: selectedReportType.includes("tasks"),
+    showDepartments: true,
+  };
+
+  const handleReportTypeChange = (reportType) => {
+    const nextCategories = getReportCategories(reportType);
+    const nextCategory = nextCategories[0];
+    setSelectedReportType(reportType);
+    setSelectedCategory(nextCategory.id);
+    setCategoryPage(0);
+    setSelectedFields(
+      getReportFields(reportType, nextCategory.id)
+        .slice(0, 7)
+        .map((field) => field.key),
+    );
+    setEmailSubject(
+      `${REPORT_TYPES.find((item) => item.value === reportType)?.label || "Report"} Report`,
+    );
+  };
+
+  const handleCategoryChange = (categoryId) => {
+    setSelectedCategory(categoryId);
+    setSelectedFields(
+      getReportFields(selectedReportType, categoryId)
+        .slice(0, 7)
+        .map((field) => field.key),
+    );
+  };
+
+  const toggleReportField = (fieldKey) => {
+    setSelectedFields((current) =>
+      current.includes(fieldKey)
+        ? current.filter((key) => key !== fieldKey)
+        : [...current, fieldKey],
+    );
+  };
 
   const previewSubject = useMemo(() => {
     const report = (REPORT_TYPES || []).find(
       (item) =>
         item.id === selectedReportType || item.value === selectedReportType,
     );
-    const reportLabel = report?.label || "Custom Report";
-    return `${reportLabel} Scheduled Email: ${formatDateLabel(startDate)}${
+    const reportLabel = report?.label || "Report";
+    return `${emailSubject || reportLabel} — ${formatDateLabel(startDate)}${
       endDate ? ` to ${formatDateLabel(endDate)}` : ""
     }`;
-  }, [selectedReportType, startDate, endDate]);
+  }, [selectedReportType, emailSubject, startDate, endDate]);
 
   const summaryItems = useMemo(() => {
     switch (selectedCategory) {
@@ -323,8 +728,15 @@ export default function EmailManagement() {
           </p>
         </div>
         <div className="em-actions">
-          <button className="em-btn em-btn-secondary">Test Email</button>
-          <button className="em-btn em-btn-primary">Save Configuration</button>
+          <button
+            className="em-btn em-btn-secondary"
+            disabled={!sendingEnabled}
+          >
+            Test Email
+          </button>
+          <button className="em-btn em-btn-primary">
+            {sendingEnabled ? "Save Configuration" : "Save (Sending Stopped)"}
+          </button>
         </div>
       </div>
 
@@ -348,7 +760,7 @@ export default function EmailManagement() {
                       className={`em-option-card color-${type.colorKey} ${
                         selectedReportType === typeId ? "selected" : ""
                       }`}
-                      onClick={() => setSelectedReportType(typeId)}
+                      onClick={() => handleReportTypeChange(type.value)}
                     >
                       <div className="em-option-card-top">
                         <span
@@ -410,8 +822,8 @@ export default function EmailManagement() {
             <div className="em-category-wrap">
               <div className="em-category-grid">
                 {visibleCategories.map((category) => {
-                  const isNew = category.isNew;
-                  const isSelected = !isNew && selectedCategory === category.id;
+                  const isNew = category.isCustom;
+                  const isSelected = selectedCategory === category.id;
 
                   return (
                     <button
@@ -421,7 +833,7 @@ export default function EmailManagement() {
                         isSelected ? "selected" : ""
                       } ${isNew ? "em-new-category" : ""}`}
                       onClick={() => {
-                        if (!isNew) setSelectedCategory(category.id);
+                        handleCategoryChange(category.id);
                       }}
                     >
                       <div className="em-category-card-top">
@@ -478,6 +890,94 @@ export default function EmailManagement() {
             <div className="em-section-header">
               <h2>Report Options</h2>
             </div>
+
+            <div className="em-field-row">
+              <label>
+                Available Report Fields
+                <span className="em-field-count">
+                  {selectedFieldDetails.length} selected
+                </span>
+              </label>
+              <div className="em-report-fields-grid">
+                {availableReportFields.map((field) => (
+                  <label
+                    key={field.key}
+                    className={`em-report-field-option ${
+                      selectedFields.includes(field.key) ? "selected" : ""
+                    }`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={selectedFields.includes(field.key)}
+                      onChange={() => toggleReportField(field.key)}
+                    />
+                    <span>{field.label}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            {selectedCategoryTemplate?.isCustom && (
+              <div className="em-email-editor">
+                <div className="em-editor-heading">
+                  <div>
+                    <h3>Design Custom Email</h3>
+                    <p>
+                      Write the subject and message that recipients will
+                      receive.
+                    </p>
+                  </div>
+                  <label className="em-send-toggle">
+                    <input
+                      type="checkbox"
+                      checked={sendingEnabled}
+                      onChange={(event) =>
+                        setSendingEnabled(event.target.checked)
+                      }
+                    />
+                    <span>
+                      {sendingEnabled ? "Sending enabled" : "Sending stopped"}
+                    </span>
+                  </label>
+                </div>
+                <div className="em-editor-grid">
+                  <div className="em-editor-form">
+                    <label>
+                      Subject
+                      <input
+                        type="text"
+                        value={emailSubject}
+                        onChange={(event) =>
+                          setEmailSubject(event.target.value)
+                        }
+                        placeholder="Enter email subject"
+                      />
+                    </label>
+                    <label>
+                      Email message
+                      <textarea
+                        value={emailBody}
+                        onChange={(event) => setEmailBody(event.target.value)}
+                        rows={6}
+                        placeholder="Write your email message"
+                      />
+                    </label>
+                  </div>
+                  <div className="em-editor-mini-preview">
+                    <span className="em-editor-preview-label">
+                      Live preview
+                    </span>
+                    <strong>{emailSubject || "Untitled report email"}</strong>
+                    <p>{emailBody || "Your email message will appear here."}</p>
+                    <small>
+                      {sendingEnabled
+                        ? "This configuration will send automatically."
+                        : "Sending is currently stopped."}
+                    </small>
+                  </div>
+                </div>
+              </div>
+            )}
 
             <div className="em-field-row">
               <label>{reportOptionConfig.scopeLabel}</label>
@@ -763,7 +1263,9 @@ export default function EmailManagement() {
         <aside className="em-preview-panel">
           <div className="em-preview-header">
             <div>
-              <p className="em-status-pill">Active</p>
+              <p className="em-status-pill">
+                {sendingEnabled ? "Active" : "Sending stopped"}
+              </p>
               <p className="em-preview-title">Email Preview</p>
               <p className="em-preview-subtitle">Preview as {previewEmail}</p>
             </div>
@@ -790,7 +1292,21 @@ export default function EmailManagement() {
                   </div>
                 ))}
               </div>
+              <div className="em-preview-fields">
+                <div className="em-preview-fields-header">
+                  <strong>{categoryLabel} Fields</strong>
+                  <span>{selectedFieldDetails.length} selected</span>
+                </div>
+                <div className="em-preview-field-list">
+                  {selectedFieldDetails.map((field) => (
+                    <span key={field.key} className="em-preview-field-chip">
+                      {field.label}
+                    </span>
+                  ))}
+                </div>
+              </div>
               <div className="em-preview-footer">
+                {selectedCategoryTemplate?.isCustom && <p>{emailBody}</p>}
                 <p>Report Scope: {selectedReportScope}</p>
                 <p>
                   Report Period: {formatDateLabel(startDate)} -{" "}
@@ -825,6 +1341,10 @@ export default function EmailManagement() {
             <div className="em-summary-row">
               <span>Category</span>
               <strong>{categoryLabel}</strong>
+            </div>
+            <div className="em-summary-row">
+              <span>Fields</span>
+              <strong>{selectedFieldDetails.length} selected</strong>
             </div>
             <div className="em-summary-row">
               <span>Scope</span>
@@ -866,7 +1386,7 @@ export default function EmailManagement() {
             </div>
             <div className="em-summary-row">
               <span>Status</span>
-              <strong>Active</strong>
+              <strong>{sendingEnabled ? "Active" : "Sending stopped"}</strong>
             </div>
           </div>
         </aside>

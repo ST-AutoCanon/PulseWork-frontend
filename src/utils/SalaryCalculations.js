@@ -200,40 +200,72 @@ export const calculateSalaryDetails = (
     hra = basicSalary * 0.5;
   }
 
-  // LTA - Fixed is monthly
+   // LTA - Fixed is monthly
+  // Percentage → % of Basic Salary | Fixed amount → use as-is
   if (
     planData.isLtaAllowance &&
     planData.ltaAllowanceType === "percentage" &&
     planData.ltaAllowance &&
     !isNaN(parseFloat(planData.ltaAllowance))
   ) {
-    ltaAllowance = monthlyCtc * (parseFloat(planData.ltaAllowance) / 100);
+    // Now calculated on Basic Salary (not on CTC)
+    ltaAllowance = basicSalary * (parseFloat(planData.ltaAllowance) / 100);
   } else if (
     planData.ltaAllowanceAmount &&
     !isNaN(parseFloat(planData.ltaAllowanceAmount))
   ) {
-    ltaAllowance = parseFloat(planData.ltaAllowanceAmount); // Monthly
+    ltaAllowance = parseFloat(planData.ltaAllowanceAmount); // Monthly – keep as-is
   } else {
     ltaAllowance = 0;
     console.warn(`No LTA Allowance defined for employee ${employeeId}`);
   }
 
-  // Other Allowances - Fixed is monthly (initial)
-  if (
-    planData.isOtherAllowance &&
-    planData.otherAllowanceType === "percentage" &&
-    planData.otherAllowance &&
-    !isNaN(parseFloat(planData.otherAllowance))
-  ) {
-    otherAllowances = monthlyCtc * (parseFloat(planData.otherAllowance) / 100);
-  } else if (
-    planData.otherAllowanceAmount &&
-    !isNaN(parseFloat(planData.otherAllowanceAmount))
-  ) {
-    otherAllowances = parseFloat(planData.otherAllowanceAmount); // Monthly
+ // ==================== OTHER ALLOWANCE - BALANCING LOGIC ====================
+if (planData.isOtherAllowance) {
+
+  // Known fixed components (do NOT include Other Allowance or ESIC Employer yet)
+  const fixedWithoutOtherAndEsi =
+    basicSalary +
+    hra +
+    ltaAllowance +
+    employerPF +
+    gratuity +
+    insuranceEmployer;
+
+  const esicEmployerRate =
+    planData.isESICEmployer &&
+    planData.esicEmployerType === "percentage" &&
+    planData.esicEmployerPercentage
+      ? parseFloat(planData.esicEmployerPercentage) / 100
+      : 0;
+
+  if (esicEmployerRate > 0) {
+    // Solve: Other = CTC - fixed - (Gross * rate)
+    // Gross = fixedWithoutOtherAndEsi + Other
+    // → Other = (monthlyCtc - fixedWithoutOtherAndEsi * (1 + rate)) / (1 + rate)
+
+    otherAllowances =
+      (monthlyCtc - fixedWithoutOtherAndEsi * (1 + esicEmployerRate)) /
+      (1 + esicEmployerRate);
+
+    otherAllowances = Math.max(0, otherAllowances);
+
+    // Now calculate real Gross and real ESIC Employer
+    const realGross =
+      basicSalary + hra + ltaAllowance + otherAllowances;
+
+    esicEmployer = realGross * esicEmployerRate;
   } else {
-    otherAllowances = 0;
+    // No percentage-based Employer ESIC
+    otherAllowances = monthlyCtc - fixedWithoutOtherAndEsi;
+    otherAllowances = Math.max(0, otherAllowances);
   }
+
+  planData.otherAllowanceText =
+    `Balancing Component (CTC - Basic - HRA - LTA - Employer Contributions)`;
+} else {
+  otherAllowances = 0;
+}
 
   const { targetMonthStr, targetYear, windowStart, windowEnd } =
     getPayrollFilter();
@@ -564,7 +596,7 @@ if (planData.isOtherAllowance) {
   const fixedComponents =   // ← LTA is removed here
     basicSalary +
     hra +
-    // ltaAllowance +     // ← Commented out / removed
+    ltaAllowance +
     employerPF +
     gratuity +
     insuranceEmployer;
@@ -627,34 +659,61 @@ if (planData.isOtherAllowance) {
   // Note: ltaAllowance is NOT added here
 
   // ==================== ESIC (Employee & Employer) ====================
-  if (
-    planData.isESICEmployee &&
-    planData.esicEmployeeType === "percentage" &&
-    planData.esicEmployeePercentage
-  ) {
-    const rate = parseFloat(planData.esicEmployeePercentage) / 100;
-    esic = grossForESI * rate;
-    planData.esicEmployeeText = `${planData.esicEmployeePercentage}% of (Basic + HRA + Other Allowance)`;
-  } else if (planData.esicEmployeeAmount) {
-    esic = parseFloat(planData.esicEmployeeAmount);
-  } else {
-    esic = 0;
-  }
+ // ==================== ESIC EMPLOYEE ====================
 
-  // if (
-  //   planData.isESICEmployer &&
-  //   planData.esicEmployerType === "percentage" &&
-  //   planData.esicEmployerPercentage
-  // ) {
-  //   const rate = parseFloat(planData.esicEmployerPercentage) / 100;
-  //   esicEmployer = grossForESI * rate;
-  //   planData.esicEmployerText = `${planData.esicEmployerPercentage}% of (Basic + HRA + Other Allowance)`;
-  // } else if (planData.esicEmployerAmount) {
-  //   esicEmployer = parseFloat(planData.esicEmployerAmount);
-  // } else {
-  //   esicEmployer = 0;
-  // }
+if (
+  planData.isESICEmployee &&
+  planData.esicEmployeeType === "percentage" &&
+  planData.esicEmployeePercentage &&
+  !isNaN(parseFloat(planData.esicEmployeePercentage))
+) {
+  const rate =
+    parseFloat(planData.esicEmployeePercentage) / 100;
 
+  esic = grossSalary * rate;
+
+  planData.esicEmployeeText =
+    `${planData.esicEmployeePercentage}% of Gross Salary`;
+
+} else if (
+  planData.esicEmployeeAmount &&
+  !isNaN(parseFloat(planData.esicEmployeeAmount))
+) {
+  esic = parseFloat(planData.esicEmployeeAmount);
+
+} else {
+  esic = 0;
+  planData.esicEmployeeText = "Not Applicable";
+}
+
+
+// ==================== ESIC EMPLOYER ====================
+
+if (
+  planData.isESICEmployer &&
+  planData.esicEmployerType === "percentage" &&
+  planData.esicEmployerPercentage &&
+  !isNaN(parseFloat(planData.esicEmployerPercentage))
+) {
+  const rate =
+    parseFloat(planData.esicEmployerPercentage) / 100;
+
+  esicEmployer = grossSalary * rate;
+
+  planData.esicEmployerText =
+    `${planData.esicEmployerPercentage}% of Gross Salary`;
+
+} else if (
+  planData.isESICEmployer &&
+  planData.esicEmployerAmount &&
+  !isNaN(parseFloat(planData.esicEmployerAmount))
+) {
+  esicEmployer = parseFloat(planData.esicEmployerAmount);
+
+} else {
+  esicEmployer = 0;
+  planData.esicEmployerText = "Not Applicable";
+}
   // ==================== RECALCULATE GROSS SALARY ====================
   grossSalary =
     basicSalary +

@@ -591,49 +591,44 @@ if (planData.isOtherAllowance) {
     // Other Allowance = CTC - (Basic + HRA + Employer Contributions)
     // LTA is NOT deducted from Other Allowance calculation
 
+// ============================================================
+// OTHER ALLOWANCE + ESIC EMPLOYER (single balancing block)
+// ============================================================
 if (planData.isOtherAllowance) {
+  const fixedEmployer =
+    (employerPF || 0) +
+    (gratuity || 0) +
+    (insuranceEmployer || 0);
 
-  const fixedComponents =   // ← LTA is removed here
-    basicSalary +
-    hra +
-    ltaAllowance +
-    employerPF +
-    gratuity +
-    insuranceEmployer;
+  const fixedEarnings =
+    basicSalary + hra + ltaAllowance;   // LTA included in earnings
 
-  // Assume ESIC is applicable only if gross <= 21000
-  const baseSalary = basicSalary + hra;
+  const fixedTotal = fixedEarnings + fixedEmployer;
 
   if (
     planData.isESICEmployer &&
-    baseSalary <= 21000
+    planData.esicEmployerType === "percentage" &&
+    planData.esicEmployerPercentage
   ) {
+    const rate = parseFloat(planData.esicEmployerPercentage) / 100;
 
-    const esicRate =
-      parseFloat(planData.esicEmployerPercentage || 0) / 100;
-
-    const remaining =
-      monthlyCtc -
-      fixedComponents -
-      (baseSalary * esicRate);
-
-    otherAllowances = remaining / (1 + esicRate);
-
-    esicEmployer =
-      (baseSalary + otherAllowances) * esicRate;
-
-  } else {
-
+    // Solve: monthlyCtc = fixedTotal + Other + (fixedEarnings + Other) * rate
+    // → Other = (monthlyCtc - fixedTotal - fixedEarnings * rate) / (1 + rate)
     otherAllowances =
-      monthlyCtc - fixedComponents;   // LTA is not subtracted
+      (monthlyCtc - fixedTotal - fixedEarnings * rate) / (1 + rate);
 
+    otherAllowances = Math.max(0, otherAllowances);
+
+    // Now set real ESIC Employer
+    esicEmployer = (fixedEarnings + otherAllowances) * rate;
+  } else {
+    otherAllowances = monthlyCtc - fixedTotal;
+    otherAllowances = Math.max(0, otherAllowances);
     esicEmployer = 0;
   }
 
-  otherAllowances = Math.max(0, otherAllowances);
-
-  planData.otherAllowanceText = `Balancing Component (CTC - Basic - HRA - Employer Contributions) [LTA Excluded]`;
-
+  planData.otherAllowanceText =
+    "Balancing Component (CTC − Basic − HRA − LTA − Employer Contributions)";
 } else {
   otherAllowances = 0;
 }

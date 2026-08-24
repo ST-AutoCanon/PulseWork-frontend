@@ -108,7 +108,7 @@ const calculateLocalGrossNet = (salaryDetails, planData) => {
 const CTC_BASED_FIELDS = [
   'basicSalary',
   'otherAllowance',
-      'ltaAllowance',             // direct CTC (clean name)
+     
   'incentives',
   'variablePay',
 ];
@@ -116,8 +116,9 @@ const CTC_BASED_FIELDS = [
 const BASIC_BASED_FIELDS = [
   'houseRentAllowance',              // HRA – % of Basic
   'houseRentAllowancePercentage',   // HRA – % of Basic
-                    // LTA – % of Basic
+          'ltaAllowance',          // LTA – % of Basic
   'ltaAllowancePercentage',         // LTA – % of Basic
+  
   'pfEmployee',
   'pfEmployeePercentage',
   'pfEmployer',
@@ -155,7 +156,7 @@ const getEffectiveCtcPercentage = (fieldName, formData, ctc = DEFAULT_CTC) => {
 
   // Direct CTC-based
   if (CTC_BASED_FIELDS.includes(cleanField) || 
-      ['variablePay', 'statutoryBonus', 'incentives', 'ltaAllowance'].includes(cleanField)) {
+      ['variablePay', 'statutoryBonus', 'incentives', ].includes(cleanField)) {
     return rawValue;
   }
 

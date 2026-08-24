@@ -505,7 +505,7 @@ const DetailsTab = ({
   {
     label: "LTA Allowance",
     planDetail: planData.isLtaAllowance && planData.ltaAllowance ? 
-      `${planData.ltaAllowance}% of CTC` : "5% of CTC (default)",
+      `${planData.ltaAllowance}% of Basic ` : "0% of basic (default)",
     yearly: salaryDetails.ltaAllowance * 12,
     monthly: salaryDetails.ltaAllowance,
     isDeduction: false,

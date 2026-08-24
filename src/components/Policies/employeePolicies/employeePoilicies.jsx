@@ -24,6 +24,8 @@ import {
   FaClipboardList,
   FaChevronRight,FaDownload,FaSearch,FaEye,
   FaEyeSlash,
+  FaExpand,
+FaCompress,
 } from "react-icons/fa";
 
 export default function EmployeePolicies() {
@@ -41,6 +43,7 @@ const [activeTab, setActiveTab] = useState("all"); // "all" | "pending" | "ackno
   const [loadingFile, setLoadingFile] = useState(false);
 const [searchTerm, setSearchTerm] = useState("");
 const [ackChecked, setAckChecked] = useState(false);
+const [isFullscreen, setIsFullscreen] = useState(false);
 const [alertModal, setAlertModal] = useState({
   isVisible: false,
   title: "",
@@ -585,29 +588,45 @@ const handleFileClick = (file) => {
       )}
 
       {/* RIGHT – Viewer (only when a file is selected) */}
-      {selectedFile && (
-        <div className="viewer-section">
+     {selectedFile && (
+  <div className={`viewer-section ${isFullscreen ? "viewer-fullscreen" : ""}`}>
           <div className="viewer-header">
-            <span>{getFileName(selectedFile) || "No File Selected"}</span>
-            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              {Number(selectedFile.allow_download) === 1 && (
-                <button
-                  className="viewer-download-btn"
-                  onClick={() => handleDownload(selectedFile)}
-                  title="Download file"
-                >
-                  <FaDownload /> Download
-                </button>
-              )}
-              <button
-                className="close-panel-btn"
-                onClick={() => setSelectedFile(null)}
-                aria-label="Close file viewer"
-              >
-                ×
-              </button>
-            </div>
-          </div>
+  <span>{getFileName(selectedFile) || "No File Selected"}</span>
+
+  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+    {/* Download button (keep existing) */}
+    {Number(selectedFile.allow_download) === 1 && (
+      <button
+        className="viewer-download-btn"
+        onClick={() => handleDownload(selectedFile)}
+        title="Download file"
+      >
+        <FaDownload /> Download
+      </button>
+    )}
+
+    {/* ===== NEW: Maximize / Minimize ===== */}
+    <button
+      className="viewer-fullscreen-btn"
+      onClick={() => setIsFullscreen((prev) => !prev)}
+      title={isFullscreen ? "Exit full screen" : "Maximize"}
+    >
+      {isFullscreen ? <FaCompress /> : <FaExpand />}
+    </button>
+
+    {/* Close button (keep existing) */}
+    <button
+      className="close-panel-btn"
+      onClick={() => {
+        setSelectedFile(null);
+        setIsFullscreen(false); // also exit fullscreen when closing
+      }}
+      aria-label="Close file viewer"
+    >
+      ×
+    </button>
+  </div>
+</div>
           <div className="viewer-body">
             {Number(selectedFile.allow_view) !== 1 ? (
               <div style={{
@@ -707,32 +726,39 @@ const handleFileClick = (file) => {
             )}
 
             {/* Floating acknowledgement – now correctly overlays the file */}
-  {Number(selectedFile.allow_view) === 1 && pendingFile && (
-  <div className="ack-message-box floating-ack">
-    <div className="ack-message-title">
-      Acknowledgement Required
+{Number(selectedFile.allow_view) === 1 && pendingFile && (
+  <div className="ack-floating-wrapper">
+    {/* Small floating icon */}
+    <div className="ack-floating-icon">
+      <FaUserCheck />
     </div>
 
-    <label className="ack-checkbox-label">
-      <input
-        type="checkbox"
-        checked={ackChecked}
-        onChange={(e) => setAckChecked(e.target.checked)}
-      />
+    {/* Full message – stays open while hovering the whole area */}
+    <div className="ack-floating-popup">
+      <div className="ack-message-title">
+        Acknowledgement Required
+      </div>
 
-      <span>
-        {pendingFile?.acknowledgement_message ||
-          "This file requires acknowledgement before it can be marked as read."}
-      </span>
-    </label>
+      <label className="ack-checkbox-label">
+        <input
+          type="checkbox"
+          checked={ackChecked}
+          onChange={(e) => setAckChecked(e.target.checked)}
+        />
+        <span>
+          {pendingFile?.acknowledgement_message ||
+            "This file requires acknowledgement before it can be marked as read."}
+        </span>
+      </label>
 
-    <button
-      className="ac-modal-btn ac-modal-btn-primary"
-      onClick={handleAcknowledgement}
-      disabled={!ackChecked}
-    >
-      Acknowledge
-    </button>
+      <button
+        className="ac-modal-btn ac-modal-btn-primary"
+        onClick={handleAcknowledgement}
+        disabled={!ackChecked}
+      >
+        Acknowledge
+      </button>
+    </div>
   </div>
 )}
             {/* {pendingFile && (
@@ -753,14 +779,19 @@ const handleFileClick = (file) => {
           </div>
 
           {/* Footer is a sibling of viewer-body, not inside it */}
-          <div className="viewer-footer">
-            <div className="viewer-footer-text">
-              Viewing file: <strong>{getFileName(selectedFile)}</strong>
-              {Number(selectedFile.acknowledgement_required) === 1 && (
-                <span> — Acknowledgement required</span>
-              )}
-            </div>
-          </div>
+        <div className="viewer-footer">
+  <div className="viewer-footer-text">
+    Viewing file: <strong>{getFileName(selectedFile)}</strong>
+
+    {Number(selectedFile.acknowledgement_required) === 1 && (
+      Number(selectedFile.is_acknowledged) === 1 ? (
+        <span className="ack-status-acknowledged"> — Acknowledged</span>
+      ) : (
+        <span className="ack-status-pending"> — Acknowledgement required</span>
+      )
+    )}
+  </div>
+</div>
         </div>
       )}
     </div>

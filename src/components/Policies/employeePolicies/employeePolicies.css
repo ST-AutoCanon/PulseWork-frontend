@@ -575,7 +575,156 @@
 .policy-status-text {
   display: inline;
 }
+/* Wrapper */
+.ack-floating-wrapper {
+  position: absolute;
+  bottom: 24px;
+  right: 24px;
+  z-index: 50;
+}
 
+/* Small circular icon */
+.ack-floating-icon {
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  background: #fef2f2;          /* light red background */
+  border: 2px solid #ef4444;    /* red border */
+  color: #dc2626;               /* red icon */
+  font-size: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+  transition: all 0.2s ease;
+}
+
+.ack-floating-icon:hover {
+  background: #fee2e2;
+  transform: scale(1.06);
+}
+
+/* Popup – positioned with a continuous hover area */
+.ack-floating-popup {
+  position: absolute;
+  bottom: 54px;
+  right: 0;
+  width: 320px;
+  background: #fff;
+  border-radius: 12px;
+  padding: 16px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.18);
+  border: 1px solid #e2e8f0;
+
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(6px);
+  transition: all 0.18s ease;
+  pointer-events: none;
+}
+
+/* Invisible bridge so mouse never leaves the hover zone */
+.ack-floating-wrapper::after {
+  content: "";
+  position: absolute;
+  bottom: 46px;
+  right: 0;
+  width: 320px;
+  height: 20px;          /* fills the gap between icon and popup */
+}
+
+/* Show popup when hovering anywhere on the wrapper */
+.ack-floating-wrapper:hover .ack-floating-popup {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+/* Title & form styles inside popup */
+.ack-floating-popup .ack-message-title {
+  font-weight: 600;
+  font-size: 15px;
+  margin-bottom: 10px;
+  color: #dc2626;
+}
+
+.ack-floating-popup .ack-checkbox-label {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  font-size: 13px;
+  line-height: 1.45;
+  margin-bottom: 14px;
+  cursor: pointer;
+}
+
+.ack-floating-popup .ac-modal-btn {
+  width: 100%;
+}
+/* Full-screen viewer */
+/* Slightly smaller than full page */
+.viewer-section.viewer-fullscreen {
+  position: fixed !important;
+  top: 40px;
+  left: 40px;
+  right: 40px;
+  bottom: 40px;
+  width: auto !important;
+  height: auto !important;
+  z-index: 9990;
+  background: #fff;
+  display: flex;
+  flex-direction: column;
+  border-radius: 12px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.25);
+  overflow: hidden;
+}
+
+.viewer-section.viewer-fullscreen .viewer-body {
+  flex: 1;
+  height: auto !important;
+  max-height: none !important;
+  overflow: auto;
+}
+
+
+.viewer-fullscreen-btn {
+  background: #f1f5f9;           /* light gray background – visible by default */
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  padding: 6px 10px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #334155;                /* darker icon color */
+  font-size: 15px;
+  transition: all 0.15s ease;
+  min-width: 34px;
+  min-height: 34px;
+}
+
+.viewer-fullscreen-btn:hover {
+  background: #e2e8f0;           /* slightly darker on hover */
+  color: #0f172a;
+  border-color: #94a3b8;
+}
+
+.viewer-fullscreen-btn:active {
+  background: #cbd5e1;
+  transform: scale(0.96);
+}
+.ack-status-pending {
+  color: #dc2626;          /* red */
+  font-weight: 500;
+}
+
+.ack-status-acknowledged {
+  color: #16a34a;          /* green */
+  font-weight: 600;
+}
 /* ===== When cards are minimized (two-col layout) → show only a dot ===== */
 .policy-cards.two-col .policy-status-badge {
   width: 10px;

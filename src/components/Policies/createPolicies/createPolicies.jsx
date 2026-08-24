@@ -1348,7 +1348,6 @@ const handleEditPolicy = async (policy) => {
     allowDownload: false,
   });
 
-  // Load current assignments
   const assignments = await fetchPolicyAssignments(policy.id);
 
   const isAssignToAll =
@@ -1361,11 +1360,61 @@ const handleEditPolicy = async (policy) => {
     setSelectionType("all");
   } else if (assignments.departments?.length > 0) {
     setSelectionType("department");
-    setSelectedDepartments(assignments.departments);
+
+    // 1) Real department names from departmentList
+    const enrichedDepts = (assignments.departments || []).map((d) => {
+      const full = departmentList.find(
+        (x) => String(x.id) === String(d.id)
+      );
+      return {
+        id: d.id,
+        name: full?.name || d.name || `Department ${d.id}`,
+      };
+    });
+    setSelectedDepartments(enrichedDepts);
+
+    // 2) Load employees under each department (same API as double-click)
+    const byDept = {};
+    await Promise.all(
+      enrichedDepts.map(async (dept) => {
+        try {
+          const response = await axios.get(
+            `${BACKEND}/api/compensations/employees/by-department/${dept.id}`,
+            {
+              withCredentials: true,
+              headers: {
+                "x-api-key": API_KEY,
+                "x-employee-id":
+                  user?.employeeId ?? user?.id ?? user?.employee_id,
+                "x-org-id": orgId,
+              },
+            }
+          );
+          if (response.data.success) {
+            const emps = (response.data.data || []).map((e) => ({
+              ...e,
+              employee_id:
+                e.employee_id ?? e.id ?? e.employeeId ?? e.emp_id,
+              full_name:
+                e.full_name ??
+                e.name ??
+                e.employee_name ??
+                `Employee ${e.employee_id ?? e.id}`,
+            }));
+            byDept[dept.id] = emps;
+          } else {
+            byDept[dept.id] = [];
+          }
+        } catch (err) {
+          console.error("Failed to load employees for dept", dept.id, err);
+          byDept[dept.id] = [];
+        }
+      })
+    );
+    setEmployeesByDepartment(byDept);
   } else {
     setSelectionType("employee");
 
-    // ===== FIX: attach real names =====
     const enrichedEmployees = (assignments.employees || []).map((assigned) => {
       const fullEmp = employeeList.find(
         (e) => String(e.employee_id) === String(assigned.employee_id)
@@ -1378,7 +1427,6 @@ const handleEditPolicy = async (policy) => {
           `Employee ${assigned.employee_id}`,
       };
     });
-
     setSelectedEmployees(enrichedEmployees);
   }
 
@@ -1526,25 +1574,9 @@ const handleSaveEdits = async () => {
   setLoading(true);
 
   try {
-    console.log("=== SAVE EDITS STARTED ===");
-
-    // Update Policy Details
-    await axios.put(
-      `${BACKEND}/api/policies/update/${viewPolicy.id}`,
-      {
-        policy_name: viewPolicy.policy_name,
-        description: viewPolicy.description || "",
-        allow_view: viewPolicy.allow_view,
-        allow_download: viewPolicy.allow_download,
-        assign_to_all: viewPolicy.assign_to_all ?? 0,
-      },
-      { withCredentials: true, headers: { "x-org-id": orgId } }
-    );
-
-    // === COLLECT ALL FILES TO UPLOAD ===
+    // Collect files to upload
     const filesToUpload = [...newFilesToAdd];
 
-    // If user selected a file but didn't click "Add to List", include it now
     if (newFile.file) {
       filesToUpload.push({
         id: Date.now(),
@@ -1557,27 +1589,23 @@ const handleSaveEdits = async () => {
       });
     }
 
-    console.log(`Uploading ${filesToUpload.length} file(s)`);
-
-    // Upload Files (if any)
+    // Upload files only (do NOT touch policy details / assignments)
     if (filesToUpload.length > 0) {
       const fileFormData = new FormData();
-      appendFilesWithPerTypeIndex(filesToUpload, fileFormData); // ← uses helper
+      appendFilesWithPerTypeIndex(filesToUpload, fileFormData);
 
-      const uploadRes = await axios.post(
+      await axios.post(
         `${BACKEND}/api/policies/upload-files/${viewPolicy.id}`,
         fileFormData,
         { withCredentials: true, headers: { "x-org-id": orgId } }
       );
-
-      console.log("Upload Response:", uploadRes.data);
     }
 
     // Refresh files
     const latestFiles = await fetchPolicyFiles(viewPolicy.id);
     setViewPolicy((prev) => ({ ...prev, files: latestFiles }));
 
-    // Reset upload states
+    // Reset upload state
     setNewFilesToAdd([]);
     setNewFile({
       file: null,
@@ -1589,10 +1617,14 @@ const handleSaveEdits = async () => {
     });
     setFileInputKey((prev) => prev + 1);
 
-    showAlert("Policy updated successfully!");
+    showAlert(
+      filesToUpload.length > 0
+        ? "Files uploaded successfully!"
+        : "No new files to upload"
+    );
   } catch (err) {
-    console.error("❌ Save Edits Error:", err.response?.data || err.message);
-    showAlert(err.response?.data?.message || "Failed to save changes", "Error");
+    console.error("Save Edits Error:", err.response?.data || err.message);
+    showAlert(err.response?.data?.message || "Failed to upload files", "Error");
   } finally {
     setLoading(false);
   }

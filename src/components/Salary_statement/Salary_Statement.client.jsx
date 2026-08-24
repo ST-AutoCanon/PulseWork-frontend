@@ -55,7 +55,8 @@ const Salary_Statement = () => {
   const [isTemplateEnabled, setIsTemplateEnabled] = useState(false);
   const [templateLoading, setTemplateLoading] = useState(true);
 
-  const templateUrl = "/templates/Statement_Template.xlsx";
+ const templateUrl =
+  "/templates/EmpDetails_AUG_2026_Full.xlsx";
 
   const parseNumeric = (val) => {
     if (val === "" || val === null || val === undefined) return 0;

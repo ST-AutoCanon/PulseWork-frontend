@@ -254,54 +254,65 @@ const appendFilesToFormData = (filesArray, formData) => {
 </div>
 
         {/* Employees Section */}
-        {selectionType === "employee" && (
-          <div className="admin-policy-section">
-            <h4 className="admin-policy-section-subtitle">Select Employees</h4>
-            <input
-              type="text"
-              className="admin-policy-search-input"
-              placeholder="Search employee..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-            <select
-              className="admin-policy-selection-dropdown"
-              value={selectedEmployee}
-              onChange={(e) => setSelectedEmployee(e.target.value)}
-              onDoubleClick={handleEmployeeDoubleClick}
-              size={6}
+      {selectionType === "employee" && (
+  <div className="admin-policy-section">
+    <h4 className="admin-policy-section-subtitle">Select Employees</h4>
+    <input
+      type="text"
+      className="admin-policy-search-input"
+      placeholder="Search employee..."
+      value={searchTerm}
+      onChange={(e) => setSearchTerm(e.target.value)}
+    />
+    <select
+      className="admin-policy-selection-dropdown"
+      value={selectedEmployee}
+      onChange={(e) => setSelectedEmployee(e.target.value)}
+      onDoubleClick={handleEmployeeDoubleClick}
+      size={6}
+    >
+      <option value="" disabled>Select an employee</option>
+      {filteredEmployees.map((emp) => {
+        const isAlreadySelected = selectedEmployees.some(
+          (e) => String(e.employee_id) === String(emp.employee_id)
+        );
+        return (
+          <option
+            key={emp.employee_id}
+            value={emp.employee_id}
+            style={isAlreadySelected ? { fontWeight: "bold", color: "#0a7" } : {}}
+          >
+            {isAlreadySelected ? "✓ " : ""}
+            {emp.full_name}
+            {isAlreadySelected ? " (Assigned)" : ""}
+          </option>
+        );
+      })}
+    </select>
+
+    <h4 className="admin-policy-selected-title">
+      Selected Employees ({selectedEmployees.length})
+    </h4>
+    {selectedEmployees.length > 0 ? (
+      <div className="admin-policy-selected-list">
+        {selectedEmployees.map((emp) => (
+          <div key={emp.employee_id} className="admin-policy-selected-item">
+            <span>{emp.full_name}</span>
+            <span
+              onClick={() => removeEmployee(emp.employee_id)}
+              className="admin-policy-remove-btn"
+              title="Remove assignment"
             >
-              <option value="" disabled>Select an employee</option>
-              {filteredEmployees.map(emp => (
-                <option key={emp.employee_id} value={emp.employee_id}>
-                  {emp.full_name}
-                </option>
-              ))}
-            </select>
-
-            <h4 className="admin-policy-selected-title">
-              Selected Employees ({selectedEmployees.length})
-            </h4>
-            {selectedEmployees.length > 0 ? (
-              <div className="admin-policy-selected-list">
-                {selectedEmployees.map(emp => (
-                  <div key={emp.employee_id} className="admin-policy-selected-item">
-                    <span>{emp.full_name}</span>
-                    <span
-                      onClick={() => removeEmployee(emp.employee_id)}
-                      className="admin-policy-remove-btn"
-                    >
-                      ✕
-                    </span>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="admin-policy-empty-state">No employees selected yet</p>
-            )}
+              ✕
+            </span>
           </div>
-        )}
-
+        ))}
+      </div>
+    ) : (
+      <p className="admin-policy-empty-state">No employees selected yet</p>
+    )}
+  </div>
+)}
         {/* Departments Section */}
         {selectionType === "department" && (
           <div className="admin-policy-section">
@@ -1192,7 +1203,21 @@ const handleSaveFileEdit = async () => {
       console.error("Error fetching departments:", err);
     }
   };
-
+const fetchPolicyAssignments = async (policyId) => {
+  try {
+    const resp = await axios.get(
+      `${BACKEND}/api/policies/assignments/${policyId}`,
+      {
+        withCredentials: true,
+        headers: { "x-org-id": orgId },
+      }
+    );
+    return resp.data?.data || { employees: [], departments: [], assign_to_all: 0 };
+  } catch (err) {
+    console.error("Failed to load assignments", err);
+    return { employees: [], departments: [], assign_to_all: 0 };
+  }
+};
   const fetchPolicyFiles = async (policyId) => {
     try {
       const resp = await axios.get(`${BACKEND}/api/policies/files/${policyId}`, {
@@ -1282,7 +1307,7 @@ const handleAddNewFile = () => {
   const handleRemoveNewFile = (index) => {
     setNewFilesToAdd(prev => prev.filter((_, i) => i !== index));
   };
-const handleEditPolicy = (policy) => {
+const handleEditPolicy = async (policy) => {
   setFormData({
     policyName: policy.policy_name || "",
     description: policy.description || "",
@@ -1296,23 +1321,13 @@ const handleEditPolicy = (policy) => {
       policy.allow_download === "1",
   });
 
+  // Reset first
   setSelectedEmployees([]);
   setSelectedDepartments([]);
   setEmployeesByDepartment({});
-
-  // Robust check for "Assign to All"
-  const isAssignToAll =
-    Number(policy.assign_to_all) === 1 ||
-    policy.assign_to_all === true ||
-    policy.assign_to_all === "1";
-
-  setSelectionType(isAssignToAll ? "all" : "employee");
-
   setSearchTerm("");
   setDepartmentSearchTerm("");
-
   setNewFilesToAdd([]);
-
   setNewFile({
     file: null,
     file_type: "document",
@@ -1321,6 +1336,40 @@ const handleEditPolicy = (policy) => {
     allowView: true,
     allowDownload: false,
   });
+
+  // Load current assignments
+  const assignments = await fetchPolicyAssignments(policy.id);
+
+  const isAssignToAll =
+    Number(assignments.assign_to_all) === 1 ||
+    Number(policy.assign_to_all) === 1 ||
+    policy.assign_to_all === true ||
+    policy.assign_to_all === "1";
+
+  if (isAssignToAll) {
+    setSelectionType("all");
+  } else if (assignments.departments?.length > 0) {
+    setSelectionType("department");
+    setSelectedDepartments(assignments.departments);
+  } else {
+    setSelectionType("employee");
+
+    // ===== FIX: attach real names =====
+    const enrichedEmployees = (assignments.employees || []).map((assigned) => {
+      const fullEmp = employeeList.find(
+        (e) => String(e.employee_id) === String(assigned.employee_id)
+      );
+      return {
+        employee_id: assigned.employee_id,
+        full_name:
+          fullEmp?.full_name ||
+          assigned.full_name ||
+          `Employee ${assigned.employee_id}`,
+      };
+    });
+
+    setSelectedEmployees(enrichedEmployees);
+  }
 
   setEditingPolicyId(policy.id);
   setIsEditing(true);
@@ -1342,25 +1391,38 @@ const handleSubmit = async (e) => {
   // (when selectionType === "all" → no extra check needed)
   setLoading(true);
   try {
-    if (isEditing && editingPolicyId) {
-      // ========== UPDATE POLICY ==========
-      await axios.put(
-        `${BACKEND}/api/policies/update/${editingPolicyId}`,
-        {
-          policy_name: formData.policyName,
-          description: formData.description || "",
-          allow_view: formData.allowView,
-          allow_download: formData.allowDownload,
-          assign_to_all: selectionType === "all" ? 1 : 0,
-        },
-        {
-          withCredentials: true,
-          headers: { "x-org-id": orgId },
-        }
-      );
+   if (isEditing && editingPolicyId) {
+  // ========== UPDATE POLICY (including re-assignment) ==========
+  await axios.put(
+    `${BACKEND}/api/policies/update/${editingPolicyId}`,
+    {
+      policy_name: formData.policyName,
+      description: formData.description || "",
+      allow_view: formData.allowView,
+      allow_download: formData.allowDownload,
+      assign_to_all: selectionType === "all" ? 1 : 0,
+      employeeIds:
+        selectionType === "employee"
+          ? selectedEmployees.map((emp) => emp.employee_id || emp.id)
+          : selectionType === "department"
+          ? Object.values(employeesByDepartment)
+              .flat()
+              .map((emp) => emp.employee_id || emp.id)
+              .filter(Boolean)
+          : [],
+      departmentIds:
+        selectionType === "department"
+          ? selectedDepartments.map((dept) => dept.id)
+          : [],
+    },
+    {
+      withCredentials: true,
+      headers: { "x-org-id": orgId },
+    }
+  );
 
-      showAlert("Policy updated successfully!");
-    } else {
+  showAlert("Policy updated successfully!");
+} else {
       // ========== CREATE POLICY ==========
       const createResp = await axios.post(
         `${BACKEND}/api/policies/create`,

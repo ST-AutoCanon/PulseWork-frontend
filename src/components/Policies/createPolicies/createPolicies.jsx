@@ -110,15 +110,21 @@ const appendFilesToFormData = (filesArray, formData) => {
     formData.append(`allow_download_${index}`, nf.allowDownload ? "1" : "0");
   });
 };
-  const handleEmployeeDoubleClick = () => {
-    if (!selectedEmployee || selectionType !== "employee") return;
+ const handleEmployeeDoubleClick = () => {
+  if (!selectedEmployee || selectionType !== "employee") return;
 
-    const employee = employeeList.find(emp => String(emp.employee_id) === String(selectedEmployee));
-    if (employee && !selectedEmployees.some(e => e.employee_id === employee.employee_id)) {
-      setSelectedEmployees(prev => [employee, ...prev]);
-      setSelectedEmployee("");
-    }
-  };
+  const employee = employeeList.find(
+    (emp) => String(emp.employee_id) === String(selectedEmployee)
+  );
+  if (!employee?.employee_id) {
+    showAlert("Invalid employee (missing id)", "Error");
+    return;
+  }
+  if (!selectedEmployees.some((e) => String(e.employee_id) === String(employee.employee_id))) {
+    setSelectedEmployees((prev) => [employee, ...prev]);
+    setSelectedEmployee("");
+  }
+};
 
   const removeEmployee = (employeeId) => {
     setSelectedEmployees(prev => prev.filter(emp => emp.employee_id !== employeeId));
@@ -1167,23 +1173,28 @@ const handleSaveFileEdit = async () => {
   };
 
   const fetchEmployees = async () => {
-    try {
-      const response = await axios.get(`${BACKEND}/api/compensations/employees/names`, {
-        withCredentials: true,
-        headers: {
-          "x-api-key": API_KEY,
-          "x-employee-id": user?.employeeId ?? user?.id ?? user?.employee_id,
-          "x-org-id": orgId,
-        },
-      });
-      if (response.data.success) {
-        const emps = response.data.data || [];
-        setEmployeeList(emps);
-      }
-    } catch (err) {
-      console.error("Error fetching employees:", err);
+  try {
+    const response = await axios.get(`${BACKEND}/api/compensations/employees/names`, {
+      withCredentials: true,
+      headers: {
+        "x-api-key": API_KEY,
+        "x-employee-id": user?.employeeId ?? user?.id ?? user?.employee_id,
+        "x-org-id": orgId,
+      },
+    });
+    if (response.data.success) {
+      const emps = (response.data.data || []).map((e) => ({
+        ...e,
+        // normalize once
+        employee_id: e.employee_id ?? e.id ?? e.employeeId ?? e.emp_id,
+        full_name: e.full_name ?? e.name ?? e.employee_name ?? `Employee ${e.employee_id ?? e.id}`,
+      }));
+      setEmployeeList(emps);
     }
-  };
+  } catch (err) {
+    console.error("Error fetching employees:", err);
+  }
+};
 
   const fetchDepartments = async () => {
     try {

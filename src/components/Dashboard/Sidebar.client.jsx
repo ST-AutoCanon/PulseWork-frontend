@@ -7,8 +7,7 @@ import "./Sidebar.css";
 
 import EmployeeDetails from "../EmployeeDetails/EmployeeDetails.client";
 import AddDepartment from "../AddDepartment/AddDepartment.client";
-import AdminQuery from "../EmployeeQueries/AdminQuery.client";
-import EmployeeQuery from "../EmployeeQueries/EmployeeQuery.client";
+import EmployeeAssistant from "../EmployeeQueries/EmployeeAssistant.client";
 import UpdateProject from "../UpdateProjects/ProjectsDashboard.client";
 import LeaveQueries from "../LeaveQueries/Admin.client";
 import LeaveRequest from "../LeaveQueries/LeaveRequest.client";
@@ -153,10 +152,7 @@ const Sidebar = ({ setActiveContent }) => {
       },
       "/EmailManagement": () => <EmailManagement />,
 
-      "/employeeQueries": (role) => {
-        if (role === "Admin") return <AdminQuery />;
-        return <EmployeeQuery />;
-      },
+      "/employeeQueries": () => <EmployeeAssistant />,
       "/TemplateBuilder": () => <TemplateBuilder />,
       "/RecruitmentFlow": () => <Recruitment />,
       "/letterHead": () => <LetterHead />,

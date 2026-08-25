@@ -153,33 +153,60 @@
   font-family: "Segoe UI", sans-serif;
 }
 
+/* ========== DYNAMIC LAYOUT ========== */
 .policy-grid {
   display: grid;
   gap: 20px;
-  flex: 1;                          /* take all remaining space */
-  min-height: 0;                    /* allow children to scroll */
-  height: auto !important;          /* override old fixed heights */
-  max-height: none !important;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  height: calc(100vh - 40px);
+  max-height: calc(100vh - 40px);
+  box-sizing: border-box;
   transition: grid-template-columns 0.35s ease;
 }
-/* Full height chain */
-.employee-policy-page {
-  background: #f4f6fb;
-  padding: 20px;
-  height: 100vh;
-  max-height: 100vh;
-  overflow: hidden;
+
+.policy-grid.layout-one {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.policy-grid.layout-two {
+  grid-template-columns: 38% minmax(0, 1fr);
+}
+
+.policy-grid.layout-three {
+  grid-template-columns: 24% 24% minmax(0, 1fr);
+}
+
+.policy-section,
+.file-section,
+.viewer-section {
+  min-width: 0;
+  max-width: 100%;
   box-sizing: border-box;
 }
 
-.policy-grid {
-  display: grid;
-  grid-template-columns: 26% 25% 49%;
-  gap: 20px;
-  height: calc(100vh - 40px);
-  max-height: calc(100vh - 40px);
+.viewer-section {
+  overflow: hidden;
 }
 
+.viewer-body {
+  min-width: 0;
+  max-width: 100%;
+}
+
+/* Desktop – three columns */
+.policy-grid.layout-one {
+  grid-template-columns: 1fr;
+}
+.policy-grid.layout-two {
+  grid-template-columns: 38% 62%;
+}
+.policy-grid.layout-three {
+  grid-template-columns: 24% 24% 52%;
+}
+
+/* Each column */
 .policy-section,
 .file-section,
 .viewer-section {
@@ -189,7 +216,7 @@
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  min-height: 0;              /* critical for flex scroll */
+  min-height: 0;
   height: 100%;
 }
 
@@ -203,12 +230,12 @@
 }
 
 /* ===== Viewer layout (clean version) ===== */
-.viewer-section {
+/* .viewer-section {
   display: flex;
   flex-direction: column;
   min-height: 0;
   height: 100%;
-}
+} */
 
 .viewer-header {
   background: #0f4c81;
@@ -420,8 +447,7 @@
 }
 /* SECTION */
 .policy-section,
-.file-section,
-.viewer-section {
+.file-section {
   background: #fff;
   border-radius: 12px;
   box-shadow: 0 5px 18px rgba(0, 0, 0, 0.08);
@@ -1202,9 +1228,21 @@
   grid-template-columns: 38% 62%;
 }
 .policy-grid.layout-three {
-  grid-template-columns: 24% 24% 52%;
+  grid-template-columns: 24% 24% minmax(0, 1fr);
+}
+.policy-grid {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
 }
 
+.policy-section,
+.file-section,
+.viewer-section {
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+}
 /* Each column must also allow internal scrolling */
 .policy-section,
 .file-section,
@@ -1315,5 +1353,122 @@
   to {
     opacity: 1;
     transform: translateY(0);
+  }
+}
+
+/* ========== RESPONSIVE – fix cut-off on smaller screens ========== */
+
+/* Tablets & smaller desktops */
+@media (max-width: 1200px) {
+  .policy-grid.layout-three {
+    grid-template-columns: 28% 28% 44%;
+  }
+  .policy-grid.layout-two {
+    grid-template-columns: 40% 60%;
+  }
+}
+
+/* Medium screens – stack policies + files, keep viewer full width below */
+@media (max-width: 992px) {
+  .policy-grid.layout-three {
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: auto 1fr;
+  }
+
+  .policy-grid.layout-three .policy-section {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .policy-grid.layout-three .file-section {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .policy-grid.layout-three .viewer-section {
+    grid-column: 1 / -1;   /* full width */
+    grid-row: 2;
+    min-height: 55vh;       /* give viewer enough height */
+  }
+
+  .policy-grid.layout-two {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+/* Mobile / small tablets – pure stack */
+@media (max-width: 768px) {
+  .employee-policy-page {
+    padding: 12px;
+    height: auto;
+    max-height: none;
+    overflow: auto;          /* allow page scroll on mobile */
+  }
+
+  .policy-grid,
+  .policy-grid.layout-one,
+  .policy-grid.layout-two,
+  .policy-grid.layout-three {
+    grid-template-columns: 1fr !important;
+    grid-template-rows: auto;
+    height: auto !important;
+    max-height: none !important;
+    gap: 16px;
+  }
+
+  .policy-section,
+  .file-section,
+  .viewer-section {
+    height: auto;
+    min-height: 280px;
+    max-height: none;
+  }
+
+  /* Viewer gets priority height when open */
+  .viewer-section {
+    min-height: 60vh;
+  }
+
+  /* Cards become single column */
+  .policy-cards.four-col,
+  .policy-cards.two-col {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Header + tabs stack nicely */
+  .employee-policy-header-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+
+  .employee-policy-tabs {
+    gap: 16px;
+    overflow-x: auto;
+    padding-bottom: 4px;
+  }
+
+  .employee-policy-search {
+    max-width: 100%;
+  }
+}
+
+/* Extra small phones */
+@media (max-width: 480px) {
+  .viewer-section {
+    min-height: 50vh;
+  }
+
+  .viewer-header {
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 12px;
+    font-size: 15px;
+  }
+
+  .viewer-download-btn,
+  .viewer-fullscreen-btn {
+    padding: 6px 10px;
+    font-size: 12px;
   }
 }

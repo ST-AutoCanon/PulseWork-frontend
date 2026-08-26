@@ -1,18 +1,6 @@
-.employee-policy-page {
-  background: #f4f6fb;
-  padding: 20px;
-  height: 100vh;
-  max-height: 100vh;
-  overflow: hidden;                 /* keep page from scrolling */
-  box-sizing: border-box;
-  display: flex;
-  flex-direction: column;           /* critical */
-  gap: 0;
-}
+
 /* ========== HEADER + TABS + SEARCH ========== */
-.employee-policy-header {
-  margin-bottom: 20px;
-}
+
 
 .employee-policy-title {
   font-size: 26px;
@@ -48,7 +36,88 @@
   user-select: none;
   white-space: nowrap;
 }
+/* ========== PAGE ========== */
+.employee-policy-page {
+  background: #f4f6fb;
+  padding: 20px;
+  height: 100%;                 /* was 100vh */
+  min-height: 100vh;
+  max-height: 100%;             /* allow parent to control */
+  overflow: hidden;             /* still prevent page scroll, children will scroll */
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
 
+/* Header takes only the space it needs */
+.employee-policy-header {
+  margin-bottom: 20px;
+  flex-shrink: 0;               /* never shrink */
+}
+
+/* ========== GRID – take remaining space instead of fixed vh ========== */
+.policy-grid {
+  display: grid;
+  gap: 20px;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  flex: 1;                      /* fill remaining height */
+  min-height: 0;                /* critical for nested scroll */
+  height: auto;                 /* remove calc(100vh - 40px) */
+  max-height: none;             /* remove max-height: calc(...) */
+  box-sizing: border-box;
+  transition: grid-template-columns 0.35s ease;
+}
+
+/* Keep the column layouts */
+.policy-grid.layout-one {
+  grid-template-columns: minmax(0, 1fr);
+}
+.policy-grid.layout-two {
+  grid-template-columns: 38% minmax(0, 1fr);
+}
+.policy-grid.layout-three {
+  grid-template-columns: 24% 24% minmax(0, 1fr);
+}
+
+/* Each panel must be able to shrink and scroll internally */
+.policy-section,
+.file-section,
+.viewer-section {
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 5px 18px rgba(0, 0, 0, 0.08);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;                /* critical */
+  height: 100%;                 /* fill the grid cell */
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+/* Policy cards list scrolls inside its section */
+.policy-cards {
+  display: grid;
+  gap: 15px;
+  padding: 18px;
+  overflow-y: auto;             /* this is the scroll area */
+  flex: 1;
+  min-height: 0;
+  align-content: start;
+}
+
+/* Viewer body also scrolls */
+.viewer-body {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+  overflow: hidden;             /* or auto if you prefer */
+  background: #fafafa;
+}
 .employee-policy-tab:hover {
   color: #0f4c81;
 }
@@ -146,96 +215,11 @@
     margin-bottom: 0;
   }
 }
-.employee-policy-page {
-  background: #f4f6fb;
-  padding: 20px;
-  min-height: 100vh;
-  font-family: "Segoe UI", sans-serif;
-}
+
 
 /* ========== DYNAMIC LAYOUT ========== */
-.policy-grid {
-  display: grid;
-  gap: 20px;
-  width: 100%;
-  max-width: 100%;
-  min-width: 0;
-  height: calc(100vh - 40px);
-  max-height: calc(100vh - 40px);
-  box-sizing: border-box;
-  transition: grid-template-columns 0.35s ease;
-}
 
-.policy-grid.layout-one {
-  grid-template-columns: minmax(0, 1fr);
-}
 
-.policy-grid.layout-two {
-  grid-template-columns: 38% minmax(0, 1fr);
-}
-
-.policy-grid.layout-three {
-  grid-template-columns: 24% 24% minmax(0, 1fr);
-}
-
-.policy-section,
-.file-section,
-.viewer-section {
-  min-width: 0;
-  max-width: 100%;
-  box-sizing: border-box;
-}
-
-.viewer-section {
-  overflow: hidden;
-}
-
-.viewer-body {
-  min-width: 0;
-  max-width: 100%;
-}
-
-/* Desktop – three columns */
-.policy-grid.layout-one {
-  grid-template-columns: 1fr;
-}
-.policy-grid.layout-two {
-  grid-template-columns: 38% 62%;
-}
-.policy-grid.layout-three {
-  grid-template-columns: 24% 24% 52%;
-}
-
-/* Each column */
-.policy-section,
-.file-section,
-.viewer-section {
-  background: #fff;
-  border-radius: 12px;
-  box-shadow: 0 5px 18px rgba(0, 0, 0, 0.08);
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
-  height: 100%;
-}
-
-.viewer-header {
-  background: #0f4c81;
-  color: white;
-  padding: 15px;
-  font-size: 17px;
-  font-weight: 600;
-  flex-shrink: 0;
-}
-
-/* ===== Viewer layout (clean version) ===== */
-/* .viewer-section {
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
-  height: 100%;
-} */
 
 .viewer-header {
   background: #0f4c81;
@@ -249,14 +233,7 @@
   flex-shrink: 0;
 }
 
-.viewer-body {
-  flex: 1;
-  min-height: 0;
-  position: relative;          /* critical for floating ack */
-  overflow: hidden;
-  background: #fafafa;
-  display: block;              /* not flex – let children size themselves */
-}
+
 
 /* Floating acknowledgement – sits on top of the file at the bottom */
 /* Floating acknowledgement – green theme */
@@ -604,7 +581,7 @@
 /* Wrapper */
 .ack-floating-wrapper {
   position: absolute;
-  bottom: 24px;
+  bottom: 84px;
   right: 24px;
   z-index: 50;
 }
@@ -1227,9 +1204,7 @@
 .policy-grid.layout-two {
   grid-template-columns: 38% 62%;
 }
-.policy-grid.layout-three {
-  grid-template-columns: 24% 24% minmax(0, 1fr);
-}
+
 .policy-grid {
   width: 100%;
   min-width: 0;

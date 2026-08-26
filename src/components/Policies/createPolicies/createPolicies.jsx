@@ -53,53 +53,106 @@ const CreatePolicyForm = ({
   };
 
   // Filtered lists
-  const filteredEmployees = employeeList.filter(emp =>
-    emp?.full_name?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredEmployees = (employeeList || []).filter((emp) =>
+  (emp?.full_name || "")
+    .toLowerCase()
+    .includes((searchTerm || "").toLowerCase())
+);
 
   const filteredDepartments = departmentList.filter(dept =>
     dept?.name?.toLowerCase().includes(departmentSearchTerm.toLowerCase())
   );
 
   // ==================== DEPARTMENT DOUBLE CLICK ====================
-  const handleDepartmentDoubleClick = async () => {
-    if (!selectedDepartment || selectionType !== "department") {
-     showAlert("Please select a department");
+  // ==================== DEPARTMENT DOUBLE CLICK ====================
+// Double-click a department:
+// - First time → add department + all its employees
+// - Already selected → re-fetch and merge any remaining (not-yet-assigned) employees
+const handleDepartmentDoubleClick = async () => {
+  if (!selectedDepartment || selectionType !== "department") {
+    showAlert("Please select a department");
+    return;
+  }
+
+  const department = departmentList.find(
+    (d) => String(d.id) === String(selectedDepartment)
+  );
+  if (!department) return showAlert("Invalid department");
+
+  const alreadySelected = selectedDepartments.some(
+    (d) => String(d.id) === String(department.id)
+  );
+
+  try {
+    const response = await axios.get(
+      `${BACKEND_URL}/api/compensations/employees/by-department/${selectedDepartment}`,
+      { withCredentials: true, headers }
+    );
+
+    if (!response.data.success) {
+      showAlert("Failed to load employees for this department.");
       return;
     }
 
-    const department = departmentList.find(d => String(d.id) === String(selectedDepartment));
-    if (!department) return showAlert("Invalid department");
+    const allEmployees = (Array.isArray(response.data.data)
+      ? response.data.data
+      : []
+    ).map((e) => ({
+      ...e,
+      employee_id: e.employee_id ?? e.id ?? e.employeeId ?? e.emp_id,
+      full_name:
+        e.full_name ??
+        e.name ??
+        e.employee_name ??
+        `Employee ${e.employee_id ?? e.id}`,
+    }));
 
-    if (selectedDepartments.some(d => d.id === department.id)) {
-      return showAlert("Department already selected");
+    if (allEmployees.length === 0) {
+      showAlert("No employees found in this department.");
+      return;
     }
 
-    try {
-      const response = await axios.get(
-        `${BACKEND_URL}/api/compensations/employees/by-department/${selectedDepartment}`,
-        { withCredentials: true, headers }
+    if (alreadySelected) {
+      // Merge only the employees not already under this department
+      const existing = employeesByDepartment[department.id] || [];
+      const existingIds = new Set(
+        existing.map((emp) => String(emp.employee_id))
+      );
+      const toAdd = allEmployees.filter(
+        (emp) => !existingIds.has(String(emp.employee_id))
       );
 
-      if (response.data.success) {
-        const employees = Array.isArray(response.data.data) ? response.data.data : [];
-        if (employees.length === 0) {
-          showAlert("No employees found in this department.");
-          return;
-        }
-
-        setSelectedDepartments(prev => [department, ...prev]);
-        setEmployeesByDepartment(prev => ({
-          ...prev,
-          [department.id]: employees,
-        }));
-        setSelectedDepartment("");
+      if (toAdd.length === 0) {
+        showAlert(
+          `All employees from "${department.name}" are already assigned`,
+          "Already Assigned"
+        );
+        return;
       }
-    } catch (error) {
-      console.error("Department fetch error:", error);
-      showAlert("Failed to load employees for this department.");
+
+      setEmployeesByDepartment((prev) => ({
+        ...prev,
+        [department.id]: [...existing, ...toAdd],
+      }));
+      setSelectedDepartment("");
+      showAlert(
+        `Added ${toAdd.length} more employee(s) from "${department.name}"`,
+        "Success"
+      );
+    } else {
+      // First time selecting this department
+      setSelectedDepartments((prev) => [department, ...prev]);
+      setEmployeesByDepartment((prev) => ({
+        ...prev,
+        [department.id]: allEmployees,
+      }));
+      setSelectedDepartment("");
     }
-  };
+  } catch (error) {
+    console.error("Department fetch error:", error);
+    showAlert("Failed to load employees for this department.");
+  }
+};
 const appendFilesToFormData = (filesArray, formData) => {
   filesArray.forEach((nf, index) => {
     formData.append("file", nf.file);
@@ -217,18 +270,43 @@ const appendFilesToFormData = (filesArray, formData) => {
   <div className="admin-policy-radio-group">
     {/* Individual Employees */}
     <label className="admin-policy-radio-label">
-      <input
-        type="radio"
-        checked={selectionType === "employee"}
-        onChange={() => {
-          setSelectionType("employee");
-          setSelectedDepartments([]);
-          setEmployeesByDepartment({});
-        }}
-      />
-      Individual Employees
-    </label>
+  <input
+    type="radio"
+    checked={selectionType === "employee"}
+    onChange={() => {
+      setSelectionType("employee");
 
+      // Carry over employees that were under the selected departments
+      const fromDepts = Object.values(employeesByDepartment || {}).flat();
+      if (fromDepts.length > 0) {
+        const seen = new Set();
+        const unique = [];
+        fromDepts.forEach((emp) => {
+          const id = String(emp.employee_id ?? emp.id);
+          if (id && !seen.has(id)) {
+            seen.add(id);
+            unique.push({
+              ...emp,
+              employee_id: emp.employee_id ?? emp.id,
+              full_name:
+                emp.full_name ||
+                emp.name ||
+                `Employee ${emp.employee_id ?? emp.id}`,
+            });
+          }
+        });
+        setSelectedEmployees(unique);
+      }
+
+      // Clear department state + search so the list shows correctly
+      setSelectedDepartments([]);
+      setEmployeesByDepartment({});
+      setSearchTerm("");
+      setDepartmentSearchTerm("");
+    }}
+  />
+  Individual Employees
+</label>
     {/* Departments */}
     <label className="admin-policy-radio-label">
       <input
@@ -247,12 +325,14 @@ const appendFilesToFormData = (filesArray, formData) => {
       <input
         type="radio"
         checked={selectionType === "all"}
-        onChange={() => {
-          setSelectionType("all");
-          setSelectedEmployees([]);
-          setSelectedDepartments([]);
-          setEmployeesByDepartment({});
-        }}
+      onChange={() => {
+  setSelectionType("all");
+  setSelectedEmployees([]);
+  setSelectedDepartments([]);
+  setEmployeesByDepartment({});
+  setSearchTerm("");
+  setDepartmentSearchTerm("");
+}}
       />
       Assign to All
     </label>
@@ -260,7 +340,7 @@ const appendFilesToFormData = (filesArray, formData) => {
 </div>
 
         {/* Employees Section */}
-      {selectionType === "employee" && (
+ {selectionType === "employee" && (
   <div className="admin-policy-section">
     <h4 className="admin-policy-section-subtitle">Select Employees</h4>
     <input
@@ -277,7 +357,9 @@ const appendFilesToFormData = (filesArray, formData) => {
       onDoubleClick={handleEmployeeDoubleClick}
       size={6}
     >
-      <option value="" disabled>Select an employee</option>
+      <option value="" disabled>
+        Select an employee
+      </option>
       {filteredEmployees.map((emp) => {
         const isAlreadySelected = selectedEmployees.some(
           (e) => String(e.employee_id) === String(emp.employee_id)
@@ -286,7 +368,11 @@ const appendFilesToFormData = (filesArray, formData) => {
           <option
             key={emp.employee_id}
             value={emp.employee_id}
-            style={isAlreadySelected ? { fontWeight: "bold", color: "#0a7" } : {}}
+            style={
+              isAlreadySelected
+                ? { fontWeight: "bold", color: "#0a7" }
+                : {}
+            }
           >
             {isAlreadySelected ? "✓ " : ""}
             {emp.full_name}
@@ -338,9 +424,26 @@ const appendFilesToFormData = (filesArray, formData) => {
               size={6}
             >
               <option value="" disabled>Select a department</option>
-              {filteredDepartments.map(dept => (
-                <option key={dept.id} value={dept.id}>{dept.name}</option>
-              ))}
+{filteredDepartments.map((dept) => {
+  const isAlreadySelected = selectedDepartments.some(
+    (d) => String(d.id) === String(dept.id)
+  );
+  return (
+    <option
+      key={dept.id}
+      value={dept.id}
+      style={
+        isAlreadySelected
+          ? { fontWeight: "bold", color: "#0a7" }
+          : {}
+      }
+    >
+      {isAlreadySelected ? "✓ " : ""}
+      {dept.name}
+      {isAlreadySelected ? " (Assigned)" : ""}
+    </option>
+  );
+})}
             </select>
 
             <h4 className="admin-policy-selected-title">
@@ -360,21 +463,27 @@ const appendFilesToFormData = (filesArray, formData) => {
                       </span>
                     </div>
 
-                    {employeesByDepartment[dept.id]?.length > 0 && (
-                      <div className="admin-policy-employees-under-dept">
-                        {employeesByDepartment[dept.id].map(emp => (
-                          <div key={emp.employee_id} className="admin-policy-employee-under-dept">
-                            <span>{emp.full_name}</span>
-                            <span
-                              onClick={() => removeEmployeeFromDepartment(dept.id, emp.employee_id)}
-                              className="admin-policy-remove-btn"
-                            >
-                              ✕
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                    )}
+                  {employeesByDepartment[dept.id]?.length > 0 && (
+  <div className="admin-policy-employees-under-dept">
+    {employeesByDepartment[dept.id].map((emp) => (
+      <div
+        key={emp.employee_id}
+        className="admin-policy-employee-under-dept"
+        style={{ fontWeight: "bold", color: "#0a7" }}  // green = already assigned
+      >
+        <span>✓ {emp.full_name}</span>
+        <span
+          onClick={() =>
+            removeEmployeeFromDepartment(dept.id, emp.employee_id)
+          }
+          className="admin-policy-remove-btn"
+        >
+          ✕
+        </span>
+      </div>
+    ))}
+  </div>
+)}
                   </div>
                 ))}
               </div>
@@ -923,6 +1032,7 @@ const [editingPolicyId, setEditingPolicyId] = useState(null);
   const [selectedDepartments, setSelectedDepartments] = useState([]);
   const [employeesByDepartment, setEmployeesByDepartment] = useState({});
   const [departmentSearchTerm, setDepartmentSearchTerm] = useState("");
+  
 const [fileInputKey, setFileInputKey] = useState(0);
   const [formData, setFormData] = useState({
     policyName: "",
@@ -986,7 +1096,18 @@ const handleReplaceFile = (file) => {
     file_type: file.file_type || "document",
     file: null,
     acknowledgement: file.acknowledgement_required === 1,
-    acknowledgementMessage: file.acknowledgement_message || ""
+    acknowledgementMessage: file.acknowledgement_message || "",
+    // Preserve previous permissions
+    allowView:
+      file.allow_view === 1 ||
+      file.allow_view === true ||
+      file.allow_view === "1" ||
+      file.allowView !== false,
+    allowDownload:
+      file.allow_download === 1 ||
+      file.allow_download === true ||
+      file.allow_download === "1" ||
+      !!file.allowDownload,
   });
 };
 const validateReplaceFileType = (file, selectedType) => {
@@ -1044,7 +1165,7 @@ const handleSaveReplace = async () => {
     );
   }
 
-  setReplaceLoading(true);          // ← use dedicated state
+  setReplaceLoading(true);
 
   try {
     const formData = new FormData();
@@ -1055,6 +1176,16 @@ const handleSaveReplace = async () => {
     formData.append(
       "acknowledgementMessage",
       replaceNewFile.acknowledgementMessage || ""
+    );
+
+    // Keep previous Allow View / Allow Download
+    formData.append(
+      "allow_view",
+      replaceNewFile.allowView !== false ? "1" : "0"
+    );
+    formData.append(
+      "allow_download",
+      replaceNewFile.allowDownload ? "1" : "0"
     );
 
     await axios.put(
@@ -1079,7 +1210,7 @@ const handleSaveReplace = async () => {
       "Error"
     );
   } finally {
-    setReplaceLoading(false);       // ← clear dedicated state
+    setReplaceLoading(false);
   }
 };
 // const getFieldName = (type) => {
@@ -1356,16 +1487,33 @@ const handleEditPolicy = async (policy) => {
     policy.assign_to_all === true ||
     policy.assign_to_all === "1";
 
+  // Helper: normalize + enrich employee from employeeList when possible
+  const normalizeAssignedEmployee = (e) => {
+    const id = String(e.employee_id ?? e.id ?? e.employeeId ?? e.emp_id ?? "");
+    const fromList = (employeeList || []).find(
+      (x) => String(x.employee_id) === id
+    );
+    return {
+      ...e,
+      ...(fromList || {}),
+      employee_id: id || String(e.employee_id ?? e.id ?? ""),
+      full_name:
+        fromList?.full_name ||
+        e.full_name ||
+        e.name ||
+        e.employee_name ||
+        `Employee ${id}`,
+    };
+  };
+
   if (isAssignToAll) {
     setSelectionType("all");
   } else if (assignments.departments?.length > 0) {
     setSelectionType("department");
 
-    // 1) Real department names from departmentList
+    // Real department names
     const enrichedDepts = (assignments.departments || []).map((d) => {
-      const full = departmentList.find(
-        (x) => String(x.id) === String(d.id)
-      );
+      const full = departmentList.find((x) => String(x.id) === String(d.id));
       return {
         id: d.id,
         name: full?.name || d.name || `Department ${d.id}`,
@@ -1373,8 +1521,17 @@ const handleEditPolicy = async (policy) => {
     });
     setSelectedDepartments(enrichedDepts);
 
-    // 2) Load employees under each department (same API as double-click)
+    // IDs of the employees that were really assigned
+    const assignedEmpIds = new Set(
+      (assignments.employees || []).map((e) =>
+        String(e.employee_id ?? e.id ?? e.employeeId ?? e.emp_id)
+      )
+    );
+
+    // Load each department, keep ONLY the assigned people
     const byDept = {};
+    const collectedEmployees = [];
+
     await Promise.all(
       enrichedDepts.map(async (dept) => {
         try {
@@ -1390,44 +1547,72 @@ const handleEditPolicy = async (policy) => {
               },
             }
           );
-          if (response.data.success) {
-            const emps = (response.data.data || []).map((e) => ({
-              ...e,
-              employee_id:
-                e.employee_id ?? e.id ?? e.employeeId ?? e.emp_id,
-              full_name:
-                e.full_name ??
-                e.name ??
-                e.employee_name ??
-                `Employee ${e.employee_id ?? e.id}`,
-            }));
-            byDept[dept.id] = emps;
-          } else {
-            byDept[dept.id] = [];
-          }
+
+          const allInDept = (response.data?.data || []).map((e) => ({
+            ...e,
+            employee_id: e.employee_id ?? e.id ?? e.employeeId ?? e.emp_id,
+            full_name:
+              e.full_name ??
+              e.name ??
+              e.employee_name ??
+              `Employee ${e.employee_id ?? e.id}`,
+          }));
+
+          const kept = allInDept.filter((emp) =>
+            assignedEmpIds.has(String(emp.employee_id))
+          );
+          byDept[dept.id] = kept;
+          collectedEmployees.push(...kept);
         } catch (err) {
           console.error("Failed to load employees for dept", dept.id, err);
           byDept[dept.id] = [];
         }
       })
     );
+
     setEmployeesByDepartment(byDept);
-  } else {
+
+    // Also populate selectedEmployees so they appear green in the
+    // Individual Employees dropdown (if user switches tabs)
+    const seen = new Set();
+    const uniqueSelected = [];
+    collectedEmployees.forEach((emp) => {
+      const id = String(emp.employee_id);
+      if (id && !seen.has(id)) {
+        seen.add(id);
+        uniqueSelected.push(normalizeAssignedEmployee(emp));
+      }
+    });
+    // Fallback if dept API returned nothing but assignments.employees has data
+    if (uniqueSelected.length === 0 && (assignments.employees || []).length > 0) {
+      (assignments.employees || []).forEach((e) => {
+        const norm = normalizeAssignedEmployee(e);
+        const id = String(norm.employee_id);
+        if (id && !seen.has(id)) {
+          seen.add(id);
+          uniqueSelected.push(norm);
+        }
+      });
+    }
+    setSelectedEmployees(uniqueSelected);
+  } else if ((assignments.employees || []).length > 0) {
+    // Pure individual-employee assignment
     setSelectionType("employee");
 
-    const enrichedEmployees = (assignments.employees || []).map((assigned) => {
-      const fullEmp = employeeList.find(
-        (e) => String(e.employee_id) === String(assigned.employee_id)
-      );
-      return {
-        employee_id: assigned.employee_id,
-        full_name:
-          fullEmp?.full_name ||
-          assigned.full_name ||
-          `Employee ${assigned.employee_id}`,
-      };
+    const seen = new Set();
+    const uniqueSelected = [];
+    (assignments.employees || []).forEach((e) => {
+      const norm = normalizeAssignedEmployee(e);
+      const id = String(norm.employee_id);
+      if (id && !seen.has(id)) {
+        seen.add(id);
+        uniqueSelected.push(norm);
+      }
     });
-    setSelectedEmployees(enrichedEmployees);
+    setSelectedEmployees(uniqueSelected);
+  } else {
+    // No assignments found – default to individual
+    setSelectionType("employee");
   }
 
   setEditingPolicyId(policy.id);

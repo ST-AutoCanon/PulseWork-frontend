@@ -58,6 +58,7 @@ const closeAlert = () => {
   setAlertModal({ isVisible: false, title: "", message: "" });
 };
   // helpers
+
   const getFileName = (file) =>
     file?.original_file_name || file?.file_name || "";
 
@@ -370,6 +371,29 @@ const handleAcknowledgement = async () => {
     showAlert(err.response?.data?.message || "Failed to save acknowledgement.");
   }
 };
+ const getTruncatedFileName = (fileName = "") => {
+  if (!fileName) return "No File Selected";
+
+  const cleaned = fileName.trim();
+
+  // Prefer splitting on spaces
+  let parts = cleaned.split(/\s+/);
+
+  // If no spaces, try splitting on common separators
+  if (parts.length === 1) {
+    parts = cleaned.split(/[_\-\.]/);
+  }
+
+  if (parts.length > 2) {
+    return parts.slice(0, 2).join(" ") + "...";
+  }
+
+  // Final fallback: character limit
+  const maxLength = 28;
+  if (cleaned.length <= maxLength) return cleaned;
+
+  return cleaned.substring(0, maxLength) + "...";
+};
 const handleFileClick = (file) => {
   setSelectedFile(file);
   setAckChecked(false); // reset checkbox
@@ -591,8 +615,9 @@ const handleFileClick = (file) => {
      {selectedFile && (
   <div className={`viewer-section ${isFullscreen ? "viewer-fullscreen" : ""}`}>
           <div className="viewer-header">
-  <span>{getFileName(selectedFile) || "No File Selected"}</span>
-
+<span title={getFileName(selectedFile) || "No File Selected"}>
+  {getTruncatedFileName(getFileName(selectedFile))}
+</span>
   <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
     {/* Download button (keep existing) */}
     {Number(selectedFile.allow_download) === 1 && (

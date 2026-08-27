@@ -39,7 +39,7 @@ const CreatePolicyForm = ({
 }) => {
   const [selectedEmployee, setSelectedEmployee] = useState("");
   const [selectedDepartment, setSelectedDepartment] = useState("");
-
+const [allEmployeesByDepartment, setAllEmployeesByDepartment] = useState({});
 
   const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
   const API_KEY = process.env.NEXT_PUBLIC_API_KEY;
@@ -112,35 +112,22 @@ const handleDepartmentDoubleClick = async () => {
       return;
     }
 
+    // Always store the FULL list (used for rendering + colors)
+    setAllEmployeesByDepartment((prev) => ({
+      ...prev,
+      [department.id]: allEmployees,
+    }));
+
     if (alreadySelected) {
-      // Merge only the employees not already under this department
-      const existing = employeesByDepartment[department.id] || [];
-      const existingIds = new Set(
-        existing.map((emp) => String(emp.employee_id))
-      );
-      const toAdd = allEmployees.filter(
-        (emp) => !existingIds.has(String(emp.employee_id))
-      );
-
-      if (toAdd.length === 0) {
-        showAlert(
-          `All employees from "${department.name}" are already assigned`,
-          "Already Assigned"
-        );
-        return;
-      }
-
-      setEmployeesByDepartment((prev) => ({
-        ...prev,
-        [department.id]: [...existing, ...toAdd],
-      }));
+      // ============================================
+      // ALREADY SELECTED → Just refresh the full list
+      // Do NOT auto-add missing employees
+      // Do NOT show popup
+      // ============================================
       setSelectedDepartment("");
-      showAlert(
-        `Added ${toAdd.length} more employee(s) from "${department.name}"`,
-        "Success"
-      );
+      // Nothing else — colors will update automatically
     } else {
-      // First time selecting this department
+      // First time → add department + assign ALL employees by default
       setSelectedDepartments((prev) => [department, ...prev]);
       setEmployeesByDepartment((prev) => ({
         ...prev,
@@ -183,14 +170,19 @@ const appendFilesToFormData = (filesArray, formData) => {
     setSelectedEmployees(prev => prev.filter(emp => emp.employee_id !== employeeId));
   };
 
-  const removeDepartment = (departmentId) => {
-    setSelectedDepartments(prev => prev.filter(d => d.id !== departmentId));
-    setEmployeesByDepartment(prev => {
-      const updated = { ...prev };
-      delete updated[departmentId];
-      return updated;
-    });
-  };
+const removeDepartment = (departmentId) => {
+  setSelectedDepartments((prev) => prev.filter((d) => d.id !== departmentId));
+  setEmployeesByDepartment((prev) => {
+    const updated = { ...prev };
+    delete updated[departmentId];
+    return updated;
+  });
+  setAllEmployeesByDepartment((prev) => {
+    const updated = { ...prev };
+    delete updated[departmentId];
+    return updated;
+  });
+};
 
   const removeEmployeeFromDepartment = (departmentId, employeeId) => {
     setEmployeesByDepartment(prev => {
@@ -301,6 +293,8 @@ const appendFilesToFormData = (filesArray, formData) => {
       // Clear department state + search so the list shows correctly
       setSelectedDepartments([]);
       setEmployeesByDepartment({});
+      setAllEmployeesByDepartment({});
+      setAllEmployeesByDepartment({});
       setSearchTerm("");
       setDepartmentSearchTerm("");
     }}
@@ -330,6 +324,7 @@ const appendFilesToFormData = (filesArray, formData) => {
   setSelectedEmployees([]);
   setSelectedDepartments([]);
   setEmployeesByDepartment({});
+  setAllEmployeesByDepartment({});
   setSearchTerm("");
   setDepartmentSearchTerm("");
 }}
@@ -463,25 +458,70 @@ const appendFilesToFormData = (filesArray, formData) => {
                       </span>
                     </div>
 
-                  {employeesByDepartment[dept.id]?.length > 0 && (
+{allEmployeesByDepartment[dept.id]?.length > 0 && (
   <div className="admin-policy-employees-under-dept">
-    {employeesByDepartment[dept.id].map((emp) => (
-      <div
-        key={emp.employee_id}
-        className="admin-policy-employee-under-dept"
-        style={{ fontWeight: "bold", color: "#0a7" }}  // green = already assigned
-      >
-        <span>✓ {emp.full_name}</span>
-        <span
-          onClick={() =>
-            removeEmployeeFromDepartment(dept.id, emp.employee_id)
-          }
-          className="admin-policy-remove-btn"
+    {allEmployeesByDepartment[dept.id].map((emp) => {
+      const isAssigned = (employeesByDepartment[dept.id] || []).some(
+        (e) => String(e.employee_id) === String(emp.employee_id)
+      );
+
+      return (
+        <div
+          key={emp.employee_id}
+          className="admin-policy-employee-under-dept"
+          style={{
+            fontWeight: isAssigned ? "bold" : "normal",
+            color: isAssigned ? "#0a7" : "#e74c3c",
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            padding: "6px 4px",
+            cursor: "pointer",
+            borderRadius: "4px",
+            transition: "background 0.15s",
+          }}
+          onClick={() => {
+            if (isAssigned) {
+              // Click on green → remove assignment
+              removeEmployeeFromDepartment(dept.id, emp.employee_id);
+            } else {
+              // Click on red → assign this employee
+              setEmployeesByDepartment((prev) => {
+                const existing = prev[dept.id] || [];
+                // prevent duplicate
+                if (existing.some((e) => String(e.employee_id) === String(emp.employee_id))) {
+                  return prev;
+                }
+                return {
+                  ...prev,
+                  [dept.id]: [...existing, emp],
+                };
+              });
+            }
+          }}
+          title={isAssigned ? "Click to remove assignment" : "Click to assign"}
         >
-          ✕
-        </span>
-      </div>
-    ))}
+          <span>
+            {isAssigned ? "✓ " : "○ "}
+            {emp.full_name}
+            {isAssigned ? " (Assigned)" : " (Not Assigned)"}
+          </span>
+
+          {isAssigned && (
+            <span
+              className="admin-policy-remove-btn"
+              style={{ marginLeft: 8 }}
+              onClick={(e) => {
+                e.stopPropagation(); // prevent double trigger
+                removeEmployeeFromDepartment(dept.id, emp.employee_id);
+              }}
+            >
+              ✕
+            </span>
+          )}
+        </div>
+      );
+    })}
   </div>
 )}
                   </div>
@@ -1530,6 +1570,7 @@ const handleEditPolicy = async (policy) => {
 
     // Load each department, keep ONLY the assigned people
     const byDept = {};
+    const allByDept = {};
     const collectedEmployees = [];
 
     await Promise.all(
@@ -1557,7 +1598,7 @@ const handleEditPolicy = async (policy) => {
               e.employee_name ??
               `Employee ${e.employee_id ?? e.id}`,
           }));
-
+allByDept[dept.id] = allInDept;
           const kept = allInDept.filter((emp) =>
             assignedEmpIds.has(String(emp.employee_id))
           );
@@ -1565,7 +1606,7 @@ const handleEditPolicy = async (policy) => {
           collectedEmployees.push(...kept);
         } catch (err) {
           console.error("Failed to load employees for dept", dept.id, err);
-          byDept[dept.id] = [];
+          byDept[dept.id] = [];allByDept[dept.id] = [];
         }
       })
     );
@@ -1892,6 +1933,7 @@ const handleDeleteFile = async (fileId) => {
   
 isEditing={isEditing}                 // ← NEW
   setIsEditing={setIsEditing}
+  showAlert={showAlert}
       />
     </div>
   </div>

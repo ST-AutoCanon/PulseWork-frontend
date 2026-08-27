@@ -751,7 +751,7 @@
   background: #047857;
 }
 
-.viewer-header {
+/* .viewer-header {
   background: #0f4c81;
   color: white;
   padding: 15px;
@@ -760,7 +760,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-}
+} */
 
 .viewer-footer {
   padding: 12px 15px;

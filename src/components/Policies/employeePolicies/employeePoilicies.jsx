@@ -95,7 +95,7 @@ const closeAlert = () => {
     if (name.includes("policy") || name.includes("guideline") || name.includes("rule"))
       return <FaClipboardList className="policy-icon" />;
 
-    
+    // fallback rotation so every card is not the same
     const fallbacks = [FaBookOpen, FaShieldAlt, FaClipboardList, FaUsers];
     const index = Math.abs(
       policyName.split("").reduce((a, c) => a + c.charCodeAt(0), 0)
@@ -104,7 +104,7 @@ const closeAlert = () => {
     return <Icon className="policy-icon" />;
   };
 
-
+  // ----- File type icon -----
   const getFileIcon = (file) => {
     const name = getFileName(file);
 
@@ -119,6 +119,7 @@ const closeAlert = () => {
     return <FaFileAlt className="file-icon generic" />;
   };
 
+  // Clean up previous object URL
   useEffect(() => {
     return () => {
       if (fileUrl) URL.revokeObjectURL(fileUrl);
@@ -600,7 +601,7 @@ const handleFileClick = (file) => {
         onClick={() => handleDownload(selectedFile)}
         title="Download file"
       >
-        <FaDownload /> Download
+        <FaDownload /> 
       </button>
     )}
 

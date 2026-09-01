@@ -186,12 +186,28 @@ export default function ProtectedLayout({ children }) {
             message: parsed.message,
           });
           sessionStorage.removeItem("attendanceReminder");
+          return;
         }
       }
     } catch {}
 
     const employeeId = user?.employeeId || user?.id || user?.employee_id;
     const orgId = user?.orgId || user?.org_id || user?.Org_id;
+    const normalizedRole = String(user?.role ?? "")
+      .trim()
+      .toLowerCase();
+    const isAdminLikeUser = ["admin", "super admin", "superadmin"].includes(
+      normalizedRole,
+    );
+
+    if (isAdminLikeUser) {
+      punchAlertKeyRef.current = null;
+      setPunchAlert(null);
+      try {
+        sessionStorage.removeItem("attendanceReminder");
+      } catch {}
+      return;
+    }
 
     if (!employeeId || !orgId) {
       punchAlertKeyRef.current = null;
@@ -219,144 +235,51 @@ export default function ProtectedLayout({ children }) {
           return `${y}-${m}-${d}`;
         };
 
-        const recentDates = Array.from({ length: 5 }, (_, index) => {
-          const date = new Date();
-          date.setHours(0, 0, 0, 0);
-          date.setDate(date.getDate() - index);
-          return toDateKey(date);
-        });
+        const yesterday = new Date();
+        yesterday.setHours(0, 0, 0, 0);
+        yesterday.setDate(yesterday.getDate() - 1);
+        const targetDateKey = toDateKey(yesterday);
 
-        const getRecords = async (dateKey) => {
-          try {
-            const response = await axios.get(
-              `${process.env.NEXT_PUBLIC_BACKEND_URL}/attendance/employee/${encodeURIComponent(employeeId)}/punch-records?date=${encodeURIComponent(dateKey)}`,
-              { withCredentials: true, headers: dateHeaders },
-            );
+        try {
+          const response = await axios.get(
+            `${process.env.NEXT_PUBLIC_BACKEND_URL}/attendance/employee/${encodeURIComponent(employeeId)}/punch-records?date=${encodeURIComponent(targetDateKey)}`,
+            { withCredentials: true, headers: dateHeaders },
+          );
 
-            const payload = response?.data?.data || {};
-            const records = Array.isArray(payload.records)
-              ? payload.records
-              : Array.isArray(payload)
-                ? payload
-                : [];
+          const payload = response?.data?.data || {};
+          const records = Array.isArray(payload.records)
+            ? payload.records
+            : Array.isArray(payload)
+              ? payload
+              : [];
 
-            return {
-              date: dateKey,
-              records,
-              hasPunchIn: records.some((record) => {
-                const raw = record?.punchin_time ?? record?.punchinTime ?? null;
-                return Boolean(raw);
-              }),
-              hasPunchOut: records.some((record) => {
-                const raw =
-                  record?.punchout_time ?? record?.punchoutTime ?? null;
-                return Boolean(raw);
-              }),
-              hasOpenPunch: records.some((record) => {
-                const status = String(record?.punch_status ?? "").trim();
-                const punchMode = String(
-                  record?.punchmode ?? record?.punchMode ?? "",
-                )
-                  .trim()
-                  .toLowerCase();
-                const punchoutTime =
-                  record?.punchout_time ?? record?.punchoutTime ?? null;
-                const punchinTime =
-                  record?.punchin_time ?? record?.punchinTime ?? null;
-                const punchoutDevice = String(
-                  record?.punchout_device ?? record?.punchoutDevice ?? "",
-                )
-                  .trim()
-                  .toLowerCase();
-                const punchoutLocation = String(
-                  record?.punchout_location ?? record?.punchoutLocation ?? "",
-                )
-                  .trim()
-                  .toLowerCase();
+          if (cancelled) return;
 
-                return (
-                  status === "Punch In" ||
-                  (!!punchinTime && !punchoutTime) ||
-                  (!!punchinTime &&
-                    (punchMode === "automatic" ||
-                      punchoutDevice === "automatic" ||
-                      punchoutLocation === "automatic"))
-                );
-              }),
-            };
-          } catch (error) {
-            if (error?.response?.status === 404) {
-              return {
-                date: dateKey,
-                records: [],
-                hasPunchIn: false,
-                hasPunchOut: false,
-                hasOpenPunch: false,
-              };
-            }
-
-            if (error?.response?.status === 400) {
-              return {
-                date: dateKey,
-                records: [],
-                hasPunchIn: false,
-                hasPunchOut: false,
-                hasOpenPunch: false,
-              };
-            }
-
-            console.error(`Failed to fetch attendance for ${dateKey}:`, error);
-            return {
-              date: dateKey,
-              records: [],
-              hasPunchIn: false,
-              hasPunchOut: false,
-              hasOpenPunch: false,
-            };
-          }
-        };
-
-        const settledDates = await Promise.allSettled(
-          recentDates.map((dateKey) => getRecords(dateKey)),
-        );
-
-        if (cancelled) return;
-
-        const messages = [];
-
-        settledDates.forEach((result) => {
-          if (result.status !== "fulfilled") return;
-
-          const status = result.value || {
-            date: "",
-            records: [],
-            hasPunchIn: false,
-            hasPunchOut: false,
-            hasOpenPunch: false,
-          };
-          if (!status.records?.length) {
-            messages.push(
-              "Punch-in missed for this date. Please raise attendance regularisation.",
-            );
+          if (!records.length) {
+            setPunchAlert({
+              title: "Attendance reminder",
+              message:
+                "Punch-in missed for yesterday. Please raise attendance regularisation.",
+            });
             return;
           }
 
-          if (!status.hasPunchIn) {
-            messages.push(
-              "Punch-in missed. Please raise attendance regularisation.",
-            );
-          }
+          const hasPunchIn = records.some((record) => {
+            const raw = record?.punchin_time ?? record?.punchinTime ?? null;
+            return Boolean(raw);
+          });
 
-          const missedPunchOut = status.records.some((record) => {
-            const punchinTime =
-              record?.punchin_time ?? record?.punchinTime ?? null;
-            const punchoutTime =
-              record?.punchout_time ?? record?.punchoutTime ?? null;
+          const hasOpenPunch = records.some((record) => {
+            const status = String(record?.punch_status ?? "").trim();
             const punchMode = String(
               record?.punchmode ?? record?.punchMode ?? "",
             )
               .trim()
               .toLowerCase();
+            const punchoutTime =
+              record?.punchout_time ?? record?.punchoutTime ?? null;
+            const punchinTime =
+              record?.punchin_time ?? record?.punchinTime ?? null;
             const punchoutDevice = String(
               record?.punchout_device ?? record?.punchoutDevice ?? "",
             )
@@ -369,49 +292,40 @@ export default function ProtectedLayout({ children }) {
               .toLowerCase();
 
             return (
-              Boolean(punchinTime) &&
-              (punchMode === "automatic" ||
-                punchoutDevice === "automatic" ||
-                punchoutLocation === "automatic" ||
-                (!punchoutTime && status.hasOpenPunch))
+              status === "Punch In" ||
+              (!!punchinTime && !punchoutTime) ||
+              (!!punchinTime &&
+                (punchMode === "automatic" ||
+                  punchoutDevice === "automatic" ||
+                  punchoutLocation === "automatic"))
             );
           });
 
-          if ((status.hasOpenPunch && !status.hasPunchOut) || missedPunchOut) {
-            messages.push(
-              "Punch-out missed. Please raise attendance regularisation.",
-            );
+          if (hasPunchIn && hasOpenPunch) {
+            setPunchAlert({
+              title: "Attendance reminder",
+              message:
+                "Punch-out missed. Please raise attendance regularisation.",
+            });
           }
-        });
-
-        if (!messages.length) {
-          const todayOnly =
-            settledDates[0]?.status === "fulfilled"
-              ? settledDates[0].value
-              : null;
-          const emptyPayload =
-            !todayOnly?.records?.length &&
-            !todayOnly?.hasPunchIn &&
-            !todayOnly?.hasPunchOut &&
-            !todayOnly?.hasOpenPunch;
-          if (emptyPayload) {
-            messages.push(
-              "Punch-in missed for this date. Please raise attendance regularisation.",
-            );
+        } catch (error) {
+          if (
+            error?.response?.status === 404 ||
+            error?.response?.status === 400
+          ) {
+            if (cancelled) return;
+            setPunchAlert({
+              title: "Attendance reminder",
+              message:
+                "Punch-in missed for yesterday. Please raise attendance regularisation.",
+            });
+            return;
           }
-        }
 
-        if (messages.length) {
-          const uniqueMessages = [...new Set(messages)];
-          const message =
-            uniqueMessages.length > 1
-              ? "Punch-in or punch-out missed. Please raise attendance regularisation."
-              : uniqueMessages[0];
-
-          setPunchAlert({
-            title: "Attendance reminder",
-            message,
-          });
+          console.error(
+            `Failed to fetch attendance for ${targetDateKey}:`,
+            error,
+          );
         }
       } catch (error) {
         console.error("Unable to check punch status after login:", error);
@@ -430,6 +344,7 @@ export default function ProtectedLayout({ children }) {
     user?.orgId,
     user?.org_id,
     user?.Org_id,
+    user?.role,
   ]);
 
   return (

@@ -752,8 +752,14 @@ export default function Login({ onClose }) {
       try {
         const employeeId = minimalUser?.employeeId || minimalUser?.id;
         const orgId = minimalUser?.orgId || minimalUser?.org_id;
+        const role = String(minimalUser?.role ?? "")
+          .trim()
+          .toLowerCase();
+        const isAdminLikeUser = ["admin", "super admin", "superadmin"].includes(
+          role,
+        );
 
-        if (employeeId && orgId) {
+        if (!isAdminLikeUser && employeeId && orgId) {
           const yesterday = new Date();
           yesterday.setDate(yesterday.getDate() - 1);
           const ymd = `${yesterday.getFullYear()}-${String(

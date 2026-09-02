@@ -760,6 +760,22 @@ export default function Login({ onClose }) {
         );
 
         if (!isAdminLikeUser && employeeId && orgId) {
+          const attendanceUrl = `${process.env.NEXT_PUBLIC_BACKEND_URL}/attendance/employee/${encodeURIComponent(employeeId)}`;
+          const attendanceHeaders = {
+            "x-api-key": process.env.NEXT_PUBLIC_API_KEY,
+            "x-org-id": String(orgId),
+            "x-employee-id": String(employeeId),
+          };
+          const historyResponse = await fetch(attendanceUrl, {
+            credentials: "include",
+            headers: attendanceHeaders,
+          });
+          const historyResult = await historyResponse.json().catch(() => null);
+          const hasPriorAttendance =
+            historyResponse.ok && Array.isArray(historyResult?.data)
+              ? historyResult.data.length > 0
+              : true;
+
           const yesterday = new Date();
           yesterday.setDate(yesterday.getDate() - 1);
           const ymd = `${yesterday.getFullYear()}-${String(
@@ -770,11 +786,7 @@ export default function Login({ onClose }) {
             `${process.env.NEXT_PUBLIC_BACKEND_URL}/attendance/employee/${encodeURIComponent(employeeId)}/punch-records?date=${encodeURIComponent(ymd)}`,
             {
               credentials: "include",
-              headers: {
-                "x-api-key": process.env.NEXT_PUBLIC_API_KEY,
-                "x-org-id": String(orgId),
-                "x-employee-id": String(employeeId),
-              },
+              headers: attendanceHeaders,
             },
           );
 
@@ -806,9 +818,11 @@ export default function Login({ onClose }) {
             };
 
             if (!records.length) {
-              queueAttendanceReminder(
-                "Punch-in missed for yesterday. Please raise attendance regularisation.",
-              );
+              if (hasPriorAttendance) {
+                queueAttendanceReminder(
+                  "Punch-in missed for yesterday. Please raise attendance regularisation.",
+                );
+              }
             } else {
               const hasPunchIn = records.some(
                 (record) => !!(record?.punchin_time || record?.punchinTime),

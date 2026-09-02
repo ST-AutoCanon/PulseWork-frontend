@@ -241,6 +241,16 @@ export default function ProtectedLayout({ children }) {
         const targetDateKey = toDateKey(yesterday);
 
         try {
+          const historyResponse = await axios.get(
+            `${process.env.NEXT_PUBLIC_BACKEND_URL}/attendance/employee/${encodeURIComponent(employeeId)}`,
+            { withCredentials: true, headers: dateHeaders },
+          );
+          const historyRecords = Array.isArray(historyResponse?.data?.data)
+            ? historyResponse.data.data
+            : [];
+
+          if (!historyRecords.length) return;
+
           const response = await axios.get(
             `${process.env.NEXT_PUBLIC_BACKEND_URL}/attendance/employee/${encodeURIComponent(employeeId)}/punch-records?date=${encodeURIComponent(targetDateKey)}`,
             { withCredentials: true, headers: dateHeaders },

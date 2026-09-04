@@ -781,7 +781,7 @@ const AdminQuery = () => {
                   </div>
 
                   <button
-                    className="submit-btn"
+                    className="ad-submit-btn"
                     onClick={sendMessage}
                     disabled={selectedQuery.status === "closed"}
                   >

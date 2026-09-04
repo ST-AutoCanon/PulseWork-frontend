@@ -1,6 +1,7 @@
 .admin-query-container {
   display: flex;
   flex-direction: column;
+  background-color: #ddd;
   height: 100vh;
   width: 100%;
 }
@@ -334,7 +335,7 @@
   color: #333;
 }
 
-.submit-btn {
+.ad-submit-btn {
   background-color: #7fbd2c;
   width: 10%;
   color: white;
@@ -342,28 +343,29 @@
   padding: 1.5% 2%;
   border-radius: 5px;
   cursor: pointer;
+  text-align: center;
   transition:
     background-color 0.3s ease,
     transform 0.1s ease,
     box-shadow 0.3s ease;
 }
 
-.submit-btn:hover {
+.ad-submit-btn:hover {
   background-color: #68a822;
   box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
 }
 
-.submit-btn:active {
+.ad-submit-btn:active {
   transform: scale(0.98);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
 }
 
-.submit-btn:focus {
+.ad-submit-btn:focus {
   outline: 2px solid #ffca28;
   outline-offset: 2px;
 }
 
-.chat-input .submit-btn:disabled {
+.chat-input .ad-submit-btn:disabled {
   background-color: #ccc;
   cursor: not-allowed;
 }

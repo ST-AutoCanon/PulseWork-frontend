@@ -64,14 +64,30 @@ const WeeklyTaskPlanner = ({
     return `${d.getFullYear()}-${String(weekNo).padStart(2, "0")}`;
   };
   const weekId = getISOWeekNumber(startDate);
+  // Locale-independent short month names (always English) so date strings
+  // and comparisons work the same for every employee / browser language.
+  const MONTH_SHORT = [
+    "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+    "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+  ];
+  const formatDateStr = (d) =>
+    `${d.getDate()} ${MONTH_SHORT[d.getMonth()]}`;
+  // Resolve a display date string (e.g. "5 Sep") back to a real Date object
+  // for the currently viewed week. Handles year-boundary weeks correctly.
+  const getDateFromStr = (dateStr) => {
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(startDate);
+      d.setDate(startDate.getDate() + i);
+      d.setHours(0, 0, 0, 0);
+      if (formatDateStr(d) === dateStr) return d;
+    }
+    return null;
+  };
   const weekDates = [];
   for (let i = 0; i < 7; i++) {
     const d = new Date(startDate);
     d.setDate(startDate.getDate() + i);
-    const dateStr = `${d.getDate()} ${d.toLocaleString("default", {
-      month: "short",
-    })}`;
-    weekDates.push(dateStr);
+    weekDates.push(formatDateStr(d));
   }
   const [tasksData, setTasksData] = useState(
     weekDates.map((date) => ({ date, tasks: [] }))
@@ -237,11 +253,13 @@ const WeeklyTaskPlanner = ({
     return task <= today;
   };
   const getTaskDateStyle = (dateStr) => {
-    const [day, month] = dateStr.split(" ");
-    const year = startDate.getFullYear();
-    const monthIndex = new Date(`${month} 1, ${year}`).getMonth();
-    const taskDate = new Date(year, monthIndex, parseInt(day));
-    taskDate.setHours(0, 0, 0, 0);
+    const taskDate = getDateFromStr(dateStr);
+    if (!taskDate) {
+      return {
+        className: "week-task-day-date week-task-day-date-regular",
+        tooltip: dateStr,
+      };
+    }
     const isApprovedLeave = approvedLeaves.some((leave) => {
       const start = new Date(leave.start_date);
       const end = new Date(leave.end_date);
@@ -431,11 +449,7 @@ const WeeklyTaskPlanner = ({
         date,
         tasks: filtered.filter((t) => {
           const td = new Date(t.task_date);
-          return (
-            `${td.getDate()} ${td.toLocaleString("default", {
-              month: "short",
-            })}` === date
-          );
+          return formatDateStr(td) === date;
         }),
       }));
       setTasksData(grouped);
@@ -664,11 +678,7 @@ const WeeklyTaskPlanner = ({
           setTasksData((prev) => {
             const copy = [...prev];
             const dayIdx = copy.findIndex(
-              (d) =>
-                d.date ===
-                `${nextDay.getDate()} ${nextDay.toLocaleString("default", {
-                  month: "short",
-                })}`
+              (d) => d.date === formatDateStr(nextDay)
             );
             if (dayIdx > -1) copy[dayIdx].tasks.push(nt);
             return copy;
@@ -870,13 +880,12 @@ const WeeklyTaskPlanner = ({
         url: `/api/week_tasks/${strikeTaskId}`,
         data: updated,
       });
-      const [day, month] = replacementData.date.split(" ");
-      const monthIdx =
-        new Date(`${month} 1, ${startDate.getFullYear()}`).getMonth() + 1;
-      const formatted = `${startDate.getFullYear()}-${String(monthIdx).padStart(
-        2,
-        "0"
-      )}-${String(day).padStart(2, "0")}`;
+      const taskDate = getDateFromStr(replacementData.date);
+      if (!taskDate) {
+        showAlert(`Invalid replacement date: ${replacementData.date}`);
+        return;
+      }
+      const formatted = formatDateIST(taskDate);
       const newTask = {
         week_id: weekId,
         task_date: formatted,
@@ -972,20 +981,13 @@ const WeeklyTaskPlanner = ({
     );
   };
   const isDateInCurrentOrFuture = (dateStr) => {
-  // dateStr format: "15 Feb"
-  const [day, monthShort] = dateStr.split(" ");
-  const monthMap = {
-    Jan: 0, Feb: 1, Mar: 2, Apr: 3, May: 4, Jun: 5,
-    Jul: 6, Aug: 7, Sep: 8, Oct: 9, Nov: 10, Dec: 11
+    // Use the real Date for this week day (locale-independent + year-safe)
+    const taskDate = getDateFromStr(dateStr);
+    if (!taskDate) return false;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return taskDate >= today;
   };
-  const month = monthMap[monthShort];
-  if (month === undefined) return false;
-  const taskDate = new Date(startDate.getFullYear(), month, parseInt(day));
-  taskDate.setHours(0, 0, 0, 0);
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  return taskDate >= today;
-};
   // const handleAssignSubmit = async () => {
   // const valid = assignTasks.filter(
   // (t) => t.projectId && t.taskName && t.dates.length > 0
@@ -1076,15 +1078,11 @@ const WeeklyTaskPlanner = ({
         [task.projectId]: task.projectName,
       }));
       for (const date of task.dates) {
-        const [day, month] = date.split(" ");
-        const monthIdx = new Date(
-          `${month} 1, ${startDate.getFullYear()}`
-        ).getMonth();
-        const taskDate = new Date(
-          startDate.getFullYear(),
-          monthIdx,
-          parseInt(day)
-        );
+        const taskDate = getDateFromStr(date);
+        if (!taskDate) {
+          showAlert(`Invalid date selected: ${date}`);
+          continue;
+        }
         const isoDate = formatDateIST(taskDate);
         const newTaskBase = {
           week_id: weekId,

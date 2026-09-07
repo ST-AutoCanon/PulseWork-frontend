@@ -530,6 +530,124 @@ import { useAuth } from "../../context/AuthProvider.client";
 const logoUrl = "/images/sukalpa_logo.png";
 const MASTER_ORG_VALUE = "__MASTER__";
 
+const toDateKey = (dateObj) => {
+  const y = dateObj.getFullYear();
+  const m = String(dateObj.getMonth() + 1).padStart(2, "0");
+  const d = String(dateObj.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+};
+
+/**
+ * Returns true → do NOT show / queue the missed-punch alert.
+ * Conditions: Sunday | holiday | leave applied | regularisation already submitted
+ */
+async function shouldSuppressMissedPunchAlert({
+  employeeId,
+  orgId,
+  targetDate,
+  headers,
+}) {
+  // 1. Sunday (local time)
+  if (targetDate.getDay() === 0) return true;
+
+  const dateKey = toDateKey(targetDate);
+  const base = process.env.NEXT_PUBLIC_BACKEND_URL;
+
+  // 2. Holiday – matches HolidayCalendar response shape (message or data)
+  try {
+    const holRes = await fetch(`${base}/holidays`, {
+      credentials: "include",
+      headers,
+    });
+    if (holRes.ok) {
+      const body = await holRes.json().catch(() => null);
+      const list = Array.isArray(body?.message)
+        ? body.message
+        : Array.isArray(body?.data)
+          ? body.data
+          : Array.isArray(body)
+            ? body
+            : [];
+      const isHoliday = list.some((h) => {
+        if (!h?.date) return false;
+        return new Date(h.date).toDateString() === targetDate.toDateString();
+      });
+      if (isHoliday) return true;
+    }
+  } catch (_) {}
+
+  // 3. Leave applied for the date
+  //    If 404, try: `${base}/leave/employee/leave/${encodeURIComponent(employeeId)}`
+  try {
+    const leaveRes = await fetch(
+      `${base}/employee/leave/${encodeURIComponent(employeeId)}`,
+      { credentials: "include", headers },
+    );
+    if (leaveRes.ok) {
+      const body = await leaveRes.json().catch(() => null);
+      const leaves = Array.isArray(body?.data)
+        ? body.data
+        : Array.isArray(body?.message)
+          ? body.message
+          : Array.isArray(body)
+            ? body
+            : [];
+
+      const onLeave = leaves.some((l) => {
+        const status = String(
+          l?.status ?? l?.leave_status ?? l?.leaveStatus ?? "",
+        ).toLowerCase();
+        if (["rejected", "cancelled", "canceled", "denied"].includes(status)) {
+          return false;
+        }
+        const from = String(
+          l?.from_date ?? l?.fromDate ?? l?.start_date ?? l?.startDate ?? "",
+        ).slice(0, 10);
+        const to = String(
+          l?.to_date ?? l?.toDate ?? l?.end_date ?? l?.endDate ?? from,
+        ).slice(0, 10);
+        return from && to && dateKey >= from && dateKey <= to;
+      });
+      if (onLeave) return true;
+    }
+  } catch (_) {}
+
+  // 4. Regularisation already submitted
+  //    Alternatives if 404: /regularisation/my-requests or /attendance-regularisation/my-requests
+  try {
+    const regRes = await fetch(`${base}/leave-regularisation/my-requests`, {
+      credentials: "include",
+      headers,
+    });
+    if (regRes.ok) {
+      const body = await regRes.json().catch(() => null);
+      const regs = Array.isArray(body?.data)
+        ? body.data
+        : Array.isArray(body?.message)
+          ? body.message
+          : Array.isArray(body)
+            ? body
+            : [];
+
+      const hasReg = regs.some((r) => {
+        const d =
+          r?.date ??
+          r?.attendance_date ??
+          r?.attendanceDate ??
+          r?.target_date ??
+          r?.targetDate ??
+          r?.from_date ??
+          r?.fromDate ??
+          null;
+        return d && String(d).slice(0, 10) === dateKey;
+      });
+      if (hasReg) return true;
+    }
+  } catch (_) {}
+
+  return false;
+}
+
 export default function Login({ onClose }) {
   const { login } = useAuth();
   const router = useRouter();
@@ -760,90 +878,104 @@ export default function Login({ onClose }) {
         );
 
         if (!isAdminLikeUser && employeeId && orgId) {
-          const attendanceUrl = `${process.env.NEXT_PUBLIC_BACKEND_URL}/attendance/employee/${encodeURIComponent(employeeId)}`;
           const attendanceHeaders = {
             "x-api-key": process.env.NEXT_PUBLIC_API_KEY,
             "x-org-id": String(orgId),
             "x-employee-id": String(employeeId),
           };
-          const historyResponse = await fetch(attendanceUrl, {
-            credentials: "include",
-            headers: attendanceHeaders,
-          });
-          const historyResult = await historyResponse.json().catch(() => null);
-          const hasPriorAttendance =
-            historyResponse.ok && Array.isArray(historyResult?.data)
-              ? historyResult.data.length > 0
-              : true;
 
           const yesterday = new Date();
+          yesterday.setHours(0, 0, 0, 0);
           yesterday.setDate(yesterday.getDate() - 1);
-          const ymd = `${yesterday.getFullYear()}-${String(
-            yesterday.getMonth() + 1,
-          ).padStart(2, "0")}-${String(yesterday.getDate()).padStart(2, "0")}`;
 
-          const response = await fetch(
-            `${process.env.NEXT_PUBLIC_BACKEND_URL}/attendance/employee/${encodeURIComponent(employeeId)}/punch-records?date=${encodeURIComponent(ymd)}`,
-            {
+          // Suppress reminder on Sunday / holiday / leave / regularisation
+          const suppress = await shouldSuppressMissedPunchAlert({
+            employeeId,
+            orgId,
+            targetDate: yesterday,
+            headers: attendanceHeaders,
+          });
+
+          if (!suppress) {
+            const attendanceUrl = `${process.env.NEXT_PUBLIC_BACKEND_URL}/attendance/employee/${encodeURIComponent(employeeId)}`;
+            const historyResponse = await fetch(attendanceUrl, {
               credentials: "include",
               headers: attendanceHeaders,
-            },
-          );
+            });
+            const historyResult = await historyResponse
+              .json()
+              .catch(() => null);
+            const hasPriorAttendance =
+              historyResponse.ok && Array.isArray(historyResult?.data)
+                ? historyResult.data.length > 0
+                : true;
 
-          if (response.ok) {
-            const result = await response.json().catch(() => null);
-            const records = result?.data?.records || [];
+            const ymd = toDateKey(yesterday);
 
-            const normalizeText = (value) =>
-              String(value ?? "")
-                .trim()
-                .toLowerCase();
+            const response = await fetch(
+              `${process.env.NEXT_PUBLIC_BACKEND_URL}/attendance/employee/${encodeURIComponent(employeeId)}/punch-records?date=${encodeURIComponent(ymd)}`,
+              {
+                credentials: "include",
+                headers: attendanceHeaders,
+              },
+            );
 
-            const isAutomaticPunchOut = (record) => {
-              const punchMode = normalizeText(
-                record?.punchmode ?? record?.punchMode,
-              );
-              const punchOutDevice = normalizeText(
-                record?.punchout_device ?? record?.punchoutDevice,
-              );
-              const punchOutLocation = normalizeText(
-                record?.punchout_location ?? record?.punchoutLocation,
-              );
+            if (response.ok) {
+              const result = await response.json().catch(() => null);
+              const records = result?.data?.records || [];
 
-              return (
-                punchMode === "automatic" ||
-                punchOutDevice === "automatic" ||
-                punchOutLocation === "automatic"
-              );
-            };
+              const normalizeText = (value) =>
+                String(value ?? "")
+                  .trim()
+                  .toLowerCase();
 
-            if (!records.length) {
-              if (hasPriorAttendance) {
-                queueAttendanceReminder(
-                  "Punch-in missed for yesterday. Please raise attendance regularisation.",
+              const isAutomaticPunchOut = (record) => {
+                const punchMode = normalizeText(
+                  record?.punchmode ?? record?.punchMode,
                 );
-              }
-            } else {
-              const hasPunchIn = records.some(
-                (record) => !!(record?.punchin_time || record?.punchinTime),
-              );
-              const hasOpenPunch = records.some((record) => {
-                const status = String(record?.punch_status ?? "").trim();
-                const punchinTime = record?.punchin_time || record?.punchinTime;
-                const punchoutTime =
-                  record?.punchout_time || record?.punchoutTime;
+                const punchOutDevice = normalizeText(
+                  record?.punchout_device ?? record?.punchoutDevice,
+                );
+                const punchOutLocation = normalizeText(
+                  record?.punchout_location ?? record?.punchoutLocation,
+                );
 
                 return (
-                  status === "Punch In" ||
-                  (!!punchinTime && !punchoutTime) ||
-                  (!!punchinTime && isAutomaticPunchOut(record))
+                  punchMode === "automatic" ||
+                  punchOutDevice === "automatic" ||
+                  punchOutLocation === "automatic"
                 );
-              });
+              };
 
-              if (hasPunchIn && hasOpenPunch) {
-                queueAttendanceReminder(
-                  "Punch-out missed. Please raise attendance regularisation.",
+              if (!records.length) {
+                if (hasPriorAttendance) {
+                  queueAttendanceReminder(
+                    "Punch-in missed for yesterday. Please raise attendance regularisation.",
+                  );
+                }
+              } else {
+                const hasPunchIn = records.some(
+                  (record) => !!(record?.punchin_time || record?.punchinTime),
                 );
+                const hasOpenPunch = records.some((record) => {
+                  const status = String(record?.punch_status ?? "").trim();
+                  const punchinTime =
+                    record?.punchin_time || record?.punchinTime;
+                  const punchoutTime =
+                    record?.punchout_time || record?.punchoutTime;
+
+                  return (
+                    status === "Punch In" ||
+                    (!!punchinTime && !punchoutTime) ||
+                    (!!punchinTime && isAutomaticPunchOut(record))
+                  );
+                });
+
+                if (hasPunchIn && hasOpenPunch) {
+                  queueAttendanceReminder(
+                    "Punch-out missed. Please raise attendance regularisation.",
+                  );
+                }
               }
             }
           }

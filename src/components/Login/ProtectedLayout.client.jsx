@@ -97,6 +97,117 @@ import Modal from "../Modal/Modal.client";
 const IDLE_TIMEOUT = 5 * 60 * 1000;
 const CHECK_INTERVAL = 60 * 1000;
 
+const toDateKey = (dateObj) => {
+  const y = dateObj.getFullYear();
+  const m = String(dateObj.getMonth() + 1).padStart(2, "0");
+  const d = String(dateObj.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+};
+
+/**
+ * Returns true → do NOT show the missed-punch alert.
+ * Conditions: Sunday | holiday | leave applied | regularisation already submitted
+ */
+async function shouldSuppressMissedPunchAlert({
+  employeeId,
+  orgId,
+  targetDate,
+  headers,
+}) {
+  // 1. Sunday (local time)
+  if (targetDate.getDay() === 0) return true;
+
+  const dateKey = toDateKey(targetDate);
+  const base = process.env.NEXT_PUBLIC_BACKEND_URL;
+
+  // 2. Holiday – matches HolidayCalendar: res.data.message or res.data
+  try {
+    const holRes = await axios.get(`${base}/holidays`, {
+      withCredentials: true,
+      headers,
+    });
+    const body = holRes?.data;
+    const list = Array.isArray(body?.message)
+      ? body.message
+      : Array.isArray(body?.data)
+        ? body.data
+        : Array.isArray(body)
+          ? body
+          : [];
+    const isHoliday = list.some((h) => {
+      if (!h?.date) return false;
+      // same comparison style as HolidayCalendar
+      return new Date(h.date).toDateString() === targetDate.toDateString();
+    });
+    if (isHoliday) return true;
+  } catch (_) {}
+
+  // 3. Leave applied for the date
+  try {
+    const leaveRes = await axios.get(
+      `${base}/employee/leave/${encodeURIComponent(employeeId)}`,
+      { withCredentials: true, headers },
+    );
+    const body = leaveRes?.data;
+    const leaves = Array.isArray(body?.data)
+      ? body.data
+      : Array.isArray(body?.message)
+        ? body.message
+        : Array.isArray(body)
+          ? body
+          : [];
+
+    const onLeave = leaves.some((l) => {
+      const status = String(
+        l?.status ?? l?.leave_status ?? l?.leaveStatus ?? "",
+      ).toLowerCase();
+      if (["rejected", "cancelled", "canceled", "denied"].includes(status)) {
+        return false;
+      }
+      const from = String(
+        l?.from_date ?? l?.fromDate ?? l?.start_date ?? l?.startDate ?? "",
+      ).slice(0, 10);
+      const to = String(
+        l?.to_date ?? l?.toDate ?? l?.end_date ?? l?.endDate ?? from,
+      ).slice(0, 10);
+      return from && to && dateKey >= from && dateKey <= to;
+    });
+    if (onLeave) return true;
+  } catch (_) {}
+
+  // 4. Regularisation already submitted
+  try {
+    const regRes = await axios.get(`${base}/leave-regularisation/my-requests`, {
+      withCredentials: true,
+      headers,
+    });
+    const body = regRes?.data;
+    const regs = Array.isArray(body?.data)
+      ? body.data
+      : Array.isArray(body?.message)
+        ? body.message
+        : Array.isArray(body)
+          ? body
+          : [];
+
+    const hasReg = regs.some((r) => {
+      const d =
+        r?.date ??
+        r?.attendance_date ??
+        r?.attendanceDate ??
+        r?.target_date ??
+        r?.targetDate ??
+        r?.from_date ??
+        r?.fromDate ??
+        null;
+      return d && String(d).slice(0, 10) === dateKey;
+    });
+    if (hasReg) return true;
+  } catch (_) {}
+
+  return false;
+}
+
 export default function ProtectedLayout({ children }) {
   const router = useRouter();
   const { user, logout, hydrated } = useAuth();
@@ -176,21 +287,6 @@ export default function ProtectedLayout({ children }) {
   }, [user, hydrated, logout]);
 
   useEffect(() => {
-    try {
-      const queued = sessionStorage.getItem("attendanceReminder");
-      if (queued) {
-        const parsed = JSON.parse(queued);
-        if (parsed?.message) {
-          setPunchAlert({
-            title: parsed.title || "Attendance reminder",
-            message: parsed.message,
-          });
-          sessionStorage.removeItem("attendanceReminder");
-          return;
-        }
-      }
-    } catch {}
-
     const employeeId = user?.employeeId || user?.id || user?.employee_id;
     const orgId = user?.orgId || user?.org_id || user?.Org_id;
     const normalizedRole = String(user?.role ?? "")
@@ -228,17 +324,43 @@ export default function ProtectedLayout({ children }) {
           "x-employee-id": String(employeeId),
         };
 
-        const toDateKey = (dateObj) => {
-          const y = dateObj.getFullYear();
-          const m = String(dateObj.getMonth() + 1).padStart(2, "0");
-          const d = String(dateObj.getDate()).padStart(2, "0");
-          return `${y}-${m}-${d}`;
-        };
-
         const yesterday = new Date();
         yesterday.setHours(0, 0, 0, 0);
         yesterday.setDate(yesterday.getDate() - 1);
         const targetDateKey = toDateKey(yesterday);
+
+        // Always evaluate suppress first (covers queued reminder from Login too)
+        const suppress = await shouldSuppressMissedPunchAlert({
+          employeeId,
+          orgId,
+          targetDate: yesterday,
+          headers: dateHeaders,
+        });
+
+        if (suppress) {
+          try {
+            sessionStorage.removeItem("attendanceReminder");
+          } catch {}
+          return;
+        }
+
+        if (cancelled) return;
+
+        // Show any reminder that Login already queued (only if not suppressed)
+        try {
+          const queued = sessionStorage.getItem("attendanceReminder");
+          if (queued) {
+            const parsed = JSON.parse(queued);
+            if (parsed?.message) {
+              setPunchAlert({
+                title: parsed.title || "Attendance reminder",
+                message: parsed.message,
+              });
+              sessionStorage.removeItem("attendanceReminder");
+              return;
+            }
+          }
+        } catch {}
 
         try {
           const historyResponse = await axios.get(

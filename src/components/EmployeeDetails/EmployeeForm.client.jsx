@@ -379,6 +379,7 @@ export default function EmployeeForm({
       if (!hasFileIn(maybeFiles)) {
         appendUrlArray(fd, urlField, maybeUrls || maybeFiles);
       } else {
+        appendUrlArray(fd, urlField, maybeUrls);
         if (Array.isArray(maybeFiles)) {
           for (const f of maybeFiles) {
             if (isFile(f)) fd.append(fileField, f, f.name);

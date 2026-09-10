@@ -15,7 +15,270 @@
   margin-right: auto;
   padding: 10px 0;
 }
+.vendor-header-buttons {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
 
+.vendor-registration-btn {
+  background: #198754;
+  color: white;
+  border: none;
+  padding: 10px 18px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.vendor-registration-btn:hover {
+  background: #157347;
+}
+
+.vendor-requests-btn {
+  background: #00468c;
+  color: white;
+  border: none;
+  padding: 10px 18px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.vendor-requests-btn:hover {
+  background: #003a6e;
+}
+
+.vendor-request-popup {
+  width: 80%;
+}
+
+.registration-request-list {
+  display: grid;
+  gap: 10px;
+}
+
+.registration-request-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 20px;
+  width: 100%;
+  padding: 14px 16px;
+  border: 1px solid #d7d7d7;
+  border-radius: 6px;
+  background: #fff;
+  color: #222;
+  text-align: left;
+  cursor: pointer;
+}
+
+.registration-request-item:hover {
+  border-color: #00468c;
+  background: #f4f8fc;
+}
+
+.registration-request-item.registration-request-rejected {
+  border-color: #f1b7b7;
+  background: #fff7f7;
+}
+
+.registration-request-item.registration-request-rejected:hover {
+  border-color: #c0392b;
+  background: #fff1f1;
+}
+
+.registration-request-company,
+.registration-request-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.registration-request-company strong {
+  color: #00468c;
+  font-size: 15px;
+}
+
+.registration-request-company small,
+.registration-request-meta small {
+  color: #687789;
+  font-size: 12px;
+}
+
+.registration-request-meta {
+  align-items: flex-end;
+  min-width: 110px;
+}
+
+.registration-status-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 74px;
+  padding: 5px 9px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .03em;
+  text-transform: capitalize;
+}
+
+.registration-status-pending {
+  background: #fff3cd;
+  color: #856404;
+}
+
+.registration-status-rejected {
+  background: #f8d7da;
+  color: #842029;
+}
+
+.registration-request-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 18px;
+  padding: 14px 16px;
+  border-left: 4px solid #00468c;
+  background: #eef5fa;
+}
+
+.registration-request-heading div {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.registration-request-heading span {
+  color: #687789;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.registration-request-heading strong {
+  color: #00468c;
+  font-size: 18px;
+}
+
+.vendor-reject-btn {
+  padding: 10px 20px;
+  border: 0;
+  border-radius: 4px;
+  background: #c0392b;
+  color: #fff;
+  cursor: pointer;
+}
+
+.vendor-form-buttons .vendor-submit-btn,
+.vendor-form-buttons .vendor-reject-btn,
+.vendor-form-buttons .vendor-close-btn {
+  min-height: 40px;
+  font-weight: 700;
+}
+
+.vendor-form-buttons .vendor-submit-btn:not(:disabled) {
+  box-shadow: 0 2px 6px rgba(0, 70, 140, 0.2);
+}
+
+.vendor-form-buttons .vendor-reject-btn:not(:disabled) {
+  box-shadow: 0 2px 6px rgba(192, 57, 43, 0.2);
+}
+
+.vendor-reject-btn:hover {
+  background: #a93226;
+}
+
+.vendor-reject-btn:disabled,
+.vendor-submit-btn:disabled {
+  cursor: not-allowed;
+  opacity: .55;
+}
+
+.registration-request-item small {
+  color: #666;
+}
+
+.empty-request-message {
+  padding: 20px 0;
+  color: #666;
+  text-align: center;
+}
+
+.request-details-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.request-detail-field label {
+  display: block;
+  margin-bottom: 5px;
+  color: #333;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.request-detail-field div {
+  min-height: 38px;
+  padding: 9px 10px;
+  border: 1px solid #d8d8d8;
+  border-radius: 4px;
+  background: #fff;
+  color: #444;
+  overflow-wrap: anywhere;
+}
+
+.request-document-field button {
+  width: 100%;
+  min-height: 38px;
+  padding: 8px 10px;
+  border: 1px solid #b9d2e7;
+  border-radius: 4px;
+  background: #f4f8fc;
+  color: #00468c;
+  text-align: left;
+  overflow-wrap: anywhere;
+  cursor: pointer;
+}
+
+.request-document-field button:hover {
+  border-color: #198754;
+  background: #f1faf5;
+  color: #157347;
+}
+
+@media (max-width: 800px) {
+  .request-details-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 520px) {
+  .request-details-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .registration-request-item {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .registration-request-meta {
+    align-items: flex-start;
+  }
+
+  .registration-request-heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
 .add-vendor-btn {
   padding: 12px 24px;
   background-color: #7fbd2c;

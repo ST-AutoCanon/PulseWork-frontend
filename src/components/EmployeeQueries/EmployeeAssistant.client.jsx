@@ -207,7 +207,7 @@ function isAdminRole(role) {
 }
 
 function isTravelOperatorRole(role) {
-  return ["admin", "traveldesk", "finance", "financeteam"].includes(
+  return ["traveldesk", "finance", "financeteam"].includes(
     String(role || "")
       .toLowerCase()
       .replace(/[^a-z]/g, ""),
@@ -664,6 +664,24 @@ const EmployeeAssistant = () => {
     });
   };
 
+  const processAssetRequest = async () => {
+    if (!selectedRequest) return;
+
+    try {
+      await axios.post(
+        `${BACKEND_URL}/requests/${selectedRequest.id}/asset-process`,
+        {},
+        { headers, withCredentials: true },
+      );
+      await fetchRequests();
+      await loadRequest(selectedRequest.id);
+      showAlert("Asset added and assigned to the requesting employee.");
+    } catch (error) {
+      console.error("[EmployeeAssistant] processAssetRequest:", error);
+      showAlert(error.response?.data?.message || "Unable to add the asset.");
+    }
+  };
+
   const showAlert = (message, title = "") =>
     setDialog({
       isVisible: true,
@@ -913,6 +931,7 @@ const EmployeeAssistant = () => {
             submitTravelBooking={submitTravelBooking}
             completeTrip={completeTrip}
             cancelRequest={cancelRequest}
+            processAssetRequest={processAssetRequest}
             requestMessage={requestMessage}
             setRequestMessage={setRequestMessage}
             sendRequestMessage={sendRequestMessage}
@@ -1102,6 +1121,7 @@ function RequestConversation({
   submitTravelBooking,
   completeTrip,
   cancelRequest,
+  processAssetRequest,
   onBack,
 }) {
   const details = normalizeDetails(request?.details_json);
@@ -1115,7 +1135,7 @@ function RequestConversation({
     isCurrentAssignee && request.current_status === "PENDING_APPROVAL";
 
   const canBookTravel =
-    isTravelOperator &&
+    (isAdmin || isTravelOperator) &&
     isCurrentAssignee &&
     request.current_status === "PENDING_ADMIN_ACTION" &&
     request.request_type === "TRAVEL_BOOKING";
@@ -1423,7 +1443,9 @@ function RequestConversation({
             {isAdmin &&
               isCurrentAssignee &&
               request.current_status === "PENDING_ADMIN_ACTION" &&
-              request.request_type !== "TRAVEL_BOOKING" && (
+              !["TRAVEL_BOOKING", "ASSET_REQUEST"].includes(
+                request.request_type,
+              ) && (
                 <div className="workflow-info-card">
                   <FiClock />
 
@@ -1435,6 +1457,29 @@ function RequestConversation({
                       corresponding admin processing flow.
                     </p>
                   </div>
+                </div>
+              )}
+
+            {isAdmin &&
+              isCurrentAssignee &&
+              request.current_status === "PENDING_ADMIN_ACTION" &&
+              request.request_type === "ASSET_REQUEST" && (
+                <div className="workflow-action-card asset-action">
+                  <div className="workflow-action-heading">
+                    <div>
+                      <span>Asset Registration</span>
+                      <h3>Add the requested item to the Assets register.</h3>
+                    </div>
+                    <span className="action-pill info">Action Required</span>
+                  </div>
+
+                  <button
+                    type="button"
+                    className="upload-notify-button"
+                    onClick={processAssetRequest}
+                  >
+                    Add to Assets and Assign
+                  </button>
                 </div>
               )}
 

@@ -12,7 +12,6 @@ import { io } from "socket.io-client";
 
 import {
   FiArrowLeft,
-  FiBell,
   FiCalendar,
   FiCheck,
   FiCheckCircle,
@@ -20,9 +19,9 @@ import {
   FiDownload,
   FiFileText,
   FiHelpCircle,
+  FiList,
   FiMapPin,
   FiMonitor,
-  FiMoreVertical,
   FiPaperclip,
   FiSend,
   FiUploadCloud,
@@ -36,6 +35,7 @@ import { useAuth } from "../../context/AuthProvider.client";
 import EmployeeRequestForm from "./EmployeeRequestForm.client";
 import EmployeeQuery from "./EmployeeQuery.client";
 import AdminQuery from "./AdminQuery.client";
+import Modal from "../Modal/Modal.client";
 import "./EmployeeAssistant.css";
 
 const REQUEST_TYPES = [
@@ -97,11 +97,19 @@ const statusMap = {
     label: "REJECTED",
     className: "rejected",
   },
+  CANCELLED: {
+    label: "CANCELLED",
+    className: "cancelled",
+  },
 };
 
 const stageLabels = {
   SUPERVISOR_APPROVAL: "Supervisor Approval",
   ADMIN_ACTION: "Admin Action",
+  PROJECT_HEAD_APPROVAL: "Project Head Approval",
+  HR_FINANCE_APPROVAL: "HR and Finance Approval",
+  FINANCE_APPROVAL: "Finance Approval",
+  TRAVEL_DESK_ACTION: "Travel Desk Action",
   EMPLOYEE_CONFIRMATION: "Employee Confirmation",
   COMPLETED: "Completed",
 };
@@ -114,6 +122,7 @@ const eventLabels = {
   BOOKING_CONFIRMED: "Tickets Booked by Admin",
   TRIP_COMPLETED: "Trip Completed",
   REQUEST_REJECTED: "Request Rejected",
+  REQUEST_CANCELLED: "Request Cancelled",
 };
 
 function normalizeDetails(details) {
@@ -184,12 +193,25 @@ function getRequestIcon(type) {
   return found?.icon || FiHelpCircle;
 }
 
+function getRequestTone(type) {
+  const found = REQUEST_TYPES.find((item) => item.key === type);
+  return found?.tone || "indigo";
+}
+
 function isEmployeeRole(role) {
   return String(role || "").toLowerCase() === "employee";
 }
 
 function isAdminRole(role) {
   return String(role || "").toLowerCase() === "admin";
+}
+
+function isTravelOperatorRole(role) {
+  return ["admin", "traveldesk", "finance", "financeteam"].includes(
+    String(role || "")
+      .toLowerCase()
+      .replace(/[^a-z]/g, ""),
+  );
 }
 
 const EmployeeAssistant = () => {
@@ -212,6 +234,8 @@ const EmployeeAssistant = () => {
     null;
 
   const [requests, setRequests] = useState([]);
+  const [requestFilter, setRequestFilter] = useState("ALL");
+  const [showRequestHistory, setShowRequestHistory] = useState(false);
   const [selectedRequest, setSelectedRequest] = useState(null);
 
   const [showForm, setShowForm] = useState(null);
@@ -227,6 +251,12 @@ const EmployeeAssistant = () => {
   const [requestMessage, setRequestMessage] = useState("");
 
   const [sendingMessage, setSendingMessage] = useState(false);
+  const [dialog, setDialog] = useState({
+    isVisible: false,
+    title: "",
+    message: "",
+    buttons: [],
+  });
 
   const [bookingForm, setBookingForm] = useState({
     airline: "",
@@ -258,6 +288,7 @@ const EmployeeAssistant = () => {
   const isEmployee = isEmployeeRole(userRole);
 
   const isAdmin = isAdminRole(userRole);
+  const isTravelOperator = isTravelOperatorRole(userRole);
 
   const fetchRequests = useCallback(async () => {
     if (!employeeId || !orgId || !BACKEND_URL) {
@@ -270,7 +301,9 @@ const EmployeeAssistant = () => {
 
       const endpoint = isEmployee
         ? `${BACKEND_URL}/requests/mine`
-        : `${BACKEND_URL}/requests/pending`;
+        : isTravelOperator
+          ? `${BACKEND_URL}/requests/travel-operations`
+          : `${BACKEND_URL}/requests/pending`;
 
       const response = await axios.get(endpoint, {
         headers,
@@ -287,7 +320,7 @@ const EmployeeAssistant = () => {
     } finally {
       setLoading(false);
     }
-  }, [BACKEND_URL, employeeId, orgId, headers, isEmployee]);
+  }, [BACKEND_URL, employeeId, orgId, headers, isEmployee, isTravelOperator]);
 
   const loadRequest = useCallback(
     async (requestId) => {
@@ -308,6 +341,7 @@ const EmployeeAssistant = () => {
 
         setSelectedRequest(data);
         selectedRequestRef.current = data;
+        setShowRequestHistory(false);
       } catch (error) {
         console.error("[EmployeeAssistant] loadRequest:", error);
       } finally {
@@ -495,7 +529,7 @@ const EmployeeAssistant = () => {
     } catch (error) {
       console.error("[EmployeeAssistant] approve:", error);
 
-      alert(error.response?.data?.message || "Approval failed.");
+      showAlert(error.response?.data?.message || "Approval failed.");
     }
   };
 
@@ -522,7 +556,7 @@ const EmployeeAssistant = () => {
     } catch (error) {
       console.error("[EmployeeAssistant] reject:", error);
 
-      alert(error.response?.data?.message || "Rejection failed.");
+      showAlert(error.response?.data?.message || "Rejection failed.");
     }
   };
 
@@ -530,12 +564,12 @@ const EmployeeAssistant = () => {
     if (!selectedRequest) return;
 
     if (!bookingForm.airline.trim() || !bookingForm.pnr.trim()) {
-      alert("Airline and PNR are required.");
+      showAlert("Airline and PNR are required.");
       return;
     }
 
     if (!bookingForm.ticket) {
-      alert("Please upload the e-ticket PDF.");
+      showAlert("Please upload the e-ticket PDF.");
       return;
     }
 
@@ -575,7 +609,7 @@ const EmployeeAssistant = () => {
     } catch (error) {
       console.error("[EmployeeAssistant] bookTravel:", error);
 
-      alert(error.response?.data?.message || "Unable to complete booking.");
+      showAlert(error.response?.data?.message || "Unable to complete booking.");
     } finally {
       setBookingSubmitting(false);
     }
@@ -602,7 +636,59 @@ const EmployeeAssistant = () => {
     } catch (error) {
       console.error("[EmployeeAssistant] complete:", error);
 
-      alert(error.response?.data?.message || "Unable to complete request.");
+      showAlert(error.response?.data?.message || "Unable to complete request.");
+    }
+  };
+
+  const cancelRequest = async () => {
+    if (!selectedRequest) return;
+
+    setDialog({
+      isVisible: true,
+      title: "Cancel request",
+      message: "Are you sure you want to cancel this request?",
+      buttons: [
+        {
+          label: "Keep request",
+          onClick: () => setDialog((prev) => ({ ...prev, isVisible: false })),
+        },
+        {
+          label: "Cancel request",
+          className: "ac-modal-btn ac-modal-btn-danger",
+          onClick: async () => {
+            setDialog((prev) => ({ ...prev, isVisible: false }));
+            await performCancelRequest();
+          },
+        },
+      ],
+    });
+  };
+
+  const showAlert = (message, title = "") =>
+    setDialog({
+      isVisible: true,
+      title,
+      message,
+      buttons: [{ label: "OK", onClick: closeDialog }],
+    });
+
+  const closeDialog = () =>
+    setDialog({ isVisible: false, title: "", message: "", buttons: [] });
+
+  const performCancelRequest = async () => {
+    if (!selectedRequest) return;
+
+    try {
+      await axios.post(
+        `${BACKEND_URL}/requests/${selectedRequest.id}/cancel`,
+        {},
+        { headers, withCredentials: true },
+      );
+      await fetchRequests();
+      await loadRequest(selectedRequest.id);
+    } catch (error) {
+      console.error("[EmployeeAssistant] cancel:", error);
+      showAlert(error.response?.data?.message || "Unable to cancel request.");
     }
   };
 
@@ -621,7 +707,7 @@ const EmployeeAssistant = () => {
         : selectedRequest.employee_id;
 
     if (!recipientId) {
-      alert("Recipient could not be determined.");
+      showAlert("Recipient could not be determined.");
       return;
     }
 
@@ -664,7 +750,7 @@ const EmployeeAssistant = () => {
     } catch (error) {
       console.error("[EmployeeAssistant] sendRequestMessage:", error);
 
-      alert("Unable to send message.");
+      showAlert("Unable to send message.");
     } finally {
       setSendingMessage(false);
     }
@@ -691,7 +777,7 @@ const EmployeeAssistant = () => {
             onClick={backToAssistant}
           >
             <FiArrowLeft />
-            <span>Back to AI Assistant</span>
+            <span>Back to Employee Services</span>
           </button>
         </div>
 
@@ -700,6 +786,32 @@ const EmployeeAssistant = () => {
         ) : (
           <EmployeeQuery key={otherQueryKey} />
         )}
+      </div>
+    );
+  }
+
+  if (showRequestHistory) {
+    return (
+      <div className="assistant-history-wrapper">
+        <div className="assistant-history-topbar">
+          <button
+            type="button"
+            className="assistant-back-button"
+            onClick={() => setShowRequestHistory(false)}
+          >
+            <FiArrowLeft />
+            <span>Back to Employee Services</span>
+          </button>
+        </div>
+
+        <RequestHistory
+          requests={requests}
+          requestFilter={requestFilter}
+          setRequestFilter={setRequestFilter}
+          loading={loading}
+          isEmployee={isEmployee}
+          loadRequest={loadRequest}
+        />
       </div>
     );
   }
@@ -715,19 +827,13 @@ const EmployeeAssistant = () => {
           <div className="assistant-logo">✦</div>
 
           <div>
-            <h1>AI Assistant</h1>
+            <h1>Employee Services</h1>
 
             <div className="assistant-online">
               <span />
-              Online
+              Request hub
             </div>
           </div>
-        </div>
-
-        <div className="assistant-actions">
-          <FiClock />
-          <FiBell />
-          <FiMoreVertical />
         </div>
       </header>
 
@@ -738,31 +844,10 @@ const EmployeeAssistant = () => {
       <main className="assistant-body">
         {!selectedRequest ? (
           <>
-            {/* Welcome */}
-
-            <div className="assistant-welcome">
-              <div className="assistant-avatar">✦</div>
-
-              <div className="assistant-message">
-                <strong>
-                  AI Assistant
-                  <small>{formatDate(new Date())}</small>
-                </strong>
-
-                <span>Hello! I'm your AI Assistant.</span>
-
-                <span>How can I help you today?</span>
-              </div>
-            </div>
-
-            {/* Main topic area */}
-
             <div className="assistant-topic-title">
-              <h2>How can I help you today?</h2>
-
+              <h2>What do you need help with?</h2>
               <p>
-                Select an option below or type your query in the chat to ask
-                anything.
+                Choose a service to get started, or open your request history.
               </p>
             </div>
 
@@ -794,73 +879,21 @@ const EmployeeAssistant = () => {
                   </button>
                 );
               })}
+
+              <button
+                type="button"
+                className="assistant-category-card history-card"
+                onClick={() => setShowRequestHistory(true)}
+              >
+                <div className="category-icon">
+                  <FiList />
+                </div>
+
+                <h3>{isEmployee ? "My Requests" : "Assigned Requests"}</h3>
+
+                <p>View previously raised requests and filter by category.</p>
+              </button>
             </div>
-
-            {/* Requests */}
-
-            {requests.length > 0 && (
-              <section className="assistant-request-history">
-                <div className="history-heading">
-                  <div>
-                    <h2>
-                      {isEmployee ? "My Requests" : "Requests Awaiting You"}
-                    </h2>
-
-                    <p>
-                      {isEmployee
-                        ? "Track your submitted requests."
-                        : "Requests currently assigned to you."}
-                    </p>
-                  </div>
-
-                  <span className="history-count">{requests.length}</span>
-                </div>
-
-                <div className="history-list">
-                  {requests.map((request) => (
-                    <button
-                      type="button"
-                      key={request.id}
-                      className="history-item"
-                      onClick={() => loadRequest(request.id)}
-                    >
-                      <div className="history-icon">
-                        {(() => {
-                          const Icon = getRequestIcon(request.request_type);
-
-                          return <Icon />;
-                        })()}
-                      </div>
-
-                      <div className="history-content">
-                        <strong>{request.title}</strong>
-
-                        <span>{request.request_code}</span>
-
-                        <small>{request.employee_name}</small>
-                      </div>
-
-                      <span
-                        className={`history-status ${
-                          getStatus(request.current_status).className
-                        }`}
-                      >
-                        {getStatus(request.current_status).label}
-                      </span>
-                    </button>
-                  ))}
-                </div>
-              </section>
-            )}
-
-            {!isEmployee && requests.length === 0 && !loading && (
-              <div className="empty-request-state">
-                <FiCheckCircle />
-                <h3>No requests are waiting for you</h3>
-
-                <p>New approval and processing requests will appear here.</p>
-              </div>
-            )}
           </>
         ) : (
           <RequestConversation
@@ -869,6 +902,7 @@ const EmployeeAssistant = () => {
             employeeId={employeeId}
             userRole={userRole}
             isAdmin={isAdmin}
+            isTravelOperator={isTravelOperator}
             actionComment={actionComment}
             setActionComment={setActionComment}
             approveRequest={approveRequest}
@@ -878,6 +912,7 @@ const EmployeeAssistant = () => {
             bookingSubmitting={bookingSubmitting}
             submitTravelBooking={submitTravelBooking}
             completeTrip={completeTrip}
+            cancelRequest={cancelRequest}
             requestMessage={requestMessage}
             setRequestMessage={setRequestMessage}
             sendRequestMessage={sendRequestMessage}
@@ -886,33 +921,6 @@ const EmployeeAssistant = () => {
           />
         )}
       </main>
-
-      {/* ==================================================
-          INPUT
-      ================================================== */}
-
-      {!selectedRequest && (
-        <div className="assistant-input">
-          <div className="assistant-input-box">
-            <input
-              disabled
-              placeholder="Select a topic above or choose Other Query"
-            />
-
-            <div className="assistant-input-actions">
-              <FiPaperclip />
-            </div>
-          </div>
-
-          <button
-            type="button"
-            className="assistant-send"
-            onClick={handleOtherQuery}
-          >
-            <FiSend />
-          </button>
-        </div>
-      )}
 
       {selectedRequest && (
         <div className="assistant-input request-chat-input">
@@ -946,9 +954,21 @@ const EmployeeAssistant = () => {
         </div>
       )}
 
+      <Modal
+        isVisible={dialog.isVisible}
+        title={dialog.title}
+        onClose={closeDialog}
+        buttons={dialog.buttons}
+      >
+        <p style={{ whiteSpace: "pre-wrap" }}>{dialog.message}</p>
+      </Modal>
+
       {showForm && (
         <EmployeeRequestForm
           type={showForm}
+          userRole={userRole}
+          employeeId={employeeId}
+          orgId={orgId}
           onClose={() => setShowForm(null)}
           onSubmit={submitRequest}
         />
@@ -956,6 +976,110 @@ const EmployeeAssistant = () => {
     </div>
   );
 };
+
+function RequestHistory({
+  requests,
+  requestFilter,
+  setRequestFilter,
+  loading,
+  isEmployee,
+  loadRequest,
+}) {
+  return (
+    <main className="assistant-history-body">
+      <div className="assistant-history-heading">
+        <div>
+          <span className="assistant-section-eyebrow">Request workspace</span>
+          <h1>{isEmployee ? "My Requests" : "Assigned Requests"}</h1>
+          <p>
+            {isEmployee
+              ? "Track requests you have submitted."
+              : "Review requests currently assigned to you."}
+          </p>
+        </div>
+
+        <span className="history-count">{requests.length}</span>
+      </div>
+
+      {requests.length > 0 && (
+        <div className="request-filter-row">
+          <label htmlFor="request-filter">Filter requests</label>
+          <select
+            id="request-filter"
+            value={requestFilter}
+            onChange={(event) => setRequestFilter(event.target.value)}
+          >
+            <option value="ALL">All categories</option>
+            {REQUEST_TYPES.filter((item) => item.key !== "OTHER_QUERY").map(
+              (item) => (
+                <option key={item.key} value={item.key}>
+                  {item.title}
+                </option>
+              ),
+            )}
+          </select>
+        </div>
+      )}
+
+      {loading ? (
+        <div className="request-loading">Loading requests...</div>
+      ) : requests.length > 0 ? (
+        <div className="history-list">
+          {requests
+            .filter(
+              (request) =>
+                requestFilter === "ALL" ||
+                request.request_type === requestFilter,
+            )
+            .map((request) => (
+              <button
+                type="button"
+                key={request.id}
+                className={`history-item ${getRequestTone(request.request_type)}`}
+                onClick={() => loadRequest(request.id)}
+              >
+                <div className="history-icon">
+                  {(() => {
+                    const Icon = getRequestIcon(request.request_type);
+
+                    return <Icon />;
+                  })()}
+                </div>
+
+                <div className="history-content">
+                  <strong>{request.title}</strong>
+                  <span>{request.request_code}</span>
+                  <small>{request.employee_name}</small>
+                </div>
+
+                <span
+                  className={`history-status ${
+                    getStatus(request.current_status).className
+                  }`}
+                >
+                  {getStatus(request.current_status).label}
+                </span>
+              </button>
+            ))}
+        </div>
+      ) : (
+        <div className="empty-request-state">
+          <FiCheckCircle />
+          <h3>
+            {isEmployee
+              ? "You have not raised any requests yet"
+              : "No requests are waiting for you"}
+          </h3>
+          <p>
+            {isEmployee
+              ? "Your submitted requests will appear here."
+              : "New approval and processing requests will appear here."}
+          </p>
+        </div>
+      )}
+    </main>
+  );
+}
 
 /* ==========================================================
    REQUEST CONVERSATION
@@ -967,6 +1091,7 @@ function RequestConversation({
   employeeId,
   userRole,
   isAdmin,
+  isTravelOperator,
   actionComment,
   setActionComment,
   approveRequest,
@@ -976,6 +1101,7 @@ function RequestConversation({
   bookingSubmitting,
   submitTravelBooking,
   completeTrip,
+  cancelRequest,
   onBack,
 }) {
   const details = normalizeDetails(request?.details_json);
@@ -989,7 +1115,7 @@ function RequestConversation({
     isCurrentAssignee && request.current_status === "PENDING_APPROVAL";
 
   const canBookTravel =
-    isAdmin &&
+    isTravelOperator &&
     isCurrentAssignee &&
     request.current_status === "PENDING_ADMIN_ACTION" &&
     request.request_type === "TRAVEL_BOOKING";
@@ -998,6 +1124,10 @@ function RequestConversation({
     isRequester &&
     request.current_status === "BOOKED" &&
     request.request_type === "TRAVEL_BOOKING";
+
+  const canCancel =
+    isRequester &&
+    !["COMPLETED", "REJECTED", "CANCELLED"].includes(request.current_status);
 
   const status = getStatus(request.current_status);
 
@@ -1024,7 +1154,7 @@ function RequestConversation({
             <div className="assistant-avatar">✦</div>
 
             <div className="assistant-message">
-              <strong>AI Assistant</strong>
+              <strong>Request Update</strong>
 
               <span>
                 {request.current_status === "PENDING_APPROVAL"
@@ -1090,6 +1220,17 @@ function RequestConversation({
             </div>
 
             <RequestSummary request={request} />
+
+            {canCancel && (
+              <button
+                type="button"
+                className="cancel-request-button"
+                onClick={cancelRequest}
+              >
+                <FiXCircle />
+                Cancel request
+              </button>
+            )}
 
             {/* Supervisor approval */}
 
@@ -1411,6 +1552,22 @@ function RequestSummary({ request }) {
           />
 
           <SummaryField label="Class" value={details.travelClass} />
+
+          <SummaryField label="Cadre (Band)" value={details.cadreBand} />
+
+          <SummaryField label="Base Location" value={details.baseLocation} />
+
+          <SummaryField
+            label="Travel Location"
+            value={details.travelLocation}
+          />
+
+          <SummaryField label="Transport" value={details.transportMode} />
+
+          <SummaryField
+            label="Distance"
+            value={details.distanceKm ? `${details.distanceKm} km` : "—"}
+          />
 
           <SummaryField label="Trip Type" value={details.tripType} />
 

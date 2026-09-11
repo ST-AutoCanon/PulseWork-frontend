@@ -613,9 +613,8 @@ async function shouldSuppressMissedPunchAlert({
   } catch (_) {}
 
   // 4. Regularisation already submitted
-  //    Alternatives if 404: /regularisation/my-requests or /attendance-regularisation/my-requests
   try {
-    const regRes = await fetch(`${base}/leave-regularisation/my-requests`, {
+    const regRes = await fetch(`${base}/api/leave-regularisation/my-requests`, {
       credentials: "include",
       headers,
     });
@@ -630,16 +629,43 @@ async function shouldSuppressMissedPunchAlert({
             : [];
 
       const hasReg = regs.some((r) => {
-        const d =
-          r?.date ??
-          r?.attendance_date ??
-          r?.attendanceDate ??
-          r?.target_date ??
-          r?.targetDate ??
-          r?.from_date ??
-          r?.fromDate ??
-          null;
-        return d && String(d).slice(0, 10) === dateKey;
+        const status = String(r?.status ?? r?.regularisation_status ?? "")
+          .trim()
+          .toLowerCase();
+        if (!status || !status.includes("pending")) return false;
+
+        const dateValues = [
+          r?.selected_dates,
+          r?.selectedDates,
+          r?.selected_dates_json,
+          r?.primary_date,
+          r?.primaryDate,
+          r?.date,
+          r?.attendance_date,
+          r?.attendanceDate,
+          r?.target_date,
+          r?.targetDate,
+          r?.from_date,
+          r?.fromDate,
+        ];
+
+        return dateValues.some((value) => {
+          if (Array.isArray(value)) {
+            return value.some((v) => String(v).slice(0, 10) === dateKey);
+          }
+          if (typeof value === "string") {
+            const parsed = value.trim();
+            if (!parsed) return false;
+            try {
+              const arr = JSON.parse(parsed);
+              if (Array.isArray(arr)) {
+                return arr.some((v) => String(v).slice(0, 10) === dateKey);
+              }
+            } catch {}
+            return String(parsed).slice(0, 10) === dateKey;
+          }
+          return false;
+        });
       });
       if (hasReg) return true;
     }
@@ -920,10 +946,24 @@ export default function Login({ onClose }) {
               },
             );
 
-            if (response.ok) {
-              const result = await response.json().catch(() => null);
-              const records = result?.data?.records || [];
+            const isCachedEmptyResponse = response.status === 304;
+            const result =
+              response.ok || isCachedEmptyResponse
+                ? await response.json().catch(() => null)
+                : null;
+            const payload = result?.data || result || {};
+            const records = Array.isArray(payload.records)
+              ? payload.records
+              : Array.isArray(payload)
+                ? payload
+                : [];
 
+            if (
+              response.ok ||
+              isCachedEmptyResponse ||
+              response.status === 404 ||
+              response.status === 400
+            ) {
               const normalizeText = (value) =>
                 String(value ?? "")
                   .trim()
@@ -947,8 +987,210 @@ export default function Login({ onClose }) {
                 );
               };
 
+              const normalizeStatus = (value) =>
+                String(value ?? "")
+                  .trim()
+                  .toLowerCase();
+
+              const isPendingRequestStatus = (value) => {
+                const status = normalizeStatus(value);
+                if (!status) return false;
+                if (status === "pending") return true;
+                if (status.includes("pending")) return true;
+                return [
+                  "submitted",
+                  "in review",
+                  "awaiting approval",
+                  "processing",
+                ].includes(status);
+              };
+
+              const isApprovedRequestStatus = (value) => {
+                const status = normalizeStatus(value);
+                if (!status) return false;
+                if (
+                  ["rejected", "cancelled", "canceled", "denied"].includes(
+                    status,
+                  )
+                ) {
+                  return false;
+                }
+                if (status.includes("approved")) return true;
+                if (status.includes("accept")) return true;
+                return [
+                  "approved",
+                  "accepted",
+                  "processed",
+                  "completed",
+                ].includes(status);
+              };
+
+              const isSuppressibleRequestStatus = (value) => {
+                const status = normalizeStatus(value);
+                if (!status) return false;
+                if (
+                  ["rejected", "cancelled", "canceled", "denied"].includes(
+                    status,
+                  )
+                ) {
+                  return false;
+                }
+                return (
+                  isPendingRequestStatus(status) ||
+                  isApprovedRequestStatus(status)
+                );
+              };
+
+              const getDateKeysFromValue = (value) => {
+                if (Array.isArray(value)) {
+                  return value
+                    .map((entry) => String(entry ?? "").slice(0, 10))
+                    .filter(Boolean);
+                }
+
+                if (typeof value === "string") {
+                  try {
+                    const parsed = JSON.parse(value);
+                    if (Array.isArray(parsed)) {
+                      return parsed
+                        .map((entry) => String(entry ?? "").slice(0, 10))
+                        .filter(Boolean);
+                    }
+                  } catch {
+                    // ignore non-JSON string values
+                  }
+
+                  const trimmed = value.trim();
+                  return trimmed ? [String(trimmed).slice(0, 10)] : [];
+                }
+
+                return [];
+              };
+
+              const hasRelatedRequestForYesterday = async () => {
+                try {
+                  const dateKey = toDateKey(yesterday);
+                  const [leaveResult, regularisationResult] = await Promise.all(
+                    [
+                      fetch(
+                        `${process.env.NEXT_PUBLIC_BACKEND_URL}/employee/leave/${encodeURIComponent(employeeId)}`,
+                        {
+                          credentials: "include",
+                          headers: attendanceHeaders,
+                        },
+                      ).then((r) => r.json().catch(() => null)),
+                      fetch(
+                        `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/leave-regularisation/my-requests`,
+                        {
+                          credentials: "include",
+                          headers: attendanceHeaders,
+                        },
+                      ).then((r) => r.json().catch(() => null)),
+                    ],
+                  );
+
+                  const leaveList = Array.isArray(leaveResult?.data)
+                    ? leaveResult.data
+                    : Array.isArray(leaveResult?.message)
+                      ? leaveResult.message
+                      : Array.isArray(leaveResult)
+                        ? leaveResult
+                        : [];
+
+                  if (
+                    leaveList.some((item) => {
+                      const status = normalizeStatus(
+                        item?.status ??
+                          item?.leave_status ??
+                          item?.leaveStatus ??
+                          item?.approval_status ??
+                          item?.approvalStatus ??
+                          "",
+                      );
+                      if (!isSuppressibleRequestStatus(status)) {
+                        return false;
+                      }
+
+                      const from = String(
+                        item?.from_date ??
+                          item?.fromDate ??
+                          item?.start_date ??
+                          item?.startDate ??
+                          item?.primary_date ??
+                          item?.primaryDate ??
+                          "",
+                      ).slice(0, 10);
+                      const to = String(
+                        item?.to_date ??
+                          item?.toDate ??
+                          item?.end_date ??
+                          item?.endDate ??
+                          from,
+                      ).slice(0, 10);
+
+                      return from && to && dateKey >= from && dateKey <= to;
+                    })
+                  ) {
+                    return true;
+                  }
+
+                  const regList = Array.isArray(regularisationResult?.data)
+                    ? regularisationResult.data
+                    : Array.isArray(regularisationResult?.message)
+                      ? regularisationResult.message
+                      : Array.isArray(regularisationResult)
+                        ? regularisationResult
+                        : [];
+
+                  return regList.some((item) => {
+                    const status = normalizeStatus(
+                      item?.status ??
+                        item?.regularisation_status ??
+                        item?.regularisationStatus ??
+                        item?.approval_status ??
+                        item?.approvalStatus ??
+                        "",
+                    );
+                    if (!isSuppressibleRequestStatus(status)) {
+                      return false;
+                    }
+
+                    const dates = new Set([
+                      ...getDateKeysFromValue(
+                        item?.selected_dates ??
+                          item?.selectedDates ??
+                          item?.selected_dates_json ??
+                          item?.primary_date ??
+                          item?.primaryDate ??
+                          item?.date ??
+                          item?.attendance_date ??
+                          item?.attendanceDate ??
+                          item?.target_date ??
+                          item?.targetDate ??
+                          item?.from_date ??
+                          item?.fromDate ??
+                          [],
+                      ),
+                    ]);
+
+                    return dates.has(dateKey);
+                  });
+                } catch {
+                  return false;
+                }
+              };
+
+              const hasRelatedRequest = await hasRelatedRequestForYesterday();
+              const queueProfessionalAlert = () =>
+                queueAttendanceReminder(
+                  "A missed punch was detected for yesterday. A leave request or attendance regularisation has already been submitted. Please connect with your manager or higher management for guidance.",
+                  "Professional alert",
+                );
+
               if (!records.length) {
-                if (hasPriorAttendance) {
+                if (hasRelatedRequest) {
+                  queueProfessionalAlert();
+                } else {
                   queueAttendanceReminder(
                     "Punch-in missed for yesterday. Please raise attendance regularisation.",
                   );
@@ -972,9 +1214,13 @@ export default function Login({ onClose }) {
                 });
 
                 if (hasPunchIn && hasOpenPunch) {
-                  queueAttendanceReminder(
-                    "Punch-out missed. Please raise attendance regularisation.",
-                  );
+                  if (hasRelatedRequest) {
+                    queueProfessionalAlert();
+                  } else {
+                    queueAttendanceReminder(
+                      "Punch-out missed. Please raise attendance regularisation.",
+                    );
+                  }
                 }
               }
             }

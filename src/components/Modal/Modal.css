@@ -104,6 +104,14 @@
   background-color: #65a037;
 }
 
+.ac-modal-btn-danger {
+  background-color: #c24141;
+}
+
+.ac-modal-btn-danger:hover {
+  background-color: #a83232;
+}
+
 .professional-attachments-modal {
   padding: 24px;
   background: #ffffff;

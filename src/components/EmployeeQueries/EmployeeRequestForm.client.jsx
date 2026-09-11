@@ -91,6 +91,8 @@ const EmployeeRequestForm = ({
     documentAdditionalInfo: "",
 
     assetRequestType: "",
+    assetCategory: "",
+    assetSubCategory: "",
     itemName: "",
     configuration: "",
     assetReason: "",
@@ -331,6 +333,9 @@ const EmployeeRequestForm = ({
     if (type === "ASSET_REQUEST") {
       if (!form.assetRequestType)
         nextErrors.assetRequestType = "Select a request type";
+      if (!form.assetCategory) nextErrors.assetCategory = "Select a category";
+      if (!form.assetSubCategory)
+        nextErrors.assetSubCategory = "Select a sub-category";
       if (!form.itemName.trim()) nextErrors.itemName = "Item name is required";
       if (!form.assetReason) nextErrors.assetReason = "Select a reason";
       if (!form.requiredDate)
@@ -424,6 +429,8 @@ const EmployeeRequestForm = ({
 
         details = {
           requestType: form.assetRequestType,
+          category: form.assetCategory,
+          subCategory: form.assetSubCategory,
           itemName: form.itemName,
           configuration: form.configuration,
           reason: form.assetReason,
@@ -1076,6 +1083,60 @@ const EmployeeRequestForm = ({
                   <option value="Software">Software</option>
 
                   <option value="Accessory">Accessory</option>
+                </select>
+              </RequestField>
+
+              <RequestField
+                label="Asset Category"
+                required
+                error={errors.assetCategory}
+              >
+                <select
+                  value={form.assetCategory}
+                  onChange={(e) => update("assetCategory", e.target.value)}
+                >
+                  <option value="">Select category</option>
+                  <option value="System">System</option>
+                  <option value="Furniture">Furniture</option>
+                  <option value="Equipment">Equipment</option>
+                  <option value="Others">Others</option>
+                </select>
+              </RequestField>
+
+              <RequestField
+                label="Asset Sub-category"
+                required
+                error={errors.assetSubCategory}
+              >
+                <select
+                  value={form.assetSubCategory}
+                  onChange={(e) => update("assetSubCategory", e.target.value)}
+                >
+                  <option value="">Select sub-category</option>
+                  {form.assetCategory === "System" && (
+                    <>
+                      <option value="Laptop">Laptop</option>
+                      <option value="Desktop">Desktop</option>
+                      <option value="Server">Server</option>
+                    </>
+                  )}
+                  {form.assetCategory === "Furniture" && (
+                    <>
+                      <option value="Table">Table</option>
+                      <option value="Chair">Chair</option>
+                      <option value="Drawers">Drawers</option>
+                      <option value="cupboard">Cupboard</option>
+                    </>
+                  )}
+                  {form.assetCategory === "Equipment" && (
+                    <>
+                      <option value="Electrical">Electrical</option>
+                      <option value="Non-Electrical">Non-Electrical</option>
+                    </>
+                  )}
+                  {form.assetCategory === "Others" && (
+                    <option value="Others">Other</option>
+                  )}
                 </select>
               </RequestField>
 

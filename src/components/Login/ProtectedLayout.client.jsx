@@ -108,6 +108,176 @@ const toDateKey = (dateObj) => {
  * Returns true → do NOT show the missed-punch alert.
  * Conditions: Sunday | holiday | leave applied | regularisation already submitted
  */
+const getProfessionalMissedPunchMessage = () =>
+  "A missed punch was detected for yesterday. A leave request or attendance regularisation has already been submitted. Please connect with your manager or higher management for guidance.";
+
+const normalizeStatus = (value) =>
+  String(value ?? "")
+    .trim()
+    .toLowerCase();
+
+const isPendingRequestStatus = (value) => {
+  const status = normalizeStatus(value);
+  if (!status) return false;
+  if (status === "pending") return true;
+  if (status.includes("pending")) return true;
+  return ["submitted", "in review", "awaiting approval", "processing"].includes(
+    status,
+  );
+};
+
+const isApprovedRequestStatus = (value) => {
+  const status = normalizeStatus(value);
+  if (!status) return false;
+  if (["rejected", "cancelled", "canceled", "denied"].includes(status)) {
+    return false;
+  }
+  if (status.includes("approved")) return true;
+  if (status.includes("accept")) return true;
+  return ["approved", "accepted", "processed", "completed"].includes(status);
+};
+
+const isSuppressibleRequestStatus = (value) => {
+  const status = normalizeStatus(value);
+  if (!status) return false;
+  if (["rejected", "cancelled", "canceled", "denied"].includes(status)) {
+    return false;
+  }
+  return isPendingRequestStatus(status) || isApprovedRequestStatus(status);
+};
+
+const getDateKeysFromValue = (value) => {
+  if (Array.isArray(value)) {
+    return value
+      .map((entry) => String(entry ?? "").slice(0, 10))
+      .filter(Boolean);
+  }
+
+  if (typeof value === "string") {
+    try {
+      const parsed = JSON.parse(value);
+      if (Array.isArray(parsed)) {
+        return parsed
+          .map((entry) => String(entry ?? "").slice(0, 10))
+          .filter(Boolean);
+      }
+    } catch {
+      // ignore non-JSON string values
+    }
+
+    const trimmed = value.trim();
+    return trimmed ? [String(trimmed).slice(0, 10)] : [];
+  }
+
+  return [];
+};
+
+async function hasRelatedRequestForYesterday({
+  employeeId,
+  targetDate,
+  headers,
+}) {
+  const dateKey = toDateKey(targetDate);
+  const base = process.env.NEXT_PUBLIC_BACKEND_URL;
+
+  try {
+    const [leaveRes, regRes] = await Promise.all([
+      axios.get(`${base}/employee/leave/${encodeURIComponent(employeeId)}`, {
+        withCredentials: true,
+        headers,
+      }),
+      axios.get(`${base}/api/leave-regularisation/my-requests`, {
+        withCredentials: true,
+        headers,
+      }),
+    ]);
+
+    const leaveBody = leaveRes?.data;
+    const leaveList = Array.isArray(leaveBody?.data)
+      ? leaveBody.data
+      : Array.isArray(leaveBody?.message)
+        ? leaveBody.message
+        : Array.isArray(leaveBody)
+          ? leaveBody
+          : [];
+
+    const hasLeave = leaveList.some((item) => {
+      const status = normalizeStatus(
+        item?.status ??
+          item?.leave_status ??
+          item?.leaveStatus ??
+          item?.approval_status ??
+          item?.approvalStatus ??
+          "",
+      );
+      if (!isPendingRequestStatus(status)) return false;
+
+      const from = String(
+        item?.from_date ??
+          item?.fromDate ??
+          item?.start_date ??
+          item?.startDate ??
+          item?.primary_date ??
+          item?.primaryDate ??
+          "",
+      ).slice(0, 10);
+      const to = String(
+        item?.to_date ??
+          item?.toDate ??
+          item?.end_date ??
+          item?.endDate ??
+          from,
+      ).slice(0, 10);
+      return from && to && dateKey >= from && dateKey <= to;
+    });
+
+    if (hasLeave) return true;
+
+    const regBody = regRes?.data;
+    const regList = Array.isArray(regBody?.data)
+      ? regBody.data
+      : Array.isArray(regBody?.message)
+        ? regBody.message
+        : Array.isArray(regBody)
+          ? regBody
+          : [];
+
+    return regList.some((item) => {
+      const status = normalizeStatus(
+        item?.status ??
+          item?.regularisation_status ??
+          item?.regularisationStatus ??
+          item?.approval_status ??
+          item?.approvalStatus ??
+          "",
+      );
+      if (!isPendingRequestStatus(status)) return false;
+
+      const dates = new Set([
+        ...getDateKeysFromValue(
+          item?.selected_dates ??
+            item?.selectedDates ??
+            item?.selected_dates_json ??
+            item?.primary_date ??
+            item?.primaryDate ??
+            item?.date ??
+            item?.attendance_date ??
+            item?.attendanceDate ??
+            item?.target_date ??
+            item?.targetDate ??
+            item?.from_date ??
+            item?.fromDate ??
+            [],
+        ),
+      ]);
+
+      return dates.has(dateKey);
+    });
+  } catch {
+    return false;
+  }
+}
+
 async function shouldSuppressMissedPunchAlert({
   employeeId,
   orgId,
@@ -158,10 +328,15 @@ async function shouldSuppressMissedPunchAlert({
           : [];
 
     const onLeave = leaves.some((l) => {
-      const status = String(
-        l?.status ?? l?.leave_status ?? l?.leaveStatus ?? "",
-      ).toLowerCase();
-      if (["rejected", "cancelled", "canceled", "denied"].includes(status)) {
+      const status = normalizeStatus(
+        l?.status ??
+          l?.leave_status ??
+          l?.leaveStatus ??
+          l?.approval_status ??
+          l?.approvalStatus ??
+          "",
+      );
+      if (!isSuppressibleRequestStatus(status)) {
         return false;
       }
       const from = String(
@@ -177,10 +352,13 @@ async function shouldSuppressMissedPunchAlert({
 
   // 4. Regularisation already submitted
   try {
-    const regRes = await axios.get(`${base}/leave-regularisation/my-requests`, {
-      withCredentials: true,
-      headers,
-    });
+    const regRes = await axios.get(
+      `${base}/api/leave-regularisation/my-requests`,
+      {
+        withCredentials: true,
+        headers,
+      },
+    );
     const body = regRes?.data;
     const regs = Array.isArray(body?.data)
       ? body.data
@@ -191,16 +369,37 @@ async function shouldSuppressMissedPunchAlert({
           : [];
 
     const hasReg = regs.some((r) => {
-      const d =
-        r?.date ??
-        r?.attendance_date ??
-        r?.attendanceDate ??
-        r?.target_date ??
-        r?.targetDate ??
-        r?.from_date ??
-        r?.fromDate ??
-        null;
-      return d && String(d).slice(0, 10) === dateKey;
+      const status = normalizeStatus(
+        r?.status ??
+          r?.regularisation_status ??
+          r?.regularisationStatus ??
+          r?.approval_status ??
+          r?.approvalStatus ??
+          "",
+      );
+      if (!isSuppressibleRequestStatus(status)) {
+        return false;
+      }
+
+      const dates = new Set([
+        ...getDateKeysFromValue(
+          r?.selected_dates ??
+            r?.selectedDates ??
+            r?.selected_dates_json ??
+            r?.primary_date ??
+            r?.primaryDate ??
+            r?.date ??
+            r?.attendance_date ??
+            r?.attendanceDate ??
+            r?.target_date ??
+            r?.targetDate ??
+            r?.from_date ??
+            r?.fromDate ??
+            [],
+        ),
+      ]);
+
+      return dates.has(dateKey);
     });
     if (hasReg) return true;
   } catch (_) {}
@@ -287,6 +486,8 @@ export default function ProtectedLayout({ children }) {
   }, [user, hydrated, logout]);
 
   useEffect(() => {
+    if (!hydrated) return;
+
     const employeeId = user?.employeeId || user?.id || user?.employee_id;
     const orgId = user?.orgId || user?.org_id || user?.Org_id;
     const normalizedRole = String(user?.role ?? "")
@@ -311,7 +512,6 @@ export default function ProtectedLayout({ children }) {
     }
 
     const loginKey = `${orgId}:${employeeId}`;
-    if (punchAlertKeyRef.current === loginKey) return;
     punchAlertKeyRef.current = loginKey;
 
     let cancelled = false;
@@ -338,6 +538,19 @@ export default function ProtectedLayout({ children }) {
         });
 
         if (suppress) {
+          const hasRelatedRequest = await hasRelatedRequestForYesterday({
+            employeeId,
+            targetDate: yesterday,
+            headers: dateHeaders,
+          });
+
+          if (hasRelatedRequest) {
+            setPunchAlert({
+              title: "Professional alert",
+              message: getProfessionalMissedPunchMessage(),
+            });
+          }
+
           try {
             sessionStorage.removeItem("attendanceReminder");
           } catch {}
@@ -352,9 +565,18 @@ export default function ProtectedLayout({ children }) {
           if (queued) {
             const parsed = JSON.parse(queued);
             if (parsed?.message) {
+              const hasRelatedRequest = await hasRelatedRequestForYesterday({
+                employeeId,
+                targetDate: yesterday,
+                headers: dateHeaders,
+              });
               setPunchAlert({
-                title: parsed.title || "Attendance reminder",
-                message: parsed.message,
+                title: hasRelatedRequest
+                  ? "Professional alert"
+                  : parsed.title || "Attendance reminder",
+                message: hasRelatedRequest
+                  ? getProfessionalMissedPunchMessage()
+                  : parsed.message,
               });
               sessionStorage.removeItem("attendanceReminder");
               return;
@@ -363,22 +585,29 @@ export default function ProtectedLayout({ children }) {
         } catch {}
 
         try {
-          const historyResponse = await axios.get(
-            `${process.env.NEXT_PUBLIC_BACKEND_URL}/attendance/employee/${encodeURIComponent(employeeId)}`,
-            { withCredentials: true, headers: dateHeaders },
-          );
-          const historyRecords = Array.isArray(historyResponse?.data?.data)
-            ? historyResponse.data.data
-            : [];
+          const response = await axios
+            .get(
+              `${process.env.NEXT_PUBLIC_BACKEND_URL}/attendance/employee/${encodeURIComponent(employeeId)}/punch-records?date=${encodeURIComponent(targetDateKey)}`,
+              { withCredentials: true, headers: dateHeaders },
+            )
+            .catch((error) => {
+              if (error?.response?.status === 304) {
+                return {
+                  data: {
+                    data: {
+                      date: targetDateKey,
+                      records: [],
+                      hasPunchIn: false,
+                      hasPunchOut: false,
+                      hasOpenPunch: false,
+                    },
+                  },
+                };
+              }
+              throw error;
+            });
 
-          if (!historyRecords.length) return;
-
-          const response = await axios.get(
-            `${process.env.NEXT_PUBLIC_BACKEND_URL}/attendance/employee/${encodeURIComponent(employeeId)}/punch-records?date=${encodeURIComponent(targetDateKey)}`,
-            { withCredentials: true, headers: dateHeaders },
-          );
-
-          const payload = response?.data?.data || {};
+          const payload = response?.data?.data || response?.data || {};
           const records = Array.isArray(payload.records)
             ? payload.records
             : Array.isArray(payload)
@@ -388,6 +617,10 @@ export default function ProtectedLayout({ children }) {
           if (cancelled) return;
 
           if (!records.length) {
+            console.info(
+              "[missed-punch] no records for yesterday; showing punch-in reminder",
+              { employeeId, targetDateKey },
+            );
             setPunchAlert({
               title: "Attendance reminder",
               message:
@@ -442,6 +675,7 @@ export default function ProtectedLayout({ children }) {
           }
         } catch (error) {
           if (
+            error?.response?.status === 304 ||
             error?.response?.status === 404 ||
             error?.response?.status === 400
           ) {
@@ -470,6 +704,7 @@ export default function ProtectedLayout({ children }) {
       cancelled = true;
     };
   }, [
+    hydrated,
     user?.employeeId,
     user?.id,
     user?.employee_id,

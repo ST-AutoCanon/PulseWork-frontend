@@ -81,7 +81,7 @@ const RbAdmin = () => {
 
   const isInvalidProject = (value) => {
     const v = normalizeProject(value).toUpperCase();
-    return !v || v === "STS CLAIM";
+    return !v || (v === "STS CLAIM" && !isTenantOneOrg);
   };
 
   const dedupeProjects = (list = []) => {
@@ -110,6 +110,23 @@ const RbAdmin = () => {
   );
   const [orgResolveTried, setOrgResolveTried] = useState(false);
   const [resolvingOrg, setResolvingOrg] = useState(false);
+
+  const isTenantOneOrg = [
+    orgId,
+    user?.orgId,
+    user?.org_id,
+    user?.raw?.org_id,
+    user?.raw?.orgId,
+    user?.raw?.db_name,
+    user?.raw?.database,
+    user?.orgPrefix,
+    user?.org_prefix,
+    user?.raw?.orgPrefix,
+    user?.raw?.org_prefix,
+  ].some((value) => {
+    const normalized = normalizeProject(value).toLowerCase();
+    return normalized === "tenant_1" || normalized === "1";
+  });
 
   const formatDisplayDate = (raw) => {
     if (!raw) return " ";

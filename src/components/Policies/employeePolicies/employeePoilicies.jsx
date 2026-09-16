@@ -1,9 +1,14 @@
 
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
+import dynamic from "next/dynamic";
 import "./employeePolicies.css";
 import { renderAsync } from "docx-preview";
 import axios from "axios";
+
+import "react-pdf/dist/Page/TextLayer.css";
+import "react-pdf/dist/Page/AnnotationLayer.css";
+
 import { useAuth } from "../../../context/AuthProvider.client";
 import {
   FaBookOpen,
@@ -25,11 +30,30 @@ import {
   FaChevronRight,FaDownload,FaSearch,FaEye,
   FaEyeSlash,
   FaExpand,
-FaCompress,
+FaCompress,FaTimesCircle,
 } from "react-icons/fa";
+const Document = dynamic(
+  () => import("react-pdf").then((mod) => mod.Document),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="pdf-loading">
+        Loading PDF...
+      </div>
+    ),
+  }
+);
+
+const Page = dynamic(
+  () => import("react-pdf").then((mod) => mod.Page),
+  {
+    ssr: false,
+  }
+);
 
 export default function EmployeePolicies() {
   const { user, hydrated } = useAuth();
+  
 
   const API_KEY = process.env.NEXT_PUBLIC_API_KEY || "";
   const BACKEND = process.env.NEXT_PUBLIC_BACKEND_URL || "";
@@ -44,12 +68,32 @@ const [activeTab, setActiveTab] = useState("all"); // "all" | "pending" | "ackno
 const [searchTerm, setSearchTerm] = useState("");
 const [ackChecked, setAckChecked] = useState(false);
 const [isFullscreen, setIsFullscreen] = useState(false);
+  const [pdfPageCount, setPdfPageCount] = useState(0);
+const [pdfReadProgress, setPdfReadProgress] = useState(0);
+const [pdfReadState, setPdfReadState] = useState("unread");
+
+const [readPages, setReadPages] = useState(new Set());
+const [readSaving, setReadSaving] = useState(false);
+const pdfPageTimers = useRef({});
+const pdfWrapperRef = useRef(null);
+
+const [pdfWidth, setPdfWidth] = useState(700);
+
+const MIN_PAGE_READ_TIME = 2500; // 2.5s – less cancelled by small moves
+const MIN_VISIBLE_RATIO = 0.5;   // 50% visible is enough for normal pages  // 60% of page visible
 const [alertModal, setAlertModal] = useState({
   isVisible: false,
   title: "",
   message: "",
 });
-
+useEffect(() => {
+  import("react-pdf").then(({ pdfjs }) => {
+    pdfjs.GlobalWorkerOptions.workerSrc = new URL(
+      "pdfjs-dist/build/pdf.worker.min.mjs",
+      import.meta.url
+    ).toString();
+  });
+}, []);
 const showAlert = (message, title = "Success") => {
   setAlertModal({ isVisible: true, title, message });
 };
@@ -121,6 +165,24 @@ const closeAlert = () => {
   };
 
   // Clean up previous object URL
+  useEffect(() => {
+  const updatePdfWidth = () => {
+    if (!pdfWrapperRef.current) return;
+
+    const width = pdfWrapperRef.current.clientWidth;
+
+    // 20px padding on both sides
+    setPdfWidth(Math.max(300, width - 40));
+  };
+
+  updatePdfWidth();
+
+  window.addEventListener("resize", updatePdfWidth);
+
+  return () => {
+    window.removeEventListener("resize", updatePdfWidth);
+  };
+}, [selectedFile, isFullscreen]);
   useEffect(() => {
     return () => {
       if (fileUrl) URL.revokeObjectURL(fileUrl);
@@ -339,7 +401,6 @@ const handleAcknowledgement = async () => {
       }
     );
 
-    // 1. Update the files inside the currently selected policy
     const updatedFiles = selectedPolicy.files.map((f) =>
       f.id === pendingFile.id
         ? { ...f, is_acknowledged: 1 }
@@ -351,12 +412,19 @@ const handleAcknowledgement = async () => {
       files: updatedFiles,
     };
 
+    const updatedPendingFile = {
+      ...pendingFile,
+      is_acknowledged: 1,
+    };
+
     setSelectedPolicy(updatedSelectedPolicy);
-    setSelectedFile({ ...pendingFile, is_acknowledged: 1 });
+    setSelectedFile((current) =>
+      current?.id === pendingFile.id
+        ? { ...current, is_acknowledged: 1 }
+        : current
+    );
     setPendingFile(null);
 
-    // 2. Also update the same policy in the main policies list
-    //    (this is what drives the badges + tabs)
     setPolicies((prev) =>
       prev.map((p) =>
         p.policy_id === selectedPolicy.policy_id
@@ -366,9 +434,15 @@ const handleAcknowledgement = async () => {
     );
 
     showAlert("Acknowledgement saved successfully.");
+
+    // Now that it's acknowledged, allow (and trigger) read tracking
+    // Use the updated file object so the gate above passes
+    markFileRead(updatedPendingFile);
   } catch (err) {
     console.error("Acknowledgement Error:", err.response?.data || err);
-    showAlert(err.response?.data?.message || "Failed to save acknowledgement.");
+    showAlert(
+      err.response?.data?.message || "Failed to save acknowledgement."
+    );
   }
 };
  const getTruncatedFileName = (fileName = "") => {
@@ -396,12 +470,180 @@ const handleAcknowledgement = async () => {
 };
 const handleFileClick = (file) => {
   setSelectedFile(file);
-  setAckChecked(false); // reset checkbox
+  setAckChecked(false);
 
-  if (Number(file.acknowledgement_required) === 1 && Number(file.is_acknowledged) === 0) {
+  setPdfPageCount(0);
+  setPdfReadProgress(0);
+  setReadPages(new Set());
+  setPdfReadState(Number(file.is_read) === 1 ? "read" : "unread");
+
+  // Clear existing timers
+  Object.values(pdfPageTimers.current).forEach((timer) => {
+    clearTimeout(timer);
+  });
+  pdfPageTimers.current = {};
+
+  if (
+    Number(file.acknowledgement_required) === 1 &&
+    Number(file.is_acknowledged) === 0
+  ) {
     setPendingFile(file);
   } else {
     setPendingFile(null);
+  }
+};
+useEffect(() => {
+  return () => {
+    Object.values(pdfPageTimers.current).forEach((timer) => {
+      clearTimeout(timer);
+    });
+  };
+}, []);
+const handlePdfScroll = (event) => {
+  const container = event.currentTarget;
+  if (!container) return;
+
+  const pages = container.querySelectorAll(".pdf-page-wrapper");
+  if (!pages.length) return;
+
+  const nearBottom =
+    container.scrollHeight - container.scrollTop - container.clientHeight <= 24;
+
+  pages.forEach((pageElement, index) => {
+    const rect = pageElement.getBoundingClientRect();
+    const containerRect = container.getBoundingClientRect();
+
+    const visibleTop = Math.max(rect.top, containerRect.top);
+    const visibleBottom = Math.min(rect.bottom, containerRect.bottom);
+    const visibleHeight = Math.max(0, visibleBottom - visibleTop);
+    const pageHeight = rect.height || 1;
+    const visibleRatio = visibleHeight / pageHeight;
+    const pageNumber = index + 1;
+    const isLastPage = pageNumber === pages.length;
+
+    // Last page: accept lower visibility, or any visibility when at bottom
+    const requiredRatio =
+      isLastPage || nearBottom ? Math.min(MIN_VISIBLE_RATIO, 0.35) : MIN_VISIBLE_RATIO;
+
+    const isVisibleEnough =
+      visibleRatio >= requiredRatio || (nearBottom && isLastPage && visibleRatio > 0.1);
+
+    if (isVisibleEnough) {
+      if (!pdfPageTimers.current[pageNumber] && !readPages.has(pageNumber)) {
+        // Last page / near bottom: shorter dwell so 100% is reachable
+        const dwell =
+          isLastPage || nearBottom
+            ? Math.min(MIN_PAGE_READ_TIME, 1500)
+            : MIN_PAGE_READ_TIME;
+
+        pdfPageTimers.current[pageNumber] = setTimeout(() => {
+          setReadPages((prev) => {
+            const updated = new Set(prev);
+            updated.add(pageNumber);
+            return updated;
+          });
+          delete pdfPageTimers.current[pageNumber];
+        }, dwell);
+      }
+    } else if (pdfPageTimers.current[pageNumber]) {
+      clearTimeout(pdfPageTimers.current[pageNumber]);
+      delete pdfPageTimers.current[pageNumber];
+    }
+  });
+
+  // If user is at the bottom and has already read most pages, complete the rest
+  if (nearBottom && pdfPageCount > 0) {
+    setReadPages((prev) => {
+      if (prev.size >= pdfPageCount) return prev;
+
+      // Only auto-complete when user has already engaged with a good portion
+      const minBeforeComplete = Math.max(1, Math.ceil(pdfPageCount * 0.7));
+      if (prev.size < minBeforeComplete) return prev;
+
+      const updated = new Set(prev);
+      for (let i = 1; i <= pdfPageCount; i++) {
+        updated.add(i);
+      }
+      return updated;
+    });
+  }
+};
+
+useEffect(() => {
+  if (!selectedFile || !isPdf(getFileName(selectedFile))) return;
+
+  if (Number(selectedFile.is_read) === 1) {
+    setPdfReadProgress(100);
+    setPdfReadState("read");
+    return;
+  }
+
+  const total = Math.max(pdfPageCount, 1);
+  const pagesRead = readPages.size;
+
+  if (pagesRead === 0) {
+    setPdfReadProgress(0);
+    setPdfReadState("unread");
+    return;
+  }
+
+  const progress = Math.min(100, Math.round((pagesRead / total) * 100));
+  setPdfReadProgress(progress);
+
+  if (pagesRead >= total) {
+    setPdfReadState("read");
+    markFileRead(selectedFile);
+  } else {
+    setPdfReadState("reading");
+  }
+}, [readPages, pdfPageCount, selectedFile]);
+const markFileRead = async (file) => {
+  if (!file || Number(file.is_read) === 1 || readSaving) return;
+
+  // Do NOT mark as read until the user has acknowledged (when required)
+  if (
+    Number(file.acknowledgement_required) === 1 &&
+    Number(file.is_acknowledged) === 0
+  ) {
+    return;
+  }
+
+  setReadSaving(true);
+  try {
+    await axios.post(
+      `${BACKEND}/api/policies/employee-policy/read`,
+      {
+        policyId: file.policy_id || selectedPolicy?.policy_id,
+        policyFileId: file.id,
+      },
+      { withCredentials: true, headers: getHeaders() }
+    );
+
+    const updatedFiles = (selectedPolicy?.files || []).map((item) =>
+      item.id === file.id ? { ...item, is_read: 1 } : item
+    );
+    const updatedPolicy = { ...selectedPolicy, files: updatedFiles };
+
+    setSelectedPolicy(updatedPolicy);
+    setSelectedFile((current) =>
+      current?.id === file.id ? { ...current, is_read: 1 } : current
+    );
+    setPolicies((prev) =>
+      prev.map((policy) =>
+        policy.policy_id === updatedPolicy.policy_id ? updatedPolicy : policy
+      )
+    );
+  } catch (error) {
+    console.error("Failed to save read status:", error);
+  } finally {
+    setReadSaving(false);
+  }
+};
+
+const handleViewerScroll = (event) => {
+  const element = event.currentTarget;
+  if (element.scrollHeight - element.scrollTop - element.clientHeight <= 12) {
+    markFileRead(selectedFile);
   }
 };
 
@@ -585,10 +827,11 @@ const handleFileClick = (file) => {
   }}
 >
   {canView ? (
-    <FaEye
-      title="View allowed"
-      className="file-permission-icon view"
-    />
+    Number(file.is_read) === 1 ? (
+      <FaEye title="Fully read" className="file-read-icon read" />
+    ) : (
+      <FaTimesCircle title="Not fully read" className="file-read-icon unread" />
+    )
   ) : (
     <FaEyeSlash
       title="View not allowed"
@@ -653,6 +896,26 @@ const handleFileClick = (file) => {
   </div>
 </div>
           <div className="viewer-body">
+            {Number(selectedFile.allow_view) === 1 && (
+  <div
+    className={`pdf-reading-indicator ${pdfReadState}`}
+    title={
+      pdfReadState === "read"
+        ? "Read"
+        : pdfReadState === "reading"
+        ? `Reading ${pdfReadProgress}%`
+        : "Not read"
+    }
+  >
+    <FaEye />
+
+    <span>
+      {pdfReadState === "read"
+        ? "Read"
+        : `${pdfReadProgress}%`}
+    </span>
+  </div>
+)}
             {Number(selectedFile.allow_view) !== 1 ? (
               <div style={{
                 display: "flex",
@@ -680,37 +943,80 @@ const handleFileClick = (file) => {
                       src={fileUrl}
                       alt={name}
                       style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain" }}
+                      onLoad={() => markFileRead(selectedFile)}
                     />
                   );
                 }
-                if (isPdf(name)) {
-                  return (
-                    <iframe
-                      src={`${fileUrl}#toolbar=0&navpanes=0`}
-                      title="Policy PDF"
-                      width="100%"
-                      height="100%"
-                      style={{ border: "none" }}
-                    />
-                  );
-                }
+      if (isPdf(name)) {
+return ( <div
+   ref={pdfWrapperRef}
+   className="pdf-viewer-wrapper"
+   onScroll={handlePdfScroll}
+ >
+<Document
+file={fileUrl}
+onLoadSuccess={({ numPages }) => {
+setPdfPageCount(numPages);
+
+
+      // Already marked as read in backend
+      if (Number(selectedFile.is_read) === 1) {
+        setPdfReadProgress(100);
+        setPdfReadState("read");
+      } else {
+        setPdfReadProgress(0);
+        setPdfReadState("unread");
+      }
+    }}
+    onLoadError={(error) => {
+      console.error("PDF loading error:", error);
+    }}
+    loading={
+      <div className="pdf-loading">
+        Loading PDF...
+      </div>
+    }
+  >
+    {Array.from(
+      { length: pdfPageCount },
+      (_, index) => (
+        <div
+          className="pdf-page-wrapper"
+          key={`page_${index + 1}`}
+        >
+          <Page
+            pageNumber={index + 1}
+            width={pdfWidth}
+            renderTextLayer={true}
+            renderAnnotationLayer={true}
+          />
+        </div>
+      )
+    )}
+  </Document>
+</div>
+
+
+);
+}
+
                 if (isVideo(name)) {
                   return (
-                    <video src={fileUrl} controls style={{ maxWidth: "100%", maxHeight: "100%" }}>
+                    <video src={fileUrl} controls onEnded={() => markFileRead(selectedFile)} style={{ maxWidth: "100%", maxHeight: "100%" }}>
                       Your browser does not support the video tag.
                     </video>
                   );
                 }
                 if (isAudio(name)) {
                   return (
-                    <audio src={fileUrl} controls style={{ width: "100%" }}>
+                    <audio src={fileUrl} controls onEnded={() => markFileRead(selectedFile)} style={{ width: "100%" }}>
                       Your browser does not support the audio element.
                     </audio>
                   );
                 }
                 if (isDocx(name)) {
                   return (
-                    <div className="docx-viewer-wrapper">
+                    <div className="docx-viewer-wrapper" onScroll={handleViewerScroll}>
                       <div id="docx-preview-container" className="docx-preview-container" />
                     </div>
                   );

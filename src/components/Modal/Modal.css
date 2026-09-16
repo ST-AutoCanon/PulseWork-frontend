@@ -104,12 +104,20 @@
   background-color: #65a037;
 }
 
-.ac-modal-btn-danger {
-  background-color: #c24141;
+.ac-modal-btn.ac-modal-btn-primary {
+  background-color: #198754;
 }
 
-.ac-modal-btn-danger:hover {
-  background-color: #a83232;
+.ac-modal-btn.ac-modal-btn-primary:hover {
+  background-color: #157347;
+}
+
+.ac-modal-btn.ac-modal-btn-secondary {
+  background-color: #6c757d;
+}
+
+.ac-modal-btn.ac-modal-btn-secondary:hover {
+  background-color: #565e64;
 }
 
 .professional-attachments-modal {

@@ -1,15 +1,17 @@
 "use client";
 
 import React, { useState, useEffect, useMemo, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import axios from "axios";
 import "./vendors.css";
 import { FaEye, FaPencilAlt } from "react-icons/fa";
 import { Eye, Download } from "react-feather";
 import Modal from "../Modal/Modal.client";
 import { useAuth } from "../../context/AuthProvider.client";
-
+import VendorRegistration from "./vendorRegistration";
 const Vendors = () => {
   const { user } = useAuth();
+  const router = useRouter();
   const [showForm, setShowForm] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editingVendorId, setEditingVendorId] = useState(null);
@@ -54,6 +56,7 @@ const Vendors = () => {
     isVisible: false,
     title: "",
     message: "",
+    buttons: null,
   });
   const [files, setFiles] = useState({
     gst_certificate: null,
@@ -63,6 +66,11 @@ const Vendors = () => {
     incorporation_certificate: null,
   });
   const [vendors, setVendors] = useState([]);
+  const [registrationRequests, setRegistrationRequests] = useState([]);
+  const [selectedRegistrationRequest, setSelectedRegistrationRequest] = useState(null);
+  const [showRegistrationRequests, setShowRegistrationRequests] = useState(false);
+  const [isApprovingRegistration, setIsApprovingRegistration] = useState(false);
+  const [isRejectingRegistration, setIsRejectingRegistration] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [showDocumentsPopup, setShowDocumentsPopup] = useState(false);
   const [showDownloadPopup, setShowDownloadPopup] = useState(false);
@@ -75,7 +83,16 @@ const Vendors = () => {
   const [mobileErrors, setMobileErrors] = useState(["", "", ""]);
   const [emailErrors, setEmailErrors] = useState(["", "", ""]);
   const [error, setError] = useState("");
-
+const [showVendorRegistration, setShowVendorRegistration] = useState(false);
+  const [registrationStep, setRegistrationStep] = useState(1);
+  const [registrationMail, setRegistrationMail] = useState({
+    vendorName: "",
+    from: process.env.NEXT_PUBLIC_EMAIL_FROM || "hr@sukalpatech.com",
+    recipientEmail: "",
+    subject: "Vendor Registration Request",
+    body: "Dear Vendor,\n\nPlease complete your vendor registration using the secure link below. The link will remain active for 5 days.\n\nRegards,\nPulseWork Team",
+  });
+  const [isSendingRegistrationMail, setIsSendingRegistrationMail] = useState(false);
   const headers = useMemo(() => {
     if (!user) return null;
     const orgId =
@@ -116,11 +133,43 @@ const Vendors = () => {
   }, [headers]);
 
   const showAlert = useCallback((message, title = "") => {
-    setAlertModal({ isVisible: true, title, message });
+    setAlertModal({ isVisible: true, title, message, buttons: null });
   }, []);
 
   const closeAlert = () => {
-    setAlertModal({ isVisible: false, title: "", message: "" });
+    setAlertModal({ isVisible: false, title: "", message: "", buttons: null });
+  };
+
+  const openVendorRegistration = () => {
+    setRegistrationStep(1);
+    setRegistrationMail({
+      vendorName: "",
+      from: process.env.NEXT_PUBLIC_EMAIL_FROM || "hr@sukalpatech.com",
+      recipientEmail: "",
+      subject: "Vendor Registration Request",
+      body: "Dear Vendor,\n\nPlease complete your vendor registration using the secure link below. The link will remain active for 5 days.\n\nRegards,\nPulseWork Team",
+    });
+    setShowVendorRegistration(true);
+  };
+
+  const sendRegistrationMail = async (event) => {
+    event.preventDefault();
+    setIsSendingRegistrationMail(true);
+    try {
+      const response = await axios.post(
+        `${process.env.NEXT_PUBLIC_BACKEND_URL}/vendors/registration-invite`,
+        registrationMail,
+        { withCredentials: true, headers }
+      );
+      if (!response.data?.success) throw new Error("Email was not sent");
+      setShowVendorRegistration(false);
+      showAlert("Vendor registration email sent. The link expires in 5 days.");
+    } catch (err) {
+      console.error("Error sending vendor registration email:", err);
+      showAlert(err.response?.data?.message || "Failed to send vendor registration email");
+    } finally {
+      setIsSendingRegistrationMail(false);
+    }
   };
 
   const togglePopup = () => {
@@ -191,13 +240,129 @@ const Vendors = () => {
     }
   }, [headers, showAlert]);
 
+  const fetchRegistrationRequests = useCallback(async () => {
+    if (!headers) return;
+    try {
+      const response = await axios.get(
+        `${process.env.NEXT_PUBLIC_BACKEND_URL}/vendors/registration-requests`,
+        { withCredentials: true, headers }
+      );
+      if (response.data?.success) setRegistrationRequests(response.data.data || []);
+    } catch (err) {
+      console.error("Error fetching vendor registration requests:", err);
+      showAlert("Failed to fetch vendor registration requests");
+    }
+  }, [headers, showAlert]);
+
   useEffect(() => {
     fetchVendors();
-  }, [fetchVendors]);
+    fetchRegistrationRequests();
+  }, [fetchVendors, fetchRegistrationRequests]);
+
+  const handleApproveRegistration = async () => {
+    if (!selectedRegistrationRequest) return;
+    setIsApprovingRegistration(true);
+    try {
+      const response = await axios.post(
+        `${process.env.NEXT_PUBLIC_BACKEND_URL}/vendors/registration-requests/${selectedRegistrationRequest.invite_id}/approve`,
+        {},
+        { withCredentials: true, headers }
+      );
+      if (!response.data?.success) throw new Error("Approval failed");
+      const approvedRequest = selectedRegistrationRequest;
+      const vendorName = approvedRequest.submitted_data?.company_name || approvedRequest.vendor_name;
+      const finishApproval = async (shouldSendEmail) => {
+        closeAlert();
+        try {
+          if (shouldSendEmail) {
+            await axios.post(
+              `${process.env.NEXT_PUBLIC_BACKEND_URL}/vendors/registration-requests/${approvedRequest.invite_id}/approval-email`,
+              {},
+              { withCredentials: true, headers }
+            );
+          }
+          setShowRegistrationRequests(false);
+          setSelectedRegistrationRequest(null);
+          await Promise.all([fetchVendors(), fetchRegistrationRequests()]);
+          showAlert(shouldSendEmail ? "Vendor approved and approval email sent successfully" : "Vendor registration approved successfully");
+        } catch (err) {
+          showAlert(err.response?.data?.message || "Vendor was approved, but the email could not be sent");
+        }
+      };
+      setAlertModal({
+        isVisible: true,
+        title: "Vendor Approved",
+        message: `${vendorName} was approved. Do you want to send the successful approval email to the vendor?`,
+        buttons: [
+          { label: "No", className: "ac-modal-btn ac-modal-btn-secondary", onClick: () => finishApproval(false) },
+          { label: "Yes, Send Email", className: "ac-modal-btn ac-modal-btn-primary", onClick: () => finishApproval(true) },
+        ],
+      });
+    } catch (err) {
+      console.error("Error approving vendor registration:", err);
+      showAlert(err.response?.data?.message || "Failed to approve vendor registration");
+    } finally {
+      setIsApprovingRegistration(false);
+    }
+  };
+
+  const handleRejectRegistration = async () => {
+    if (!selectedRegistrationRequest) return;
+    setIsRejectingRegistration(true);
+    try {
+      await axios.post(
+        `${process.env.NEXT_PUBLIC_BACKEND_URL}/vendors/registration-requests/${selectedRegistrationRequest.invite_id}/reject`,
+        {},
+        { withCredentials: true, headers }
+      );
+      setSelectedRegistrationRequest(null);
+      await fetchRegistrationRequests();
+      showAlert("Vendor registration request rejected");
+    } catch (err) {
+      showAlert(err.response?.data?.message || "Failed to reject vendor registration");
+    } finally {
+      setIsRejectingRegistration(false);
+    }
+  };
+
+  const openRegistrationRequests = async () => {
+    await fetchRegistrationRequests();
+    setSelectedRegistrationRequest(null);
+    setShowRegistrationRequests(true);
+  };
 
   const filteredVendors = vendors.filter((vendor) =>
-    vendor.company_name.toLowerCase().includes(searchTerm.toLowerCase())
+    (vendor.company_name || "").toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  const requestFieldGroups = [
+    {
+      title: "Company Details",
+      fields: ["company_name", "registered_address", "city", "state", "pin_code", "gst_number", "pan_number", "company_type", "msme_status"],
+    },
+    {
+      title: "Contact Details",
+      fields: ["contact1_name", "contact1_designation", "contact1_mobile", "contact1_email", "contact2_name", "contact2_designation", "contact2_mobile", "contact2_email", "contact3_name", "contact3_designation", "contact3_mobile", "contact3_email"],
+    },
+    {
+      title: "Bank Details",
+      fields: ["bank_name", "branch", "branch_address", "account_number", "ifsc_code"],
+    },
+    {
+      title: "Business Information",
+      fields: ["nature_of_business", "product_category", "years_of_experience"],
+    },
+  ];
+  const requestDocumentFields = [
+    ["gst_certificate", "GST Certificate"],
+    ["pan_card", "PAN Card"],
+    ["cancelled_cheque", "Cancelled Cheque"],
+    ["msme_certificate", "MSME Certificate"],
+    ["incorporation_certificate", "Company Incorporation Certificate"],
+  ];
+
+  const formatRequestLabel = (field) =>
+    field.replaceAll("_", " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
 
   const handleSearchChange = (e) => {
     setSearchTerm(e.target.value);
@@ -504,21 +669,163 @@ const Vendors = () => {
 
   return (
     <div className="vendors-container">
+      
       <div className="header-container">
-        <div className="vendor-search-container">
-          <input
-            type="text"
-            placeholder="Search by Company Name..."
-            value={searchTerm}
-            onChange={handleSearchChange}
-            className="search-input"
-          />
-          <i className="fas fa-search vendor-search-icon"></i>
+  <div className="vendor-search-container">
+    <input
+      type="text"
+      placeholder="Search by Company Name..."
+      value={searchTerm}
+      onChange={handleSearchChange}
+      className="search-input"
+    />
+
+    <i className="fas fa-search vendor-search-icon"></i>
+  </div>
+
+<div className="vendor-header-buttons">
+
+  <button
+    className="vendor-registration-btn"
+    onClick={openVendorRegistration}
+  >
+    Vendor Registration
+  </button>
+
+  <button
+    className="vendor-requests-btn"
+    onClick={openRegistrationRequests}
+  >
+    Requests ({registrationRequests.length})
+  </button>
+
+  <button
+    className="add-vendor-btn"
+    onClick={togglePopup}
+  >
+    Add Vendor
+  </button>
+
+</div>
+</div>
+
+      {showVendorRegistration && (
+        <VendorRegistration
+          step={registrationStep}
+          formData={registrationMail}
+          handleChange={(event) =>
+            setRegistrationMail((previous) => ({
+              ...previous,
+              [event.target.name]: event.target.value,
+            }))
+          }
+          handleNext={() => setRegistrationStep(2)}
+          handleBack={() => setRegistrationStep(1)}
+          handleSubmit={sendRegistrationMail}
+          handleCancel={() => setShowVendorRegistration(false)}
+          isSending={isSendingRegistrationMail}
+        />
+      )}
+
+      {showRegistrationRequests && (
+        <div className="vendor-popup-overlay">
+          <div className="vendor-popup-form vendor-request-popup">
+            <button
+              className="vendor-popup-close-btn"
+              onClick={() => setShowRegistrationRequests(false)}
+            >
+              ×
+            </button>
+            <h2 className="vendor-form-title">Vendor Registration Requests</h2>
+            {!selectedRegistrationRequest ? (
+              registrationRequests.length ? (
+                <div className="registration-request-list">
+                  {registrationRequests.map((request) => (
+                    <button
+                      type="button"
+                      className={`registration-request-item registration-request-${request.status || "pending"}`}
+                      key={request.invite_id}
+                      onClick={() => setSelectedRegistrationRequest(request)}
+                    >
+                      <span className="registration-request-company">
+                        <strong>{request.submitted_data?.company_name || request.vendor_name || "Unnamed vendor"}</strong>
+                        <small>{request.submitted_data?.contact1_email || request.username || "Email unavailable"}</small>
+                      </span>
+                      <span className="registration-request-meta">
+                        <b className={`registration-status-badge registration-status-${request.status || "pending"}`}>{request.status || "pending"}</b>
+                        <small>{request.submitted_at ? new Date(request.submitted_at).toLocaleString() : "-"}</small>
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <p className="empty-request-message">No pending vendor requests.</p>
+              )
+            ) : (
+              <>
+                <div className="registration-request-heading">
+                  <div><span>Vendor</span><strong>{selectedRegistrationRequest.submitted_data?.company_name || selectedRegistrationRequest.vendor_name || "Unnamed vendor"}</strong></div>
+                  <b className={`registration-status-badge registration-status-${selectedRegistrationRequest.status || "pending"}`}>{selectedRegistrationRequest.status || "pending"}</b>
+                </div>
+                {requestFieldGroups.map((group) => (
+                  <fieldset key={group.title}>
+                    <legend>{group.title}</legend>
+                    <div className="request-details-grid">
+                      {group.fields.map((field) => (
+                        <div className="request-detail-field" key={field}>
+                          <label>{formatRequestLabel(field)}</label>
+                          <div>{selectedRegistrationRequest.submitted_data?.[field] || "-"}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </fieldset>
+                ))}
+                <fieldset>
+                  <legend>Documents Required</legend>
+                  <div className="request-details-grid request-documents-grid">
+                    {requestDocumentFields.map(([field, label]) => {
+                      const documentPath = selectedRegistrationRequest.submitted_data?.[field];
+                      return (
+                        <div className="request-detail-field request-document-field" key={field}>
+                          <label>{label}</label>
+                          {documentPath ? (
+                            <button type="button" onClick={() => handleViewDocument(documentPath)}>{documentPath.split(/[/\\\\]/).pop()}</button>
+                          ) : <div>-</div>}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </fieldset>
+                <div className="vendor-form-buttons">
+                  <button
+                    type="button"
+                    className="vendor-close-btn"
+                    onClick={() => setSelectedRegistrationRequest(null)}
+                  >
+                    Back to Requests
+                  </button>
+                  <button
+                    type="button"
+                    className="vendor-submit-btn"
+                    onClick={handleApproveRegistration}
+                    disabled={isApprovingRegistration || isRejectingRegistration || selectedRegistrationRequest.status !== "pending"}
+                  >
+                    {isApprovingRegistration ? "Approving..." : "Approve Vendor"}
+                  </button>
+                  <button
+                    type="button"
+                    className="vendor-reject-btn"
+                    onClick={handleRejectRegistration}
+                    disabled={isApprovingRegistration || isRejectingRegistration || selectedRegistrationRequest.status !== "pending"}
+                  >
+                    {isRejectingRegistration ? "Rejecting..." : "Reject Request"}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
         </div>
-        <button className="add-vendor-btn" onClick={togglePopup}>
-          Add Vendor
-        </button>
-      </div>
+      )}
 
       <div className="table-scroll-wrapper">
         <table className="vendor-table">
@@ -1482,7 +1789,8 @@ const Vendors = () => {
       <Modal
         isVisible={alertModal.isVisible}
         onClose={closeAlert}
-        buttons={[{ label: "OK", onClick: closeAlert }]}
+        title={alertModal.title}
+        buttons={alertModal.buttons || [{ label: "OK", onClick: closeAlert }]}
       >
         <p>{alertModal.message}</p>
       </Modal>

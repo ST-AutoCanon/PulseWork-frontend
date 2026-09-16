@@ -1050,6 +1050,9 @@ const CreatePolicies = () => {
   const [loading, setLoading] = useState(false);
   const [policies, setPolicies] = useState([]);
   const [viewPolicy, setViewPolicy] = useState(null);
+  const [readingStatusPolicy, setReadingStatusPolicy] = useState(null);
+  const [readingStatus, setReadingStatus] = useState([]);
+  const [readingStatusLoading, setReadingStatusLoading] = useState(false);
 const [isEditing, setIsEditing] = useState(false);
 const [replaceLoading, setReplaceLoading] = useState(false);
 const [editingPolicyId, setEditingPolicyId] = useState(null);
@@ -1411,6 +1414,24 @@ const fetchPolicyAssignments = async (policyId) => {
     } catch (err) {
       console.error("Error fetching files", err);
       return [];
+    }
+  };
+
+  const handleViewReadingStatus = async (policy) => {
+    setReadingStatusPolicy(policy);
+    setReadingStatusLoading(true);
+    try {
+      const response = await axios.get(
+        `${BACKEND}/api/policies/reading-status/${policy.id}`,
+        { withCredentials: true, headers: { "x-org-id": orgId } }
+      );
+      setReadingStatus(Array.isArray(response.data?.data) ? response.data.data : []);
+    } catch (error) {
+      console.error("Failed to load policy reading status:", error);
+      showAlert("Unable to load policy reading status", "Error");
+      setReadingStatus([]);
+    } finally {
+      setReadingStatusLoading(false);
     }
   };
 
@@ -1969,6 +1990,19 @@ isEditing={isEditing}                 // ← NEW
 
     <h4 style={{ paddingRight: "40px" }}>{policy.policy_name}</h4>
 
+    <button
+      type="button"
+      className="policy-reading-status-btn"
+      onClick={(event) => {
+        event.stopPropagation();
+        handleViewReadingStatus(policy);
+      }}
+      title="View employee reading status"
+      aria-label={`View reading status for ${policy.policy_name}`}
+    >
+      ◉
+    </button>
+
     {policy.description && (
       <p className="policy-description" style={{ fontSize: "13px", color: "#666" }}>
         {policy.description.length > 80
@@ -2019,6 +2053,46 @@ isEditing={isEditing}                 // ← NEW
   setFileInputKey={setFileInputKey}    // optional, only if you need it inside
   />
 )}
+
+      {readingStatusPolicy && (
+        <div className="admin-policy-modal-overlay" onClick={() => setReadingStatusPolicy(null)}>
+          <div className="policy-reading-status-modal" onClick={(event) => event.stopPropagation()}>
+            <div className="admin-policy-header">
+              <div>
+                <h2 className="admin-policy-form-title">Policy Reading Status</h2>
+                <p className="admin-policy-replace-subtitle">{readingStatusPolicy.policy_name}</p>
+              </div>
+              <button className="admin-policy-close-btn" onClick={() => setReadingStatusPolicy(null)} aria-label="Close">✕</button>
+            </div>
+            <div className="policy-reading-status-body">
+              {readingStatusLoading ? <p className="admin-policy-empty-state">Loading status...</p> : (
+                <>
+                  <div className="policy-reading-summary">
+                    <span><strong>{readingStatus.filter((item) => item.read).length}</strong> read</span>
+                    <span><strong>{readingStatus.filter((item) => item.acknowledged).length}</strong> acknowledged</span>
+                    <span><strong>{readingStatus.filter((item) => !item.read).length}</strong> pending</span>
+                  </div>
+                  <div className="policy-reading-status-list">
+                    {readingStatus.length ? readingStatus.map((item) => (
+                      <div className="policy-reading-status-row" key={item.employee_id}>
+                        <span>{item.employee_name}</span>
+                        <span className="policy-reading-badges">
+                          <span className={`policy-reading-badge ${item.read ? "complete" : "pending"}`}>
+                            {item.read ? "Read" : "Not read"}
+                          </span>
+                          <span className={`policy-reading-badge ${item.acknowledged ? "complete" : "pending"}`}>
+                            {item.acknowledged ? "Acknowledged" : "Pending acknowledgement"}
+                          </span>
+                        </span>
+                      </div>
+                    )) : <p className="admin-policy-empty-state">No assigned employees found.</p>}
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
      {/* Alert Modal - Always on Top */}
 {alertModal.isVisible && (

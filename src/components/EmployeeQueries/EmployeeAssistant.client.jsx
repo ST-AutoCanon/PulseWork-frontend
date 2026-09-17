@@ -234,7 +234,10 @@ const EmployeeAssistant = () => {
     null;
 
   const [requests, setRequests] = useState([]);
+  const [ownRequests, setOwnRequests] = useState([]);
+  const [allAssignedRequests, setAllAssignedRequests] = useState([]);
   const [requestFilter, setRequestFilter] = useState("ALL");
+  const [requestHistoryTab, setRequestHistoryTab] = useState("assigned");
   const [showRequestHistory, setShowRequestHistory] = useState(false);
   const [selectedRequest, setSelectedRequest] = useState(null);
 
@@ -321,6 +324,55 @@ const EmployeeAssistant = () => {
       setLoading(false);
     }
   }, [BACKEND_URL, employeeId, orgId, headers, isEmployee, isTravelOperator]);
+
+  const fetchOwnRequests = useCallback(async () => {
+    if (!employeeId || !orgId || !BACKEND_URL) return;
+
+    try {
+      setLoading(true);
+
+      const response = await axios.get(`${BACKEND_URL}/requests/mine`, {
+        headers,
+        withCredentials: true,
+      });
+
+      const list = response.data?.data || [];
+
+      setOwnRequests(Array.isArray(list) ? list : []);
+    } catch (error) {
+      console.error("[EmployeeAssistant] fetchOwnRequests:", error);
+
+      setOwnRequests([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [BACKEND_URL, employeeId, orgId, headers]);
+
+  const fetchAllAssignedRequests = useCallback(async () => {
+    if (!employeeId || !orgId || !BACKEND_URL) return;
+
+    try {
+      setLoading(true);
+
+      const response = await axios.get(
+        `${BACKEND_URL}/requests/assigned-history`,
+        {
+          headers,
+          withCredentials: true,
+        },
+      );
+
+      const list = response.data?.data || [];
+
+      setAllAssignedRequests(Array.isArray(list) ? list : []);
+    } catch (error) {
+      console.error("[EmployeeAssistant] fetchAllAssignedRequests:", error);
+
+      setAllAssignedRequests([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [BACKEND_URL, employeeId, orgId, headers]);
 
   const loadRequest = useCallback(
     async (requestId) => {
@@ -499,6 +551,10 @@ const EmployeeAssistant = () => {
 
     await fetchRequests();
 
+    if (!isEmployee) {
+      await fetchOwnRequests();
+    }
+
     if (created?.id) {
       await loadRequest(created.id);
     }
@@ -578,7 +634,7 @@ const EmployeeAssistant = () => {
 
       const formData = new FormData();
 
-      formData.append("airline", bookingForm.airline);
+      formData.append("transportType", bookingForm.airline);
 
       formData.append("pnr", bookingForm.pnr);
 
@@ -612,6 +668,29 @@ const EmployeeAssistant = () => {
       showAlert(error.response?.data?.message || "Unable to complete booking.");
     } finally {
       setBookingSubmitting(false);
+    }
+  };
+
+  const saveTravelBookingDraft = async () => {
+    if (!selectedRequest) return;
+
+    try {
+      await axios.post(
+        `${BACKEND_URL}/requests/${selectedRequest.id}/book-draft`,
+        {
+          transportType: bookingForm.airline,
+          pnr: bookingForm.pnr,
+          departureTime: bookingForm.departureTime,
+          returnTime: bookingForm.returnTime,
+          message: bookingForm.message,
+        },
+        { headers, withCredentials: true },
+      );
+
+      showAlert("Booking draft saved.");
+    } catch (error) {
+      console.error("[EmployeeAssistant] saveTravelBookingDraft:", error);
+      showAlert(error.response?.data?.message || "Unable to save draft.");
     }
   };
 
@@ -823,11 +902,29 @@ const EmployeeAssistant = () => {
         </div>
 
         <RequestHistory
-          requests={requests}
+          requests={
+            isEmployee || requestHistoryTab === "assigned"
+              ? requests
+              : requestHistoryTab === "mine"
+                ? ownRequests
+                : allAssignedRequests
+          }
           requestFilter={requestFilter}
           setRequestFilter={setRequestFilter}
           loading={loading}
           isEmployee={isEmployee}
+          showTabs={!isEmployee}
+          activeTab={requestHistoryTab}
+          onTabChange={(tab) => {
+            setRequestHistoryTab(tab);
+            setRequestFilter("ALL");
+
+            if (tab === "mine") {
+              fetchOwnRequests();
+            } else if (tab === "all") {
+              fetchAllAssignedRequests();
+            }
+          }}
           loadRequest={loadRequest}
         />
       </div>
@@ -901,7 +998,10 @@ const EmployeeAssistant = () => {
               <button
                 type="button"
                 className="assistant-category-card history-card"
-                onClick={() => setShowRequestHistory(true)}
+                onClick={() => {
+                  setRequestHistoryTab(isEmployee ? "mine" : "assigned");
+                  setShowRequestHistory(true);
+                }}
               >
                 <div className="category-icon">
                   <FiList />
@@ -928,6 +1028,7 @@ const EmployeeAssistant = () => {
             bookingForm={bookingForm}
             setBookingForm={setBookingForm}
             bookingSubmitting={bookingSubmitting}
+            saveTravelBookingDraft={saveTravelBookingDraft}
             submitTravelBooking={submitTravelBooking}
             completeTrip={completeTrip}
             cancelRequest={cancelRequest}
@@ -988,6 +1089,7 @@ const EmployeeAssistant = () => {
           userRole={userRole}
           employeeId={employeeId}
           orgId={orgId}
+          orgPrefix={user?.orgPrefix}
           onClose={() => setShowForm(null)}
           onSubmit={submitRequest}
         />
@@ -1002,18 +1104,68 @@ function RequestHistory({
   setRequestFilter,
   loading,
   isEmployee,
+  showTabs,
+  activeTab,
+  onTabChange,
   loadRequest,
 }) {
+  const isMineTab = isEmployee || activeTab === "mine";
+  const isAllTab = activeTab === "all";
+
   return (
     <main className="assistant-history-body">
+      {showTabs && (
+        <div
+          className="request-history-tabs"
+          role="tablist"
+          aria-label="Request views"
+        >
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeTab === "assigned"}
+            className={activeTab === "assigned" ? "active" : ""}
+            onClick={() => onTabChange("assigned")}
+          >
+            Assigned Requests
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeTab === "mine"}
+            className={activeTab === "mine" ? "active" : ""}
+            onClick={() => onTabChange("mine")}
+          >
+            My Requests
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeTab === "all"}
+            className={activeTab === "all" ? "active" : ""}
+            onClick={() => onTabChange("all")}
+          >
+            All Requests
+          </button>
+        </div>
+      )}
+
       <div className="assistant-history-heading">
         <div>
           <span className="assistant-section-eyebrow">Request workspace</span>
-          <h1>{isEmployee ? "My Requests" : "Assigned Requests"}</h1>
+          <h1>
+            {isMineTab
+              ? "My Requests"
+              : isAllTab
+                ? "All Requests"
+                : "Assigned Requests"}
+          </h1>
           <p>
-            {isEmployee
+            {isMineTab
               ? "Track requests you have submitted."
-              : "Review requests currently assigned to you."}
+              : isAllTab
+                ? "Track requests you have handled, including completed and rejected requests."
+                : "Review requests currently assigned to you."}
           </p>
         </div>
 
@@ -1085,14 +1237,18 @@ function RequestHistory({
         <div className="empty-request-state">
           <FiCheckCircle />
           <h3>
-            {isEmployee
+            {isMineTab
               ? "You have not raised any requests yet"
-              : "No requests are waiting for you"}
+              : isAllTab
+                ? "No request history is available"
+                : "No requests are waiting for you"}
           </h3>
           <p>
-            {isEmployee
+            {isMineTab
               ? "Your submitted requests will appear here."
-              : "New approval and processing requests will appear here."}
+              : isAllTab
+                ? "Requests you handle will appear here."
+                : "New approval and processing requests will appear here."}
           </p>
         </div>
       )}
@@ -1118,6 +1274,7 @@ function RequestConversation({
   bookingForm,
   setBookingForm,
   bookingSubmitting,
+  saveTravelBookingDraft,
   submitTravelBooking,
   completeTrip,
   cancelRequest,
@@ -1132,7 +1289,16 @@ function RequestConversation({
     String(request.current_assignee_id) === String(employeeId);
 
   const canApprove =
-    isCurrentAssignee && request.current_status === "PENDING_APPROVAL";
+    isCurrentAssignee &&
+    (request.current_status === "PENDING_APPROVAL" ||
+      (isAdmin &&
+        request.current_status === "PENDING_ADMIN_ACTION" &&
+        request.request_type !== "TRAVEL_BOOKING"));
+
+  const approvalHeading =
+    isAdmin && request.current_status === "PENDING_ADMIN_ACTION"
+      ? "Admin Approval"
+      : "Supervisor Approval";
 
   const canBookTravel =
     (isAdmin || isTravelOperator) &&
@@ -1258,7 +1424,7 @@ function RequestConversation({
               <div className="workflow-action-card supervisor-action">
                 <div className="workflow-action-heading">
                   <div>
-                    <span>Supervisor Approval</span>
+                    <span>{approvalHeading}</span>
 
                     <h3>Please review the request and take action.</h3>
                   </div>
@@ -1311,7 +1477,7 @@ function RequestConversation({
 
                 <div className="booking-form-grid">
                   <div className="assistant-field">
-                    <label>Airline</label>
+                    <label>Transport Type</label>
 
                     <input
                       value={bookingForm.airline}
@@ -1321,7 +1487,7 @@ function RequestConversation({
                           airline: e.target.value,
                         }))
                       }
-                      placeholder="IndiGo"
+                      placeholder="Train"
                     />
                   </div>
 
@@ -1417,6 +1583,7 @@ function RequestConversation({
                   <button
                     type="button"
                     className="save-draft-button"
+                    onClick={saveTravelBookingDraft}
                     disabled={bookingSubmitting}
                   >
                     Save as Draft
@@ -1526,9 +1693,17 @@ function RequestConversation({
                 <FiCheckCircle />
 
                 <div>
-                  <strong>Trip Completed</strong>
+                  <strong>
+                    {request.request_type === "TRAVEL_BOOKING"
+                      ? "Trip Completed"
+                      : "Request Completed"}
+                  </strong>
 
-                  <p>We hope you had a productive trip.</p>
+                  <p>
+                    {request.request_type === "TRAVEL_BOOKING"
+                      ? "We hope you had a productive trip."
+                      : "This request has been completed successfully."}
+                  </p>
                 </div>
               </div>
             )}
@@ -1596,9 +1771,14 @@ function RequestSummary({ request }) {
             value={formatShortDate(details.returnDate)}
           />
 
-          <SummaryField label="Class" value={details.travelClass} />
+          <SummaryField label="Project" value={details.project} />
 
-          <SummaryField label="Cadre (Band)" value={details.cadreBand} />
+          <SummaryField
+            label="Government ID (Aadhar)"
+            value={details.governmentId}
+          />
+
+          <SummaryField label="Mobile Number" value={details.mobileNumber} />
 
           <SummaryField label="Base Location" value={details.baseLocation} />
 
@@ -1617,6 +1797,40 @@ function RequestSummary({ request }) {
           <SummaryField label="Trip Type" value={details.tripType} />
 
           <SummaryField label="Purpose" value={details.purpose} full />
+
+          <SummaryField
+            label="Accommodation"
+            value={details.accommodationRequired ? "Required" : "Not required"}
+          />
+
+          {details.accommodationRequired && (
+            <>
+              <SummaryField
+                label="Accommodation Place"
+                value={details.accommodationPlace}
+              />
+
+              <SummaryField
+                label="Accommodation From"
+                value={formatShortDate(details.accommodationFrom)}
+              />
+
+              <SummaryField
+                label="Accommodation To"
+                value={formatShortDate(details.accommodationTo)}
+              />
+
+              <SummaryField
+                label="Number of Nights"
+                value={details.accommodationNights}
+              />
+
+              <SummaryField
+                label="Occupancy Count"
+                value={details.occupancyCount}
+              />
+            </>
+          )}
 
           <SummaryField
             label="Travelers"
@@ -1700,7 +1914,10 @@ function BookingDetails({ details, request }) {
 
         <SummaryField label="Booked On" value={formatDate(details.bookedOn)} />
 
-        <SummaryField label="Airline" value={details.airline} />
+        <SummaryField
+          label="Transport Type"
+          value={details.transportType || details.airline}
+        />
 
         <SummaryField label="PNR" value={details.pnr} />
 

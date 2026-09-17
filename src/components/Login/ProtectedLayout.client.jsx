@@ -1,91 +1,3 @@
-// "use client";
-
-// import { useEffect, useRef } from "react";
-// import { useRouter } from "next/navigation";
-// import { useAuth } from "../../context/AuthProvider.client";
-
-// const IDLE_TIMEOUT = 5 * 60 * 1000;
-// const CHECK_INTERVAL = 60 * 1000;
-
-// export default function ProtectedLayout({ children }) {
-//   const router = useRouter();
-//   const { user, logout, hydrated } = useAuth();
-//   const lastActivityRef = useRef(Date.now());
-
-//   const updateActivity = () => {
-//     lastActivityRef.current = Date.now();
-//     try {
-//       sessionStorage.setItem("lastActivity", String(lastActivityRef.current));
-//     } catch {}
-//   };
-
-//   const syncFromStorage = () => {
-//     try {
-//       const v = sessionStorage.getItem("lastActivity");
-//       if (!v) return;
-//       const stored = parseInt(v, 10);
-//       if (!isNaN(stored) && stored > lastActivityRef.current) {
-//         lastActivityRef.current = stored;
-//       }
-//     } catch {}
-//   };
-
-//   useEffect(() => {
-//     const events = [
-//       "mousemove",
-//       "keydown",
-//       "click",
-//       "touchstart",
-//       "scroll",
-//       "focus",
-//     ];
-//     events.forEach((ev) => window.addEventListener(ev, updateActivity, true));
-
-//     const onVisibility = () => {
-//       if (!document.hidden) updateActivity();
-//     };
-//     document.addEventListener("visibilitychange", onVisibility);
-
-//     const onStorage = (e) => {
-//       if (e.key === "lastActivity") syncFromStorage();
-//     };
-//     window.addEventListener("storage", onStorage);
-
-//     updateActivity();
-
-//     const doCheck = async () => {
-//       if (!hydrated || !user) return;
-
-//       syncFromStorage();
-
-//       if (Date.now() - lastActivityRef.current > IDLE_TIMEOUT) {
-//         try {
-//           try {
-//             sessionStorage.setItem("loggedOutDueToInactivity", "true");
-//           } catch {}
-//           await logout({ redirect: true, reason: "idle" });
-//         } catch (err) {
-//           console.warn("idle logout failed", err);
-//         }
-//       }
-//     };
-
-//     doCheck();
-//     const id = setInterval(doCheck, CHECK_INTERVAL);
-
-//     return () => {
-//       events.forEach((ev) =>
-//         window.removeEventListener(ev, updateActivity, true)
-//       );
-//       document.removeEventListener("visibilitychange", onVisibility);
-//       window.removeEventListener("storage", onStorage);
-//       clearInterval(id);
-//     };
-//   }, [user, hydrated, logout]);
-
-//   return <>{children}</>;
-// }
-
 "use client";
 
 import { useEffect, useRef, useState } from "react";
@@ -109,7 +21,7 @@ const toDateKey = (dateObj) => {
  * Conditions: Sunday | holiday | leave applied | regularisation already submitted
  */
 const getProfessionalMissedPunchMessage = () =>
-  "A missed punch was detected for yesterday. A leave request or attendance regularisation has already been submitted. Please connect with your manager or higher management for guidance.";
+  "Reminder: A leave request or attendance regularisation has already been submitted for yesterday. Please connect with your supervisor to get the request approved.";
 
 const normalizeStatus = (value) =>
   String(value ?? "")
@@ -413,6 +325,8 @@ export default function ProtectedLayout({ children }) {
   const lastActivityRef = useRef(Date.now());
   const punchAlertKeyRef = useRef(null);
   const [punchAlert, setPunchAlert] = useState(null);
+  const [missedPunchNotificationsEnabled, setMissedPunchNotificationsEnabled] =
+    useState(false);
 
   const updateActivity = () => {
     lastActivityRef.current = Date.now();
@@ -524,6 +438,25 @@ export default function ProtectedLayout({ children }) {
           "x-employee-id": String(employeeId),
         };
 
+        let configNotificationsEnabled = false;
+        try {
+          const cfgRes = await axios.get(
+            `${process.env.NEXT_PUBLIC_BACKEND_URL}/attendance/login-hours-config`,
+            { withCredentials: true, headers: dateHeaders },
+          );
+          const cfg = cfgRes?.data?.data || {};
+          configNotificationsEnabled =
+            String(
+              cfg.missed_punch_notification_enabled ??
+                cfg.missedPunchNotificationEnabled ??
+                "0",
+            ) !== "0";
+          setMissedPunchNotificationsEnabled(configNotificationsEnabled);
+        } catch (_) {
+          configNotificationsEnabled = false;
+          setMissedPunchNotificationsEnabled(false);
+        }
+
         const yesterday = new Date();
         yesterday.setHours(0, 0, 0, 0);
         yesterday.setDate(yesterday.getDate() - 1);
@@ -538,6 +471,13 @@ export default function ProtectedLayout({ children }) {
         });
 
         if (suppress) {
+          if (!configNotificationsEnabled) {
+            try {
+              sessionStorage.removeItem("attendanceReminder");
+            } catch {}
+            return;
+          }
+
           const hasRelatedRequest = await hasRelatedRequestForYesterday({
             employeeId,
             targetDate: yesterday,
@@ -565,6 +505,11 @@ export default function ProtectedLayout({ children }) {
           if (queued) {
             const parsed = JSON.parse(queued);
             if (parsed?.message) {
+              if (!configNotificationsEnabled) {
+                sessionStorage.removeItem("attendanceReminder");
+                return;
+              }
+
               const hasRelatedRequest = await hasRelatedRequestForYesterday({
                 employeeId,
                 targetDate: yesterday,
@@ -583,6 +528,13 @@ export default function ProtectedLayout({ children }) {
             }
           }
         } catch {}
+
+        if (!configNotificationsEnabled) {
+          try {
+            sessionStorage.removeItem("attendanceReminder");
+          } catch {}
+          return;
+        }
 
         try {
           const response = await axios
@@ -624,7 +576,7 @@ export default function ProtectedLayout({ children }) {
             setPunchAlert({
               title: "Attendance reminder",
               message:
-                "Punch-in missed for yesterday. Please raise attendance regularisation.",
+                "Your punch-in for yesterday is missing, and no leave request has been submitted. Kindly submit an attendance regularisation request at the earliest.",
             });
             return;
           }
@@ -670,7 +622,7 @@ export default function ProtectedLayout({ children }) {
             setPunchAlert({
               title: "Attendance reminder",
               message:
-                "Punch-out missed. Please raise attendance regularisation.",
+                "Your punch-out for yesterday is missing. Kindly get it regularized at the earliest..",
             });
           }
         } catch (error) {
@@ -683,7 +635,7 @@ export default function ProtectedLayout({ children }) {
             setPunchAlert({
               title: "Attendance reminder",
               message:
-                "Punch-in missed for yesterday. Please raise attendance regularisation.",
+                "Your punch-in for yesterday is missing, and no leave request has been submitted. Kindly submit an attendance regularisation request at the earliest.",
             });
             return;
           }

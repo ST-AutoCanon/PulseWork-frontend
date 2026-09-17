@@ -16,14 +16,6 @@ import {
   FiX,
 } from "react-icons/fi";
 
-const TRAVEL_CLASS_BY_ROLE = {
-  admin: "Business",
-  director: "Business",
-  manager: "Premium Economy",
-  hr: "Premium Economy",
-  employee: "Economy",
-};
-
 const TRANSPORT_OPTIONS = {
   LOWER: ["Bus", "Train"],
   UPPER: ["Airbus", "Train", "Bus"],
@@ -53,6 +45,7 @@ const EmployeeRequestForm = ({
   userRole,
   employeeId,
   orgId,
+  orgPrefix,
   onClose,
   onSubmit,
 }) => {
@@ -61,8 +54,9 @@ const EmployeeRequestForm = ({
     to: "",
     travelDate: "",
     returnDate: "",
-    travelClass: "",
-    cadreBand: "",
+    project: "",
+    governmentId: "",
+    mobileNumber: "",
     baseLocation: "",
     travelLocation: "",
     transportMode: "",
@@ -77,6 +71,8 @@ const EmployeeRequestForm = ({
     otherAccommodationPlace: "",
     accommodationFrom: "",
     accommodationTo: "",
+    accommodationNights: "",
+    occupancyCount: "1",
 
     amount: "",
     payoutDate: "",
@@ -90,7 +86,6 @@ const EmployeeRequestForm = ({
     documentPurpose: "",
     documentAdditionalInfo: "",
 
-    assetRequestType: "",
     assetCategory: "",
     assetSubCategory: "",
     itemName: "",
@@ -107,6 +102,8 @@ const EmployeeRequestForm = ({
   const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState({});
   const [employees, setEmployees] = useState([]);
+  const [projects, setProjects] = useState([]);
+  const [travelContext, setTravelContext] = useState({ cadreBand: "LOWER" });
   const [guestHouses, setGuestHouses] = useState([]);
   const [salaryContext, setSalaryContext] = useState({
     monthlyGrossSalary: 0,
@@ -118,18 +115,90 @@ const EmployeeRequestForm = ({
     message: "",
   });
 
-  const roleClass =
-    TRAVEL_CLASS_BY_ROLE[String(userRole || "employee").toLowerCase()] ||
-    "Economy";
+  useEffect(() => {
+    if (type !== "TRAVEL_BOOKING" || !employeeId || !orgId) return;
+
+    axios
+      .get(`${process.env.NEXT_PUBLIC_BACKEND_URL}/requests/travel-context`, {
+        headers: {
+          "x-api-key": process.env.NEXT_PUBLIC_API_KEY,
+          "x-org-id": orgId,
+          "x-employee-id": employeeId,
+        },
+        withCredentials: true,
+      })
+      .then((response) => {
+        const context = response.data?.data || {};
+        setTravelContext(context);
+        setForm((previous) => ({
+          ...previous,
+          governmentId: context.governmentId || "",
+          mobileNumber: context.mobileNumber || "",
+        }));
+      })
+      .catch(() => undefined);
+  }, [employeeId, orgId, type]);
 
   useEffect(() => {
-    if (type === "TRAVEL_BOOKING") update("travelClass", roleClass);
-  }, [roleClass, type]);
+    if (type !== "TRAVEL_BOOKING" || !orgId) return;
+
+    axios
+      .get(`${process.env.NEXT_PUBLIC_BACKEND_URL}/projectdrop`, {
+        headers: {
+          "x-api-key": process.env.NEXT_PUBLIC_API_KEY,
+          "x-org-id": orgId,
+          "x-employee-id": employeeId,
+        },
+        withCredentials: true,
+      })
+      .then((response) => {
+        const raw = Array.isArray(response.data)
+          ? response.data
+          : response.data?.data || [];
+        setProjects(
+          raw
+            .map((item) =>
+              typeof item === "string"
+                ? item
+                : item?.project || item?.project_name || item?.name || "",
+            )
+            .filter(Boolean),
+        );
+      })
+      .catch(() => setProjects([]));
+  }, [employeeId, orgId, type]);
+
+  useEffect(() => {
+    if (
+      type !== "TRAVEL_BOOKING" ||
+      !form.accommodationFrom ||
+      !form.accommodationTo
+    ) {
+      return;
+    }
+
+    const from = new Date(form.accommodationFrom);
+    const to = new Date(form.accommodationTo);
+    const nights = Math.max(
+      0,
+      Math.ceil((to.getTime() - from.getTime()) / (1000 * 60 * 60 * 24)),
+    );
+
+    update("accommodationNights", String(nights));
+  }, [form.accommodationFrom, form.accommodationTo, type]);
 
   useEffect(() => {
     if (type !== "TRAVEL_BOOKING") return;
-    update("transportMode", "");
-  }, [form.cadreBand, type]);
+
+    const travelerCount = form.travelers.filter((traveler) =>
+      traveler.trim(),
+    ).length;
+
+    setForm((previous) => ({
+      ...previous,
+      occupancyCount: String(1 + travelerCount),
+    }));
+  }, [form.travelers, type]);
 
   useEffect(() => {
     if (type !== "TRAVEL_BOOKING" || !employeeId) return;
@@ -279,7 +348,7 @@ const EmployeeRequestForm = ({
       if (!form.from) nextErrors.from = "Departure is required";
       if (!form.to) nextErrors.to = "Destination is required";
       if (!form.travelDate) nextErrors.travelDate = "Travel date is required";
-      if (!form.cadreBand) nextErrors.cadreBand = "Select a cadre band";
+      if (!form.project) nextErrors.project = "Project is required";
       if (!form.baseLocation.trim())
         nextErrors.baseLocation = "Base location is required";
       if (!form.travelLocation.trim())
@@ -288,16 +357,8 @@ const EmployeeRequestForm = ({
         nextErrors.transportMode = "Select a mode of transport";
       if (!form.distanceKm || Number(form.distanceKm) < 0)
         nextErrors.distanceKm = "Enter a valid travel distance";
-      if (
-        form.cadreBand === "LOWER" &&
-        !["Bus", "Train"].includes(form.transportMode)
-      )
-        nextErrors.transportMode =
-          "Lower band travel is limited to Bus or Train";
       if (!form.tripType) nextErrors.tripType = "Trip type is required";
       if (!form.purpose) nextErrors.purpose = "Purpose is required";
-      if (!form.travelers.some((traveler) => traveler.trim()))
-        nextErrors.travelers = "Add at least one traveler";
       if (
         form.accommodationRequired &&
         (!form.accommodationPlace ||
@@ -331,8 +392,6 @@ const EmployeeRequestForm = ({
         nextErrors.documentPurpose = "Select a purpose";
     }
     if (type === "ASSET_REQUEST") {
-      if (!form.assetRequestType)
-        nextErrors.assetRequestType = "Select a request type";
       if (!form.assetCategory) nextErrors.assetCategory = "Select a category";
       if (!form.assetSubCategory)
         nextErrors.assetSubCategory = "Select a sub-category";
@@ -370,14 +429,16 @@ const EmployeeRequestForm = ({
           to: form.to,
           travelDate: form.travelDate,
           returnDate: form.returnDate,
-          travelClass: form.travelClass,
-          cadreBand: form.cadreBand,
+          project: form.project,
+          governmentId: form.governmentId,
+          mobileNumber: form.mobileNumber,
           baseLocation: form.baseLocation,
           travelLocation: form.travelLocation,
           transportMode: form.transportMode,
           distanceKm: Number(form.distanceKm),
           beyondEligibility:
-            form.cadreBand === "LOWER" && Number(form.distanceKm) > 1000,
+            travelContext.cadreBand === "LOWER" &&
+            Number(form.distanceKm) > 1000,
           tripType: form.tripType,
           purpose: form.purpose,
           additionalInfo: form.additionalInfo,
@@ -389,6 +450,8 @@ const EmployeeRequestForm = ({
               : form.accommodationPlace,
           accommodationFrom: form.accommodationFrom,
           accommodationTo: form.accommodationTo,
+          accommodationNights: Number(form.accommodationNights) || 0,
+          occupancyCount: Number(form.occupancyCount) || 1,
         };
       }
 
@@ -428,7 +491,6 @@ const EmployeeRequestForm = ({
         title = "Request for Laptop / Device / Software";
 
         details = {
-          requestType: form.assetRequestType,
           category: form.assetCategory,
           subCategory: form.assetSubCategory,
           itemName: form.itemName,
@@ -532,21 +594,6 @@ const EmployeeRequestForm = ({
               </RequestField>
 
               <RequestField
-                label="Cadre (Band)"
-                required
-                error={errors.cadreBand}
-              >
-                <select
-                  value={form.cadreBand}
-                  onChange={(event) => update("cadreBand", event.target.value)}
-                >
-                  <option value="">Select band</option>
-                  <option value="LOWER">Lower band</option>
-                  <option value="UPPER">Upper band</option>
-                </select>
-              </RequestField>
-
-              <RequestField
                 label="Travel distance (km)"
                 required
                 error={errors.distanceKm}
@@ -595,17 +642,18 @@ const EmployeeRequestForm = ({
               >
                 <select
                   value={form.transportMode}
-                  disabled={!form.cadreBand}
                   onChange={(event) =>
                     update("transportMode", event.target.value)
                   }
                 >
                   <option value="">Select transport</option>
-                  {(TRANSPORT_OPTIONS[form.cadreBand] || []).map((mode) => (
-                    <option key={mode} value={mode}>
-                      {mode}
-                    </option>
-                  ))}
+                  {(TRANSPORT_OPTIONS[travelContext.cadreBand] || []).map(
+                    (mode) => (
+                      <option key={mode} value={mode}>
+                        {mode}
+                      </option>
+                    ),
+                  )}
                 </select>
               </RequestField>
 
@@ -618,25 +666,37 @@ const EmployeeRequestForm = ({
                 />
               </RequestField>
 
-              <RequestField
-                label={`Class (${roleClass})`}
-                error={errors.travelClass}
-              >
+              <RequestField label="Project" required error={errors.project}>
                 <select
-                  value={form.travelClass}
-                  disabled
-                  onChange={(e) => update("travelClass", e.target.value)}
+                  value={form.project}
+                  onChange={(event) => update("project", event.target.value)}
                 >
-                  <option value="">Select class</option>
-
-                  <option value="Economy">Economy</option>
-
-                  <option value="Premium Economy">Premium Economy</option>
-
-                  <option value="Business">Business</option>
-
-                  <option value="First">First</option>
+                  <option value="">Select project</option>
+                  {orgPrefix && (
+                    <option value={`${orgPrefix} CLAIM`}>
+                      {orgPrefix} CLAIM
+                    </option>
+                  )}
+                  {projects.map((project, index) => (
+                    <option key={`${project}-${index}`} value={project}>
+                      {project}
+                    </option>
+                  ))}
                 </select>
+              </RequestField>
+
+              <RequestField label="Government ID (Aadhar)">
+                <input value={form.governmentId} readOnly />
+              </RequestField>
+
+              <RequestField label="Mobile number">
+                <input
+                  type="tel"
+                  value={form.mobileNumber}
+                  onChange={(event) =>
+                    update("mobileNumber", event.target.value)
+                  }
+                />
               </RequestField>
 
               <RequestField label="Trip Type" required error={errors.tripType}>
@@ -743,6 +803,25 @@ const EmployeeRequestForm = ({
                       onChange={(value) => update("accommodationTo", value)}
                     />
                   </RequestField>
+                  <RequestField label="Number of nights">
+                    <input
+                      type="number"
+                      min="0"
+                      value={form.accommodationNights}
+                      onChange={(event) =>
+                        update("accommodationNights", event.target.value)
+                      }
+                      placeholder="e.g. 2"
+                    />
+                  </RequestField>
+                  <RequestField label="Occupancy count">
+                    <input
+                      type="number"
+                      min="1"
+                      value={form.occupancyCount}
+                      readOnly
+                    />
+                  </RequestField>
                 </>
               )}
 
@@ -754,12 +833,7 @@ const EmployeeRequestForm = ({
                 />
               </RequestField>
 
-              <RequestField
-                label="Who will be traveling?"
-                required
-                error={errors.travelers}
-                full
-              >
+              <RequestField label="Who will be traveling?" full>
                 <div className="traveler-list">
                   {form.travelers.map((traveler, index) => (
                     <div className="traveler-row" key={index}>
@@ -1034,6 +1108,8 @@ const EmployeeRequestForm = ({
                   <option value="Loan">Loan</option>
 
                   <option value="Personal">Personal</option>
+
+                  <option value="Other">Other</option>
                 </select>
               </RequestField>
 
@@ -1064,29 +1140,6 @@ const EmployeeRequestForm = ({
           {type === "ASSET_REQUEST" && (
             <div className="request-form-grid">
               <RequestField
-                label="Request Type"
-                required
-                error={errors.assetRequestType}
-              >
-                <select
-                  value={form.assetRequestType}
-                  onChange={(e) => update("assetRequestType", e.target.value)}
-                >
-                  <option value="">Select request type</option>
-
-                  <option value="Laptop">Laptop</option>
-
-                  <option value="Monitor">Monitor</option>
-
-                  <option value="Mobile">Mobile</option>
-
-                  <option value="Software">Software</option>
-
-                  <option value="Accessory">Accessory</option>
-                </select>
-              </RequestField>
-
-              <RequestField
                 label="Asset Category"
                 required
                 error={errors.assetCategory}
@@ -1099,6 +1152,8 @@ const EmployeeRequestForm = ({
                   <option value="System">System</option>
                   <option value="Furniture">Furniture</option>
                   <option value="Equipment">Equipment</option>
+                  <option value="Software">Software</option>
+                  <option value="Accessories">Accessories</option>
                   <option value="Others">Others</option>
                 </select>
               </RequestField>
@@ -1133,6 +1188,12 @@ const EmployeeRequestForm = ({
                       <option value="Electrical">Electrical</option>
                       <option value="Non-Electrical">Non-Electrical</option>
                     </>
+                  )}
+                  {form.assetCategory === "Software" && (
+                    <option value="Software">Software</option>
+                  )}
+                  {form.assetCategory === "Accessories" && (
+                    <option value="Accessories">Accessories</option>
                   )}
                   {form.assetCategory === "Others" && (
                     <option value="Others">Other</option>
@@ -1183,6 +1244,8 @@ const EmployeeRequestForm = ({
                   <option value="Project Requirement">
                     Project Requirement
                   </option>
+
+                  <option value="Other">Other</option>
                 </select>
               </RequestField>
 

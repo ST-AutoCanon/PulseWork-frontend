@@ -1180,19 +1180,48 @@ export default function Login({ onClose }) {
                 }
               };
 
+              let missedPunchNotificationEnabled = false;
+              try {
+                const cfgRes = await fetch(
+                  `${process.env.NEXT_PUBLIC_BACKEND_URL}/attendance/login-hours-config`,
+                  {
+                    method: "GET",
+                    credentials: "include",
+                    headers: {
+                      "Content-Type": "application/json",
+                      "x-api-key": process.env.NEXT_PUBLIC_API_KEY,
+                      "x-org-id": String(orgId),
+                      "x-employee-id": String(employeeId),
+                    },
+                  },
+                );
+                const cfgBody = await cfgRes.json().catch(() => ({}));
+                const cfg = cfgBody?.data || {};
+                missedPunchNotificationEnabled =
+                  String(
+                    cfg.missed_punch_notification_enabled ??
+                      cfg.missedPunchNotificationEnabled ??
+                      "0",
+                  ) !== "0";
+              } catch {}
+
               const hasRelatedRequest = await hasRelatedRequestForYesterday();
-              const queueProfessionalAlert = () =>
+              const queueProfessionalAlert = () => {
+                if (!missedPunchNotificationEnabled) return;
                 queueAttendanceReminder(
-                  "A missed punch was detected for yesterday. A leave request or attendance regularisation has already been submitted. Please connect with your manager or higher management for guidance.",
+                  " Reminder: A leave request or attendence regularisation has already been submitted for yesterday. Please connect with your supervisor to get the request approved.",
                   "Professional alert",
                 );
+              };
 
-              if (!records.length) {
+              if (!missedPunchNotificationEnabled) {
+                sessionStorage.removeItem("attendanceReminder");
+              } else if (!records.length) {
                 if (hasRelatedRequest) {
                   queueProfessionalAlert();
                 } else {
                   queueAttendanceReminder(
-                    "Punch-in missed for yesterday. Please raise attendance regularisation.",
+                    "Your punch-in for yesterday is missing, and no leave request has been submitted. Kindly submit an attendance regularisation request at the earliest..",
                   );
                 }
               } else {
@@ -1218,7 +1247,7 @@ export default function Login({ onClose }) {
                     queueProfessionalAlert();
                   } else {
                     queueAttendanceReminder(
-                      "Punch-out missed. Please raise attendance regularisation.",
+                      "Your punch-out for yesterday is missing. Kindly get it regularized at the earliest..",
                     );
                   }
                 }

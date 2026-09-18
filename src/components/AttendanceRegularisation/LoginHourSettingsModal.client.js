@@ -23,6 +23,7 @@ const DEFAULT_VALUES = {
   punchOutStart: "",
   bufferMinutes: "10",
   lateLoginEnabled: true,
+  missedPunchNotificationEnabled: false,
   lateStreakDays: "3",
   autoMarkLate: true,
   escalationMode: "mail_notify",
@@ -213,6 +214,12 @@ export default function LoginHourSettingsModal({ isOpen, onClose }) {
               config.buffer_minutes ?? config.bufferMinutes ?? 10,
             ),
             lateLoginEnabled: String(config.late_login_enabled ?? "1") !== "0",
+            missedPunchNotificationEnabled:
+              String(
+                config.missed_punch_notification_enabled ??
+                  config.missedPunchNotificationEnabled ??
+                  "0",
+              ) !== "0",
             lateStreakDays: String(
               config.late_streak_days ?? config.lateStreakDays ?? 3,
             ),
@@ -299,6 +306,8 @@ export default function LoginHourSettingsModal({ isOpen, onClose }) {
           punch_out_start: values.punchOutStart || "",
           buffer_minutes: values.bufferMinutes || "10",
           late_login_enabled: values.lateLoginEnabled ? 1 : 0,
+          missed_punch_notification_enabled:
+            values.missedPunchNotificationEnabled ? 1 : 0,
           late_streak_days: values.lateStreakDays || "3",
           auto_mark_late: values.autoMarkLate ? 1 : 0,
           escalation_mode: values.escalationMode || "mail_notify",
@@ -326,6 +335,9 @@ export default function LoginHourSettingsModal({ isOpen, onClose }) {
     const buffer = values.bufferMinutes || "10";
     const streak = values.lateStreakDays || "3";
     const autoLate = values.autoMarkLate ? "enabled" : "disabled";
+    const missedPunchAlerts = values.missedPunchNotificationEnabled
+      ? "enabled"
+      : "disabled";
     const selectedRoles =
       Object.entries(actionRoles)
         .filter(([, checked]) => checked)
@@ -337,7 +349,7 @@ export default function LoginHourSettingsModal({ isOpen, onClose }) {
         ? "Email + Notification"
         : "Attendance Regularisation";
 
-    return `Punch-in starts at ${start} (+${buffer} min buffer). Late login auto-mark: ${autoLate}. Escalation after ${streak} consecutive late days. Action roles: ${selectedRoles}. Mode: ${modeText}.`;
+    return `Punch-in starts at ${start} (+${buffer} min buffer). Missed punch alerts: ${missedPunchAlerts}. Late login auto-mark: ${autoLate}. Escalation after ${streak} consecutive late days. Action roles: ${selectedRoles}. Mode: ${modeText}.`;
   }, [values, actionRoles]);
 
   if (!isOpen) return null;
@@ -554,6 +566,25 @@ export default function LoginHourSettingsModal({ isOpen, onClose }) {
                     </p>
                   </div>
 
+                  <div className="field">
+                    <div className="field__label">
+                      <Bell className="h-4 w-4" />
+                      <span>Missed punch alerts</span>
+                    </div>
+                    <CheckboxRow
+                      label="Enable missed punch notification alerts"
+                      checked={values.missedPunchNotificationEnabled}
+                      onChange={(checked) =>
+                        handleChange("missedPunchNotificationEnabled", checked)
+                      }
+                      disabled={isFetching || isSaving}
+                    />
+                    <p className="field__hint">
+                      Turn this off to suppress missed-punch reminder popups for
+                      employees in this organization.
+                    </p>
+                  </div>
+
                   <Field
                     label="Escalation method"
                     hint="Choose how the escalation should be handled."
@@ -591,6 +622,12 @@ export default function LoginHourSettingsModal({ isOpen, onClose }) {
                     <span className="text-indigo-100">Current status</span>
                     <span className="rounded-full bg-emerald-400/15 px-3 py-1 text-xs font-semibold text-emerald-200">
                       Active
+                    </span>
+                  </div>
+                  <div className="preview-card__row">
+                    <span className="text-indigo-100">Missed punch alerts</span>
+                    <span className="preview-card__value">
+                      {values.missedPunchNotificationEnabled ? "On" : "Off"}
                     </span>
                   </div>
                   <div className="preview-card__row">

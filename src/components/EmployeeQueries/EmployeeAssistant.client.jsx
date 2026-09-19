@@ -9,6 +9,9 @@ import React, {
 } from "react";
 import axios from "axios";
 import { io } from "socket.io-client";
+import { PiClockCounterClockwise } from "react-icons/pi";
+import { PiBell } from "react-icons/pi";
+import { IoMdMore } from "react-icons/io";
 
 import {
   FiArrowLeft,
@@ -198,6 +201,21 @@ function getRequestTone(type) {
   return found?.tone || "indigo";
 }
 
+function getRequestTitle(type) {
+  const found = REQUEST_TYPES.find((item) => item.key === type);
+  return found?.title || "Employee Services";
+}
+
+function getNotificationTone(notification) {
+  const requestType =
+    notification?.request_type ||
+    normalizeDetails(notification?.metadata)?.requestType ||
+    normalizeDetails(notification?.metadata)?.request_type ||
+    "OTHER_QUERY";
+
+  return getRequestTone(requestType);
+}
+
 function isEmployeeRole(role) {
   return String(role || "").toLowerCase() === "employee";
 }
@@ -253,6 +271,8 @@ const EmployeeAssistant = () => {
 
   const [requestMessage, setRequestMessage] = useState("");
 
+  const [messageAttachment, setMessageAttachment] = useState(null);
+
   const [sendingMessage, setSendingMessage] = useState(false);
   const [dialog, setDialog] = useState({
     isVisible: false,
@@ -272,12 +292,15 @@ const EmployeeAssistant = () => {
 
   const [bookingSubmitting, setBookingSubmitting] = useState(false);
 
+  const [assetAllocation, setAssetAllocation] = useState(null);
+
   const [socket, setSocket] = useState(null);
 
   const [otherQueryKey, setOtherQueryKey] = useState(0);
 
   const socketRef = useRef(null);
   const selectedRequestRef = useRef(null);
+  const messageAttachmentInputRef = useRef(null);
 
   const headers = useMemo(
     () => ({
@@ -288,10 +311,105 @@ const EmployeeAssistant = () => {
     [API_KEY, employeeId, orgId],
   );
 
+  const [serviceNotifications, setServiceNotifications] = useState([]);
+  const [serviceReminders, setServiceReminders] = useState([]);
+
+  const [serviceCounts, setServiceCounts] = useState({
+    notifications: 0,
+    reminders: 0,
+  });
+
+  const [serviceOverview, setServiceOverview] = useState(null);
+
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [showReminders, setShowReminders] = useState(false);
+  const [showOverview, setShowOverview] = useState(false);
+
   const isEmployee = isEmployeeRole(userRole);
 
   const isAdmin = isAdminRole(userRole);
   const isTravelOperator = isTravelOperatorRole(userRole);
+
+  const fetchServiceHeaderData = useCallback(async () => {
+    if (!employeeId || !orgId || !BACKEND_URL) {
+      return;
+    }
+
+    try {
+      const [
+        notificationsResponse,
+        remindersResponse,
+        countsResponse,
+        overviewResponse,
+      ] = await Promise.all([
+        axios.get(`${BACKEND_URL}/requests/service-notifications`, {
+          headers,
+          withCredentials: true,
+        }),
+
+        axios.get(`${BACKEND_URL}/requests/service-reminders`, {
+          headers,
+          withCredentials: true,
+        }),
+
+        axios.get(`${BACKEND_URL}/requests/service-notifications/counts`, {
+          headers,
+          withCredentials: true,
+        }),
+
+        axios.get(`${BACKEND_URL}/requests/service-overview`, {
+          headers,
+          withCredentials: true,
+        }),
+      ]);
+
+      setServiceNotifications(notificationsResponse.data?.data || []);
+
+      setServiceReminders(remindersResponse.data?.data || []);
+
+      setServiceCounts(
+        countsResponse.data?.data || {
+          notifications: 0,
+          reminders: 0,
+        },
+      );
+
+      setServiceOverview(overviewResponse.data?.data || null);
+    } catch (error) {
+      console.error("[EmployeeAssistant] fetchServiceHeaderData:", error);
+    }
+  }, [BACKEND_URL, employeeId, orgId, headers]);
+
+  const markAllServiceNotificationsRead = useCallback(async () => {
+    try {
+      await axios.patch(
+        `${BACKEND_URL}/requests/service-notifications/read-all`,
+        {},
+        {
+          headers,
+          withCredentials: true,
+        },
+      );
+
+      setServiceNotifications((previous) =>
+        previous.map((item) => ({
+          ...item,
+          is_read: 1,
+          read_at: item.read_at || new Date().toISOString(),
+        })),
+      );
+
+      setServiceCounts((previous) => ({
+        ...previous,
+        notifications: 0,
+      }));
+    } catch (error) {
+      console.error(
+        "[EmployeeAssistant] markAllServiceNotificationsRead:",
+        error,
+      );
+    }
+  }, [BACKEND_URL, headers]);
 
   const fetchRequests = useCallback(async () => {
     if (!employeeId || !orgId || !BACKEND_URL) {
@@ -403,9 +521,60 @@ const EmployeeAssistant = () => {
     [BACKEND_URL, headers],
   );
 
+  const handleServiceNotificationClick = useCallback(
+    async (notification) => {
+      try {
+        if (!notification?.id) return;
+
+        if (!notification.is_read) {
+          await axios.patch(
+            `${BACKEND_URL}/requests/service-notifications/${notification.id}/read`,
+            {},
+            {
+              headers,
+              withCredentials: true,
+            },
+          );
+        }
+
+        setServiceNotifications((previous) =>
+          previous.map((item) =>
+            String(item.id) === String(notification.id)
+              ? {
+                  ...item,
+                  is_read: 1,
+                  read_at: new Date().toISOString(),
+                }
+              : item,
+          ),
+        );
+
+        setServiceCounts((previous) => ({
+          ...previous,
+          notifications: notification.is_read
+            ? previous.notifications
+            : Math.max(0, previous.notifications - 1),
+        }));
+
+        setShowNotifications(false);
+
+        if (notification.request_id) {
+          await loadRequest(notification.request_id);
+        }
+      } catch (error) {
+        console.error(
+          "[EmployeeAssistant] handleServiceNotificationClick:",
+          error,
+        );
+      }
+    },
+    [BACKEND_URL, headers, loadRequest],
+  );
+
   useEffect(() => {
     fetchRequests();
-  }, [fetchRequests]);
+    fetchServiceHeaderData();
+  }, [fetchRequests, fetchServiceHeaderData]);
 
   useEffect(() => {
     if (!employeeId || !BACKEND_URL) {
@@ -434,7 +603,7 @@ const EmployeeAssistant = () => {
     setSocket(s);
 
     const onRequestUpdate = async (payload) => {
-      await fetchRequests();
+      await Promise.all([fetchRequests(), fetchServiceHeaderData()]);
 
       const current = selectedRequestRef.current;
 
@@ -490,7 +659,15 @@ const EmployeeAssistant = () => {
 
       socketRef.current = null;
     };
-  }, [API_KEY, BACKEND_URL, employeeId, orgId, fetchRequests, loadRequest]);
+  }, [
+    API_KEY,
+    BACKEND_URL,
+    employeeId,
+    orgId,
+    fetchRequests,
+    fetchServiceHeaderData,
+    loadRequest,
+  ]);
 
   useEffect(() => {
     selectedRequestRef.current = selectedRequest;
@@ -518,36 +695,18 @@ const EmployeeAssistant = () => {
       throw new Error("Employee or organization information is missing.");
     }
 
-    const response = await axios.post(
-      `${BACKEND_URL}/requests`,
-      {
-        requestType,
-        title,
-        details,
-      },
-      {
-        headers: {
-          ...headers,
-          "Content-Type": "application/json",
-        },
-        withCredentials: true,
-      },
-    );
+    const payload = new FormData();
+    payload.append("requestType", requestType);
+    payload.append("title", title);
+    payload.append("details", JSON.stringify(details));
+    if (file) payload.append("attachment", file);
+
+    const response = await axios.post(`${BACKEND_URL}/requests`, payload, {
+      headers,
+      withCredentials: true,
+    });
 
     const created = response.data?.data;
-
-    /*
-      The current backend createRequest endpoint
-      accepts JSON only. We keep the selected
-      supporting file in the form UI for now.
-
-      Travel booking's e-ticket is uploaded later
-      by Admin through /requests/:requestId/book.
-    */
-
-    if (file) {
-      console.info("[EmployeeAssistant] selected file:", file.name);
-    }
 
     await fetchRequests();
 
@@ -675,7 +834,7 @@ const EmployeeAssistant = () => {
     if (!selectedRequest) return;
 
     try {
-      await axios.post(
+      const response = await axios.post(
         `${BACKEND_URL}/requests/${selectedRequest.id}/book-draft`,
         {
           transportType: bookingForm.airline,
@@ -687,12 +846,34 @@ const EmployeeAssistant = () => {
         { headers, withCredentials: true },
       );
 
+      const updatedRequest = response.data?.data;
+      if (updatedRequest) {
+        setSelectedRequest(updatedRequest);
+        selectedRequestRef.current = updatedRequest;
+      }
+
       showAlert("Booking draft saved.");
     } catch (error) {
       console.error("[EmployeeAssistant] saveTravelBookingDraft:", error);
       showAlert(error.response?.data?.message || "Unable to save draft.");
     }
   };
+
+  useEffect(() => {
+    if (selectedRequest?.request_type !== "TRAVEL_BOOKING") return;
+
+    const details = normalizeDetails(selectedRequest.details_json);
+    setBookingForm((previous) => ({
+      ...previous,
+      airline: details.transportType || details.airline || "",
+      pnr: details.pnr || "",
+      departureTime: details.departureTime || "",
+      returnTime: details.returnTime || "",
+      message: details.bookingMessage || "",
+      // Browsers do not allow restoring a file input; it must be selected again.
+      ticket: null,
+    }));
+  }, [selectedRequest?.id, selectedRequest?.details_json]);
 
   const completeTrip = async () => {
     if (!selectedRequest) return;
@@ -743,21 +924,45 @@ const EmployeeAssistant = () => {
     });
   };
 
-  const processAssetRequest = async () => {
+  const loadAssetCandidates = async () => {
+    if (!selectedRequest) return;
+
+    try {
+      setAssetAllocation({ loading: true, data: null });
+      const response = await axios.get(
+        `${BACKEND_URL}/requests/${selectedRequest.id}/asset-candidates`,
+        { headers, withCredentials: true },
+      );
+      setAssetAllocation({ loading: false, data: response.data?.data || {} });
+    } catch (error) {
+      console.error("[EmployeeAssistant] loadAssetCandidates:", error);
+      setAssetAllocation(null);
+      showAlert(
+        error.response?.data?.message || "Unable to find available assets.",
+      );
+    }
+  };
+
+  const processAssetRequest = async (processing) => {
     if (!selectedRequest) return;
 
     try {
       await axios.post(
         `${BACKEND_URL}/requests/${selectedRequest.id}/asset-process`,
-        {},
+        processing,
         { headers, withCredentials: true },
       );
       await fetchRequests();
       await loadRequest(selectedRequest.id);
-      showAlert("Asset added and assigned to the requesting employee.");
+      setAssetAllocation(null);
+      showAlert(
+        processing?.offline
+          ? "Asset request marked for offline handling."
+          : "Existing asset assigned to the requesting employee.",
+      );
     } catch (error) {
       console.error("[EmployeeAssistant] processAssetRequest:", error);
-      showAlert(error.response?.data?.message || "Unable to add the asset.");
+      showAlert(error.response?.data?.message || "Unable to assign the asset.");
     }
   };
 
@@ -794,7 +999,7 @@ const EmployeeAssistant = () => {
       return;
     }
 
-    if (!requestMessage.trim()) {
+    if (!requestMessage.trim() && !messageAttachment) {
       return;
     }
 
@@ -820,7 +1025,19 @@ const EmployeeAssistant = () => {
     try {
       setSendingMessage(true);
 
-      if (socketRef.current?.connected) {
+      if (messageAttachment) {
+        const formData = new FormData();
+        Object.entries(payload).forEach(([key, value]) => {
+          formData.append(key, value);
+        });
+        formData.append("attachment", messageAttachment);
+
+        await axios.post(
+          `${BACKEND_URL}/threads/${selectedRequest.thread_id}/messages`,
+          formData,
+          { headers, withCredentials: true },
+        );
+      } else if (socketRef.current?.connected) {
         await new Promise((resolve, reject) => {
           socketRef.current.emit("sendQueryMessage", payload, (response) => {
             if (response?.success) {
@@ -842,6 +1059,10 @@ const EmployeeAssistant = () => {
       }
 
       setRequestMessage("");
+      setMessageAttachment(null);
+      if (messageAttachmentInputRef.current) {
+        messageAttachmentInputRef.current.value = "";
+      }
 
       await loadRequest(selectedRequest.id);
     } catch (error) {
@@ -931,6 +1152,144 @@ const EmployeeAssistant = () => {
     );
   }
 
+  function ServiceNotificationPanel({
+    notifications,
+    unreadCount,
+    onClose,
+    onNotificationClick,
+    onMarkAllRead,
+  }) {
+    return (
+      <>
+        <button
+          type="button"
+          className="service-notification-backdrop"
+          aria-label="Close notifications"
+          onClick={onClose}
+        />
+
+        <aside
+          className="service-notification-panel"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Employee Services notifications"
+        >
+          <div className="service-notification-panel-header">
+            <div>
+              <span className="service-panel-eyebrow">Employee Services</span>
+
+              <h2>Notifications</h2>
+
+              <p>
+                {unreadCount > 0
+                  ? `${unreadCount} unread notification${
+                      unreadCount === 1 ? "" : "s"
+                    }`
+                  : "You're all caught up"}
+              </p>
+            </div>
+
+            <button
+              type="button"
+              className="service-panel-close"
+              onClick={onClose}
+              aria-label="Close notifications"
+              title="Close"
+            >
+              <FiX />
+            </button>
+          </div>
+
+          {unreadCount > 0 && (
+            <div className="service-notification-toolbar">
+              <span>Recent updates</span>
+
+              <button
+                type="button"
+                onClick={onMarkAllRead}
+                className="service-mark-all-button"
+              >
+                Mark all as read
+              </button>
+            </div>
+          )}
+
+          <div className="service-notification-list">
+            {notifications.length > 0 ? (
+              notifications.map((notification) => {
+                const tone = getNotificationTone(notification);
+
+                const requestType =
+                  notification.request_type ||
+                  normalizeDetails(notification.metadata)?.requestType ||
+                  normalizeDetails(notification.metadata)?.request_type ||
+                  "OTHER_QUERY";
+
+                const Icon = getRequestIcon(requestType);
+
+                const requestTypeTitle = getRequestTitle(requestType);
+
+                return (
+                  <button
+                    type="button"
+                    key={notification.id}
+                    className={`service-notification-item ${tone} ${
+                      notification.is_read ? "read" : "unread"
+                    }`}
+                    onClick={() => onNotificationClick(notification)}
+                  >
+                    <div className="service-notification-accent">
+                      <div className="service-notification-icon">
+                        <Icon />
+                      </div>
+                    </div>
+
+                    <div className="service-notification-content">
+                      <div className="service-notification-topline">
+                        <span className="service-notification-type">
+                          {requestTypeTitle}
+                        </span>
+
+                        {!notification.is_read && (
+                          <span className="service-notification-dot" />
+                        )}
+                      </div>
+
+                      <strong>{notification.title}</strong>
+
+                      <p>{notification.message}</p>
+
+                      <div className="service-notification-meta">
+                        {notification.request_code && (
+                          <span>{notification.request_code}</span>
+                        )}
+
+                        <span>{formatDate(notification.created_at)}</span>
+                      </div>
+                    </div>
+                  </button>
+                );
+              })
+            ) : (
+              <div className="service-notification-empty">
+                <div className="service-notification-empty-icon">
+                  <PiBell />
+                </div>
+
+                <h3>No notifications</h3>
+
+                <p>
+                  Updates about your Employee Services requests will appear
+                  here.
+                </p>
+              </div>
+            )}
+          </div>
+        </aside>
+      </>
+    );
+  }
+
   return (
     <div className="employee-assistant">
       {/* ==================================================
@@ -950,11 +1309,74 @@ const EmployeeAssistant = () => {
             </div>
           </div>
         </div>
+        <div className="assistant-actions">
+          <button
+            type="button"
+            className="assistant-action-button"
+            aria-label="Reminders"
+            title="Reminders"
+            onClick={() => {
+              setShowReminders(true);
+              setShowNotifications(false);
+              setShowOverview(false);
+            }}
+          >
+            <PiClockCounterClockwise />
+
+            {serviceCounts.reminders > 0 && (
+              <span className="assistant-action-badge reminder-badge">
+                {serviceCounts.reminders > 99 ? "99+" : serviceCounts.reminders}
+              </span>
+            )}
+          </button>
+
+          <button
+            type="button"
+            className="assistant-action-button notification-action"
+            aria-label="Notifications"
+            title="Notifications"
+            onClick={() => {
+              setShowNotifications(true);
+              setShowReminders(false);
+              setShowOverview(false);
+            }}
+          >
+            <PiBell />
+
+            {serviceCounts.notifications > 0 && (
+              <span className="assistant-action-badge notification-badge">
+                {serviceCounts.notifications > 99
+                  ? "99+"
+                  : serviceCounts.notifications}
+              </span>
+            )}
+          </button>
+
+          <button
+            type="button"
+            className="assistant-action-button more-action"
+            aria-label="Request overview"
+            title="Request overview"
+            onClick={() => {
+              setShowOverview(true);
+              setShowNotifications(false);
+              setShowReminders(false);
+            }}
+          >
+            <IoMdMore />
+          </button>
+        </div>
       </header>
 
-      {/* ==================================================
-          MAIN
-      ================================================== */}
+      {showNotifications && (
+        <ServiceNotificationPanel
+          notifications={serviceNotifications}
+          unreadCount={serviceCounts.notifications}
+          onClose={() => setShowNotifications(false)}
+          onNotificationClick={handleServiceNotificationClick}
+          onMarkAllRead={markAllServiceNotificationsRead}
+        />
+      )}
 
       <main className="assistant-body">
         {!selectedRequest ? (
@@ -974,8 +1396,17 @@ const EmployeeAssistant = () => {
                   <button
                     key={item.key}
                     type="button"
-                    className={`assistant-category-card ${item.tone}`}
+                    disabled={item.key === "SALARY_ADVANCE"}
+                    className={`assistant-category-card ${item.tone} ${
+                      item.key === "SALARY_ADVANCE"
+                        ? "temporarily-unavailable"
+                        : ""
+                    }`}
                     onClick={() => {
+                      if (item.key === "SALARY_ADVANCE") {
+                        return;
+                      }
+
                       if (item.key === "OTHER_QUERY") {
                         handleOtherQuery();
                         return;
@@ -991,6 +1422,12 @@ const EmployeeAssistant = () => {
                     <h3>{item.title}</h3>
 
                     <p>{item.description}</p>
+
+                    {item.key === "SALARY_ADVANCE" && (
+                      <span className="category-unavailable-badge">
+                        Temporarily unavailable
+                      </span>
+                    )}
                   </button>
                 );
               })}
@@ -1033,6 +1470,8 @@ const EmployeeAssistant = () => {
             completeTrip={completeTrip}
             cancelRequest={cancelRequest}
             processAssetRequest={processAssetRequest}
+            assetAllocation={assetAllocation}
+            loadAssetCandidates={loadAssetCandidates}
             requestMessage={requestMessage}
             setRequestMessage={setRequestMessage}
             sendRequestMessage={sendRequestMessage}
@@ -1059,7 +1498,29 @@ const EmployeeAssistant = () => {
             />
 
             <div className="assistant-input-actions">
-              <FiPaperclip />
+              <button
+                type="button"
+                aria-label="Attach a file"
+                title="Attach a file"
+                onClick={() => messageAttachmentInputRef.current?.click()}
+                disabled={sendingMessage}
+                className="eq-icon"
+              >
+                <FiPaperclip />
+              </button>
+              <input
+                ref={messageAttachmentInputRef}
+                type="file"
+                hidden
+                onChange={(event) =>
+                  setMessageAttachment(event.target.files?.[0] || null)
+                }
+              />
+              {messageAttachment && (
+                <span className="assistant-attachment-name">
+                  {messageAttachment.name}
+                </span>
+              )}
             </div>
           </div>
 
@@ -1067,7 +1528,9 @@ const EmployeeAssistant = () => {
             type="button"
             className="assistant-send"
             onClick={sendRequestMessage}
-            disabled={sendingMessage || !requestMessage.trim()}
+            disabled={
+              sendingMessage || (!requestMessage.trim() && !messageAttachment)
+            }
           >
             <FiSend />
           </button>
@@ -1279,9 +1742,12 @@ function RequestConversation({
   completeTrip,
   cancelRequest,
   processAssetRequest,
+  assetAllocation,
+  loadAssetCandidates,
   onBack,
 }) {
   const details = normalizeDetails(request?.details_json);
+  const [offlineAssetNote, setOfflineAssetNote] = useState("");
 
   const isRequester = String(request.employee_id) === String(employeeId);
 
@@ -1293,7 +1759,7 @@ function RequestConversation({
     (request.current_status === "PENDING_APPROVAL" ||
       (isAdmin &&
         request.current_status === "PENDING_ADMIN_ACTION" &&
-        request.request_type !== "TRAVEL_BOOKING"));
+        !["TRAVEL_BOOKING", "ASSET_REQUEST"].includes(request.request_type)));
 
   const approvalHeading =
     isAdmin && request.current_status === "PENDING_ADMIN_ACTION"
@@ -1634,19 +2100,65 @@ function RequestConversation({
                 <div className="workflow-action-card asset-action">
                   <div className="workflow-action-heading">
                     <div>
-                      <span>Asset Registration</span>
-                      <h3>Add the requested item to the Assets register.</h3>
+                      <span>Asset Allocation</span>
+                      <h3>Assign an existing registered asset.</h3>
                     </div>
                     <span className="action-pill info">Action Required</span>
                   </div>
 
-                  <button
-                    type="button"
-                    className="upload-notify-button"
-                    onClick={processAssetRequest}
-                  >
-                    Add to Assets and Assign
-                  </button>
+                  {!assetAllocation && (
+                    <button
+                      type="button"
+                      className="upload-notify-button"
+                      onClick={loadAssetCandidates}
+                    >
+                      Find Available Assets
+                    </button>
+                  )}
+
+                  {assetAllocation?.loading && <p>Finding available assets…</p>}
+
+                  {assetAllocation?.data && (
+                    <div className="asset-allocation-options">
+                      <p>
+                        Requested:{" "}
+                        <strong>{details.itemName || "Asset"}</strong>
+                        {details.configuration
+                          ? ` — ${details.configuration}`
+                          : ""}
+                      </p>
+
+                      <AssetCandidateList
+                        title={`Available ${details.category || "assets"}`}
+                        assets={assetAllocation.data.assets || []}
+                        onAssign={(assetId) => processAssetRequest({ assetId })}
+                        emptyMessage="No unassigned assets are currently available in this category."
+                      />
+
+                      <div className="assistant-field full">
+                        <label>Handle offline instead</label>
+                        <input
+                          value={offlineAssetNote}
+                          onChange={(event) =>
+                            setOfflineAssetNote(event.target.value)
+                          }
+                          placeholder="Optional handover or procurement reference"
+                        />
+                        <button
+                          type="button"
+                          className="save-draft-button"
+                          onClick={() =>
+                            processAssetRequest({
+                              offline: true,
+                              note: offlineAssetNote,
+                            })
+                          }
+                        >
+                          Mark for Offline Handling
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -1654,8 +2166,14 @@ function RequestConversation({
 
             {request.current_status === "BOOKED" &&
               request.request_type === "TRAVEL_BOOKING" && (
-                <BookingDetails details={details} request={request} />
+                <BookingDetails
+                  details={details}
+                  request={request}
+                  employeeId={employeeId}
+                />
               )}
+
+            <RequestAttachments request={request} employeeId={employeeId} />
 
             {/* Final employee confirmation */}
 
@@ -1735,6 +2253,7 @@ function RequestConversation({
           <RequestMessages
             messages={request.messages || []}
             employeeId={employeeId}
+            orgId={request.org_id}
           />
         </>
       )}
@@ -1893,7 +2412,7 @@ function SummaryField({ label, value, full = false }) {
    BOOKING DETAILS
 ========================================================== */
 
-function BookingDetails({ details, request }) {
+function BookingDetails({ details, request, employeeId }) {
   return (
     <div className="booking-details-card">
       <div className="booking-details-header">
@@ -1942,15 +2461,11 @@ function BookingDetails({ details, request }) {
             if (typeof window !== "undefined") {
               const base = process.env.NEXT_PUBLIC_BACKEND_URL || "";
 
-              const employeeId = request.employee_id;
-
               const orgId = request.org_id;
 
               const API_KEY = process.env.NEXT_PUBLIC_API_KEY;
 
-              const url = `${base}/requests/attachments/${encodeURIComponent(
-                details.eTicketFileName,
-              )}`;
+              const url = `${base}/requests/${request.id}/attachments/${details.eTicketAttachmentId}`;
 
               /*
                 The application's existing
@@ -1996,6 +2511,92 @@ function BookingDetails({ details, request }) {
 
           <span>Download</span>
         </a>
+      )}
+    </div>
+  );
+}
+
+function RequestAttachments({ request, employeeId }) {
+  const attachments = (request.attachments || []).filter(
+    (attachment) => attachment.purpose !== "E_TICKET",
+  );
+  if (!attachments.length) return null;
+
+  const download = async (attachment) => {
+    const base = process.env.NEXT_PUBLIC_BACKEND_URL || "";
+    const response = await fetch(
+      `${base}/requests/${request.id}/attachments/${attachment.id}`,
+      {
+        headers: {
+          "x-api-key": process.env.NEXT_PUBLIC_API_KEY,
+          "x-employee-id": employeeId,
+          "x-org-id": request.org_id,
+        },
+        credentials: "include",
+      },
+    );
+    if (!response.ok) throw new Error("Attachment download failed.");
+    const url = URL.createObjectURL(await response.blob());
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = attachment.fileName;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+  };
+
+  return (
+    <div className="booking-details-card">
+      <div className="summary-heading">
+        <h3>Attachments</h3>
+      </div>
+      {attachments.map((attachment) => (
+        <button
+          key={attachment.id}
+          type="button"
+          className="ticket-download"
+          onClick={() => download(attachment).catch(console.error)}
+        >
+          <FiPaperclip /> {attachment.fileName}
+          <span>Download</span>
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function AssetCandidateList({ title, assets, onAssign, emptyMessage }) {
+  return (
+    <div className="asset-candidate-list">
+      <strong>{title}</strong>
+      {assets.length ? (
+        assets.map((asset) => (
+          <div className="asset-candidate-row" key={asset.asset_id}>
+            <div>
+              <strong>{asset.asset_name || asset.asset_id}</strong>
+              <span>
+                {[
+                  asset.asset_code,
+                  asset.configuration,
+                  asset.category,
+                  asset.sub_category,
+                ]
+                  .filter(Boolean)
+                  .join(" · ")}
+              </span>
+            </div>
+            <button
+              type="button"
+              className="upload-notify-button"
+              onClick={() => onAssign(asset.asset_id)}
+            >
+              Assign
+            </button>
+          </div>
+        ))
+      ) : (
+        <p>{emptyMessage || "No assets available."}</p>
       )}
     </div>
   );
@@ -2056,7 +2657,7 @@ function RequestTimeline({ events }) {
    REQUEST MESSAGES
 ========================================================== */
 
-function RequestMessages({ messages, employeeId }) {
+function RequestMessages({ messages, employeeId, orgId }) {
   if (!messages?.length) {
     return null;
   }
@@ -2085,7 +2686,37 @@ function RequestMessages({ messages, employeeId }) {
               {message.message && <p>{message.message}</p>}
 
               {message.attachment_url && (
-                <div className="thread-attachment">📎 Attachment</div>
+                <button
+                  type="button"
+                  className="thread-attachment"
+                  onClick={async () => {
+                    try {
+                      const response = await fetch(message.attachment_url, {
+                        headers: {
+                          "x-api-key": process.env.NEXT_PUBLIC_API_KEY,
+                          "x-employee-id": employeeId,
+                          "x-org-id": orgId,
+                        },
+                        credentials: "include",
+                      });
+                      if (!response.ok)
+                        throw new Error("Attachment download failed.");
+                      const url = URL.createObjectURL(await response.blob());
+                      const link = document.createElement("a");
+                      link.href = url;
+                      link.download =
+                        message.attachment_url.split("/").pop() || "attachment";
+                      document.body.appendChild(link);
+                      link.click();
+                      link.remove();
+                      URL.revokeObjectURL(url);
+                    } catch (error) {
+                      console.error("Attachment download failed:", error);
+                    }
+                  }}
+                >
+                  <FiPaperclip /> Attachment
+                </button>
               )}
 
               <small>{formatDate(message.created_at)}</small>

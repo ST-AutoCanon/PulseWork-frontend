@@ -66,12 +66,110 @@
   background: #16a34a;
 }
 
+/* =========================================================
+   HEADER ACTIONS
+========================================================= */
+
 .assistant-actions {
   display: flex;
   align-items: center;
-  gap: 22px;
-  color: #122042;
-  font-size: 19px;
+  gap: 7px;
+  padding: 4px;
+  border: 1px solid #e8ebf2;
+  border-radius: 12px;
+  background: #f8f9fc;
+}
+
+.assistant-action-button {
+  position: relative;
+  width: 38px;
+  height: 38px;
+  padding: 0;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: #59657d;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  cursor: pointer;
+
+  transition:
+    background-color 0.18s ease,
+    color 0.18s ease,
+    transform 0.18s ease,
+    box-shadow 0.18s ease;
+}
+
+.assistant-action-button svg {
+  width: 19px;
+  height: 19px;
+  stroke-width: 1.8;
+  transition: transform 0.18s ease;
+}
+
+.assistant-action-button:hover {
+  background: #ffffff;
+  color: #4f46e5;
+  box-shadow: 0 3px 10px rgba(33, 53, 85, 0.08);
+}
+
+.assistant-action-button:hover svg {
+  transform: translateY(-1px);
+}
+
+.assistant-action-button:active {
+  transform: scale(0.95);
+}
+
+.assistant-action-button:focus-visible {
+  outline: none;
+  background: #ffffff;
+  color: #4f46e5;
+  box-shadow:
+    0 0 0 3px rgba(79, 70, 229, 0.12),
+    0 3px 10px rgba(33, 53, 85, 0.08);
+}
+
+/* ---------------------------------------------------------
+   REMINDERS
+--------------------------------------------------------- */
+
+.assistant-action-button:first-child {
+  color: #5f6677;
+}
+
+.assistant-action-button:first-child:hover {
+  color: #6956d8;
+  background: #f2f0ff;
+}
+
+/* ---------------------------------------------------------
+   NOTIFICATIONS
+--------------------------------------------------------- */
+
+.assistant-action-button.notification-action {
+  color: #5f6677;
+}
+
+.assistant-action-button.notification-action:hover {
+  color: #4f46e5;
+  background: #eef1ff;
+}
+
+/* ---------------------------------------------------------
+   MORE
+--------------------------------------------------------- */
+
+.assistant-action-button.more-action {
+  color: #697386;
+}
+
+.assistant-action-button.more-action:hover {
+  color: #34405a;
+  background: #eef2f7;
 }
 
 .assistant-body {
@@ -1680,9 +1778,359 @@
   color: #7a8495;
 }
 
-/* =========================================================
-   RESPONSIVE
-========================================================= */
+.eq-icon {
+  background-color: #fff;
+  border: none;
+  font-size: 16px;
+}
+
+/* ==========================================================
+   EMPLOYEE SERVICES NOTIFICATION PANEL
+========================================================== */
+
+.employee-assistant {
+  position: relative;
+}
+
+.service-notification-backdrop {
+  position: absolute;
+  inset: 72px 0 0 0;
+  z-index: 80;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  background: rgba(15, 23, 42, 0.18);
+  cursor: default;
+}
+
+.service-notification-panel {
+  position: absolute;
+  top: 72px;
+  right: 0;
+  bottom: 0;
+  z-index: 81;
+  width: min(410px, 100%);
+  display: flex;
+  flex-direction: column;
+  background: #ffffff;
+  border-left: 1px solid #e4e8f0;
+  box-shadow: -12px 0 30px rgba(15, 23, 42, 0.12);
+  overflow: hidden;
+}
+
+.service-notification-panel-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 22px 22px 18px;
+  border-bottom: 1px solid #e8ecf3;
+  background: #ffffff;
+}
+
+.service-panel-eyebrow {
+  display: block;
+  margin-bottom: 4px;
+  color: #6b7280;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.service-notification-panel-header h2 {
+  margin: 0;
+  color: #16213f;
+  font-size: 21px;
+  font-weight: 800;
+}
+
+.service-notification-panel-header p {
+  margin: 5px 0 0;
+  color: #7a859b;
+  font-size: 12px;
+}
+
+.service-panel-close {
+  width: 36px;
+  height: 36px;
+  flex: 0 0 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #e1e6ef;
+  border-radius: 10px;
+  background: #ffffff;
+  color: #67738a;
+  font-size: 17px;
+  cursor: pointer;
+  transition:
+    background 0.16s ease,
+    color 0.16s ease,
+    border-color 0.16s ease;
+}
+
+.service-panel-close:hover {
+  background: #f4f5ff;
+  color: #5147db;
+  border-color: #d9daf5;
+}
+
+.service-notification-toolbar {
+  min-height: 45px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0 18px;
+  border-bottom: 1px solid #edf0f5;
+  background: #fafbfe;
+}
+
+.service-notification-toolbar span {
+  color: #7b8496;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.service-mark-all-button {
+  border: 0;
+  padding: 6px 0;
+  background: transparent;
+  color: #5147db;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.service-mark-all-button:hover {
+  text-decoration: underline;
+}
+
+.service-notification-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 10px;
+}
+
+.service-notification-item {
+  --notification-accent: #5147db;
+  --notification-soft: #f4f3ff;
+  --notification-border: #dfdefa;
+
+  position: relative;
+  width: 100%;
+  display: flex;
+  gap: 12px;
+  margin: 0 0 8px;
+  padding: 13px;
+  border: 1px solid var(--notification-border);
+  border-radius: 14px;
+  background: var(--notification-soft);
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    transform 0.16s ease,
+    box-shadow 0.16s ease,
+    border-color 0.16s ease;
+}
+
+.service-notification-item:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.08);
+}
+
+.service-notification-item.unread {
+  box-shadow: 0 0 0 1px rgba(81, 71, 219, 0.04);
+}
+
+.service-notification-item.read {
+  opacity: 0.82;
+}
+
+.service-notification-item.purple {
+  --notification-accent: #7c3aed;
+  --notification-soft: #f5f0ff;
+  --notification-border: #e5d8ff;
+}
+
+.service-notification-item.green {
+  --notification-accent: #16a34a;
+  --notification-soft: #eefbf2;
+  --notification-border: #d1efd9;
+}
+
+.service-notification-item.orange {
+  --notification-accent: #ea580c;
+  --notification-soft: #fff5ed;
+  --notification-border: #f8dcc7;
+}
+
+.service-notification-item.blue {
+  --notification-accent: #2563eb;
+  --notification-soft: #eef5ff;
+  --notification-border: #d4e2fb;
+}
+
+.service-notification-item.indigo {
+  --notification-accent: #4f46e5;
+  --notification-soft: #f1f2ff;
+  --notification-border: #dedefa;
+}
+
+.service-notification-accent {
+  flex: 0 0 auto;
+}
+
+.service-notification-icon {
+  width: 39px;
+  height: 39px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 11px;
+  background: var(--notification-accent);
+  color: #ffffff;
+  font-size: 18px;
+}
+
+.service-notification-content {
+  min-width: 0;
+  flex: 1;
+}
+
+.service-notification-topline {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 3px;
+}
+
+.service-notification-type {
+  color: var(--notification-accent);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.service-notification-dot {
+  width: 7px;
+  height: 7px;
+  flex: 0 0 7px;
+  border-radius: 50%;
+  background: var(--notification-accent);
+}
+
+.service-notification-content strong {
+  display: block;
+  margin-bottom: 4px;
+  color: #1b2743;
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1.35;
+}
+
+.service-notification-content p {
+  margin: 0;
+  color: #667085;
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.service-notification-meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-top: 8px;
+  color: #8a93a5;
+  font-size: 9px;
+}
+
+.service-notification-meta span:first-child {
+  color: var(--notification-accent);
+  font-weight: 700;
+}
+
+.service-notification-empty {
+  min-height: 320px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 30px;
+  text-align: center;
+}
+
+.service-notification-empty-icon {
+  width: 52px;
+  height: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 14px;
+  border-radius: 16px;
+  background: #f3f4fb;
+  color: #7c86a0;
+  font-size: 24px;
+}
+
+.service-notification-empty h3 {
+  margin: 0;
+  color: #28344f;
+  font-size: 15px;
+}
+
+.service-notification-empty p {
+  max-width: 260px;
+  margin: 7px 0 0;
+  color: #8a93a5;
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+/* ==========================================================
+   TEMPORARILY DISABLED SALARY ADVANCE
+========================================================== */
+
+.assistant-category-card.temporarily-unavailable {
+  position: relative;
+  cursor: not-allowed;
+  opacity: 0.62;
+  filter: saturate(0.7);
+}
+
+.assistant-category-card.temporarily-unavailable:hover {
+  transform: none;
+  box-shadow: none;
+}
+
+.category-unavailable-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 10px;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: #f0f1f5;
+  color: #70798c;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+}
+
+@media (max-width: 640px) {
+  .service-notification-panel {
+    width: 100%;
+  }
+
+  .service-notification-backdrop {
+    background: rgba(15, 23, 42, 0.12);
+  }
+}
 
 @media (max-width: 1100px) {
   .assistant-category-grid {

@@ -388,27 +388,40 @@ const [showVendorRegistration, setShowVendorRegistration] = useState(false);
     setShowBusinessInfoPopup(true);
   };
 
-  const handleShowDocuments = (vendor) => {
-    setSelectedVendorFiles({
-      gst_certificate: vendor.gst_certificate || null,
-      pan_card: vendor.pan_card || null,
-      cancelled_cheque: vendor.cancelled_cheque || null,
-      msme_certificate: vendor.msme_certificate || null,
-      incorporation_certificate: vendor.incorporation_certificate || null,
-    });
-    setShowDocumentsPopup(true);
-  };
+const normalizeDoc = (value) => {
+  if (!value) return null;
+  const str = String(value).trim();
+  if (!str || str === "null" || str === "undefined" || str === "false") return null;
+  return str;
+};
+const getFileDisplayName = (file) => {
+  if (!file) return null;
+  if (typeof file === "string") {
+    return file.split(/[/\\]/).pop() || file;
+  }
+  return file.name || null;
+};
+const handleShowDocuments = (vendor) => {
+  setSelectedVendorFiles({
+    gst_certificate: normalizeDoc(vendor.gst_certificate),
+    pan_card: normalizeDoc(vendor.pan_card),
+    cancelled_cheque: normalizeDoc(vendor.cancelled_cheque),
+    msme_certificate: normalizeDoc(vendor.msme_certificate),
+    incorporation_certificate: normalizeDoc(vendor.incorporation_certificate),
+  });
+  setShowDocumentsPopup(true);
+};
 
-  const handleShowDownloadPopup = (vendor) => {
-    setSelectedVendorFiles({
-      gst_certificate: vendor.gst_certificate || null,
-      pan_card: vendor.pan_card || null,
-      cancelled_cheque: vendor.cancelled_cheque || null,
-      msme_certificate: vendor.msme_certificate || null,
-      incorporation_certificate: vendor.incorporation_certificate || null,
-    });
-    setShowDownloadPopup(true);
-  };
+const handleShowDownloadPopup = (vendor) => {
+  setSelectedVendorFiles({
+    gst_certificate: normalizeDoc(vendor.gst_certificate),
+    pan_card: normalizeDoc(vendor.pan_card),
+    cancelled_cheque: normalizeDoc(vendor.cancelled_cheque),
+    msme_certificate: normalizeDoc(vendor.msme_certificate),
+    incorporation_certificate: normalizeDoc(vendor.incorporation_certificate),
+  });
+  setShowDownloadPopup(true);
+};
 
   const handleViewDocument = async (documentPath) => {
     if (!documentPath) {
@@ -1291,74 +1304,109 @@ const [showVendorRegistration, setShowVendorRegistration] = useState(false);
               </div>
 
               <fieldset>
-                <legend>Documents Required (Attach Copies)</legend>
-                <div className="contact-row three-columns">
-                  <div className="contact-field">
-                  <label htmlFor="gst_certificate">
-  GST Certificate:
-  <span className="vendor-required-asterisk">*</span>
-</label>
-                    <input
-                      id="gst_certificate"
-                      type="file"
-                      name="gst_certificate"
-                      accept=".pdf,.jpg,.png,.jpeg"
-                      onChange={handleFileChange}
-                      required={!isEditing}
-                    />
-                  </div>
-                  <div className="contact-field">
-                   <label htmlFor="pan_card">
-  PAN Card:
-  <span className="vendor-required-asterisk">*</span>
-</label>
-                    <input
-                      id="pan_card"
-                      type="file"
-                      name="pan_card"
-                      accept=".pdf,.jpg,.png,.jpeg"
-                      onChange={handleFileChange}
-                      required={!isEditing}
-                    />
-                  </div>
-                  <div className="contact-field">
-                    <label htmlFor="cancelled_cheque">Cancelled Cheque:</label>
-                    <input
-                      id="cancelled_cheque"
-                      type="file"
-                      name="cancelled_cheque"
-                      accept=".pdf,.jpg,.png,.jpeg"
-                      onChange={handleFileChange}
-                    />
-                  </div>
-                </div>
-                <div className="contact-row two-columns">
-                  <div className="contact-field msme-field">
-                    <label htmlFor="msme_certificate">
-                      MSME Certificate (if applicable):
-                    </label>
-                    <input
-                      id="msme_certificate"
-                      type="file"
-                      name="msme_certificate"
-                      accept=".pdf,.jpg,.png,.jpeg"
-                      onChange={handleFileChange}
-                    />
-                  </div>
-                  <div className="contact-field">
-                    <label htmlFor="incorporation_certificate">
-                      Company Incorporation Certificate:
-                    </label>
-                    <input
-                      id="incorporation_certificate"
-                      type="file"
-                      name="incorporation_certificate"
-                      accept=".pdf,.jpg,.png,.jpeg"
-                      onChange={handleFileChange}
-                    />
-                  </div>
-                </div>
-              </fieldset>
+  <legend>Documents Required (Attach Copies)</legend>
+
+  <div className="contact-row three-columns">
+    {/* GST Certificate */}
+    <div className="contact-field">
+      <label htmlFor="gst_certificate">
+        GST Certificate:
+        <span className="vendor-required-asterisk">*</span>
+      </label>
+      <input
+        id="gst_certificate"
+        type="file"
+        name="gst_certificate"
+        accept=".pdf,.jpg,.png,.jpeg"
+        onChange={handleFileChange}
+        required={!isEditing}
+      />
+      {getFileDisplayName(files.gst_certificate) && (
+        <div className="selected-file-name">
+          Current: {getFileDisplayName(files.gst_certificate)}
+        </div>
+      )}
+    </div>
+
+    {/* PAN Card */}
+    <div className="contact-field">
+      <label htmlFor="pan_card">
+        PAN Card:
+        <span className="vendor-required-asterisk">*</span>
+      </label>
+      <input
+        id="pan_card"
+        type="file"
+        name="pan_card"
+        accept=".pdf,.jpg,.png,.jpeg"
+        onChange={handleFileChange}
+        required={!isEditing}
+      />
+      {getFileDisplayName(files.pan_card) && (
+        <div className="selected-file-name">
+          Current: {getFileDisplayName(files.pan_card)}
+        </div>
+      )}
+    </div>
+
+    {/* Cancelled Cheque */}
+    <div className="contact-field">
+      <label htmlFor="cancelled_cheque">Cancelled Cheque:</label>
+      <input
+        id="cancelled_cheque"
+        type="file"
+        name="cancelled_cheque"
+        accept=".pdf,.jpg,.png,.jpeg"
+        onChange={handleFileChange}
+      />
+      {getFileDisplayName(files.cancelled_cheque) && (
+        <div className="selected-file-name">
+          Current: {getFileDisplayName(files.cancelled_cheque)}
+        </div>
+      )}
+    </div>
+  </div>
+
+  <div className="contact-row two-columns">
+    {/* MSME Certificate */}
+    <div className="contact-field msme-field">
+      <label htmlFor="msme_certificate">
+        MSME Certificate (if applicable):
+      </label>
+      <input
+        id="msme_certificate"
+        type="file"
+        name="msme_certificate"
+        accept=".pdf,.jpg,.png,.jpeg"
+        onChange={handleFileChange}
+      />
+      {getFileDisplayName(files.msme_certificate) && (
+        <div className="selected-file-name">
+          Current: {getFileDisplayName(files.msme_certificate)}
+        </div>
+      )}
+    </div>
+
+    {/* Incorporation Certificate */}
+    <div className="contact-field">
+      <label htmlFor="incorporation_certificate">
+        Company Incorporation Certificate:
+      </label>
+      <input
+        id="incorporation_certificate"
+        type="file"
+        name="incorporation_certificate"
+        accept=".pdf,.jpg,.png,.jpeg"
+        onChange={handleFileChange}
+      />
+      {getFileDisplayName(files.incorporation_certificate) && (
+        <div className="selected-file-name">
+          Current: {getFileDisplayName(files.incorporation_certificate)}
+        </div>
+      )}
+    </div>
+  </div>
+</fieldset>
 
               <div className="vendor-form-buttons">
                 <button

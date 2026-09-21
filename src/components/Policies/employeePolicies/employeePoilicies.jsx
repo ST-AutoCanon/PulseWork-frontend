@@ -123,7 +123,30 @@ const closeAlert = () => {
   const isDocx = (fileName = "") => /\.docx$/i.test(fileName);
 
   const isPpt = (fileName = "") => /\.(ppt|pptx)$/i.test(fileName);
+const isFileFullyRead = (file) => {
+  if (!file) return false;
 
+  // Already marked as read on the server
+  if (Number(file.is_read) === 1) return true;
+
+  const name = getFileName(file);
+
+  // PDF – uses the reading progress tracked by scroll/dwell
+  if (isPdf(name)) {
+    return pdfReadState === "read" || pdfReadProgress >= 100;
+  }
+
+  // Video – uses playback progress
+  if (isVideo(name)) {
+    return videoProgress >= 100;
+  }
+
+  // Image / Audio / DOCX / others
+  // These call markFileRead on load / end / scroll-to-bottom,
+  // so once is_read becomes 1 the first check above will pass.
+  // For the current session we also treat 100% video/pdf as done.
+  return false;
+};
   // ----- Policy icon based on name -----
   const getPolicyIcon = (policyName = "") => {
     const name = policyName.toLowerCase();
@@ -229,14 +252,7 @@ const closeAlert = () => {
       const blob = new Blob([response.data], { type: contentType });
       const url = URL.createObjectURL(blob);
       setFileUrl(url);
-// Force layout so PDF width is calculated correctly on first open
-setTimeout(() => {
-  window.dispatchEvent(new Event("resize"));
-}, 80);
 
-setTimeout(() => {
-  window.dispatchEvent(new Event("resize"));
-}, 300);
      if (isDocx(fileName)) {
   setTimeout(() => {
     const container = document.getElementById("docx-preview-container");
@@ -400,6 +416,15 @@ const filteredPolicies = policies.filter((policy) => {
 const handleAcknowledgement = async () => {
   if (!pendingFile) return;
 
+  // ===== NEW VALIDATION: must be fully read first =====
+  if (!isFileFullyRead(selectedFile || pendingFile)) {
+    showAlert(
+      "Please fully read / watch the file (100%) before acknowledging.",
+      "Cannot Acknowledge Yet"
+    );
+    return;
+  }
+
   try {
     await axios.post(
       `${BACKEND}/api/policies/employee-policy/acknowledgement`,
@@ -450,8 +475,7 @@ const handleAcknowledgement = async () => {
     setPendingFile(null);
     showAlert("Acknowledgement saved successfully.");
 
-    // Now that acknowledgement is done, force the read mark
-    // (important for video/image that already started playing)
+    // Force the read mark (for cases where it wasn't set yet)
     setTimeout(() => {
       markFileRead(updatedFile);
     }, 150);
@@ -949,7 +973,9 @@ const handleViewerScroll = (event) => {
 </div>
           <div className="viewer-body">
  {/* ========== READING INDICATOR (PDF + VIDEO) ========== */}
-{Number(selectedFile.allow_view) === 1 && (
+{/* ========== READING INDICATOR (PDF + VIDEO only – hide for images) ========== */}
+{Number(selectedFile.allow_view) === 1 &&
+  !isImage(getFileName(selectedFile)) && (
   <div
     className={`pdf-reading-indicator ${
       isVideo(getFileName(selectedFile))
@@ -1056,21 +1082,16 @@ const handleViewerScroll = (event) => {
         >
           <Document
             file={fileUrl}
-           onLoadSuccess={({ numPages }) => {
-  setPdfPageCount(numPages);
-  if (Number(selectedFile.is_read) === 1) {
-    setPdfReadProgress(100);
-    setPdfReadState("read");
-  } else {
-    setPdfReadProgress(0);
-    setPdfReadState("unread");
-  }
-
-  // Force width recalculation after pages are ready
-  setTimeout(() => {
-    window.dispatchEvent(new Event("resize"));
-  }, 50);
-}}
+            onLoadSuccess={({ numPages }) => {
+              setPdfPageCount(numPages);
+              if (Number(selectedFile.is_read) === 1) {
+                setPdfReadProgress(100);
+                setPdfReadState("read");
+              } else {
+                setPdfReadProgress(0);
+                setPdfReadState("unread");
+              }
+            }}
             onLoadError={(error) => {
               console.error("PDF loading error:", error);
             }}
@@ -1230,22 +1251,33 @@ if (isVideo(name)) {
 {/* ========== ORIGINAL FLOATING ACKNOWLEDGEMENT (keep this) ========== */}
 {Number(selectedFile.allow_view) === 1 && pendingFile && (
   <div className="ack-floating-wrapper">
-    {/* Small floating icon */}
     <div className="ack-floating-icon">
       <FaUserCheck />
     </div>
 
-    {/* Full message – stays open while hovering the whole area */}
     <div className="ack-floating-popup">
       <div className="ack-message-title">
         Acknowledgement Required
       </div>
+
+      {/* Optional helper message when not fully read */}
+      {!isFileFullyRead(selectedFile) && (
+        <p style={{ 
+          fontSize: 13, 
+          color: "#b45309", 
+          margin: "8px 0 12px",
+          lineHeight: 1.4 
+        }}>
+          You must fully read / watch this file (100%) before you can acknowledge it.
+        </p>
+      )}
 
       <label className="ack-checkbox-label">
         <input
           type="checkbox"
           checked={ackChecked}
           onChange={(e) => setAckChecked(e.target.checked)}
+          disabled={!isFileFullyRead(selectedFile)}  // also disable checkbox until read
         />
         <span>
           {pendingFile?.acknowledgement_message ||
@@ -1256,14 +1288,13 @@ if (isVideo(name)) {
       <button
         className="ac-modal-btn ac-modal-btn-primary"
         onClick={handleAcknowledgement}
-        disabled={!ackChecked}
+        disabled={!ackChecked || !isFileFullyRead(selectedFile)}
       >
         Acknowledge
       </button>
     </div>
   </div>
-)}
-            {/* {pendingFile && (
+)}            {/* {pendingFile && (
               <div className="ack-message-box floating-ack">
                 <div className="ack-message-title">Acknowledgement required</div>
                 <p>

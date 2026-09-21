@@ -290,19 +290,19 @@
   z-index: 1100;
   top: 50%;
   left: 50%;
+  transform: translate(-50%, -50%);
   width: min(680px, calc(100vw - 32px));
   max-height: 90vh;
-  overflow-x: hidden;
-  overflow-y: auto;
+  display: flex;               /* ADD */
+  flex-direction: column;      /* ADD */
+  overflow: hidden;            /* keep hidden here */
   box-sizing: border-box;
-  transform: translate(-50%, -50%);
   border: 1px solid #dce5ef;
   border-radius: 12px;
   background: #f7f9fc;
   box-shadow: 0 18px 50px rgba(0, 0, 0, 0.28);
   color: #1d2a38;
 }
-
 .vendr0registration-container::before {
   content: "";
   position: fixed;
@@ -317,7 +317,7 @@
   gap: 12px;
   padding: 22px 28px;
   background: #00468c;
-  color: #fff;
+  color: #fff; flex: 0 0 auto;    
 }
 
 .vendr0registration-brandbar h1,
@@ -331,11 +331,17 @@
 .vendr0registration-step.active span, .vendr0registration-step.complete span { border-color: #00468c; background: #00468c; color: #fff; }
 .vendr0registration-step.complete span { border-color: #198754; background: #198754; }
 .vendr0registration-step-line { flex: 1; height: 1px; margin: 0 12px; background: #dbe3eb; }
-.vendr0registration-container form { display: block; padding: 18px 28px 26px; }
+.vendr0registration-container form {
+  display: block;
+  flex: 1 1 auto;        /* take available height */
+  min-height: 0;         /* allow shrinking below content size */
+  overflow-y: auto;      /* scroll ONLY inside the form */
+  padding: 18px 28px 20px;
+}
 .vendr0registration-container fieldset {
   display: block;
   min-width: 0;
-  margin: 0 0 18px;
+  margin: 0;              /* was: 0 0 18px */
   padding: 0 18px 18px;
   border: 1px solid #dce5ef;
   border-radius: 8px;
@@ -364,8 +370,14 @@
 .vendr0registration-intro { margin: 4px 0 18px; }
 .vendr0registration-intro h3 { margin: 0 0 5px; color: #1d2a38; font-size: 18px; }
 .vendr0registration-intro p { margin: 0; color: #657487; font-size: 13px; }
-.vendr0registration-actions { display: flex; align-items: center; justify-content: flex-end; gap: 10px; margin-top: 8px; }
-.vendr0registration-actions button { min-height: 40px; padding: 0 18px; border-radius: 6px; font-weight: 700; cursor: pointer; }
+.vendr0registration-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 8px;
+  padding-top: 8px;
+}.vendr0registration-actions button { min-height: 40px; padding: 0 18px; border-radius: 6px; font-weight: 700; cursor: pointer; }
 .vendr0registration-actions .cancel-btn { border: 1px solid #cbd7e3; background: #fff; color: #344454; }
 .vendr0registration-actions .save-vendor-btn { border: 0; background: #198754; color: #fff; }
 .vendr0registration-container .mail-composer { border: 1px solid #dfe3e8; border-radius: 8px; background: #fff; overflow: hidden; }
@@ -373,32 +385,311 @@
 .vendr0registration-container .mail-composer-row label, .vendr0registration-container .mail-message-field label { margin: 0; color: #5f6368; font-size: 13px; font-weight: 600; }
 .vendr0registration-container .mail-composer-row input { margin: 0; border: 0; outline: 0; padding: 8px 0; }
 .vendr0registration-container .mail-message-field { margin: 0; padding: 14px; }
-.vendr0registration-container .mail-message-field textarea { display: block; margin-top: 8px; padding: 10px; resize: vertical; }
+.vendr0registration-container .mail-message-field textarea/* ===== LOGIN SCREEN (keep as before) ===== */
+.vendr0registration-public {
+  min-height: 100vh;
+  box-sizing: border-box;
+  margin: 0;
+  padding: 48px 20px;
+  background: linear-gradient(135deg, #eef5fa 0%, #f8fafc 58%, #edf6ef 100%);
+  color: #1d2a38;
+}
 
-.vendr0registration-public { min-height: 100vh; box-sizing: border-box; margin: 0; padding: 48px 20px; background: linear-gradient(135deg, #eef5fa 0%, #f8fafc 58%, #edf6ef 100%); color: #1d2a38; }
-.vendr0registration-card { width: min(980px, 100%); margin: 0 auto; overflow: hidden; border: 1px solid #dce5ef; border-radius: 12px; background: #fff; box-shadow: 0 18px 45px rgba(0, 54, 96, .12); }
-.vendr0registration-login-card { width: min(520px, 100%); margin-top: 7vh; }
-.vendr0registration-copy { padding: 26px 32px 0; }
-.vendr0registration-copy h2 { margin: 0 0 6px; color: #1d2a38; font-size: 21px; }
-.vendr0registration-copy p { margin: 0; color: #657487; font-size: 14px; line-height: 1.5; }
-.vendr0registration-card form { padding: 22px 32px 30px; }
-.vendr0registration-field { display: flex; flex-direction: column; gap: 7px; color: #344454; font-size: 13px; font-weight: 700; }
-.vendr0registration-field input, .vendr0registration-field select { width: 100%; min-height: 42px; box-sizing: border-box; padding: 10px 12px; border: 1px solid #cbd7e3; border-radius: 6px; outline: 0; background: #fbfcfe; color: #1d2a38; font: inherit; font-weight: 400; }
-.vendr0registration-field input:focus, .vendr0registration-field select:focus { border-color: #198754; box-shadow: 0 0 0 3px rgba(25, 135, 84, .12); }
-.vendr0registration-card form > .vendr0registration-field { margin-bottom: 15px; }
-.vendr0registration-section { margin: 0 0 22px; padding: 18px; border: 1px solid #dce5ef; border-radius: 8px; }
-.vendr0registration-section legend { padding: 0 8px; color: #00468c; font-size: 13px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; }
-.vendr0registration-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
-.vendr0registration-documents { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
-.vendr0registration-wide { grid-column: span 2; }
-.vendr0registration-required { display: inline; margin-left: 3px; color: #c0392b; }
-.vendr0registration-file { min-height: auto !important; padding: 8px !important; background: #fff !important; font-size: 12px !important; cursor: pointer; }
-.vendr0registration-actions .vendr0registration-submit, .vendr0registration-submit { display: inline-flex; align-items: center; justify-content: center; gap: 10px; min-height: 44px; padding: 0 20px; border: 0; border-radius: 6px; background: #198754; color: #fff; font-size: 14px; font-weight: 700; cursor: pointer; }
-.vendr0registration-submit:hover { background: #157347; }
+.vendr0registration-card {
+  width: min(980px, 100%);
+  margin: 0 auto;
+  overflow: hidden;
+  border: 1px solid #dce5ef;
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 18px 45px rgba(0, 54, 96, 0.12);
+}
+
+/* Login card – narrower, centered, same look as before */
+.vendr0registration-login-card {
+  width: min(520px, 100%);
+  margin-top: 7vh;
+}
+
+.vendr0registration-brandbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 22px 28px;
+  background: #00468c;
+  color: #fff;
+}
+
+.vendr0registration-brandbar h1,
+.vendr0registration-brandbar h2 {
+  margin: 0;
+  color: #fff;
+  font-size: 22px;
+  line-height: 1.2;
+}
+
+.vendr0registration-eyebrow {
+  display: block;
+  margin-bottom: 3px;
+  color: #cde4f8;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.vendr0registration-copy {
+  padding: 26px 32px 0;
+}
+
+.vendr0registration-copy h2 {
+  margin: 0 0 6px;
+  color: #1d2a38;
+  font-size: 21px;
+}
+
+.vendr0registration-copy p {
+  margin: 0;
+  color: #657487;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+/* Login form fields – original compact style */
+.vendr0registration-login-card form {
+  padding: 22px 32px 30px;
+}
+
+.vendr0registration-login-card .vendr0registration-field {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  margin-bottom: 15px;
+  color: #344454;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.vendr0registration-login-card .vendr0registration-field input {
+  width: 100%;
+  min-height: 42px;
+  box-sizing: border-box;
+  padding: 10px 12px;
+  border: 1px solid #cbd7e3;
+  border-radius: 6px;
+  outline: 0;
+  background: #fbfcfe;
+  color: #1d2a38;
+  font: inherit;
+  font-weight: 400;
+}
+
+.vendr0registration-login-card .vendr0registration-field input:focus {
+  border-color: #198754;
+  box-shadow: 0 0 0 3px rgba(25, 135, 84, 0.12);
+}
+
+.vendr0registration-submit {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 44px;
+  padding: 0 20px;
+  border: 0;
+  border-radius: 6px;
+  background: #198754;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.vendr0registration-submit:hover {
+  background: #157347;
+}
+
+/* Confirmation states (already-submitted / success) – keep as before */
+.vendr0registration-confirmation {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0 32px 28px;
+  padding: 18px;
+  border: 1px solid #b8dfc8;
+  border-radius: 8px;
+  background: #f1faf5;
+  color: #315b43;
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.vendr0registration-success-icon {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: #198754;
+  color: #fff;
+  font-size: 18px;
+  font-weight: 800;
+}
+
+.vendr0registration-confirmation .vendr0registration-submit {
+  align-self: flex-end;
+  margin-top: 8px;
+}
+
+/* ===== FULL REGISTRATION FORM (alignment fix only) ===== */
+.vendr0registration-card form {
+  padding: 22px 32px 30px;
+}
+
+.vendr0registration-section {
+  margin: 0 0 22px;
+  padding: 18px;
+  border: 1px solid #dce5ef;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.vendr0registration-section legend {
+  padding: 0 8px;
+  color: #00468c;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.vendr0registration-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px 18px;
+  align-items: start;
+}
+
+/* Full-width addresses so columns stay aligned */
+.vendr0registration-wide {
+  grid-column: 1 / -1;
+}
+
+.vendr0registration-field {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  min-width: 0;
+  color: #344454;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.vendr0registration-field input,
+.vendr0registration-field select {
+  width: 100%;
+  min-height: 42px;
+  box-sizing: border-box;
+  padding: 10px 12px;
+  border: 1px solid #cbd7e3;
+  border-radius: 6px;
+  outline: 0;
+  background: #fbfcfe;
+  color: #1d2a38;
+  font: inherit;
+  font-weight: 400;
+}
+
+.vendr0registration-field input:focus,
+.vendr0registration-field select:focus {
+  border-color: #198754;
+  box-shadow: 0 0 0 3px rgba(25, 135, 84, 0.12);
+}
+
+.vendr0registration-documents {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.vendr0registration-required {
+  display: inline;
+  margin-left: 3px;
+  color: #c0392b;
+}
+
+.vendr0registration-file {
+  min-height: auto !important;
+  padding: 8px !important;
+  background: #fff !important;
+  font-size: 12px !important;
+  cursor: pointer;
+}
+
+.vendr0registration-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding-top: 6px;
+  color: #657487;
+  font-size: 13px;
+}
+
+/* Responsive – login stays the same, form adapts */
+@media (max-width: 700px) {
+  .vendr0registration-public {
+    padding: 20px 12px;
+  }
+
+  .vendr0registration-copy,
+  .vendr0registration-card form {
+    padding-left: 20px;
+    padding-right: 20px;
+  }
+
+  .vendr0registration-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .vendr0registration-wide {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 480px) {
+  .vendr0registration-grid,
+  .vendr0registration-documents {
+    grid-template-columns: 1fr;
+  }
+
+  .vendr0registration-wide {
+    grid-column: auto;
+  }
+
+  .vendr0registration-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .vendr0registration-submit {
+    width: 100%;
+  }
+}
 .vendr0registration-confirmation { display: flex; flex-direction: column; gap: 8px; margin: 0 32px 28px; padding: 18px; border: 1px solid #b8dfc8; border-radius: 8px; background: #f1faf5; color: #315b43; font-size: 14px; line-height: 1.45; }
 .vendr0registration-success-icon { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; background: #198754; color: #fff; font-size: 18px; font-weight: 800; }
 .vendr0registration-confirmation .vendr0registration-submit { align-self: flex-end; margin-top: 8px; }
+/* Optional but recommended – keep the brand bar + progress fixed at the top */
+.vendr0registration-brandbar,
+.vendr0registration-progress {
+  flex-shrink: 0;
+}
 
+/* The actions bar should stay at the bottom of the content, not create extra space */
+.vendr0registration-actions {
+  margin-top: auto;          /* pushes it down only when needed */
+  padding-top: 8px;
+}
 @media (max-width: 700px) {
   .vendr0registration-public { padding: 20px 12px; }
   .vendr0registration-copy, .vendr0registration-card form { padding-right: 20px; padding-left: 20px; }

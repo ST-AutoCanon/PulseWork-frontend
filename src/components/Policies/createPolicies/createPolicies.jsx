@@ -40,7 +40,7 @@ const CreatePolicyForm = ({
   const [selectedEmployee, setSelectedEmployee] = useState("");
   const [selectedDepartment, setSelectedDepartment] = useState("");
 const [allEmployeesByDepartment, setAllEmployeesByDepartment] = useState({});
-
+          // full data from new API
   const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
   const API_KEY = process.env.NEXT_PUBLIC_API_KEY;
   const meId = user?.employeeId ?? user?.id ?? user?.employee_id ?? null;
@@ -1053,6 +1053,10 @@ const CreatePolicies = () => {
   const [readingStatusPolicy, setReadingStatusPolicy] = useState(null);
   const [readingStatus, setReadingStatus] = useState([]);
   const [readingStatusLoading, setReadingStatusLoading] = useState(false);
+  // ===== File-wise Reading Status states =====
+const [readingStatusFiles, setReadingStatusFiles] = useState([]);
+const [selectedStatusFileId, setSelectedStatusFileId] = useState(null);
+const [fileWiseStatus, setFileWiseStatus] = useState([]);
 const [isEditing, setIsEditing] = useState(false);
 const [replaceLoading, setReplaceLoading] = useState(false);
 const [editingPolicyId, setEditingPolicyId] = useState(null);
@@ -1417,23 +1421,43 @@ const fetchPolicyAssignments = async (policyId) => {
     }
   };
 
-  const handleViewReadingStatus = async (policy) => {
-    setReadingStatusPolicy(policy);
-    setReadingStatusLoading(true);
-    try {
-      const response = await axios.get(
-        `${BACKEND}/api/policies/reading-status/${policy.id}`,
-        { withCredentials: true, headers: { "x-org-id": orgId } }
-      );
-      setReadingStatus(Array.isArray(response.data?.data) ? response.data.data : []);
-    } catch (error) {
-      console.error("Failed to load policy reading status:", error);
-      showAlert("Unable to load policy reading status", "Error");
-      setReadingStatus([]);
-    } finally {
-      setReadingStatusLoading(false);
+const handleViewReadingStatus = async (policy) => {
+  setReadingStatusPolicy(policy);
+  setReadingStatusLoading(true);
+  setSelectedStatusFileId(null);
+  setFileWiseStatus([]);
+  setReadingStatusFiles([]);
+
+  try {
+    // 1. Get files of this policy
+    const files = await fetchPolicyFiles(policy.id);
+    setReadingStatusFiles(files || []);
+
+    // 2. Get file-wise status
+    const response = await axios.get(
+      `${BACKEND}/api/policies/reading-status/${policy.id}/files`,
+      { withCredentials: true, headers: { "x-org-id": orgId } }
+    );
+
+    console.log("File-wise status response:", response.data); // ← check browser console
+
+    const data = Array.isArray(response.data?.data) ? response.data.data : [];
+    setFileWiseStatus(data);
+
+    if (files && files.length > 0) {
+      setSelectedStatusFileId(files[0].id);
     }
-  };
+  } catch (error) {
+    console.error("Reading status error:", error.response?.data || error.message);
+    showAlert(
+      error.response?.data?.message || "Unable to load policy reading status",
+      "Error"
+    );
+    setFileWiseStatus([]);
+  } finally {
+    setReadingStatusLoading(false);   // ← always stops the loading
+  }
+};
 
   const handleUploadAndView = async (policy) => {
     try {
@@ -2054,45 +2078,134 @@ isEditing={isEditing}                 // ← NEW
   />
 )}
 
-      {readingStatusPolicy && (
-        <div className="admin-policy-modal-overlay" onClick={() => setReadingStatusPolicy(null)}>
-          <div className="policy-reading-status-modal" onClick={(event) => event.stopPropagation()}>
-            <div className="admin-policy-header">
-              <div>
-                <h2 className="admin-policy-form-title">Policy Reading Status</h2>
-                <p className="admin-policy-replace-subtitle">{readingStatusPolicy.policy_name}</p>
-              </div>
-              <button className="admin-policy-close-btn" onClick={() => setReadingStatusPolicy(null)} aria-label="Close">✕</button>
-            </div>
-            <div className="policy-reading-status-body">
-              {readingStatusLoading ? <p className="admin-policy-empty-state">Loading status...</p> : (
-                <>
-                  <div className="policy-reading-summary">
-                    <span><strong>{readingStatus.filter((item) => item.read).length}</strong> read</span>
-                    <span><strong>{readingStatus.filter((item) => item.acknowledged).length}</strong> acknowledged</span>
-                    <span><strong>{readingStatus.filter((item) => !item.read).length}</strong> pending</span>
-                  </div>
-                  <div className="policy-reading-status-list">
-                    {readingStatus.length ? readingStatus.map((item) => (
-                      <div className="policy-reading-status-row" key={item.employee_id}>
-                        <span>{item.employee_name}</span>
-                        <span className="policy-reading-badges">
-                          <span className={`policy-reading-badge ${item.read ? "complete" : "pending"}`}>
-                            {item.read ? "Read" : "Not read"}
-                          </span>
-                          <span className={`policy-reading-badge ${item.acknowledged ? "complete" : "pending"}`}>
-                            {item.acknowledged ? "Acknowledged" : "Pending acknowledgement"}
-                          </span>
-                        </span>
-                      </div>
-                    )) : <p className="admin-policy-empty-state">No assigned employees found.</p>}
-                  </div>
-                </>
-              )}
-            </div>
-          </div>
+    {readingStatusPolicy && (
+  <div
+    className="admin-policy-modal-overlay"
+    onClick={() => setReadingStatusPolicy(null)}
+  >
+    <div
+      className="policy-reading-status-modal"
+      onClick={(e) => e.stopPropagation()}
+      style={{ width: "min(860px, 96vw)" }}
+    >
+      {/* Header */}
+      <div className="admin-policy-header">
+        <div>
+          <h2 className="admin-policy-form-title">Policy Reading Status</h2>
+          <p className="admin-policy-replace-subtitle">
+            {readingStatusPolicy.policy_name}
+          </p>
         </div>
-      )}
+        <button
+          className="admin-policy-close-btn"
+          onClick={() => setReadingStatusPolicy(null)}
+        >
+          ✕
+        </button>
+      </div>
+
+      <div className="policy-reading-status-body">
+  {readingStatusLoading ? (
+    <p className="admin-policy-empty-state">Loading status...</p>
+  ) : (
+    <>
+      {/* ===== SUMMARY COUNTS (always on top) ===== */}
+      {(() => {
+        const rows = fileWiseStatus.filter(
+          (r) => r.file_id === selectedStatusFileId
+        );
+        const total = rows.length;
+        const readCount = rows.filter((r) => Number(r.is_read) === 1).length;
+        const ackCount = rows.filter(
+          (r) => Number(r.is_acknowledged) === 1
+        ).length;
+        const pendingCount = total - readCount;
+
+        return (
+          <div className="policy-reading-summary">
+            <span>
+              <strong>{readCount}</strong>
+              Read
+            </span>
+            <span>
+              <strong>{ackCount}</strong>
+              Acknowledged
+            </span>
+            <span>
+              <strong>{pendingCount}</strong>
+              Pending
+            </span>
+          </div>
+        );
+      })()}
+
+      {/* ===== FILE SELECTOR ===== */}
+      <div className="status-files-row">
+        {readingStatusFiles.map((file) => {
+          const isSelected = selectedStatusFileId === file.id;
+          return (
+            <div
+              key={file.id}
+              className={`status-file-card ${isSelected ? "selected" : ""}`}
+              onClick={() => setSelectedStatusFileId(file.id)}
+            >
+              <div className="status-file-name">
+                {file.original_file_name || file.file_name}
+              </div>
+              <div className="status-file-type">{file.file_type}</div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* ===== EMPLOYEE LIST ===== */}
+      <div className="policy-reading-status-list">
+        {fileWiseStatus
+          .filter((r) => r.file_id === selectedStatusFileId)
+          .map((item) => (
+            <div
+              className="policy-reading-status-row"
+              key={`${item.employee_id}-${item.file_id}`}
+            >
+              <span className="employee-name">{item.employee_name}</span>
+              <span className="policy-reading-badges">
+                <span
+                  className={`policy-reading-badge ${
+                    Number(item.is_read) === 1 ? "complete" : "pending"
+                  }`}
+                >
+                  {Number(item.is_read) === 1 ? "Read" : "Not read"}
+                </span>
+                {Number(item.acknowledgement_required) === 1 && (
+                  <span
+                    className={`policy-reading-badge ${
+                      Number(item.is_acknowledged) === 1
+                        ? "complete"
+                        : "pending"
+                    }`}
+                  >
+                    {Number(item.is_acknowledged) === 1
+                      ? "Acknowledged"
+                      : "Pending acknowledgement"}
+                  </span>
+                )}
+              </span>
+            </div>
+          ))}
+
+        {fileWiseStatus.filter((r) => r.file_id === selectedStatusFileId)
+          .length === 0 && (
+          <p className="admin-policy-empty-state">
+            No assigned employees for this file.
+          </p>
+        )}
+      </div>
+    </>
+  )}
+</div>
+    </div>
+  </div>
+)}
 
      {/* Alert Modal - Always on Top */}
 {alertModal.isVisible && (

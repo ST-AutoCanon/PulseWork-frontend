@@ -2103,6 +2103,55 @@
   font-size: 0.9rem;
   line-height: 1.4;
 }
+/* ===== File-wise Reading Status ===== */
+.status-files-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 22px;
+}
+
+.status-file-card {
+  border: 2px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 12px 16px;
+  min-width: 160px;
+  max-width: 220px;
+  cursor: pointer;
+  background: #f8fafc;
+  transition: all 0.2s ease;
+}
+
+.status-file-card:hover {
+  border-color: #94a3b8;
+  background: #f1f5f9;
+}
+
+.status-file-card.selected {
+  border-color: #0f4c81;
+  background: #eff6ff;
+  box-shadow: 0 0 0 3px rgba(15, 76, 129, 0.15);
+}
+
+.status-file-name {
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: #1e293b;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.status-file-type {
+  font-size: 0.75rem;
+  color: #64748b;
+  margin-top: 4px;
+  text-transform: uppercase;
+}
+
+.employee-name {
+  font-weight: 500;
+}
 
 .admin-policy-convert-icon {
   flex-shrink: 0;
@@ -2110,6 +2159,76 @@
 }
 .required {
   color: #ef4444;
+}
+.policy-reading-summary {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.policy-reading-summary span {
+  padding: 14px;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background: #f8fafc;
+  color: #475569;
+  text-align: center;
+  font-size: 0.9rem;
+}
+
+.policy-reading-summary strong {
+  display: block;
+  color: #0f4c81;
+  font-size: 1.4rem;
+  margin-bottom: 2px;
+}
+
+.status-files-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 20px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.status-file-card {
+  border: 2px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 10px 14px;
+  min-width: 140px;
+  max-width: 200px;
+  cursor: pointer;
+  background: #fff;
+  transition: all 0.2s ease;
+}
+
+.status-file-card:hover {
+  border-color: #94a3b8;
+}
+
+.status-file-card.selected {
+  border-color: #0f4c81;
+  background: #eff6ff;
+  box-shadow: 0 0 0 3px rgba(15, 76, 129, 0.12);
+}
+
+.status-file-name {
+  font-weight: 600;
+  font-size: 0.88rem;
+  color: #1e293b;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.status-file-type {
+  font-size: 0.72rem;
+  color: #64748b;
+  margin-top: 3px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
 }
 /* Responsive */
 @media (max-width: 500px) {

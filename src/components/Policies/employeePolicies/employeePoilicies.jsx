@@ -76,7 +76,10 @@ const [readPages, setReadPages] = useState(new Set());
 const [readSaving, setReadSaving] = useState(false);
 const pdfPageTimers = useRef({});
 const pdfWrapperRef = useRef(null);
-
+const [videoProgress, setVideoProgress] = useState(0);       // 0 – 100
+const [videoDuration, setVideoDuration] = useState(0);
+const [videoCurrentTime, setVideoCurrentTime] = useState(0);
+const videoRef = useRef(null);
 const [pdfWidth, setPdfWidth] = useState(700);
 
 const MIN_PAGE_READ_TIME = 2500; // 2.5s – less cancelled by small moves
@@ -226,7 +229,14 @@ const closeAlert = () => {
       const blob = new Blob([response.data], { type: contentType });
       const url = URL.createObjectURL(blob);
       setFileUrl(url);
+// Force layout so PDF width is calculated correctly on first open
+setTimeout(() => {
+  window.dispatchEvent(new Event("resize"));
+}, 80);
 
+setTimeout(() => {
+  window.dispatchEvent(new Event("resize"));
+}, 300);
      if (isDocx(fileName)) {
   setTimeout(() => {
     const container = document.getElementById("docx-preview-container");
@@ -388,6 +398,8 @@ const filteredPolicies = policies.filter((policy) => {
   return true;
 });
 const handleAcknowledgement = async () => {
+  if (!pendingFile) return;
+
   try {
     await axios.post(
       `${BACKEND}/api/policies/employee-policy/acknowledgement`,
@@ -401,43 +413,48 @@ const handleAcknowledgement = async () => {
       }
     );
 
-    const updatedFiles = selectedPolicy.files.map((f) =>
-      f.id === pendingFile.id
-        ? { ...f, is_acknowledged: 1 }
-        : f
-    );
-
-    const updatedSelectedPolicy = {
-      ...selectedPolicy,
-      files: updatedFiles,
-    };
-
-    const updatedPendingFile = {
+    const updatedFile = {
       ...pendingFile,
       is_acknowledged: 1,
     };
 
-    setSelectedPolicy(updatedSelectedPolicy);
-    setSelectedFile((current) =>
-      current?.id === pendingFile.id
-        ? { ...current, is_acknowledged: 1 }
-        : current
+    // Update all state first
+    setSelectedPolicy((prev) => ({
+      ...prev,
+      files: (prev.files || []).map((f) =>
+        f.id === pendingFile.id ? { ...f, is_acknowledged: 1 } : f
+      ),
+    }));
+
+    setSelectedFile((prev) =>
+      prev && prev.id === pendingFile.id
+        ? { ...prev, is_acknowledged: 1 }
+        : prev
     );
-    setPendingFile(null);
 
     setPolicies((prev) =>
       prev.map((p) =>
         p.policy_id === selectedPolicy.policy_id
-          ? updatedSelectedPolicy
+          ? {
+              ...p,
+              files: (p.files || []).map((f) =>
+                f.id === pendingFile.id
+                  ? { ...f, is_acknowledged: 1 }
+                  : f
+              ),
+            }
           : p
       )
     );
 
+    setPendingFile(null);
     showAlert("Acknowledgement saved successfully.");
 
-    // Now that it's acknowledged, allow (and trigger) read tracking
-    // Use the updated file object so the gate above passes
-    markFileRead(updatedPendingFile);
+    // Now that acknowledgement is done, force the read mark
+    // (important for video/image that already started playing)
+    setTimeout(() => {
+      markFileRead(updatedFile);
+    }, 150);
   } catch (err) {
     console.error("Acknowledgement Error:", err.response?.data || err);
     showAlert(
@@ -476,6 +493,10 @@ const handleFileClick = (file) => {
   setPdfReadProgress(0);
   setReadPages(new Set());
   setPdfReadState(Number(file.is_read) === 1 ? "read" : "unread");
+
+  // ===== NEW: reset video progress =====
+  setVideoProgress(Number(file.is_read) === 1 ? 100 : 0);
+  setVideoDuration(0);
 
   // Clear existing timers
   Object.values(pdfPageTimers.current).forEach((timer) => {
@@ -598,40 +619,52 @@ useEffect(() => {
   }
 }, [readPages, pdfPageCount, selectedFile]);
 const markFileRead = async (file) => {
-  if (!file || Number(file.is_read) === 1 || readSaving) return;
+  if (!file || !file.id || readSaving) return;
 
-  // Do NOT mark as read until the user has acknowledged (when required)
-  if (
-    Number(file.acknowledgement_required) === 1 &&
-    Number(file.is_acknowledged) === 0
-  ) {
-    return;
-  }
+  const currentFile = selectedFile?.id === file.id ? selectedFile : file;
+
+  if (Number(currentFile.is_read) === 1) return;
+
+  // Removed the acknowledgement gate.
+  // Read status is now independent of acknowledgement.
 
   setReadSaving(true);
   try {
     await axios.post(
       `${BACKEND}/api/policies/employee-policy/read`,
       {
-        policyId: file.policy_id || selectedPolicy?.policy_id,
-        policyFileId: file.id,
+        policyId: currentFile.policy_id || selectedPolicy?.policy_id,
+        policyFileId: currentFile.id,
       },
       { withCredentials: true, headers: getHeaders() }
     );
 
-    const updatedFiles = (selectedPolicy?.files || []).map((item) =>
-      item.id === file.id ? { ...item, is_read: 1 } : item
+    setSelectedFile((prev) =>
+      prev && prev.id === currentFile.id ? { ...prev, is_read: 1 } : prev
     );
-    const updatedPolicy = { ...selectedPolicy, files: updatedFiles };
 
-    setSelectedPolicy(updatedPolicy);
-    setSelectedFile((current) =>
-      current?.id === file.id ? { ...current, is_read: 1 } : current
-    );
+    setSelectedPolicy((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        files: (prev.files || []).map((f) =>
+          f.id === currentFile.id ? { ...f, is_read: 1 } : f
+        ),
+      };
+    });
+
     setPolicies((prev) =>
-      prev.map((policy) =>
-        policy.policy_id === updatedPolicy.policy_id ? updatedPolicy : policy
-      )
+      prev.map((policy) => {
+        if (policy.policy_id !== (currentFile.policy_id || selectedPolicy?.policy_id)) {
+          return policy;
+        }
+        return {
+          ...policy,
+          files: (policy.files || []).map((f) =>
+            f.id === currentFile.id ? { ...f, is_read: 1 } : f
+          ),
+        };
+      })
     );
   } catch (error) {
     console.error("Failed to save read status:", error);
@@ -639,7 +672,6 @@ const markFileRead = async (file) => {
     setReadSaving(false);
   }
 };
-
 const handleViewerScroll = (event) => {
   const element = event.currentTarget;
   if (element.scrollHeight - element.scrollTop - element.clientHeight <= 12) {
@@ -819,19 +851,39 @@ const handleViewerScroll = (event) => {
             {getFileIcon(file)}
             <span>{getFileName(file)}</span>
 
-          <div
+       <div
   style={{
     marginLeft: "auto",
     display: "flex",
     alignItems: "center",
+    gap: 6,
   }}
 >
   {canView ? (
-    Number(file.is_read) === 1 ? (
-      <FaEye title="Fully read" className="file-read-icon read" />
-    ) : (
-      <FaTimesCircle title="Not fully read" className="file-read-icon unread" />
-    )
+    <>
+      {/* Acknowledgement pending icon */}
+      {Number(file.acknowledgement_required) === 1 &&
+        Number(file.is_acknowledged) === 0 && (
+          <FaUserCheck
+            title="Acknowledgement pending"
+            className="file-ack-pending-icon"
+            style={{ color: "#f59e0b", fontSize: 14 }}
+          />
+        )}
+
+      {/* Read / Not read icon */}
+      {Number(file.is_read) === 1 ? (
+        <FaEye
+          title="Fully read"
+          className="file-read-icon read"
+        />
+      ) : (
+        <FaTimesCircle
+          title="Not fully read"
+          className="file-read-icon unread"
+        />
+      )}
+    </>
   ) : (
     <FaEyeSlash
       title="View not allowed"
@@ -896,11 +948,26 @@ const handleViewerScroll = (event) => {
   </div>
 </div>
           <div className="viewer-body">
-            {Number(selectedFile.allow_view) === 1 && (
+ {/* ========== READING INDICATOR (PDF + VIDEO) ========== */}
+{Number(selectedFile.allow_view) === 1 && (
   <div
-    className={`pdf-reading-indicator ${pdfReadState}`}
+    className={`pdf-reading-indicator ${
+      isVideo(getFileName(selectedFile))
+        ? videoProgress >= 100 || Number(selectedFile.is_read) === 1
+          ? "read"
+          : videoProgress > 0
+          ? "reading"
+          : "unread"
+        : pdfReadState
+    }`}
     title={
-      pdfReadState === "read"
+      isVideo(getFileName(selectedFile))
+        ? Number(selectedFile.is_read) === 1 || videoProgress >= 100
+          ? "Read"
+          : videoProgress > 0
+          ? `Watched ${videoProgress}%`
+          : "Not watched"
+        : pdfReadState === "read"
         ? "Read"
         : pdfReadState === "reading"
         ? `Reading ${pdfReadProgress}%`
@@ -908,155 +975,259 @@ const handleViewerScroll = (event) => {
     }
   >
     <FaEye />
-
     <span>
-      {pdfReadState === "read"
+      {isVideo(getFileName(selectedFile))
+        ? Number(selectedFile.is_read) === 1 || videoProgress >= 100
+          ? "Read"
+          : `${videoProgress}%`
+        : pdfReadState === "read"
         ? "Read"
         : `${pdfReadProgress}%`}
     </span>
   </div>
 )}
-            {Number(selectedFile.allow_view) !== 1 ? (
-              <div style={{
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                justifyContent: "center",
-                height: "100%",
-                padding: 40,
-                textAlign: "center"
-              }}>
-                <div style={{ fontSize: 48, marginBottom: 16 }}>🔒</div>
-                <h3 style={{ color: "#1f2937", fontSize: 18, marginBottom: 8 }}>Access Restricted</h3>
-                <p style={{ color: "#64748b", fontSize: 14, lineHeight: 1.6 }}>
-                  This file is not available for viewing. Please contact your administrator if you need access to this document.
-                </p>
-              </div>
-            ) : loadingFile ? (
-              <p>Loading...</p>
-            ) : fileUrl && selectedFile ? (
-              (() => {
-                const name = getFileName(selectedFile);
-                if (isImage(name)) {
-                  return (
-                    <img
-                      src={fileUrl}
-                      alt={name}
-                      style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain" }}
-                      onLoad={() => markFileRead(selectedFile)}
-                    />
-                  );
-                }
-      if (isPdf(name)) {
-return ( <div
-   ref={pdfWrapperRef}
-   className="pdf-viewer-wrapper"
-   onScroll={handlePdfScroll}
- >
-<Document
-file={fileUrl}
-onLoadSuccess={({ numPages }) => {
-setPdfPageCount(numPages);
-
-
-      // Already marked as read in backend
-      if (Number(selectedFile.is_read) === 1) {
-        setPdfReadProgress(100);
-        setPdfReadState("read");
-      } else {
-        setPdfReadProgress(0);
-        setPdfReadState("unread");
-      }
+          {Number(selectedFile.allow_view) !== 1 ? (
+  <div
+    style={{
+      display: "flex",
+      flexDirection: "column",
+      alignItems: "center",
+      justifyContent: "center",
+      height: "100%",
+      padding: 40,
+      textAlign: "center",
     }}
-    onLoadError={(error) => {
-      console.error("PDF loading error:", error);
-    }}
-    loading={
-      <div className="pdf-loading">
-        Loading PDF...
-      </div>
-    }
   >
-    {Array.from(
-      { length: pdfPageCount },
-      (_, index) => (
+    <div style={{ fontSize: 48, marginBottom: 16 }}>🔒</div>
+    <h3 style={{ color: "#1f2937", fontSize: 18, marginBottom: 8 }}>
+      Access Restricted
+    </h3>
+    <p style={{ color: "#64748b", fontSize: 14, lineHeight: 1.6 }}>
+      This file is not available for viewing. Please contact your
+      administrator if you need access to this document.
+    </p>
+  </div>
+) : loadingFile ? (
+  <p>Loading...</p>
+) : fileUrl && selectedFile ? (
+  (() => {
+    const name = getFileName(selectedFile);
+
+    /* ===================== IMAGE ===================== */
+    if (isImage(name)) {
+      return (
         <div
-          className="pdf-page-wrapper"
-          key={`page_${index + 1}`}
+          className="media-viewer-wrapper"
+          style={{
+            width: "100%",
+            height: "100%",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            background: "#f8fafc",
+            overflow: "auto",
+          }}
         >
-          <Page
-            pageNumber={index + 1}
-            width={pdfWidth}
-            renderTextLayer={true}
-            renderAnnotationLayer={true}
+          <img
+            src={fileUrl}
+            alt={name}
+            style={{
+              maxWidth: "100%",
+              maxHeight: "100%",
+              objectFit: "contain",
+              display: "block",
+            }}
+            onLoad={() => {
+              // Only mark if already acknowledged (or no ack required)
+              markFileRead(selectedFile);
+            }}
           />
         </div>
-      )
-    )}
-  </Document>
-</div>
+      );
+    }
 
+    /* ===================== PDF ===================== */
+    if (isPdf(name)) {
+      return (
+        <div
+          ref={pdfWrapperRef}
+          className="pdf-viewer-wrapper"
+          onScroll={handlePdfScroll}
+        >
+          <Document
+            file={fileUrl}
+           onLoadSuccess={({ numPages }) => {
+  setPdfPageCount(numPages);
+  if (Number(selectedFile.is_read) === 1) {
+    setPdfReadProgress(100);
+    setPdfReadState("read");
+  } else {
+    setPdfReadProgress(0);
+    setPdfReadState("unread");
+  }
 
-);
-}
+  // Force width recalculation after pages are ready
+  setTimeout(() => {
+    window.dispatchEvent(new Event("resize"));
+  }, 50);
+}}
+            onLoadError={(error) => {
+              console.error("PDF loading error:", error);
+            }}
+            loading={
+              <div className="pdf-loading">Loading PDF...</div>
+            }
+          >
+            {Array.from({ length: pdfPageCount }, (_, index) => (
+              <div
+                className="pdf-page-wrapper"
+                key={`page_${index + 1}`}
+              >
+                <Page
+                  pageNumber={index + 1}
+                  width={pdfWidth}
+                  renderTextLayer={true}
+                  renderAnnotationLayer={true}
+                />
+              </div>
+            ))}
+          </Document>
+        </div>
+      );
+    }
 
-                if (isVideo(name)) {
-                  return (
-                    <video src={fileUrl} controls onEnded={() => markFileRead(selectedFile)} style={{ maxWidth: "100%", maxHeight: "100%" }}>
-                      Your browser does not support the video tag.
-                    </video>
-                  );
-                }
-                if (isAudio(name)) {
-                  return (
-                    <audio src={fileUrl} controls onEnded={() => markFileRead(selectedFile)} style={{ width: "100%" }}>
-                      Your browser does not support the audio element.
-                    </audio>
-                  );
-                }
-                if (isDocx(name)) {
-                  return (
-                    <div className="docx-viewer-wrapper" onScroll={handleViewerScroll}>
-                      <div id="docx-preview-container" className="docx-preview-container" />
-                    </div>
-                  );
-                }
-              return (
-  <div style={{ padding: 32, textAlign: "center" }}>
-    <p style={{ fontSize: 16, marginBottom: 8 }}>
-      Preview is not available for this file type.
-    </p>
-    <p style={{ color: "#64748b", marginBottom: 24 }}>
-      {Number(selectedFile.allow_download) === 1
-        ? "Please download the file to view it."
-        : "Download is not allowed for this file."}
-    </p>
-
-    {Number(selectedFile.allow_download) === 1 && (
-      <a
-        href={fileUrl}
-        download={name}
+    /* ===================== VIDEO ===================== */
+   /* ===================== VIDEO ===================== */
+/* ===================== VIDEO ===================== */
+if (isVideo(name)) {
+  return (
+    <div
+      style={{
+        width: "100%",
+        height: "100%",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        background: "#000",
+        position: "relative",
+      }}
+    >
+      <video
+        ref={videoRef}
+        key={selectedFile.id}
+        src={fileUrl}
+        controls
         style={{
-          display: "inline-block",
-          padding: "12px 24px",
-          background: "#2563eb",
-          color: "white",
-          borderRadius: 8,
-          textDecoration: "none",
-          fontWeight: 500,
+          maxWidth: "100%",
+          maxHeight: "100%",
+          width: "auto",
+          height: "auto",
+        }}
+        onLoadedMetadata={(e) => {
+          setVideoDuration(e.target.duration || 0);
+        }}
+        onTimeUpdate={(e) => {
+          const video = e.target;
+          const current = video.currentTime || 0;
+          const duration = video.duration || 1;
+          const percent = Math.min(100, Math.round((current / duration) * 100));
+          setVideoProgress(percent);
+
+          // Mark as fully read only when almost finished
+          if (percent >= 95) {
+            markFileRead(selectedFile);
+          }
+        }}
+        onEnded={() => {
+          setVideoProgress(100);
+          markFileRead(selectedFile);
         }}
       >
-        Download {name}
-      </a>
-    )}
-  </div>
-);
-              })()
-            ) : (
-              <p>No file available.</p>
-            )}
+        Your browser does not support the video tag.
+      </video>
+    </div>
+  );
+}
+    /* ===================== AUDIO ===================== */
+    if (isAudio(name)) {
+      return (
+        <div
+          className="media-viewer-wrapper"
+          style={{
+            width: "100%",
+            height: "100%",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 40,
+          }}
+        >
+          <audio
+            src={fileUrl}
+            controls
+            style={{ width: "100%", maxWidth: 500 }}
+            onEnded={() => markFileRead(selectedFile)}
+            onPlay={() => markFileRead(selectedFile)}
+          >
+            Your browser does not support the audio element.
+          </audio>
+        </div>
+      );
+    }
+
+    /* ===================== DOCX ===================== */
+    if (isDocx(name)) {
+      return (
+        <div
+          className="docx-viewer-wrapper"
+          onScroll={handleViewerScroll}
+        >
+          <div
+            id="docx-preview-container"
+            className="docx-preview-container"
+          />
+        </div>
+      );
+    }
+
+    /* ===================== FALLBACK ===================== */
+    return (
+      <div style={{ padding: 32, textAlign: "center" }}>
+        <p style={{ fontSize: 16, marginBottom: 8 }}>
+          Preview is not available for this file type.
+        </p>
+        <p style={{ color: "#64748b", marginBottom: 24 }}>
+          {Number(selectedFile.allow_download) === 1
+            ? "Please download the file to view it."
+            : "Download is not allowed for this file."}
+        </p>
+
+        {Number(selectedFile.allow_download) === 1 && (
+          <a
+            href={fileUrl}
+            download={name}
+            style={{
+              display: "inline-block",
+              padding: "12px 24px",
+              background: "#2563eb",
+              color: "white",
+              borderRadius: 8,
+              textDecoration: "none",
+              fontWeight: 500,
+            }}
+          >
+            Download {name}
+          </a>
+        )}
+      </div>
+    );
+  })()
+) : (
+  <p>No file available.</p>
+)}
 
             {/* Floating acknowledgement – now correctly overlays the file */}
+{/* ========== ORIGINAL FLOATING ACKNOWLEDGEMENT (keep this) ========== */}
 {Number(selectedFile.allow_view) === 1 && pendingFile && (
   <div className="ack-floating-wrapper">
     {/* Small floating icon */}

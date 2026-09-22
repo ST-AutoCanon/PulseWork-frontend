@@ -635,6 +635,18 @@
   color: #657487;
   font-size: 13px;
 }
+.vendr0registration-label-text {
+  display: inline;
+  white-space: nowrap; /* keeps label + * on one line */
+}
+
+.vendr0registration-required {
+  display: inline;
+  margin-left: 3px;
+  color: #c0392b;
+  font-weight: 800;
+  white-space: nowrap;
+}
 
 /* Responsive – login stays the same, form adapts */
 @media (max-width: 700px) {

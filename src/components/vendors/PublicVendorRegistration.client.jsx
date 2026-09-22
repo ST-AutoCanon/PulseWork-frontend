@@ -123,24 +123,43 @@ export default function PublicVendorRegistration() {
     setStatus("Submitting...");
     try {
       const payload = new FormData();
-      Object.entries({ ...form, ...credentials, token, orgId }).forEach(([name, value]) => payload.append(name, value ?? ""));
-      Object.entries(documents).forEach(([name, file]) => { if (file) payload.append(name, file); });
-      const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/vendors/public-registration`, {
-        method: "POST",
-        body: payload,
+      Object.entries({ ...form, ...credentials, token, orgId }).forEach(([name, value]) =>
+        payload.append(name, value ?? "")
+      );
+      Object.entries(documents).forEach(([name, file]) => {
+        if (file) payload.append(name, file);
       });
-      const responseData = await response.json();
+
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_BACKEND_URL}/vendors/public-registration`,
+        {
+          method: "POST",
+          body: payload,
+        }
+      );
+
+      const responseData = await response.json().catch(() => ({}));
+
       if (!response.ok) {
-        const error = new Error(responseData.message || "Could not submit the registration.");
-        error.status = response.status;
-        throw error;
+        const err = new Error(
+          responseData.message || "Could not submit the registration."
+        );
+        err.status = response.status;
+        throw err;
       }
+
+      // Success: clear status so "Submitting..." disappears,
+      // then switch to the confirmation screen.
+      setStatus("");
       setValid(false);
       setSubmissionState("success");
-      
     } catch (error) {
-      if (error.status === 409) setSubmissionState("already-submitted");
-      setStatus(error.response?.data?.message || error.message || "Could not submit the registration.");
+      if (error.status === 409) {
+        setSubmissionState("already-submitted");
+      }
+      setStatus(
+        error.message || "Could not submit the registration."
+      );
     }
   };
 
@@ -190,13 +209,40 @@ export default function PublicVendorRegistration() {
             <legend>{group.title}</legend>
             <div className="vendr0registration-grid">
               {group.fields.map((name) => (
-                <label className={`vendr0registration-field ${name.includes("address") ? "vendr0registration-wide" : ""}`} key={name}>{fieldLabel(name)}{requiredFields.includes(name) && <span className="vendr0registration-required">*</span>}
-                  {name === "msme_status" ? (
-                    <select name={name} value={form[name]} onChange={update}><option>Not Applicable</option><option>Applicable</option></select>
-                  ) : (
-                    <input name={name} type={name === "years_of_experience" ? "number" : name.includes("email") ? "email" : "text"} min={name === "years_of_experience" ? "1" : undefined} value={form[name]} onChange={update} required={requiredFields.includes(name)} />
-                  )}
-                </label>
+              <label
+  className={`vendr0registration-field ${
+    name === "company_name" ? "vendr0registration-wide" : ""
+  }`}
+  key={name}
+>
+  <span className="vendr0registration-label-text">
+    {fieldLabel(name)}
+    {requiredFields.includes(name) && (
+      <span className="vendr0registration-required">*</span>
+    )}
+  </span>
+  {name === "msme_status" ? (
+    <select name={name} value={form[name]} onChange={update}>
+      <option>Not Applicable</option>
+      <option>Applicable</option>
+    </select>
+  ) : (
+    <input
+      name={name}
+      type={
+        name === "years_of_experience"
+          ? "number"
+          : name.includes("email")
+            ? "email"
+            : "text"
+      }
+      min={name === "years_of_experience" ? "1" : undefined}
+      value={form[name]}
+      onChange={update}
+      required={requiredFields.includes(name)}
+    />
+  )}
+</label>
               ))}
             </div>
           </fieldset>
@@ -205,9 +251,20 @@ export default function PublicVendorRegistration() {
           <legend>Documents Required (Attach Copies)</legend>
           <div className="vendr0registration-documents">
             {documentFields.map(({ name, label, required }) => (
-              <label className="vendr0registration-field" key={name}>{label}{required && <span className="vendr0registration-required">*</span>}
-                <input className="vendr0registration-file" name={name} type="file" onChange={updateDocument} accept=".pdf,.jpg,.jpeg,.png" required={required} />
-              </label>
+              <label className="vendr0registration-field" key={name}>
+  <span className="vendr0registration-label-text">
+    {label}
+    {required && <span className="vendr0registration-required">*</span>}
+  </span>
+  <input
+    className="vendr0registration-file"
+    name={name}
+    type="file"
+    onChange={updateDocument}
+    accept=".pdf,.jpg,.jpeg,.png"
+    required={required}
+  />
+</label>
             ))}
           </div>
         </fieldset>

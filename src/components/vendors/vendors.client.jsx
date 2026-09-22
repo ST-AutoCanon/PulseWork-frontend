@@ -762,8 +762,12 @@ const handleShowDownloadPopup = (vendor) => {
                     >
                       <span className="registration-request-company">
                         <strong>{request.submitted_data?.company_name || request.vendor_name || "Unnamed vendor"}</strong>
-                        <small>{request.submitted_data?.contact1_email || request.username || "Email unavailable"}</small>
-                      </span>
+<small>
+  {request.email ||
+    request.recipient_email ||
+    request.username ||
+    "Email unavailable"}
+</small>                      </span>
                       <span className="registration-request-meta">
                         <b className={`registration-status-badge registration-status-${request.status || "pending"}`}>{request.status || "pending"}</b>
                         <small>{request.submitted_at ? new Date(request.submitted_at).toLocaleString() : "-"}</small>

@@ -288,6 +288,7 @@ const EmployeeAssistant = () => {
     returnTime: "",
     message: "",
     ticket: null,
+    ticketAttachment: null,
   });
 
   const [bookingSubmitting, setBookingSubmitting] = useState(false);
@@ -687,6 +688,7 @@ const EmployeeAssistant = () => {
       returnTime: "",
       message: "",
       ticket: null,
+      ticketAttachment: null,
     });
   };
 
@@ -783,7 +785,8 @@ const EmployeeAssistant = () => {
       return;
     }
 
-    if (!bookingForm.ticket) {
+    // A new file OR an already-saved draft attachment is acceptable.
+    if (!bookingForm.ticket && !bookingForm.ticketAttachment?.id) {
       showAlert("Please upload the e-ticket PDF.");
       return;
     }
@@ -793,17 +796,19 @@ const EmployeeAssistant = () => {
 
       const formData = new FormData();
 
-      formData.append("transportType", bookingForm.airline);
+      formData.append("transportType", bookingForm.airline || "");
+      formData.append("pnr", bookingForm.pnr || "");
+      formData.append("departureTime", bookingForm.departureTime || "");
+      formData.append("returnTime", bookingForm.returnTime || "");
+      formData.append("message", bookingForm.message || "");
 
-      formData.append("pnr", bookingForm.pnr);
-
-      formData.append("departureTime", bookingForm.departureTime);
-
-      formData.append("returnTime", bookingForm.returnTime);
-
-      formData.append("message", bookingForm.message);
-
-      formData.append("e_ticket", bookingForm.ticket);
+      // Only send a file when the user selected a new file.
+      //
+      // If no new file was selected, the backend will reuse the
+      // already-saved E-Ticket attachment from the draft.
+      if (bookingForm.ticket) {
+        formData.append("e_ticket", bookingForm.ticket);
+      }
 
       await axios.post(
         `${BACKEND_URL}/requests/${selectedRequest.id}/book`,
@@ -834,19 +839,35 @@ const EmployeeAssistant = () => {
     if (!selectedRequest) return;
 
     try {
+      const formData = new FormData();
+
+      formData.append("transportType", bookingForm.airline || "");
+
+      formData.append("pnr", bookingForm.pnr || "");
+
+      formData.append("departureTime", bookingForm.departureTime || "");
+
+      formData.append("returnTime", bookingForm.returnTime || "");
+
+      formData.append("message", bookingForm.message || "");
+
+      if (bookingForm.ticket) {
+        formData.append("e_ticket", bookingForm.ticket);
+      }
+
       const response = await axios.post(
         `${BACKEND_URL}/requests/${selectedRequest.id}/book-draft`,
+        formData,
         {
-          transportType: bookingForm.airline,
-          pnr: bookingForm.pnr,
-          departureTime: bookingForm.departureTime,
-          returnTime: bookingForm.returnTime,
-          message: bookingForm.message,
+          headers: {
+            ...headers,
+          },
+          withCredentials: true,
         },
-        { headers, withCredentials: true },
       );
 
       const updatedRequest = response.data?.data;
+
       if (updatedRequest) {
         setSelectedRequest(updatedRequest);
         selectedRequestRef.current = updatedRequest;
@@ -855,6 +876,7 @@ const EmployeeAssistant = () => {
       showAlert("Booking draft saved.");
     } catch (error) {
       console.error("[EmployeeAssistant] saveTravelBookingDraft:", error);
+
       showAlert(error.response?.data?.message || "Unable to save draft.");
     }
   };
@@ -863,17 +885,37 @@ const EmployeeAssistant = () => {
     if (selectedRequest?.request_type !== "TRAVEL_BOOKING") return;
 
     const details = normalizeDetails(selectedRequest.details_json);
+
+    const savedTicket = Array.isArray(selectedRequest.attachments)
+      ? selectedRequest.attachments.find(
+          (attachment) => attachment.purpose === "E_TICKET",
+        ) || null
+      : null;
+
     setBookingForm((previous) => ({
       ...previous,
+
       airline: details.transportType || details.airline || "",
+
       pnr: details.pnr || "",
+
       departureTime: details.departureTime || "",
+
       returnTime: details.returnTime || "",
+
       message: details.bookingMessage || "",
-      // Browsers do not allow restoring a file input; it must be selected again.
+
+      // Browser security prevents restoring a File object.
       ticket: null,
+
+      // Keep the server-side attachment separately.
+      ticketAttachment: savedTicket,
     }));
-  }, [selectedRequest?.id, selectedRequest?.details_json]);
+  }, [
+    selectedRequest?.id,
+    selectedRequest?.details_json,
+    selectedRequest?.attachments,
+  ]);
 
   const completeTrip = async () => {
     if (!selectedRequest) return;
@@ -2011,7 +2053,9 @@ function RequestConversation({
                       <span>
                         {bookingForm.ticket
                           ? bookingForm.ticket.name
-                          : "Upload e-ticket PDF"}
+                          : bookingForm.ticketAttachment?.fileName
+                            ? `Saved: ${bookingForm.ticketAttachment.fileName}`
+                            : "Upload e-ticket PDF"}
                       </span>
 
                       <input
@@ -2026,6 +2070,19 @@ function RequestConversation({
                         }
                       />
                     </label>
+
+                    {bookingForm.ticketAttachment && !bookingForm.ticket && (
+                      <div className="saved-ticket-info">
+                        <FiFileText />
+
+                        <span>
+                          Previously uploaded:
+                          <strong>
+                            {bookingForm.ticketAttachment.fileName}
+                          </strong>
+                        </span>
+                      </div>
+                    )}
                   </div>
 
                   <div className="assistant-field full">
@@ -2653,9 +2710,51 @@ function RequestTimeline({ events }) {
   );
 }
 
-/* ==========================================================
-   REQUEST MESSAGES
-========================================================== */
+function getFilenameFromContentDisposition(value) {
+  if (!value) return null;
+
+  const utfMatch = value.match(/filename\*=UTF-8''([^;]+)/i);
+
+  if (utfMatch?.[1]) {
+    try {
+      return decodeURIComponent(utfMatch[1]);
+    } catch {
+      return utfMatch[1];
+    }
+  }
+
+  const normalMatch = value.match(/filename="?([^"]+)"?/i);
+
+  return normalMatch?.[1] || null;
+}
+
+function getExtensionFromMimeType(mimeType) {
+  const mime = String(mimeType || "")
+    .split(";")[0]
+    .trim()
+    .toLowerCase();
+
+  const map = {
+    "application/pdf": ".pdf",
+    "application/msword": ".doc",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
+      ".docx",
+    "application/vnd.ms-excel": ".xls",
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":
+      ".xlsx",
+    "application/vnd.ms-powerpoint": ".ppt",
+    "application/vnd.openxmlformats-officedocument.presentationml.presentation":
+      ".pptx",
+    "text/plain": ".txt",
+    "image/jpeg": ".jpg",
+    "image/png": ".png",
+    "image/gif": ".gif",
+    "image/webp": ".webp",
+    "application/zip": ".zip",
+  };
+
+  return map[mime] || "";
+}
 
 function RequestMessages({ messages, employeeId, orgId }) {
   if (!messages?.length) {
@@ -2699,23 +2798,85 @@ function RequestMessages({ messages, employeeId, orgId }) {
                         },
                         credentials: "include",
                       });
-                      if (!response.ok)
-                        throw new Error("Attachment download failed.");
-                      const url = URL.createObjectURL(await response.blob());
+
+                      if (!response.ok) {
+                        throw new Error(
+                          `Attachment download failed: ${response.status}`,
+                        );
+                      }
+
+                      const blob = await response.blob();
+
+                      const contentType =
+                        response.headers.get("content-type") ||
+                        blob.type ||
+                        "application/octet-stream";
+
+                      const contentDisposition = response.headers.get(
+                        "content-disposition",
+                      );
+
+                      const serverFilename =
+                        getFilenameFromContentDisposition(contentDisposition);
+
+                      const urlFilename = decodeURIComponent(
+                        String(message.attachment_url)
+                          .split("?")[0]
+                          .split("/")
+                          .pop() || "",
+                      );
+
+                      let filename =
+                        serverFilename ||
+                        message.attachment_name ||
+                        message.file_name ||
+                        urlFilename ||
+                        "attachment";
+
+                      /*
+                       * If backend returns an ID such as "123" or a filename
+                       * without an extension, use the response MIME type.
+                       */
+                      const extension = getExtensionFromMimeType(contentType);
+
+                      const hasExtension = /\.[a-z0-9]{2,10}$/i.test(filename);
+
+                      const looksLikeNumericId = /^\d+$/.test(filename);
+
+                      if (extension && (!hasExtension || looksLikeNumericId)) {
+                        filename = looksLikeNumericId
+                          ? `attachment-${filename}${extension}`
+                          : `${filename}${extension}`;
+                      }
+
+                      const objectUrl = URL.createObjectURL(blob);
+
                       const link = document.createElement("a");
-                      link.href = url;
-                      link.download =
-                        message.attachment_url.split("/").pop() || "attachment";
+
+                      link.href = objectUrl;
+                      link.download = filename;
+
                       document.body.appendChild(link);
+
                       link.click();
+
                       link.remove();
-                      URL.revokeObjectURL(url);
+
+                      setTimeout(() => {
+                        URL.revokeObjectURL(objectUrl);
+                      }, 1000);
                     } catch (error) {
-                      console.error("Attachment download failed:", error);
+                      console.error(
+                        "[RequestMessages] Attachment download failed:",
+                        error,
+                      );
+
+                      alert("Unable to download the attachment.");
                     }
                   }}
                 >
-                  <FiPaperclip /> Attachment
+                  <FiPaperclip />
+                  {message.file_name || message.attachment_name || "Attachment"}
                 </button>
               )}
 

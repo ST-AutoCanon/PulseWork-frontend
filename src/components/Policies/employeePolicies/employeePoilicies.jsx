@@ -191,22 +191,29 @@ const isFileFullyRead = (file) => {
   };
 
   // Clean up previous object URL
-  useEffect(() => {
+ useEffect(() => {
+  const wrapper = pdfWrapperRef.current;
+  if (!wrapper) return;
+
   const updatePdfWidth = () => {
-    if (!pdfWrapperRef.current) return;
-
-    const width = pdfWrapperRef.current.clientWidth;
-
-    // 20px padding on both sides
-    setPdfWidth(Math.max(300, width - 40));
+    // small safety margin so pages never overflow
+    const width = wrapper.clientWidth;
+    setPdfWidth(Math.max(280, width - 48));
   };
 
+  // measure immediately
   updatePdfWidth();
 
-  window.addEventListener("resize", updatePdfWidth);
+  // watch for any size change (layout animation, fullscreen, sidebar, etc.)
+  const resizeObserver = new ResizeObserver(() => {
+    // requestAnimationFrame avoids measuring during layout thrashing
+    requestAnimationFrame(updatePdfWidth);
+  });
+
+  resizeObserver.observe(wrapper);
 
   return () => {
-    window.removeEventListener("resize", updatePdfWidth);
+    resizeObserver.disconnect();
   };
 }, [selectedFile, isFullscreen]);
   useEffect(() => {
@@ -1080,25 +1087,32 @@ const handleViewerScroll = (event) => {
           className="pdf-viewer-wrapper"
           onScroll={handlePdfScroll}
         >
-          <Document
-            file={fileUrl}
-            onLoadSuccess={({ numPages }) => {
-              setPdfPageCount(numPages);
-              if (Number(selectedFile.is_read) === 1) {
-                setPdfReadProgress(100);
-                setPdfReadState("read");
-              } else {
-                setPdfReadProgress(0);
-                setPdfReadState("unread");
-              }
-            }}
-            onLoadError={(error) => {
-              console.error("PDF loading error:", error);
-            }}
-            loading={
-              <div className="pdf-loading">Loading PDF...</div>
-            }
-          >
+        <Document
+  file={fileUrl}
+  onLoadSuccess={({ numPages }) => {
+    setPdfPageCount(numPages);
+
+    if (Number(selectedFile.is_read) === 1) {
+      setPdfReadProgress(100);
+      setPdfReadState("read");
+    } else {
+      setPdfReadProgress(0);
+      setPdfReadState("unread");
+    }
+
+    // Force correct width after PDF + layout are ready
+    requestAnimationFrame(() => {
+      if (pdfWrapperRef.current) {
+        const width = pdfWrapperRef.current.clientWidth;
+        setPdfWidth(Math.max(280, width - 48));
+      }
+    });
+  }}
+  onLoadError={(error) => {
+    console.error("PDF loading error:", error);
+  }}
+  loading={<div className="pdf-loading">Loading PDF...</div>}
+>
             {Array.from({ length: pdfPageCount }, (_, index) => (
               <div
                 className="pdf-page-wrapper"

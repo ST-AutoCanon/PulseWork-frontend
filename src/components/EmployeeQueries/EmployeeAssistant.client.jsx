@@ -364,7 +364,15 @@ const EmployeeAssistant = () => {
         }),
       ]);
 
-      setServiceNotifications(notificationsResponse.data?.data || []);
+      const notificationList = notificationsResponse.data?.data || [];
+
+      setServiceNotifications(
+        Array.isArray(notificationList)
+          ? notificationList.filter(
+              (notification) => !Number(notification.is_read),
+            )
+          : [],
+      );
 
       setServiceReminders(remindersResponse.data?.data || []);
 
@@ -392,14 +400,14 @@ const EmployeeAssistant = () => {
         },
       );
 
-      setServiceNotifications((previous) =>
-        previous.map((item) => ({
-          ...item,
-          is_read: 1,
-          read_at: item.read_at || new Date().toISOString(),
-        })),
-      );
+      /*
+       * Remove all notifications from the visible panel.
+       */
+      setServiceNotifications([]);
 
+      /*
+       * Clear the unread badge.
+       */
       setServiceCounts((previous) => ({
         ...previous,
         notifications: 0,
@@ -527,7 +535,10 @@ const EmployeeAssistant = () => {
       try {
         if (!notification?.id) return;
 
-        if (!notification.is_read) {
+        /*
+         * Mark the notification as read on the server.
+         */
+        if (!Number(notification.is_read)) {
           await axios.patch(
             `${BACKEND_URL}/requests/service-notifications/${notification.id}/read`,
             {},
@@ -538,18 +549,18 @@ const EmployeeAssistant = () => {
           );
         }
 
+        /*
+         * Immediately remove it from the visible notification panel.
+         */
         setServiceNotifications((previous) =>
-          previous.map((item) =>
-            String(item.id) === String(notification.id)
-              ? {
-                  ...item,
-                  is_read: 1,
-                  read_at: new Date().toISOString(),
-                }
-              : item,
+          previous.filter(
+            (item) => String(item.id) !== String(notification.id),
           ),
         );
 
+        /*
+         * Update the unread badge.
+         */
         setServiceCounts((previous) => ({
           ...previous,
           notifications: notification.is_read
@@ -557,8 +568,14 @@ const EmployeeAssistant = () => {
             : Math.max(0, previous.notifications - 1),
         }));
 
+        /*
+         * Close the notification panel.
+         */
         setShowNotifications(false);
 
+        /*
+         * Open the associated request.
+         */
         if (notification.request_id) {
           await loadRequest(notification.request_id);
         }
@@ -1069,15 +1086,40 @@ const EmployeeAssistant = () => {
 
       if (messageAttachment) {
         const formData = new FormData();
-        Object.entries(payload).forEach(([key, value]) => {
-          formData.append(key, value);
-        });
+
         formData.append("attachment", messageAttachment);
 
-        await axios.post(
+        formData.append("thread_id", String(selectedRequest.thread_id));
+
+        formData.append("sender_id", String(employeeId));
+
+        formData.append("sender_role", String(userRole || ""));
+
+        formData.append("recipient_id", String(recipientId));
+
+        formData.append("sender_name", String(employeeName || ""));
+
+        if (requestMessage?.trim()) {
+          formData.append("message", requestMessage.trim());
+        }
+
+        const multipartHeaders = {
+          ...headers,
+          "Content-Type": "multipart/form-data",
+        };
+
+        const response = await axios.post(
           `${BACKEND_URL}/threads/${selectedRequest.thread_id}/messages`,
           formData,
-          { headers, withCredentials: true },
+          {
+            withCredentials: true,
+            headers: multipartHeaders,
+          },
+        );
+
+        console.log(
+          "[sendRequestMessage] Attachment upload response:",
+          response.data,
         );
       } else if (socketRef.current?.connected) {
         await new Promise((resolve, reject) => {
@@ -2790,66 +2832,40 @@ function RequestMessages({ messages, employeeId, orgId }) {
                   className="thread-attachment"
                   onClick={async () => {
                     try {
-                      const response = await fetch(message.attachment_url, {
+                      const rawUrl = String(message.attachment_url || "");
+
+                      const rawFilename =
+                        rawUrl.split("?")[0].split("/").pop() || "";
+
+                      const filename = decodeURIComponent(rawFilename);
+
+                      if (!filename) {
+                        throw new Error("Attachment filename is missing.");
+                      }
+
+                      const url = `${process.env.NEXT_PUBLIC_BACKEND_URL}/empquery/attachments/${encodeURIComponent(
+                        filename,
+                      )}`;
+
+                      const response = await axios.get(url, {
+                        withCredentials: true,
+                        responseType: "blob",
                         headers: {
                           "x-api-key": process.env.NEXT_PUBLIC_API_KEY,
+
                           "x-employee-id": employeeId,
+
                           "x-org-id": orgId,
                         },
-                        credentials: "include",
                       });
 
-                      if (!response.ok) {
-                        throw new Error(
-                          `Attachment download failed: ${response.status}`,
-                        );
+                      const blob = response.data;
+
+                      if (!blob || blob.size === 0) {
+                        throw new Error("Downloaded attachment is empty.");
                       }
 
-                      const blob = await response.blob();
-
-                      const contentType =
-                        response.headers.get("content-type") ||
-                        blob.type ||
-                        "application/octet-stream";
-
-                      const contentDisposition = response.headers.get(
-                        "content-disposition",
-                      );
-
-                      const serverFilename =
-                        getFilenameFromContentDisposition(contentDisposition);
-
-                      const urlFilename = decodeURIComponent(
-                        String(message.attachment_url)
-                          .split("?")[0]
-                          .split("/")
-                          .pop() || "",
-                      );
-
-                      let filename =
-                        serverFilename ||
-                        message.attachment_name ||
-                        message.file_name ||
-                        urlFilename ||
-                        "attachment";
-
-                      /*
-                       * If backend returns an ID such as "123" or a filename
-                       * without an extension, use the response MIME type.
-                       */
-                      const extension = getExtensionFromMimeType(contentType);
-
-                      const hasExtension = /\.[a-z0-9]{2,10}$/i.test(filename);
-
-                      const looksLikeNumericId = /^\d+$/.test(filename);
-
-                      if (extension && (!hasExtension || looksLikeNumericId)) {
-                        filename = looksLikeNumericId
-                          ? `attachment-${filename}${extension}`
-                          : `${filename}${extension}`;
-                      }
-
-                      const objectUrl = URL.createObjectURL(blob);
+                      const objectUrl = window.URL.createObjectURL(blob);
 
                       const link = document.createElement("a");
 
@@ -2863,7 +2879,7 @@ function RequestMessages({ messages, employeeId, orgId }) {
                       link.remove();
 
                       setTimeout(() => {
-                        URL.revokeObjectURL(objectUrl);
+                        window.URL.revokeObjectURL(objectUrl);
                       }, 1000);
                     } catch (error) {
                       console.error(

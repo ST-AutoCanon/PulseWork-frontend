@@ -123,7 +123,30 @@
   height: 100% !important;
   overflow-y: auto !important;   /* the PDF wrapper MUST be the scroller */
 }
+/* ===== Fix for converted PPT → PDF overlapping / compression ===== */
+.pdf-viewer-wrapper .react-pdf__Page {
+  position: relative !important;
+  margin: 0 auto 20px auto !important;
+  background: #fff;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.12);
+}
 
+.pdf-viewer-wrapper .react-pdf__Page__canvas {
+  max-width: 100% !important;
+  height: auto !important;
+  display: block !important;
+}
+
+.pdf-viewer-wrapper .react-pdf__Page__textContent,
+.pdf-viewer-wrapper .react-pdf__Page__annotations {
+  transform-origin: 0 0 !important;
+  line-height: 1 !important;
+}
+
+/* Prevent global max-width rules from breaking text layer */
+.pdf-viewer-wrapper .react-pdf__Page * {
+  max-width: none !important;
+}
 /* Loading */
 .pdf-loading {
   display: flex;

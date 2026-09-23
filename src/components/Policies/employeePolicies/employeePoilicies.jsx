@@ -71,7 +71,7 @@ const [isFullscreen, setIsFullscreen] = useState(false);
   const [pdfPageCount, setPdfPageCount] = useState(0);
 const [pdfReadProgress, setPdfReadProgress] = useState(0);
 const [pdfReadState, setPdfReadState] = useState("unread");
-
+const [isPdfContent, setIsPdfContent] = useState(false);
 const [readPages, setReadPages] = useState(new Set());
 const [readSaving, setReadSaving] = useState(false);
 const pdfPageTimers = useRef({});
@@ -90,12 +90,12 @@ const [alertModal, setAlertModal] = useState({
   message: "",
 });
 useEffect(() => {
+ useEffect(() => {
   import("react-pdf").then(({ pdfjs }) => {
-    pdfjs.GlobalWorkerOptions.workerSrc = new URL(
-      "pdfjs-dist/build/pdf.worker.min.mjs",
-      import.meta.url
-    ).toString();
+    // More reliable in production / test environment
+    pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
   });
+}, []);
 }, []);
 const showAlert = (message, title = "Success") => {
   setAlertModal({ isVisible: true, title, message });
@@ -132,8 +132,9 @@ const isFileFullyRead = (file) => {
   const name = getFileName(file);
 
   // PDF – uses the reading progress tracked by scroll/dwell
-  if (isPdf(name)) {
-    return pdfReadState === "read" || pdfReadProgress >= 100;
+  
+    /* ===================== PDF (also handles converted PPT) ===================== */
+if (isPdf(name) || isPpt(name) || isPdfContent) {
   }
 
   // Video – uses playback progress
@@ -243,19 +244,24 @@ useEffect(() => {
         }
       );
 
-      const fileName = getFileName(file);
-      let contentType = response.headers["content-type"];
+    const fileName = getFileName(file);
+let contentType = response.headers["content-type"] || "";
 
-      if (!contentType || contentType === "application/octet-stream") {
-        if (isImage(fileName)) contentType = "image/png";
-        else if (isPdf(fileName)) contentType = "application/pdf";
-        else if (isVideo(fileName)) contentType = "video/mp4";
-        else if (isAudio(fileName)) contentType = "audio/mpeg";
-        else if (isDocx(fileName))
-          contentType =
-            "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
-        else contentType = "application/octet-stream";
-      }
+if (!contentType || contentType === "application/octet-stream") {
+  if (isImage(fileName)) contentType = "image/png";
+  else if (isPdf(fileName) || isPpt(fileName)) contentType = "application/pdf"; // ← treat PPT as PDF
+  else if (isVideo(fileName)) contentType = "video/mp4";
+  else if (isAudio(fileName)) contentType = "audio/mpeg";
+  else if (isDocx(fileName))
+    contentType =
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+  else contentType = "application/octet-stream";
+}
+
+// Add this line after creating the blob + url
+const isActuallyPdf =
+  contentType.includes("pdf") || isPdf(fileName) || isPpt(fileName);
+setIsPdfContent(isActuallyPdf);
 
       const blob = new Blob([response.data], { type: contentType });
       const url = URL.createObjectURL(blob);
@@ -525,7 +531,7 @@ const handleFileClick = (file) => {
   setPdfReadProgress(0);
   setReadPages(new Set());
   setPdfReadState(Number(file.is_read) === 1 ? "read" : "unread");
-
+setIsPdfContent(false);   // will be set correctly when loadFile finishes
   // ===== NEW: reset video progress =====
   setVideoProgress(Number(file.is_read) === 1 ? 100 : 0);
   setVideoDuration(0);

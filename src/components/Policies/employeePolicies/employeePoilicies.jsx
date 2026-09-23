@@ -191,12 +191,11 @@ const isFileFullyRead = (file) => {
   };
 
   // Clean up previous object URL
- useEffect(() => {
+useEffect(() => {
   const wrapper = pdfWrapperRef.current;
   if (!wrapper) return;
 
   const updatePdfWidth = () => {
-    // small safety margin so pages never overflow
     const width = wrapper.clientWidth;
     setPdfWidth(Math.max(280, width - 48));
   };
@@ -204,18 +203,20 @@ const isFileFullyRead = (file) => {
   // measure immediately
   updatePdfWidth();
 
-  // watch for any size change (layout animation, fullscreen, sidebar, etc.)
   const resizeObserver = new ResizeObserver(() => {
-    // requestAnimationFrame avoids measuring during layout thrashing
     requestAnimationFrame(updatePdfWidth);
   });
 
   resizeObserver.observe(wrapper);
 
+  // also re-measure after a short delay (layout animation / CSS transition)
+  const t = setTimeout(updatePdfWidth, 300);
+
   return () => {
     resizeObserver.disconnect();
+    clearTimeout(t);
   };
-}, [selectedFile, isFullscreen]);
+}, [selectedFile, isFullscreen]);   // ← isFullscreen is important
   useEffect(() => {
     return () => {
       if (fileUrl) URL.revokeObjectURL(fileUrl);
@@ -553,40 +554,49 @@ useEffect(() => {
 }, []);
 const handlePdfScroll = (event) => {
   const container = event.currentTarget;
-  if (!container) return;
+  if (!container || !pdfPageCount) return;
 
   const pages = container.querySelectorAll(".pdf-page-wrapper");
   if (!pages.length) return;
 
+  const containerRect = container.getBoundingClientRect();
   const nearBottom =
-    container.scrollHeight - container.scrollTop - container.clientHeight <= 24;
+    container.scrollHeight - container.scrollTop - container.clientHeight <= 40;
 
   pages.forEach((pageElement, index) => {
     const rect = pageElement.getBoundingClientRect();
-    const containerRect = container.getBoundingClientRect();
+    const pageHeight = rect.height || 1;
 
+    // How much of the page is visible
     const visibleTop = Math.max(rect.top, containerRect.top);
     const visibleBottom = Math.min(rect.bottom, containerRect.bottom);
     const visibleHeight = Math.max(0, visibleBottom - visibleTop);
-    const pageHeight = rect.height || 1;
     const visibleRatio = visibleHeight / pageHeight;
+
     const pageNumber = index + 1;
     const isLastPage = pageNumber === pages.length;
 
-    // Last page: accept lower visibility, or any visibility when at bottom
-    const requiredRatio =
-      isLastPage || nearBottom ? Math.min(MIN_VISIBLE_RATIO, 0.35) : MIN_VISIBLE_RATIO;
+    // ===== NEW: treat short pages (tables / little content) more leniently =====
+    const isShortPage = pageHeight < 500; // pages with mostly tables are usually short
+    const requiredRatio = isShortPage
+      ? 0.20                         // only 20 % needed for short pages
+      : isLastPage || nearBottom
+      ? 0.25
+      : MIN_VISIBLE_RATIO;           // normal pages still use 50 %
 
     const isVisibleEnough =
-      visibleRatio >= requiredRatio || (nearBottom && isLastPage && visibleRatio > 0.1);
+      visibleRatio >= requiredRatio ||
+      (nearBottom && isLastPage && visibleRatio > 0.05) ||
+      (isShortPage && visibleRatio > 0.15); // extra safety for tables
 
     if (isVisibleEnough) {
       if (!pdfPageTimers.current[pageNumber] && !readPages.has(pageNumber)) {
-        // Last page / near bottom: shorter dwell so 100% is reachable
-        const dwell =
-          isLastPage || nearBottom
-            ? Math.min(MIN_PAGE_READ_TIME, 1500)
-            : MIN_PAGE_READ_TIME;
+        // Short pages need almost no dwell time
+        const dwell = isShortPage
+          ? 600
+          : isLastPage || nearBottom
+          ? Math.min(MIN_PAGE_READ_TIME, 1200)
+          : MIN_PAGE_READ_TIME;
 
         pdfPageTimers.current[pageNumber] = setTimeout(() => {
           setReadPages((prev) => {
@@ -603,13 +613,12 @@ const handlePdfScroll = (event) => {
     }
   });
 
-  // If user is at the bottom and has already read most pages, complete the rest
+  // Auto-complete when user reaches bottom and has already engaged
   if (nearBottom && pdfPageCount > 0) {
     setReadPages((prev) => {
       if (prev.size >= pdfPageCount) return prev;
 
-      // Only auto-complete when user has already engaged with a good portion
-      const minBeforeComplete = Math.max(1, Math.ceil(pdfPageCount * 0.7));
+      const minBeforeComplete = Math.max(1, Math.ceil(pdfPageCount * 0.5));
       if (prev.size < minBeforeComplete) return prev;
 
       const updated = new Set(prev);
@@ -705,11 +714,18 @@ const markFileRead = async (file) => {
 };
 const handleViewerScroll = (event) => {
   const element = event.currentTarget;
-  if (element.scrollHeight - element.scrollTop - element.clientHeight <= 12) {
+  if (!element || !selectedFile) return;
+
+  const remaining =
+    element.scrollHeight - element.scrollTop - element.clientHeight;
+
+  // Mark as read when:
+  // 1. user reaches the bottom, OR
+  // 2. the whole document fits on the screen (no scrollbar needed)
+  if (remaining <= 20 || element.scrollHeight <= element.clientHeight + 10) {
     markFileRead(selectedFile);
   }
 };
-
  return (
   <div className="employee-policy-page">
     {/* ========== HEADER + TABS ========== */}
@@ -1080,56 +1096,60 @@ const handleViewerScroll = (event) => {
     }
 
     /* ===================== PDF ===================== */
-    if (isPdf(name)) {
-      return (
-        <div
-          ref={pdfWrapperRef}
-          className="pdf-viewer-wrapper"
-          onScroll={handlePdfScroll}
-        >
-        <Document
-  file={fileUrl}
-  onLoadSuccess={({ numPages }) => {
-    setPdfPageCount(numPages);
+   /* ===================== PDF ===================== */
+if (isPdf(name)) {
+  return (
+    <div
+      ref={pdfWrapperRef}
+      className={`pdf-viewer-wrapper ${isFullscreen ? "pdf-fullscreen" : ""}`}
+      onScroll={handlePdfScroll}          // ← keep this
+      style={{
+        // force the element itself to be the scroll container
+        overflowY: "auto",
+        height: "100%",
+        width: "100%",
+      }}
+    >
+      <Document
+        file={fileUrl}
+        onLoadSuccess={({ numPages }) => {
+          setPdfPageCount(numPages);
 
-    if (Number(selectedFile.is_read) === 1) {
-      setPdfReadProgress(100);
-      setPdfReadState("read");
-    } else {
-      setPdfReadProgress(0);
-      setPdfReadState("unread");
-    }
+          if (Number(selectedFile.is_read) === 1) {
+            setPdfReadProgress(100);
+            setPdfReadState("read");
+          } else {
+            setPdfReadProgress(0);
+            setPdfReadState("unread");
+          }
 
-    // Force correct width after PDF + layout are ready
-    requestAnimationFrame(() => {
-      if (pdfWrapperRef.current) {
-        const width = pdfWrapperRef.current.clientWidth;
-        setPdfWidth(Math.max(280, width - 48));
-      }
-    });
-  }}
-  onLoadError={(error) => {
-    console.error("PDF loading error:", error);
-  }}
-  loading={<div className="pdf-loading">Loading PDF...</div>}
->
-            {Array.from({ length: pdfPageCount }, (_, index) => (
-              <div
-                className="pdf-page-wrapper"
-                key={`page_${index + 1}`}
-              >
-                <Page
-                  pageNumber={index + 1}
-                  width={pdfWidth}
-                  renderTextLayer={true}
-                  renderAnnotationLayer={true}
-                />
-              </div>
-            ))}
-          </Document>
-        </div>
-      );
-    }
+          // Force correct width after PDF + layout are ready
+          requestAnimationFrame(() => {
+            if (pdfWrapperRef.current) {
+              const width = pdfWrapperRef.current.clientWidth;
+              setPdfWidth(Math.max(280, width - 48));
+            }
+          });
+        }}
+        onLoadError={(error) => {
+          console.error("PDF loading error:", error);
+        }}
+        loading={<div className="pdf-loading">Loading PDF...</div>}
+      >
+        {Array.from({ length: pdfPageCount }, (_, index) => (
+          <div className="pdf-page-wrapper" key={`page_${index + 1}`}>
+            <Page
+              pageNumber={index + 1}
+              width={pdfWidth}
+              renderTextLayer={true}
+              renderAnnotationLayer={true}
+            />
+          </div>
+        ))}
+      </Document>
+    </div>
+  );
+}
 
     /* ===================== VIDEO ===================== */
    /* ===================== VIDEO ===================== */
@@ -1211,19 +1231,34 @@ if (isVideo(name)) {
     }
 
     /* ===================== DOCX ===================== */
-    if (isDocx(name)) {
-      return (
-        <div
-          className="docx-viewer-wrapper"
-          onScroll={handleViewerScroll}
-        >
-          <div
-            id="docx-preview-container"
-            className="docx-preview-container"
-          />
-        </div>
-      );
-    }
+   /* ===================== DOCX ===================== */
+if (isDocx(name)) {
+  return (
+    <div
+      className="docx-viewer-wrapper"
+      onScroll={handleViewerScroll}
+      ref={(el) => {
+        // When the element mounts / content is ready, check if it fits
+        if (el && selectedFile) {
+          // Give docx-preview a moment to render tables
+          setTimeout(() => {
+            if (
+              el.scrollHeight <= el.clientHeight + 15 ||
+              el.scrollHeight - el.scrollTop - el.clientHeight <= 20
+            ) {
+              markFileRead(selectedFile);
+            }
+          }, 400); // 400 ms is usually enough after renderAsync
+        }
+      }}
+    >
+      <div
+        id="docx-preview-container"
+        className="docx-preview-container"
+      />
+    </div>
+  );
+}
 
     /* ===================== FALLBACK ===================== */
     return (

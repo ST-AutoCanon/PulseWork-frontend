@@ -71,9 +71,10 @@ const [isFullscreen, setIsFullscreen] = useState(false);
   const [pdfPageCount, setPdfPageCount] = useState(0);
 const [pdfReadProgress, setPdfReadProgress] = useState(0);
 const [pdfReadState, setPdfReadState] = useState("unread");
-const [isPdfContent, setIsPdfContent] = useState(false);
+
 const [readPages, setReadPages] = useState(new Set());
 const [readSaving, setReadSaving] = useState(false);
+const pdfObserverRef = useRef(null);
 const pdfPageTimers = useRef({});
 const pdfWrapperRef = useRef(null);
 const [videoProgress, setVideoProgress] = useState(0);       // 0 – 100
@@ -82,20 +83,20 @@ const [videoCurrentTime, setVideoCurrentTime] = useState(0);
 const videoRef = useRef(null);
 const [pdfWidth, setPdfWidth] = useState(700);
 
-const MIN_PAGE_READ_TIME = 2500; // 2.5s – less cancelled by small moves
-const MIN_VISIBLE_RATIO = 0.5;   // 50% visible is enough for normal pages  // 60% of page visible
+const MIN_PAGE_READ_TIME = 900;   // was 2500 → ~0.9 s per page
+const MIN_VISIBLE_RATIO = 0.3;    // was 0.5 → only 30% of page needs to be visible // 50% visible is enough for normal pages  // 60% of page visible
 const [alertModal, setAlertModal] = useState({
   isVisible: false,
   title: "",
   message: "",
 });
 useEffect(() => {
- useEffect(() => {
   import("react-pdf").then(({ pdfjs }) => {
-    // More reliable in production / test environment
-    pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
+    pdfjs.GlobalWorkerOptions.workerSrc = new URL(
+      "pdfjs-dist/build/pdf.worker.min.mjs",
+      import.meta.url
+    ).toString();
   });
-}, []);
 }, []);
 const showAlert = (message, title = "Success") => {
   setAlertModal({ isVisible: true, title, message });
@@ -132,9 +133,8 @@ const isFileFullyRead = (file) => {
   const name = getFileName(file);
 
   // PDF – uses the reading progress tracked by scroll/dwell
-  
-    /* ===================== PDF (also handles converted PPT) ===================== */
-if (isPdf(name) || isPpt(name) || isPdfContent) {
+  if (isPdf(name)) {
+    return pdfReadState === "read" || pdfReadProgress >= 100;
   }
 
   // Video – uses playback progress
@@ -192,11 +192,12 @@ if (isPdf(name) || isPpt(name) || isPdfContent) {
   };
 
   // Clean up previous object URL
-useEffect(() => {
+ useEffect(() => {
   const wrapper = pdfWrapperRef.current;
   if (!wrapper) return;
 
   const updatePdfWidth = () => {
+    // small safety margin so pages never overflow
     const width = wrapper.clientWidth;
     setPdfWidth(Math.max(280, width - 48));
   };
@@ -204,20 +205,18 @@ useEffect(() => {
   // measure immediately
   updatePdfWidth();
 
+  // watch for any size change (layout animation, fullscreen, sidebar, etc.)
   const resizeObserver = new ResizeObserver(() => {
+    // requestAnimationFrame avoids measuring during layout thrashing
     requestAnimationFrame(updatePdfWidth);
   });
 
   resizeObserver.observe(wrapper);
 
-  // also re-measure after a short delay (layout animation / CSS transition)
-  const t = setTimeout(updatePdfWidth, 300);
-
   return () => {
     resizeObserver.disconnect();
-    clearTimeout(t);
   };
-}, [selectedFile, isFullscreen]);   // ← isFullscreen is important
+}, [selectedFile, isFullscreen]);
   useEffect(() => {
     return () => {
       if (fileUrl) URL.revokeObjectURL(fileUrl);
@@ -244,24 +243,19 @@ useEffect(() => {
         }
       );
 
-    const fileName = getFileName(file);
-let contentType = response.headers["content-type"] || "";
+      const fileName = getFileName(file);
+      let contentType = response.headers["content-type"];
 
-if (!contentType || contentType === "application/octet-stream") {
-  if (isImage(fileName)) contentType = "image/png";
-  else if (isPdf(fileName) || isPpt(fileName)) contentType = "application/pdf"; // ← treat PPT as PDF
-  else if (isVideo(fileName)) contentType = "video/mp4";
-  else if (isAudio(fileName)) contentType = "audio/mpeg";
-  else if (isDocx(fileName))
-    contentType =
-      "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
-  else contentType = "application/octet-stream";
-}
-
-// Add this line after creating the blob + url
-const isActuallyPdf =
-  contentType.includes("pdf") || isPdf(fileName) || isPpt(fileName);
-setIsPdfContent(isActuallyPdf);
+      if (!contentType || contentType === "application/octet-stream") {
+        if (isImage(fileName)) contentType = "image/png";
+        else if (isPdf(fileName)) contentType = "application/pdf";
+        else if (isVideo(fileName)) contentType = "video/mp4";
+        else if (isAudio(fileName)) contentType = "audio/mpeg";
+        else if (isDocx(fileName))
+          contentType =
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+        else contentType = "application/octet-stream";
+      }
 
       const blob = new Blob([response.data], { type: contentType });
       const url = URL.createObjectURL(blob);
@@ -531,7 +525,7 @@ const handleFileClick = (file) => {
   setPdfReadProgress(0);
   setReadPages(new Set());
   setPdfReadState(Number(file.is_read) === 1 ? "read" : "unread");
-setIsPdfContent(false);   // will be set correctly when loadFile finishes
+
   // ===== NEW: reset video progress =====
   setVideoProgress(Number(file.is_read) === 1 ? 100 : 0);
   setVideoDuration(0);
@@ -558,51 +552,43 @@ useEffect(() => {
     });
   };
 }, []);
-const handlePdfScroll = (event) => {
-  const container = event.currentTarget;
-  if (!container || !pdfPageCount) return;
+const checkPdfPagesVisibility = () => {
+  const container = pdfWrapperRef.current;
+  if (!container || !selectedFile || !isPdf(getFileName(selectedFile))) return;
 
   const pages = container.querySelectorAll(".pdf-page-wrapper");
   if (!pages.length) return;
 
-  const containerRect = container.getBoundingClientRect();
   const nearBottom =
-    container.scrollHeight - container.scrollTop - container.clientHeight <= 40;
+    container.scrollHeight - container.scrollTop - container.clientHeight <= 24;
 
   pages.forEach((pageElement, index) => {
     const rect = pageElement.getBoundingClientRect();
-    const pageHeight = rect.height || 1;
+    const containerRect = container.getBoundingClientRect();
 
-    // How much of the page is visible
     const visibleTop = Math.max(rect.top, containerRect.top);
     const visibleBottom = Math.min(rect.bottom, containerRect.bottom);
     const visibleHeight = Math.max(0, visibleBottom - visibleTop);
+    const pageHeight = rect.height || 1;
     const visibleRatio = visibleHeight / pageHeight;
-
     const pageNumber = index + 1;
     const isLastPage = pageNumber === pages.length;
 
-    // ===== NEW: treat short pages (tables / little content) more leniently =====
-    const isShortPage = pageHeight < 500; // pages with mostly tables are usually short
-    const requiredRatio = isShortPage
-      ? 0.20                         // only 20 % needed for short pages
-      : isLastPage || nearBottom
-      ? 0.25
-      : MIN_VISIBLE_RATIO;           // normal pages still use 50 %
+    const requiredRatio =
+      isLastPage || nearBottom
+        ? Math.min(MIN_VISIBLE_RATIO, 0.35)
+        : MIN_VISIBLE_RATIO;
 
     const isVisibleEnough =
       visibleRatio >= requiredRatio ||
-      (nearBottom && isLastPage && visibleRatio > 0.05) ||
-      (isShortPage && visibleRatio > 0.15); // extra safety for tables
+      (nearBottom && isLastPage && visibleRatio > 0.1);
 
     if (isVisibleEnough) {
       if (!pdfPageTimers.current[pageNumber] && !readPages.has(pageNumber)) {
-        // Short pages need almost no dwell time
-        const dwell = isShortPage
-          ? 600
-          : isLastPage || nearBottom
-          ? Math.min(MIN_PAGE_READ_TIME, 1200)
-          : MIN_PAGE_READ_TIME;
+        const dwell =
+          isLastPage || nearBottom
+            ? Math.min(MIN_PAGE_READ_TIME, 1500)
+            : MIN_PAGE_READ_TIME;
 
         pdfPageTimers.current[pageNumber] = setTimeout(() => {
           setReadPages((prev) => {
@@ -619,12 +605,11 @@ const handlePdfScroll = (event) => {
     }
   });
 
-  // Auto-complete when user reaches bottom and has already engaged
+  // Auto-complete remaining pages when near bottom and most pages already read
   if (nearBottom && pdfPageCount > 0) {
     setReadPages((prev) => {
       if (prev.size >= pdfPageCount) return prev;
-
-      const minBeforeComplete = Math.max(1, Math.ceil(pdfPageCount * 0.5));
+      const minBeforeComplete = Math.max(1, Math.ceil(pdfPageCount * 0.7));
       if (prev.size < minBeforeComplete) return prev;
 
       const updated = new Set(prev);
@@ -634,6 +619,10 @@ const handlePdfScroll = (event) => {
       return updated;
     });
   }
+};
+
+const handlePdfScroll = () => {
+  checkPdfPagesVisibility();
 };
 
 useEffect(() => {
@@ -664,6 +653,44 @@ useEffect(() => {
     setPdfReadState("reading");
   }
 }, [readPages, pdfPageCount, selectedFile]);
+// Re-evaluate page visibility after layout changes (fullscreen / resize)
+useEffect(() => {
+  if (!selectedFile || !isPdf(getFileName(selectedFile))) return;
+  if (Number(selectedFile.is_read) === 1) return;
+
+  // Give the browser time to finish layout + re-render pages at new width
+  const t1 = setTimeout(() => {
+    checkPdfPagesVisibility();
+  }, 150);
+
+  const t2 = setTimeout(() => {
+    checkPdfPagesVisibility();
+  }, 400);
+
+  return () => {
+    clearTimeout(t1);
+    clearTimeout(t2);
+  };
+}, [isFullscreen, pdfWidth, pdfPageCount, selectedFile]);
+// Re-evaluate page visibility after layout changes (fullscreen / resize)
+useEffect(() => {
+  if (!selectedFile || !isPdf(getFileName(selectedFile))) return;
+  if (Number(selectedFile.is_read) === 1) return;
+
+  // Give the browser time to finish layout + re-render pages at new width
+  const t1 = setTimeout(() => {
+    checkPdfPagesVisibility();
+  }, 150);
+
+  const t2 = setTimeout(() => {
+    checkPdfPagesVisibility();
+  }, 400);
+
+  return () => {
+    clearTimeout(t1);
+    clearTimeout(t2);
+  };
+}, [isFullscreen, pdfWidth, pdfPageCount, selectedFile]);
 const markFileRead = async (file) => {
   if (!file || !file.id || readSaving) return;
 
@@ -720,18 +747,11 @@ const markFileRead = async (file) => {
 };
 const handleViewerScroll = (event) => {
   const element = event.currentTarget;
-  if (!element || !selectedFile) return;
-
-  const remaining =
-    element.scrollHeight - element.scrollTop - element.clientHeight;
-
-  // Mark as read when:
-  // 1. user reaches the bottom, OR
-  // 2. the whole document fits on the screen (no scrollbar needed)
-  if (remaining <= 20 || element.scrollHeight <= element.clientHeight + 10) {
+  if (element.scrollHeight - element.scrollTop - element.clientHeight <= 12) {
     markFileRead(selectedFile);
   }
 };
+
  return (
   <div className="employee-policy-page">
     {/* ========== HEADER + TABS ========== */}
@@ -1102,19 +1122,12 @@ const handleViewerScroll = (event) => {
     }
 
     /* ===================== PDF ===================== */
-   /* ===================== PDF ===================== */
 if (isPdf(name)) {
   return (
     <div
       ref={pdfWrapperRef}
-      className={`pdf-viewer-wrapper ${isFullscreen ? "pdf-fullscreen" : ""}`}
-      onScroll={handlePdfScroll}          // ← keep this
-      style={{
-        // force the element itself to be the scroll container
-        overflowY: "auto",
-        height: "100%",
-        width: "100%",
-      }}
+      className="pdf-viewer-wrapper"
+      onScroll={handlePdfScroll}
     >
       <Document
         file={fileUrl}
@@ -1129,12 +1142,13 @@ if (isPdf(name)) {
             setPdfReadState("unread");
           }
 
-          // Force correct width after PDF + layout are ready
           requestAnimationFrame(() => {
             if (pdfWrapperRef.current) {
               const width = pdfWrapperRef.current.clientWidth;
               setPdfWidth(Math.max(280, width - 48));
             }
+            // Force a visibility check right after pages are ready
+            setTimeout(() => checkPdfPagesVisibility(), 100);
           });
         }}
         onLoadError={(error) => {
@@ -1237,34 +1251,19 @@ if (isVideo(name)) {
     }
 
     /* ===================== DOCX ===================== */
-   /* ===================== DOCX ===================== */
-if (isDocx(name)) {
-  return (
-    <div
-      className="docx-viewer-wrapper"
-      onScroll={handleViewerScroll}
-      ref={(el) => {
-        // When the element mounts / content is ready, check if it fits
-        if (el && selectedFile) {
-          // Give docx-preview a moment to render tables
-          setTimeout(() => {
-            if (
-              el.scrollHeight <= el.clientHeight + 15 ||
-              el.scrollHeight - el.scrollTop - el.clientHeight <= 20
-            ) {
-              markFileRead(selectedFile);
-            }
-          }, 400); // 400 ms is usually enough after renderAsync
-        }
-      }}
-    >
-      <div
-        id="docx-preview-container"
-        className="docx-preview-container"
-      />
-    </div>
-  );
-}
+    if (isDocx(name)) {
+      return (
+        <div
+          className="docx-viewer-wrapper"
+          onScroll={handleViewerScroll}
+        >
+          <div
+            id="docx-preview-container"
+            className="docx-preview-container"
+          />
+        </div>
+      );
+    }
 
     /* ===================== FALLBACK ===================== */
     return (

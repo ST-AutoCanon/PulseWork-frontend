@@ -1560,7 +1560,16 @@ const EmployeeAssistant = () => {
             setRequestMessage={setRequestMessage}
             sendRequestMessage={sendRequestMessage}
             sendingMessage={sendingMessage}
-            onBack={() => setSelectedRequest(null)}
+            onBack={() => {
+              setSelectedRequest(null);
+              setShowRequestHistory(true);
+
+              setRequestHistoryTab(isEmployee ? "mine" : "assigned");
+
+              setRequestFilter("ALL");
+
+              fetchRequests();
+            }}
           />
         )}
       </main>

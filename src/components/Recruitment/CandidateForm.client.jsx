@@ -387,9 +387,8 @@ export default function CandidateForm({
                 <option value="Technical Round">Technical Round</option>
                 <option value="HR Round">HR Round</option>
                 <option value="Manager Round">Manager Round</option>
-                <option value="Offer Acceptance">Offer Acceptance</option>
                 <option value="Offer Released">Offer Released</option>
-                <option value="Offer Status">Offer Status</option>
+                <option value="Offer Acceptance">Offer Acceptance</option>
                 <option value="Onboarding">Onboarding</option>
                 <option value="Joined">Joined</option>
                 <option value="Rejected">Rejected</option>

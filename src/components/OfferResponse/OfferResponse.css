@@ -1,0 +1,145 @@
+.offer-response-page {
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 32px 16px;
+  background: #f6f7fb;
+}
+
+.offer-response-card {
+  width: 100%;
+  max-width: 720px;
+  background: #ffffff;
+  border-radius: 18px;
+  padding: 36px;
+  box-shadow: 0 18px 50px rgba(15, 23, 42, 0.12);
+}
+
+.offer-response-header {
+  margin-bottom: 28px;
+}
+
+.offer-response-header h1 {
+  margin: 0 0 12px;
+  font-size: 30px;
+}
+
+.offer-response-header p {
+  margin: 8px 0;
+  color: #475569;
+  line-height: 1.6;
+}
+
+.offer-response-options {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+}
+
+.offer-response-option {
+  min-height: 130px;
+  padding: 20px;
+  border-radius: 14px;
+  border: 2px solid #e2e8f0;
+  background: #ffffff;
+  cursor: pointer;
+  text-align: left;
+  transition: 0.2s ease;
+}
+
+.offer-response-option:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 25px rgba(15, 23, 42, 0.08);
+}
+
+.offer-response-option strong {
+  display: block;
+  font-size: 18px;
+  margin-bottom: 8px;
+}
+
+.offer-response-option span {
+  color: #64748b;
+  line-height: 1.5;
+}
+
+.offer-response-option.selected {
+  border-color: #2563eb;
+  background: #eff6ff;
+}
+
+.offer-response-concern {
+  margin-top: 24px;
+}
+
+.offer-response-concern label {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.offer-response-concern textarea {
+  width: 100%;
+  resize: vertical;
+  min-height: 140px;
+  padding: 14px;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  outline: none;
+  box-sizing: border-box;
+}
+
+.offer-response-submit {
+  width: 100%;
+  margin-top: 24px;
+  padding: 14px 20px;
+  border: 0;
+  border-radius: 10px;
+  background: #2563eb;
+  color: #ffffff;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.offer-response-submit:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.offer-response-error {
+  margin-top: 18px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: #fef2f2;
+  color: #b91c1c;
+}
+
+.offer-response-success {
+  text-align: center;
+}
+
+.offer-response-success-icon {
+  width: 64px;
+  height: 64px;
+  margin: 0 auto 18px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #dcfce7;
+  color: #15803d;
+  font-size: 30px;
+  font-weight: 700;
+}
+
+@media (max-width: 700px) {
+  .offer-response-card {
+    padding: 24px;
+  }
+
+  .offer-response-options {
+    grid-template-columns: 1fr;
+  }
+}

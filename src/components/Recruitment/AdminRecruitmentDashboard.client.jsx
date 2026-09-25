@@ -27,9 +27,8 @@ const PIPELINE = [
   "Technical Round",
   "HR Round",
   "Manager Round",
-  "Offer Acceptance",
   "Offer Released",
-  "Offer Status",
+  "Offer Acceptance",
   "Onboarding",
   "Joined",
   "Rejected",
@@ -78,12 +77,6 @@ const STAGE_COLORS = {
     text: "#c2410c",
     count: "#ea580c",
   },
-  "Offer Status": {
-    bg: "#ecfeff",
-    border: "#a5f3fc",
-    text: "#0f766e",
-    count: "#0d9488",
-  },
   Onboarding: {
     bg: "#ecfdf5",
     border: "#a7f3d0",
@@ -127,16 +120,19 @@ function getNextStage(status) {
 }
 
 function canAdvance(candidate) {
-  return !["Joined", "Rejected"].includes(candidate.status);
+  if (["Joined", "Rejected"].includes(candidate.status)) {
+    return false;
+  }
+
+  if (candidate.status === "Offer Acceptance") {
+    return candidate.offer_decision === "Accepted";
+  }
+
+  return true;
 }
 
 function canConvert(candidate) {
-  return [
-    "Offer Acceptance",
-    "Offer Released",
-    "Offer Status",
-    "Onboarding",
-  ].includes(candidate.status);
+  return candidate.status === "Onboarding";
 }
 
 function canOpenAssessment(candidate) {
@@ -167,9 +163,8 @@ function candidateToEmployeeInitialData(candidate) {
 }
 
 const OFFER_STATUS_EMAIL_STAGES = [
-  "Offer Acceptance",
   "Offer Released",
-  "Offer Status",
+  "Offer Acceptance",
   "Onboarding",
 ];
 
@@ -179,20 +174,29 @@ function getOfferStatusEmailDefaults(status, candidate) {
   const decision = candidate?.offer_decision || "Pending";
 
   switch (status) {
-    case "Offer Acceptance":
-      return {
-        subject: `Offer Acceptance Request - ${candidateName}`,
-        body: `Hi ${candidateName},\n\nCongratulations! You have progressed to the offer acceptance stage for ${position}. Please respond with your acceptance details as soon as possible.\n\nRegards,\nHR Team`,
-      };
     case "Offer Released":
       return {
         subject: `Offer Letter Released - ${candidateName}`,
         body: `Hi ${candidateName},\n\nYour offer letter has been released. Please review it carefully and share your decision.\n\nRegards,\nHR Team`,
       };
-    case "Offer Status":
+    case "Offer Acceptance":
       return {
-        subject: `Offer Status Update - ${candidateName}`,
-        body: `Hi ${candidateName},\n\nYour offer status has been updated to ${decision}. Please reach out to our team if you need any assistance.\n\nRegards,\nHR Team`,
+        subject: `Offer Acceptance - ${candidateName}`,
+        body: `Hi ${candidateName},
+
+Please review the offer for ${position} and submit your response using the secure link below.
+
+Your response options are:
+• Accept
+• Concern
+• Reject
+
+{{OFFER_RESPONSE_LINK}}
+
+If you select Concern, please explain your concern so our HR team can review it.
+
+Regards,
+HR Team`,
       };
     case "Onboarding":
       return {
@@ -333,15 +337,13 @@ export default function AdminRecruitmentDashboard() {
   const advanceCandidate = (candidate, nextStatus) => {
     if (!nextStatus) return;
 
-    const needsOfferDecision = nextStatus === "Offer Status";
-
     if (OFFER_STATUS_EMAIL_STAGES.includes(nextStatus)) {
       const defaults = getOfferStatusEmailDefaults(nextStatus, candidate);
       setOfferDecisionModal({
         visible: true,
         candidate,
         nextStatus,
-        offerDecision: nextStatus === "Offer Status" ? "Pending" : "Pending",
+        offerDecision: "Pending",
         sendStatusEmail: true,
         emailSubject: defaults.subject,
         emailBody: defaults.body,
@@ -391,10 +393,6 @@ export default function AdminRecruitmentDashboard() {
         email_body: emailBody || null,
       };
 
-      if (nextStatus === "Offer Status") {
-        payload.offer_decision = offerDecision;
-      }
-
       await axios.put(`${BASE_URL}/recruitment/${candidate.id}`, payload, {
         headers,
         withCredentials: true,
@@ -413,6 +411,20 @@ export default function AdminRecruitmentDashboard() {
     } catch (err) {
       console.error("confirmOfferDecision error:", err);
     }
+  };
+
+  const reinitiateOffer = (candidate) => {
+    const defaults = getOfferStatusEmailDefaults("Offer Acceptance", candidate);
+
+    setOfferDecisionModal({
+      visible: true,
+      candidate,
+      nextStatus: "Offer Acceptance",
+      offerDecision: "Pending",
+      sendStatusEmail: true,
+      emailSubject: defaults.subject,
+      emailBody: defaults.body,
+    });
   };
 
   const closeOfferDecisionModal = () => {
@@ -442,6 +454,16 @@ export default function AdminRecruitmentDashboard() {
         );
       },
     });
+  };
+
+  const prepareAppointmentLetter = (candidate) => {
+    setCandidateDetailsOpen(false);
+    setSelectedCandidate(null);
+    window.dispatchEvent(
+      new CustomEvent("app:navigate", {
+        detail: { path: "/letterHead", appointmentEmployee: candidate },
+      }),
+    );
   };
 
   const openCandidateDetails = async (candidate) => {
@@ -546,6 +568,47 @@ export default function AdminRecruitmentDashboard() {
                                 <span>Source: {candidate.source || "—"}</span>
                               </div>
 
+                              {candidate.status === "Offer Acceptance" && (
+                                <div className="rf-offer-response-summary">
+                                  <div>
+                                    <span className="rf-label">
+                                      Candidate Response
+                                    </span>
+
+                                    <strong>
+                                      {candidate.offer_decision || "Pending"}
+                                    </strong>
+                                  </div>
+
+                                  {candidate.offer_decision === "Concern" &&
+                                    candidate.offer_concern && (
+                                      <div>
+                                        <span className="rf-label">
+                                          Candidate Concern
+                                        </span>
+
+                                        <div className="rf-notes-box">
+                                          {candidate.offer_concern}
+                                        </div>
+                                      </div>
+                                    )}
+
+                                  {candidate.offer_response_at && (
+                                    <div>
+                                      <span className="rf-label">
+                                        Response Submitted
+                                      </span>
+
+                                      <strong>
+                                        {new Date(
+                                          candidate.offer_response_at,
+                                        ).toLocaleString()}
+                                      </strong>
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+
                               <div className="candidate-actions">
                                 <IconActionButton
                                   label="View"
@@ -581,6 +644,18 @@ export default function AdminRecruitmentDashboard() {
                                   </IconActionButton>
                                 )}
 
+                                {candidate.status === "Joined" && (
+                                  <button
+                                    type="button"
+                                    className="rf-secondary-btn"
+                                    onClick={() =>
+                                      prepareAppointmentLetter(candidate)
+                                    }
+                                  >
+                                    Prepare Appointment Letter
+                                  </button>
+                                )}
+
                                 {candidate.status !== "Rejected" &&
                                   candidate.status !== "Joined" && (
                                     <IconActionButton
@@ -603,20 +678,45 @@ export default function AdminRecruitmentDashboard() {
                                 </IconActionButton>
                               </div>
 
-                              {canAdvance(candidate) && (
-                                <button
-                                  type="button"
-                                  className="candidate-advance-btn"
-                                  onClick={() =>
-                                    advanceCandidate(
-                                      candidate,
-                                      getNextStage(candidate.status),
-                                    )
-                                  }
-                                >
-                                  Advance to Next Stage
-                                </button>
-                              )}
+                              {candidate.status === "Offer Acceptance" &&
+                                candidate.offer_decision === "Accepted" && (
+                                  <button
+                                    type="button"
+                                    className="candidate-advance-btn"
+                                    onClick={() =>
+                                      advanceCandidate(candidate, "Onboarding")
+                                    }
+                                  >
+                                    Move to Onboarding
+                                  </button>
+                                )}
+
+                              {candidate.status === "Offer Acceptance" &&
+                                candidate.offer_decision === "Concern" && (
+                                  <button
+                                    type="button"
+                                    className="rf-primary-btn"
+                                    onClick={() => reinitiateOffer(candidate)}
+                                  >
+                                    Review Concern & Re-initiate Offer
+                                  </button>
+                                )}
+
+                              {candidate.status !== "Offer Acceptance" &&
+                                canAdvance(candidate) && (
+                                  <button
+                                    type="button"
+                                    className="candidate-advance-btn"
+                                    onClick={() =>
+                                      advanceCandidate(
+                                        candidate,
+                                        getNextStage(candidate.status),
+                                      )
+                                    }
+                                  >
+                                    Advance to Next Stage
+                                  </button>
+                                )}
                             </div>
                           )}
                         </div>
@@ -709,22 +809,13 @@ export default function AdminRecruitmentDashboard() {
               }}
             >
               <div className="rf-grid">
-                {offerDecisionModal.nextStatus === "Offer Status" && (
-                  <div className="rf-field rf-full">
-                    <label>Offer Decision</label>
-                    <select
-                      value={offerDecisionModal.offerDecision}
-                      onChange={(e) =>
-                        setOfferDecisionModal((prev) => ({
-                          ...prev,
-                          offerDecision: e.target.value,
-                        }))
-                      }
-                    >
-                      <option value="Pending">Pending</option>
-                      <option value="Accepted">Accepted</option>
-                      <option value="Rejected">Rejected</option>
-                    </select>
+                {offerDecisionModal.nextStatus === "Offer Acceptance" && (
+                  <div className="rf-offer-email-hint">
+                    <strong>Candidate response link</strong>
+                    <p>
+                      A secure, one-time response link will be inserted
+                      automatically into this email.
+                    </p>
                   </div>
                 )}
 
@@ -787,7 +878,9 @@ export default function AdminRecruitmentDashboard() {
                   Cancel
                 </button>
                 <button type="submit" className="rf-primary-btn">
-                  Confirm
+                  {offerDecisionModal.nextStatus === "Offer Acceptance"
+                    ? "Send Offer Acceptance"
+                    : "Confirm"}
                 </button>
               </div>
             </form>

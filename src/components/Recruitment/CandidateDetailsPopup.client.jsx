@@ -168,12 +168,7 @@ export default function CandidateDetailsPopup({
     );
   }, [candidate.assessments]);
 
-  const canConvertToEmployee = [
-    "Offer Acceptance",
-    "Offer Released",
-    "Offer Status",
-    "Onboarding",
-  ].includes(status);
+  const canConvertToEmployee = status === "Onboarding";
 
   const interviewerLookup = useMemo(() => {
     return interviewers.reduce((acc, interviewer) => {

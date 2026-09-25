@@ -9,7 +9,7 @@ const AdvanceModal = ({
   setAdvanceModal,
   handleAdvanceSubmit,
   isLoading = false,
-  threeMonthsSalary = 0,
+   threeMonthsCtc = 0,
 }) => {
   const generateAvailableMonths = () => {
     const today = new Date();
@@ -29,22 +29,45 @@ const AdvanceModal = ({
   const availableMonths = generateAvailableMonths();
 
   const computeMonthlyRecoveries = () => {
-    const amount = parseFloat(advanceModal.advanceAmount);
-    const months = parseInt(advanceModal.recoveryMonths);
+  const amount = parseFloat(advanceModal.advanceAmount);
+  const months = parseInt(advanceModal.recoveryMonths);
+  const baseNetSalary = parseFloat(advanceModal.baseNetSalary);
 
-    if (!amount || amount <= 0 || !months || months <= 0) return null;
+  if (
+    !amount ||
+    amount <= 0 ||
+    !months ||
+    months <= 0 ||
+    !baseNetSalary ||
+    baseNetSalary <= 0
+  ) {
+    return null;
+  }
 
-    const base = Math.floor(amount / months);
-    const remainder = amount % months;
+  // Normal recovery if divided equally
+  const normalRecovery = amount / months;
 
-    const recoveries = Array(months)
-      .fill(base)
-      .map((val, idx) => (idx < remainder ? val + 1 : val));
+  // Maximum amount that can be deducted from employee's salary
+  const maxMonthlyRecovery = baseNetSalary;
 
-    return recoveries.map((r) => `₹${r.toLocaleString("en-IN")}`).join(" + ");
+  // Actual deduction cannot exceed Base Net Salary
+  const monthlyRecovery = Math.min(
+    normalRecovery,
+    maxMonthlyRecovery
+  );
+
+  // Calculate how many months are actually required
+  const requiredMonths = Math.ceil(amount / maxMonthlyRecovery);
+
+  return {
+    normalRecovery,
+    monthlyRecovery,
+    requiredMonths,
+    exceedsSalaryLimit: normalRecovery > maxMonthlyRecovery,
   };
+};
 
-  const monthlyRecoveries = computeMonthlyRecoveries();
+  const recoveryCalculation = computeMonthlyRecoveries();
   const selectedMonthLabel =
     availableMonths.find((m) => m.value === advanceModal.applicableMonth)
       ?.label || "";
@@ -52,7 +75,8 @@ const AdvanceModal = ({
   const closeModal = () => {
     setAdvanceModal({ ...advanceModal, isVisible: false });
   };
-
+const minimumRecoveryMonths =
+  recoveryCalculation?.requiredMonths || 1;
   const updateField = (field, value) => {
     setAdvanceModal((prev) => ({
       ...prev,
@@ -98,28 +122,67 @@ const AdvanceModal = ({
               value={advanceModal.advanceAmount || ""}
               onChange={(e) => updateField("advanceAmount", e.target.value)}
             />
-            <p className="am-modal-note">
-              Maximum allowed: ₹{threeMonthsSalary.toLocaleString("en-IN")}{" "}
-              <em>(3 months' gross salary)</em>
-            </p>
+        <p className="am-modal-note">
+  Maximum allowed: ₹{threeMonthsCtc.toLocaleString("en-IN")}{" "}
+  <em>(3 months' CTC)</em>
+</p>
           </div>
 
           <div className="am-modal-field">
             <label htmlFor="recovery-months">Recovery Over (Months)</label>
-            <input
-              id="recovery-months"
-              type="number"
-              min="1"
-              max="24"
-              placeholder="e.g. 6"
-              value={advanceModal.recoveryMonths || ""}
-              onChange={(e) => updateField("recoveryMonths", e.target.value)}
-            />
-            {monthlyRecoveries && (
-              <div className="am-recovery-preview">
-                <strong>Monthly Recovery:</strong> {monthlyRecoveries}
-              </div>
-            )}
+           <input
+  id="recovery-months"
+  type="number"
+  min={minimumRecoveryMonths}
+  max="24"
+  placeholder={`Minimum ${minimumRecoveryMonths} months`}
+  value={advanceModal.recoveryMonths || ""}
+  onChange={(e) =>
+    updateField("recoveryMonths", e.target.value)
+  }
+/>
+          {recoveryCalculation && (
+  <div className="am-recovery-preview">
+    <div>
+      <strong>Base Net Salary:</strong>{" "}
+      ₹{Number(advanceModal.baseNetSalary).toLocaleString("en-IN")}
+    </div>
+
+    <div>
+      <strong>Normal Recovery:</strong>{" "}
+      ₹
+      {Math.round(
+        recoveryCalculation.normalRecovery
+      ).toLocaleString("en-IN")}
+      /month
+    </div>
+
+    <div>
+      <strong>Maximum Salary Deduction:</strong>{" "}
+      ₹
+      {Math.round(
+        advanceModal.baseNetSalary
+      ).toLocaleString("en-IN")}
+      /month
+    </div>
+
+    <div>
+      <strong>Minimum Recovery Period:</strong>{" "}
+      {recoveryCalculation.requiredMonths} months
+    </div>
+
+    {recoveryCalculation.exceedsSalaryLimit && (
+      <div className="am-recovery-warning">
+        The calculated recovery exceeds the employee's Base Net
+        Salary. Recovery will be limited to ₹
+        {Math.round(
+          advanceModal.baseNetSalary
+        ).toLocaleString("en-IN")}{" "}
+        per month.
+      </div>
+    )}
+  </div>
+)}
           </div>
 
           <div className="am-modal-field">

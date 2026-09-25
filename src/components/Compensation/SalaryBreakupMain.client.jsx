@@ -24,7 +24,7 @@ import {
 } from "../../utils/SalaryCalculations.js";
 import { calculateLOPEffect } from "../../utils/lopCalculations.client.jsx";
 import { calculateIncentives } from "../../utils/IncentiveUtils.js";
-
+import { calculateBaseNetSalary } from "../../utils/SalaryCalculations.js";
 const SalaryBreakupMain = () => {
   const { user } = useAuth();
 
@@ -435,20 +435,46 @@ const SalaryBreakupMain = () => {
     }
   };
 
-  const openAdvanceModal = (employeeId, fullName) => {
-    const monthlySalary = getMonthlySalary(employeeId, employees);
-    const threeMonthsSalary = monthlySalary * 3;
-    setAdvanceModal({
-      isVisible: true,
-      employeeId,
-      fullName,
-      advanceAmount: "",
-      recoveryMonths: "",
-      applicableMonth: "",
-      error: "",
-      threeMonthsSalary,
-    });
-  };
+ const openAdvanceModal = (employeeId, fullName) => {
+  const employee = employees.find(
+    (emp) => String(emp.employee_id) === String(employeeId)
+  );
+
+  if (!employee) {
+    openMessageModal(
+      "Error",
+      `Employee ${fullName || employeeId} not found.`,
+      true
+    );
+    return;
+  }
+
+  const monthlySalary = getMonthlySalary(employeeId, employees);
+  const threeMonthsSalary = monthlySalary * 3;
+
+  const baseNetSalary = calculateBaseNetSalary(
+    employee.ctc,
+    employee.plan_data,
+    employee.employee_id
+  );
+
+  const monthlyCtc = parseFloat(employee.ctc || 0) / 12;
+  const threeMonthsCtc = monthlyCtc * 3;
+
+  setAdvanceModal({
+    isVisible: true,
+    employeeId: employee.employee_id,
+    fullName: fullName || employee.first_name || "Employee",
+    advanceAmount: "",
+    recoveryMonths: "",
+    applicableMonth: "",
+    error: "",
+    threeMonthsSalary, // keep for any legacy checks in handleAdvanceSubmit
+    monthlyCtc,
+    threeMonthsCtc,
+    baseNetSalary,
+  });
+};
 
   const handleAdvanceSubmit = async () => {
     const {
@@ -1182,14 +1208,13 @@ const SalaryBreakupMain = () => {
         />
       )}
       {advanceModal.isVisible && (
-        <AdvanceModal
-          advanceModal={advanceModal}
-          setAdvanceModal={setAdvanceModal}
-          handleAdvanceSubmit={handleAdvanceSubmit}
-          getAvailableMonths={getAvailableMonths}
-          isLoading={isLoading}
-          threeMonthsSalary={advanceModal.threeMonthsSalary}
-        />
+      <AdvanceModal
+  advanceModal={advanceModal}
+  setAdvanceModal={setAdvanceModal}
+  handleAdvanceSubmit={handleAdvanceSubmit}
+  isLoading={isLoading}
+ threeMonthsCtc={advanceModal.threeMonthsCtc || 0}
+/>
       )}
       {incentivesModal.isVisible && (
         <IncentivesModal

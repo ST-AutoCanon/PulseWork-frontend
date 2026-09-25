@@ -9,7 +9,7 @@ import { useAuth } from "../../../context/AuthProvider.client";
 import "./SalaryDetails.css";
 import {
   calculateSalaryDetails,
-  parseApplicableMonth,
+  parseApplicableMonth,calculateBaseNetSalary,
 } from "../../../utils/SalaryCalculations.js";
 import { calculateLOPEffect } from "../../../utils/lopCalculations.client.jsx";
 import { calculateIncentives } from "../../../utils/IncentiveUtils.js";
@@ -437,6 +437,7 @@ const SalaryDetails = () => {
           lopDeduction,
           localGross,
           Math.max(localNet, 0),
+          calculateBaseNetSalary(emp.ctc, emp.plan_data, emp.employee_id),
         ];
       });
 
@@ -463,7 +464,7 @@ const SalaryDetails = () => {
         "LOP Days",
         "LOP Deduction",
         "Gross Salary",
-        "Net Salary",
+        "Net Salary","Base Net Salary",
       ];
 
       const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
@@ -866,6 +867,7 @@ const renderTableRows = (employeesToRender) => {
                 {emp.ctc ? `₹${parseFloat(emp.ctc).toLocaleString()}` : "N/A"}
               </td>
               <td colSpan="20" className="sd-table-cell">Calculation Error</td>
+              <td colSpan="21" className="sd-table-cell">Calculation Error</td>
             </tr>
           );
         }
@@ -876,7 +878,12 @@ const renderTableRows = (employeesToRender) => {
         const lopDeduction = parseFloat(lopData.yearly?.value || 0);
 
 const advanceRecovery = Number(salaryDetails.advanceRecovery || 0);
-
+// ===== NEW: Base Net Salary (stable, no OT/Bonus/LOP/Advance) =====
+const baseNetSalary = calculateBaseNetSalary(
+  emp.ctc,
+  emp.plan_data,
+  emp.employee_id
+);
 const { localGross, localNet } =
     calculateLocalGrossNet(
         salaryDetails,
@@ -911,37 +918,41 @@ const { localGross, localNet } =
               {emp.ctc ? `₹${parseFloat(emp.ctc).toLocaleString()}` : "N/A"}
             </td>
 
-            {/* Employee Earnings */}
-            <td className="sd-table-cell sd-align-right">₹{Number(salaryDetails.basicSalary || 0).toFixed(2)}</td>
-            <td className="sd-table-cell sd-align-right">₹{Number(salaryDetails.hra || 0).toFixed(2)}</td>
-            <td className="sd-table-cell sd-align-right">₹{Number(salaryDetails.ltaAllowance || 0).toFixed(2)}</td>
-            <td className="sd-table-cell sd-align-right">₹{Number(salaryDetails.otherAllowances || 0).toFixed(2)}</td>
-            <td className="sd-table-cell sd-align-right">₹{Number(salaryDetails.incentivePay || 0).toFixed(2)}</td>
-            <td className="sd-table-cell sd-align-right">₹{Number(salaryDetails.overtimePay || 0).toFixed(2)}</td>
-            <td className="sd-table-cell sd-align-right">₹{Number(salaryDetails.statutoryBonus || 0).toFixed(2)}</td>
-            <td className="sd-table-cell sd-align-right">₹{monthlyBonusPay.toFixed(2)}</td>
+           {/* Employee Earnings */}
+<td className="sd-table-cell sd-align-right">₹{Number(salaryDetails.basicSalary || 0).toFixed(2)}</td>
+<td className="sd-table-cell sd-align-right">₹{Number(salaryDetails.hra || 0).toFixed(2)}</td>
+<td className="sd-table-cell sd-align-right">₹{Number(salaryDetails.ltaAllowance || 0).toFixed(2)}</td>
+<td className="sd-table-cell sd-align-right">₹{Number(salaryDetails.otherAllowances || 0).toFixed(2)}</td>
+<td className="sd-table-cell sd-align-right">₹{Number(salaryDetails.incentivePay || 0).toFixed(2)}</td>
+<td className="sd-table-cell sd-align-right">₹{Number(salaryDetails.overtimePay || 0).toFixed(2)}</td>
+<td className="sd-table-cell sd-align-right">₹{Number(salaryDetails.statutoryBonus || 0).toFixed(2)}</td>
+<td className="sd-table-cell sd-align-right">₹{monthlyBonusPay.toFixed(2)}</td>
+{/* ❌ REMOVE Base Net from here */}
 
-            {/* Employer Contributions */}
-            <td className="sd-table-cell sd-align-right sd-deduction">₹{Number(salaryDetails.employerPF || 0).toFixed(2)}</td>
-            <td className="sd-table-cell sd-align-right sd-deduction">₹{Number(salaryDetails.gratuity || 0).toFixed(2)}</td>
-            <td className="sd-table-cell sd-align-right sd-deduction">₹{Number(salaryDetails.insuranceEmployer || 0).toFixed(2)}</td>
-            <td className="sd-table-cell sd-align-right sd-deduction">₹{Number(salaryDetails.esicEmployer || 0).toFixed(2)}</td>
+{/* Employer Contributions */}
+<td className="sd-table-cell sd-align-right sd-deduction">₹{Number(salaryDetails.employerPF || 0).toFixed(2)}</td>
+<td className="sd-table-cell sd-align-right sd-deduction">₹{Number(salaryDetails.gratuity || 0).toFixed(2)}</td>
+<td className="sd-table-cell sd-align-right sd-deduction">₹{Number(salaryDetails.insuranceEmployer || 0).toFixed(2)}</td>
+<td className="sd-table-cell sd-align-right sd-deduction">₹{Number(salaryDetails.esicEmployer || 0).toFixed(2)}</td>
 
-            {/* Employee Deductions */}
-            <td className="sd-table-cell sd-align-right sd-deduction">₹{Number(salaryDetails.advanceRecovery || 0).toFixed(2)}</td>
-            <td className="sd-table-cell sd-align-right sd-deduction">₹{Number(salaryDetails.employeePF || 0).toFixed(2)}</td>
-            <td className="sd-table-cell sd-align-right sd-deduction">₹{Number(salaryDetails.esic || 0).toFixed(2)}</td>
-            <td className="sd-table-cell sd-align-right sd-deduction">₹{Number(salaryDetails.professionalTax || 0).toFixed(2)}</td>
-            <td className="sd-table-cell sd-align-right sd-deduction">₹{Number(salaryDetails.tds || 0).toFixed(2)}</td>
-            <td className="sd-table-cell sd-align-right sd-deduction">₹{Number(salaryDetails.insurance || 0).toFixed(2)}</td>
-            <td className="sd-table-cell sd-align-right sd-deduction">{lopDays > 0 ? lopDays.toFixed(0) : "0"}</td>
-            <td className="sd-table-cell sd-align-right sd-deduction">₹{lopDeduction.toFixed(2)}</td>
+{/* Employee Deductions */}
+<td className="sd-table-cell sd-align-right sd-deduction">₹{Number(salaryDetails.advanceRecovery || 0).toFixed(2)}</td>
+<td className="sd-table-cell sd-align-right sd-deduction">₹{Number(salaryDetails.employeePF || 0).toFixed(2)}</td>
+<td className="sd-table-cell sd-align-right sd-deduction">₹{Number(salaryDetails.esic || 0).toFixed(2)}</td>
+<td className="sd-table-cell sd-align-right sd-deduction">₹{Number(salaryDetails.professionalTax || 0).toFixed(2)}</td>
+<td className="sd-table-cell sd-align-right sd-deduction">₹{Number(salaryDetails.tds || 0).toFixed(2)}</td>
+<td className="sd-table-cell sd-align-right sd-deduction">₹{Number(salaryDetails.insurance || 0).toFixed(2)}</td>
+<td className="sd-table-cell sd-align-right sd-deduction">{lopDays > 0 ? lopDays.toFixed(0) : "0"}</td>
+<td className="sd-table-cell sd-align-right sd-deduction">₹{lopDeduction.toFixed(2)}</td>
 
-            {/* Totals */}
-            <td className="sd-table-cell sd-align-right"><strong>₹{localGross.toFixed(2)}</strong></td>
-            <td className="sd-table-cell sd-align-right"><strong>₹{finalCTC.toFixed(2)}</strong></td>
-            <td className="sd-table-cell sd-align-right"><strong>₹{localNet.toFixed(2)}</strong></td>
-          </tr>
+{/* Totals */}
+<td className="sd-table-cell sd-align-right"><strong>₹{localGross.toFixed(2)}</strong></td>
+<td className="sd-table-cell sd-align-right"><strong>₹{finalCTC.toFixed(2)}</strong></td>
+<td className="sd-table-cell sd-align-right"><strong>₹{localNet.toFixed(2)}</strong></td>
+{/* ✅ Base Net Salary at the end — matches header */}
+<td className="sd-table-cell sd-align-right">
+  <strong>₹{baseNetSalary.toFixed(2)}</strong>
+</td>          </tr>
         );
       })}
     </tbody>
@@ -1103,6 +1114,7 @@ const { localNet } = calculateLocalGrossNet(
     <th className="sd-table-header sd-align-right">Gross Salary</th>
     <th className="sd-table-header sd-align-right">Final CTC</th>
     <th className="sd-table-header sd-align-right">Net Salary</th>
+    <th className="sd-table-header sd-align-right">Base Net Salary</th>
   </tr>
 </thead>
                 {renderTableRows(filteredEmployees)}

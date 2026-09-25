@@ -4,7 +4,7 @@ import {
   parseApplicableMonth,
   parseWorkDate,
   getPayrollFilter,
-  getCurrentYearMonth,
+  getCurrentYearMonth,calculateBaseNetSalary,   // ← add this
 } from "../../../utils/SalaryCalculations";
 // Duplicate of helper present in CreateCompensation for consistent Gross/Net
 const calculateLocalGrossNet = (salaryDetails, planData) => {
@@ -184,7 +184,11 @@ const DetailsTab = ({
   const monthlyCTC = parseFloat(selectedEmployee.ctc || 0) / 12;
 
 
-
+const baseNetSalary = calculateBaseNetSalary(
+  selectedEmployee.ctc,
+  planData,
+  selectedEmployee.employee_id
+);
   const { targetMonthStr, targetYear, windowStart, windowEnd } =
     getPayrollFilter();
   const employeeOvertime = overtimeRecords.filter((ot) => {
@@ -917,6 +921,13 @@ const employerComponents = components.filter((comp) => {
                 )
               : "N/A"}
           </div>
+          <div>
+    <strong>Base Net Salary (Monthly):</strong> ₹
+    {baseNetSalary.toLocaleString(undefined, {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    })}
+  </div>
         </div>
         <div className="sb-details-tab-buttons">
           <button

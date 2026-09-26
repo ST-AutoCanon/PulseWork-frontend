@@ -41,7 +41,28 @@ export const parseApplicableMonth = (monthStr) => {
   }
   return null;
 };
+/**
+ * Returns the stable monthly take-home salary (no OT, Bonus, Incentive, LOP, Advances)
+ * Use this value to store on the employee record and for Advance validation.
+ */
+export const calculateBaseNetSalary = (ctc, planData, employeeId) => {
+  const details = calculateSalaryDetails(
+    ctc,
+    planData,
+    employeeId,
+    [],          // no overtime
+    [],          // no bonus
+    [],          // no advances
+    {},          // no incentives
+    {}           // no LOP
+  );
 
+  if (!details) return 0;
+
+  // Remove advanceRecovery and lopDeduction just to be extra safe
+  // (they are already 0 because we passed empty arrays)
+  return Math.round(details.netSalary || 0);
+};
 export const parseWorkDate = (dateStr) => {
   try {
     const date = new Date(dateStr);

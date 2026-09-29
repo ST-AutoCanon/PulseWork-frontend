@@ -233,7 +233,7 @@ export default function InterviewAssessment({
           <FaStar
             key={star}
             className={star <= value ? "rf-star active" : "rf-star"}
-            onClick={() => onChange(star)}
+            onClick={() => onChange(value === star ? 0 : star)}
           />
         ))}
       </div>

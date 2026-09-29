@@ -10,6 +10,7 @@ import {
   MdKeyboardArrowUp,
   MdAssignment,
   MdPersonAddAlt,
+  MdDescription,
   MdOutlineCancel,
   MdVisibility,
 } from "react-icons/md";
@@ -67,15 +68,15 @@ const STAGE_COLORS = {
   },
   "Offer Acceptance": {
     bg: "#fffbeb",
-    border: "#fde68a",
-    text: "#a16207",
-    count: "#d97706",
+    border: "#fcd34d",
+    text: "#92400e",
+    count: "#eab308",
   },
   "Offer Released": {
-    bg: "#fff7ed",
-    border: "#fed7aa",
-    text: "#c2410c",
-    count: "#ea580c",
+    bg: "#fefce8",
+    border: "#fde047",
+    text: "#854d0e",
+    count: "#facc15",
   },
   Onboarding: {
     bg: "#ecfdf5",
@@ -132,7 +133,7 @@ function canAdvance(candidate) {
 }
 
 function canConvert(candidate) {
-  return candidate.status === "Onboarding";
+  return ["Onboarding", "Joined"].includes(candidate.status);
 }
 
 function canOpenAssessment(candidate) {
@@ -645,15 +646,14 @@ export default function AdminRecruitmentDashboard() {
                                 )}
 
                                 {candidate.status === "Joined" && (
-                                  <button
-                                    type="button"
-                                    className="rf-secondary-btn"
+                                  <IconActionButton
+                                    label="Prepare Appointment Letter"
                                     onClick={() =>
                                       prepareAppointmentLetter(candidate)
                                     }
                                   >
-                                    Prepare Appointment Letter
-                                  </button>
+                                    <MdDescription />
+                                  </IconActionButton>
                                 )}
 
                                 {candidate.status !== "Rejected" &&

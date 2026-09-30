@@ -668,10 +668,13 @@ if (planData.isOtherAllowance) {
 
   // ==================== GROSS FOR ESI (EXCLUDING LTA) ====================
   // IMPORTANT: LTA is deliberately excluded from ESI base as per requirement
-  const grossForESI =
-    Number(basicSalary || 0) +
-    Number(hra || 0) +
-    Number(otherAllowances || 0);
+  // ==================== GROSS FOR ESI ====================
+// ESI base should NOT include: Bonus, Overtime, Incentive, LTA
+const grossForESI =
+  Number(basicSalary || 0) +
+  Number(hra || 0) +
+  Number(otherAllowances || 0);
+// Explicitly excluded: ltaAllowance, overtimePay, bonusPay, incentivePay
   // Note: ltaAllowance is NOT added here
 
   // ==================== ESIC (Employee & Employer) ====================
@@ -686,10 +689,10 @@ if (
   const rate =
     parseFloat(planData.esicEmployeePercentage) / 100;
 
-  esic = grossSalary * rate;
+  esic = grossForESI * rate;
 
   planData.esicEmployeeText =
-    `${planData.esicEmployeePercentage}% of Gross Salary`;
+  `${planData.esicEmployeePercentage}% of Gross (excl. Bonus/OT/Incentive/LTA)`;
 
 } else if (
   planData.esicEmployeeAmount &&
@@ -714,11 +717,10 @@ if (
   const rate =
     parseFloat(planData.esicEmployerPercentage) / 100;
 
-  esicEmployer = grossSalary * rate;
+  esicEmployer = grossForESI * rate;
 
-  planData.esicEmployerText =
-    `${planData.esicEmployerPercentage}% of Gross Salary`;
-
+planData.esicEmployerText =
+  `${planData.esicEmployerPercentage}% of Gross (excl. Bonus/OT/Incentive/LTA)`;
 } else if (
   planData.isESICEmployer &&
   planData.esicEmployerAmount &&

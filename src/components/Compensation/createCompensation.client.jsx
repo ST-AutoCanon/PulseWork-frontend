@@ -1472,16 +1472,16 @@ useEffect(() => {
   // Validation using allocationInfo (no remainingPercentage)
   // ────────────────────────────────────────────────
 
-  // Case 1: Exceeds 100%
-  if (
-  allocationInfo.exceeds > 0 &&
-  !previewConfirmed
-) {
-  showAlert(
-    `Total percentage exceeds 100% by ${allocationInfo.exceeds}%. Please preview and approve before saving.`
-  );
-  return;
-}
+//   // Case 1: Exceeds 100%
+//   if (
+//   allocationInfo.exceeds > 0 &&
+//   !previewConfirmed
+// ) {
+//   // showAlert(
+//   //   `Total percentage exceeds 100% by ${allocationInfo.exceeds}%. Please preview and approve before saving.`
+//   // );
+//   return;
+// }
 
   // Case 2: Still remaining (not fully allocated)
 if (
@@ -3840,13 +3840,34 @@ const handleCalculate = () => {
                   Enter Annual CTC (₹)
                 </span>
                 <div className="create-compensation-input-group">
-                  <input
-                    type="number"
-                    placeholder="Enter CTC"
-                    value={ctcInput}
-                    onChange={(e) => setCtcInput(e.target.value)}
-                    className="create-compensation-number-input"
-                  />
+                 <input
+  type="number"
+  placeholder="Enter CTC"
+  value={ctcInput}
+  onChange={(e) => {
+    // Allow only digits and at most one decimal point
+    const value = e.target.value;
+    // Remove any character that is not a digit or a decimal point
+    const cleaned = value.replace(/[^0-9.]/g, '');
+    // Keep only the first decimal point if multiple exist
+    const parts = cleaned.split('.');
+    const sanitized =
+      parts.length > 1
+        ? parts[0] + '.' + parts.slice(1).join('')
+        : cleaned;
+    setCtcInput(sanitized);
+  }}
+  className="create-compensation-number-input"
+  // Optional extra protection
+  onKeyDown={(e) => {
+    // Block e, E, +, - which type="number" still allows
+    if (['e', 'E', '+', '-'].includes(e.key)) {
+      e.preventDefault();
+    }
+  }}
+  min="0"
+  step="any"
+/>
                   <button
                     className="create-compensation-add-button"
                     onClick={handleCalculate}

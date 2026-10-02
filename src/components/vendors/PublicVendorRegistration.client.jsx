@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import axios from "axios";
 import "./vendorRegistration.css";
 
+//////////////////////
 const initialForm = {
   company_name: "", registered_address: "", branch_address: "", city: "", state: "", pin_code: "",
   gst_number: "", pan_number: "", company_type: "", msme_status: "Not Applicable",
@@ -19,7 +20,7 @@ const fieldGroups = [
   { title: "Company Details", fields: ["company_name", "registered_address", "branch_address", "city", "state", "pin_code", "gst_number", "pan_number", "company_type", "msme_status"] },
   { title: "Contact Details - 1", fields: ["contact1_name", "contact1_designation", "contact1_mobile", "contact1_email"] },
   { title: "Contact Details - 2", fields: ["contact2_name", "contact2_designation", "contact2_mobile", "contact2_email"] },
-  { title: "Contact Details - 3", fields: ["contact3_name", "contact3_designation", "contact3_mobile", "contact3_email"] },
+  { title: "Account Team Contact Details", fields: ["contact3_name", "contact3_designation", "contact3_mobile", "contact3_email"] },
   { title: "Bank Details", fields: ["bank_name", "branch", "account_number", "ifsc_code"] },
   { title: "Business Information", fields: ["nature_of_business", "product_category", "years_of_experience"] },
 ];
@@ -148,8 +149,6 @@ export default function PublicVendorRegistration() {
         throw err;
       }
 
-      // Success: clear status so "Submitting..." disappears,
-      // then switch to the confirmation screen.
       setStatus("");
       setValid(false);
       setSubmissionState("success");
@@ -243,6 +242,8 @@ export default function PublicVendorRegistration() {
     />
   )}
 </label>
+
+
               ))}
             </div>
           </fieldset>

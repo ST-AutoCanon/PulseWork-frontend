@@ -1009,7 +1009,64 @@
   overflow: hidden;
   word-break: break-word;
 }
+/* ========== Privacy / screenshot protection ========== */
+.policy-privacy-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 100;
+  background: rgba(15, 23, 42, 0.92);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  text-align: center;
+  padding: 32px;
+}
 
+.policy-privacy-message h3 {
+  font-size: 22px;
+  margin: 0 0 12px;
+  color: #fff;
+}
+
+.policy-privacy-message p {
+  font-size: 15px;
+  line-height: 1.5;
+  max-width: 360px;
+  margin: 0 auto;
+  color: #cbd5e1;
+}
+
+.viewer-content-protected {
+  width: 100%;
+  height: 100%;
+  transition: filter 0.2s ease;
+  position: relative;
+}
+
+.viewer-content-protected.is-hidden {
+  /* content is blurred + covered by overlay */
+}
+/* =========================================================
+   POLICY VIEWER SECURITY
+   ========================================================= */
+
+.viewer-section,
+.viewer-section * {
+  user-select: none !important;
+  -webkit-user-select: none !important;
+  -moz-user-select: none !important;
+}
+
+.viewer-section img,
+.viewer-section canvas {
+  -webkit-user-drag: none !important;
+  user-drag: none !important;
+}
+
+.viewer-section img {
+  pointer-events: none;
+}
 .policy-card-divider {
   height: 1px;
   background: #e2e8f0;
@@ -1736,4 +1793,70 @@
 .ack-floating-wrapper .ack-floating-icon,
 .ack-floating-wrapper .ack-floating-popup {
   pointer-events: auto;
+}
+
+
+/* ========== FULL PAGE SCREENSHOT WARNING ========== */
+.alert-modal-overlay {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.88);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 99999;
+}
+
+.alert-modal {
+  background: #ffffff;
+  border-radius: 0;                 /* remove rounded corners for full feel */
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  max-width: 100%;
+  max-height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  box-shadow: none;
+  z-index: 100000;
+}
+
+.alert-modal h2 {
+  font-size: 42px;
+  margin-bottom: 28px;
+  color: #dc2626;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+}
+
+.alert-modal p {
+  font-size: 22px;
+  line-height: 1.6;
+  color: #374151;
+  white-space: pre-line;
+  margin-bottom: 48px;
+  max-width: 700px;
+  padding: 0 40px;
+}
+
+.alert-modal button {
+  background: #dc2626;
+  color: white;
+  border: none;
+  padding: 18px 64px;
+  border-radius: 12px;
+  font-size: 20px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.15s;
+}
+
+.alert-modal button:hover {
+  background: #b91c1c;
+  transform: scale(1.03);
 }

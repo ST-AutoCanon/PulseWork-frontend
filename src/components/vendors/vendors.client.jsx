@@ -89,7 +89,7 @@ const [showVendorRegistration, setShowVendorRegistration] = useState(false);
     vendorName: "",
     from: process.env.NEXT_PUBLIC_EMAIL_FROM || "hr@sukalpatech.com",
     recipientEmail: "",
-    subject: "Vendor Registration Request",
+    subject: "Request to Complete Vendor/Customer Registration ",
     body: "Dear Vendor,\n\nPlease complete your vendor registration using the secure link below. The link will remain active for 5 days.\n\nRegards,\nPulseWork Team",
   });
   const [isSendingRegistrationMail, setIsSendingRegistrationMail] = useState(false);
@@ -144,10 +144,10 @@ const [showVendorRegistration, setShowVendorRegistration] = useState(false);
     setRegistrationStep(1);
     setRegistrationMail({
       vendorName: "",
-      from: process.env.NEXT_PUBLIC_EMAIL_FROM || "hr@sukalpatech.com",
+      from: process.env.NEXT_PUBLIC_EMAIL_FROM || "finance@sukalpatechsolutions.com",
       recipientEmail: "",
-      subject: "Vendor Registration Request",
-      body: "Dear Vendor,\n\nPlease complete your vendor registration using the secure link below. The link will remain active for 5 days.\n\nRegards,\nPulseWork Team",
+      subject: "Request to Complete Vendor/Customer Registration",
+      body: "Dear Sir/Madam,\n\nWe request you to complete the vendor/customer registration process using the secure link provided below.\nNote: The registration link will remain active for 5 days. Kindly complete the registration within this period.\n\nThank you for your cooperation.,\nBest regards,\n  Sukalpa Finance Team",
     });
     setShowVendorRegistration(true);
   };

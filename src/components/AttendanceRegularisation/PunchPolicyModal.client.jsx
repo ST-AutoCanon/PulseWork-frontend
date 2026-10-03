@@ -5,7 +5,6 @@ import axios from "axios";
 import {
   CalendarDays,
   Check,
-  Info,
   Pencil,
   Plus,
   Search,
@@ -16,96 +15,141 @@ import {
 import { useAuth } from "../../context/AuthProvider.client";
 import "./PunchPolicyModal.css";
 
-const DEFAULT_EXCUSES = [
-  {
-    id: "1",
-    name: "Medical Leave (Sick)",
-    weekly: "1",
-    days15: "2",
-    monthly: "4",
-  },
-  { id: "2", name: "Personal Work", weekly: "0.5", days15: "1", monthly: "2" },
-  { id: "3", name: "Family Emergency", weekly: "1", days15: "2", monthly: "3" },
-  {
-    id: "4",
-    name: "Official Work / Business",
-    weekly: "1",
-    days15: "2",
-    monthly: "4",
-  },
-  {
-    id: "5",
-    name: "Transport Delay",
-    weekly: "0.5",
-    days15: "1",
-    monthly: "2",
-  },
-  {
-    id: "6",
-    name: "Other (With Manager Approval)",
-    weekly: "1",
-    days15: "2",
-    monthly: "3",
-  },
-];
+const emptyShift = () => ({
+  id: Date.now().toString() + Math.random().toString(36).slice(2, 6),
+  name: "",
+  punchInTime: "09:00",
+  bufferTime: "15",
+  punchOutTime: "18:00",
+});
 
 const emptyFormState = () => ({
   policyName: "",
   description: "",
   policyType: "late_login",
   appliesTo: "specific",
-  deductionBasis: "hours",
-  deductionType: "hour",
+  deductionBasis: "percentage",
+  deductionType: "half_day",
   deductionValue: "",
-  rounding: "nearest_minute",
-  selectedGroups: [],
-  selectedEmployees: [],
-  applyGraceTime: true,
-  graceMinutes: "15",
   minDuration: "15",
-  markAsHalfDay: true,
-  markAsFullDay: true,
-  halfDayAfter: "03:00",
-  fullDayAfter: "06:00",
-  halfDayOperator: "greater",
-  fullDayOperator: "greater",
+  limitWeekly: "2",
+  limitMonthly: "4",
+  halfDayBelowHours: "3",
+  fullDayBelowHours: "1",
+  enableFullDayThreshold: true,
+  lateCountLimit: "22",
+  lateWithinDays: "15",
+  shiftMode: "general",
+  punchInTime: "09:00",
+  bufferTime: "15",
+  punchOutTime: "18:00",
+  shifts: [emptyShift()],
+  skipIfRegularised: true,
   policyStatus: "active",
   effectiveFrom: new Date().toISOString().slice(0, 10),
   effectiveTill: "",
   noExpiry: true,
+  selectedGroups: [],
+  selectedEmployees: [],
 });
 
 function normalizePolicyFromApi(row) {
   if (!row) return null;
+  const type = row.policyType || row.policy_type || "late_login";
+  const policyType =
+    type === "missed_punch_in" || type === "miss_punch_out"
+      ? "miss_punch_out"
+      : type === "both"
+        ? "late_login"
+        : type;
+
+  let deductionBasis =
+    row.deductionBasis || row.deduction_basis || "percentage";
+  if (deductionBasis === "hours") deductionBasis = "percentage";
+
+  let deductionType = row.deductionType || row.deduction_type || "half_day";
+  if (deductionType === "hour" || deductionType === "per_hour") {
+    deductionType = "half_day";
+  }
+
+  const rawShifts = row.shifts || row.shift_config;
+  let shifts = [];
+  if (Array.isArray(rawShifts) && rawShifts.length) {
+    shifts = rawShifts.map((s, i) => ({
+      id: s.id || `s-${i}-${Date.now()}`,
+      name: s.name || `Shift ${i + 1}`,
+      punchInTime: s.punchInTime || s.punch_in_time || "09:00",
+      bufferTime: String(s.bufferTime ?? s.buffer_time ?? "15"),
+      punchOutTime: s.punchOutTime || s.punch_out_time || "18:00",
+    }));
+  } else {
+    shifts = [
+      {
+        id: "default",
+        name: "General",
+        punchInTime: row.punchInTime || row.punch_in_time || "09:00",
+        bufferTime: String(row.bufferTime ?? row.buffer_time ?? "15"),
+        punchOutTime: row.punchOutTime || row.punch_out_time || "18:00",
+      },
+    ];
+  }
+
+  const shiftMode =
+    row.shiftMode ||
+    row.shift_mode ||
+    (shifts.length > 1 ? "multiple" : "general");
+
+  // Keep minDuration and bufferTime aligned when loading
+  const buf = String(
+    row.bufferTime ??
+      row.buffer_time ??
+      row.minDuration ??
+      row.min_duration ??
+      shifts[0]?.bufferTime ??
+      "15",
+  );
+  const minDur = String(row.minDuration ?? row.min_duration ?? buf ?? "15");
+
   return {
     id: String(row.id),
     policyName: row.policyName || row.policy_name || "",
     description: row.description || "",
-    policyType: row.policyType || row.policy_type || "late_login",
+    policyType,
     appliesTo: row.appliesTo || row.applies_to || "specific",
-    deductionBasis: row.deductionBasis || row.deduction_basis || "hours",
-    deductionType: row.deductionType || row.deduction_type || "hour",
+    deductionBasis,
+    deductionType,
     deductionValue: String(row.deductionValue ?? row.deduction_value ?? ""),
-    rounding: row.rounding || "nearest_minute",
-    selectedGroups: Array.isArray(row.selectedGroups)
-      ? row.selectedGroups
-      : Array.isArray(row.selected_groups)
-        ? row.selected_groups
-        : [],
-    selectedEmployees: Array.isArray(row.selectedEmployees)
-      ? row.selectedEmployees
-      : Array.isArray(row.selected_employees)
-        ? row.selected_employees
-        : [],
-    applyGraceTime: !!(row.applyGraceTime ?? row.apply_grace_time ?? true),
-    graceMinutes: String(row.graceMinutes ?? row.grace_minutes ?? "15"),
-    minDuration: String(row.minDuration ?? row.min_duration ?? "15"),
-    markAsHalfDay: !!(row.markAsHalfDay ?? row.mark_as_half_day ?? true),
-    markAsFullDay: !!(row.markAsFullDay ?? row.mark_as_full_day ?? true),
-    halfDayAfter: row.halfDayAfter || row.half_day_after || "03:00",
-    fullDayAfter: row.fullDayAfter || row.full_day_after || "06:00",
-    halfDayOperator: row.halfDayOperator || row.half_day_operator || "greater",
-    fullDayOperator: row.fullDayOperator || row.full_day_operator || "greater",
+    minDuration: minDur,
+    limitWeekly: String(row.limitWeekly ?? row.limit_weekly ?? "2"),
+    limitMonthly: String(row.limitMonthly ?? row.limit_monthly ?? "4"),
+    halfDayBelowHours: String(
+      row.halfDayBelowHours ?? row.half_day_below_hours ?? "3",
+    ),
+    fullDayBelowHours: String(
+      row.fullDayBelowHours ?? row.full_day_below_hours ?? "1",
+    ),
+    enableFullDayThreshold: !!(
+      row.enableFullDayThreshold ??
+      row.enable_full_day_threshold ??
+      true
+    ),
+    lateCountLimit: String(row.lateCountLimit ?? row.late_count_limit ?? "22"),
+    lateWithinDays: String(row.lateWithinDays ?? row.late_within_days ?? "15"),
+    shiftMode,
+    punchInTime:
+      row.punchInTime || row.punch_in_time || shifts[0]?.punchInTime || "09:00",
+    bufferTime: buf,
+    punchOutTime:
+      row.punchOutTime ||
+      row.punch_out_time ||
+      shifts[0]?.punchOutTime ||
+      "18:00",
+    shifts: shifts.map((s) => ({ ...s, bufferTime: buf })),
+    skipIfRegularised: !!(
+      row.skipIfRegularised ??
+      row.skip_if_regularised ??
+      true
+    ),
     policyStatus: row.policyStatus || row.policy_status || "active",
     effectiveFrom:
       row.effectiveFrom ||
@@ -116,11 +160,16 @@ function normalizePolicyFromApi(row) {
       row.noExpiry === true ||
       row.no_expiry === true ||
       !(row.effectiveTill || row.effective_till),
-    rules: Array.isArray(row.rules) ? row.rules : [],
-    excuses:
-      Array.isArray(row.excuses) && row.excuses.length
-        ? row.excuses
-        : DEFAULT_EXCUSES,
+    selectedGroups: Array.isArray(row.selectedGroups)
+      ? row.selectedGroups
+      : Array.isArray(row.selected_groups)
+        ? row.selected_groups
+        : [],
+    selectedEmployees: Array.isArray(row.selectedEmployees)
+      ? row.selectedEmployees
+      : Array.isArray(row.selected_employees)
+        ? row.selected_employees
+        : [],
   };
 }
 
@@ -169,7 +218,7 @@ export default function PunchPolicyModal({ isOpen, onClose }) {
     [API_KEY, employeeId, orgId, user?.role],
   );
 
-  // List state
+  // List
   const [view, setView] = useState("list");
   const [policies, setPolicies] = useState([]);
   const [listSearch, setListSearch] = useState("");
@@ -181,58 +230,68 @@ export default function PunchPolicyModal({ isOpen, onClose }) {
   const [error, setError] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
 
-  // Form state
+  // Form
   const [policyName, setPolicyName] = useState("");
   const [description, setDescription] = useState("");
   const [policyType, setPolicyType] = useState("late_login");
   const [appliesTo, setAppliesTo] = useState("specific");
-  const [deductionBasis, setDeductionBasis] = useState("hours");
-  const [deductionType, setDeductionType] = useState("hour");
+  const [deductionBasis, setDeductionBasis] = useState("percentage");
+  const [deductionType, setDeductionType] = useState("half_day");
   const [deductionValue, setDeductionValue] = useState("");
-  const [rounding, setRounding] = useState("nearest_minute");
-  const [selectedGroups, setSelectedGroups] = useState([]);
-  const [selectedEmployees, setSelectedEmployees] = useState([]);
-  const [searchText, setSearchText] = useState("");
-  const [applyGraceTime, setApplyGraceTime] = useState(true);
-  const [graceMinutes, setGraceMinutes] = useState("15");
   const [minDuration, setMinDuration] = useState("15");
-  const [markAsHalfDay, setMarkAsHalfDay] = useState(true);
-  const [markAsFullDay, setMarkAsFullDay] = useState(true);
-  const [halfDayAfter, setHalfDayAfter] = useState("03:00");
-  const [fullDayAfter, setFullDayAfter] = useState("06:00");
-  const [halfDayOperator, setHalfDayOperator] = useState("greater");
-  const [fullDayOperator, setFullDayOperator] = useState("greater");
+  const [limitWeekly, setLimitWeekly] = useState("2");
+  const [limitMonthly, setLimitMonthly] = useState("4");
+  const [halfDayBelowHours, setHalfDayBelowHours] = useState("3");
+  const [fullDayBelowHours, setFullDayBelowHours] = useState("1");
+  const [enableFullDayThreshold, setEnableFullDayThreshold] = useState(true);
+  const [lateCountLimit, setLateCountLimit] = useState("22");
+  const [lateWithinDays, setLateWithinDays] = useState("15");
+  const [shiftMode, setShiftMode] = useState("general");
+  const [punchInTime, setPunchInTime] = useState("09:00");
+  const [bufferTime, setBufferTime] = useState("15");
+  const [punchOutTime, setPunchOutTime] = useState("18:00");
+  const [shifts, setShifts] = useState([emptyShift()]);
+  const [skipIfRegularised, setSkipIfRegularised] = useState(true);
   const [policyStatus, setPolicyStatus] = useState("active");
   const [effectiveFrom, setEffectiveFrom] = useState(
     new Date().toISOString().slice(0, 10),
   );
   const [effectiveTill, setEffectiveTill] = useState("");
   const [noExpiry, setNoExpiry] = useState(true);
+  const [selectedGroups, setSelectedGroups] = useState([]);
+  const [selectedEmployees, setSelectedEmployees] = useState([]);
+  const [searchText, setSearchText] = useState("");
 
-  // Rules & excuses
-  const [rules, setRules] = useState([]);
-  const [newRule, setNewRule] = useState({
-    scenario: "late_login",
-    adjustmentType: "deduction",
-    applyAs: "hour",
-    excuse: "",
-    minDuration: "15",
-  });
-  const [excuses, setExcuses] = useState(DEFAULT_EXCUSES);
-
-  // Assignment panel – dynamic
-  const [assignmentTab, setAssignmentTab] = useState("groups"); // "groups" | "employees"
+  // Assignment
+  const [assignmentTab, setAssignmentTab] = useState("groups");
   const [departments, setDepartments] = useState([]);
   const [employees, setEmployees] = useState([]);
   const [empSearch, setEmpSearch] = useState("");
   const [assignmentLoading, setAssignmentLoading] = useState(false);
+
+  /** employeeId -> { policyId, policyName } for other policies */
+  const [employeePolicyMap, setEmployeePolicyMap] = useState({});
+
+  const isLateLogin = policyType === "late_login";
+  const isMissPunchOut = policyType === "miss_punch_out";
+  const isLessHours = policyType === "less_login_hours";
 
   const clearMessages = () => {
     setError("");
     setSuccessMsg("");
   };
 
-  /* ───────────── Fetch policies ───────────── */
+  /** Keep Min Duration and Buffer Time always the same */
+  const setMinDurationAndBuffer = (value) => {
+    const v =
+      value === "" || value === null || value === undefined
+        ? ""
+        : String(value);
+    setMinDuration(v);
+    setBufferTime(v);
+    setShifts((prev) => prev.map((s) => ({ ...s, bufferTime: v })));
+  };
+
   const fetchPolicies = useCallback(async () => {
     if (!orgId || !BACKEND_URL) return;
     try {
@@ -266,7 +325,66 @@ export default function PunchPolicyModal({ isOpen, onClose }) {
     }
   }, [BACKEND_URL, headers, orgId, listSearch]);
 
-  /* ───────────── Fetch departments + employees ───────────── */
+  const buildEmployeePolicyMap = useCallback(
+    async (currentEditId) => {
+      if (!orgId || !BACKEND_URL) return;
+      const map = {};
+
+      const applyAssignments = (policy) => {
+        if (!policy || String(policy.id) === String(currentEditId || ""))
+          return;
+        const emps = policy.selectedEmployees || [];
+        emps.forEach((e) => {
+          const eid = String(e.id ?? e.employee_id ?? e);
+          if (!eid) return;
+          if (!map[eid]) {
+            map[eid] = {
+              policyId: String(policy.id),
+              policyName: policy.policyName || "Another policy",
+            };
+          }
+        });
+      };
+
+      let list = policies;
+      const needsDetail = list.some(
+        (p) =>
+          String(p.id) !== String(currentEditId || "") &&
+          (!Array.isArray(p.selectedEmployees) ||
+            p.selectedEmployees.length === 0),
+      );
+
+      if (needsDetail && list.length > 0) {
+        try {
+          const details = await Promise.all(
+            list
+              .filter((p) => String(p.id) !== String(currentEditId || ""))
+              .map((p) =>
+                axios
+                  .get(`${BACKEND_URL}/api/punch-policy/${p.id}`, {
+                    headers,
+                    withCredentials: true,
+                  })
+                  .then((r) =>
+                    r.data?.data ? normalizePolicyFromApi(r.data.data) : null,
+                  )
+                  .catch(() => null),
+              ),
+          );
+          details.filter(Boolean).forEach(applyAssignments);
+        } catch (err) {
+          console.warn("[buildEmployeePolicyMap]", err);
+          list.forEach(applyAssignments);
+        }
+      } else {
+        list.forEach(applyAssignments);
+      }
+
+      setEmployeePolicyMap(map);
+    },
+    [BACKEND_URL, headers, orgId, policies],
+  );
+
   const fetchAssignmentData = useCallback(
     async (search = "") => {
       if (!orgId || !BACKEND_URL) return;
@@ -283,12 +401,8 @@ export default function PunchPolicyModal({ isOpen, onClose }) {
             params: search.trim() ? { search: search.trim() } : undefined,
           }),
         ]);
-        if (deptRes.data?.success) {
-          setDepartments(deptRes.data.data || []);
-        }
-        if (empRes.data?.success) {
-          setEmployees(empRes.data.data || []);
-        }
+        if (deptRes.data?.success) setDepartments(deptRes.data.data || []);
+        if (empRes.data?.success) setEmployees(empRes.data.data || []);
       } catch (err) {
         console.error("[PunchPolicyModal] fetchAssignmentData:", err);
       } finally {
@@ -317,7 +431,8 @@ export default function PunchPolicyModal({ isOpen, onClose }) {
   useEffect(() => {
     if (!isOpen || view !== "form") return;
     fetchAssignmentData();
-  }, [isOpen, view]);
+    buildEmployeePolicyMap(editingId);
+  }, [isOpen, view, editingId]);
 
   useEffect(() => {
     if (!isOpen || view !== "form" || assignmentTab !== "employees") return;
@@ -335,7 +450,6 @@ export default function PunchPolicyModal({ isOpen, onClose }) {
     );
   }, [policies, listSearch]);
 
-  // Departments used as selectable "groups"
   const filteredDepartments = useMemo(() => {
     const q = searchText.trim().toLowerCase();
     if (!q) return departments;
@@ -354,7 +468,6 @@ export default function PunchPolicyModal({ isOpen, onClose }) {
     );
   }, [employees, empSearch]);
 
-  // Group employees by department for display
   const employeesByDept = useMemo(() => {
     const map = {};
     filteredEmployees.forEach((emp) => {
@@ -370,33 +483,57 @@ export default function PunchPolicyModal({ isOpen, onClose }) {
     setDescription(policy.description || "");
     setPolicyType(policy.policyType || "late_login");
     setAppliesTo(policy.appliesTo || "specific");
-    setDeductionBasis(policy.deductionBasis || "hours");
-    setDeductionType(policy.deductionType || "hour");
+    setDeductionBasis(
+      policy.deductionBasis === "hours"
+        ? "percentage"
+        : policy.deductionBasis || "percentage",
+    );
+    setDeductionType(
+      policy.deductionType === "hour" || policy.deductionType === "per_hour"
+        ? "half_day"
+        : policy.deductionType || "half_day",
+    );
     setDeductionValue(policy.deductionValue || "");
-    setRounding(policy.rounding || "nearest_minute");
-    setSelectedGroups(policy.selectedGroups || []);
-    setSelectedEmployees(policy.selectedEmployees || []);
-    setApplyGraceTime(!!policy.applyGraceTime);
-    setGraceMinutes(policy.graceMinutes || "15");
-    setMinDuration(policy.minDuration || "15");
-    setMarkAsHalfDay(!!policy.markAsHalfDay);
-    setMarkAsFullDay(!!policy.markAsFullDay);
-    setHalfDayAfter(policy.halfDayAfter || "03:00");
-    setFullDayAfter(policy.fullDayAfter || "06:00");
-    setHalfDayOperator(policy.halfDayOperator || "greater");
-    setFullDayOperator(policy.fullDayOperator || "greater");
+
+    const sharedBuf = policy.bufferTime || policy.minDuration || "15";
+    setMinDuration(policy.minDuration || sharedBuf);
+    setBufferTime(sharedBuf);
+
+    setLimitWeekly(policy.limitWeekly || "2");
+    setLimitMonthly(policy.limitMonthly || "4");
+    setHalfDayBelowHours(policy.halfDayBelowHours || "3");
+    setFullDayBelowHours(policy.fullDayBelowHours || "1");
+    setEnableFullDayThreshold(!!policy.enableFullDayThreshold);
+    setLateCountLimit(policy.lateCountLimit || "22");
+    setLateWithinDays(policy.lateWithinDays || "15");
+    setShiftMode(policy.shiftMode || "general");
+    setPunchInTime(policy.punchInTime || "09:00");
+    setPunchOutTime(policy.punchOutTime || "18:00");
+    setShifts(
+      policy.shifts?.length
+        ? policy.shifts.map((s) => ({
+            ...s,
+            bufferTime: sharedBuf,
+          }))
+        : [
+            {
+              id: "default",
+              name: "General",
+              punchInTime: policy.punchInTime || "09:00",
+              bufferTime: sharedBuf,
+              punchOutTime: policy.punchOutTime || "18:00",
+            },
+          ],
+    );
+    setSkipIfRegularised(policy.skipIfRegularised !== false);
     setPolicyStatus(policy.policyStatus || "active");
     setEffectiveFrom(
       policy.effectiveFrom || new Date().toISOString().slice(0, 10),
     );
     setEffectiveTill(policy.effectiveTill || "");
     setNoExpiry(!!policy.noExpiry);
-    setRules(policy.rules || []);
-    setExcuses(
-      policy.excuses && policy.excuses.length
-        ? policy.excuses
-        : DEFAULT_EXCUSES,
-    );
+    setSelectedGroups(policy.selectedGroups || []);
+    setSelectedEmployees(policy.selectedEmployees || []);
   };
 
   const resetForm = () => {
@@ -408,34 +545,29 @@ export default function PunchPolicyModal({ isOpen, onClose }) {
     setDeductionBasis(empty.deductionBasis);
     setDeductionType(empty.deductionType);
     setDeductionValue(empty.deductionValue);
-    setRounding(empty.rounding);
-    setSelectedGroups(empty.selectedGroups);
-    setSelectedEmployees(empty.selectedEmployees);
-    setApplyGraceTime(empty.applyGraceTime);
-    setGraceMinutes(empty.graceMinutes);
     setMinDuration(empty.minDuration);
-    setMarkAsHalfDay(empty.markAsHalfDay);
-    setMarkAsFullDay(empty.markAsFullDay);
-    setHalfDayAfter(empty.halfDayAfter);
-    setFullDayAfter(empty.fullDayAfter);
-    setHalfDayOperator(empty.halfDayOperator);
-    setFullDayOperator(empty.fullDayOperator);
+    setBufferTime(empty.bufferTime);
+    setLimitWeekly(empty.limitWeekly);
+    setLimitMonthly(empty.limitMonthly);
+    setHalfDayBelowHours(empty.halfDayBelowHours);
+    setFullDayBelowHours(empty.fullDayBelowHours);
+    setEnableFullDayThreshold(empty.enableFullDayThreshold);
+    setLateCountLimit(empty.lateCountLimit);
+    setLateWithinDays(empty.lateWithinDays);
+    setShiftMode(empty.shiftMode);
+    setPunchInTime(empty.punchInTime);
+    setPunchOutTime(empty.punchOutTime);
+    setShifts([{ ...emptyShift(), bufferTime: empty.bufferTime }]);
+    setSkipIfRegularised(empty.skipIfRegularised);
     setPolicyStatus(empty.policyStatus);
     setEffectiveFrom(empty.effectiveFrom);
     setEffectiveTill(empty.effectiveTill);
     setNoExpiry(empty.noExpiry);
+    setSelectedGroups([]);
+    setSelectedEmployees([]);
     setSearchText("");
     setEmpSearch("");
     setAssignmentTab("groups");
-    setRules([]);
-    setExcuses(DEFAULT_EXCUSES);
-    setNewRule({
-      scenario: "late_login",
-      adjustmentType: "deduction",
-      applyAs: "hour",
-      excuse: "",
-      minDuration: "15",
-    });
   };
 
   const handleOpenCreate = () => {
@@ -501,43 +633,100 @@ export default function PunchPolicyModal({ isOpen, onClose }) {
       setSuccessMsg(res?.data?.message || "Policy deleted successfully.");
       await fetchPolicies();
     } catch (err) {
-      console.error("[PunchPolicyModal] delete:", err);
       setError(getApiErrorMessage(err, "Failed to delete policy."));
     } finally {
       setDeleteLoading(false);
     }
   };
 
-  const buildPayload = () => ({
-    policyName: policyName.trim(),
-    description: description.trim(),
-    policyType,
-    appliesTo,
-    deductionBasis,
-    deductionType,
-    deductionValue: Number(deductionValue) || 0,
-    rounding,
-    selectedGroups: [...selectedGroups],
-    selectedEmployees: selectedEmployees.map((e) => ({
-      id: e.id,
-      name: e.name,
-    })),
-    applyGraceTime,
-    graceMinutes: Number(graceMinutes) || 0,
-    minDuration: Number(minDuration) || 0,
-    markAsHalfDay,
-    markAsFullDay,
-    halfDayAfter,
-    fullDayAfter,
-    halfDayOperator,
-    fullDayOperator,
-    policyStatus,
-    effectiveFrom,
-    effectiveTill: noExpiry ? null : effectiveTill || null,
-    noExpiry,
-    rules,
-    excuses,
-  });
+  const addShift = () => {
+    setShifts((prev) => [
+      ...prev,
+      {
+        ...emptyShift(),
+        name: `Shift ${prev.length + 1}`,
+        bufferTime: minDuration || bufferTime || "15",
+      },
+    ]);
+  };
+
+  const updateShift = (id, field, value) => {
+    if (field === "bufferTime") {
+      setMinDurationAndBuffer(value);
+      return;
+    }
+    setShifts((prev) =>
+      prev.map((s) => (s.id === id ? { ...s, [field]: value } : s)),
+    );
+  };
+
+  const removeShift = (id) => {
+    setShifts((prev) =>
+      prev.length <= 1 ? prev : prev.filter((s) => s.id !== id),
+    );
+  };
+
+  const buildPayload = () => {
+    const sharedBuffer = Number(minDuration) || Number(bufferTime) || 0;
+
+    const base = {
+      policyName: policyName.trim(),
+      description: description.trim(),
+      policyType,
+      appliesTo,
+      deductionBasis,
+      deductionType,
+      deductionValue: Number(deductionValue) || 0,
+      minDuration: sharedBuffer,
+      limitWeekly: Number(limitWeekly) || 0,
+      limitMonthly: Number(limitMonthly) || 0,
+      halfDayBelowHours: Number(halfDayBelowHours) || 0,
+      fullDayBelowHours: Number(fullDayBelowHours) || 0,
+      enableFullDayThreshold,
+      lateCountLimit: Number(lateCountLimit) || 0,
+      lateWithinDays: Number(lateWithinDays) || 0,
+      skipIfRegularised,
+      policyStatus,
+      effectiveFrom,
+      effectiveTill: noExpiry ? null : effectiveTill || null,
+      noExpiry,
+      selectedGroups: [...selectedGroups],
+      selectedEmployees: selectedEmployees.map((e) => ({
+        id: e.id,
+        name: e.name,
+      })),
+    };
+
+    if (isLateLogin) {
+      base.shiftMode = shiftMode;
+      base.bufferTime = sharedBuffer;
+      if (shiftMode === "general") {
+        base.punchInTime = punchInTime;
+        base.punchOutTime = punchOutTime;
+        base.shifts = [
+          {
+            name: "General",
+            punchInTime,
+            bufferTime: sharedBuffer,
+            punchOutTime,
+          },
+        ];
+      } else {
+        base.shifts = shifts.map((s) => ({
+          name: s.name || "Shift",
+          punchInTime: s.punchInTime,
+          bufferTime: sharedBuffer,
+          punchOutTime: s.punchOutTime,
+        }));
+        if (shifts[0]) {
+          base.punchInTime = shifts[0].punchInTime;
+          base.punchOutTime = shifts[0].punchOutTime;
+        }
+      }
+    }
+
+    return base;
+  };
 
   const handleSave = async () => {
     clearMessages();
@@ -553,9 +742,9 @@ export default function PunchPolicyModal({ isOpen, onClose }) {
       setError("Missing backend configuration.");
       return;
     }
-    const payload = buildPayload();
     try {
       setSaveLoading(true);
+      const payload = buildPayload();
       let res;
       if (editingId) {
         res = await axios.put(
@@ -592,7 +781,6 @@ export default function PunchPolicyModal({ isOpen, onClose }) {
       await fetchPolicies();
       handleBackToList();
     } catch (err) {
-      console.error("[PunchPolicyModal] save:", err);
       setError(
         getApiErrorMessage(
           err,
@@ -610,109 +798,65 @@ export default function PunchPolicyModal({ isOpen, onClose }) {
     );
   };
 
+  const getEmployeeExistingPolicy = (empId) => {
+    const key = String(empId);
+    return employeePolicyMap[key] || null;
+  };
+
   const toggleEmployee = (emp) => {
-    setSelectedEmployees((prev) => {
-      const exists = prev.some((e) => e.id === emp.id);
-      if (exists) return prev.filter((e) => e.id !== emp.id);
-      return [...prev, { id: emp.id, name: emp.name }];
-    });
+    const exists = selectedEmployees.some((e) => e.id === emp.id);
+    if (exists) {
+      setSelectedEmployees((prev) => prev.filter((e) => e.id !== emp.id));
+      return;
+    }
+
+    const existing = getEmployeeExistingPolicy(emp.id);
+    if (existing) {
+      window.alert(
+        `${emp.name || emp.id} is already assigned to policy “${existing.policyName}”.\n\nAn employee can only be in one policy. Remove them from that policy first, then assign here.`,
+      );
+      return;
+    }
+
+    setSelectedEmployees((prev) => [...prev, { id: emp.id, name: emp.name }]);
   };
 
   const isEmployeeSelected = (id) => selectedEmployees.some((e) => e.id === id);
 
-  /* ── Rules ── */
-  const handleAddRule = () => {
-    if (!newRule.scenario || !newRule.applyAs) return;
-    setRules((prev) => [...prev, { id: Date.now().toString(), ...newRule }]);
-    setNewRule({
-      scenario: "late_login",
-      adjustmentType: "deduction",
-      applyAs: "hour",
-      excuse: "",
-      minDuration: "15",
-    });
-  };
-
-  const handleDeleteRule = (id) => {
-    setRules((prev) => prev.filter((r) => r.id !== id));
-  };
-
-  const handleEditRule = (rule) => {
-    setNewRule({ ...rule });
-    setRules((prev) => prev.filter((r) => r.id !== rule.id));
-  };
-
-  /* ── Excuses ── */
-  const updateExcuse = (id, field, value) => {
-    setExcuses((prev) =>
-      prev.map((e) => (e.id === id ? { ...e, [field]: value } : e)),
-    );
-  };
-
-  const deleteExcuse = (id) => {
-    setExcuses((prev) => prev.filter((e) => e.id !== id));
-  };
-
-  const addExcuse = () => {
-    setExcuses((prev) => [
-      ...prev,
-      {
-        id: Date.now().toString(),
-        name: "New Excuse",
-        weekly: "1",
-        days15: "2",
-        monthly: "3",
-      },
-    ]);
-  };
-
-  const getRuleExampleText = (rule) => {
-    switch (rule.scenario) {
-      case "late_login":
-        return "Login 09:45 · Scheduled 09:00 → 45 mins late → 0.5 hr deduction";
-      case "missed_logout":
-        return "Logout 05:15 · Scheduled 06:00 → 45 mins early → 0.5 hr deduction";
-      case "missed_punch_in":
-        return "Punch-in 10:30 · Scheduled 09:00 → 1.5 hrs → 1 hr deduction";
-      case "less_total_hours":
-        return "Worked 5h 20m · Required 8h → Shortage 2h 40m → Half Day";
-      default:
-        return "";
-    }
-  };
+  const policyTypeLabel =
+    policyType === "late_login"
+      ? "Late Login"
+      : policyType === "miss_punch_out"
+        ? "Miss Punch Out"
+        : "Less Login Hours";
 
   const summary = {
-    policyType:
-      policyType === "late_login"
-        ? "Late Login"
-        : policyType === "missed_punch_in"
-          ? "Missed Punch-in"
-          : "Both",
-    deductionType:
-      deductionType === "hour"
-        ? "Hour"
-        : deductionType === "half_day"
-          ? "Half Day"
-          : "Full Day",
-    rulesCount: rules.length,
-    excusesCount: excuses.length,
-    graceTime: applyGraceTime ? `${graceMinutes} mins` : "0 mins",
-    halfDayAfter: markAsHalfDay
-      ? `${halfDayOperator === "greater" ? ">" : "≥"} ${halfDayAfter}`
-      : "—",
-    fullDayAfter: markAsFullDay
-      ? `${fullDayOperator === "greater" ? ">" : "≥"} ${fullDayAfter}`
+    policyType: policyTypeLabel,
+    deductionType: deductionType === "half_day" ? "Half Day" : "Full Day",
+    limits: isLessHours
+      ? `Half < ${halfDayBelowHours}h${enableFullDayThreshold ? ` · Full < ${fullDayBelowHours}h` : ""}`
+      : isLateLogin
+        ? `${lateCountLimit} late in ${lateWithinDays} days · min ${minDuration}m`
+        : `W:${limitWeekly} M:${limitMonthly}`,
+    shiftInfo: isLateLogin
+      ? shiftMode === "general"
+        ? `General ${punchInTime}–${punchOutTime} (buf ${bufferTime}m)`
+        : `${shifts.length} shifts (buf ${bufferTime}m)`
       : "—",
     appliesTo:
       appliesTo === "all"
         ? "All Employees"
         : `${selectedGroups.length} Dept · ${selectedEmployees.length} Emp`,
     policyStatus: policyStatus === "active" ? "Active" : "Inactive",
+    skipIfRegularised: skipIfRegularised ? "Yes" : "No",
   };
+
+  const validitySectionNum = isLateLogin ? "4" : "3";
+  const assignSectionNum = isLateLogin ? "5" : "4";
 
   if (!isOpen) return null;
 
-  /* ──────────────────── LIST VIEW ──────────────────── */
+  /* ───── LIST VIEW ───── */
   if (view === "list") {
     return (
       <div className="punch-policy-overlay" onClick={onClose}>
@@ -731,7 +875,7 @@ export default function PunchPolicyModal({ isOpen, onClose }) {
                 Attendance Policy
               </h2>
               <p className="pp-subtitle">
-                Map and manage late login and missed punch-in deduction rules.
+                Late login, miss punch-out and less login hours deduction rules.
               </p>
             </div>
             <div className="pp-header-actions">
@@ -802,20 +946,21 @@ export default function PunchPolicyModal({ isOpen, onClose }) {
                 <thead>
                   <tr>
                     <th>Policy Name</th>
-                    <th style={{ width: 120 }}>Status</th>
-                    <th style={{ width: 140, textAlign: "right" }}>Actions</th>
+                    <th style={{ width: 140 }}>Type</th>
+                    <th style={{ width: 100 }}>Status</th>
+                    <th style={{ width: 120, textAlign: "right" }}>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {listLoading ? (
                     <tr>
-                      <td colSpan={3} className="pp-list-empty">
+                      <td colSpan={4} className="pp-list-empty">
                         Loading policies...
                       </td>
                     </tr>
                   ) : filteredPolicies.length === 0 ? (
                     <tr>
-                      <td colSpan={3} className="pp-list-empty">
+                      <td colSpan={4} className="pp-list-empty">
                         No policies found.
                       </td>
                     </tr>
@@ -829,6 +974,15 @@ export default function PunchPolicyModal({ isOpen, onClose }) {
                           <div className="pp-list-desc">
                             {policy.description || "—"}
                           </div>
+                        </td>
+                        <td style={{ fontSize: 13, color: "#475569" }}>
+                          {policy.policyType === "late_login"
+                            ? "Late Login"
+                            : policy.policyType === "miss_punch_out"
+                              ? "Miss Punch Out"
+                              : policy.policyType === "less_login_hours"
+                                ? "Less Login Hours"
+                                : policy.policyType}
                         </td>
                         <td>
                           <span
@@ -897,7 +1051,7 @@ export default function PunchPolicyModal({ isOpen, onClose }) {
     );
   }
 
-  /* ──────────────────── FORM VIEW ──────────────────── */
+  /* ───── FORM VIEW ───── */
   return (
     <div className="punch-policy-overlay" onClick={onClose}>
       <div className="punch-policy-modal" onClick={(e) => e.stopPropagation()}>
@@ -916,7 +1070,7 @@ export default function PunchPolicyModal({ isOpen, onClose }) {
                 : "Create Attendance Policy"}
             </h2>
             <p className="pp-subtitle">
-              Configure deduction rules, excuses, and assignment.
+              Configure rules by policy type for pay deduction.
             </p>
           </div>
           <div className="pp-header-actions">
@@ -960,7 +1114,6 @@ export default function PunchPolicyModal({ isOpen, onClose }) {
           )}
 
           <div className="pp-main-layout">
-            {/* ── Left form panel ── */}
             <div className="pp-form-panel">
               {/* 1. Policy Details */}
               <div className="pp-section">
@@ -974,18 +1127,22 @@ export default function PunchPolicyModal({ isOpen, onClose }) {
                       type="text"
                       value={policyName}
                       onChange={(e) => setPolicyName(e.target.value)}
-                      placeholder="e.g. Late Login Policy"
+                      placeholder="e.g. Late Login – Factory"
                     />
                   </div>
                   <div className="pp-field">
-                    <label>Policy Type</label>
+                    <label>
+                      Policy Type <span className="required">*</span>
+                    </label>
                     <select
                       value={policyType}
                       onChange={(e) => setPolicyType(e.target.value)}
                     >
-                      <option value="late_login">Late Login</option>
-                      <option value="missed_punch_in">Missed Punch-in</option>
-                      <option value="both">Both</option>
+                      <option value="late_login">1. Late Login</option>
+                      <option value="miss_punch_out">2. Miss Punch Out</option>
+                      <option value="less_login_hours">
+                        3. Less Login Hours
+                      </option>
                     </select>
                   </div>
                 </div>
@@ -1021,88 +1178,194 @@ export default function PunchPolicyModal({ isOpen, onClose }) {
                         checked={appliesTo === "specific"}
                         onChange={() => setAppliesTo("specific")}
                       />
-                      <span>Specific Groups / Employees</span>
+                      <span>Specific Departments / Employees</span>
                     </label>
                   </div>
                 </div>
               </div>
 
-              {/* 2. Half Day / Full Day */}
+              {/* 2. Deduction Configuration */}
               <div className="pp-section">
-                <h3 className="pp-section-title">
-                  2. Half Day / Full Day Configuration
-                </h3>
-                <div className="pp-flag-row">
-                  <input
-                    type="checkbox"
-                    checked={markAsHalfDay}
-                    onChange={(e) => setMarkAsHalfDay(e.target.checked)}
-                  />
-                  <span>Mark as Half Day when late duration is</span>
-                </div>
-                {markAsHalfDay && (
-                  <div className="pp-duration-row">
-                    <div className="pp-duration-control">
-                      <select
-                        value={halfDayOperator}
-                        onChange={(e) => setHalfDayOperator(e.target.value)}
-                      >
-                        <option value="greater">Greater than</option>
-                        <option value="equal">Greater or equal</option>
-                      </select>
-                      <input
-                        type="time"
-                        value={halfDayAfter}
-                        onChange={(e) => setHalfDayAfter(e.target.value)}
-                      />
-                    </div>
-                  </div>
-                )}
-                <div className="pp-flag-row">
-                  <input
-                    type="checkbox"
-                    checked={markAsFullDay}
-                    onChange={(e) => setMarkAsFullDay(e.target.checked)}
-                  />
-                  <span>Mark as Full Day when late duration is</span>
-                </div>
-                {markAsFullDay && (
-                  <div className="pp-duration-row">
-                    <div className="pp-duration-control">
-                      <select
-                        value={fullDayOperator}
-                        onChange={(e) => setFullDayOperator(e.target.value)}
-                      >
-                        <option value="greater">Greater than</option>
-                        <option value="equal">Greater or equal</option>
-                      </select>
-                      <input
-                        type="time"
-                        value={fullDayAfter}
-                        onChange={(e) => setFullDayAfter(e.target.value)}
-                      />
-                    </div>
-                  </div>
-                )}
-              </div>
+                <h3 className="pp-section-title">2. Deduction Configuration</h3>
+                <p className="pp-section-desc">
+                  {isLateLogin &&
+                    "Set min duration (same as buffer) and late count within days. When exceeded, Half/Full Day deduction applies. Approved regularisation skips deduction."}
+                  {isMissPunchOut &&
+                    "Set free miss punch-out counts (Weekly / Monthly). When exceeded, Half/Full Day deduction applies. Approved regularisation skips deduction."}
+                  {isLessHours &&
+                    "Set worked-hours thresholds. Below threshold → Half Day / Full Day. Approved regularisation skips deduction."}
+                </p>
 
-              {/* 3. Deduction Configuration */}
-              <div className="pp-section">
-                <h3 className="pp-section-title">3. Deduction Configuration</h3>
-                <div className="pp-field">
-                  <label>Apply As</label>
-                  <div className="pp-radio-row">
-                    <label
-                      className={`pp-radio ${deductionType === "hour" ? "active" : ""}`}
+                {isLateLogin && (
+                  <>
+                    <div className="pp-field" style={{ marginBottom: 16 }}>
+                      <label>
+                        Min Duration (count as late after){" "}
+                        <span style={{ color: "#64748b", fontWeight: 400 }}>
+                          = Buffer Time
+                        </span>
+                      </label>
+                      <div className="pp-short-input">
+                        <input
+                          type="number"
+                          min="0"
+                          value={minDuration}
+                          onChange={(e) =>
+                            setMinDurationAndBuffer(e.target.value)
+                          }
+                        />
+                        <span>mins</span>
+                      </div>
+                      <p
+                        style={{
+                          fontSize: 12,
+                          color: "#64748b",
+                          marginTop: 6,
+                        }}
+                      >
+                        Changing this also updates Buffer Time in Other
+                        Settings.
+                      </p>
+                    </div>
+                    <div
+                      className="pp-grid pp-grid-two"
+                      style={{ marginBottom: 8 }}
                     >
-                      <input
-                        type="radio"
-                        name="deductionType"
-                        checked={deductionType === "hour"}
-                        onChange={() => setDeductionType("hour")}
-                      />
-                      <span>Hour</span>
-                    </label>
+                      <div className="pp-field">
+                        <label>Late count limit</label>
+                        <div
+                          className="pp-short-input"
+                          style={{ width: "100%" }}
+                        >
+                          <input
+                            type="number"
+                            min="1"
+                            value={lateCountLimit}
+                            onChange={(e) => setLateCountLimit(e.target.value)}
+                          />
+                          <span>times</span>
+                        </div>
+                      </div>
+                      <div className="pp-field">
+                        <label>Within days</label>
+                        <div
+                          className="pp-short-input"
+                          style={{ width: "100%" }}
+                        >
+                          <input
+                            type="number"
+                            min="1"
+                            value={lateWithinDays}
+                            onChange={(e) => setLateWithinDays(e.target.value)}
+                          />
+                          <span>days</span>
+                        </div>
+                      </div>
+                    </div>
+                    <p
+                      style={{
+                        fontSize: 12,
+                        color: "#64748b",
+                        marginBottom: 16,
+                      }}
+                    >
+                      Example: {lateCountLimit || "22"} late logins within{" "}
+                      {lateWithinDays || "15"} days → deduction applies.
+                    </p>
+                  </>
+                )}
+
+                {isMissPunchOut && (
+                  <div
+                    className="pp-grid pp-grid-two"
+                    style={{ marginBottom: 16 }}
+                  >
+                    <div className="pp-field">
+                      <label>Free limit – Weekly</label>
+                      <div className="pp-short-input" style={{ width: "100%" }}>
+                        <input
+                          type="number"
+                          min="0"
+                          value={limitWeekly}
+                          onChange={(e) => setLimitWeekly(e.target.value)}
+                        />
+                        <span>times</span>
+                      </div>
+                    </div>
+                    <div className="pp-field">
+                      <label>Free limit – Monthly</label>
+                      <div className="pp-short-input" style={{ width: "100%" }}>
+                        <input
+                          type="number"
+                          min="0"
+                          value={limitMonthly}
+                          onChange={(e) => setLimitMonthly(e.target.value)}
+                        />
+                        <span>times</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {isLessHours && (
+                  <div
+                    className="pp-grid pp-grid-two"
+                    style={{ marginBottom: 16 }}
+                  >
+                    <div className="pp-field">
+                      <label>
+                        Half Day if worked hours &lt;{" "}
+                        <span className="required">*</span>
+                      </label>
+                      <div className="pp-short-input" style={{ width: "100%" }}>
+                        <input
+                          type="number"
+                          min="0"
+                          step="0.5"
+                          value={halfDayBelowHours}
+                          onChange={(e) => setHalfDayBelowHours(e.target.value)}
+                        />
+                        <span>hours</span>
+                      </div>
+                    </div>
+                    <div className="pp-field">
+                      <label
+                        className="pp-flag-row"
+                        style={{ marginBottom: 8 }}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={enableFullDayThreshold}
+                          onChange={(e) =>
+                            setEnableFullDayThreshold(e.target.checked)
+                          }
+                        />
+                        <span>Full Day if worked hours &lt;</span>
+                      </label>
+                      {enableFullDayThreshold && (
+                        <div
+                          className="pp-short-input"
+                          style={{ width: "100%" }}
+                        >
+                          <input
+                            type="number"
+                            min="0"
+                            step="0.5"
+                            value={fullDayBelowHours}
+                            onChange={(e) =>
+                              setFullDayBelowHours(e.target.value)
+                            }
+                          />
+                          <span>hours</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                <div className="pp-field">
+                  <label>When limit / threshold is exceeded — Apply As</label>
+                  <div className="pp-radio-row">
                     <label
                       className={`pp-radio ${deductionType === "half_day" ? "active" : ""}`}
                     >
@@ -1127,20 +1390,10 @@ export default function PunchPolicyModal({ isOpen, onClose }) {
                     </label>
                   </div>
                 </div>
+
                 <div className="pp-field" style={{ marginTop: 14 }}>
                   <label>Deduction Basis</label>
                   <div className="pp-radio-row">
-                    <label
-                      className={`pp-radio ${deductionBasis === "hours" ? "active" : ""}`}
-                    >
-                      <input
-                        type="radio"
-                        name="deductionBasis"
-                        checked={deductionBasis === "hours"}
-                        onChange={() => setDeductionBasis("hours")}
-                      />
-                      <span>Actual Hours</span>
-                    </label>
                     <label
                       className={`pp-radio ${deductionBasis === "percentage" ? "active" : ""}`}
                     >
@@ -1165,424 +1418,249 @@ export default function PunchPolicyModal({ isOpen, onClose }) {
                     </label>
                   </div>
                 </div>
-                <div
-                  className="pp-grid pp-grid-three"
-                  style={{ marginTop: 16 }}
-                >
-                  <div className="pp-field">
-                    <label>
-                      Deduction Value{" "}
-                      {deductionBasis !== "hours" && (
-                        <span className="required">*</span>
-                      )}
-                    </label>
-                    <div
-                      style={{ display: "flex", alignItems: "center", gap: 8 }}
-                    >
-                      <input
-                        type="number"
-                        min="0"
-                        step="0.5"
-                        value={deductionValue}
-                        onChange={(e) => setDeductionValue(e.target.value)}
-                        style={{ flex: 1 }}
-                        placeholder={
-                          deductionBasis === "percentage"
-                            ? "e.g. 50"
-                            : deductionBasis === "amount"
-                              ? "e.g. 200"
-                              : "Auto"
-                        }
-                        disabled={deductionBasis === "hours"}
-                      />
-                      <span style={{ color: "#6b7280", fontSize: 14 }}>
-                        {deductionBasis === "percentage"
-                          ? "%"
-                          : deductionBasis === "amount"
-                            ? "₹"
-                            : "hrs"}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="pp-field">
-                    <label>
-                      Min Duration <span className="required">*</span>
-                    </label>
-                    <div className="pp-short-input" style={{ width: "100%" }}>
-                      <input
-                        type="number"
-                        min="0"
-                        value={minDuration}
-                        onChange={(e) => setMinDuration(e.target.value)}
-                        placeholder="15"
-                      />
-                      <span>mins</span>
-                    </div>
-                  </div>
-                  <div className="pp-field">
-                    <label>Rounding</label>
-                    <select
-                      value={rounding}
-                      onChange={(e) => setRounding(e.target.value)}
-                    >
-                      <option value="nearest_minute">Nearest minute</option>
-                      <option value="nearest_five">Nearest 5 min</option>
-                      <option value="nearest_half">Nearest 0.5 hr</option>
-                    </select>
+
+                <div className="pp-field" style={{ marginTop: 16 }}>
+                  <label>
+                    Deduction Value <span className="required">*</span>
+                  </label>
+                  <div
+                    style={{ display: "flex", alignItems: "center", gap: 8 }}
+                  >
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.5"
+                      value={deductionValue}
+                      onChange={(e) => setDeductionValue(e.target.value)}
+                      style={{ flex: 1, maxWidth: 200 }}
+                      placeholder={
+                        deductionBasis === "percentage" ? "e.g. 50" : "e.g. 200"
+                      }
+                    />
+                    <span style={{ color: "#6b7280", fontSize: 14 }}>
+                      {deductionBasis === "percentage" ? "%" : "₹"}
+                    </span>
                   </div>
                 </div>
+
+                <label className="pp-flag-row" style={{ marginTop: 16 }}>
+                  <input
+                    type="checkbox"
+                    checked={skipIfRegularised}
+                    onChange={(e) => setSkipIfRegularised(e.target.checked)}
+                  />
+                  <span>
+                    Do not apply deduction if attendance regularisation is
+                    approved
+                  </span>
+                </label>
               </div>
 
-              {/* 4. Adjustment Rules */}
-              <div className="pp-section">
-                <h3 className="pp-section-title">
-                  4. Configure Adjustment Rules
-                </h3>
-                <p className="pp-section-desc">
-                  Define rules for different scenarios and min duration.
-                </p>
-                <div className="pp-rule-builder">
-                  <div
-                    className="pp-grid pp-grid-three"
-                    style={{ marginBottom: 16 }}
-                  >
-                    <div className="pp-field">
-                      <label>
-                        Scenario <span className="required">*</span>
-                      </label>
-                      <select
-                        value={newRule.scenario}
-                        onChange={(e) =>
-                          setNewRule({ ...newRule, scenario: e.target.value })
-                        }
-                      >
-                        <option value="late_login">Late Login</option>
-                        <option value="missed_logout">Missed Logout</option>
-                        <option value="missed_punch_in">Missed Punch-in</option>
-                        <option value="less_total_hours">
-                          Less Total Hours
-                        </option>
-                      </select>
-                    </div>
-                    <div className="pp-field">
-                      <label>
-                        Adjustment Type <span className="required">*</span>
-                      </label>
-                      <select
-                        value={newRule.adjustmentType}
-                        onChange={(e) =>
-                          setNewRule({
-                            ...newRule,
-                            adjustmentType: e.target.value,
-                          })
-                        }
-                      >
-                        <option value="deduction">Deduction</option>
-                        <option value="credit">Credit</option>
-                      </select>
-                    </div>
-                    <div className="pp-field">
-                      <label>
-                        Apply As <span className="required">*</span>
-                      </label>
-                      <select
-                        value={newRule.applyAs}
-                        onChange={(e) =>
-                          setNewRule({ ...newRule, applyAs: e.target.value })
-                        }
-                      >
-                        <option value="hour">Hour</option>
-                        <option value="half_day">Half Day</option>
-                        <option value="full_day">Full Day</option>
-                      </select>
-                    </div>
-                  </div>
-                  <div
-                    className="pp-grid pp-grid-two"
-                    style={{ marginBottom: 16 }}
-                  >
-                    <div className="pp-field">
-                      <label>Excuse / Reason (Optional)</label>
-                      <select
-                        value={newRule.excuse}
-                        onChange={(e) =>
-                          setNewRule({ ...newRule, excuse: e.target.value })
-                        }
-                      >
-                        <option value="">Select Excuse</option>
-                        {excuses.map((ex) => (
-                          <option key={ex.id} value={ex.name}>
-                            {ex.name}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    <div className="pp-field">
-                      <label>Min Duration</label>
-                      <div className="pp-short-input" style={{ width: "100%" }}>
-                        <input
-                          type="number"
-                          min="0"
-                          value={newRule.minDuration}
-                          onChange={(e) =>
-                            setNewRule({
-                              ...newRule,
-                              minDuration: e.target.value,
-                            })
-                          }
-                          placeholder="15"
-                        />
-                        <span>Mins</span>
-                      </div>
-                    </div>
-                  </div>
-                  <button
-                    type="button"
-                    className="pp-btn pp-btn-primary pp-btn-sm"
-                    onClick={handleAddRule}
-                  >
-                    <Plus size={15} style={{ marginRight: 6 }} />
-                    Add Rule
-                  </button>
-                </div>
+              {/* 3. Other Settings — LATE LOGIN ONLY */}
+              {isLateLogin && (
+                <div className="pp-section">
+                  <h3 className="pp-section-title">3. Other Settings</h3>
+                  <p className="pp-section-desc">
+                    Configure shift timings. Buffer Time is linked to Min
+                    Duration (count as late after). Late count limits are set in
+                    Deduction Configuration.
+                  </p>
 
-                {rules.length === 0 ? (
-                  <div
-                    style={{
-                      textAlign: "center",
-                      padding: "28px 16px",
-                      color: "#94a3b8",
-                      fontSize: 14,
-                      border: "1px dashed #e2e8f0",
-                      borderRadius: 14,
-                    }}
-                  >
-                    No rules added yet. Create your first rule above.
-                  </div>
-                ) : (
-                  <div className="pp-calc-examples">
-                    {rules.map((rule, index) => (
-                      <div
-                        key={rule.id}
-                        className="pp-calc-card"
-                        style={{
-                          borderLeftColor:
-                            rule.scenario === "late_login"
-                              ? "#3b82f6"
-                              : rule.scenario === "missed_logout"
-                                ? "#8b5cf6"
-                                : rule.scenario === "missed_punch_in"
-                                  ? "#10b981"
-                                  : "#f59e0b",
-                        }}
+                  <div className="pp-field" style={{ marginBottom: 16 }}>
+                    <label>Shift Type</label>
+                    <div className="pp-radio-row">
+                      <label
+                        className={`pp-radio ${shiftMode === "general" ? "active" : ""}`}
                       >
+                        <input
+                          type="radio"
+                          name="shiftMode"
+                          checked={shiftMode === "general"}
+                          onChange={() => setShiftMode("general")}
+                        />
+                        <span>General Shift</span>
+                      </label>
+                      <label
+                        className={`pp-radio ${shiftMode === "multiple" ? "active" : ""}`}
+                      >
+                        <input
+                          type="radio"
+                          name="shiftMode"
+                          checked={shiftMode === "multiple"}
+                          onChange={() => setShiftMode("multiple")}
+                        />
+                        <span>Multiple Shifts</span>
+                      </label>
+                    </div>
+                  </div>
+
+                  {shiftMode === "general" && (
+                    <div
+                      className="pp-grid pp-grid-three"
+                      style={{ marginBottom: 16 }}
+                    >
+                      <div className="pp-field">
+                        <label>Punch In Time</label>
+                        <input
+                          type="time"
+                          value={punchInTime}
+                          onChange={(e) => setPunchInTime(e.target.value)}
+                        />
+                      </div>
+                      <div className="pp-field">
+                        <label>
+                          Buffer Time{" "}
+                          <span style={{ color: "#64748b", fontWeight: 400 }}>
+                            = Min Duration
+                          </span>
+                        </label>
                         <div
-                          style={{
-                            display: "flex",
-                            justifyContent: "space-between",
-                            alignItems: "flex-start",
-                          }}
+                          className="pp-short-input"
+                          style={{ width: "100%" }}
                         >
-                          <div>
-                            <div className="pp-calc-card-title">
-                              {index + 1}.{" "}
-                              {rule.scenario === "late_login"
-                                ? "Late Login"
-                                : rule.scenario === "missed_logout"
-                                  ? "Missed Logout"
-                                  : rule.scenario === "missed_punch_in"
-                                    ? "Missed Punch-in"
-                                    : "Less Total Hours"}{" "}
-                              (
-                              {rule.applyAs === "hour"
-                                ? "Hourly"
-                                : rule.applyAs === "half_day"
-                                  ? "Half Day"
-                                  : "Full Day"}
-                              )
-                            </div>
-                            <div className="pp-calc-card-example">
-                              {getRuleExampleText(rule)}
-                            </div>
-                            <div
-                              style={{
-                                marginTop: 8,
-                                fontSize: 12,
-                                color: "#64748b",
-                                display: "flex",
-                                gap: 12,
-                                flexWrap: "wrap",
-                              }}
-                            >
-                              <span>
-                                Type: <strong>{rule.adjustmentType}</strong>
-                              </span>
-                              {rule.excuse && (
-                                <span>
-                                  Excuse: <strong>{rule.excuse}</strong>
-                                </span>
-                              )}
-                              <span>
-                                Min: <strong>{rule.minDuration} mins</strong>
-                              </span>
-                            </div>
-                          </div>
-                          <div style={{ display: "flex", gap: 6 }}>
-                            <button
-                              type="button"
-                              className="pp-icon-btn"
-                              title="Edit"
-                              onClick={() => handleEditRule(rule)}
-                            >
-                              <Pencil size={14} />
-                            </button>
-                            <button
-                              type="button"
-                              className="pp-icon-btn danger"
-                              title="Delete"
-                              onClick={() => handleDeleteRule(rule.id)}
-                            >
-                              <Trash2 size={14} />
-                            </button>
-                          </div>
+                          <input
+                            type="number"
+                            min="0"
+                            value={bufferTime}
+                            onChange={(e) =>
+                              setMinDurationAndBuffer(e.target.value)
+                            }
+                          />
+                          <span>mins</span>
                         </div>
                       </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {/* 5. Excuse Mapping */}
-              <div className="pp-section">
-                <h3 className="pp-section-title">5. Excuse / Reason Mapping</h3>
-                <p className="pp-section-desc">
-                  Allowed days for each excuse (weekly / 15 days / monthly).
-                </p>
-                <div className="pp-excuse-table-wrap">
-                  <table className="pp-excuse-table">
-                    <thead>
-                      <tr>
-                        <th>Excuse / Reason</th>
-                        <th style={{ width: 110 }}>Weekly</th>
-                        <th style={{ width: 110 }}>15 Days</th>
-                        <th style={{ width: 110 }}>Monthly</th>
-                        <th style={{ width: 90, textAlign: "right" }}>
-                          Action
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {excuses.map((ex) => (
-                        <tr key={ex.id}>
-                          <td>
-                            <div className="pp-excuse-name">
-                              <input
-                                value={ex.name}
-                                onChange={(e) =>
-                                  updateExcuse(ex.id, "name", e.target.value)
-                                }
-                                style={{
-                                  border: "none",
-                                  background: "transparent",
-                                  fontWeight: 500,
-                                  minHeight: "auto",
-                                  padding: 0,
-                                }}
-                              />
-                            </div>
-                          </td>
-                          <td>
-                            <input
-                              type="number"
-                              step="0.5"
-                              min="0"
-                              value={ex.weekly}
-                              onChange={(e) =>
-                                updateExcuse(ex.id, "weekly", e.target.value)
-                              }
-                            />
-                          </td>
-                          <td>
-                            <input
-                              type="number"
-                              step="0.5"
-                              min="0"
-                              value={ex.days15}
-                              onChange={(e) =>
-                                updateExcuse(ex.id, "days15", e.target.value)
-                              }
-                            />
-                          </td>
-                          <td>
-                            <input
-                              type="number"
-                              step="0.5"
-                              min="0"
-                              value={ex.monthly}
-                              onChange={(e) =>
-                                updateExcuse(ex.id, "monthly", e.target.value)
-                              }
-                            />
-                          </td>
-                          <td style={{ textAlign: "right" }}>
-                            <button
-                              type="button"
-                              className="pp-icon-btn danger"
-                              onClick={() => deleteExcuse(ex.id)}
-                            >
-                              <Trash2 size={14} />
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-                <button
-                  type="button"
-                  className="pp-add-excuse-btn"
-                  onClick={addExcuse}
-                >
-                  <Plus size={14} /> Add Excuse
-                </button>
-              </div>
-
-              {/* 6 + 7 */}
-              <div className="pp-section pp-section-inline">
-                <div className="pp-half">
-                  <h3 className="pp-section-title">6. Other Settings</h3>
-                  <div className="pp-toggle-row">
-                    <label
-                      style={{
-                        fontSize: 13.5,
-                        fontWeight: 500,
-                        color: "#374151",
-                      }}
-                    >
-                      Apply Grace Time
-                    </label>
-                    <button
-                      type="button"
-                      className={`pp-toggle ${applyGraceTime ? "on" : ""}`}
-                      onClick={() => setApplyGraceTime((v) => !v)}
-                    >
-                      <span className="pp-toggle-knob" />
-                    </button>
-                  </div>
-                  {applyGraceTime && (
-                    <div className="pp-field" style={{ marginBottom: 14 }}>
-                      <label>Grace Time (Daily)</label>
-                      <div className="pp-short-input">
+                      <div className="pp-field">
+                        <label>Punch Out Time</label>
                         <input
-                          type="number"
-                          min="0"
-                          value={graceMinutes}
-                          onChange={(e) => setGraceMinutes(e.target.value)}
+                          type="time"
+                          value={punchOutTime}
+                          onChange={(e) => setPunchOutTime(e.target.value)}
                         />
-                        <span>mins</span>
                       </div>
                     </div>
                   )}
+
+                  {shiftMode === "multiple" && (
+                    <div style={{ marginBottom: 16 }}>
+                      {shifts.map((s, idx) => (
+                        <div
+                          key={s.id}
+                          style={{
+                            border: "1px solid #e2e8f0",
+                            borderRadius: 14,
+                            padding: 14,
+                            marginBottom: 12,
+                            background: "#f8fafc",
+                          }}
+                        >
+                          <div
+                            style={{
+                              display: "flex",
+                              justifyContent: "space-between",
+                              alignItems: "center",
+                              marginBottom: 10,
+                            }}
+                          >
+                            <div
+                              className="pp-field"
+                              style={{ flex: 1, marginRight: 12 }}
+                            >
+                              <label>Shift Name</label>
+                              <input
+                                type="text"
+                                value={s.name}
+                                onChange={(e) =>
+                                  updateShift(s.id, "name", e.target.value)
+                                }
+                                placeholder={`Shift ${idx + 1}`}
+                              />
+                            </div>
+                            {shifts.length > 1 && (
+                              <button
+                                type="button"
+                                className="pp-icon-btn danger"
+                                title="Remove shift"
+                                onClick={() => removeShift(s.id)}
+                                style={{ marginTop: 18 }}
+                              >
+                                <Trash2 size={14} />
+                              </button>
+                            )}
+                          </div>
+                          <div className="pp-grid pp-grid-three">
+                            <div className="pp-field">
+                              <label>Punch In</label>
+                              <input
+                                type="time"
+                                value={s.punchInTime}
+                                onChange={(e) =>
+                                  updateShift(
+                                    s.id,
+                                    "punchInTime",
+                                    e.target.value,
+                                  )
+                                }
+                              />
+                            </div>
+                            <div className="pp-field">
+                              <label>
+                                Buffer{" "}
+                                <span
+                                  style={{
+                                    color: "#64748b",
+                                    fontWeight: 400,
+                                  }}
+                                >
+                                  = Min Duration
+                                </span>
+                              </label>
+                              <div
+                                className="pp-short-input"
+                                style={{ width: "100%" }}
+                              >
+                                <input
+                                  type="number"
+                                  min="0"
+                                  value={s.bufferTime}
+                                  onChange={(e) =>
+                                    updateShift(
+                                      s.id,
+                                      "bufferTime",
+                                      e.target.value,
+                                    )
+                                  }
+                                />
+                                <span>mins</span>
+                              </div>
+                            </div>
+                            <div className="pp-field">
+                              <label>Punch Out</label>
+                              <input
+                                type="time"
+                                value={s.punchOutTime}
+                                onChange={(e) =>
+                                  updateShift(
+                                    s.id,
+                                    "punchOutTime",
+                                    e.target.value,
+                                  )
+                                }
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                      <button
+                        type="button"
+                        className="pp-btn pp-btn-secondary pp-btn-sm"
+                        onClick={addShift}
+                      >
+                        <Plus size={14} style={{ marginRight: 6 }} />
+                        Add Shift
+                      </button>
+                    </div>
+                  )}
+
                   <div className="pp-field">
                     <label>Policy Status</label>
                     <select
@@ -1594,9 +1672,30 @@ export default function PunchPolicyModal({ isOpen, onClose }) {
                     </select>
                   </div>
                 </div>
-                <div className="pp-half">
-                  <h3 className="pp-section-title">7. Policy Validity</h3>
-                  <div className="pp-field" style={{ marginBottom: 14 }}>
+              )}
+
+              {!isLateLogin && (
+                <div className="pp-section">
+                  <h3 className="pp-section-title">3. Policy Status</h3>
+                  <div className="pp-field">
+                    <label>Status</label>
+                    <select
+                      value={policyStatus}
+                      onChange={(e) => setPolicyStatus(e.target.value)}
+                    >
+                      <option value="active">Active</option>
+                      <option value="inactive">Inactive</option>
+                    </select>
+                  </div>
+                </div>
+              )}
+
+              <div className="pp-section">
+                <h3 className="pp-section-title">
+                  {validitySectionNum}. Policy Validity
+                </h3>
+                <div className="pp-grid pp-grid-two">
+                  <div className="pp-field">
                     <label>
                       Effective From <span className="required">*</span>
                     </label>
@@ -1621,25 +1720,26 @@ export default function PunchPolicyModal({ isOpen, onClose }) {
                       <CalendarDays size={16} color="#9ca3af" />
                     </div>
                   </div>
-                  <label className="pp-checkbox-row">
-                    <input
-                      type="checkbox"
-                      checked={noExpiry}
-                      onChange={(e) => {
-                        setNoExpiry(e.target.checked);
-                        if (e.target.checked) setEffectiveTill("");
-                      }}
-                    />
-                    <span>No Expiry</span>
-                  </label>
                 </div>
+                <label className="pp-checkbox-row">
+                  <input
+                    type="checkbox"
+                    checked={noExpiry}
+                    onChange={(e) => {
+                      setNoExpiry(e.target.checked);
+                      if (e.target.checked) setEffectiveTill("");
+                    }}
+                  />
+                  <span>No Expiry</span>
+                </label>
               </div>
             </div>
 
-            {/* ── Assignment Panel ── */}
+            {/* Assignment panel */}
             <aside className="pp-assignment-panel">
-              <h3 className="pp-assignment-title">8. Assign Policy To</h3>
-
+              <h3 className="pp-assignment-title">
+                {assignSectionNum}. Assign Policy To
+              </h3>
               <div className="pp-tabs">
                 <button
                   type="button"
@@ -1657,7 +1757,6 @@ export default function PunchPolicyModal({ isOpen, onClose }) {
                 </button>
               </div>
 
-              {/* Selected chips */}
               <div className="pp-selected-chips">
                 {selectedGroups.map((g) => (
                   <div key={`g-${g}`} className="pp-chip">
@@ -1693,7 +1792,7 @@ export default function PunchPolicyModal({ isOpen, onClose }) {
                       <div
                         style={{ padding: 12, color: "#94a3b8", fontSize: 13 }}
                       >
-                        Loading departments...
+                        Loading...
                       </div>
                     ) : filteredDepartments.length === 0 ? (
                       <div
@@ -1720,7 +1819,7 @@ export default function PunchPolicyModal({ isOpen, onClose }) {
                     )}
                   </div>
                   <div className="pp-total-selected">
-                    Total Selected Departments: {selectedGroups.length}
+                    Departments: {selectedGroups.length}
                   </div>
                 </>
               ) : (
@@ -1733,12 +1832,22 @@ export default function PunchPolicyModal({ isOpen, onClose }) {
                       onChange={(e) => setEmpSearch(e.target.value)}
                     />
                   </div>
+                  <p
+                    style={{
+                      fontSize: 12,
+                      color: "#64748b",
+                      marginBottom: 8,
+                      paddingLeft: 2,
+                    }}
+                  >
+                    Employees already on another policy cannot be selected.
+                  </p>
                   <div className="pp-group-list" style={{ maxHeight: 280 }}>
                     {assignmentLoading ? (
                       <div
                         style={{ padding: 12, color: "#94a3b8", fontSize: 13 }}
                       >
-                        Loading employees...
+                        Loading...
                       </div>
                     ) : Object.keys(employeesByDept).length === 0 ? (
                       <div
@@ -1762,25 +1871,43 @@ export default function PunchPolicyModal({ isOpen, onClose }) {
                           </div>
                           {emps.map((emp) => {
                             const selected = isEmployeeSelected(emp.id);
+                            const existing = getEmployeeExistingPolicy(emp.id);
+                            const blocked = !!existing && !selected;
                             return (
                               <button
                                 key={emp.id}
                                 type="button"
-                                className={`pp-group-item ${selected ? "selected" : ""}`}
+                                className={`pp-group-item ${selected ? "selected" : ""} ${blocked ? "disabled" : ""}`}
                                 onClick={() => toggleEmployee(emp)}
-                                style={{ marginBottom: 4 }}
+                                style={{
+                                  marginBottom: 4,
+                                  opacity: blocked ? 0.55 : 1,
+                                  cursor: blocked ? "not-allowed" : "pointer",
+                                }}
+                                title={
+                                  blocked
+                                    ? `Already in “${existing.policyName}”`
+                                    : undefined
+                                }
                               >
                                 <div style={{ flex: 1, textAlign: "left" }}>
                                   <div style={{ fontWeight: 500 }}>
                                     {emp.name}
                                   </div>
                                   <div
-                                    style={{
-                                      fontSize: 11,
-                                      color: "#94a3b8",
-                                    }}
+                                    style={{ fontSize: 11, color: "#94a3b8" }}
                                   >
                                     {emp.id}
+                                    {blocked && (
+                                      <span
+                                        style={{
+                                          color: "#b91c1c",
+                                          marginLeft: 6,
+                                        }}
+                                      >
+                                        · in “{existing.policyName}”
+                                      </span>
+                                    )}
                                   </div>
                                 </div>
                                 {selected && <Check size={14} />}
@@ -1792,7 +1919,7 @@ export default function PunchPolicyModal({ isOpen, onClose }) {
                     )}
                   </div>
                   <div className="pp-total-selected">
-                    Total Selected Employees: {selectedEmployees.length}
+                    Employees: {selectedEmployees.length}
                   </div>
                 </>
               )}
@@ -1801,7 +1928,7 @@ export default function PunchPolicyModal({ isOpen, onClose }) {
                 <h4>Policy Summary</h4>
                 <div className="pp-summary-list">
                   <div className="pp-summary-row">
-                    <span>Policy Type</span>
+                    <span>Type</span>
                     <strong>{summary.policyType}</strong>
                   </div>
                   <div className="pp-summary-row">
@@ -1809,24 +1936,18 @@ export default function PunchPolicyModal({ isOpen, onClose }) {
                     <strong>{summary.deductionType}</strong>
                   </div>
                   <div className="pp-summary-row">
-                    <span>Rules Created</span>
-                    <strong>{summary.rulesCount}</strong>
+                    <span>Limits</span>
+                    <strong>{summary.limits}</strong>
                   </div>
+                  {isLateLogin && (
+                    <div className="pp-summary-row">
+                      <span>Shift</span>
+                      <strong>{summary.shiftInfo}</strong>
+                    </div>
+                  )}
                   <div className="pp-summary-row">
-                    <span>Excuses Mapped</span>
-                    <strong>{summary.excusesCount}</strong>
-                  </div>
-                  <div className="pp-summary-row">
-                    <span>Grace Time</span>
-                    <strong>{summary.graceTime}</strong>
-                  </div>
-                  <div className="pp-summary-row">
-                    <span>Half Day After</span>
-                    <strong>{summary.halfDayAfter}</strong>
-                  </div>
-                  <div className="pp-summary-row">
-                    <span>Full Day After</span>
-                    <strong>{summary.fullDayAfter}</strong>
+                    <span>Skip if Regularised</span>
+                    <strong>{summary.skipIfRegularised}</strong>
                   </div>
                   <div className="pp-summary-row">
                     <span>Applies To</span>
@@ -1840,7 +1961,7 @@ export default function PunchPolicyModal({ isOpen, onClose }) {
               </div>
               <div className="pp-confirm-badge">
                 <Check size={15} />
-                This policy will be applied to selected departments / employees.
+                Policy applies to selected departments / employees.
               </div>
             </aside>
           </div>

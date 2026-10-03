@@ -89,7 +89,7 @@ const [showVendorRegistration, setShowVendorRegistration] = useState(false);
     vendorName: "",
     from: process.env.NEXT_PUBLIC_EMAIL_FROM || "hr@sukalpatech.com",
     recipientEmail: "",
-    subject: "Request to Complete Vendor/Customer Registration ",
+    subject: "Vendor Registration Request-Sukalpa Tech Solutions ",
     body: "Dear Vendor,\n\nPlease complete your vendor registration using the secure link below. The link will remain active for 5 days.\n\nRegards,\nPulseWork Team",
   });
   const [isSendingRegistrationMail, setIsSendingRegistrationMail] = useState(false);
@@ -1100,7 +1100,9 @@ const handleShowDownloadPopup = (vendor) => {
               <div className="contactdetailsfeildset">
                 {[1, 2, 3].map((i) => (
                   <fieldset key={i} className="contact-fieldset spaced">
-                    <legend>Contact Details - {i}</legend>
+                    <legend>
+  {i === 3 ? "Account Team Contact Details" : `Contact Details - ${i}`}
+</legend>
                     <div className="contact-row four-columns">
                       <div className="contact-field">
                         <label htmlFor={`contact${i}_name`}>

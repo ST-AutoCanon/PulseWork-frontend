@@ -26,7 +26,7 @@ const currentMonthKey = () => {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
 };
 
-const recoveryMonthOptions = Array.from({ length: 3 }, (_, index) => {
+const recoveryMonthOptions = Array.from({ length: 2 }, (_, index) => {
   const date = new Date();
   date.setDate(1);
   date.setMonth(date.getMonth() + index);
@@ -106,14 +106,49 @@ const EmployeeRequestForm = ({
   const [travelContext, setTravelContext] = useState({ cadreBand: "LOWER" });
   const [guestHouses, setGuestHouses] = useState([]);
   const [salaryContext, setSalaryContext] = useState({
-    monthlyGrossSalary: 0,
+    baseNetSalary: 0,
     maximumAdvance: 0,
+    outstandingAdvance: 0,
+    paidAdvance: 0,
+    remainingAdvance: 0,
   });
   const [alertModal, setAlertModal] = useState({
     isVisible: false,
     title: "",
     message: "",
+    buttons: [],
   });
+
+  const getMinimumRecoveryMonths = () => {
+    const requestedAmount = Number(form.amount);
+    const baseNetSalary = Number(salaryContext.baseNetSalary);
+
+    if (
+      !Number.isFinite(requestedAmount) ||
+      requestedAmount <= 0 ||
+      !Number.isFinite(baseNetSalary) ||
+      baseNetSalary <= 0
+    ) {
+      return 1;
+    }
+    return Math.max(1, Math.ceil(requestedAmount / baseNetSalary));
+  };
+
+  const getMonthlyRecoveryAmount = () => {
+    const requestedAmount = Number(form.amount);
+    const repaymentMonths = Number(form.repaymentMonths);
+
+    if (
+      !Number.isFinite(requestedAmount) ||
+      requestedAmount <= 0 ||
+      !Number.isFinite(repaymentMonths) ||
+      repaymentMonths <= 0
+    ) {
+      return 0;
+    }
+
+    return requestedAmount / repaymentMonths;
+  };
 
   useEffect(() => {
     if (type !== "TRAVEL_BOOKING" || !employeeId || !orgId) return;
@@ -271,7 +306,13 @@ const EmployeeRequestForm = ({
         setSalaryContext(response.data?.data || {});
       })
       .catch(() =>
-        setSalaryContext({ monthlyGrossSalary: 0, maximumAdvance: 0 }),
+        setSalaryContext({
+          baseNetSalary: 0,
+          maximumAdvance: 0,
+          outstandingAdvance: 0,
+          paidAdvance: 0,
+          remainingAdvance: 0,
+        }),
       );
   }, [employeeId, orgId, type]);
 
@@ -350,9 +391,9 @@ const EmployeeRequestForm = ({
       if (!form.travelDate) nextErrors.travelDate = "Travel date is required";
       if (!form.project) nextErrors.project = "Project is required";
       if (!form.baseLocation.trim())
-        nextErrors.baseLocation = "Base location is required";
+        nextErrors.baseLocation = "Pickup Point is required";
       if (!form.travelLocation.trim())
-        nextErrors.travelLocation = "Travel location is required";
+        nextErrors.travelLocation = "Drop Point is required";
       if (!form.transportMode)
         nextErrors.transportMode = "Select a mode of transport";
       if (!form.distanceKm || Number(form.distanceKm) < 0)
@@ -368,22 +409,55 @@ const EmployeeRequestForm = ({
         nextErrors.accommodationPlace = "Select a guest house";
     }
     if (type === "SALARY_ADVANCE") {
-      if (!form.amount || Number(form.amount) <= 0)
+      const amount = Number(form.amount);
+
+      if (!form.amount || !Number.isFinite(amount) || amount <= 0) {
         nextErrors.amount = "Enter a valid amount";
+      }
+
       if (
-        salaryContext.maximumAdvance <= 0 ||
-        Number(form.amount) > salaryContext.maximumAdvance
-      )
-        nextErrors.amount = `Maximum allowed is ₹${Number(
-          salaryContext.maximumAdvance,
-        ).toLocaleString("en-IN")}`;
-      if (!form.repaymentMonths || Number(form.repaymentMonths) < 1)
-        nextErrors.repaymentMonths = "Enter a valid recovery period";
-      if (!form.recoveryStartMonth)
+        !Number.isFinite(Number(salaryContext.maximumAdvance)) ||
+        Number(salaryContext.maximumAdvance) <= 0
+      ) {
+        nextErrors.amount =
+          "Unable to determine your salary advance limit. Please refresh and try again.";
+      }
+
+      const minimumRecoveryMonths = getMinimumRecoveryMonths();
+      const repaymentMonths = Number(form.repaymentMonths);
+
+      if (
+        !form.repaymentMonths ||
+        !Number.isInteger(repaymentMonths) ||
+        repaymentMonths < minimumRecoveryMonths
+      ) {
+        nextErrors.repaymentMonths = `Recovery must be at least ${minimumRecoveryMonths} months for the requested amount.`;
+      }
+
+      if (!form.recoveryStartMonth) {
         nextErrors.recoveryStartMonth = "Select a recovery start month";
-      if (!form.payoutDate) nextErrors.payoutDate = "Payout date is required";
-      if (!form.payoutMode) nextErrors.payoutMode = "Select a payout mode";
-      if (!form.advanceReason) nextErrors.advanceReason = "Select a reason";
+      }
+
+      const allowedRecoveryMonths = recoveryMonthOptions.map(
+        (month) => month.value,
+      );
+
+      if (!allowedRecoveryMonths.includes(form.recoveryStartMonth)) {
+        nextErrors.recoveryStartMonth =
+          "Recovery can start only in the current month or next month.";
+      }
+
+      if (!form.payoutDate) {
+        nextErrors.payoutDate = "Payout date is required";
+      }
+
+      if (!form.payoutMode) {
+        nextErrors.payoutMode = "Select a payout mode";
+      }
+
+      if (!form.advanceReason) {
+        nextErrors.advanceReason = "Select a reason";
+      }
     }
     if (type === "SUPPORTING_DOCUMENT") {
       if (!form.documentType)
@@ -404,24 +478,16 @@ const EmployeeRequestForm = ({
     return Object.keys(nextErrors).length === 0;
   };
 
-  const submit = async () => {
-    if (!validate()) {
-      showAlert("Please complete all required fields.");
-      return;
-    }
-
+  const submitRequestNormally = async () => {
     setSaving(true);
 
     try {
       let requestType = "";
-
       let title = "";
-
       let details = {};
 
       if (type === "TRAVEL_BOOKING") {
         requestType = "TRAVEL_BOOKING";
-
         title = "Travel Ticket Request";
 
         details = {
@@ -456,26 +522,57 @@ const EmployeeRequestForm = ({
       }
 
       if (type === "SALARY_ADVANCE") {
-        requestType = "SALARY_ADVANCE";
+        const requestedAmount = Number(form.amount);
 
+        requestType = "SALARY_ADVANCE";
         title = "Salary Advance Request";
 
         details = {
-          amount: form.amount,
+          amount: requestedAmount,
           payoutDate: form.payoutDate,
           payoutMode: form.payoutMode,
           reason: form.advanceReason,
           additionalInfo: form.additionalInfo,
-          repaymentMonths: form.repaymentMonths,
+          repaymentMonths: Number(form.repaymentMonths),
           recoveryStartMonth: form.recoveryStartMonth,
-          existingAdvance: form.existingAdvance,
+
+          // Informational frontend calculation only.
+          // Backend must recalculate this before approval/payroll processing.
+          minimumRecoveryMonths: getMinimumRecoveryMonths(),
+
+          estimatedMonthlyRecovery: Number(
+            getMonthlyRecoveryAmount().toFixed(2),
+          ),
           bankAccount: form.bankAccount,
+
+          /*
+           * These are informational snapshots only.
+           * The backend MUST recalculate them.
+           */
+          baseNetSalary: Number(salaryContext.baseNetSalary || 0),
+
+          standardMaximum: Number(salaryContext.maximumAdvance || 0),
+
+          outstandingAdvance: Number(salaryContext.outstandingAdvance || 0),
+
+          paidAdvance: Number(salaryContext.paidAdvance || 0),
+
+          remainingStandardAmount: Number(salaryContext.remainingAdvance || 0),
+
+          excessAmount: Math.max(
+            0,
+            requestedAmount - Number(salaryContext.remainingAdvance || 0),
+          ),
+
+          isException:
+            requestedAmount > Number(salaryContext.remainingAdvance || 0),
+
+          limitSource: "calculateBaseNetSalary",
         };
       }
 
       if (type === "SUPPORTING_DOCUMENT") {
         requestType = "SUPPORTING_DOCUMENT";
-
         title = "Supporting Documents Request";
 
         details = {
@@ -487,7 +584,6 @@ const EmployeeRequestForm = ({
 
       if (type === "ASSET_REQUEST") {
         requestType = "ASSET_REQUEST";
-
         title = "Request for Laptop / Device / Software";
 
         details = {
@@ -518,19 +614,135 @@ const EmployeeRequestForm = ({
         error.response?.data?.message ||
           error.message ||
           "Failed to submit request.",
+        "Submission failed",
       );
     } finally {
       setSaving(false);
     }
   };
 
+  const submit = async () => {
+    if (!validate()) {
+      showAlert("Please complete all required fields.", "Validation");
+      return;
+    }
+
+    if (type !== "SALARY_ADVANCE") {
+      await submitRequestNormally();
+      return;
+    }
+
+    const requestedAmount = Number(form.amount);
+
+    const standardMaximum = Number(salaryContext.maximumAdvance || 0);
+
+    const outstandingAdvance = Number(salaryContext.outstandingAdvance || 0);
+
+    const remainingAdvance = Number(salaryContext.remainingAdvance || 0);
+
+    const excessAmount = Math.max(0, requestedAmount - remainingAdvance);
+
+    if (excessAmount <= 0) {
+      await submitRequestNormally();
+      return;
+    }
+
+    const message =
+      remainingAdvance <= 0
+        ? [
+            "Your standard salary advance maximum has already been fully claimed.",
+            "",
+            `Standard 3-month maximum: ₹${standardMaximum.toLocaleString(
+              "en-IN",
+            )}`,
+            `Already repaid through payroll: ₹${Number(
+              salaryContext.paidAdvance || 0,
+            ).toLocaleString("en-IN")}`,
+            `Current outstanding advance: ₹${outstandingAdvance.toLocaleString(
+              "en-IN",
+            )}`,
+            "Remaining standard amount: ₹0",
+            `New request: ₹${requestedAmount.toLocaleString("en-IN")}`,
+            `Exception amount: ₹${excessAmount.toLocaleString("en-IN")}`,
+            "",
+            "The standard 3-month amount has been fully utilized.",
+            "You can still submit this as an exceptional/emergency request.",
+            "The request will require final Admin approval.",
+            "",
+            "Do you want to continue?",
+          ].join("\n")
+        : [
+            `Remaining standard amount: ₹${remainingAdvance.toLocaleString(
+              "en-IN",
+            )}`,
+            `New request: ₹${requestedAmount.toLocaleString("en-IN")}`,
+            `Amount above remaining standard amount: ₹${excessAmount.toLocaleString(
+              "en-IN",
+            )}`,
+            "",
+            "This request exceeds the employee's remaining standard salary-advance amount.",
+            "It can still be submitted as an exceptional/emergency request.",
+            "The excess amount will be clearly shown to the approver.",
+            "",
+            "Do you want to continue?",
+          ].join("\n");
+
+    showSalaryAdvanceConfirmation({
+      title:
+        remainingAdvance <= 0
+          ? "Standard amount fully utilized"
+          : "Exceptional salary advance",
+      message,
+      onConfirm: submitRequestNormally,
+    });
+  };
+
   const Icon = config.icon;
 
-  const showAlert = (message, title = "") =>
-    setAlertModal({ isVisible: true, title, message });
+  const showAlert = (message, title = "Notice") => {
+    setAlertModal({
+      isVisible: true,
+      title,
+      message,
+      buttons: [
+        {
+          label: "OK",
+          onClick: closeAlert,
+        },
+      ],
+    });
+  };
 
-  const closeAlert = () =>
-    setAlertModal({ isVisible: false, title: "", message: "" });
+  const showSalaryAdvanceConfirmation = ({ title, message, onConfirm }) => {
+    setAlertModal({
+      isVisible: true,
+      title,
+      message,
+      buttons: [
+        {
+          label: "Cancel",
+          onClick: closeAlert,
+        },
+        {
+          label: "Continue",
+          className: "ac-modal-btn ac-modal-btn-danger",
+          onClick: () => {
+            closeAlert();
+            onConfirm();
+          },
+        },
+      ],
+    });
+  };
+
+  const closeAlert = () => {
+    setAlertModal({
+      isVisible: false,
+      title: "",
+      message: "",
+      buttons: [],
+    });
+  };
 
   return (
     <div className="request-modal-backdrop">
@@ -608,7 +820,7 @@ const EmployeeRequestForm = ({
               </RequestField>
 
               <RequestField
-                label="Base location"
+                label="Pickup Point"
                 required
                 error={errors.baseLocation}
               >
@@ -622,7 +834,7 @@ const EmployeeRequestForm = ({
               </RequestField>
 
               <RequestField
-                label="Travel location"
+                label="Drop Point"
                 required
                 error={errors.travelLocation}
               >
@@ -914,150 +1126,279 @@ const EmployeeRequestForm = ({
           ================================================= */}
 
           {type === "SALARY_ADVANCE" && (
-            <div className="request-form-grid">
+            <div>
               <div className="salary-advance-limit full">
-                <strong>
-                  Maximum allowed: ₹
-                  {Number(salaryContext.maximumAdvance || 0).toLocaleString(
-                    "en-IN",
-                  )}
-                </strong>
-                <span>(3 months&apos; gross salary)</span>
+                <div className="salary-advance-summary">
+                  <div>
+                    <strong>
+                      Standard maximum: ₹
+                      {Number(salaryContext.maximumAdvance || 0).toLocaleString(
+                        "en-IN",
+                      )}
+                    </strong>
+                  </div>
+                  <div>
+                    <span>3 months of your current in-hand salary.</span>
+                  </div>
+                </div>
+
+                <div className="salary-advance-summary">
+                  <div>
+                    <span>In-hand salary</span>
+                    <strong>
+                      ₹
+                      {Number(salaryContext.baseNetSalary || 0).toLocaleString(
+                        "en-IN",
+                      )}
+                    </strong>
+                  </div>
+
+                  <div>
+                    <span>Outstanding advance</span>
+                    <strong>
+                      ₹
+                      {Number(
+                        salaryContext.outstandingAdvance || 0,
+                      ).toLocaleString("en-IN")}
+                    </strong>
+                  </div>
+
+                  <div>
+                    <span>Already repaid</span>
+                    <strong>
+                      ₹
+                      {Number(salaryContext.paidAdvance || 0).toLocaleString(
+                        "en-IN",
+                      )}
+                    </strong>
+                  </div>
+
+                  <div>
+                    <span>Remaining standard amount</span>
+                    <strong>
+                      ₹
+                      {Number(
+                        salaryContext.remainingAdvance || 0,
+                      ).toLocaleString("en-IN")}
+                    </strong>
+                  </div>
+                </div>
               </div>
 
-              <RequestField
-                label="Advance Amount"
-                required
-                full
-                error={errors.amount}
-              >
-                <div className="currency-input">
-                  <span>₹</span>
+              <div className="salary-advance-note full">
+                <strong>Salary advance rules</strong>
 
+                <p>
+                  Standard maximum = 3 months of your current in-hand salary.
+                </p>
+
+                <p>
+                  This is a standard eligibility amount, not a hard restriction.
+                  Requests above the remaining standard amount may be submitted
+                  as exceptional/emergency requests and will require Admin
+                  approval.
+                </p>
+
+                <p>
+                  Recovery starts only from the current month or next month.
+                </p>
+
+                <p>
+                  The recovery period is calculated so that the monthly
+                  deduction does not exceed your current in-hand salary. A
+                  minimum of 1 month is allowed.
+                </p>
+              </div>
+              <div className="request-form-grid">
+                <RequestField
+                  label="Advance Amount"
+                  required
+                  full
+                  error={errors.amount}
+                >
+                  <div className="currency-input">
+                    <span>₹</span>
+
+                    <input
+                      type="number"
+                      min="0"
+                      value={form.amount}
+                      onChange={(e) => update("amount", e.target.value)}
+                      placeholder="Enter amount"
+                    />
+                  </div>
+                </RequestField>
+
+                {type === "SALARY_ADVANCE" &&
+                  Number(form.amount) > 0 &&
+                  Number(form.amount) >
+                    Number(salaryContext.remainingAdvance || 0) && (
+                    <div className="salary-advance-warning">
+                      <strong>Standard limit exceeded</strong>
+
+                      <p>
+                        Remaining standard amount: ₹
+                        {Number(
+                          salaryContext.remainingAdvance || 0,
+                        ).toLocaleString("en-IN")}
+                      </p>
+
+                      <p>
+                        Requested amount: ₹
+                        {Number(form.amount).toLocaleString("en-IN")}
+                      </p>
+
+                      <p>
+                        Amount above remaining standard amount: ₹
+                        {Math.max(
+                          0,
+                          Number(form.amount) -
+                            Number(salaryContext.remainingAdvance || 0),
+                        ).toLocaleString("en-IN")}
+                      </p>
+
+                      <p>
+                        This request can still be submitted as an
+                        exceptional/emergency request, but the excess amount
+                        will be clearly shown to the approver.
+                      </p>
+                    </div>
+                  )}
+
+                <RequestField
+                  label="Recovery over (months)"
+                  required
+                  error={errors.repaymentMonths}
+                >
                   <input
                     type="number"
-                    min="0"
-                    value={form.amount}
-                    onChange={(e) => update("amount", e.target.value)}
-                    placeholder="Enter amount"
+                    min={getMinimumRecoveryMonths()}
+                    step="1"
+                    value={form.repaymentMonths}
+                    onChange={(e) => update("repaymentMonths", e.target.value)}
+                    placeholder={`Minimum ${getMinimumRecoveryMonths()} months`}
                   />
-                </div>
-              </RequestField>
 
-              <RequestField
-                label="Recovery over (months)"
-                required
-                error={errors.repaymentMonths}
-              >
-                <input
-                  type="number"
-                  min="1"
-                  value={form.repaymentMonths}
-                  onChange={(e) => update("repaymentMonths", e.target.value)}
-                  placeholder="e.g. 6"
-                />
-              </RequestField>
+                  <small className="request-field-hint">
+                    Minimum recovery period: {getMinimumRecoveryMonths()} months
+                  </small>
 
-              <RequestField
-                label="Recovery starts from"
-                required
-                error={errors.recoveryStartMonth}
-              >
-                <select
-                  value={form.recoveryStartMonth}
-                  onChange={(e) => update("recoveryStartMonth", e.target.value)}
+                  {Number(form.amount) > 0 &&
+                    Number(form.repaymentMonths) > 0 && (
+                      <small className="request-field-hint">
+                        Estimated monthly recovery: ₹
+                        {getMonthlyRecoveryAmount().toLocaleString("en-IN", {
+                          maximumFractionDigits: 2,
+                        })}
+                      </small>
+                    )}
+                </RequestField>
+
+                <RequestField
+                  label="Recovery starts from"
+                  required
+                  error={errors.recoveryStartMonth}
                 >
-                  {recoveryMonthOptions.map((month) => (
-                    <option key={month.value} value={month.value}>
-                      {month.label}
+                  <select
+                    value={form.recoveryStartMonth}
+                    onChange={(e) =>
+                      update("recoveryStartMonth", e.target.value)
+                    }
+                  >
+                    {recoveryMonthOptions.map((month) => (
+                      <option key={month.value} value={month.value}>
+                        {month.label}
+                      </option>
+                    ))}
+                  </select>
+                </RequestField>
+                <RequestField label="Outstanding advance">
+                  <input
+                    type="text"
+                    value={`₹${Number(
+                      salaryContext.outstandingAdvance || 0,
+                    ).toLocaleString("en-IN")}`}
+                    readOnly
+                  />
+                </RequestField>
+                <RequestField label="Bank account / payout details" full>
+                  <input
+                    value={form.bankAccount}
+                    onChange={(e) => update("bankAccount", e.target.value)}
+                    placeholder="Last four digits or payout details"
+                  />
+                </RequestField>
+
+                <RequestField
+                  label="Preferred Payout Date"
+                  required
+                  error={errors.payoutDate}
+                >
+                  <InputWithIcon
+                    icon={<FiCalendar />}
+                    type="date"
+                    value={form.payoutDate}
+                    onChange={(value) => update("payoutDate", value)}
+                  />
+                </RequestField>
+
+                <RequestField
+                  label="Mode of Payout"
+                  required
+                  error={errors.payoutMode}
+                >
+                  <select
+                    value={form.payoutMode}
+                    onChange={(e) => update("payoutMode", e.target.value)}
+                  >
+                    <option value="">Select mode</option>
+
+                    <option value="Bank Transfer">Bank Transfer</option>
+
+                    <option value="Salary">Salary</option>
+                  </select>
+                </RequestField>
+
+                <RequestField
+                  label="Reason for Advance"
+                  required
+                  error={errors.advanceReason}
+                  full
+                >
+                  <select
+                    value={form.advanceReason}
+                    onChange={(e) => update("advanceReason", e.target.value)}
+                  >
+                    <option value="">Select reason</option>
+
+                    <option value="Medical emergency">Medical emergency</option>
+
+                    <option value="Personal emergency">
+                      Personal emergency
                     </option>
-                  ))}
-                </select>
-              </RequestField>
-              <RequestField label="Existing advance">
-                <input
-                  type="number"
-                  min="0"
-                  value={form.existingAdvance}
-                  onChange={(e) => update("existingAdvance", e.target.value)}
-                  placeholder="0"
-                />
-              </RequestField>
-              <RequestField label="Bank account / payout details" full>
-                <input
-                  value={form.bankAccount}
-                  onChange={(e) => update("bankAccount", e.target.value)}
-                  placeholder="Last four digits or payout details"
-                />
-              </RequestField>
 
-              <RequestField
-                label="Preferred Payout Date"
-                required
-                error={errors.payoutDate}
-              >
-                <InputWithIcon
-                  icon={<FiCalendar />}
-                  type="date"
-                  value={form.payoutDate}
-                  onChange={(value) => update("payoutDate", value)}
-                />
-              </RequestField>
+                    <option value="Travel">Travel</option>
 
-              <RequestField
-                label="Mode of Payout"
-                required
-                error={errors.payoutMode}
-              >
-                <select
-                  value={form.payoutMode}
-                  onChange={(e) => update("payoutMode", e.target.value)}
-                >
-                  <option value="">Select mode</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </RequestField>
 
-                  <option value="Bank Transfer">Bank Transfer</option>
+                <RequestField label="Additional Information" full>
+                  <textarea
+                    value={form.additionalInfo}
+                    onChange={(e) => update("additionalInfo", e.target.value)}
+                    placeholder="Enter any additional information"
+                  />
+                </RequestField>
 
-                  <option value="Salary">Salary</option>
-                </select>
-              </RequestField>
-
-              <RequestField
-                label="Reason for Advance"
-                required
-                error={errors.advanceReason}
-                full
-              >
-                <select
-                  value={form.advanceReason}
-                  onChange={(e) => update("advanceReason", e.target.value)}
-                >
-                  <option value="">Select reason</option>
-
-                  <option value="Medical emergency">Medical emergency</option>
-
-                  <option value="Personal emergency">Personal emergency</option>
-
-                  <option value="Travel">Travel</option>
-
-                  <option value="Other">Other</option>
-                </select>
-              </RequestField>
-
-              <RequestField label="Additional Information" full>
-                <textarea
-                  value={form.additionalInfo}
-                  onChange={(e) => update("additionalInfo", e.target.value)}
-                  placeholder="Enter any additional information"
-                />
-              </RequestField>
-
-              <RequestField label="Attachments" full>
-                <FileUpload
-                  file={file}
-                  onChange={setFile}
-                  placeholder="Upload supporting documents (if any)"
-                />
-              </RequestField>
+                <RequestField label="Attachments" full>
+                  <FileUpload
+                    file={file}
+                    onChange={setFile}
+                    placeholder="Upload supporting documents (if any)"
+                  />
+                </RequestField>
+              </div>
             </div>
           )}
 
@@ -1317,7 +1658,7 @@ const EmployeeRequestForm = ({
         isVisible={alertModal.isVisible}
         title={alertModal.title}
         onClose={closeAlert}
-        buttons={[{ label: "OK", onClick: closeAlert }]}
+        buttons={alertModal.buttons}
       >
         <p style={{ whiteSpace: "pre-wrap" }}>{alertModal.message}</p>
       </Modal>

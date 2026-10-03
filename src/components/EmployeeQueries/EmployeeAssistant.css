@@ -1659,6 +1659,7 @@
 
 .salary-advance-limit {
   display: flex;
+  justify-content: space-between;
   align-items: baseline;
   gap: 6px;
   padding: 11px 13px;
@@ -1675,6 +1676,18 @@
 
 .salary-advance-limit span {
   color: #657087;
+  font-size: 11px;
+}
+
+.salary-advance-note {
+  margin-top: 6px;
+  color: #657087;
+  font-size: 11px;
+}
+
+.salary-advance-warning {
+  margin-top: 6px;
+  color: #c24141;
   font-size: 11px;
 }
 

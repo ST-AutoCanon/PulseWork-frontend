@@ -1188,7 +1188,7 @@
 }
 
 .rf-notes-box {
-  margin-top: 0.6rem;
+  margin: 0.6rem 0;
   padding: 1rem;
   background: #f9fafb;
   border-left: 4px solid #79c42b;

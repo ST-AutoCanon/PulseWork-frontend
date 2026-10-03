@@ -54,6 +54,7 @@ const ProjectCard = ({
       <div className="company">
         <h3>{company}</h3>
         {(userRole === "Admin" ||
+          userRole === "CEO" ||
           userRole === "HR" ||
           userRole === "Manager" ||
           userRole === "Supervisor") && (
@@ -126,7 +127,10 @@ const ProjectsDashboard = () => {
   const normalizedRole = (userRole || "").trim();
   const normalizedDept = (userDepartment || "").trim().toLowerCase();
 
-  const isAdmin = normalizedRole === "Admin" || normalizedRole === "HR";
+  const isAdmin =
+    normalizedRole === "Admin" ||
+    normalizedRole === "CEO" ||
+    normalizedRole === "HR";
   const isFinanceDept = normalizedDept === "finance";
   const isFinanceManager =
     isFinanceDept &&

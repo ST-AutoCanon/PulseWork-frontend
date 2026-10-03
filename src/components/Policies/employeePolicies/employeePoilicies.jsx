@@ -1720,15 +1720,16 @@ const handleViewerScroll = (event) => {
         </div>
       )}
     </div>
-
+{/* Alert Modal */}
+{/* Screenshot Popup */}
 {alertModal.isVisible && (
   <div
-    className="alert-modal-overlay"
+    className="screenshot-popup-overlay"
     onClick={closeAlert}
     style={{ zIndex: 99999 }}
   >
     <div
-      className="alert-modal"
+      className="screenshot-popup-modal"
       onClick={(e) => e.stopPropagation()}
       style={{ zIndex: 100000 }}
     >

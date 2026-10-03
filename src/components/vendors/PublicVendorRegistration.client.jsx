@@ -5,7 +5,6 @@ import { useSearchParams } from "next/navigation";
 import axios from "axios";
 import "./vendorRegistration.css";
 
-//////////////////////
 const initialForm = {
   company_name: "", registered_address: "", branch_address: "", city: "", state: "", pin_code: "",
   gst_number: "", pan_number: "", company_type: "", msme_status: "Not Applicable",
@@ -94,7 +93,7 @@ export default function PublicVendorRegistration() {
     );
     console.log("[PublicVendorRegistration] login success", data);
     setVendorName(data.vendorName);
-    setForm((current) => ({ ...current, company_name: data.vendorName }));
+    
     setValid(true);
     setSubmissionState("idle");
     setStatus("");
@@ -149,6 +148,8 @@ export default function PublicVendorRegistration() {
         throw err;
       }
 
+      // Success: clear status so "Submitting..." disappears,
+      // then switch to the confirmation screen.
       setStatus("");
       setValid(false);
       setSubmissionState("success");
@@ -242,8 +243,6 @@ export default function PublicVendorRegistration() {
     />
   )}
 </label>
-
-
               ))}
             </div>
           </fieldset>

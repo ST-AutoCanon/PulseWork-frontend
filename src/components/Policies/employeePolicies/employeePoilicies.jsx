@@ -61,6 +61,157 @@ export default function EmployeePolicies() {
   const [policies, setPolicies] = useState([]);
   const [selectedPolicy, setSelectedPolicy] = useState(null);
   const [selectedFile, setSelectedFile] = useState(null);
+  // ==================== POLICY SCREEN PROTECTION ====================
+// useEffect(() => {
+//   // Only activate protection when a policy is open
+//   if (!selectedFile) return;
+
+//   const handleContextMenu = (e) => {
+//     e.preventDefault();
+//   };
+
+//   const handleKeyDown = (e) => {
+//     const key = e.key?.toLowerCase();
+
+//     // ==================== PRINT SCREEN ====================
+//     if (e.key === "PrintScreen") {
+//       e.preventDefault();
+
+//       showAlert(
+//         "Screenshots are not allowed while viewing company policies.",
+//         "Security Restriction"
+//       );
+
+//       return;
+//     }
+
+//     // ==================== PRINT ====================
+//     if ((e.ctrlKey || e.metaKey) && key === "p") {
+//       e.preventDefault();
+
+//       showAlert(
+//         "Printing is not allowed while viewing company policies.",
+//         "Security Restriction"
+//       );
+
+//       return;
+//     }
+
+//     // ==================== SAVE ====================
+//     if ((e.ctrlKey || e.metaKey) && key === "s") {
+//       e.preventDefault();
+//       return;
+//     }
+
+//     // ==================== SAVE AS ====================
+//     if (
+//       (e.ctrlKey || e.metaKey) &&
+//       e.shiftKey &&
+//       key === "s"
+//     ) {
+//       e.preventDefault();
+//       return;
+//     }
+
+//     // ==================== COPY ====================
+//     if ((e.ctrlKey || e.metaKey) && key === "c") {
+//       e.preventDefault();
+//       return;
+//     }
+
+//     // ==================== VIEW SOURCE ====================
+//     if ((e.ctrlKey || e.metaKey) && key === "u") {
+//       e.preventDefault();
+//       return;
+//     }
+
+//     // ==================== F12 ====================
+//     if (e.key === "F12") {
+//       e.preventDefault();
+//       return;
+//     }
+
+//     // ==================== DEVTOOLS ====================
+//     if (
+//       (e.ctrlKey || e.metaKey) &&
+//       e.shiftKey &&
+//       (key === "i" || key === "j" || key === "c")
+//     ) {
+//       e.preventDefault();
+//       return;
+//     }
+//   };
+
+//   // ==================== TAB / WINDOW HIDDEN ====================
+//  const handleVisibilityChange = () => {
+
+//   if (document.hidden) {
+
+//     setIsPolicyHidden(true);
+
+//     showAlert(
+//       "Policy viewing was interrupted. Please return to the policy viewer.",
+//       "Security Restriction"
+//     );
+
+//   } else {
+
+//     setIsPolicyHidden(false);
+
+//   }
+
+// };
+
+//   // ==================== WINDOW LOSES FOCUS ====================
+//   const handleBlur = () => {
+//     console.warn("Policy viewer lost focus.");
+//   };
+
+//   // Add listeners
+//   document.addEventListener(
+//     "contextmenu",
+//     handleContextMenu
+//   );
+
+//   document.addEventListener(
+//     "keydown",
+//     handleKeyDown
+//   );
+
+//   document.addEventListener(
+//     "visibilitychange",
+//     handleVisibilityChange
+//   );
+
+//   window.addEventListener(
+//     "blur",
+//     handleBlur
+//   );
+
+//   // ==================== CLEANUP ====================
+//   return () => {
+//     document.removeEventListener(
+//       "contextmenu",
+//       handleContextMenu
+//     );
+
+//     document.removeEventListener(
+//       "keydown",
+//       handleKeyDown
+//     );
+
+//     document.removeEventListener(
+//       "visibilitychange",
+//       handleVisibilityChange
+//     );
+
+//     window.removeEventListener(
+//       "blur",
+//       handleBlur
+//     );
+//   };
+
+// }, [selectedFile]);
   const [pendingFile, setPendingFile] = useState(null);
 const [activeTab, setActiveTab] = useState("all"); // "all" | "pending" | "acknowledged"
   const [fileUrl, setFileUrl] = useState(null);
@@ -68,10 +219,12 @@ const [activeTab, setActiveTab] = useState("all"); // "all" | "pending" | "ackno
 const [searchTerm, setSearchTerm] = useState("");
 const [ackChecked, setAckChecked] = useState(false);
 const [isFullscreen, setIsFullscreen] = useState(false);
+const [isPolicyHidden, setIsPolicyHidden] = useState(false);
   const [pdfPageCount, setPdfPageCount] = useState(0);
 const [pdfReadProgress, setPdfReadProgress] = useState(0);
 const [pdfReadState, setPdfReadState] = useState("unread");
-
+const [isContentProtected, setIsContentProtected] = useState(true);
+const [showCaptureWarning, setShowCaptureWarning] = useState(false);
 const [readPages, setReadPages] = useState(new Set());
 const [readSaving, setReadSaving] = useState(false);
 const pdfObserverRef = useRef(null);
@@ -98,6 +251,171 @@ useEffect(() => {
     ).toString();
   });
 }, []);
+// ============================================================
+// POLICY SCREEN SECURITY
+// ============================================================
+// ============================================================
+// POLICY SCREEN SECURITY
+// ============================================================
+
+
+
+
+// ============================================================
+// POLICY SCREEN SECURITY
+// ============================================================
+useEffect(() => {
+  if (!selectedFile) return;
+
+  // ------------------------------------------------------------
+  // Instant visual hide (synchronous)
+  // ------------------------------------------------------------
+  const hideContentInstantly = () => {
+    const protectedEl = document.querySelector(".viewer-content-protected");
+    if (protectedEl) {
+      protectedEl.style.filter = "blur(24px)";
+      protectedEl.style.pointerEvents = "none";
+      protectedEl.style.userSelect = "none";
+      protectedEl.classList.add("is-hidden");
+    }
+    setIsContentProtected(false);
+    setShowCaptureWarning(true);
+  };
+
+  const showContent = () => {
+    const protectedEl = document.querySelector(".viewer-content-protected");
+    if (protectedEl) {
+      protectedEl.style.filter = "none";
+      protectedEl.style.pointerEvents = "auto";
+      protectedEl.classList.remove("is-hidden");
+    }
+    setIsContentProtected(true);
+    setShowCaptureWarning(false);
+  };
+
+  // ------------------------------------------------------------
+  // Big popup (same for PrintScreen and Win+Shift+S)
+  // ------------------------------------------------------------
+  const showScreenshotBlockedPopup = () => {
+    setAlertModal({
+      isVisible: true,
+      title: "Screenshot Not Allowed",
+      message:
+        "Taking screenshots of company policies is strictly prohibited.\n\nThe content has been hidden. Please return to this tab to continue reading.",
+    });
+  };
+
+  // ------------------------------------------------------------
+  // Detect PrintScreen + best-effort Win+Shift+S
+  // ------------------------------------------------------------
+  const handlePrintScreenOrSnip = (e) => {
+    const key = e.key?.toLowerCase();
+    const code = e.code;
+
+    const isPrintScreen =
+      e.key === "PrintScreen" ||
+      code === "PrintScreen" ||
+      e.keyCode === 44;
+
+    // Best-effort detection of Win + Shift + S
+    // (Windows key is often reported as Meta on some browsers)
+    const isWinShiftS =
+      e.shiftKey &&
+      (key === "s" || code === "KeyS") &&
+      (e.metaKey || e.getModifierState?.("OS") || e.getModifierState?.("Win"));
+
+    if (!isPrintScreen && !isWinShiftS) return;
+
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.stopImmediatePropagation) e.stopImmediatePropagation();
+
+    hideContentInstantly();
+    showScreenshotBlockedPopup();
+
+    // Best-effort clear clipboard
+    setTimeout(async () => {
+      try {
+        if (navigator.clipboard?.writeText) {
+          await navigator.clipboard.writeText("");
+        }
+      } catch (_) {}
+    }, 30);
+
+    return false;
+  };
+
+  // ------------------------------------------------------------
+  // When window loses focus (this catches Win+Shift+S reliably)
+  // ------------------------------------------------------------
+  const handleVisibilityChange = () => {
+    if (document.hidden) {
+      hideContentInstantly();
+      showScreenshotBlockedPopup();   // ← same big popup
+    } else {
+      showContent();
+    }
+  };
+
+  const handleBlur = () => {
+    hideContentInstantly();
+    showScreenshotBlockedPopup();     // ← same big popup
+  };
+
+  const handleFocus = () => {
+    showContent();
+  };
+
+  const handleContextMenu = (e) => e.preventDefault();
+
+  const handleKeyDown = (e) => {
+    // PrintScreen + Win+Shift+S attempt
+    handlePrintScreenOrSnip(e);
+
+    const key = e.key?.toLowerCase();
+
+    // Ctrl/Cmd + P
+    if ((e.ctrlKey || e.metaKey) && key === "p") {
+      e.preventDefault();
+      hideContentInstantly();
+      showAlert(
+        "Printing is not allowed while viewing company policies.",
+        "Print Restricted"
+      );
+      return;
+    }
+
+    // Other restricted shortcuts
+    if (
+      ((e.ctrlKey || e.metaKey) && (key === "s" || key === "c" || key === "u")) ||
+      ((e.ctrlKey || e.metaKey) && e.shiftKey && (key === "s" || key === "i" || key === "j" || key === "c")) ||
+      e.key === "F12"
+    ) {
+      e.preventDefault();
+    }
+  };
+
+  const handleKeyUp = (e) => handlePrintScreenOrSnip(e);
+
+  // ------------------------------------------------------------
+  // Attach listeners
+  // ------------------------------------------------------------
+  document.addEventListener("visibilitychange", handleVisibilityChange);
+  window.addEventListener("blur", handleBlur);
+  window.addEventListener("focus", handleFocus);
+  document.addEventListener("contextmenu", handleContextMenu);
+  document.addEventListener("keydown", handleKeyDown, true);
+  document.addEventListener("keyup", handleKeyUp, true);
+
+  return () => {
+    document.removeEventListener("visibilitychange", handleVisibilityChange);
+    window.removeEventListener("blur", handleBlur);
+    window.removeEventListener("focus", handleFocus);
+    document.removeEventListener("contextmenu", handleContextMenu);
+    document.removeEventListener("keydown", handleKeyDown, true);
+    document.removeEventListener("keyup", handleKeyUp, true);
+  };
+}, [selectedFile]);
 const showAlert = (message, title = "Success") => {
   setAlertModal({ isVisible: true, title, message });
 };
@@ -1020,350 +1338,370 @@ const handleViewerScroll = (event) => {
     </button>
   </div>
 </div>
-          <div className="viewer-body">
- {/* ========== READING INDICATOR (PDF + VIDEO) ========== */}
-{/* ========== READING INDICATOR (PDF + VIDEO only – hide for images) ========== */}
-{Number(selectedFile.allow_view) === 1 &&
-  !isImage(getFileName(selectedFile)) && (
-  <div
-    className={`pdf-reading-indicator ${
-      isVideo(getFileName(selectedFile))
-        ? videoProgress >= 100 || Number(selectedFile.is_read) === 1
-          ? "read"
-          : videoProgress > 0
-          ? "reading"
-          : "unread"
-        : pdfReadState
-    }`}
-    title={
-      isVideo(getFileName(selectedFile))
-        ? Number(selectedFile.is_read) === 1 || videoProgress >= 100
-          ? "Read"
-          : videoProgress > 0
-          ? `Watched ${videoProgress}%`
-          : "Not watched"
-        : pdfReadState === "read"
-        ? "Read"
-        : pdfReadState === "reading"
-        ? `Reading ${pdfReadProgress}%`
-        : "Not read"
-    }
-  >
-    <FaEye />
-    <span>
-      {isVideo(getFileName(selectedFile))
-        ? Number(selectedFile.is_read) === 1 || videoProgress >= 100
-          ? "Read"
-          : `${videoProgress}%`
-        : pdfReadState === "read"
-        ? "Read"
-        : `${pdfReadProgress}%`}
-    </span>
-  </div>
-)}
-          {Number(selectedFile.allow_view) !== 1 ? (
-  <div
-    style={{
-      display: "flex",
-      flexDirection: "column",
-      alignItems: "center",
-      justifyContent: "center",
-      height: "100%",
-      padding: 40,
-      textAlign: "center",
-    }}
-  >
-    <div style={{ fontSize: 48, marginBottom: 16 }}>🔒</div>
-    <h3 style={{ color: "#1f2937", fontSize: 18, marginBottom: 8 }}>
-      Access Restricted
-    </h3>
-    <p style={{ color: "#64748b", fontSize: 14, lineHeight: 1.6 }}>
-      This file is not available for viewing. Please contact your
-      administrator if you need access to this document.
-    </p>
-  </div>
-) : loadingFile ? (
-  <p>Loading...</p>
-) : fileUrl && selectedFile ? (
-  (() => {
-    const name = getFileName(selectedFile);
-
-    /* ===================== IMAGE ===================== */
-    if (isImage(name)) {
-      return (
-        <div
-          className="media-viewer-wrapper"
-          style={{
-            width: "100%",
-            height: "100%",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            background: "#f8fafc",
-            overflow: "auto",
-          }}
-        >
-          <img
-            src={fileUrl}
-            alt={name}
-            style={{
-              maxWidth: "100%",
-              maxHeight: "100%",
-              objectFit: "contain",
-              display: "block",
-            }}
-            onLoad={() => {
-              // Only mark if already acknowledged (or no ack required)
-              markFileRead(selectedFile);
-            }}
-          />
-        </div>
-      );
-    }
-
-    /* ===================== PDF ===================== */
-if (isPdf(name)) {
-  return (
+      <div className="viewer-body">
+        
+  {/* ========== READING INDICATOR (PDF + VIDEO only – hide for images) ========== */}
+  {Number(selectedFile.allow_view) === 1 &&
+    !isImage(getFileName(selectedFile)) && (
     <div
-      ref={pdfWrapperRef}
-      className="pdf-viewer-wrapper"
-      onScroll={handlePdfScroll}
+      className={`pdf-reading-indicator ${
+        isVideo(getFileName(selectedFile))
+          ? videoProgress >= 100 || Number(selectedFile.is_read) === 1
+            ? "read"
+            : videoProgress > 0
+            ? "reading"
+            : "unread"
+          : pdfReadState
+      }`}
+      title={
+        isVideo(getFileName(selectedFile))
+          ? Number(selectedFile.is_read) === 1 || videoProgress >= 100
+            ? "Read"
+            : videoProgress > 0
+            ? `Watched ${videoProgress}%`
+            : "Not watched"
+          : pdfReadState === "read"
+          ? "Read"
+          : pdfReadState === "reading"
+          ? `Reading ${pdfReadProgress}%`
+          : "Not read"
+      }
     >
-      <Document
-        file={fileUrl}
-        onLoadSuccess={({ numPages }) => {
-          setPdfPageCount(numPages);
-
-          if (Number(selectedFile.is_read) === 1) {
-            setPdfReadProgress(100);
-            setPdfReadState("read");
-          } else {
-            setPdfReadProgress(0);
-            setPdfReadState("unread");
-          }
-
-          requestAnimationFrame(() => {
-            if (pdfWrapperRef.current) {
-              const width = pdfWrapperRef.current.clientWidth;
-              setPdfWidth(Math.max(280, width - 48));
-            }
-            // Force a visibility check right after pages are ready
-            setTimeout(() => checkPdfPagesVisibility(), 100);
-          });
-        }}
-        onLoadError={(error) => {
-          console.error("PDF loading error:", error);
-        }}
-        loading={<div className="pdf-loading">Loading PDF...</div>}
-      >
-        {Array.from({ length: pdfPageCount }, (_, index) => (
-          <div className="pdf-page-wrapper" key={`page_${index + 1}`}>
-            <Page
-              pageNumber={index + 1}
-              width={pdfWidth}
-              renderTextLayer={true}
-              renderAnnotationLayer={true}
-            />
-          </div>
-        ))}
-      </Document>
+      <FaEye />
+      <span>
+        {isVideo(getFileName(selectedFile))
+          ? Number(selectedFile.is_read) === 1 || videoProgress >= 100
+            ? "Read"
+            : `${videoProgress}%`
+          : pdfReadState === "read"
+          ? "Read"
+          : `${pdfReadProgress}%`}
+      </span>
     </div>
-  );
-}
+  )}
 
-    /* ===================== VIDEO ===================== */
-   /* ===================== VIDEO ===================== */
-/* ===================== VIDEO ===================== */
-if (isVideo(name)) {
-  return (
-    <div
-      style={{
-        width: "100%",
-        height: "100%",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        background: "#000",
-        position: "relative",
-      }}
-    >
-      <video
-        ref={videoRef}
-        key={selectedFile.id}
-        src={fileUrl}
-        controls
-        style={{
-          maxWidth: "100%",
-          maxHeight: "100%",
-          width: "auto",
-          height: "auto",
-        }}
-        onLoadedMetadata={(e) => {
-          setVideoDuration(e.target.duration || 0);
-        }}
-        onTimeUpdate={(e) => {
-          const video = e.target;
-          const current = video.currentTime || 0;
-          const duration = video.duration || 1;
-          const percent = Math.min(100, Math.round((current / duration) * 100));
-          setVideoProgress(percent);
-
-          // Mark as fully read only when almost finished
-          if (percent >= 95) {
-            markFileRead(selectedFile);
-          }
-        }}
-        onEnded={() => {
-          setVideoProgress(100);
-          markFileRead(selectedFile);
-        }}
-      >
-        Your browser does not support the video tag.
-      </video>
-    </div>
-  );
-}
-    /* ===================== AUDIO ===================== */
-    if (isAudio(name)) {
-      return (
-        <div
-          className="media-viewer-wrapper"
-          style={{
-            width: "100%",
-            height: "100%",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            padding: 40,
-          }}
-        >
-          <audio
-            src={fileUrl}
-            controls
-            style={{ width: "100%", maxWidth: 500 }}
-            onEnded={() => markFileRead(selectedFile)}
-            onPlay={() => markFileRead(selectedFile)}
-          >
-            Your browser does not support the audio element.
-          </audio>
-        </div>
-      );
-    }
-
-    /* ===================== DOCX ===================== */
-    if (isDocx(name)) {
-      return (
-        <div
-          className="docx-viewer-wrapper"
-          onScroll={handleViewerScroll}
-        >
-          <div
-            id="docx-preview-container"
-            className="docx-preview-container"
-          />
-        </div>
-      );
-    }
-
-    /* ===================== FALLBACK ===================== */
-    return (
-      <div style={{ padding: 32, textAlign: "center" }}>
-        <p style={{ fontSize: 16, marginBottom: 8 }}>
-          Preview is not available for this file type.
+  {/* ========== PRIVACY OVERLAY ========== */}
+  {!isContentProtected && (
+    <div className="policy-privacy-overlay">
+      <div className="policy-privacy-message">
+        <FaLock style={{ fontSize: 42, marginBottom: 16 }} />
+        <h3>Content Hidden</h3>
+        <p>
+          Policy content is hidden while the window is not in focus.
+          Return to this tab to continue reading.
         </p>
-        <p style={{ color: "#64748b", marginBottom: 24 }}>
-          {Number(selectedFile.allow_download) === 1
-            ? "Please download the file to view it."
-            : "Download is not allowed for this file."}
-        </p>
-
-        {Number(selectedFile.allow_download) === 1 && (
-          <a
-            href={fileUrl}
-            download={name}
-            style={{
-              display: "inline-block",
-              padding: "12px 24px",
-              background: "#2563eb",
-              color: "white",
-              borderRadius: 8,
-              textDecoration: "none",
-              fontWeight: 500,
-            }}
-          >
-            Download {name}
-          </a>
+        {showCaptureWarning && (
+          <p style={{ color: "#dc2626", marginTop: 12, fontWeight: 600 }}>
+            Screenshots and screen recording are not permitted.
+          </p>
         )}
       </div>
-    );
-  })()
-) : (
-  <p>No file available.</p>
-)}
-
-            {/* Floating acknowledgement – now correctly overlays the file */}
-{/* ========== ORIGINAL FLOATING ACKNOWLEDGEMENT (keep this) ========== */}
-{Number(selectedFile.allow_view) === 1 && pendingFile && (
-  <div className="ack-floating-wrapper">
-    <div className="ack-floating-icon">
-      <FaUserCheck />
     </div>
+  )}
 
-    <div className="ack-floating-popup">
-      <div className="ack-message-title">
-        Acknowledgement Required
+  {/* ========== PROTECTED CONTENT ========== */}
+  <div
+    className={`viewer-content-protected ${
+      !isContentProtected ? "is-hidden" : ""
+    }`}
+    style={{
+      filter: !isContentProtected ? "blur(18px)" : "none",
+      pointerEvents: !isContentProtected ? "none" : "auto",
+      userSelect: "none",
+      WebkitUserSelect: "none",
+      width: "100%",
+      height: "100%",
+      position: "relative",
+    }}
+  >
+    {Number(selectedFile.allow_view) !== 1 ? (
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          height: "100%",
+          padding: 40,
+          textAlign: "center",
+        }}
+      >
+        <div style={{ fontSize: 48, marginBottom: 16 }}>🔒</div>
+        <h3 style={{ color: "#1f2937", fontSize: 18, marginBottom: 8 }}>
+          Access Restricted
+        </h3>
+        <p style={{ color: "#64748b", fontSize: 14, lineHeight: 1.6 }}>
+          This file is not available for viewing. Please contact your
+          administrator if you need access to this document.
+        </p>
+      </div>
+    ) : loadingFile ? (
+      <p>Loading...</p>
+    ) : fileUrl && selectedFile ? (
+      (() => {
+        const name = getFileName(selectedFile);
+
+        /* ===================== IMAGE ===================== */
+        if (isImage(name)) {
+          return (
+            <div
+              className="media-viewer-wrapper"
+              style={{
+                width: "100%",
+                height: "100%",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                background: "#f8fafc",
+                overflow: "auto",
+              }}
+            >
+              <img
+                src={fileUrl}
+                alt={name}
+                style={{
+                  maxWidth: "100%",
+                  maxHeight: "100%",
+                  objectFit: "contain",
+                  display: "block",
+                }}
+                onLoad={() => {
+                  markFileRead(selectedFile);
+                }}
+              />
+            </div>
+          );
+        }
+
+        /* ===================== PDF ===================== */
+        if (isPdf(name)) {
+          return (
+            <div
+              ref={pdfWrapperRef}
+              className="pdf-viewer-wrapper"
+              onScroll={handlePdfScroll}
+            >
+              <Document
+                file={fileUrl}
+                onLoadSuccess={({ numPages }) => {
+                  setPdfPageCount(numPages);
+
+                  if (Number(selectedFile.is_read) === 1) {
+                    setPdfReadProgress(100);
+                    setPdfReadState("read");
+                  } else {
+                    setPdfReadProgress(0);
+                    setPdfReadState("unread");
+                  }
+
+                  requestAnimationFrame(() => {
+                    if (pdfWrapperRef.current) {
+                      const width = pdfWrapperRef.current.clientWidth;
+                      setPdfWidth(Math.max(280, width - 48));
+                    }
+                    setTimeout(() => checkPdfPagesVisibility(), 100);
+                  });
+                }}
+                onLoadError={(error) => {
+                  console.error("PDF loading error:", error);
+                }}
+                loading={<div className="pdf-loading">Loading PDF...</div>}
+              >
+                {Array.from({ length: pdfPageCount }, (_, index) => (
+                  <div className="pdf-page-wrapper" key={`page_${index + 1}`}>
+                    <Page
+                      pageNumber={index + 1}
+                      width={pdfWidth}
+                      renderTextLayer={true}
+                      renderAnnotationLayer={true}
+                    />
+                  </div>
+                ))}
+              </Document>
+            </div>
+          );
+        }
+
+        /* ===================== VIDEO ===================== */
+        if (isVideo(name)) {
+          return (
+            <div
+              style={{
+                width: "100%",
+                height: "100%",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                background: "#000",
+                position: "relative",
+              }}
+            >
+              <video
+                ref={videoRef}
+                key={selectedFile.id}
+                src={fileUrl}
+                controls
+                style={{
+                  maxWidth: "100%",
+                  maxHeight: "100%",
+                  width: "auto",
+                  height: "auto",
+                }}
+                onLoadedMetadata={(e) => {
+                  setVideoDuration(e.target.duration || 0);
+                }}
+                onTimeUpdate={(e) => {
+                  const video = e.target;
+                  const current = video.currentTime || 0;
+                  const duration = video.duration || 1;
+                  const percent = Math.min(
+                    100,
+                    Math.round((current / duration) * 100)
+                  );
+                  setVideoProgress(percent);
+
+                  if (percent >= 95) {
+                    markFileRead(selectedFile);
+                  }
+                }}
+                onEnded={() => {
+                  setVideoProgress(100);
+                  markFileRead(selectedFile);
+                }}
+              >
+                Your browser does not support the video tag.
+              </video>
+            </div>
+          );
+        }
+
+        /* ===================== AUDIO ===================== */
+        if (isAudio(name)) {
+          return (
+            <div
+              className="media-viewer-wrapper"
+              style={{
+                width: "100%",
+                height: "100%",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                padding: 40,
+              }}
+            >
+              <audio
+                src={fileUrl}
+                controls
+                style={{ width: "100%", maxWidth: 500 }}
+                onEnded={() => markFileRead(selectedFile)}
+                onPlay={() => markFileRead(selectedFile)}
+              >
+                Your browser does not support the audio element.
+              </audio>
+            </div>
+          );
+        }
+
+        /* ===================== DOCX ===================== */
+        if (isDocx(name)) {
+          return (
+            <div
+              className="docx-viewer-wrapper"
+              onScroll={handleViewerScroll}
+            >
+              <div
+                id="docx-preview-container"
+                className="docx-preview-container"
+              />
+            </div>
+          );
+        }
+
+        /* ===================== FALLBACK ===================== */
+        return (
+          <div style={{ padding: 32, textAlign: "center" }}>
+            <p style={{ fontSize: 16, marginBottom: 8 }}>
+              Preview is not available for this file type.
+            </p>
+            <p style={{ color: "#64748b", marginBottom: 24 }}>
+              {Number(selectedFile.allow_download) === 1
+                ? "Please download the file to view it."
+                : "Download is not allowed for this file."}
+            </p>
+
+            {Number(selectedFile.allow_download) === 1 && (
+              <a
+                href={fileUrl}
+                download={name}
+                style={{
+                  display: "inline-block",
+                  padding: "12px 24px",
+                  background: "#2563eb",
+                  color: "white",
+                  borderRadius: 8,
+                  textDecoration: "none",
+                  fontWeight: 500,
+                }}
+              >
+                Download {name}
+              </a>
+            )}
+          </div>
+        );
+      })()
+    ) : (
+      <p>No file available.</p>
+    )}
+  </div>
+
+  {/* ========== FLOATING ACKNOWLEDGEMENT ========== */}
+  {Number(selectedFile.allow_view) === 1 && pendingFile && (
+    <div className="ack-floating-wrapper">
+      <div className="ack-floating-icon">
+        <FaUserCheck />
       </div>
 
-      {/* Optional helper message when not fully read */}
-      {!isFileFullyRead(selectedFile) && (
-        <p style={{ 
-          fontSize: 13, 
-          color: "#b45309", 
-          margin: "8px 0 12px",
-          lineHeight: 1.4 
-        }}>
-          You must fully read / watch this file (100%) before you can acknowledge it.
-        </p>
-      )}
+      <div className="ack-floating-popup">
+        <div className="ack-message-title">Acknowledgement Required</div>
 
-      <label className="ack-checkbox-label">
-        <input
-          type="checkbox"
-          checked={ackChecked}
-          onChange={(e) => setAckChecked(e.target.checked)}
-          disabled={!isFileFullyRead(selectedFile)}  // also disable checkbox until read
-        />
-        <span>
-          {pendingFile?.acknowledgement_message ||
-            "This file requires acknowledgement before it can be marked as read."}
-        </span>
-      </label>
+        {!isFileFullyRead(selectedFile) && (
+          <p
+            style={{
+              fontSize: 13,
+              color: "#b45309",
+              margin: "8px 0 12px",
+              lineHeight: 1.4,
+            }}
+          >
+            You must fully read / watch this file (100%) before you can
+            acknowledge it.
+          </p>
+        )}
 
-      <button
-        className="ac-modal-btn ac-modal-btn-primary"
-        onClick={handleAcknowledgement}
-        disabled={!ackChecked || !isFileFullyRead(selectedFile)}
-      >
-        Acknowledge
-      </button>
+        <label className="ack-checkbox-label">
+          <input
+            type="checkbox"
+            checked={ackChecked}
+            onChange={(e) => setAckChecked(e.target.checked)}
+            disabled={!isFileFullyRead(selectedFile)}
+          />
+          <span>
+            {pendingFile?.acknowledgement_message ||
+              "This file requires acknowledgement before it can be marked as read."}
+          </span>
+        </label>
+
+        <button
+          className="ac-modal-btn ac-modal-btn-primary"
+          onClick={handleAcknowledgement}
+          disabled={!ackChecked || !isFileFullyRead(selectedFile)}
+        >
+          Acknowledge
+        </button>
+      </div>
     </div>
-  </div>
-)}            {/* {pendingFile && (
-              <div className="ack-message-box floating-ack">
-                <div className="ack-message-title">Acknowledgement required</div>
-                <p>
-                  {pendingFile?.acknowledgement_message ||
-                    "This file requires acknowledgement before it can be marked as read."}
-                </p>
-                <button
-                  className="ac-modal-btn ac-modal-btn-primary"
-                  onClick={handleAcknowledgement}
-                >
-                  Acknowledge
-                </button>
-              </div>
-            )} */}
-          </div>
+  )}
+</div>
 
           {/* Footer is a sibling of viewer-body, not inside it */}
         <div className="viewer-footer">
@@ -1382,7 +1720,7 @@ if (isVideo(name)) {
         </div>
       )}
     </div>
-{/* Alert Modal */}
+
 {alertModal.isVisible && (
   <div
     className="alert-modal-overlay"

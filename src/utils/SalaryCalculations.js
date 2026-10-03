@@ -679,7 +679,9 @@ const grossForESI =
 
   // ==================== ESIC (Employee & Employer) ====================
  // ==================== ESIC EMPLOYEE ====================
+// ==================== ESIC (Employee & Employer) ====================
 
+// Employee ESIC
 if (
   planData.isESICEmployee &&
   planData.esicEmployeeType === "percentage" &&
@@ -689,10 +691,11 @@ if (
   const rate =
     parseFloat(planData.esicEmployeePercentage) / 100;
 
+  // ESIC base excludes Bonus, OT, Incentive and LTA
   esic = grossForESI * rate;
 
   planData.esicEmployeeText =
-  `${planData.esicEmployeePercentage}% of Gross (excl. Bonus/OT/Incentive/LTA)`;
+    `${planData.esicEmployeePercentage}% of Gross (excl. Bonus/OT/Incentive/LTA)`;
 
 } else if (
   planData.esicEmployeeAmount &&
@@ -706,8 +709,7 @@ if (
 }
 
 
-// ==================== ESIC EMPLOYER ====================
-
+// Employer ESIC
 if (
   planData.isESICEmployer &&
   planData.esicEmployerType === "percentage" &&
@@ -717,10 +719,12 @@ if (
   const rate =
     parseFloat(planData.esicEmployerPercentage) / 100;
 
+  // ESIC base excludes Bonus, OT, Incentive and LTA
   esicEmployer = grossForESI * rate;
 
-planData.esicEmployerText =
-  `${planData.esicEmployerPercentage}% of Gross (excl. Bonus/OT/Incentive/LTA)`;
+  planData.esicEmployerText =
+    `${planData.esicEmployerPercentage}% of Gross (excl. Bonus/OT/Incentive/LTA)`;
+
 } else if (
   planData.isESICEmployer &&
   planData.esicEmployerAmount &&
@@ -731,8 +735,7 @@ planData.esicEmployerText =
 } else {
   esicEmployer = 0;
   planData.esicEmployerText = "Not Applicable";
-}
-  // ==================== RECALCULATE GROSS SALARY ====================
+}  // ==================== RECALCULATE GROSS SALARY ====================
   grossSalary =
     basicSalary +
     hra +
@@ -783,7 +786,7 @@ planData.esicEmployerText =
     netSalary,
     incentivePay,
     lopDeduction,
-    grossForESI,           // Added for debugging / display
+    grossForESI,          
   };
 
   return salaryDetails;

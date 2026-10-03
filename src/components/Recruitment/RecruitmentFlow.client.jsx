@@ -11,7 +11,7 @@ export default function RecruitmentFlow() {
 
   const role = String(user?.role || user?.raw?.role || "").toLowerCase();
 
-  const isAdmin = role === "admin" || role === "superadmin";
+  const isAdmin = role === "admin" || role === "ceo" || role === "superadmin";
   const isHR = role === "hr" || role === "superadmin";
 
   if (isHR) {

@@ -122,6 +122,7 @@ const eventLabels = {
   SUPERVISOR_APPROVED: "Approved by Supervisor",
   SUPERVISOR_REJECTED: "Rejected by Supervisor",
   ADMIN_ACTION_REQUIRED: "Admin Action Required",
+  ADMIN_APPROVED: "Approved by Admin",
   BOOKING_CONFIRMED: "Tickets Booked by Admin",
   TRIP_COMPLETED: "Trip Completed",
   REQUEST_REJECTED: "Request Rejected",
@@ -740,7 +741,7 @@ const EmployeeAssistant = () => {
     return created;
   };
 
-  const approveRequest = async () => {
+  const performApproveRequest = async () => {
     if (!selectedRequest) return;
 
     try {
@@ -765,6 +766,124 @@ const EmployeeAssistant = () => {
 
       showAlert(error.response?.data?.message || "Approval failed.");
     }
+  };
+
+  const approveRequest = async () => {
+    if (!selectedRequest) {
+      return;
+    }
+
+    if (selectedRequest.request_type !== "SALARY_ADVANCE") {
+      await performApproveRequest();
+      return;
+    }
+
+    const details = normalizeDetails(selectedRequest.details_json);
+
+    const requestedAmount = Number(details.amount || 0);
+
+    const standardMaximum = Number(
+      details.standardMaximum ?? details.maximumAdvance ?? 0,
+    );
+
+    const paidAdvance = Number(details.paidAdvance || 0);
+
+    const outstandingAdvance = Number(details.outstandingAdvance || 0);
+
+    const remainingStandardAmount = Number(
+      details.remainingStandardAmount ?? details.remainingAdvance ?? 0,
+    );
+
+    const excessAmount = Number(details.excessAmount || 0);
+
+    const recoveryMonths = Number(
+      details.repaymentMonths || details.recoveryMonths || 0,
+    );
+
+    const minimumRecoveryMonths = Number(details.minimumRecoveryMonths || 1);
+
+    const monthlyRecovery = Number(
+      details.estimatedMonthlyRecovery ??
+        details.monthlyRecoveryAmount ??
+        (recoveryMonths > 0 ? requestedAmount / recoveryMonths : 0),
+    );
+
+    const recoveryStartMonth = details.recoveryStartMonth || "—";
+
+    const isException = details.isException === true || excessAmount > 0;
+
+    const isAdminFinal =
+      isAdmin && selectedRequest.current_status === "PENDING_ADMIN_ACTION";
+
+    const message = [
+      isAdminFinal
+        ? "This is the final Admin approval."
+        : "This approval will move the request to Admin final action.",
+      "",
+      `In-hand salary: ₹${Number(details.baseNetSalary || 0).toLocaleString(
+        "en-IN",
+      )}`,
+      `Standard 3-month maximum: ₹${standardMaximum.toLocaleString("en-IN")}`,
+      `Already repaid: ₹${paidAdvance.toLocaleString("en-IN")}`,
+      `Current outstanding: ₹${outstandingAdvance.toLocaleString("en-IN")}`,
+      `Remaining standard amount: ₹${remainingStandardAmount.toLocaleString(
+        "en-IN",
+      )}`,
+      `Current request: ₹${requestedAmount.toLocaleString("en-IN")}`,
+      `Exception amount: ₹${excessAmount.toLocaleString("en-IN")}`,
+      "",
+      `Recovery starts: ${recoveryStartMonth}`,
+      `Recovery period: ${recoveryMonths} month(s)`,
+      `Minimum recovery period: ${minimumRecoveryMonths} month(s)`,
+      `Estimated monthly deduction: ₹${monthlyRecovery.toLocaleString("en-IN", {
+        maximumFractionDigits: 2,
+      })}`,
+      "",
+      isException
+        ? "This request exceeds the remaining standard amount, but exceptional/emergency requests are permitted."
+        : "This request is within the employee's remaining standard amount.",
+      "",
+      isAdminFinal
+        ? "On final approval, the employee_advance_details record will be created and payroll deduction will become active."
+        : "No payroll deduction is created at supervisor approval.",
+      "",
+      "Do you want to continue?",
+    ].join("\n");
+
+    /*
+     * Supervisor:
+     * show confirmation only for exception requests.
+     *
+     * Admin:
+     * always confirm because this activates payroll recovery.
+     */
+    if (isException || isAdminFinal) {
+      setDialog({
+        isVisible: true,
+        title: isAdminFinal
+          ? "Confirm final salary advance approval"
+          : "Confirm exceptional salary advance",
+        message,
+        buttons: [
+          {
+            label: "Cancel",
+            onClick: closeDialog,
+          },
+          {
+            label: "Continue",
+            className: "ac-modal-btn ac-modal-btn-danger",
+            onClick: async () => {
+              closeDialog();
+              await performApproveRequest();
+            },
+          },
+        ],
+      });
+
+      return;
+    }
+
+    await performApproveRequest();
   };
 
   const rejectRequest = async () => {
@@ -1480,17 +1599,8 @@ const EmployeeAssistant = () => {
                   <button
                     key={item.key}
                     type="button"
-                    disabled={item.key === "SALARY_ADVANCE"}
-                    className={`assistant-category-card ${item.tone} ${
-                      item.key === "SALARY_ADVANCE"
-                        ? "temporarily-unavailable"
-                        : ""
-                    }`}
+                    className={`assistant-category-card ${item.tone}`}
                     onClick={() => {
-                      if (item.key === "SALARY_ADVANCE") {
-                        return;
-                      }
-
                       if (item.key === "OTHER_QUERY") {
                         handleOtherQuery();
                         return;
@@ -1506,12 +1616,6 @@ const EmployeeAssistant = () => {
                     <h3>{item.title}</h3>
 
                     <p>{item.description}</p>
-
-                    {item.key === "SALARY_ADVANCE" && (
-                      <span className="category-unavailable-badge">
-                        Temporarily unavailable
-                      </span>
-                    )}
                   </button>
                 );
               })}
@@ -1966,6 +2070,10 @@ function RequestConversation({
 
             <RequestSummary request={request} />
 
+            {request.request_type === "SALARY_ADVANCE" && (
+              <SalaryAdvanceReview request={request} />
+            )}
+
             {canCancel && (
               <button
                 type="button"
@@ -2369,6 +2477,167 @@ function RequestConversation({
   );
 }
 
+function SalaryAdvanceReview({ request }) {
+  if (request?.request_type !== "SALARY_ADVANCE") {
+    return null;
+  }
+
+  const details = normalizeDetails(request.details_json);
+
+  const money = (value) => `₹${Number(value || 0).toLocaleString("en-IN")}`;
+
+  const requestedAmount = Number(details.amount || 0);
+
+  const standardMaximum = Number(
+    details.standardMaximum ?? details.maximumAdvance ?? 0,
+  );
+
+  const baseNetSalary = Number(details.baseNetSalary || 0);
+
+  const paidAdvance = Number(details.paidAdvance || 0);
+
+  const outstandingAdvance = Number(details.outstandingAdvance || 0);
+
+  const remainingStandardAmount = Number(
+    details.remainingStandardAmount ?? details.remainingAdvance ?? 0,
+  );
+
+  const excessAmount = Number(details.excessAmount || 0);
+
+  const minimumRecoveryMonths = Number(details.minimumRecoveryMonths || 1);
+
+  const recoveryMonths = Number(
+    details.repaymentMonths || details.recoveryMonths || 0,
+  );
+
+  const monthlyRecovery = Number(
+    details.estimatedMonthlyRecovery ??
+      details.monthlyRecoveryAmount ??
+      (recoveryMonths > 0 ? requestedAmount / recoveryMonths : 0),
+  );
+
+  const recoveryStartMonth = details.recoveryStartMonth || "—";
+
+  const isException = details.isException === true || excessAmount > 0;
+
+  const remainingAfterRequest = Math.max(
+    0,
+    remainingStandardAmount - requestedAmount,
+  );
+
+  const isAdminFinal = request.current_status === "PENDING_ADMIN_ACTION";
+
+  return (
+    <section className="salary-advance-review-card">
+      <div className="salary-advance-review-header">
+        <div>
+          <span className="salary-advance-review-eyebrow">
+            Salary Advance Review
+          </span>
+
+          <h3>Financial eligibility and repayment details</h3>
+        </div>
+
+        <span
+          className={
+            isException
+              ? "salary-advance-review-badge exception"
+              : "salary-advance-review-badge standard"
+          }
+        >
+          {isException ? "Exceptional request" : "Within standard amount"}
+        </span>
+      </div>
+
+      <div className="salary-advance-review-grid">
+        <div>
+          <span>In-hand salary</span>
+          <strong>{money(baseNetSalary)}</strong>
+        </div>
+
+        <div>
+          <span>Standard 3-month maximum</span>
+          <strong>{money(standardMaximum)}</strong>
+        </div>
+
+        <div>
+          <span>Already repaid</span>
+          <strong>{money(paidAdvance)}</strong>
+        </div>
+
+        <div>
+          <span>Current outstanding advance</span>
+          <strong>{money(outstandingAdvance)}</strong>
+        </div>
+
+        <div>
+          <span>Remaining standard amount</span>
+          <strong>{money(remainingStandardAmount)}</strong>
+        </div>
+
+        <div>
+          <span>Current request</span>
+          <strong>{money(requestedAmount)}</strong>
+        </div>
+
+        <div>
+          <span>Exception amount</span>
+          <strong>{money(excessAmount)}</strong>
+        </div>
+
+        <div>
+          <span>Remaining after this request</span>
+          <strong>{money(remainingAfterRequest)}</strong>
+        </div>
+
+        <div>
+          <span>Recovery starts from</span>
+          <strong>{recoveryStartMonth}</strong>
+        </div>
+
+        <div>
+          <span>Requested recovery period</span>
+          <strong>{recoveryMonths} month(s)</strong>
+        </div>
+
+        <div>
+          <span>Minimum recovery period</span>
+          <strong>{minimumRecoveryMonths} month(s)</strong>
+        </div>
+
+        <div>
+          <span>Estimated monthly deduction</span>
+          <strong>{money(monthlyRecovery)}</strong>
+        </div>
+      </div>
+
+      <div className="salary-advance-review-note">
+        <strong>
+          {isAdminFinal ? "Final Admin approval" : "Supervisor stage"}
+        </strong>
+
+        <p>
+          {isAdminFinal
+            ? "Approving this request will create the employee advance record and activate salary recovery from the selected month. The payroll flow will then deduct the calculated monthly recovery automatically."
+            : "No payroll deduction has been activated yet. Supervisor approval only sends this request to Admin for final action."}
+        </p>
+
+        <p>
+          Standard rule: 3 months of current in-hand salary. The standard amount
+          is an eligibility reference and does not prevent exceptional requests.
+        </p>
+
+        {isException && (
+          <p>
+            <strong>Exception warning:</strong> this request is above the
+            employee's remaining standard amount by {money(excessAmount)}.
+          </p>
+        )}
+      </div>
+    </section>
+  );
+}
+
 /* ==========================================================
    REQUEST SUMMARY
 ========================================================== */
@@ -2407,12 +2676,9 @@ function RequestSummary({ request }) {
 
           <SummaryField label="Mobile Number" value={details.mobileNumber} />
 
-          <SummaryField label="Base Location" value={details.baseLocation} />
+          <SummaryField label="Pickup Point" value={details.baseLocation} />
 
-          <SummaryField
-            label="Travel Location"
-            value={details.travelLocation}
-          />
+          <SummaryField label="Drop Point" value={details.travelLocation} />
 
           <SummaryField label="Transport" value={details.transportMode} />
 

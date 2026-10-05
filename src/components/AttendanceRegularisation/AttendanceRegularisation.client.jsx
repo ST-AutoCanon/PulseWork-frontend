@@ -1607,7 +1607,7 @@ export default function AttendanceRegularisation() {
   const role = getRole(user);
   const approverName = getApproverName(user);
 
-  const isAdmin = role === "admin";
+  const isAdmin = role === "admin" || role === "ceo";
   const isHr = role === "hr";
   const isManagerOrSupervisor = role === "manager" || role === "supervisor";
   const canManageLoginHours = isAdmin;

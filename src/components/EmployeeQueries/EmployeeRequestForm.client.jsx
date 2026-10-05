@@ -6,7 +6,6 @@ import Modal from "../Modal/Modal.client";
 
 import {
   FiCalendar,
-  FiDollarSign,
   FiFileText,
   FiMapPin,
   FiMonitor,
@@ -15,6 +14,7 @@ import {
   FiUser,
   FiX,
 } from "react-icons/fi";
+import { MdOutlineCurrencyRupee } from "react-icons/md";
 
 const TRANSPORT_OPTIONS = {
   LOWER: ["Bus", "Train"],
@@ -24,6 +24,13 @@ const TRANSPORT_OPTIONS = {
 const currentMonthKey = () => {
   const date = new Date();
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+};
+
+const currentDateKey = () => {
+  const date = new Date();
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(
+    date.getDate(),
+  ).padStart(2, "0")}`;
 };
 
 const recoveryMonthOptions = Array.from({ length: 2 }, (_, index) => {
@@ -356,7 +363,7 @@ const EmployeeRequestForm = ({
       },
 
       SALARY_ADVANCE: {
-        icon: FiDollarSign,
+        icon: MdOutlineCurrencyRupee,
         title: "Salary Advance Request",
         subtitle: "Fill in the details below to request salary advance.",
         button: "Submit Request",
@@ -389,6 +396,19 @@ const EmployeeRequestForm = ({
       if (!form.from) nextErrors.from = "Departure is required";
       if (!form.to) nextErrors.to = "Destination is required";
       if (!form.travelDate) nextErrors.travelDate = "Travel date is required";
+      const today = currentDateKey();
+
+      if (form.travelDate && form.travelDate < today) {
+        nextErrors.travelDate = "Travel date cannot be in the past.";
+      }
+
+      if (
+        form.returnDate &&
+        form.travelDate &&
+        form.returnDate < form.travelDate
+      ) {
+        nextErrors.returnDate = "Return date cannot be before the travel date.";
+      }
       if (!form.project) nextErrors.project = "Project is required";
       if (!form.baseLocation.trim())
         nextErrors.baseLocation = "Pickup Point is required";
@@ -800,8 +820,14 @@ const EmployeeRequestForm = ({
                 <InputWithIcon
                   icon={<FiCalendar />}
                   type="date"
+                  min={currentDateKey()}
                   value={form.travelDate}
-                  onChange={(value) => update("travelDate", value)}
+                  onChange={(value) => {
+                    update("travelDate", value);
+                    if (form.returnDate && form.returnDate < value) {
+                      update("returnDate", "");
+                    }
+                  }}
                 />
               </RequestField>
 
@@ -873,6 +899,7 @@ const EmployeeRequestForm = ({
                 <InputWithIcon
                   icon={<FiCalendar />}
                   type="date"
+                  min={form.travelDate || currentDateKey()}
                   value={form.returnDate}
                   onChange={(value) => update("returnDate", value)}
                 />

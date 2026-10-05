@@ -68,6 +68,10 @@ export default function useProjectForm({
       allowedSteps: [1, 2, 3, 4],
       editable: { 1: true, 2: true, 3: true, 4: true },
     },
+    CEO: {
+      allowedSteps: [1, 2, 3, 4],
+      editable: { 1: true, 2: true, 3: true, 4: true },
+    },
     HR: {
       allowedSteps: [1, 2, 3, 4],
       editable: { 1: true, 2: true, 3: true, 4: true },
@@ -242,7 +246,8 @@ export default function useProjectForm({
   }, [searchQuery, filterType, allEmployees]);
 
   const stsOwners = allEmployees.filter(
-    (emp) => emp.role === "Admin" || emp.role === "Manager",
+    (emp) =>
+      emp.role === "Admin" || emp.role === "CEO" || emp.role === "Manager",
   );
 
   const handleFileUpload = (e) => {

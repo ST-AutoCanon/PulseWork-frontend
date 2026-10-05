@@ -31,8 +31,8 @@ import {
   FiUser,
   FiX,
   FiXCircle,
-  FiDollarSign,
 } from "react-icons/fi";
+import { MdOutlineCurrencyRupee } from "react-icons/md";
 
 import { useAuth } from "../../context/AuthProvider.client";
 import EmployeeRequestForm from "./EmployeeRequestForm.client";
@@ -53,7 +53,7 @@ const REQUEST_TYPES = [
     key: "SALARY_ADVANCE",
     title: "Salary Advance",
     description: "Request advance on your salary.",
-    icon: FiDollarSign,
+    icon: MdOutlineCurrencyRupee,
     tone: "green",
   },
   {

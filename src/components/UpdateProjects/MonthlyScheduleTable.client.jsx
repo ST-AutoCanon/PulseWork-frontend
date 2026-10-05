@@ -29,6 +29,7 @@ const MonthlyScheduleTable = ({
 
   const allowed =
     userRole === "admin" ||
+    userRole === "ceo" ||
     (userRole === "manager" && department === "finance");
 
   if (!allowed)

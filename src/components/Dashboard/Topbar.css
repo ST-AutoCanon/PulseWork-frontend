@@ -1,361 +1,1379 @@
+/* ========================================================================== 
+   TOPBAR
+   ========================================================================== */
 @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap');
+
 @font-face {
-  font-family: "InsigniaRoman";
+  font-family: "Insignia Roman";
   src: url("/fonts/Insignia-Roman.ttf") format("truetype");
   font-weight: normal;
   font-style: normal;
-  
 }
+
 .topbar1 {
-  display: flex;
-  justify-content: space-between;
+  width: 100%;
+  min-height: 64px;
+  height: 64px;
+
+  display: grid;
+  grid-template-columns: 240px 1fr 150px;
+
   align-items: center;
-  height: 80px;
-  padding: 0 32px;
+
+  position: relative;
+  z-index: 100;
+
   background: #ffffff;
-  border-bottom: 1px solid #e2e8f0;
-  position: sticky;
-  top: 0;
-  z-index: 50;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
-  transition: all 0.3s ease;
+  border-bottom: 1px solid #e6eef0;
+  box-shadow: 0 2px 8px rgba(2, 79, 85, 0.05);
+
+  padding: 0 16px;
+  box-sizing: border-box;
+
+  overflow: hidden;
 }
+
+/* ========================================================================== 
+   PROFILE
+   ========================================================================== */
 
 .profile-section {
+  width: 240px;
+
   display: flex;
   align-items: center;
-  gap: 14px;
+
+  gap: 10px;
+
+  min-width: 0;
+  flex-shrink: 0;
 }
 
-.profile-img {
-  width: 52px;
-  height: 52px;
+.profile-img,
+.profile-placeholder {
+  width: 38px;
+  height: 38px;
+  min-width: 38px;
+
   border-radius: 50%;
   object-fit: cover;
-  border: 2.5px solid #e2e8f0;
-  transition: transform 0.2s ease;
-}
-
-.profile-img:hover {
-  transform: scale(1.05);
 }
 
 .profile-placeholder {
-  width: 52px;
-  height: 52px;
-  border-radius: 50%;
-  background: linear-gradient(45deg, #e0e7ff, #c7d2fe);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: bold;
-  color: #6366f1;
-  font-size: 18px;
+  background: #d5f2f8;
+  border: 1px solid #9bd8db;
 }
 
 .profile-info {
+  min-width: 0;
+
   display: flex;
   flex-direction: column;
+  justify-content: center;
+
   gap: 2px;
 }
 
 .profile-namedash {
-  font-size: 16px;
+  width: 100%;
+  max-width: 175px;
+
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+
+  color: #024f55;
+
+  font-size: 13px;
   font-weight: 600;
-  color: #1e293b;
-  letter-spacing: -0.2px;
+  line-height: 17px;
 }
 
 .profile-designation {
-  font-size: 13px;
-  color: #64748b;
-  font-weight: 500;
+  width: 100%;
+  max-width: 175px;
+
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+
+  color: #6d8588;
+
+  font-size: 11px;
+  line-height: 14px;
 }
 
+/* ========================================================================== 
+   MIDDLE AREA
+   ========================================================================== */
+
+.topbar-middle {
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+/* ========================================================================== 
+   ORGANIZATION NAME
+   ========================================================================== */
+
 .org-name-section {
-  flex: 1;
+  grid-column: 2;
+  height: 100%;
+  min-width: 0;
+  max-width: 320px;
+
   display: flex;
+  align-items: center;
   justify-content: center;
-  padding: 0 20px;
+
+  padding: 0 12px;
+  box-sizing: border-box;
+  overflow: hidden;
 }
 
 .org-name-text {
+  width: 100%;
   font-family: "Insignia Roman", sans-serif;
-  font-weight: 550;
-  font-size: 28px;
-  letter-spacing: 1px;
-  text-transform: capitalize; /* ✅ FIXED */
-  color: #1e40af;
-}
 
-.org-name-text .org-icon-text {
-  font-size: 20px;
-  color: #1e40af;
-}
-
-.icon-section {
   display: flex;
   align-items: center;
+  justify-content: center;
+
+  text-align: center;
+
+  color: #024f55;
+
+  font-size: 16px;
+  font-weight: 700;
+
+  letter-spacing: 0.1px;
+
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.org-name-text span {
+  max-width: 100%;
+  text-align: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ========================================================================== 
+   CELEBRATION PILLS SECTION
+   ========================================================================== */
+
+.topbar-celebration-section {
+  grid-column: 3;
+  width: 100%;
+  min-width: 0;
+  height: 100%;
+
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+
+  gap: 12px;
+
+  padding: 0 8px 0 12px;
+
+  box-sizing: border-box;
+
+  overflow: hidden;
+}
+
+/* ========================================================================== 
+   BIRTHDAY REMINDER - SMALL
+   ========================================================================== */
+
+.celebration-pill-birthday {
+  max-width: 235px;
+  min-width: 0;
+
+  display: flex;
+  align-items: center;
+
+  gap: 5px;
+
+  height: 28px;
+
+  padding: 0 9px 0 5px;
+
+  box-sizing: border-box;
+
+  background: linear-gradient(
+    135deg,
+    #fff9e6 0%,
+    #fff3c9 100%
+  );
+
+  border: 1px solid #f0d56e;
+  border-radius: 50px;
+
+  box-shadow:
+    0 1px 5px rgba(230, 180, 40, 0.12);
+
+  white-space: nowrap;
+
+  position: relative;
+
+  overflow: visible;
+}
+
+.celebration-pill-birthday .pill-icon {
+  width: 21px;
+  height: 21px;
+  min-width: 21px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  font-size: 12px;
+
+  background: #ffffff;
+  border-radius: 50%;
+
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.06);
+}
+
+.celebration-pill-birthday .pill-name {
+  min-width: 0;
+  max-width: 120px;
+
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+
+  font-size: 10px;
+  font-weight: 600;
+
+  color: #7a5c00;
+}
+
+.celebration-pill-birthday .pill-arrow {
+  flex-shrink: 0;
+
+  font-size: 10px;
+  color: #c9a227;
+
+  margin-left: 0;
+}
+
+/* ========================================================================== 
+   WORK ANNIVERSARY REMINDER - SMALL
+   ========================================================================== */
+
+.celebration-pill-anniversary {
+  max-width: 245px;
+  min-width: 0;
+
+  display: flex;
+  align-items: center;
+
+  gap: 5px;
+
+  height: 28px;
+
+  padding: 0 9px 0 5px;
+
+  box-sizing: border-box;
+
+  background: linear-gradient(
+    135deg,
+    #f5e8ff 0%,
+    #ebd5ff 100%
+  );
+
+  border: 1px solid #c4a0f0;
+  border-radius: 50px;
+
+  box-shadow:
+    0 1px 5px rgba(160, 100, 220, 0.10);
+
+  white-space: nowrap;
+
+  position: relative;
+
+  overflow: visible;
+}
+
+.celebration-pill-anniversary .pill-icon {
+  width: 21px;
+  height: 21px;
+  min-width: 21px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  font-size: 11px;
+
+  background: #ffffff;
+  border-radius: 50%;
+
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.06);
+}
+
+.celebration-pill-anniversary .pill-name {
+  min-width: 0;
+  max-width: 125px;
+
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+
+  font-size: 10px;
+  font-weight: 600;
+
+  color: #5b2d8e;
+}
+
+.celebration-pill-anniversary .pill-arrow {
+  flex-shrink: 0;
+
+  font-size: 10px;
+  color: #9b6ad6;
+
+  margin-left: 0;
+}
+
+/* ========================================================================== 
+   SPARKLES
+   ========================================================================== */
+
+.pill-sparkle {
+  position: absolute;
+
+  font-size: 8px;
+
+  pointer-events: none;
+
+  animation: pill-sparkle 2s ease-in-out infinite;
+}
+
+.pill-sparkle-1 {
+  top: -6px;
+  left: -4px;
+}
+
+.pill-sparkle-2 {
+  bottom: -4px;
+  right: -5px;
+
+  animation-delay: 0.5s;
+}
+
+.pill-sparkle-3 {
+  top: -4px;
+  right: 6px;
+
+  animation-delay: 1s;
+}
+
+@keyframes pill-sparkle {
+  0%,
+  100% {
+    opacity: 0.35;
+    transform: scale(0.8);
+  }
+
+  50% {
+    opacity: 1;
+    transform: scale(1.2);
+  }
+}
+
+/* ========================================================================== 
+   RIGHT ICON SECTION
+   ========================================================================== */
+
+.icon-section {
+  width: 150px;
+  min-width: 150px;
+  height: 100%;
+
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+
   gap: 20px;
+
+  flex-shrink: 0;
+
+  color: #024f55;
+}
+
+.icon-section > div {
+  width: 28px;
+  height: 36px;
+
+  position: relative;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  cursor: pointer;
+
+  flex-shrink: 0;
 }
 
 .fa-icon {
-  font-size: 22px;
-  color: #475569;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  padding: 8px;
-  border-radius: 50%;
+  font-size: 16px;
+
+  transition:
+    color 0.2s ease,
+    transform 0.2s ease;
 }
 
-.fa-icon:hover {
-  color: #3b82f6;
-  background: #eff6ff;
-  transform: translateY(-2px);
+.icon-section > div:hover .fa-icon {
+  color: #3c949e;
+  transform: scale(1.1);
 }
+
+/* ========================================================================== 
+   NOTIFICATION + CALENDAR
+   ========================================================================== */
 
 .notification-icon {
-  position: relative;
+  width: 28px !important;
+  height: 36px !important;
 }
 
 .notification-badge {
   position: absolute;
-  top: 4px;
-  right: 4px;
-  background: #ef4444;
-  color: white;
-  font-size: 10px;
+
+  top: -3px;
+  right: -6px;
+
+  min-width: 16px;
+  height: 16px;
+
+  padding: 0 3px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border-radius: 999px;
+
+  background: #e64c4c;
+  color: #ffffff;
+
+  font-size: 9px;
   font-weight: 700;
-  min-width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: 2px solid white;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+
+  border: 2px solid #ffffff;
+
+  box-sizing: border-box;
 }
 
-.desktop-calendar-overlay {
+.calendar-toggle {
+  width: 28px !important;
+  height: 36px !important;
+}
+
+/* ========================================================================== 
+   CALENDAR
+   ========================================================================== */
+
+.desktop-calendar-overlay,
+.mobile-calendar-overlay {
   position: fixed;
-  top: 90px;
-  right: 20px;
-  background: white;
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.18);
-  z-index: 1000;
-  max-width: 380px;
-  overflow: hidden;
-  animation: fadeIn 0.2s ease-out;
-}
 
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(-8px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.mobile-topbar-v2 {
-  display: flex;
-  flex-direction: column;
-  background: transparent;
-  position: sticky;
-  top: 0;
-  z-index: 60;
-  padding-top: env(safe-area-inset-top, 12px);
-}
-
-.mobile-header-colored {
-  background: linear-gradient(to bottom, #156178, #0f98c2);
-  text-align: center;
-  box-shadow: 0 4px 12px rgba(30, 64, 175, 0.3);
-}
-
-.mobile-org-card {
-  color: white;
-  padding: 8px 24px;
-  font-size: 17px;
-  letter-spacing: -0.3px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-   font-family: "Insignia Roman", sans-serif;
-  position: relative;
-  overflow: hidden;
-}
-
-.mobile-org-card::before {
-  content: "";
-  position: absolute;
   inset: 0;
-  background: linear-gradient(45deg, rgba(255, 255, 255, 0.2), transparent);
+
+  z-index: 9999;
+
   pointer-events: none;
 }
 
-.mobile-main-row {
+.desktop-calendar-overlay > *,
+.mobile-calendar-overlay > * {
+  pointer-events: auto;
+}
+
+.calendar-dropdown-inline {
+  position: absolute;
+
+  top: 52px;
+  right: 14px;
+
+  z-index: 9999;
+}
+
+/* ========================================================================== 
+   MOBILE TOPBAR
+   ========================================================================== */
+
+.mobile-topbar-v2 {
+  width: 100%;
+
+  position: relative;
+  z-index: 100;
+
+  background: #ffffff;
+
+  border-bottom: 1px solid #e6eef0;
+
+  box-shadow:
+    0 2px 8px rgba(2, 79, 85, 0.05);
+}
+
+.mobile-header-colored {
+  width: 100%;
+
+  min-height: 56px;
+
+  padding: 8px 12px;
+
+  box-sizing: border-box;
+
   display: flex;
-  justify-content: space-between;
+  flex-direction: column;
+
   align-items: center;
-  padding: 12px 18px;
-  background: white;
+  justify-content: center;
 
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+  gap: 6px;
+
+  background: linear-gradient(
+    135deg,
+    #001d4a
+  );
 }
 
-.mobile-profile-card {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
+.mobile-org-card {
+  width: 100%;
+  font-family: "Insignia Roman", sans-serif;
 
-.mobile-avatar {
-  width: 44px;
-  height: 44px;
-  border-radius: 50%;
-  object-fit: cover;
-  border: 2.5px solid #e0e7ff;
-  box-shadow: 0 2px 6px rgba(99, 102, 241, 0.2);
-}
+  min-height: 28px;
 
-.mobile-avatar-placeholder {
-  width: 44px;
-  height: 44px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #6366f1, #8b5cf6);
   display: flex;
   align-items: center;
   justify-content: center;
-  color: white;
+
+  color: #ffffff;
+
+  font-size: 15px;
   font-weight: 700;
-  font-size: 18px;
-  text-transform: uppercase;
-  box-shadow: 0 2px 6px rgba(99, 102, 241, 0.3);
+
+  margin-top: 20px;
+
+  text-align: center;
+
+  overflow: hidden;
+
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.mobile-celebration-wrapper {
+  width: 100%;
+
+  display: flex;
+
+  justify-content: center;
+
+  gap: 10px;
+
+  flex-wrap: wrap;
+}
+
+.mobile-main-row {
+  width: 100%;
+
+  min-height: 58px;
+
+  display: flex;
+
+  align-items: center;
+  justify-content: space-between;
+
+  padding: 6px 12px;
+
+  box-sizing: border-box;
+
+  background: #ffffff;
+}
+
+.mobile-profile-card {
+  min-width: 0;
+
+  display: flex;
+  align-items: center;
+
+  gap: 8px;
+}
+
+.mobile-avatar,
+.mobile-avatar-placeholder {
+  width: 36px;
+  height: 36px;
+  min-width: 36px;
+
+  border-radius: 50%;
+
+  object-fit: cover;
+}
+
+.mobile-avatar-placeholder {
+  display: flex;
+
+  align-items: center;
+  justify-content: center;
+
+  background: #d5f2f8;
+
+  border: 1px solid #9bd8db;
+
+  color: #024f55;
+
+  font-size: 14px;
+  font-weight: 700;
 }
 
 .mobile-user-info {
+  min-width: 0;
+
   display: flex;
   flex-direction: column;
+
+  gap: 1px;
 }
 
 .mobile-user-name {
-  font-weight: 600;
-  font-size: 15px;
-  color: #1e293b;
+  max-width: 140px;
+
+  overflow: hidden;
+
+  text-overflow: ellipsis;
+
+  white-space: nowrap;
+
+  color: #024f55;
+
+  font-size: 13px;
+  font-weight: 700;
 }
 
 .mobile-user-role {
-  font-size: 12.5px;
-  color: #64748b;
-  font-weight: 500;
+  max-width: 140px;
+
+  overflow: hidden;
+
+  text-overflow: ellipsis;
+
+  white-space: nowrap;
+
+  color: #6d8588;
+
+  font-size: 10px;
 }
 
 .mobile-action-buttons {
   display: flex;
-  gap: 16px;
+
+  align-items: center;
+
+  gap: 4px;
 }
 
 .mobile-action-btn {
+  width: 34px;
+  height: 34px;
+
   position: relative;
-  background: #f8f9ff;
-  border: none;
-  width: 48px;
-  height: 48px;
-  border-radius: 50%;
+
   display: flex;
+
   align-items: center;
   justify-content: center;
+
+  border: 0;
+
+  border-radius: 8px;
+
+  background: #f1f9fb;
+
+  color: #024f55;
+
   cursor: pointer;
-  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
-  color: #475569;
-  font-size: 20px;
+
+  transition:
+    background 0.2s ease,
+    transform 0.2s ease;
 }
 
 .mobile-action-btn:hover {
-  background: #e0e7ff;
-  transform: translateY(-2px) scale(1.05);
-  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.25);
-  color: #3b82f6;
+  background: #d5f2f8;
 }
 
 .mobile-action-btn:active {
-  transform: translateY(0) scale(0.98);
+  transform: scale(0.95);
+}
+
+.mobile-action-btn svg {
+  font-size: 14px;
 }
 
 .mobile-logout-btn {
-  background: #fef2f2;
-  color: #dc2626;
+  background: #fff3f3;
+
+  color: #c94d4d;
 }
 
 .mobile-logout-btn:hover {
-  background: #fee2e2;
-  color: #b91c1c;
+  background: #ffe5e5;
 }
 
 .mobile-badge {
   position: absolute;
-  top: 6px;
-  right: 6px;
-  background: #ef4444;
-  color: white;
-  font-size: 10px;
-  font-weight: 700;
-  min-width: 18px;
-  height: 18px;
-  border-radius: 50%;
+
+  top: -3px;
+  right: -3px;
+
+  min-width: 15px;
+  height: 15px;
+
+  padding: 0 3px;
+
   display: flex;
+
   align-items: center;
   justify-content: center;
-  border: 2px solid white;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+
+  border-radius: 50%;
+
+  background: #e64c4c;
+
+  color: #ffffff;
+
+  border: 2px solid #ffffff;
+
+  font-size: 8px;
+
+  font-weight: 700;
 }
 
-.mobile-calendar-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  z-index: 1000;
-  display: flex;
-  justify-content: center;
-  align-items: flex-start;
-  padding-top: 100px;
-  overflow-y: auto;
+/* ========================================================================== 
+   DESKTOP WIDTH ADJUSTMENTS
+   ========================================================================== */
+
+@media (max-width: 1250px) {
+  .topbar1 {
+    grid-template-columns: 215px 1fr 140px;
+    padding: 0 12px;
+  }
+
+  .profile-section {
+    width: 215px;
+  }
+
+  .profile-namedash,
+  .profile-designation {
+    max-width: 155px;
+  }
+
+  .icon-section {
+    width: 140px;
+    min-width: 140px;
+    gap: 17px;
+  }
+
+  .topbar-celebration-section {
+    gap: 8px;
+    padding: 0 6px 0 10px;
+  }
+
+  .celebration-pill-birthday,
+  .celebration-pill-anniversary {
+    max-width: 205px;
+  }
 }
 
-.mobile-calendar-inline {
-  position: fixed;
-  top: 100px;
-  left: 50%;
-  transform: translateX(-50%);
-  background: white;
-  border-radius: 16px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
-  z-index: 1000;
-  max-width: 90%;
-  width: 100%;
-  max-height: 80vh;
-  overflow-y: auto;
+/* ========================================================================== 
+   MEDIUM DESKTOP
+   ========================================================================== */
+
+@media (max-width: 1100px) {
+  .topbar1 {
+    grid-template-columns: 185px 1fr 125px;
+    padding: 0 10px;
+  }
+
+  .profile-section {
+    width: 185px;
+    gap: 8px;
+  }
+
+  .profile-img,
+  .profile-placeholder {
+    width: 36px;
+    height: 36px;
+    min-width: 36px;
+  }
+
+  .profile-namedash,
+  .profile-designation {
+    max-width: 135px;
+  }
+
+  .org-name-text {
+    font-size: 14px;
+  }
+
+  .org-name-section {
+    max-width: 260px;
+    padding: 0 8px;
+  }
+
+  .topbar-celebration-section {
+    gap: 7px;
+    padding: 0 4px 0 8px;
+  }
+
+  .celebration-pill-birthday,
+  .celebration-pill-anniversary {
+    height: 27px;
+    padding-right: 8px;
+  }
+
+  .celebration-pill-birthday .pill-name,
+  .celebration-pill-anniversary .pill-name {
+    max-width: 95px;
+    font-size: 9px;
+  }
+
+  .celebration-pill-birthday .pill-icon,
+  .celebration-pill-anniversary .pill-icon {
+    width: 20px;
+    height: 20px;
+    min-width: 20px;
+  }
+
+  .icon-section {
+    width: 125px;
+    min-width: 125px;
+    gap: 14px;
+  }
 }
+
+/* ========================================================================== 
+   MOBILE
+   ========================================================================== */
 
 @media (max-width: 768px) {
   .topbar1 {
     display: none;
   }
-  .content-container {
-    padding-bottom: 90px !important;
+
+  .mobile-topbar-v2 {
+    display: block;
   }
 }
 
-@media (min-width: 769px) {
+/* ========================================================================== 
+   SMALL MOBILE
+   ========================================================================== */
+
+@media (max-width: 420px) {
+  .mobile-header-colored {
+    padding-left: 8px;
+    padding-right: 8px;
+  }
+
+  .mobile-org-card {
+    font-size: 13px;
+    margin-bottom: -0px;
+  }
+
+  .mobile-main-row {
+    padding-left: 8px;
+    padding-right: 8px;
+  }
+
+  .mobile-user-name {
+    max-width: 110px;
+  }
+
+  .mobile-user-role {
+    max-width: 110px;
+  }
+
+  .mobile-action-buttons {
+    gap: 3px;
+  }
+
+  .mobile-action-btn {
+    width: 32px;
+    height: 32px;
+  }
+
+  .mobile-avatar,
+  .mobile-avatar-placeholder {
+    width: 34px;
+    height: 34px;
+    min-width: 34px;
+  }
+}
+
+/* ========================================================================== 
+   ACCESSIBILITY
+   ========================================================================== */
+
+@media (prefers-reduced-motion: reduce) {
+  .pill-sparkle {
+    animation: none !important;
+  }
+}
+
+/* =========================================================
+   TOPBAR CELEBRATION
+   ========================================================= */
+
+.topbar-celebration-section {
+  width: 320px;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.topbar-celebration-viewport {
+  width: 100%;
+  height: 44px;
+  overflow: hidden;
+  position: relative;
+}
+
+.topbar-celebration-track {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+
+  animation-name: topbarCelebrationVerticalScroll;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+
+  will-change: transform;
+}
+
+.topbar-celebration-item {
+  width: 100%;
+  height: 44px;
+  min-height: 44px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+/* =========================================================
+   BOTTOM → TOP SCROLL
+   ========================================================= */
+
+@keyframes topbarCelebrationVerticalScroll {
+
+  0% {
+    transform: translateY(0);
+  }
+
+  15% {
+    transform: translateY(0);
+  }
+
+  20% {
+    transform: translateY(-44px);
+  }
+
+  35% {
+    transform: translateY(-44px);
+  }
+
+  40% {
+    transform: translateY(-88px);
+  }
+
+  55% {
+    transform: translateY(-88px);
+  }
+
+  60% {
+    transform: translateY(-132px);
+  }
+
+  75% {
+    transform: translateY(-132px);
+  }
+
+  80% {
+    transform: translateY(-176px);
+  }
+
+  95% {
+    transform: translateY(-176px);
+  }
+
+  100% {
+    transform: translateY(-220px);
+  }
+}
+
+/* =========================================================
+   CELEBRATION PILL
+   ========================================================= */
+
+.topbar-celebration-section .celebration-pill {
+  width: 100%;
+  min-width: 0;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* =========================================================
+   FINAL CELEBRATION FIX
+   NO ELLIPSIS - ESPECIALLY MOBILE
+   ========================================================= */
+
+/* Desktop celebration container */
+.topbar-celebration-section {
+  overflow: hidden;
+  min-width: 0;
+}
+
+/* Celebration viewport */
+.topbar-celebration-viewport {
+  width: 100%;
+  height: 44px;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Celebration item */
+.topbar-celebration-item {
+  width: 100%;
+  height: 44px;
+  min-height: 44px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  flex-shrink: 0;
+
+  /* IMPORTANT:
+     Don't clip the actual pill text */
+  overflow: visible;
+}
+
+/* Celebration pill */
+.topbar-celebration-section .celebration-pill {
+  width: auto !important;
+  max-width: none !important;
+  min-width: 0;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  flex-shrink: 0;
+
+  white-space: nowrap;
+
+  overflow: visible !important;
+  text-overflow: clip !important;
+}
+
+/* Birthday text */
+.topbar-celebration-section
+.celebration-pill-birthday
+.pill-name,
+
+/* Anniversary text */
+.topbar-celebration-section
+.celebration-pill-anniversary
+.pill-name {
+
+  width: auto !important;
+  max-width: none !important;
+
+  overflow: visible !important;
+
+  white-space: nowrap !important;
+
+  text-overflow: clip !important;
+
+  display: inline-block;
+
+  flex-shrink: 0;
+}
+
+/* Any other celebration text wrapper */
+.topbar-celebration-section .pill-text,
+.topbar-celebration-section .celebration-text {
+  width: auto !important;
+  max-width: none !important;
+
+  overflow: visible !important;
+
+  white-space: nowrap !important;
+
+  text-overflow: clip !important;
+
+  flex-shrink: 0;
+}
+
+/* Icons must stay visible */
+.topbar-celebration-section .pill-icon,
+.topbar-celebration-section .pill-arrow {
+  flex-shrink: 0;
+}
+
+
+/* =========================================================
+   MOBILE CELEBRATION
+   ========================================================= */
+
+@media (max-width: 768px) {
+
   .mobile-topbar-v2 {
-    display: none;
+    width: 100%;
+    overflow: hidden;
+  }
+
+  .mobile-header-colored {
+    width: 100%;
+    overflow: hidden;
+  }
+
+  .mobile-celebration-wrapper {
+    width: 100%;
+    max-width: 100%;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    overflow: hidden;
+
+    flex-wrap: nowrap;
+
+    padding: 0 4px;
+
+    box-sizing: border-box;
+  }
+
+  /* Mobile celebration section */
+  .mobile-celebration-wrapper
+  .topbar-celebration-section {
+
+    width: 100% !important;
+    max-width: 100% !important;
+
+    height: 40px;
+
+    min-width: 0;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    overflow: hidden;
+
+    padding: 0;
+  }
+
+  /* Mobile viewport */
+  .mobile-celebration-wrapper
+  .topbar-celebration-viewport {
+
+    width: 100%;
+    max-width: 100%;
+
+    height: 40px;
+
+    overflow: hidden;
+
+    position: relative;
+  }
+
+  /* Mobile item */
+  .mobile-celebration-wrapper
+  .topbar-celebration-item {
+
+    width: 100%;
+    height: 40px;
+    min-height: 40px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    overflow: visible;
+  }
+
+  /* Mobile pill */
+  .mobile-celebration-wrapper
+  .celebration-pill {
+
+    width: auto !important;
+    max-width: none !important;
+
+    min-width: max-content;
+
+    height: 27px;
+
+    display: inline-flex;
+
+    align-items: center;
+    justify-content: center;
+
+    flex-shrink: 0;
+
+    overflow: visible !important;
+
+    white-space: nowrap !important;
+
+    text-overflow: clip !important;
+  }
+
+  /* Mobile birthday + anniversary text */
+  .mobile-celebration-wrapper
+  .celebration-pill-birthday
+  .pill-name,
+
+  .mobile-celebration-wrapper
+  .celebration-pill-anniversary
+  .pill-name {
+
+    width: auto !important;
+
+    max-width: none !important;
+
+    min-width: max-content;
+
+    overflow: visible !important;
+
+    white-space: nowrap !important;
+
+    text-overflow: clip !important;
+
+    display: inline-block;
+
+    flex-shrink: 0;
+
+    font-size: 9px;
+  }
+
+  /* Mobile generic text wrappers */
+  .mobile-celebration-wrapper
+  .pill-text,
+
+  .mobile-celebration-wrapper
+  .celebration-text {
+
+    width: auto !important;
+
+    max-width: none !important;
+
+    min-width: max-content;
+
+    overflow: visible !important;
+
+    white-space: nowrap !important;
+
+    text-overflow: clip !important;
+
+    flex-shrink: 0;
+  }
+
+  /* Keep icon visible */
+  .mobile-celebration-wrapper
+  .pill-icon {
+
+    flex-shrink: 0;
+  }
+
+  /* Keep arrow visible */
+  .mobile-celebration-wrapper
+  .pill-arrow {
+
+    flex-shrink: 0;
+  }
+}
+
+
+/* =========================================================
+   SMALL MOBILE
+   ========================================================= */
+
+@media (max-width: 420px) {
+
+  .mobile-celebration-wrapper {
+    padding-left: 2px;
+    padding-right: 2px;
+  }
+
+  .mobile-celebration-wrapper
+  .topbar-celebration-section {
+
+    padding: 0;
+  }
+
+  .mobile-celebration-wrapper
+  .celebration-pill {
+
+    height: 26px;
+
+    padding-left: 4px;
+    padding-right: 7px;
+
+    gap: 4px;
+  }
+
+  .mobile-celebration-wrapper
+  .celebration-pill-birthday
+  .pill-name,
+
+  .mobile-celebration-wrapper
+  .celebration-pill-anniversary
+  .pill-name {
+
+    font-size: 8.5px;
+  }
+
+  .mobile-celebration-wrapper
+  .pill-icon {
+
+    width: 19px;
+    height: 19px;
+    min-width: 19px;
+
+    font-size: 10px;
   }
 }

@@ -1,3 +1,699 @@
+// "use client";
+
+// import React, { useEffect, useState, useMemo, useRef } from "react";
+// import * as MdIcons from "react-icons/md";
+// import { useAuth } from "../../context/AuthProvider.client";
+// import "./Sidebar.css";
+
+// import EmployeeDetails from "../EmployeeDetails/EmployeeDetails.client";
+// import AddDepartment from "../AddDepartment/AddDepartment.client";
+// import EmployeeAssistant from "../EmployeeQueries/EmployeeAssistant.client";
+// import UpdateProject from "../UpdateProjects/ProjectsDashboard.client";
+// import LeaveQueries from "../LeaveQueries/Admin.client";
+// import LeaveRequest from "../LeaveQueries/LeaveRequest.client";
+// import Profile from "../Profile/Profile.client";
+// import MyDashboard from "../MyDashboard/MyDashboard.client";
+// import AttendanceRegularisation from "../AttendanceRegularisation/AttendanceRegularisation.client";
+// import MyEmpDashboard from "../MyEmpDashboard/MyEmpDashboard.client";
+// import PayrollSummary from "../PayrollSummary/PayrollSummary.client";
+// import TemplateBuilder from "../TemplateBuilder/TemplateBuilder.client";
+// import Recruitment from "../Recruitment/RecruitmentFlow.client";
+// import Reimbursement from "../Reimbursement/Reimbursement.client";
+// import RbAdmin from "../Reimbursement/RbAdmin.client";
+// import RbTeamLead from "../Reimbursement/RbTeamLead.client";
+// import Assets from "../Assets/Assets.client";
+// import Vendors from "../vendors/vendors.client";
+// import Chat from "../Chat/ChatPage.client";
+// import CreateOrganization from "../CreateOrganization/CreateOrganization.client";
+// import TaskManagement from "../TaskManagement/TaskManagement.client";
+// import TaskManagementEmployee from "../TaskManagementEmployee/EmpTaskManagement.client";
+// import TaskManagementAdmin from "../TaskManagementAdmin/TaskManagementAdmin.client";
+// import Report from "../Report/ReportPanel.client";
+// import LetterHead from "../letterHead/letterhead.client";
+// import CreateCompensation from "../Compensation/createCompensation.client";
+// import AssignCompensation from "../Compensation/assignCompensation.client";
+// import SalaryBreakupMain from "../Compensation/SalaryBreakupMain.client";
+// import SalaryDetails from "../Compensation/SalaryDetails/SalaryDetails.client";
+// import EmployeeLogin from "../EmployeeLogin/EmployeeLogin.client";
+// import Salary_Statement from "../Salary_statement/Salary_Statement.client";
+// import GeneratePayslip from "../generate_payslip/GeneratePayslip.client";
+// import OvertimeDetails from "../Compensation/OvertimeDetails";
+// import OvertimeSupervisor from "../Compensation/overtimeSupervisor";
+// import ExitFlow from "../ExitFlow/ExitFlow.client";
+// import TaskManagementHr from "../TaskManagementHr/TaskManagementHr.jsx";
+// import DynamicFormBuilder from "../DynamicFormBuilder/DynamicFormBuilder.client";
+// import OfficeLocations from "../OfficeLocations/OfficeLocations.client.jsx";
+// import CreatePolicies from "../Policies/createPolicies/createPolicies";
+// import EmployeePolicies from "../Policies/employeePolicies/employeePoilicies";
+// import EmailManagement from "../EmailManagement/EmailManagement.client.jsx";
+// const Sidebar = ({ setActiveContent }) => {
+//   const { user, hydrated } = useAuth();
+//   const [menuItems, setMenuItems] = useState([]);
+//   const [activeItem, setActiveItem] = useState("/dashboard");
+//   const [activeSubItem, setActiveSubItem] = useState("");
+//   const [activeNav, setActiveNav] = useState("/dashboard");
+//   const [showProfile, setShowProfile] = useState(false);
+//   const [showMobileMenu, setShowMobileMenu] = useState(false);
+
+//   const [showCompensationDropdown, setShowCompensationDropdown] =
+//     useState(false);
+//   const [showTaskDropdown, setShowTaskDropdown] = useState(false);
+//   const [showSalaryDropdown, setShowSalaryDropdown] = useState(false);
+
+//   const [hasSubordinates, setHasSubordinates] = useState(false);
+//   const [loadingSubordinates, setLoadingSubordinates] = useState(true);
+
+//   const cancelRef = useRef(false);
+//   const DROPDOWN_PATHS = {
+//     "/compensation": "compensation",
+//     "/TaskManagement": "task",
+//     "/Salary_Statement": "salary",
+//   };
+
+//   const toggleDropdown = (type) => {
+//     setShowCompensationDropdown(type === "compensation");
+//     setShowTaskDropdown(type === "task");
+//     setShowSalaryDropdown(type === "salary");
+//   };
+
+//   const defaultMenuItems = useMemo(
+//     () => ({
+//       Admin: [
+//         { label: "Dashboard", path: "/dashboard", icon: "MdOutlineDashboard" },
+//         {
+//           label: "Attendance Regularisation",
+//           path: "/attendanceRegularisation",
+//           icon: "MdOutlineEventAvailable",
+//         },
+//         {
+//           label: "Office Locations",
+//           path: "/OfficeLocations",
+//           icon: "MdLocationOn",
+//         },
+//         {
+//           label: "Email Management",
+//           path: "/EmailManagement",
+//           icon: "MdOutlineEmail",
+//         },
+//       ],
+//       Manager: [
+//         { label: "Dashboard", path: "/dashboard", icon: "MdOutlineDashboard" },
+//         {
+//           label: "Attendance Regularisation",
+//           path: "/attendanceRegularisation",
+//           icon: "MdOutlineEventAvailable",
+//         },
+//       ],
+//       Employee: [
+//         { label: "Dashboard", path: "/dashboard", icon: "MdOutlineDashboard" },
+//         {
+//           label: "Attendance Regularisation",
+//           path: "/attendanceRegularisation",
+//           icon: "MdOutlineEventAvailable",
+//         },
+//       ],
+//       SuperAdmin: [
+//         {
+//           label: "Create Organization",
+//           path: "/CreateOrganization",
+//           icon: "MdOutlineBusiness",
+//         },
+//       ],
+//     }),
+//     [],
+//   );
+
+//   const pathToComponent = useMemo(
+//     () => ({
+//       "/dashboard": (role) =>
+//         role === "Admin" ? <MyDashboard /> : <MyEmpDashboard />,
+//       "/employeeDetails": () => <EmployeeDetails />,
+//       "/addDepartment": () => <AddDepartment />,
+//       "/updateProjects": () => <UpdateProject />,
+//       "/CreateOrganization": () => <CreateOrganization />,
+//       "/leaveQueries": (role) => {
+//         if (role === "Admin") return <LeaveQueries />;
+//         if (role === "Manager") return <LeaveRequest />;
+//         if (role === "HR") return <LeaveQueries />;
+//         return <LeaveRequest />;
+//       },
+//       "/payrollSummary": () => <PayrollSummary />,
+//       "/messenger": () => <Chat />,
+//       "/EmployeeLogin": () => <EmployeeLogin />,
+//       "/Formify": () => <DynamicFormBuilder />,
+//       "/CreatePolicies": () => <CreatePolicies />,
+//       "/EmployeePolicies": () => <EmployeePolicies />,
+//       "/AttendanceRegularisation": () => <AttendanceRegularisation />,
+//       "/reimbursement": (role) => {
+//         if (role === "Admin") return <RbAdmin />;
+//         if (role === "Manager") return <RbTeamLead />;
+//         if (role === "HR") return <RbAdmin />;
+//         return <Reimbursement />;
+//       },
+//       "/EmailManagement": () => <EmailManagement />,
+
+//       "/employeeQueries": () => <EmployeeAssistant />,
+//       "/TemplateBuilder": () => <TemplateBuilder />,
+//       "/RecruitmentFlow": () => <Recruitment />,
+//       "/letterHead": () => <LetterHead />,
+//       "/assets": () => <Assets />,
+//       "/vendors": () => <Vendors />,
+//       "/Overtime": () => <OvertimeDetails />,
+//       "/OvertimeDetails": () => <OvertimeSupervisor />,
+//       "/OvertimeSummary": () => <OvertimeSupervisor />,
+//       "/report": () => <Report />,
+//       "/ExitFlow": () => <ExitFlow />,
+//       "/OfficeLocations": () => <OfficeLocations />,
+
+//       "/TaskManagement": (role, sub) => {
+//         if (sub === "admin" && role === "Admin") return <TaskManagementAdmin />;
+//         if (role === "HR" && sub === "hr") {
+//           // ← new condition
+//           return <TaskManagementHr />;
+//         }
+//         if (sub === "team") return <TaskManagement />;
+//         return <TaskManagementEmployee />;
+//       },
+//     }),
+//     [],
+//   );
+
+//   const normalizeMenu = (items = []) =>
+//     (items || []).map((it) => ({
+//       label: it.label ?? it.name ?? "Unnamed",
+//       path: it.path ?? it.route ?? "/dashboard",
+//       icon: it.icon ?? it.iconName ?? "MdOutlineDashboard",
+//     }));
+
+//   useEffect(() => {
+//     const onAppNavigate = (e) => {
+//       try {
+//         const path = e?.detail?.path;
+//         if (!path) return;
+
+//         const resolver = pathToComponent[path];
+//         if (resolver) {
+//           const role = user?.role ?? "Employee";
+//           // resolver may accept (role, sub) — when navigating via event we don't have sub
+//           const employeeInitialData = e?.detail?.employeeInitialData;
+//           const content =
+//             path === "/employeeDetails" && employeeInitialData ? (
+//               <EmployeeDetails
+//                 employeeInitialData={employeeInitialData}
+//                 openAddForm
+//               />
+//             ) : resolver.length > 0 ? (
+//               resolver(role)
+//             ) : (
+//               resolver()
+//             );
+//           setActiveItem(path);
+//           setActiveNav(path);
+//           setActiveContent(content);
+//           setShowMobileMenu(false);
+//           return;
+//         }
+
+//         console.warn("Sidebar: no resolver for path:", path);
+//         if (typeof window !== "undefined") window.location.href = path;
+//       } catch (err) {
+//         console.error("app:navigate handler error:", err);
+//       }
+//     };
+
+//     window.addEventListener("app:navigate", onAppNavigate, { passive: true });
+
+//     return () => {
+//       window.removeEventListener("app:navigate", onAppNavigate);
+//     };
+//   }, [pathToComponent, user, setActiveContent]);
+
+//   useEffect(() => {
+//     if (
+//       !hydrated ||
+//       !user ||
+//       user.role === "Admin" ||
+//       user.role === "SuperAdmin"
+//     ) {
+//       setHasSubordinates(false);
+//       setLoadingSubordinates(false);
+//       return;
+//     }
+
+//     const checkSubordinates = async () => {
+//       try {
+//         setLoadingSubordinates(true);
+//         const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
+//         const API_KEY = process.env.NEXT_PUBLIC_API_KEY;
+
+//         if (!BACKEND_URL) {
+//           setHasSubordinates(false);
+//           setLoadingSubordinates(false);
+//           return;
+//         }
+
+//         const employeeId = user.employeeId || user.id;
+//         const orgId = user.orgId || user.organizationId || user.org_id;
+
+//         if (!employeeId || !orgId) {
+//           console.warn("Missing employeeId or orgId in user context");
+//           setHasSubordinates(false);
+//           setLoadingSubordinates(false);
+//           return;
+//         }
+
+//         const headers = {
+//           "x-api-key": API_KEY,
+//           "x-employee-id": employeeId,
+//           "x-org-id": orgId,
+//         };
+
+//         const resp = await fetch(`${BACKEND_URL}/api/subordinate/status`, {
+//           method: "GET",
+//           credentials: "include",
+//           headers,
+//         });
+
+//         const data = await resp.json();
+//         setHasSubordinates(data.success && data.hasSubordinates === true);
+//       } catch (err) {
+//         console.error("Error checking subordinates:", err);
+//         setHasSubordinates(false);
+//       } finally {
+//         setLoadingSubordinates(false);
+//       }
+//     };
+
+//     checkSubordinates();
+//   }, [user, hydrated]);
+
+//   const handleMenuClick = (item, subOption = null) => {
+//     const role = user?.role ?? "Employee";
+
+//     setActiveItem(item.path);
+//     setActiveSubItem(subOption || "");
+
+//     const hasDropdown =
+//       item.path === "/compensation" ||
+//       item.path === "/TaskManagement" ||
+//       item.path === "/Salary_Statement";
+
+//     if (hasDropdown && !subOption) {
+//       if (item.path === "/compensation") {
+//         setShowCompensationDropdown((prev) => !prev);
+//         setShowTaskDropdown(false);
+//         setShowSalaryDropdown(false);
+//       } else if (item.path === "/TaskManagement") {
+//         setShowTaskDropdown((prev) => !prev);
+//         setShowCompensationDropdown(false);
+//         setShowSalaryDropdown(false);
+//       } else if (item.path === "/Salary_Statement") {
+//         setShowSalaryDropdown((prev) => !prev);
+//         setShowCompensationDropdown(false);
+//         setShowTaskDropdown(false);
+//       }
+//       return;
+//     }
+
+//     setShowMobileMenu(false);
+
+//     let content = null;
+
+//     if (item.path === "/compensation" && subOption) {
+//       switch (subOption) {
+//         case "create":
+//           content = <CreateCompensation />;
+//           setActiveNav("/compensation/create");
+//           break;
+//         case "assign":
+//           content = <AssignCompensation />;
+//           setActiveNav("/compensation/assign");
+//           break;
+//         case "breakup":
+//           content = <SalaryBreakupMain />;
+//           setActiveNav("/compensation/breakup");
+//           break;
+//         case "details":
+//           content = <SalaryDetails />;
+//           setActiveNav("/compensation/details");
+//           break;
+//       }
+//       setShowCompensationDropdown(true);
+//     } else if (item.path === "/TaskManagement") {
+//       content = pathToComponent["/TaskManagement"](role, subOption);
+//       setActiveNav(`/TaskManagement/${subOption || "employee"}`);
+//       setShowTaskDropdown(true);
+//     } else if (item.path === "/Salary_Statement" && subOption) {
+//       content =
+//         subOption === "statement" ? <Salary_Statement /> : <GeneratePayslip />;
+//       setActiveNav(`/Salary_Statement/${subOption}`);
+//       setShowSalaryDropdown(true);
+//     } else {
+//       const resolver = pathToComponent[item.path];
+//       console.log("Clicking item:", item.path, "Resolver exists:", !!resolver);
+//       if (resolver) {
+//         content = resolver.length > 0 ? resolver(role) : resolver();
+//         console.log("Content resolved:", !!content);
+//       } else {
+//         console.warn("No resolver found for path:", item.path);
+//       }
+//       setShowCompensationDropdown(false);
+//       setShowTaskDropdown(false);
+//       setShowSalaryDropdown(false);
+//     }
+
+//     if (content) {
+//       setActiveNav(item.path);
+//       setActiveContent(content);
+//     } else {
+//       console.warn("No content to display for path:", item.path);
+//     }
+//   };
+
+//   useEffect(() => {
+//     if (!hydrated) return;
+
+//     const role = user?.role ?? "Employee";
+
+//     if (Array.isArray(user?.sidebarMenu) && user.sidebarMenu.length > 0) {
+//       setMenuItems(normalizeMenu(user.sidebarMenu));
+//     } else {
+//       (async () => {
+//         try {
+//           const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
+//           const API_KEY = process.env.NEXT_PUBLIC_API_KEY;
+//           if (!BACKEND_URL) {
+//             setMenuItems(defaultMenuItems[role] || defaultMenuItems.Employee);
+//             return;
+//           }
+
+//           const meId = user?.employeeId ?? user?.id ?? null;
+//           const headers = meId
+//             ? { "x-api-key": API_KEY, "x-employee-id": meId }
+//             : { "x-api-key": API_KEY };
+
+//           const resp = await fetch(`${BACKEND_URL}/sidebar`, {
+//             method: "GET",
+//             credentials: "include",
+//             headers,
+//           });
+
+//           const json = await resp.json().catch(() => null);
+//           const payload = (json && (json.message ?? json)) || [];
+
+//           if (cancelRef.current) return;
+
+//           if (Array.isArray(payload) && payload.length > 0) {
+//             setMenuItems(normalizeMenu(payload));
+//           } else {
+//             setMenuItems(defaultMenuItems[role] || defaultMenuItems.Employee);
+//           }
+//         } catch (err) {
+//           console.error("Error fetching sidebar:", err);
+//           if (!cancelRef.current) {
+//             setMenuItems(defaultMenuItems[role] || defaultMenuItems.Employee);
+//           }
+//         }
+//       })();
+//     }
+
+//     const defaultPath =
+//       role === "SuperAdmin" ? "/CreateOrganization" : "/dashboard";
+//     const resolver = pathToComponent[defaultPath] || (() => <MyEmpDashboard />);
+//     const initialContent = resolver.length > 0 ? resolver(role) : resolver();
+//     setActiveContent(initialContent);
+//     setActiveItem(defaultPath);
+//     setActiveNav(defaultPath);
+//   }, [user, hydrated, defaultMenuItems, pathToComponent, setActiveContent]);
+
+//   const resolveIcon = (iconName) => {
+//     if (!iconName) return MdIcons.MdOutlineDashboard;
+//     return MdIcons[iconName] || MdIcons.MdOutlineDashboard;
+//   };
+
+//   const renderMenuList = () => (
+//     <ul className="menu-list">
+//       {menuItems.map((item, index) => {
+//         const Icon = resolveIcon(item.icon);
+//         const isMainActive = activeItem === item.path;
+
+//         const hasDropdown =
+//           item.path === "/compensation" ||
+//           item.path === "/TaskManagement" ||
+//           item.path === "/Salary_Statement";
+
+//         return (
+//           <li key={index} className="menu-item">
+//             <div
+//               className={`menu-link ${isMainActive ? "active" : ""}`}
+//               onClick={() => handleMenuClick(item)}
+//             >
+//               <Icon size={22} />
+//               <span>{item.label}</span>
+//               {hasDropdown && (
+//                 <span className="arrow">
+//                   {(item.path === "/compensation" &&
+//                     showCompensationDropdown) ||
+//                   (item.path === "/TaskManagement" && showTaskDropdown) ||
+//                   (item.path === "/Salary_Statement" && showSalaryDropdown) ? (
+//                     <MdIcons.MdKeyboardArrowDown />
+//                   ) : (
+//                     <MdIcons.MdKeyboardArrowRight />
+//                   )}
+//                 </span>
+//               )}
+//             </div>
+
+//             {item.path === "/compensation" && showCompensationDropdown && (
+//               <ul className="desktop-submenu">
+//                 <li
+//                   className={activeSubItem === "create" ? "active" : ""}
+//                   onClick={(e) => {
+//                     e.stopPropagation();
+//                     handleMenuClick(item, "create");
+//                   }}
+//                 >
+//                   <MdIcons.MdOutlineAddCircleOutline size={20} />{" "}
+//                   <span>Create Compensation</span>
+//                 </li>
+//                 <li
+//                   className={activeSubItem === "assign" ? "active" : ""}
+//                   onClick={(e) => {
+//                     e.stopPropagation();
+//                     handleMenuClick(item, "assign");
+//                   }}
+//                 >
+//                   <MdIcons.MdOutlineAssignmentInd size={20} />{" "}
+//                   <span>Assign Compensation</span>
+//                 </li>
+//                 <li
+//                   className={activeSubItem === "breakup" ? "active" : ""}
+//                   onClick={(e) => {
+//                     e.stopPropagation();
+//                     handleMenuClick(item, "breakup");
+//                   }}
+//                 >
+//                   <MdIcons.MdOutlineAccountBalance size={20} />{" "}
+//                   <span>Salary Breakup</span>
+//                 </li>
+//                 <li
+//                   className={activeSubItem === "details" ? "active" : ""}
+//                   onClick={(e) => {
+//                     e.stopPropagation();
+//                     handleMenuClick(item, "details");
+//                   }}
+//                 >
+//                   <MdIcons.MdOutlineTableChart size={20} />{" "}
+//                   <span>Salary Details</span>
+//                 </li>
+//               </ul>
+//             )}
+
+//             {item.path === "/TaskManagement" && showTaskDropdown && (
+//               <ul className="desktop-submenu">
+//                 {/* 1. Admin Task Management – only visible to Admin */}
+//                 {user?.role === "Admin" && (
+//                   <li
+//                     className={activeSubItem === "admin" ? "active" : ""}
+//                     onClick={(e) => {
+//                       e.stopPropagation();
+//                       handleMenuClick(item, "admin");
+//                     }}
+//                   >
+//                     <MdIcons.MdOutlineAdminPanelSettings size={20} />
+//                     <span>Admin Task Management</span>
+//                   </li>
+//                 )}
+
+//                 {/* 2. Tasks-HR – visible only to HR */}
+//                 {user?.role === "HR" && (
+//                   <li
+//                     className={activeSubItem === "hr" ? "active" : ""}
+//                     onClick={(e) => {
+//                       e.stopPropagation();
+//                       handleMenuClick(item, "hr");
+//                     }}
+//                   >
+//                     <MdIcons.MdOutlineAdminPanelSettings size={20} />
+//                     <span>Tasks-HR</span>
+//                   </li>
+//                 )}
+
+//                 {/* 3. My Team Tasks – visible if user has subordinates (including HR) */}
+//                 {!loadingSubordinates && hasSubordinates && (
+//                   <li
+//                     className={activeSubItem === "team" ? "active" : ""}
+//                     onClick={(e) => {
+//                       e.stopPropagation();
+//                       handleMenuClick(item, "team");
+//                     }}
+//                   >
+//                     <MdIcons.MdPeopleAlt size={20} />
+//                     <span>My Team Tasks</span>
+//                   </li>
+//                 )}
+
+//                 {/* 4. My Tasks – visible to everyone except pure Admin */}
+//                 {user?.role !== "Admin" && (
+//                   <li
+//                     className={
+//                       activeSubItem === "employee" || !activeSubItem
+//                         ? "active"
+//                         : ""
+//                     }
+//                     onClick={(e) => {
+//                       e.stopPropagation();
+//                       handleMenuClick(item, "employee");
+//                     }}
+//                   >
+//                     <MdIcons.MdPerson size={20} />
+//                     <span>My Tasks</span>
+//                   </li>
+//                 )}
+//               </ul>
+//             )}
+
+//             {item.path === "/Salary_Statement" && showSalaryDropdown && (
+//               <ul className="desktop-submenu">
+//                 <li
+//                   className={activeSubItem === "statement" ? "active" : ""}
+//                   onClick={(e) => {
+//                     e.stopPropagation();
+//                     handleMenuClick(item, "statement");
+//                   }}
+//                 >
+//                   <MdIcons.MdOutlineReceiptLong size={20} />{" "}
+//                   <span>View Salary Statement</span>
+//                 </li>
+//                 <li
+//                   className={activeSubItem === "payslip" ? "active" : ""}
+//                   onClick={(e) => {
+//                     e.stopPropagation();
+//                     handleMenuClick(item, "payslip");
+//                   }}
+//                 >
+//                   <MdIcons.MdOutlineDescription size={20} />{" "}
+//                   <span>Generate Payslip</span>
+//                 </li>
+//               </ul>
+//             )}
+//           </li>
+//         );
+//       })}
+//     </ul>
+//   );
+
+//   return (
+//     <>
+//       <div className="sidebar">
+//         {user?.role !== "Admin" && user?.role !== "SuperAdmin" && (
+//           <div className="profile-section">
+//             <a
+//               href="#"
+//               className="view-profile-link"
+//               onClick={(e) => {
+//                 e.preventDefault();
+//                 setShowProfile(true);
+//               }}
+//             >
+//               <span>View Profile</span>
+//             </a>
+//           </div>
+//         )}
+
+//         {renderMenuList()}
+//       </div>
+
+//       <div className="bottom-nav">
+//         {menuItems.slice(0, 5).map((item, index) => {
+//           const Icon = resolveIcon(item.icon);
+//           const isActive = activeNav.startsWith(item.path);
+
+//           return (
+//             <button
+//               key={index}
+//               className={isActive ? "active" : ""}
+//               onClick={() => handleMenuClick(item)}
+//             >
+//               <Icon size={26} />
+//             </button>
+//           );
+//         })}
+
+//         <button onClick={() => setShowMobileMenu(true)}>
+//           <MdIcons.MdMenu size={26} />
+//         </button>
+//       </div>
+
+//       {showMobileMenu && (
+//         <div
+//           className="mobile-menu-overlay"
+//           onClick={() => setShowMobileMenu(false)}
+//         >
+//           <div className="mobile-sidebar" onClick={(e) => e.stopPropagation()}>
+//             <div className="mobile-header">
+//               <button
+//                 className="mobile-close"
+//                 onClick={() => setShowMobileMenu(false)}
+//               >
+//                 <MdIcons.MdClose size={28} />
+//               </button>
+//             </div>
+
+//             {user?.role !== "Admin" && user?.role !== "SuperAdmin" && (
+//               <div className="profile-section mobile-profile">
+//                 <a
+//                   href="#"
+//                   className="view-profile-link"
+//                   onClick={(e) => {
+//                     e.preventDefault();
+//                     setShowProfile(true);
+//                     setShowMobileMenu(false);
+//                   }}
+//                 >
+//                   <MdIcons.MdPerson size={22} />
+//                   <span>View Profile</span>
+//                 </a>
+//               </div>
+//             )}
+
+//             {renderMenuList()}
+//           </div>
+//         </div>
+//       )}
+
+//       {showProfile && (
+//         <Profile
+//           employeeId={user?.employeeId}
+//           onClose={() => setShowProfile(false)}
+//         />
+//       )}
+//     </>
+//   );
+// };
+
+// export default Sidebar;
+
 "use client";
 
 import React, { useEffect, useState, useMemo, useRef } from "react";
@@ -46,8 +742,10 @@ import OfficeLocations from "../OfficeLocations/OfficeLocations.client.jsx";
 import CreatePolicies from "../Policies/createPolicies/createPolicies";
 import EmployeePolicies from "../Policies/employeePolicies/employeePoilicies";
 import EmailManagement from "../EmailManagement/EmailManagement.client.jsx";
+
 const Sidebar = ({ setActiveContent }) => {
   const { user, hydrated } = useAuth();
+
   const [menuItems, setMenuItems] = useState([]);
   const [activeItem, setActiveItem] = useState("/dashboard");
   const [activeSubItem, setActiveSubItem] = useState("");
@@ -64,6 +762,7 @@ const Sidebar = ({ setActiveContent }) => {
   const [loadingSubordinates, setLoadingSubordinates] = useState(true);
 
   const cancelRef = useRef(false);
+
   const DROPDOWN_PATHS = {
     "/compensation": "compensation",
     "/TaskManagement": "task",
@@ -79,7 +778,11 @@ const Sidebar = ({ setActiveContent }) => {
   const defaultMenuItems = useMemo(
     () => ({
       Admin: [
-        { label: "Dashboard", path: "/dashboard", icon: "MdOutlineDashboard" },
+        {
+          label: "Dashboard",
+          path: "/dashboard",
+          icon: "MdOutlineDashboard",
+        },
         {
           label: "Attendance Regularisation",
           path: "/attendanceRegularisation",
@@ -96,22 +799,61 @@ const Sidebar = ({ setActiveContent }) => {
           icon: "MdOutlineEmail",
         },
       ],
+
+      /*
+       * CEO uses the same fallback menu as Admin.
+       * Task Management itself is normally supplied by
+       * the backend sidebar configuration.
+       */
+      CEO: [
+        {
+          label: "Dashboard",
+          path: "/dashboard",
+          icon: "MdOutlineDashboard",
+        },
+        {
+          label: "Attendance Regularisation",
+          path: "/attendanceRegularisation",
+          icon: "MdOutlineEventAvailable",
+        },
+        {
+          label: "Office Locations",
+          path: "/OfficeLocations",
+          icon: "MdLocationOn",
+        },
+        {
+          label: "Email Management",
+          path: "/EmailManagement",
+          icon: "MdOutlineEmail",
+        },
+      ],
+
       Manager: [
-        { label: "Dashboard", path: "/dashboard", icon: "MdOutlineDashboard" },
+        {
+          label: "Dashboard",
+          path: "/dashboard",
+          icon: "MdOutlineDashboard",
+        },
         {
           label: "Attendance Regularisation",
           path: "/attendanceRegularisation",
           icon: "MdOutlineEventAvailable",
         },
       ],
+
       Employee: [
-        { label: "Dashboard", path: "/dashboard", icon: "MdOutlineDashboard" },
+        {
+          label: "Dashboard",
+          path: "/dashboard",
+          icon: "MdOutlineDashboard",
+        },
         {
           label: "Attendance Regularisation",
           path: "/attendanceRegularisation",
           icon: "MdOutlineEventAvailable",
         },
       ],
+
       SuperAdmin: [
         {
           label: "Create Organization",
@@ -127,51 +869,93 @@ const Sidebar = ({ setActiveContent }) => {
     () => ({
       "/dashboard": (role) =>
         role === "Admin" ? <MyDashboard /> : <MyEmpDashboard />,
+
       "/employeeDetails": () => <EmployeeDetails />,
+
       "/addDepartment": () => <AddDepartment />,
+
       "/updateProjects": () => <UpdateProject />,
+
       "/CreateOrganization": () => <CreateOrganization />,
+
       "/leaveQueries": (role) => {
         if (role === "Admin") return <LeaveQueries />;
         if (role === "Manager") return <LeaveRequest />;
         if (role === "HR") return <LeaveQueries />;
         return <LeaveRequest />;
       },
+
       "/payrollSummary": () => <PayrollSummary />,
+
       "/messenger": () => <Chat />,
+
       "/EmployeeLogin": () => <EmployeeLogin />,
+
       "/Formify": () => <DynamicFormBuilder />,
+
       "/CreatePolicies": () => <CreatePolicies />,
+
       "/EmployeePolicies": () => <EmployeePolicies />,
+
       "/AttendanceRegularisation": () => <AttendanceRegularisation />,
+
       "/reimbursement": (role) => {
-        if (role === "Admin" || role === "CEO") return <RbAdmin />;
-        if (role === "Manager") return <RbTeamLead />;
-        if (role === "HR") return <RbAdmin />;
-        return <Reimbursement />;
-      },
+  if (role === "Admin") return <RbAdmin />;
+  if (role === "Manager") return <RbTeamLead />;
+  if (role === "HR") return <RbAdmin />;
+  return <Reimbursement />;
+},
+
       "/EmailManagement": () => <EmailManagement />,
 
       "/employeeQueries": () => <EmployeeAssistant />,
+
       "/TemplateBuilder": () => <TemplateBuilder />,
+
       "/RecruitmentFlow": () => <Recruitment />,
+
       "/letterHead": () => <LetterHead />,
+
       "/assets": () => <Assets />,
+
       "/vendors": () => <Vendors />,
+
       "/Overtime": () => <OvertimeDetails />,
+
       "/OvertimeDetails": () => <OvertimeSupervisor />,
+
       "/OvertimeSummary": () => <OvertimeSupervisor />,
+
       "/report": () => <Report />,
+
       "/ExitFlow": () => <ExitFlow />,
+
       "/OfficeLocations": () => <OfficeLocations />,
 
+      /*
+       * ============================================================
+       * TASK MANAGEMENT
+       * ============================================================
+       *
+       * Admin + CEO use exactly the same Admin Task Management
+       * component.
+       */
       "/TaskManagement": (role, sub) => {
-        if (sub === "admin" && role === "Admin") return <TaskManagementAdmin />;
+        if (
+          sub === "admin" &&
+          (role === "Admin" || role === "CEO")
+        ) {
+          return <TaskManagementAdmin />;
+        }
+
         if (role === "HR" && sub === "hr") {
-          // ← new condition
           return <TaskManagementHr />;
         }
-        if (sub === "team") return <TaskManagement />;
+
+        if (sub === "team") {
+          return <TaskManagement />;
+        }
+
         return <TaskManagementEmployee />;
       },
     }),
@@ -189,15 +973,22 @@ const Sidebar = ({ setActiveContent }) => {
     const onAppNavigate = (e) => {
       try {
         const path = e?.detail?.path;
+
         if (!path) return;
 
         const resolver = pathToComponent[path];
+
         if (resolver) {
           const role = user?.role ?? "Employee";
-          // resolver may accept (role, sub) — when navigating via event we don't have sub
-          const employeeInitialData = e?.detail?.employeeInitialData;
+
+          // resolver may accept (role, sub)
+          // when navigating via event we don't have sub
+          const employeeInitialData =
+            e?.detail?.employeeInitialData;
+
           const content =
-            path === "/employeeDetails" && employeeInitialData ? (
+            path === "/employeeDetails" &&
+            employeeInitialData ? (
               <EmployeeDetails
                 employeeInitialData={employeeInitialData}
                 openAddForm
@@ -207,32 +998,63 @@ const Sidebar = ({ setActiveContent }) => {
             ) : (
               resolver()
             );
+
           setActiveItem(path);
           setActiveNav(path);
           setActiveContent(content);
           setShowMobileMenu(false);
+
           return;
         }
 
-        console.warn("Sidebar: no resolver for path:", path);
-        if (typeof window !== "undefined") window.location.href = path;
+        console.warn(
+          "Sidebar: no resolver for path:",
+          path
+        );
+
+        if (typeof window !== "undefined") {
+          window.location.href = path;
+        }
       } catch (err) {
-        console.error("app:navigate handler error:", err);
+        console.error(
+          "app:navigate handler error:",
+          err
+        );
       }
     };
 
-    window.addEventListener("app:navigate", onAppNavigate, { passive: true });
+    window.addEventListener(
+      "app:navigate",
+      onAppNavigate,
+      { passive: true }
+    );
 
     return () => {
-      window.removeEventListener("app:navigate", onAppNavigate);
+      window.removeEventListener(
+        "app:navigate",
+        onAppNavigate
+      );
     };
-  }, [pathToComponent, user, setActiveContent]);
+  }, [
+    pathToComponent,
+    user,
+    setActiveContent,
+  ]);
 
+  /*
+   * ============================================================
+   * CHECK SUBORDINATES
+   * ============================================================
+   *
+   * Admin, CEO and SuperAdmin don't need subordinate checking
+   * because they use Admin-style Task Management.
+   */
   useEffect(() => {
     if (
       !hydrated ||
       !user ||
       user.role === "Admin" ||
+      user.role === "CEO" ||
       user.role === "SuperAdmin"
     ) {
       setHasSubordinates(false);
@@ -243,8 +1065,12 @@ const Sidebar = ({ setActiveContent }) => {
     const checkSubordinates = async () => {
       try {
         setLoadingSubordinates(true);
-        const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
-        const API_KEY = process.env.NEXT_PUBLIC_API_KEY;
+
+        const BACKEND_URL =
+          process.env.NEXT_PUBLIC_BACKEND_URL;
+
+        const API_KEY =
+          process.env.NEXT_PUBLIC_API_KEY;
 
         if (!BACKEND_URL) {
           setHasSubordinates(false);
@@ -252,13 +1078,22 @@ const Sidebar = ({ setActiveContent }) => {
           return;
         }
 
-        const employeeId = user.employeeId || user.id;
-        const orgId = user.orgId || user.organizationId || user.org_id;
+        const employeeId =
+          user.employeeId || user.id;
+
+        const orgId =
+          user.orgId ||
+          user.organizationId ||
+          user.org_id;
 
         if (!employeeId || !orgId) {
-          console.warn("Missing employeeId or orgId in user context");
+          console.warn(
+            "Missing employeeId or orgId in user context"
+          );
+
           setHasSubordinates(false);
           setLoadingSubordinates(false);
+
           return;
         }
 
@@ -268,16 +1103,27 @@ const Sidebar = ({ setActiveContent }) => {
           "x-org-id": orgId,
         };
 
-        const resp = await fetch(`${BACKEND_URL}/api/subordinate/status`, {
-          method: "GET",
-          credentials: "include",
-          headers,
-        });
+        const resp = await fetch(
+          `${BACKEND_URL}/api/subordinate/status`,
+          {
+            method: "GET",
+            credentials: "include",
+            headers,
+          }
+        );
 
         const data = await resp.json();
-        setHasSubordinates(data.success && data.hasSubordinates === true);
+
+        setHasSubordinates(
+          data.success &&
+            data.hasSubordinates === true
+        );
       } catch (err) {
-        console.error("Error checking subordinates:", err);
+        console.error(
+          "Error checking subordinates:",
+          err
+        );
+
         setHasSubordinates(false);
       } finally {
         setLoadingSubordinates(false);
@@ -287,11 +1133,17 @@ const Sidebar = ({ setActiveContent }) => {
     checkSubordinates();
   }, [user, hydrated]);
 
-  const handleMenuClick = (item, subOption = null) => {
-    const role = user?.role ?? "Employee";
+  const handleMenuClick = (
+    item,
+    subOption = null
+  ) => {
+    const role =
+      user?.role ?? "Employee";
 
     setActiveItem(item.path);
-    setActiveSubItem(subOption || "");
+    setActiveSubItem(
+      subOption || ""
+    );
 
     const hasDropdown =
       item.path === "/compensation" ||
@@ -299,19 +1151,35 @@ const Sidebar = ({ setActiveContent }) => {
       item.path === "/Salary_Statement";
 
     if (hasDropdown && !subOption) {
-      if (item.path === "/compensation") {
-        setShowCompensationDropdown((prev) => !prev);
+      if (
+        item.path === "/compensation"
+      ) {
+        setShowCompensationDropdown(
+          (prev) => !prev
+        );
+
         setShowTaskDropdown(false);
         setShowSalaryDropdown(false);
-      } else if (item.path === "/TaskManagement") {
-        setShowTaskDropdown((prev) => !prev);
+      } else if (
+        item.path === "/TaskManagement"
+      ) {
+        setShowTaskDropdown(
+          (prev) => !prev
+        );
+
         setShowCompensationDropdown(false);
         setShowSalaryDropdown(false);
-      } else if (item.path === "/Salary_Statement") {
-        setShowSalaryDropdown((prev) => !prev);
+      } else if (
+        item.path === "/Salary_Statement"
+      ) {
+        setShowSalaryDropdown(
+          (prev) => !prev
+        );
+
         setShowCompensationDropdown(false);
         setShowTaskDropdown(false);
       }
+
       return;
     }
 
@@ -319,44 +1187,106 @@ const Sidebar = ({ setActiveContent }) => {
 
     let content = null;
 
-    if (item.path === "/compensation" && subOption) {
+    if (
+      item.path === "/compensation" &&
+      subOption
+    ) {
       switch (subOption) {
         case "create":
           content = <CreateCompensation />;
-          setActiveNav("/compensation/create");
+          setActiveNav(
+            "/compensation/create"
+          );
           break;
+
         case "assign":
           content = <AssignCompensation />;
-          setActiveNav("/compensation/assign");
+          setActiveNav(
+            "/compensation/assign"
+          );
           break;
+
         case "breakup":
           content = <SalaryBreakupMain />;
-          setActiveNav("/compensation/breakup");
+          setActiveNav(
+            "/compensation/breakup"
+          );
           break;
+
         case "details":
           content = <SalaryDetails />;
-          setActiveNav("/compensation/details");
+          setActiveNav(
+            "/compensation/details"
+          );
+          break;
+
+        default:
           break;
       }
+
       setShowCompensationDropdown(true);
-    } else if (item.path === "/TaskManagement") {
-      content = pathToComponent["/TaskManagement"](role, subOption);
-      setActiveNav(`/TaskManagement/${subOption || "employee"}`);
-      setShowTaskDropdown(true);
-    } else if (item.path === "/Salary_Statement" && subOption) {
+    } else if (
+      item.path === "/TaskManagement"
+    ) {
       content =
-        subOption === "statement" ? <Salary_Statement /> : <GeneratePayslip />;
-      setActiveNav(`/Salary_Statement/${subOption}`);
+        pathToComponent[
+          "/TaskManagement"
+        ](
+          role,
+          subOption
+        );
+
+      setActiveNav(
+        `/TaskManagement/${
+          subOption || "employee"
+        }`
+      );
+
+      setShowTaskDropdown(true);
+    } else if (
+      item.path === "/Salary_Statement" &&
+      subOption
+    ) {
+      content =
+        subOption === "statement" ? (
+          <Salary_Statement />
+        ) : (
+          <GeneratePayslip />
+        );
+
+      setActiveNav(
+        `/Salary_Statement/${subOption}`
+      );
+
       setShowSalaryDropdown(true);
     } else {
-      const resolver = pathToComponent[item.path];
-      console.log("Clicking item:", item.path, "Resolver exists:", !!resolver);
+      const resolver =
+        pathToComponent[item.path];
+
+      console.log(
+        "Clicking item:",
+        item.path,
+        "Resolver exists:",
+        !!resolver
+      );
+
       if (resolver) {
-        content = resolver.length > 0 ? resolver(role) : resolver();
-        console.log("Content resolved:", !!content);
+        content =
+          resolver.length > 0
+            ? resolver(role)
+            : resolver();
+
+        console.log(
+          "Content resolved:",
+          !!content
+        );
       } else {
-        console.warn("No resolver found for path:", item.path);
+        console.warn(
+          "No resolver found for path:",
+          item.path
+        );
       }
+
       setShowCompensationDropdown(false);
       setShowTaskDropdown(false);
       setShowSalaryDropdown(false);
@@ -366,316 +1296,668 @@ const Sidebar = ({ setActiveContent }) => {
       setActiveNav(item.path);
       setActiveContent(content);
     } else {
-      console.warn("No content to display for path:", item.path);
+      console.warn(
+        "No content to display for path:",
+        item.path
+      );
     }
   };
 
   useEffect(() => {
     if (!hydrated) return;
 
-    const role = user?.role ?? "Employee";
+    const role =
+      user?.role ?? "Employee";
 
-    if (Array.isArray(user?.sidebarMenu) && user.sidebarMenu.length > 0) {
-      setMenuItems(normalizeMenu(user.sidebarMenu));
+    if (
+      Array.isArray(user?.sidebarMenu) &&
+      user.sidebarMenu.length > 0
+    ) {
+      setMenuItems(
+        normalizeMenu(
+          user.sidebarMenu
+        )
+      );
     } else {
       (async () => {
         try {
-          const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
-          const API_KEY = process.env.NEXT_PUBLIC_API_KEY;
+          const BACKEND_URL =
+            process.env.NEXT_PUBLIC_BACKEND_URL;
+
+          const API_KEY =
+            process.env.NEXT_PUBLIC_API_KEY;
+
           if (!BACKEND_URL) {
-            setMenuItems(defaultMenuItems[role] || defaultMenuItems.Employee);
+            setMenuItems(
+              defaultMenuItems[role] ||
+                defaultMenuItems.Employee
+            );
+
             return;
           }
 
-          const meId = user?.employeeId ?? user?.id ?? null;
+          const meId =
+            user?.employeeId ??
+            user?.id ??
+            null;
+
           const headers = meId
-            ? { "x-api-key": API_KEY, "x-employee-id": meId }
-            : { "x-api-key": API_KEY };
+            ? {
+                "x-api-key": API_KEY,
+                "x-employee-id": meId,
+              }
+            : {
+                "x-api-key": API_KEY,
+              };
 
-          const resp = await fetch(`${BACKEND_URL}/sidebar`, {
-            method: "GET",
-            credentials: "include",
-            headers,
-          });
+          const resp = await fetch(
+            `${BACKEND_URL}/sidebar`,
+            {
+              method: "GET",
+              credentials: "include",
+              headers,
+            }
+          );
 
-          const json = await resp.json().catch(() => null);
-          const payload = (json && (json.message ?? json)) || [];
+          const json =
+            await resp
+              .json()
+              .catch(() => null);
 
-          if (cancelRef.current) return;
+          const payload =
+            (json &&
+              (json.message ?? json)) ||
+            [];
 
-          if (Array.isArray(payload) && payload.length > 0) {
-            setMenuItems(normalizeMenu(payload));
+          if (cancelRef.current)
+            return;
+
+          if (
+            Array.isArray(payload) &&
+            payload.length > 0
+          ) {
+            setMenuItems(
+              normalizeMenu(payload)
+            );
           } else {
-            setMenuItems(defaultMenuItems[role] || defaultMenuItems.Employee);
+            setMenuItems(
+              defaultMenuItems[role] ||
+                defaultMenuItems.Employee
+            );
           }
         } catch (err) {
-          console.error("Error fetching sidebar:", err);
+          console.error(
+            "Error fetching sidebar:",
+            err
+          );
+
           if (!cancelRef.current) {
-            setMenuItems(defaultMenuItems[role] || defaultMenuItems.Employee);
+            setMenuItems(
+              defaultMenuItems[role] ||
+                defaultMenuItems.Employee
+            );
           }
         }
       })();
     }
 
     const defaultPath =
-      role === "SuperAdmin" ? "/CreateOrganization" : "/dashboard";
-    const resolver = pathToComponent[defaultPath] || (() => <MyEmpDashboard />);
-    const initialContent = resolver.length > 0 ? resolver(role) : resolver();
-    setActiveContent(initialContent);
-    setActiveItem(defaultPath);
-    setActiveNav(defaultPath);
-  }, [user, hydrated, defaultMenuItems, pathToComponent, setActiveContent]);
+      role === "SuperAdmin"
+        ? "/CreateOrganization"
+        : "/dashboard";
+
+    const resolver =
+      pathToComponent[defaultPath] ||
+      (() => <MyEmpDashboard />);
+
+    const initialContent =
+      resolver.length > 0
+        ? resolver(role)
+        : resolver();
+
+    setActiveContent(
+      initialContent
+    );
+
+    setActiveItem(
+      defaultPath
+    );
+
+    setActiveNav(
+      defaultPath
+    );
+  }, [
+    user,
+    hydrated,
+    defaultMenuItems,
+    pathToComponent,
+    setActiveContent,
+  ]);
 
   const resolveIcon = (iconName) => {
-    if (!iconName) return MdIcons.MdOutlineDashboard;
-    return MdIcons[iconName] || MdIcons.MdOutlineDashboard;
+    if (!iconName) {
+      return MdIcons.MdOutlineDashboard;
+    }
+
+    return (
+      MdIcons[iconName] ||
+      MdIcons.MdOutlineDashboard
+    );
   };
 
   const renderMenuList = () => (
     <ul className="menu-list">
-      {menuItems.map((item, index) => {
-        const Icon = resolveIcon(item.icon);
-        const isMainActive = activeItem === item.path;
+      {menuItems.map(
+        (item, index) => {
+          const Icon =
+            resolveIcon(item.icon);
 
-        const hasDropdown =
-          item.path === "/compensation" ||
-          item.path === "/TaskManagement" ||
-          item.path === "/Salary_Statement";
+          const isMainActive =
+            activeItem === item.path;
 
-        return (
-          <li key={index} className="menu-item">
-            <div
-              className={`menu-link ${isMainActive ? "active" : ""}`}
-              onClick={() => handleMenuClick(item)}
+          const hasDropdown =
+            item.path ===
+              "/compensation" ||
+            item.path ===
+              "/TaskManagement" ||
+            item.path ===
+              "/Salary_Statement";
+
+          return (
+            <li
+              key={index}
+              className="menu-item"
             >
-              <Icon size={22} />
-              <span>{item.label}</span>
-              {hasDropdown && (
-                <span className="arrow">
-                  {(item.path === "/compensation" &&
-                    showCompensationDropdown) ||
-                  (item.path === "/TaskManagement" && showTaskDropdown) ||
-                  (item.path === "/Salary_Statement" && showSalaryDropdown) ? (
-                    <MdIcons.MdKeyboardArrowDown />
-                  ) : (
-                    <MdIcons.MdKeyboardArrowRight />
-                  )}
+              <div
+                className={`menu-link ${
+                  isMainActive
+                    ? "active"
+                    : ""
+                }`}
+                onClick={() =>
+                  handleMenuClick(item)
+                }
+              >
+                <Icon size={22} />
+
+                <span>
+                  {item.label}
                 </span>
-              )}
-            </div>
 
-            {item.path === "/compensation" && showCompensationDropdown && (
-              <ul className="desktop-submenu">
-                <li
-                  className={activeSubItem === "create" ? "active" : ""}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleMenuClick(item, "create");
-                  }}
-                >
-                  <MdIcons.MdOutlineAddCircleOutline size={20} />{" "}
-                  <span>Create Compensation</span>
-                </li>
-                <li
-                  className={activeSubItem === "assign" ? "active" : ""}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleMenuClick(item, "assign");
-                  }}
-                >
-                  <MdIcons.MdOutlineAssignmentInd size={20} />{" "}
-                  <span>Assign Compensation</span>
-                </li>
-                <li
-                  className={activeSubItem === "breakup" ? "active" : ""}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleMenuClick(item, "breakup");
-                  }}
-                >
-                  <MdIcons.MdOutlineAccountBalance size={20} />{" "}
-                  <span>Salary Breakup</span>
-                </li>
-                <li
-                  className={activeSubItem === "details" ? "active" : ""}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleMenuClick(item, "details");
-                  }}
-                >
-                  <MdIcons.MdOutlineTableChart size={20} />{" "}
-                  <span>Salary Details</span>
-                </li>
-              </ul>
-            )}
+                {hasDropdown && (
+                  <span className="arrow">
+                    {(
+                      item.path ===
+                        "/compensation" &&
+                      showCompensationDropdown
+                    ) ||
+                    (
+                      item.path ===
+                        "/TaskManagement" &&
+                      showTaskDropdown
+                    ) ||
+                    (
+                      item.path ===
+                        "/Salary_Statement" &&
+                      showSalaryDropdown
+                    ) ? (
+                      <MdIcons.MdKeyboardArrowDown />
+                    ) : (
+                      <MdIcons.MdKeyboardArrowRight />
+                    )}
+                  </span>
+                )}
+              </div>
 
-            {item.path === "/TaskManagement" && showTaskDropdown && (
-              <ul className="desktop-submenu">
-                {/* 1. Admin Task Management – only visible to Admin */}
-                {user?.role === "Admin" && (
-                  <li
-                    className={activeSubItem === "admin" ? "active" : ""}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleMenuClick(item, "admin");
-                    }}
-                  >
-                    <MdIcons.MdOutlineAdminPanelSettings size={20} />
-                    <span>Admin Task Management</span>
-                  </li>
+              {/* ==================================================
+                  COMPENSATION SUBMENU
+                  ================================================== */}
+
+              {item.path ===
+                "/compensation" &&
+                showCompensationDropdown && (
+                  <ul className="desktop-submenu">
+                    <li
+                      className={
+                        activeSubItem ===
+                        "create"
+                          ? "active"
+                          : ""
+                      }
+                      onClick={(e) => {
+                        e.stopPropagation();
+
+                        handleMenuClick(
+                          item,
+                          "create"
+                        );
+                      }}
+                    >
+                      <MdIcons.MdOutlineAddCircleOutline
+                        size={20}
+                      />
+
+                      <span>
+                        Create Compensation
+                      </span>
+                    </li>
+
+                    <li
+                      className={
+                        activeSubItem ===
+                        "assign"
+                          ? "active"
+                          : ""
+                      }
+                      onClick={(e) => {
+                        e.stopPropagation();
+
+                        handleMenuClick(
+                          item,
+                          "assign"
+                        );
+                      }}
+                    >
+                      <MdIcons.MdOutlineAssignmentInd
+                        size={20}
+                      />
+
+                      <span>
+                        Assign Compensation
+                      </span>
+                    </li>
+
+                    <li
+                      className={
+                        activeSubItem ===
+                        "breakup"
+                          ? "active"
+                          : ""
+                      }
+                      onClick={(e) => {
+                        e.stopPropagation();
+
+                        handleMenuClick(
+                          item,
+                          "breakup"
+                        );
+                      }}
+                    >
+                      <MdIcons.MdOutlineAccountBalance
+                        size={20}
+                      />
+
+                      <span>
+                        Salary Breakup
+                      </span>
+                    </li>
+
+                    <li
+                      className={
+                        activeSubItem ===
+                        "details"
+                          ? "active"
+                          : ""
+                      }
+                      onClick={(e) => {
+                        e.stopPropagation();
+
+                        handleMenuClick(
+                          item,
+                          "details"
+                        );
+                      }}
+                    >
+                      <MdIcons.MdOutlineTableChart
+                        size={20}
+                      />
+
+                      <span>
+                        Salary Details
+                      </span>
+                    </li>
+                  </ul>
                 )}
 
-                {/* 2. Tasks-HR – visible only to HR */}
-                {user?.role === "HR" && (
-                  <li
-                    className={activeSubItem === "hr" ? "active" : ""}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleMenuClick(item, "hr");
-                    }}
-                  >
-                    <MdIcons.MdOutlineAdminPanelSettings size={20} />
-                    <span>Tasks-HR</span>
-                  </li>
+              {/* ==================================================
+                  TASK MANAGEMENT SUBMENU
+                  ================================================== */}
+
+              {item.path ===
+                "/TaskManagement" &&
+                showTaskDropdown && (
+                  <ul className="desktop-submenu">
+                    {/* ==================================================
+                        1. ADMIN TASK MANAGEMENT
+                        Visible to Admin AND CEO
+                        ================================================== */}
+
+                    {(user?.role ===
+                      "Admin" ||
+                      user?.role ===
+                        "CEO") && (
+                      <li
+                        className={
+                          activeSubItem ===
+                          "admin"
+                            ? "active"
+                            : ""
+                        }
+                        onClick={(e) => {
+                          e.stopPropagation();
+
+                          handleMenuClick(
+                            item,
+                            "admin"
+                          );
+                        }}
+                      >
+                        <MdIcons.MdOutlineAdminPanelSettings
+                          size={20}
+                        />
+
+                        <span>
+                          Admin Task Management
+                        </span>
+                      </li>
+                    )}
+
+                    {/* ==================================================
+                        2. TASKS-HR
+                        Visible only to HR
+                        ================================================== */}
+
+                    {user?.role ===
+                      "HR" && (
+                      <li
+                        className={
+                          activeSubItem ===
+                          "hr"
+                            ? "active"
+                            : ""
+                        }
+                        onClick={(e) => {
+                          e.stopPropagation();
+
+                          handleMenuClick(
+                            item,
+                            "hr"
+                          );
+                        }}
+                      >
+                        <MdIcons.MdOutlineAdminPanelSettings
+                          size={20}
+                        />
+
+                        <span>
+                          Tasks-HR
+                        </span>
+                      </li>
+                    )}
+
+                    {/* ==================================================
+                        3. MY TEAM TASKS
+                        CEO and Admin are excluded because they use
+                        Admin Task Management.
+                        ================================================== */}
+
+                    {!loadingSubordinates &&
+                      hasSubordinates &&
+                      user?.role !==
+                        "Admin" &&
+                      user?.role !==
+                        "CEO" && (
+                        <li
+                          className={
+                            activeSubItem ===
+                            "team"
+                              ? "active"
+                              : ""
+                          }
+                          onClick={(e) => {
+                            e.stopPropagation();
+
+                            handleMenuClick(
+                              item,
+                              "team"
+                            );
+                          }}
+                        >
+                          <MdIcons.MdPeopleAlt
+                            size={20}
+                          />
+
+                          <span>
+                            My Team Tasks
+                          </span>
+                        </li>
+                      )}
+
+                    {/* ==================================================
+                        4. MY TASKS
+                        Everyone except Admin and CEO
+                        ================================================== */}
+
+                    {user?.role !==
+                      "Admin" &&
+                      user?.role !==
+                        "CEO" && (
+                        <li
+                          className={
+                            activeSubItem ===
+                              "employee" ||
+                            !activeSubItem
+                              ? "active"
+                              : ""
+                          }
+                          onClick={(e) => {
+                            e.stopPropagation();
+
+                            handleMenuClick(
+                              item,
+                              "employee"
+                            );
+                          }}
+                        >
+                          <MdIcons.MdPerson
+                            size={20}
+                          />
+
+                          <span>
+                            My Tasks
+                          </span>
+                        </li>
+                      )}
+                  </ul>
                 )}
 
-                {/* 3. My Team Tasks – visible if user has subordinates (including HR) */}
-                {!loadingSubordinates && hasSubordinates && (
-                  <li
-                    className={activeSubItem === "team" ? "active" : ""}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleMenuClick(item, "team");
-                    }}
-                  >
-                    <MdIcons.MdPeopleAlt size={20} />
-                    <span>My Team Tasks</span>
-                  </li>
-                )}
+              {/* ==================================================
+                  SALARY SUBMENU
+                  ================================================== */}
 
-                {/* 4. My Tasks – visible to everyone except pure Admin */}
-                {user?.role !== "Admin" && (
-                  <li
-                    className={
-                      activeSubItem === "employee" || !activeSubItem
-                        ? "active"
-                        : ""
-                    }
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleMenuClick(item, "employee");
-                    }}
-                  >
-                    <MdIcons.MdPerson size={20} />
-                    <span>My Tasks</span>
-                  </li>
-                )}
-              </ul>
-            )}
+              {item.path ===
+                "/Salary_Statement" &&
+                showSalaryDropdown && (
+                  <ul className="desktop-submenu">
+                    <li
+                      className={
+                        activeSubItem ===
+                        "statement"
+                          ? "active"
+                          : ""
+                      }
+                      onClick={(e) => {
+                        e.stopPropagation();
 
-            {item.path === "/Salary_Statement" && showSalaryDropdown && (
-              <ul className="desktop-submenu">
-                <li
-                  className={activeSubItem === "statement" ? "active" : ""}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleMenuClick(item, "statement");
-                  }}
-                >
-                  <MdIcons.MdOutlineReceiptLong size={20} />{" "}
-                  <span>View Salary Statement</span>
-                </li>
-                <li
-                  className={activeSubItem === "payslip" ? "active" : ""}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleMenuClick(item, "payslip");
-                  }}
-                >
-                  <MdIcons.MdOutlineDescription size={20} />{" "}
-                  <span>Generate Payslip</span>
-                </li>
-              </ul>
-            )}
-          </li>
-        );
-      })}
+                        handleMenuClick(
+                          item,
+                          "statement"
+                        );
+                      }}
+                    >
+                      <MdIcons.MdOutlineReceiptLong
+                        size={20}
+                      />
+
+                      <span>
+                        View Salary Statement
+                      </span>
+                    </li>
+
+                    <li
+                      className={
+                        activeSubItem ===
+                        "payslip"
+                          ? "active"
+                          : ""
+                      }
+                      onClick={(e) => {
+                        e.stopPropagation();
+
+                        handleMenuClick(
+                          item,
+                          "payslip"
+                        );
+                      }}
+                    >
+                      <MdIcons.MdOutlineDescription
+                        size={20}
+                      />
+
+                      <span>
+                        Generate Payslip
+                      </span>
+                    </li>
+                  </ul>
+                )}
+            </li>
+          );
+        },
+      )}
     </ul>
   );
 
   return (
     <>
       <div className="sidebar">
-        {user?.role !== "Admin" && user?.role !== "SuperAdmin" && (
-          <div className="profile-section">
-            <a
-              href="#"
-              className="view-profile-link"
-              onClick={(e) => {
-                e.preventDefault();
-                setShowProfile(true);
-              }}
-            >
-              <span>View Profile</span>
-            </a>
-          </div>
-        )}
+        {user?.role !== "Admin" &&
+          user?.role !== "SuperAdmin" && (
+            <div className="profile-section">
+              <a
+                href="#"
+                className="view-profile-link"
+                onClick={(e) => {
+                  e.preventDefault();
+
+                  setShowProfile(true);
+                }}
+              >
+                <span>
+                  View Profile
+                </span>
+              </a>
+            </div>
+          )}
 
         {renderMenuList()}
       </div>
 
       <div className="bottom-nav">
-        {menuItems.slice(0, 5).map((item, index) => {
-          const Icon = resolveIcon(item.icon);
-          const isActive = activeNav.startsWith(item.path);
+        {menuItems
+          .slice(0, 5)
+          .map((item, index) => {
+            const Icon =
+              resolveIcon(item.icon);
 
-          return (
-            <button
-              key={index}
-              className={isActive ? "active" : ""}
-              onClick={() => handleMenuClick(item)}
-            >
-              <Icon size={26} />
-            </button>
-          );
-        })}
+            const isActive =
+              activeNav.startsWith(
+                item.path
+              );
 
-        <button onClick={() => setShowMobileMenu(true)}>
-          <MdIcons.MdMenu size={26} />
+            return (
+              <button
+                key={index}
+                className={
+                  isActive
+                    ? "active"
+                    : ""
+                }
+                onClick={() =>
+                  handleMenuClick(item)
+                }
+              >
+                <Icon size={26} />
+              </button>
+            );
+          })}
+
+        <button
+          onClick={() =>
+            setShowMobileMenu(true)
+          }
+        >
+          <MdIcons.MdMenu
+            size={26}
+          />
         </button>
       </div>
 
       {showMobileMenu && (
         <div
           className="mobile-menu-overlay"
-          onClick={() => setShowMobileMenu(false)}
+          onClick={() =>
+            setShowMobileMenu(false)
+          }
         >
-          <div className="mobile-sidebar" onClick={(e) => e.stopPropagation()}>
+          <div
+            className="mobile-sidebar"
+            onClick={(e) =>
+              e.stopPropagation()
+            }
+          >
             <div className="mobile-header">
               <button
                 className="mobile-close"
-                onClick={() => setShowMobileMenu(false)}
+                onClick={() =>
+                  setShowMobileMenu(false)
+                }
               >
-                <MdIcons.MdClose size={28} />
+                <MdIcons.MdClose
+                  size={28}
+                />
               </button>
             </div>
 
-            {user?.role !== "Admin" && user?.role !== "SuperAdmin" && (
-              <div className="profile-section mobile-profile">
-                <a
-                  href="#"
-                  className="view-profile-link"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    setShowProfile(true);
-                    setShowMobileMenu(false);
-                  }}
-                >
-                  <MdIcons.MdPerson size={22} />
-                  <span>View Profile</span>
-                </a>
-              </div>
-            )}
+            {user?.role !==
+              "Admin" &&
+              user?.role !==
+                "SuperAdmin" && (
+                <div className="profile-section mobile-profile">
+                  <a
+                    href="#"
+                    className="view-profile-link"
+                    onClick={(e) => {
+                      e.preventDefault();
+
+                      setShowProfile(
+                        true
+                      );
+
+                      setShowMobileMenu(
+                        false
+                      );
+                    }}
+                  >
+                    <MdIcons.MdPerson
+                      size={22}
+                    />
+
+                    <span>
+                      View Profile
+                    </span>
+                  </a>
+                </div>
+              )}
 
             {renderMenuList()}
           </div>
@@ -684,8 +1966,12 @@ const Sidebar = ({ setActiveContent }) => {
 
       {showProfile && (
         <Profile
-          employeeId={user?.employeeId}
-          onClose={() => setShowProfile(false)}
+          employeeId={
+            user?.employeeId
+          }
+          onClose={() =>
+            setShowProfile(false)
+          }
         />
       )}
     </>

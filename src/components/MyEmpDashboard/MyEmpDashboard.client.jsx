@@ -1,6 +1,9 @@
+
+
+
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import EmpDashCards from "./EmpDashCards.client";
 import EmpReImbursement from "./EmpReImbursement.client";
 import EmpSessions from "./EmpSessions.client";
@@ -12,21 +15,45 @@ import SaveFaceData from "./SaveFaceData.client";
 import "./MyEmpDashboard.css";
 import axios from "axios";
 import { useAuth } from "../../context/AuthProvider.client";
+import BirthdayCard from "../../components/BirthdayCard/BirthdayCard.client";
 
 export default function MyEmpDashboard() {
   const { user } = useAuth();
-  const meId = user?.employeeId ?? user?.employee_id ?? user?.id ?? null;
-  const orgId = user?.orgId ?? user?.raw?.org_id ?? null;
+
+  const meId =
+    user?.employeeId ??
+    user?.employee_id ??
+    user?.id ??
+    null;
+
+  const orgId =
+    user?.orgId ??
+    user?.raw?.org_id ??
+    null;
+
   const API_KEY = process.env.NEXT_PUBLIC_API_KEY;
   const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
 
   const [faceCheckStatus, setFaceCheckStatus] = useState("pending");
 
+  // Prevent duplicate API call during React Strict Mode development remount
+  const faceCheckStartedRef = useRef(false);
+
   function getHeaders() {
     const headers = {};
-    if (API_KEY) headers["x-api-key"] = API_KEY;
-    if (meId) headers["x-employee-id"] = meId;
-    if (orgId) headers["x-org-id"] = orgId;
+
+    if (API_KEY) {
+      headers["x-api-key"] = API_KEY;
+    }
+
+    if (meId) {
+      headers["x-employee-id"] = meId;
+    }
+
+    if (orgId) {
+      headers["x-org-id"] = orgId;
+    }
+
     return headers;
   }
 
@@ -34,23 +61,43 @@ export default function MyEmpDashboard() {
     if (typeof window === "undefined") return;
 
     if (!meId) {
-      console.warn("MyEmpDashboard: meId not available; skipping face check");
+      console.warn(
+        "MyEmpDashboard: meId not available; skipping face check"
+      );
+
       setFaceCheckStatus("error");
       return;
     }
 
+    // Prevent the same face-check request from being started twice
+    if (faceCheckStartedRef.current) {
+      return;
+    }
+
+    faceCheckStartedRef.current = true;
+
     let mounted = true;
+
     const headers = getHeaders();
 
     async function checkAndMaybeShowPopup() {
       try {
         let hasCamera = false;
+
         if (navigator?.mediaDevices?.enumerateDevices) {
           try {
-            const devices = await navigator.mediaDevices.enumerateDevices();
-            hasCamera = devices.some((d) => d.kind === "videoinput");
+            const devices =
+              await navigator.mediaDevices.enumerateDevices();
+
+            hasCamera = devices.some(
+              (device) => device.kind === "videoinput"
+            );
           } catch (err) {
-            console.warn("enumerateDevices failed:", err);
+            console.warn(
+              "enumerateDevices failed:",
+              err
+            );
+
             hasCamera = false;
           }
         }
@@ -66,20 +113,30 @@ export default function MyEmpDashboard() {
           BACKEND_URL?.replace(/\/$/, "") || ""
         }/api/face/check/${encodeURIComponent(meId)}`;
 
-        const resp = await axios.get(url, { withCredentials: true, headers });
+        const resp = await axios.get(url, {
+          withCredentials: true,
+          headers,
+        });
+
         if (!mounted) return;
 
-        console.debug("face check response:", resp?.data);
+        console.debug(
+          "face check response:",
+          resp?.data
+        );
 
         const data = resp?.data ?? {};
+
         const isRegistered =
           Boolean(data?.isRegistered) ||
           Boolean(data?.registered) ||
           Boolean(data?.exists) ||
-          (typeof data?.count === "number" && data.count > 0) ||
+          (typeof data?.count === "number" &&
+            data.count > 0) ||
           Boolean(data?.data?.isRegistered) ||
           Boolean(data?.data?.exists) ||
-          (typeof data?.data?.count === "number" && data.data.count > 0);
+          (typeof data?.data?.count === "number" &&
+            data.data.count > 0);
 
         if (isRegistered) {
           setFaceCheckStatus("registered");
@@ -87,8 +144,14 @@ export default function MyEmpDashboard() {
           setFaceCheckStatus("not-registered");
         }
       } catch (err) {
-        console.error("Error checking face registration:", err);
-        setFaceCheckStatus("error");
+        console.error(
+          "Error checking face registration:",
+          err
+        );
+
+        if (mounted) {
+          setFaceCheckStatus("error");
+        }
       }
     }
 
@@ -113,6 +176,9 @@ export default function MyEmpDashboard() {
         </div>
       )}
 
+      {/* Birthday / Work Anniversary */}
+      <BirthdayCard />
+
       <div className="EmpDashCards1234">
         <EmpDashCards />
       </div>
@@ -133,3 +199,4 @@ export default function MyEmpDashboard() {
     </div>
   );
 }
+  

@@ -118,6 +118,20 @@ function extractEmployeeId(body) {
   );
 }
 
+function extractEmail(body) {
+  if (!body) return null;
+  return (
+    pickFirst(
+      safeGet(body, "email"),
+      safeGet(body, "employee_email"),
+      safeGet(body, "employeeEmail"),
+      safeGet(body, "raw.email"),
+      safeGet(body, "raw.employee_email"),
+      safeGet(body, "raw.employeeEmail"),
+    ) ?? null
+  );
+}
+
 try {
   if (
     axios &&
@@ -188,6 +202,7 @@ export function AuthProvider({ children }) {
         const serverUser = {
           id: empId,
           employeeId: empId,
+          email: extractEmail(body),
           department_id: department,
           name: pickFirst(
             body.name,
@@ -252,6 +267,7 @@ export function AuthProvider({ children }) {
       const serverUser = {
         id: empId,
         employeeId: empId,
+        email: extractEmail(body),
         department_id: department,
         name: pickFirst(
           body.name,
@@ -286,6 +302,12 @@ export function AuthProvider({ children }) {
     const minimalUser = {
       id: serverUser?.id ?? serverUser?.employeeId ?? null,
       employeeId: serverUser?.employeeId ?? serverUser?.id ?? null,
+      email:
+        serverUser?.email ??
+        serverUser?.employee_email ??
+        safeGet(serverUser?.raw, "email") ??
+        safeGet(serverUser?.raw, "employee_email") ??
+        null,
       department_id: serverUser?.department_id ?? serverUser?.deptId ?? null,
       name: serverUser?.name ?? null,
       role: serverUser?.role ?? null,

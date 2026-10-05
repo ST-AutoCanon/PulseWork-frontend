@@ -61,7 +61,7 @@ export default function ExitFlow() {
   const [ktPlans, setKtPlans] = useState([]);
   const [assets, setAssets] = useState([]);
   const roleLower = role?.toLowerCase() || "";
-  const isAdmin = roleLower === "admin";
+  const isAdmin = roleLower === "admin" || roleLower === "ceo";
   const [searchTerm, setSearchTerm] = useState("");
   const isHr = roleLower === "hr" || roleLower === "human resource" || roleLower === "hr admin";
   // HR users who are not also admins should have extra checks before finalizing
@@ -1016,7 +1016,7 @@ const handleReviewAction = async (reviewType, action) => {
     const isAllTab = activeTab === "all";
 
     const roleLower = role?.toLowerCase() || "";
-    const isHRRole = isHr || isAdmin || roleLower === "hr" || roleLower === "admin";
+    const isHRRole = isHr || isAdmin || roleLower === "hr" || roleLower === "admin" || roleLower === "ceo";
 
     if (reviewType === "normal") {
       if (isTeamTab) {
@@ -1146,7 +1146,7 @@ const handleSaveFinalEvaluation = async () => {
   }
 };
   const hasTeam = teamMembers.length > 0;
-  const isHrOrAdmin = role === "hr" || role === "admin" || isAdmin;
+  const isHrOrAdmin = role === "hr" || role === "admin" || role === "ceo" || isAdmin;
 
   // Add this before return
 const filteredAllTeamRequests = allTeamRequests.filter((req) => {
@@ -1839,7 +1839,7 @@ const filteredAllTeamRequests = allTeamRequests.filter((req) => {
               )}
             </div>
           )}
-          {activeTab === "all" && (role === "hr" || role === "admin" || isAdmin) && (
+          {activeTab === "all" && (role === "hr" || role === "admin" || role === "ceo" || isAdmin) && (
             <div className="exf-team-view space-y-8">
               <div className="exf-team-panel">
   <div className="exf-header">

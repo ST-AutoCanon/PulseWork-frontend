@@ -1,83 +1,34 @@
+
+
 "use client";
-import React, { useEffect, useState, useRef } from "react";
+
+import React, { useState } from "react";
 import Sidebar from "./Sidebar.client";
 import Topbar from "./Topbar.client";
 import "./Dashboard.css";
-import axios from "axios";
-import BirthdayCard from "../BirthdayCard/BirthdayCard.client";
-import { isBirthdayToday } from "../../utils/checkBirthday";
 import { ContentContext } from "./Context.client";
 import { useAuth } from "../../context/AuthProvider.client";
 
 const Dashboard = () => {
   const { user, hydrated } = useAuth();
+
   const [activeContent, setActiveContent] = useState(null);
-  const [showBirthday, setShowBirthday] = useState(false);
-  const [employeeName, setEmployeeName] = useState("");
-  const birthdayChecked = useRef(false);
-  const email =
-    user?.raw?.email ?? user?.dashboard?.email ?? user?.email ?? null;
-  const meId = user?.employeeId ?? user?.id ?? null;
 
-  const API_KEY = process.env.NEXT_PUBLIC_API_KEY;
-  const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
+  /*
+   * Keep auth context available here because Dashboard
+   * depends on the logged-in user/session.
+   *
+   * Birthday API handling is now completely handled by
+   * BirthdayCard inside the employee dashboard.
+   */
+  void user;
+  void hydrated;
 
-  const orgId =
-    user?.org_id ??
-    user?.orgId ??
-    user?.organization_id ??
-    user?.raw?.org_id ??
-    null;
-
-  const headers =
-    meId && orgId
-      ? {
-          "x-api-key": API_KEY,
-          "x-employee-id": meId,
-          "x-org-id": orgId,
-        }
-      : { "x-api-key": API_KEY };
-
-  useEffect(() => {
-    let cancelled = false;
-
-    const fetchBirthday = async () => {
-      if (!hydrated || !email || birthdayChecked.current) return;
-
-      birthdayChecked.current = true; // run only once after login
-
-      try {
-        const response = await axios.get(
-          `${BACKEND_URL}/api/employee/birthday/${email}`,
-          {
-            withCredentials: true,
-            headers,
-          },
-        );
-
-        const { full_name, first_name, dob } = response.data || {};
-        const nameToUse = full_name || first_name || "there";
-
-        if (isBirthdayToday(dob) && !cancelled) {
-          setEmployeeName(nameToUse);
-          setShowBirthday(true);
-
-          setTimeout(() => {
-            setShowBirthday(false);
-          }, 25000);
-        }
-      } catch (error) {
-        console.error("❌ Error fetching birthday:", error);
-      }
-    };
-
-    fetchBirthday();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [hydrated, email]);
-
+  /*
+   * ---------------------------------------------------------
+   * Render dashboard content
+   * ---------------------------------------------------------
+   */
   const renderContent = () => (
     <div className="content-container-design">
       <div>{activeContent}</div>
@@ -85,15 +36,22 @@ const Dashboard = () => {
   );
 
   return (
-    <ContentContext.Provider value={{ setActiveContent }}>
+    <ContentContext.Provider
+      value={{ setActiveContent }}
+    >
       <div className="Dashboard123">
         <div className="Dashboarddesign">
           <div className="dashboard">
-            {showBirthday && <BirthdayCard name={employeeName} />}
             <Topbar />
+
             <div className="content-container">
-              <Sidebar setActiveContent={setActiveContent} />
-              <div className="main-content">{renderContent()}</div>
+              <Sidebar
+                setActiveContent={setActiveContent}
+              />
+
+              <div className="main-content">
+                {renderContent()}
+              </div>
             </div>
           </div>
         </div>

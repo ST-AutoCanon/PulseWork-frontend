@@ -436,6 +436,7 @@ const WeeklyTaskPlanner = ({
         authRequest({
           method: "GET",
           url: `/api/week_tasks/employee/${employeeId}`,
+          params: { week_id: weekId },
         })
       );
       const tasks = Array.isArray(tsk.data) ? tsk.data : [];
@@ -444,10 +445,9 @@ const WeeklyTaskPlanner = ({
         setTasksData(weekDates.map((d) => ({ date: d, tasks: [] })));
         return;
       }
-      const filtered = tasks.filter((t) => t.week_id === weekId);
       const grouped = weekDates.map((date) => ({
         date,
-        tasks: filtered.filter((t) => {
+        tasks: tasks.filter((t) => {
           const td = new Date(t.task_date);
           return formatDateStr(td) === date;
         }),

@@ -145,7 +145,7 @@ const Sidebar = ({ setActiveContent }) => {
       "/EmployeePolicies": () => <EmployeePolicies />,
       "/AttendanceRegularisation": () => <AttendanceRegularisation />,
       "/reimbursement": (role) => {
-        if (role === "Admin") return <RbAdmin />;
+        if (role === "Admin" || role === "CEO") return <RbAdmin />;
         if (role === "Manager") return <RbTeamLead />;
         if (role === "HR") return <RbAdmin />;
         return <Reimbursement />;

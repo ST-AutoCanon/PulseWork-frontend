@@ -887,6 +887,8 @@ export default function Login({ onClose }) {
         employeeId: u.employeeId ?? u.employee_id ?? u.id ?? null,
         role: u.role ?? "",
         name: u.name ?? u.dashboard?.name ?? "",
+        email: u.email ?? u.employee_email ?? usernameVal,
+        raw: u,
         orgId: u.org_id ?? u.orgId ?? null,
         orgPrefix: u.org_prefix ?? u.orgPrefix ?? null,
       };

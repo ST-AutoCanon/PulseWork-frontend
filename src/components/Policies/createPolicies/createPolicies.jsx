@@ -2012,7 +2012,7 @@ isEditing={isEditing}                 // ← NEW
   </svg>
 </button>
 
-    <h4 style={{ paddingRight: "40px" }}>{policy.policy_name}</h4>
+    <h4 style={{ paddingRight: "60px" }}>{policy.policy_name}</h4>
 
     <button
       type="button"

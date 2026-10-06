@@ -264,12 +264,15 @@ useEffect(() => {
 // ============================================================
 // POLICY SCREEN SECURITY
 // ============================================================
+// ============================================================
+// POLICY SCREEN SECURITY – aggressive / continuous version
+// ============================================================
 useEffect(() => {
   if (!selectedFile) return;
 
-  // ------------------------------------------------------------
-  // Instant visual hide (synchronous)
-  // ------------------------------------------------------------
+  let hideTimeout = null;
+  let isCurrentlyHidden = false;
+
   const hideContentInstantly = () => {
     const protectedEl = document.querySelector(".viewer-content-protected");
     if (protectedEl) {
@@ -280,34 +283,38 @@ useEffect(() => {
     }
     setIsContentProtected(false);
     setShowCaptureWarning(true);
+    isCurrentlyHidden = true;
   };
 
   const showContent = () => {
-    const protectedEl = document.querySelector(".viewer-content-protected");
-    if (protectedEl) {
-      protectedEl.style.filter = "none";
-      protectedEl.style.pointerEvents = "auto";
-      protectedEl.classList.remove("is-hidden");
-    }
-    setIsContentProtected(true);
-    setShowCaptureWarning(false);
+    // Only allow showing content after a short cooldown
+    // (gives time for the user to stop recording)
+    if (hideTimeout) clearTimeout(hideTimeout);
+
+    hideTimeout = setTimeout(() => {
+      const protectedEl = document.querySelector(".viewer-content-protected");
+      if (protectedEl) {
+        protectedEl.style.filter = "none";
+        protectedEl.style.pointerEvents = "auto";
+        protectedEl.classList.remove("is-hidden");
+      }
+      setIsContentProtected(true);
+      setShowCaptureWarning(false);
+      isCurrentlyHidden = false;
+    }, 1500); // 1.5 s cooldown – adjust as needed
   };
 
-  // ------------------------------------------------------------
-  // Big popup (same for PrintScreen and Win+Shift+S)
-  // ------------------------------------------------------------
   const showScreenshotBlockedPopup = () => {
     setAlertModal({
       isVisible: true,
-      title: "Screenshot Not Allowed",
+      title: "Screenshot / Screen Recording Not Allowed",
       message:
-        "Taking screenshots of company policies is strictly prohibited.\n\nThe content has been hidden. Please return to this tab to continue reading.",
+        "Taking screenshots or recording the screen while viewing company policies is strictly prohibited.\n\n" +
+        "Content will remain hidden until you return to this tab and stop any recording tools.",
     });
   };
 
-  // ------------------------------------------------------------
   // Detect PrintScreen + best-effort Win+Shift+S
-  // ------------------------------------------------------------
   const handlePrintScreenOrSnip = (e) => {
     const key = e.key?.toLowerCase();
     const code = e.code;
@@ -317,8 +324,6 @@ useEffect(() => {
       code === "PrintScreen" ||
       e.keyCode === 44;
 
-    // Best-effort detection of Win + Shift + S
-    // (Windows key is often reported as Meta on some browsers)
     const isWinShiftS =
       e.shiftKey &&
       (key === "s" || code === "KeyS") &&
@@ -333,7 +338,7 @@ useEffect(() => {
     hideContentInstantly();
     showScreenshotBlockedPopup();
 
-    // Best-effort clear clipboard
+    // Clear clipboard
     setTimeout(async () => {
       try {
         if (navigator.clipboard?.writeText) {
@@ -345,36 +350,34 @@ useEffect(() => {
     return false;
   };
 
-  // ------------------------------------------------------------
-  // When window loses focus (this catches Win+Shift+S reliably)
-  // ------------------------------------------------------------
+  // When tab becomes hidden OR window loses focus → hide + popup
   const handleVisibilityChange = () => {
     if (document.hidden) {
       hideContentInstantly();
-      showScreenshotBlockedPopup();   // ← same big popup
+      showScreenshotBlockedPopup();
     } else {
+      // Tab is visible again – still wait for the cooldown
       showContent();
     }
   };
 
   const handleBlur = () => {
     hideContentInstantly();
-    showScreenshotBlockedPopup();     // ← same big popup
+    showScreenshotBlockedPopup();
   };
 
   const handleFocus = () => {
+    // Do NOT immediately show content – wait for cooldown
     showContent();
   };
 
   const handleContextMenu = (e) => e.preventDefault();
 
   const handleKeyDown = (e) => {
-    // PrintScreen + Win+Shift+S attempt
     handlePrintScreenOrSnip(e);
 
     const key = e.key?.toLowerCase();
 
-    // Ctrl/Cmd + P
     if ((e.ctrlKey || e.metaKey) && key === "p") {
       e.preventDefault();
       hideContentInstantly();
@@ -385,7 +388,6 @@ useEffect(() => {
       return;
     }
 
-    // Other restricted shortcuts
     if (
       ((e.ctrlKey || e.metaKey) && (key === "s" || key === "c" || key === "u")) ||
       ((e.ctrlKey || e.metaKey) && e.shiftKey && (key === "s" || key === "i" || key === "j" || key === "c")) ||
@@ -397,9 +399,7 @@ useEffect(() => {
 
   const handleKeyUp = (e) => handlePrintScreenOrSnip(e);
 
-  // ------------------------------------------------------------
-  // Attach listeners
-  // ------------------------------------------------------------
+  // Attach
   document.addEventListener("visibilitychange", handleVisibilityChange);
   window.addEventListener("blur", handleBlur);
   window.addEventListener("focus", handleFocus);
@@ -408,6 +408,7 @@ useEffect(() => {
   document.addEventListener("keyup", handleKeyUp, true);
 
   return () => {
+    if (hideTimeout) clearTimeout(hideTimeout);
     document.removeEventListener("visibilitychange", handleVisibilityChange);
     window.removeEventListener("blur", handleBlur);
     window.removeEventListener("focus", handleFocus);
@@ -1725,7 +1726,7 @@ const handleViewerScroll = (event) => {
 {alertModal.isVisible && (
   <div
     className="screenshot-popup-overlay"
-    onClick={closeAlert}
+    // remove onClick={closeAlert} so clicking outside does nothing
     style={{ zIndex: 99999 }}
   >
     <div
@@ -1735,7 +1736,15 @@ const handleViewerScroll = (event) => {
     >
       <h2>{alertModal.title}</h2>
       <p>{alertModal.message}</p>
-      <button onClick={closeAlert}>Close</button>
+
+      {/* Only allow closing when content is protected again */}
+      {isContentProtected ? (
+        <button onClick={closeAlert}>Close</button>
+      ) : (
+        <p style={{ color: "#dc2626", fontWeight: 600, marginTop: 12 }}>
+          Close this dialog after you stop any screen-recording tools and return to this tab.
+        </p>
+      )}
     </div>
   </div>
 )}

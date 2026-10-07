@@ -93,6 +93,7 @@ const [showVendorRegistration, setShowVendorRegistration] = useState(false);
     body: "Dear Vendor,\n\nPlease complete your vendor registration using the secure link below. The link will remain active for 5 days.\n\nRegards,\nPulseWork Team",
   });
   const [isSendingRegistrationMail, setIsSendingRegistrationMail] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const headers = useMemo(() => {
     if (!user) return null;
     const orgId =
@@ -611,74 +612,88 @@ const handleShowDownloadPopup = (vendor) => {
     return true;
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (
-      formData.years_of_experience &&
-      Number(formData.years_of_experience) < 1
-    ) {
-      setError("Years of experience must be at least 1");
-      return;
+ const handleSubmit = async (e) => {
+  e.preventDefault();
+
+  // Prevent double-click / duplicate submission
+  if (isSubmitting) return;
+
+  setIsSubmitting(true);
+
+  if (
+    formData.years_of_experience &&
+    Number(formData.years_of_experience) < 1
+  ) {
+    setError("Years of experience must be at least 1");
+    setIsSubmitting(false);
+    return;
+  }
+
+  setError("");
+
+  const formPayload = new FormData();
+
+  Object.keys(formData).forEach((k) => {
+    if (formData[k] !== undefined && formData[k] !== null) {
+      formPayload.append(k, formData[k]);
     }
-    setError("");
+  });
 
-    const formPayload = new FormData();
-    Object.keys(formData).forEach((k) => {
-      if (formData[k] !== undefined && formData[k] !== null) {
-        formPayload.append(k, formData[k]);
-      }
-    });
+  Object.keys(files).forEach((k) => {
+    if (files[k]) formPayload.append(k, files[k]);
+  });
 
-    Object.keys(files).forEach((k) => {
-      if (files[k]) formPayload.append(k, files[k]);
-    });
+  try {
+    const base = process.env.NEXT_PUBLIC_BACKEND_URL;
 
-    try {
-      const base = process.env.NEXT_PUBLIC_BACKEND_URL;
-      if (isEditing && editingVendorId) {
-        const resp = await axios.put(
-          `${base}/vendors/update/${editingVendorId}`,
-          formPayload,
-          {
-            withCredentials: true,
-            headers: {
-              ...(headers || {}),
-              "Content-Type": "multipart/form-data",
-            },
-          }
-        );
-
-        if (resp.data && resp.data.success) {
-          await fetchVendors();
-
-          showAlert("Vendor updated successfully");
-          togglePopup();
-        } else {
-          showAlert("Failed to update vendor");
-        }
-      } else {
-        const resp = await axios.post(`${base}/vendors/add`, formPayload, {
+    if (isEditing && editingVendorId) {
+      const resp = await axios.put(
+        `${base}/vendors/update/${editingVendorId}`,
+        formPayload,
+        {
           withCredentials: true,
           headers: {
             ...(headers || {}),
             "Content-Type": "multipart/form-data",
           },
-        });
-
-        if (resp.data && resp.data.success) {
-          await fetchVendors();
-
-          showAlert("Vendor added successfully");
-          togglePopup();
-        } else {
-          showAlert("Failed to add vendor");
         }
+      );
+
+      if (resp.data && resp.data.success) {
+        await fetchVendors();
+        showAlert("Vendor updated successfully");
+        togglePopup();
+      } else {
+        showAlert("Failed to update vendor");
       }
-    } catch (err) {
-      console.error("Vendor submit error:", err);
-      showAlert("Error while submitting vendor");
+    } else {
+      const resp = await axios.post(
+        `${base}/vendors/add`,
+        formPayload,
+        {
+          withCredentials: true,
+          headers: {
+            ...(headers || {}),
+            "Content-Type": "multipart/form-data",
+          },
+        }
+      );
+
+      if (resp.data && resp.data.success) {
+        await fetchVendors();
+        showAlert("Vendor added successfully");
+        togglePopup();
+      } else {
+        showAlert("Failed to add vendor");
+      }
     }
-  };
+  } catch (err) {
+    console.error("Vendor submit error:", err);
+    showAlert("Error while submitting vendor");
+  } finally {
+    setIsSubmitting(false);
+  }
+};
 
   return (
     <div className="vendors-container">
@@ -1422,9 +1437,15 @@ const handleShowDownloadPopup = (vendor) => {
                 >
                   Cancel
                 </button>
-                <button type="submit" className="vendor-submit-btn">
-                  {isEditing ? "Update" : "Add Vendor"}
-                </button>
+                <button
+  type="submit"
+  className="vendor-submit-btn"
+  disabled={isSubmitting}
+>
+  {isSubmitting
+    ? (isEditing ? "Updating..." : "Saving...")
+    : (isEditing ? "Update" : "Add Vendor")}
+</button>
               </div>
             </form>
           </div>
@@ -1546,7 +1567,7 @@ const handleShowDownloadPopup = (vendor) => {
               <div className="grid-field">
                 Mobile: {selectedVendor.contact2_mobile || "-"}
               </div>
-              <div className="grid-label">Contact 3</div>
+              <div className="grid-label">Account team contact details</div>
               <div className="grid-field">
                 Name: {selectedVendor.contact3_name || "-"}
               </div>

@@ -491,28 +491,21 @@ font-size: 20px;
    ========================================================================== */
 
 .desktop-calendar-overlay,
-.mobile-calendar-overlay {
+.mobile-calendar-overlay,
+.mobile-calendar-inline,
+.calendar-dropdown-inline {
   position: fixed;
-
-  inset: 0;
-
+  width: max-content;
+  height: max-content;
   z-index: 9999;
-
   pointer-events: none;
 }
 
 .desktop-calendar-overlay > *,
-.mobile-calendar-overlay > * {
+.mobile-calendar-overlay > *,
+.mobile-calendar-inline > *,
+.calendar-dropdown-inline > * {
   pointer-events: auto;
-}
-
-.calendar-dropdown-inline {
-  position: absolute;
-
-  top: 52px;
-  right: 14px;
-
-  z-index: 9999;
 }
 
 /* ========================================================================== 

@@ -887,8 +887,6 @@ export default function Login({ onClose }) {
         employeeId: u.employeeId ?? u.employee_id ?? u.id ?? null,
         role: u.role ?? "",
         name: u.name ?? u.dashboard?.name ?? "",
-        email: u.email ?? u.employee_email ?? usernameVal,
-        raw: u,
         orgId: u.org_id ?? u.orgId ?? null,
         orgPrefix: u.org_prefix ?? u.orgPrefix ?? null,
       };
@@ -901,11 +899,22 @@ export default function Login({ onClose }) {
         const role = String(minimalUser?.role ?? "")
           .trim()
           .toLowerCase();
-        const isAdminLikeUser = ["admin", "super admin", "superadmin"].includes(
-          role,
-        );
+        const shouldSuppressAlerts = [
+          "admin",
+          "super admin",
+          "superadmin",
+          "ceo",
+          "general",
+          "common",
+        ].includes(role);
 
-        if (!isAdminLikeUser && employeeId && orgId) {
+        if (shouldSuppressAlerts) {
+          try {
+            sessionStorage.removeItem("attendanceReminder");
+          } catch {}
+        }
+
+        if (!shouldSuppressAlerts && employeeId && orgId) {
           const attendanceHeaders = {
             "x-api-key": process.env.NEXT_PUBLIC_API_KEY,
             "x-org-id": String(orgId),

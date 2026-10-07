@@ -454,6 +454,7 @@ export default function ReportPanel() {
   };
 
   const validateDates = () => {
+    if (component === "leaves") return true;
     if (!startDate && !endDate) return true;
     if (startDate && endDate) {
       const s = new Date(startDate);
@@ -555,23 +556,20 @@ export default function ReportPanel() {
     if (preview) params.append("preview", "true");
 
     const MAX_CLIENT_FIELDS_SEND = 60;
-    if (!preview) {
-      if (selectedFields && selectedFields.length > 0) {
-        const forbidden = new Set([
-          "__asset_lifecycle_status",
-          "raw_status",
-          "lifecycle",
-        ]);
-        let fieldsToSend = selectedFields.filter((k) => !forbidden.has(k));
-        if (fieldsToSend.length > MAX_CLIENT_FIELDS_SEND) {
-          console.warn(
-            `[ReportPanel] selectedFields length (${fieldsToSend.length}) exceeds MAX_CLIENT_FIELDS_SEND (${MAX_CLIENT_FIELDS_SEND}). Truncating for transport.`,
-          );
-          fieldsToSend = fieldsToSend.slice(0, MAX_CLIENT_FIELDS_SEND);
-        }
-        if (fieldsToSend.length)
-          params.append("fields", fieldsToSend.join(","));
+    if (selectedFields && selectedFields.length > 0) {
+      const forbidden = new Set([
+        "__asset_lifecycle_status",
+        "raw_status",
+        "lifecycle",
+      ]);
+      let fieldsToSend = selectedFields.filter((k) => !forbidden.has(k));
+      if (fieldsToSend.length > MAX_CLIENT_FIELDS_SEND) {
+        console.warn(
+          `[ReportPanel] selectedFields length (${fieldsToSend.length}) exceeds MAX_CLIENT_FIELDS_SEND (${MAX_CLIENT_FIELDS_SEND}). Truncating for transport.`,
+        );
+        fieldsToSend = fieldsToSend.slice(0, MAX_CLIENT_FIELDS_SEND);
       }
+      if (fieldsToSend.length) params.append("fields", fieldsToSend.join(","));
     }
 
     // Always include employee-friendly and id values where applicable (employees component)

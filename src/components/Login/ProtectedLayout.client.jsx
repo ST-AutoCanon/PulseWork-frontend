@@ -407,11 +407,16 @@ export default function ProtectedLayout({ children }) {
     const normalizedRole = String(user?.role ?? "")
       .trim()
       .toLowerCase();
-    const isAdminLikeUser = ["admin", "super admin", "superadmin"].includes(
-      normalizedRole,
-    );
+    const shouldSuppressAlerts = [
+      "admin",
+      "super admin",
+      "superadmin",
+      "ceo",
+      "general",
+      "common",
+    ].includes(normalizedRole);
 
-    if (isAdminLikeUser) {
+    if (shouldSuppressAlerts) {
       punchAlertKeyRef.current = null;
       setPunchAlert(null);
       try {

@@ -382,7 +382,10 @@ function MobileTopbar(props) {
       {showCalendar &&
         (portalRoot ? (
           ReactDOM.createPortal(
-            <div className="mobile-calendar-overlay">
+            <div
+              className="mobile-calendar-overlay"
+              style={calendarPosition || { visibility: "hidden" }}
+            >
               <HolidayCalendar
                 closeCalendar={() =>
                   setShowCalendar(false)
@@ -392,7 +395,10 @@ function MobileTopbar(props) {
             portalRoot
           )
         ) : (
-          <div className="mobile-calendar-inline">
+          <div
+            className="mobile-calendar-inline"
+            style={calendarPosition || { visibility: "hidden" }}
+          >
             <HolidayCalendar
               closeCalendar={() =>
                 setShowCalendar(false)
@@ -431,6 +437,9 @@ export default function Topbar() {
 
   const [showCalendar, setShowCalendar] =
     useState(false);
+
+  const [calendarPosition, setCalendarPosition] =
+    useState(null);
 
   const [showNotifications, setShowNotifications] =
     useState(false);
@@ -1254,6 +1263,45 @@ export default function Topbar() {
   const calToggleRef =
     useRef(null);
 
+  useEffect(() => {
+    if (!showCalendar) {
+      setCalendarPosition(null);
+      return;
+    }
+
+    const positionCalendar = () => {
+      const toggle = calToggleRef.current;
+      if (!toggle) return;
+
+      const rect = toggle.getBoundingClientRect();
+      const calendarWidth =
+        window.innerWidth <= 600
+          ? window.innerWidth - 18
+          : 350;
+      const left = Math.max(
+        8,
+        Math.min(
+          rect.right - calendarWidth,
+          window.innerWidth - calendarWidth - 8
+        )
+      );
+
+      setCalendarPosition({
+        position: "fixed",
+        top: rect.bottom + 8,
+        left,
+        zIndex: 9999,
+      });
+    };
+
+    positionCalendar();
+    window.addEventListener("resize", positionCalendar);
+
+    return () => {
+      window.removeEventListener("resize", positionCalendar);
+    };
+  }, [showCalendar]);
+
   const getCalendarNode =
     () => {
       if (portalRoot) {
@@ -1719,7 +1767,10 @@ export default function Topbar() {
         {showCalendar &&
           (portalRoot ? (
             ReactDOM.createPortal(
-              <div className="desktop-calendar-overlay">
+              <div
+                className="desktop-calendar-overlay"
+                style={calendarPosition || { visibility: "hidden" }}
+              >
                 <HolidayCalendar
                   closeCalendar={() =>
                     setShowCalendar(
@@ -1731,7 +1782,10 @@ export default function Topbar() {
               portalRoot
             )
           ) : (
-            <div className="calendar-dropdown-inline">
+            <div
+              className="calendar-dropdown-inline"
+              style={calendarPosition || { visibility: "hidden" }}
+            >
               <HolidayCalendar
                 closeCalendar={() =>
                   setShowCalendar(

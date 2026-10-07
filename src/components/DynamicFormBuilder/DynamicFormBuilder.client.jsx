@@ -627,6 +627,9 @@ const filteredEmployees = employees.filter((emp) => {
       setFieldType(field.employee.type || "text");
       setFieldRequired(field.employee.required || false);
       setFieldPlaceholder(field.employee.placeholder || "");
+      setFieldReferenceFile(
+        field.employee?.referenceFile || field.referenceFile || null,
+      );
 
       if (field.employee.options && Array.isArray(field.employee.options)) {
         setOptionsInput(field.employee.options.map((o) => o.label).join(", "));
@@ -699,12 +702,19 @@ const addOrUpdateField = () => {
     return;
   }
 
+  const existingField = editingFieldId
+    ? fields.find((field) => field.id === editingFieldId)
+    : null;
   let employeeConfig = {
     label: trimmed,
     type: fieldType,
     required: fieldRequired,
     placeholder: fieldPlaceholder.trim() || undefined,
-    referenceFile: fieldReferenceFile || undefined,
+    referenceFile:
+      fieldReferenceFile ||
+      existingField?.employee?.referenceFile ||
+      existingField?.referenceFile ||
+      undefined,
     ...(fieldNeedsOthersFeedback ? { needsOthersFeedback: true } : {}),
   };
 
@@ -884,6 +894,7 @@ if (formType === 'employee_supervisor' && !fields.some(f => f.supervisorFields &
     setFieldType("text");
     setFieldRequired(false);
     setFieldPlaceholder("");
+    setFieldReferenceFile(null);
     setOptionsInput("");
     setLayoutMode("one");
     setActiveFrom("");
@@ -3374,9 +3385,38 @@ const handleAssign = async () => {
     }}
   />
   {fieldReferenceFile && (
-    <small style={{ color: "green", display: "block", marginTop: "4px" }}>
-      ✓ {fieldReferenceFile.name}
-    </small>
+    <div style={{ color: "green", display: "flex", alignItems: "center", gap: "10px", marginTop: "4px" }}>
+      <small>
+        ✓ {fieldReferenceFile.name || fieldReferenceFile.originalname || fieldReferenceFile.filename || "Reference file"}
+      </small>
+      {!(fieldReferenceFile instanceof File) && getFileUrl(fieldReferenceFile) && (
+        <>
+          {isPreviewableFile(fieldReferenceFile) && (
+            <button
+              type="button"
+              onClick={() => viewFile(fieldReferenceFile)}
+              style={{ color: "#2563eb", background: "none", border: "none", padding: 0, cursor: "pointer", textDecoration: "underline" }}
+            >
+              View
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={() =>
+              downloadFile(
+                fieldReferenceFile,
+                fieldReferenceFile.originalname ||
+                  fieldReferenceFile.name ||
+                  fieldReferenceFile.filename,
+              )
+            }
+            style={{ color: "#16a34a", background: "none", border: "none", padding: 0, cursor: "pointer", textDecoration: "underline" }}
+          >
+            Download
+          </button>
+        </>
+      )}
+    </div>
   )}
 </div>  
                 

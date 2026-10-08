@@ -388,6 +388,8 @@ function buildEmployeeExcelRow(emp) {
     Department: emp.department ?? "",
     Position: emp.position ?? "",
     Role: emp.role ?? "",
+    "Work Location": emp.work_location ?? "",
+    "Work Location Details": emp.work_location_detail ?? "",
     Supervisor: emp.supervisor_name ?? "",
     Salary: emp.salary ?? "",
 
@@ -1251,6 +1253,15 @@ export default function EmployeeDetails({
                               <dd>{emp.sub_org_name ?? ""}</dd>
                               <dt>Employee Type:</dt>
                               <dd>{emp.employee_type}</dd>
+                              <dt>Working Location:</dt>
+                              <dd>{emp.work_location || "—"}</dd>
+
+                              {emp.work_location_detail && (
+                                <>
+                                  <dt>Where:</dt>
+                                  <dd>{emp.work_location_detail}</dd>
+                                </>
+                              )}
                               <dt>Department:</dt>
                               <dd>{emp.department}</dd>
                               <dt>Position:</dt>

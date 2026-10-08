@@ -469,6 +469,8 @@ const EmployeeRequestForm = ({
 
       if (!form.payoutDate) {
         nextErrors.payoutDate = "Payout date is required";
+      } else if (form.payoutDate < currentDateKey()) {
+        nextErrors.payoutDate = "Payout date cannot be in the past.";
       }
 
       if (!form.payoutMode) {
@@ -1364,6 +1366,7 @@ const EmployeeRequestForm = ({
                   <InputWithIcon
                     icon={<FiCalendar />}
                     type="date"
+                    min={currentDateKey()}
                     value={form.payoutDate}
                     onChange={(value) => update("payoutDate", value)}
                   />
@@ -1713,7 +1716,14 @@ function RequestField({
   );
 }
 
-function InputWithIcon({ icon, type = "text", value, onChange, placeholder }) {
+function InputWithIcon({
+  icon,
+  type = "text",
+  value,
+  onChange,
+  placeholder,
+  min,
+}) {
   return (
     <div className="request-input-icon">
       {icon}
@@ -1721,6 +1731,7 @@ function InputWithIcon({ icon, type = "text", value, onChange, placeholder }) {
       <input
         type={type}
         value={value}
+        min={min}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
       />

@@ -108,6 +108,8 @@ export default function EmployeeForm({
     role: "",
     department_id: "",
     position: "",
+    work_location_id: "",
+    work_location_detail: "",
     supervisor_id: "",
     salary: "",
     experience: sanitizedInitialData.experience,

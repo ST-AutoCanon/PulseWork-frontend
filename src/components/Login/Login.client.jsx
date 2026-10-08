@@ -537,6 +537,11 @@ const toDateKey = (dateObj) => {
   return `${y}-${m}-${d}`;
 };
 
+const isNewEmployeeAlertDate = (joiningDate, targetDate) => {
+  const joiningDateKey = String(joiningDate ?? "").slice(0, 10);
+  return Boolean(joiningDateKey && joiningDateKey >= toDateKey(targetDate));
+};
+
 /**
  * Returns true → do NOT show / queue the missed-punch alert.
  * Conditions: Sunday | holiday | leave applied | regularisation already submitted
@@ -546,8 +551,12 @@ async function shouldSuppressMissedPunchAlert({
   orgId,
   targetDate,
   headers,
+  joiningDate,
 }) {
-  // 1. Sunday (local time)
+  // 1. New employees should not receive historical missed-punch alerts.
+  if (isNewEmployeeAlertDate(joiningDate, targetDate)) return true;
+
+  // 2. Sunday (local time)
   if (targetDate.getDay() === 0) return true;
 
   const dateKey = toDateKey(targetDate);
@@ -889,6 +898,8 @@ export default function Login({ onClose }) {
         name: u.name ?? u.dashboard?.name ?? "",
         orgId: u.org_id ?? u.orgId ?? null,
         orgPrefix: u.org_prefix ?? u.orgPrefix ?? null,
+        joining_date: u.joining_date ?? u.joiningDate ?? null,
+        joiningDate: u.joining_date ?? u.joiningDate ?? null,
       };
 
       await login(minimalUser);
@@ -931,6 +942,7 @@ export default function Login({ onClose }) {
             orgId,
             targetDate: yesterday,
             headers: attendanceHeaders,
+            joiningDate: minimalUser?.joining_date ?? minimalUser?.joiningDate,
           });
 
           if (!suppress) {

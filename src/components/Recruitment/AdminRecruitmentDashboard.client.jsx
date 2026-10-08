@@ -212,6 +212,62 @@ HR Team`,
   }
 }
 
+function RecruitmentLetterCard({
+  document,
+  onEdit,
+  onPreview,
+  onDownload,
+  onSend,
+}) {
+  if (!document) {
+    return null;
+  }
+
+  const isDraft = document.status === "DRAFT";
+
+  return (
+    <div className="rf-recruitment-letter-card">
+      <div className="rf-recruitment-letter-header">
+        <div>
+          <strong>
+            {document.document_type === "OFFER_LETTER"
+              ? "Offer Letter"
+              : "Appointment Letter"}
+          </strong>
+
+          <span>{document.letter?.template_name || "Letter"}</span>
+        </div>
+
+        <span
+          className={
+            isDraft
+              ? "rf-letter-status rf-letter-status-draft"
+              : "rf-letter-status rf-letter-status-sent"
+          }
+        >
+          {isDraft ? "DRAFT" : "SENT"}
+        </span>
+      </div>
+
+      <div className="rf-recruitment-letter-actions">
+        <button onClick={onPreview}>Preview</button>
+
+        <button onClick={onDownload}>Download</button>
+
+        {isDraft && <button onClick={onEdit}>Edit Draft</button>}
+
+        <button onClick={onSend}>
+          {isDraft ? "Send to Candidate" : "Resend"}
+        </button>
+      </div>
+
+      {document.sent_at && (
+        <small>Sent on {new Date(document.sent_at).toLocaleString()}</small>
+      )}
+    </div>
+  );
+}
+
 export default function AdminRecruitmentDashboard() {
   const { user } = useAuth();
   const orgId = user?.orgId ?? user?.raw?.org_id ?? null;
@@ -240,6 +296,28 @@ export default function AdminRecruitmentDashboard() {
   const [assessmentCandidate, setAssessmentCandidate] = useState(null);
   const [assessmentRound, setAssessmentRound] = useState("");
 
+  const [candidateLetters, setCandidateLetters] = useState({});
+
+  const openRecruitmentLetter = (
+    candidate,
+    documentType,
+    existingLetter = null,
+  ) => {
+    window.dispatchEvent(
+      new CustomEvent("app:navigate", {
+        detail: {
+          path: "/letterHead",
+          recruitmentContext: {
+            candidateId: candidate.id,
+            documentType,
+            candidate,
+            existingLetter,
+          },
+        },
+      }),
+    );
+  };
+
   const [confirmModal, setConfirmModal] = useState({
     visible: false,
     title: "",
@@ -257,14 +335,127 @@ export default function AdminRecruitmentDashboard() {
     emailBody: "",
   });
 
+  const loadCandidateLetters = async () => {
+    if (!orgId) return;
+
+    try {
+      const res = await axios.get(`${BASE_URL}/recruitment/letters`, {
+        headers,
+        withCredentials: true,
+      });
+
+      const rows = res.data?.data || [];
+      const grouped = {};
+
+      rows.forEach((document) => {
+        const candidateId = String(document.candidate_id);
+
+        if (!grouped[candidateId]) {
+          grouped[candidateId] = {};
+        }
+
+        const key =
+          document.document_type === "OFFER_LETTER" ? "offer" : "appointment";
+
+        const existing = grouped[candidateId][key];
+
+        if (
+          !existing ||
+          new Date(document.updated_at || document.created_at) >
+            new Date(existing.updated_at || existing.created_at)
+        ) {
+          grouped[candidateId][key] = document;
+        }
+      });
+
+      setCandidateLetters(grouped);
+    } catch (err) {
+      console.error("loadCandidateLetters error:", err);
+    }
+  };
+
+  const getRecruitmentLetterFile = async (document) => {
+    const filename = document?.letter?.attachment;
+
+    if (!filename) {
+      throw new Error("PDF attachment not found for this letter.");
+    }
+
+    return axios.get(
+      `${BASE_URL}/letterheads/download/${encodeURIComponent(filename)}`,
+      {
+        headers,
+        withCredentials: true,
+        responseType: "blob",
+      },
+    );
+  };
+
+  const previewRecruitmentLetter = async (document) => {
+    let previewWindow = null;
+
+    try {
+      previewWindow = window.open("", "_blank");
+
+      const res = await getRecruitmentLetterFile(document);
+
+      const blobUrl = window.URL.createObjectURL(res.data);
+
+      if (previewWindow) {
+        previewWindow.location.href = blobUrl;
+      } else {
+        window.open(blobUrl, "_blank");
+      }
+
+      setTimeout(() => {
+        window.URL.revokeObjectURL(blobUrl);
+      }, 60000);
+    } catch (err) {
+      if (previewWindow && !previewWindow.closed) {
+        previewWindow.close();
+      }
+
+      console.error("previewRecruitmentLetter error:", err);
+    }
+  };
+
+  const downloadRecruitmentLetter = async (document) => {
+    try {
+      const res = await getRecruitmentLetterFile(document);
+
+      const filename =
+        document?.letter?.attachment ||
+        `${document?.letter?.template_name || "letter"}.pdf`;
+
+      const blobUrl = window.URL.createObjectURL(res.data);
+
+      const link = document.createElement("a");
+      link.href = blobUrl;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+
+      setTimeout(() => {
+        window.URL.revokeObjectURL(blobUrl);
+      }, 1000);
+    } catch (err) {
+      console.error("downloadRecruitmentLetter error:", err);
+    }
+  };
+
   const fetchCandidates = async () => {
     try {
       setLoading(true);
+
       const res = await axios.get(`${BASE_URL}/recruitment`, {
         headers,
         withCredentials: true,
       });
+
       setCandidates(res.data?.data || []);
+
+      await loadCandidateLetters();
     } catch (err) {
       console.error("fetchCandidates error:", err);
     } finally {
@@ -337,6 +528,18 @@ export default function AdminRecruitmentDashboard() {
 
   const advanceCandidate = (candidate, nextStatus) => {
     if (!nextStatus) return;
+
+    if (
+      candidate.status === "Manager Round" &&
+      nextStatus === "Offer Released"
+    ) {
+      openRecruitmentLetter(
+        candidate,
+        "OFFER_LETTER",
+        candidateLetters[candidate.id]?.offer || null,
+      );
+      return;
+    }
 
     if (OFFER_STATUS_EMAIL_STAGES.includes(nextStatus)) {
       const defaults = getOfferStatusEmailDefaults(nextStatus, candidate);
@@ -460,9 +663,18 @@ export default function AdminRecruitmentDashboard() {
   const prepareAppointmentLetter = (candidate) => {
     setCandidateDetailsOpen(false);
     setSelectedCandidate(null);
+
     window.dispatchEvent(
       new CustomEvent("app:navigate", {
-        detail: { path: "/letterHead", appointmentEmployee: candidate },
+        detail: {
+          path: "/letterHead",
+          recruitmentContext: {
+            candidateId: candidate.id,
+            documentType: "APPOINTMENT_LETTER",
+            candidate,
+            existingLetter: candidateLetters[candidate.id]?.appointment || null,
+          },
+        },
       }),
     );
   };
@@ -487,6 +699,31 @@ export default function AdminRecruitmentDashboard() {
   const openAssessment = (candidate) => {
     setAssessmentCandidate(candidate);
     setAssessmentRound(candidate.status || "Technical Round");
+  };
+
+  const sendRecruitmentLetter = async (candidate, document) => {
+    if (!document?.id) {
+      console.error("Recruitment letter record is missing.");
+      return;
+    }
+
+    try {
+      await axios.post(
+        `${BASE_URL}/recruitment/${candidate.id}/letters/${document.id}/send`,
+        {},
+        {
+          headers,
+          withCredentials: true,
+        },
+      );
+
+      await fetchCandidates();
+
+      setExpandedCandidateId(candidate.id);
+    } catch (err) {
+      console.error("sendRecruitmentLetter error:", err);
+      console.error("Response:", err.response?.data);
+    }
   };
 
   return (
@@ -647,9 +884,12 @@ export default function AdminRecruitmentDashboard() {
 
                                 {candidate.status === "Joined" && (
                                   <IconActionButton
-                                    label="Prepare Appointment Letter"
+                                    label="Create Appointment Letter"
                                     onClick={() =>
-                                      prepareAppointmentLetter(candidate)
+                                      openRecruitmentLetter(
+                                        candidate,
+                                        "APPOINTMENT_LETTER",
+                                      )
                                     }
                                   >
                                     <MdDescription />
@@ -691,32 +931,126 @@ export default function AdminRecruitmentDashboard() {
                                   </button>
                                 )}
 
+                              {["Offer Released", "Offer Acceptance"].includes(
+                                candidate.status,
+                              ) &&
+                                candidateLetters[candidate.id]?.offer && (
+                                  <RecruitmentLetterCard
+                                    document={
+                                      candidateLetters[candidate.id].offer
+                                    }
+                                    onEdit={() =>
+                                      openRecruitmentLetter(
+                                        candidate,
+                                        "OFFER_LETTER",
+                                        candidateLetters[candidate.id].offer,
+                                      )
+                                    }
+                                    onSend={() =>
+                                      sendRecruitmentLetter(
+                                        candidate,
+                                        candidateLetters[candidate.id].offer,
+                                      )
+                                    }
+                                    onPreview={() =>
+                                      previewRecruitmentLetter(
+                                        candidateLetters[candidate.id].offer,
+                                      )
+                                    }
+                                    onDownload={() =>
+                                      downloadRecruitmentLetter(
+                                        candidateLetters[candidate.id].offer,
+                                      )
+                                    }
+                                  />
+                                )}
+
                               {candidate.status === "Offer Acceptance" &&
-                                candidate.offer_decision === "Concern" && (
+                                candidate.offer_decision === "Concern" &&
+                                candidateLetters[candidate.id]?.offer && (
                                   <button
                                     type="button"
                                     className="rf-primary-btn"
-                                    onClick={() => reinitiateOffer(candidate)}
-                                  >
-                                    Review Concern & Re-initiate Offer
-                                  </button>
-                                )}
-
-                              {candidate.status !== "Offer Acceptance" &&
-                                canAdvance(candidate) && (
-                                  <button
-                                    type="button"
-                                    className="candidate-advance-btn"
                                     onClick={() =>
-                                      advanceCandidate(
+                                      sendRecruitmentLetter(
                                         candidate,
-                                        getNextStage(candidate.status),
+                                        candidateLetters[candidate.id].offer,
                                       )
                                     }
                                   >
-                                    Advance to Next Stage
+                                    Review Concern & Re-send Offer Letter
                                   </button>
                                 )}
+
+                              {candidate.status === "Joined" &&
+                                candidateLetters[candidate.id]?.appointment && (
+                                  <RecruitmentLetterCard
+                                    document={
+                                      candidateLetters[candidate.id].appointment
+                                    }
+                                    onEdit={() =>
+                                      openRecruitmentLetter(
+                                        candidate,
+                                        "APPOINTMENT_LETTER",
+                                        candidateLetters[candidate.id]
+                                          .appointment,
+                                      )
+                                    }
+                                    onSend={() =>
+                                      sendRecruitmentLetter(
+                                        candidate,
+                                        candidateLetters[candidate.id]
+                                          .appointment,
+                                      )
+                                    }
+                                    onPreview={() =>
+                                      previewRecruitmentLetter(
+                                        candidateLetters[candidate.id]
+                                          .appointment,
+                                      )
+                                    }
+                                    onDownload={() =>
+                                      downloadRecruitmentLetter(
+                                        candidateLetters[candidate.id]
+                                          .appointment,
+                                      )
+                                    }
+                                  />
+                                )}
+
+                              {candidate.status === "Manager Round" ? (
+                                <button
+                                  type="button"
+                                  className="candidate-advance-btn"
+                                  onClick={() =>
+                                    openRecruitmentLetter(
+                                      candidate,
+                                      "OFFER_LETTER",
+                                      candidateLetters[candidate.id]?.offer ||
+                                        null,
+                                    )
+                                  }
+                                >
+                                  Create Offer Letter
+                                </button>
+                              ) : ![
+                                  "Offer Released",
+                                  "Offer Acceptance",
+                                ].includes(candidate.status) &&
+                                canAdvance(candidate) ? (
+                                <button
+                                  type="button"
+                                  className="candidate-advance-btn"
+                                  onClick={() =>
+                                    advanceCandidate(
+                                      candidate,
+                                      getNextStage(candidate.status),
+                                    )
+                                  }
+                                >
+                                  Advance to Next Stage
+                                </button>
+                              ) : null}
                             </div>
                           )}
                         </div>
@@ -754,8 +1088,23 @@ export default function AdminRecruitmentDashboard() {
             editCandidate(selectedCandidate);
           }}
           onAdvanceStatus={() => {
+            if (selectedCandidate.status === "Manager Round") {
+              setCandidateDetailsOpen(false);
+
+              openRecruitmentLetter(
+                selectedCandidate,
+                "OFFER_LETTER",
+                candidateLetters[selectedCandidate.id]?.offer || null,
+              );
+
+              return;
+            }
+
             const next = getNextStage(selectedCandidate.status);
-            if (next) advanceCandidate(selectedCandidate, next);
+
+            if (next) {
+              advanceCandidate(selectedCandidate, next);
+            }
           }}
           onReject={() => advanceCandidate(selectedCandidate, "Rejected")}
           onMoveToOnboarding={() => convertCandidate(selectedCandidate)}

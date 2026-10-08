@@ -895,13 +895,17 @@ const Sidebar = ({ setActiveContent }) => {
         if (resolver) {
           const role = user?.role ?? "Employee";
           // resolver may accept (role, sub) — when navigating via event we don't have sub
-          const employeeInitialData = e?.detail?.employeeInitialData;
+           const employeeInitialData = e?.detail?.employeeInitialData;
+          const recruitmentContext = e?.detail?.recruitmentContext;
+
           const content =
             path === "/employeeDetails" && employeeInitialData ? (
               <EmployeeDetails
                 employeeInitialData={employeeInitialData}
                 openAddForm
               />
+            ) : path === "/letterHead" && recruitmentContext ? (
+              <LetterHead recruitmentContext={recruitmentContext} />
             ) : resolver.length > 0 ? (
               resolver(role)
             ) : (

@@ -80,6 +80,7 @@ export default function StepProfessional({ data, onChange, departments = [] }) {
   const [subOrgOptions, setSubOrgOptions] = useState([]);
   const [prevSupervisor, setPrevSupervisor] = useState(null);
   const [historyFetched, setHistoryFetched] = useState(false);
+  const [workLocationOptions, setWorkLocationOptions] = useState([]);
 
   const { user } = useAuth();
   const orgId =
@@ -176,6 +177,28 @@ export default function StepProfessional({ data, onChange, departments = [] }) {
       setSupervisorsList(items);
     })();
   }, [data.position, data.department_id, orgId]);
+
+  useEffect(() => {
+    if (!orgId) {
+      setWorkLocationOptions([]);
+      return;
+    }
+
+    const url = `${BASE_URL}/work-locations`;
+
+    (async () => {
+      const items = await fetchAndExtract(url, orgId, (j) => j.data || []);
+
+      setWorkLocationOptions(items);
+    })();
+  }, [orgId]);
+
+  const selectedWorkLocation = workLocationOptions.find(
+    (item) => String(item.id) === String(data.work_location_id || ""),
+  );
+
+  const workLocationRequiresWhere =
+    Number(selectedWorkLocation?.requires_where) === 1;
 
   const expList = Array.isArray(data.experience) ? data.experience : [];
   const isAdmin = (data.role || "").toLowerCase() === "admin";
@@ -281,6 +304,50 @@ export default function StepProfessional({ data, onChange, departments = [] }) {
             <option value="Consultant">Consultant</option>
           </select>
         </label>
+
+        <label>
+          Working Location<span className="required">*</span>
+          <select
+            name="work_location_id"
+            value={data.work_location_id || ""}
+            onChange={(e) => {
+              const value = e.target.value;
+
+              const selected = workLocationOptions.find(
+                (item) => String(item.id) === String(value),
+              );
+
+              onChange("work_location_id", value);
+
+              if (Number(selected?.requires_where) !== 1) {
+                onChange("work_location_detail", "");
+              }
+            }}
+            required
+          >
+            <option value="">Select</option>
+
+            {workLocationOptions.map((location) => (
+              <option key={location.id} value={location.id}>
+                {location.name}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        {workLocationRequiresWhere && (
+          <label>
+            Where?<span className="required">*</span>
+            <input
+              type="text"
+              name="work_location_detail"
+              value={data.work_location_detail || ""}
+              onChange={(e) => onChange("work_location_detail", e.target.value)}
+              placeholder="Enter location details"
+              required
+            />
+          </label>
+        )}
 
         <label>
           Joining Date<span className="required">*</span>

@@ -222,7 +222,10 @@ function isEmployeeRole(role) {
 }
 
 function isAdminRole(role) {
-  return String(role || "").toLowerCase() === "admin";
+  return (
+    String(role || "").toLowerCase() === "admin" ||
+    String(role || "").toLowerCase() === "ceo"
+  );
 }
 
 function isTravelOperatorRole(role) {
@@ -2773,11 +2776,20 @@ function RequestSummary({ request }) {
 }
 
 function SummaryField({ label, value, full = false }) {
+  const displayValue =
+    value === null || value === undefined || value === ""
+      ? "—"
+      : typeof value === "boolean"
+        ? value
+          ? "Yes"
+          : "No"
+        : value;
+
   return (
     <div className={`summary-field ${full ? "full" : ""}`}>
       <span>{label}</span>
 
-      <strong>{value || "—"}</strong>
+      <strong>{displayValue}</strong>
     </div>
   );
 }

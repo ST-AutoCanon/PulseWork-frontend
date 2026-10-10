@@ -171,43 +171,66 @@ const OFFER_STATUS_EMAIL_STAGES = [
 
 function getOfferStatusEmailDefaults(status, candidate) {
   const candidateName = candidate?.name || "Candidate";
-  const position = candidate?.applied_position || "N/A";
-  const decision = candidate?.offer_decision || "Pending";
+  const position = candidate?.applied_position || "the position discussed";
+  const organizationName = "People & Culture";
 
   switch (status) {
-    case "Offer Released":
-      return {
-        subject: `Offer Letter Released - ${candidateName}`,
-        body: `Hi ${candidateName},\n\nYour offer letter has been released. Please review it carefully and share your decision.\n\nRegards,\nHR Team`,
-      };
     case "Offer Acceptance":
       return {
-        subject: `Offer Acceptance - ${candidateName}`,
-        body: `Hi ${candidateName},
+        subject: `${organizationName} | Offer Review Requested | ${candidateName}`,
+        body: `Dear ${candidateName},
 
-Please review the offer for ${position} and submit your response using the secure link below.
+We are pleased to invite you to review the offer for ${position}.
 
-Your response options are:
-• Accept
-• Concern
-• Reject
+Please review the offer letter and use the secure response button included in this email to accept the offer, raise a concern, or decline it.
 
-{{OFFER_RESPONSE_LINK}}
+If you have questions, please contact our HR team.
 
-If you select Concern, please explain your concern so our HR team can review it.
-
-Regards,
-HR Team`,
+Warm regards,
+People & Culture Team`,
       };
+
     case "Onboarding":
       return {
-        subject: `Onboarding Documents Request - ${candidateName}`,
-        body: `Hi ${candidateName},\n\nWelcome to the onboarding stage. Please attach your original documents as requested so we can complete your onboarding.\n\nRegards,\nHR Team`,
+        subject: `${organizationName} | Onboarding Document Submission | ${candidateName}`,
+        body: `Dear ${candidateName},
+
+Congratulations on progressing to onboarding for ${position}.
+
+Please use the secure document-submission button included in this email to upload the documents requested below.
+
+Please prepare your photograph, PAN card, identity/address proof, bank proof and education certificates. Previous-employment documents, salary slips and any additional HR-requested documents should also be included where applicable.
+
+Please upload readable copies through the secure form rather than replying to this email with personal documents attached.
+
+Thank you for your cooperation.
+
+Warm regards,
+People & Culture Team`,
       };
+
+    case "Offer Released":
+      return {
+        subject: `${organizationName} | Offer Letter Update | ${candidateName}`,
+        body: `Dear ${candidateName},
+
+Your offer letter is ready for review. Please read the attached document carefully and contact our HR team if you have any questions.
+
+Warm regards,
+People & Culture Team`,
+      };
+
     default:
       return {
-        subject: `Update from HR - ${candidateName}`,
-        body: `Hi ${candidateName},\n\nThis is an update regarding your application.\n\nRegards,\nHR Team`,
+        subject: `${organizationName} | Recruitment Update | ${candidateName}`,
+        body: `Dear ${candidateName},
+
+We are contacting you with an update regarding your application for ${position}.
+
+Please contact our HR team if you require any assistance.
+
+Warm regards,
+People & Culture Team`,
       };
   }
 }
@@ -335,6 +358,85 @@ export default function AdminRecruitmentDashboard() {
     emailBody: "",
   });
 
+  const [onboardingDocumentsModal, setOnboardingDocumentsModal] = useState({
+    visible: false,
+    candidate: null,
+    loading: false,
+    documents: [],
+  });
+
+  const viewOnboardingDocuments = async (candidate) => {
+    setOnboardingDocumentsModal({
+      visible: true,
+      candidate,
+      loading: true,
+      documents: [],
+    });
+
+    try {
+      const res = await axios.get(
+        `${BASE_URL}/recruitment/${candidate.id}/onboarding-documents`,
+        {
+          headers,
+          withCredentials: true,
+        },
+      );
+
+      setOnboardingDocumentsModal({
+        visible: true,
+        candidate,
+        loading: false,
+        documents: res.data?.data || [],
+      });
+    } catch (error) {
+      console.error("viewOnboardingDocuments error:", error);
+
+      setOnboardingDocumentsModal({
+        visible: true,
+        candidate,
+        loading: false,
+        documents: [],
+      });
+
+      window.alert(
+        error.response?.data?.message ||
+          "Unable to retrieve the onboarding documents.",
+      );
+    }
+  };
+
+  const downloadOnboardingDocument = async (doc) => {
+    const candidate = onboardingDocumentsModal.candidate;
+
+    if (!candidate || !doc?.id) return;
+
+    try {
+      const res = await axios.get(
+        `${BASE_URL}/recruitment/${candidate.id}/onboarding-documents/${doc.id}/download`,
+        {
+          headers,
+          withCredentials: true,
+          responseType: "blob",
+        },
+      );
+
+      const blobUrl = window.URL.createObjectURL(res.data);
+      const link = window.document.createElement("a");
+
+      link.href = blobUrl;
+      link.download = doc.original_filename || "onboarding-document";
+
+      window.document.body.appendChild(link);
+      link.click();
+      link.remove();
+
+      setTimeout(() => window.URL.revokeObjectURL(blobUrl), 1000);
+    } catch (error) {
+      console.error("downloadOnboardingDocument error:", error);
+      window.alert("Unable to download this document.");
+    }
+  };
+
   const loadCandidateLetters = async () => {
     if (!orgId) return;
 
@@ -419,20 +521,21 @@ export default function AdminRecruitmentDashboard() {
     }
   };
 
-  const downloadRecruitmentLetter = async (document) => {
+  const downloadRecruitmentLetter = async (recruitmentLetter) => {
     try {
-      const res = await getRecruitmentLetterFile(document);
+      const res = await getRecruitmentLetterFile(recruitmentLetter);
 
       const filename =
-        document?.letter?.attachment ||
-        `${document?.letter?.template_name || "letter"}.pdf`;
+        recruitmentLetter?.letter?.attachment ||
+        `${recruitmentLetter?.letter?.template_name || "letter"}.pdf`;
 
       const blobUrl = window.URL.createObjectURL(res.data);
+      const link = window.document.createElement("a");
 
-      const link = document.createElement("a");
       link.href = blobUrl;
       link.download = filename;
-      document.body.appendChild(link);
+
+      window.document.body.appendChild(link);
       link.click();
       link.remove();
 
@@ -441,6 +544,9 @@ export default function AdminRecruitmentDashboard() {
       }, 1000);
     } catch (err) {
       console.error("downloadRecruitmentLetter error:", err);
+      window.alert(
+        err.response?.data?.message || "Unable to download the letter.",
+      );
     }
   };
 
@@ -847,6 +953,33 @@ export default function AdminRecruitmentDashboard() {
                                 </div>
                               )}
 
+                              {candidate.status === "Onboarding" && (
+                                <div className="rf-onboarding-documents-summary">
+                                  <div>
+                                    <strong>Onboarding documents</strong>
+                                    <span>
+                                      {candidate.onboarding_submitted_at
+                                        ? `Submitted ${new Date(
+                                            candidate.onboarding_submitted_at,
+                                          ).toLocaleString()}`
+                                        : "Awaiting candidate submission"}
+                                    </span>
+                                  </div>
+
+                                  {candidate.onboarding_submitted_at && (
+                                    <button
+                                      type="button"
+                                      className="candidate-advance-btn"
+                                      onClick={() =>
+                                        viewOnboardingDocuments(candidate)
+                                      }
+                                    >
+                                      Review Submitted Documents
+                                    </button>
+                                  )}
+                                </div>
+                              )}
+
                               <div className="candidate-actions">
                                 <IconActionButton
                                   label="View"
@@ -1214,6 +1347,38 @@ export default function AdminRecruitmentDashboard() {
                         }
                       />
                     </div>
+                    <div className="rf-email-preview">
+                      <div className="rf-email-preview-heading">
+                        <span>EMAIL PREVIEW</span>
+                        <small>Preview of the candidate-facing message</small>
+                      </div>
+
+                      <div className="rf-email-preview-content">
+                        <div className="rf-email-preview-label">Subject</div>
+                        <strong>{offerDecisionModal.emailSubject}</strong>
+
+                        <div className="rf-email-preview-label">Message</div>
+                        <p>{offerDecisionModal.emailBody}</p>
+
+                        {offerDecisionModal.nextStatus ===
+                          "Offer Acceptance" && (
+                          <div className="rf-email-preview-cta">
+                            Review &amp; Respond to Offer
+                          </div>
+                        )}
+
+                        {offerDecisionModal.nextStatus === "Onboarding" && (
+                          <div className="rf-email-preview-cta">
+                            Submit Onboarding Documents
+                          </div>
+                        )}
+
+                        <small className="rf-email-preview-note">
+                          The secure link is generated by the server and added
+                          to the outgoing email automatically.
+                        </small>
+                      </div>
+                    </div>
                   </>
                 )}
               </div>
@@ -1233,6 +1398,64 @@ export default function AdminRecruitmentDashboard() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {onboardingDocumentsModal.visible && (
+        <div className="rf-modal-overlay">
+          <div className="rf-modal rf-form-modal">
+            <div className="rf-modal-header">
+              <h3>
+                Onboarding Documents
+                {onboardingDocumentsModal.candidate?.name
+                  ? ` — ${onboardingDocumentsModal.candidate.name}`
+                  : ""}
+              </h3>
+
+              <MdOutlineCancel
+                className="rf-close-icon"
+                onClick={() =>
+                  setOnboardingDocumentsModal({
+                    visible: false,
+                    candidate: null,
+                    loading: false,
+                    documents: [],
+                  })
+                }
+              />
+            </div>
+
+            {onboardingDocumentsModal.loading ? (
+              <p>Loading documents...</p>
+            ) : onboardingDocumentsModal.documents.length === 0 ? (
+              <p>No uploaded documents were found.</p>
+            ) : (
+              <div className="rf-onboarding-document-list">
+                {onboardingDocumentsModal.documents.map((doc) => (
+                  <div key={doc.id} className="rf-onboarding-document-row">
+                    <div>
+                      <strong>{doc.document_type.replace(/_/g, " ")}</strong>
+                      <span>{doc.original_filename}</span>
+                      <small>
+                        Submitted{" "}
+                        {doc.submitted_at
+                          ? new Date(doc.submitted_at).toLocaleString()
+                          : "—"}
+                      </small>
+                    </div>
+
+                    <button
+                      type="button"
+                      className="rf-primary-btn"
+                      onClick={() => downloadOnboardingDocument(doc)}
+                    >
+                      Download
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       )}

@@ -1,52 +1,60 @@
+"use client";
 
-'use client';
+import React, { useState, useEffect, useMemo } from "react";
+import dynamic from "next/dynamic";
+import axios from "axios";
+import "./letterhead.css";
 
-import React, { useState, useEffect, useMemo } from 'react';
-import dynamic from 'next/dynamic';
-import axios from 'axios';
-import './letterhead.css';
+const ReactQuill = dynamic(() => import("react-quill-new"), {
+  ssr: false,
+  loading: () => (
+    <div className="letterhead-quill-loading">Loading editor...</div>
+  ),
+});
 
-const ReactQuill = dynamic(
-  () => import('react-quill-new'),
-  { 
-    ssr: false, 
-    loading: () => <div className="letterhead-quill-loading">Loading editor...</div> 
-  }
-);
-
-import 'react-quill-new/dist/quill.snow.css';
+import "react-quill-new/dist/quill.snow.css";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
 
-const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000';
+const BACKEND_URL =
+  process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000";
 
 import { drawHeader, drawFooter, drawWatermark } from "./header";
 import { useAuth } from "../../context/AuthProvider.client";
 import Modal from "../Modal/Modal.client";
 import { getAnnexureTableHtml } from "./../../utils/annexureTable";
 import { getAvinyaQuotationHtml } from "./../../utils/avinyaquotation";
-const LetterheadClient = () => {
+const LetterheadClient = ({ recruitmentContext = null }) => {
   const { user } = useAuth();
-  
-  const extractedOrgId = 
-    user?.orgId ?? user?.org_id ?? user?.raw?.org_id ?? user?.Org_id ?? user?.raw?.Org_id ?? null;
+
+  const extractedOrgId =
+    user?.orgId ??
+    user?.org_id ??
+    user?.raw?.org_id ??
+    user?.Org_id ??
+    user?.raw?.Org_id ??
+    null;
 
   // States
   const [templates, setTemplates] = useState([]);
   const [selectedTemplate, setSelectedTemplate] = useState(null);
-  const [quillContent, setQuillContent] = useState('');
+  const [quillContent, setQuillContent] = useState("");
   const [formData, setFormData] = useState({});
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [letterName, setLetterName] = useState('');
+  const [letterName, setLetterName] = useState("");
 
-  const [alertModal, setAlertModal] = useState({ isVisible: false, title: "", message: "" });
+  const [alertModal, setAlertModal] = useState({
+    isVisible: false,
+    title: "",
+    message: "",
+  });
   const [errors, setErrors] = useState({});
 
   // Saved Letters
   const [savedLetters, setSavedLetters] = useState([]);
-  
+
   // Edit Mode
   const [isEditing, setIsEditing] = useState(false);
   const [editingId, setEditingId] = useState(null);
@@ -56,17 +64,17 @@ const LetterheadClient = () => {
     // Common Fields
     "recipient name": "recipient_name",
     "employee name": "employee_name",
-    "position": "position",
-    "designation": "designation",
+    position: "position",
+    designation: "designation",
 
     // Contact
     "mobile number": "mobile_number",
     "phone number": "phone_number",
     "contact number": "contact_number",
-    "email": "email",
+    email: "email",
 
     // Dates
-    "date": "date",
+    date: "date",
     "date of appointment": "date_of_appointment",
     "date of birth": "date_of_birth",
     "relieving date": "relieving_date",
@@ -79,23 +87,25 @@ const LetterheadClient = () => {
     // HR Fields
     "employee id": "employee_id",
     "full name": "employee_name",
-    "full_name": "employee_name",
+    full_name: "employee_name",
     "authorized signatory name": "authorized_signatory_name",
-// Designations
-"employee designation": "employee_designation",
-"authority designation": "authority_designation",
+    // Designations
+    "employee designation": "employee_designation",
+    "authority designation": "authority_designation",
     // Letter fields
     "subject purpose": "subject_purpose",
     "details message body": "details_message_body",
-    "title": "title",
-    "residential address": "residential_address"
+    title: "title",
+    "residential address": "residential_address",
   };
 
   // Fetch Templates
   useEffect(() => {
     const fetchTemplates = async () => {
       try {
-        const res = await axios.get(`${BACKEND_URL}/api/templates/list`, { withCredentials: true });
+        const res = await axios.get(`${BACKEND_URL}/api/templates/list`, {
+          withCredentials: true,
+        });
         setTemplates(res.data.data || []);
       } catch (error) {
         console.error("Failed to fetch templates:", error);
@@ -106,13 +116,86 @@ const LetterheadClient = () => {
     fetchTemplates();
   }, []);
 
+  useEffect(() => {
+    if (!recruitmentContext || !templates.length) return;
+
+    if (recruitmentContext.existingLetter?.letter) {
+      handleEditLetter(recruitmentContext.existingLetter.letter);
+      return;
+    }
+
+    const targetLetterType =
+      recruitmentContext.documentType === "OFFER_LETTER"
+        ? "Offer Letter"
+        : "Appointment Letter";
+
+    const template = templates.find((t) => t.letter_type === targetLetterType);
+
+    if (!template) {
+      showAlert(`${targetLetterType} template was not found.`);
+      return;
+    }
+
+    setSelectedTemplate(template);
+
+    const content = template.content || "";
+    setQuillContent(content);
+
+    setLetterName(
+      `${targetLetterType} - ${
+        recruitmentContext.candidate?.name || "Candidate"
+      }`,
+    );
+
+    const regex = /\[([^\]]+)\]/g;
+    const matches = [...content.matchAll(regex)];
+
+    const initialData = {};
+
+    matches.forEach((match) => {
+      initialData[match[1].trim()] = "";
+    });
+
+    const candidate = recruitmentContext.candidate || {};
+
+    const today = new Date().toISOString().slice(0, 10);
+
+    const candidateValues = {
+      "Recipient Name": candidate.name || "",
+      "Employee Name": candidate.name || "",
+      Email: candidate.email || "",
+      "Mobile Number": candidate.phone || "",
+      "Phone Number": candidate.phone || "",
+      Position: candidate.applied_position || "",
+      "Annual Salary":
+        candidate.offer_ctc ||
+        candidate.expected_ctc ||
+        candidate.current_ctc ||
+        "",
+      Date: today,
+      "Date of Appointment":
+        candidate.joining_date || candidate.date_of_appointment || "",
+    };
+
+    Object.entries(candidateValues).forEach(([key, value]) => {
+      if (initialData[key] !== undefined) {
+        initialData[key] = value;
+      }
+    });
+
+    setFormData(initialData);
+
+    setIsEditing(false);
+    setEditingId(null);
+  }, [recruitmentContext, templates]);
+
   // Fetch Saved Letters
   const fetchSavedLetters = async () => {
     if (!extractedOrgId) return;
     try {
       const res = await axios.get(`${BACKEND_URL}/api/letterheads/list`, {
         withCredentials: true,
-        headers: { 'x-org-id': extractedOrgId }
+        headers: { "x-org-id": extractedOrgId },
       });
       setSavedLetters(res.data.data || []);
     } catch (error) {
@@ -141,171 +224,194 @@ const LetterheadClient = () => {
       return;
     }
 
-    const selected = templates.find(t => t.id === parseInt(id));
+    const selected = templates.find((t) => t.id === parseInt(id));
     if (selected) {
       setSelectedTemplate(selected);
-     let content = selected.content || '';
+      let content = selected.content || "";
 
-// ✅ Set full content
-setQuillContent(content);
-setLetterName(selected.letter_type || '');
+      // ✅ Set full content
+      setQuillContent(content);
+      setLetterName(selected.letter_type || "");
 
-// ✅ Scan placeholders from FULL content
-const regex = /\[([^\]]+)\]/g;
-const matches = [...content.matchAll(regex)];
+      // ✅ Scan placeholders from FULL content
+      const regex = /\[([^\]]+)\]/g;
+      const matches = [...content.matchAll(regex)];
 
-const initialData = {};
+      const initialData = {};
 
-matches.forEach(match => {
-  const field = match[1].trim();
-  initialData[field] = '';
-});
+      matches.forEach((match) => {
+        const field = match[1].trim();
+        initialData[field] = "";
+      });
 
-setFormData(initialData);
-setIsEditing(false);
-setEditingId(null);
-      
-     
+      setFormData(initialData);
+      setIsEditing(false);
+      setEditingId(null);
     }
   };
 
   const handleFieldChange = (displayKey, value) => {
     const lowerKey = displayKey.toLowerCase().trim();
     let processedValue = value;
-    let errorMsg = '';
+    let errorMsg = "";
 
-    if (lowerKey.includes('email') || lowerKey.includes('mail')) {
-      processedValue = value.replace(/[^a-zA-Z0-9@._-]/g, '');
+    if (lowerKey.includes("email") || lowerKey.includes("mail")) {
+      processedValue = value.replace(/[^a-zA-Z0-9@._-]/g, "");
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       if (processedValue && !emailRegex.test(processedValue)) {
-        errorMsg = 'Invalid email format';
+        errorMsg = "Invalid email format";
       }
-    } else if (lowerKey.includes('mobile') || lowerKey.includes('phone') || lowerKey.includes('contact')) {
-      processedValue = value.replace(/\D/g, '').slice(0, 10);
+    } else if (
+      lowerKey.includes("mobile") ||
+      lowerKey.includes("phone") ||
+      lowerKey.includes("contact")
+    ) {
+      processedValue = value.replace(/\D/g, "").slice(0, 10);
     }
 
-    setFormData(prev => ({ ...prev, [displayKey]: processedValue }));
-    setErrors(prev => ({ ...prev, [displayKey]: errorMsg }));
+    setFormData((prev) => ({ ...prev, [displayKey]: processedValue }));
+    setErrors((prev) => ({ ...prev, [displayKey]: errorMsg }));
   };
 
   const replacePlaceholders = (html, data) => {
-    if (!html) return '<p class="letterhead-no-content">Select a letter type to see preview</p>';
+    if (!html)
+      return '<p class="letterhead-no-content">Select a letter type to see preview</p>';
 
-    let cleanedHtml = html.replace(/\[([^\]]+)\]/g, match => match.replace(/<[^>]*>/g, ''));
+    let cleanedHtml = html.replace(/\[([^\]]+)\]/g, (match) =>
+      match.replace(/<[^>]*>/g, ""),
+    );
 
     const normalizedData = {};
-    Object.keys(data).forEach(key => {
-      const cleanKey = key.trim().replace(/\s+/g, ' ').toLowerCase();
+    Object.keys(data).forEach((key) => {
+      const cleanKey = key.trim().replace(/\s+/g, " ").toLowerCase();
       normalizedData[cleanKey] = data[key];
-      normalizedData[cleanKey.replace(/ /g, '_')] = data[key];
+      normalizedData[cleanKey.replace(/ /g, "_")] = data[key];
     });
 
     return cleanedHtml.replace(/\[([^\]]+)\]/g, (match, placeholder) => {
-      const cleanPlaceholder = placeholder.trim().replace(/\s+/g, ' ').toLowerCase();
+      const cleanPlaceholder = placeholder
+        .trim()
+        .replace(/\s+/g, " ")
+        .toLowerCase();
       let value = normalizedData[cleanPlaceholder];
       if (value === undefined) {
-        value = normalizedData[cleanPlaceholder.replace(/ /g, '_')];
+        value = normalizedData[cleanPlaceholder.replace(/ /g, "_")];
       }
 
       if (cleanPlaceholder.includes("date") && value) {
         try {
-          value = new Date(value).toLocaleDateString('en-GB', {
-            day: '2-digit',
-            month: 'short',
-            year: 'numeric'
+          value = new Date(value).toLocaleDateString("en-GB", {
+            day: "2-digit",
+            month: "short",
+            year: "numeric",
           });
         } catch {}
       }
 
-      const noBreakKeys = ['employee_designation', 'recipient_department'];
-      const placeholderKey = cleanPlaceholder.replace(/\s+/g, '_');
+      const noBreakKeys = ["employee_designation", "recipient_department"];
+      const placeholderKey = cleanPlaceholder.replace(/\s+/g, "_");
       if (value && noBreakKeys.includes(placeholderKey)) {
-        value = `${value}`.replace(/\s+/g, '\u00A0');
+        value = `${value}`.replace(/\s+/g, "\u00A0");
       }
 
-      return value !== undefined && value !== null && `${value}`.trim() !== ''
+      return value !== undefined && value !== null && `${value}`.trim() !== ""
         ? `<span class="letterhead-placeholder-value">${value}</span>`
         : `<span class="letterhead-placeholder-missing">${match}</span>`;
     });
   };
 
   const livePreviewHtml = useMemo(() => {
-  let html = replacePlaceholders(quillContent, formData);
+    let html = replacePlaceholders(quillContent, formData);
 
-  if (selectedTemplate?.letter_type === "Offer Letter") {
-    html += replacePlaceholders(getAnnexureTableHtml(), formData);
-  }
+    if (selectedTemplate?.letter_type === "Offer Letter") {
+      html += replacePlaceholders(getAnnexureTableHtml(), formData);
+    }
 
-  if (selectedTemplate?.letter_type === "Quotation") {
-    html += replacePlaceholders(getAvinyaQuotationHtml(), formData);
-  }
+    if (selectedTemplate?.letter_type === "Quotation") {
+      html += replacePlaceholders(getAvinyaQuotationHtml(), formData);
+    }
 
-  return html;
-}, [quillContent, formData, selectedTemplate]);
+    return html;
+  }, [quillContent, formData, selectedTemplate]);
 
   const resetForm = () => {
     setSelectedTemplate(null);
-    setQuillContent('');
+    setQuillContent("");
     setFormData({});
-    setLetterName('');
+    setLetterName("");
     setIsEditing(false);
     setEditingId(null);
     setErrors({});
   };
 
   const handleEditLetter = (letter) => {
-    const template = templates.find(t => t.letter_type === letter.letter_type);
+    const template = templates.find(
+      (t) => t.letter_type === letter.letter_type,
+    );
     if (!template) {
       showAlert("Template not found for this letter.");
       return;
     }
 
     setSelectedTemplate(template);
-    setLetterName(letter.template_name || letter.letter_type || '');
+    setLetterName(letter.template_name || letter.letter_type || "");
     setEditingId(letter.id);
     setIsEditing(true);
 
-    let initialContent = letter.raw_content || template.content || '';
+    let initialContent = letter.raw_content || template.content || "";
     setQuillContent(initialContent);
 
     let contentForMatches = initialContent;
 
-if (template.letter_type === "Offer Letter") {
-  contentForMatches += getAnnexureTableHtml();
-}
+    if (template.letter_type === "Offer Letter") {
+      contentForMatches += getAnnexureTableHtml();
+    }
 
-if (template.letter_type === "Quotation") {
-  contentForMatches += getAvinyaQuotationHtml();
-}
+    if (template.letter_type === "Quotation") {
+      contentForMatches += getAvinyaQuotationHtml();
+    }
 
     const regex = /\[([^\]]+)\]/g;
     const matches = [...contentForMatches.matchAll(regex)];
 
     const restoredFormData = {};
 
-    matches.forEach(match => {
+    matches.forEach((match) => {
       const fieldName = match[1].trim();
-      restoredFormData[fieldName] = '';
+      restoredFormData[fieldName] = "";
     });
 
-    Object.keys(letter).forEach(dbKey => {
-      if (['id', 'body', 'raw_content', 'created_at', 'template_name', 'letterhead_code'].includes(dbKey)) return;
+    Object.keys(letter).forEach((dbKey) => {
+      if (
+        [
+          "id",
+          "body",
+          "raw_content",
+          "created_at",
+          "template_name",
+          "letterhead_code",
+        ].includes(dbKey)
+      )
+        return;
 
-      const dbNormalized = dbKey.toLowerCase().replace(/_/g, ' ').trim();
-      const matchedField = Object.keys(restoredFormData).find(field =>
-        field.toLowerCase().replace(/_/g, ' ').trim() === dbNormalized
+      const dbNormalized = dbKey.toLowerCase().replace(/_/g, " ").trim();
+      const matchedField = Object.keys(restoredFormData).find(
+        (field) =>
+          field.toLowerCase().replace(/_/g, " ").trim() === dbNormalized,
       );
 
       if (matchedField) {
-        restoredFormData[matchedField] = dbKey.includes('date') 
-          ? (letter[dbKey] ? letter[dbKey].split('T')[0] : '') 
+        restoredFormData[matchedField] = dbKey.includes("date")
+          ? letter[dbKey]
+            ? letter[dbKey].split("T")[0]
+            : ""
           : letter[dbKey];
       }
     });
 
     setFormData(restoredFormData);
 
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   const handleSaveOrUpdate = async () => {
@@ -313,6 +419,7 @@ if (template.letter_type === "Quotation") {
       showAlert("Please select a template and ensure you are logged in.");
       return;
     }
+
     if (!letterName.trim()) {
       showAlert("Please enter a letter name");
       return;
@@ -321,85 +428,236 @@ if (template.letter_type === "Quotation") {
     setSaving(true);
 
     try {
-      const payload = {
-        letter_type: selectedTemplate.letter_type,
-        template_name: letterName.trim(),
-        body: livePreviewHtml,
-        raw_content: quillContent,
-        subject: formData["Subject"] || formData["subject"] || selectedTemplate.letter_type,
-      };
-
-      Object.entries(formData).forEach(([displayKey, value]) => {
-        if (!value) return;
-        const normalizedKey = displayKey.toLowerCase().trim().replace(/\s+/g, ' ');
-        const dbColumn = FIELD_MAPPING[normalizedKey] || normalizedKey.replace(/\s+/g, '_');
-        payload[dbColumn] = value;
-      });
-
       let res;
-      if (isEditing && editingId) {
-        res = await axios.put(`${BACKEND_URL}/api/letterheads/update/${editingId}`, payload, {
-          withCredentials: true,
-          headers: { 'x-org-id': extractedOrgId }
-        });
-        showAlert("Letter updated successfully!");
-      } else {
-        res = await axios.post(`${BACKEND_URL}/api/letterheads/add`, payload, {
-          withCredentials: true,
-          headers: { 'x-org-id': extractedOrgId }
-        });
-        showAlert("Letter saved successfully!");
-      }
+      let savedLetterheadId = null;
 
-      resetForm();
-      fetchSavedLetters();
+      if (recruitmentContext) {
+        const pdfBlob = await generatePDF(false, null, true);
+
+        if (!pdfBlob || pdfBlob.size === 0) {
+          throw new Error("Failed to generate the PDF.");
+        }
+
+        const safeName = letterName.trim().replace(/[^\w.-]+/g, "_");
+
+        const pdfFile = new File([pdfBlob], `${safeName}.pdf`, {
+          type: "application/pdf",
+        });
+
+        const multipartData = new FormData();
+
+        multipartData.append("letter_type", selectedTemplate.letter_type);
+
+        multipartData.append("template_name", letterName.trim());
+
+        multipartData.append("body", livePreviewHtml);
+
+        multipartData.append("raw_content", quillContent);
+
+        multipartData.append(
+          "subject",
+          formData["Subject"] ||
+            formData["subject"] ||
+            selectedTemplate.letter_type,
+        );
+
+        Object.entries(formData).forEach(([displayKey, value]) => {
+          const normalizedKey = displayKey
+            .toLowerCase()
+            .trim()
+            .replace(/\s+/g, " ");
+
+          const dbColumn =
+            FIELD_MAPPING[normalizedKey] || normalizedKey.replace(/\s+/g, "_");
+
+          multipartData.append(dbColumn, value ?? "");
+        });
+
+        multipartData.append("letterhead_file", pdfFile);
+
+        if (isEditing && editingId) {
+          res = await axios.put(
+            `${BACKEND_URL}/api/letterheads/update/${editingId}`,
+            multipartData,
+            {
+              withCredentials: true,
+              headers: {
+                "x-org-id": extractedOrgId,
+              },
+            },
+          );
+        } else {
+          res = await axios.post(
+            `${BACKEND_URL}/api/letterheads/add`,
+            multipartData,
+            {
+              withCredentials: true,
+              headers: {
+                "x-org-id": extractedOrgId,
+              },
+            },
+          );
+        }
+
+        savedLetterheadId = Number(
+          res.data?.id ?? res.data?.data?.id ?? res.data?.letterhead?.id,
+        );
+
+        if (!savedLetterheadId) {
+          throw new Error(
+            "Letter was saved but no letterhead ID was returned.",
+          );
+        }
+
+        const linkPayload = {
+          letterhead_id: savedLetterheadId,
+          document_type: recruitmentContext.documentType,
+        };
+
+        let linkResponse;
+
+        if (recruitmentContext.existingLetter?.id) {
+          linkResponse = await axios.put(
+            `${BACKEND_URL}/recruitment/${recruitmentContext.candidateId}/letters/${recruitmentContext.existingLetter.id}`,
+            linkPayload,
+            {
+              withCredentials: true,
+              headers: {
+                "x-org-id": extractedOrgId,
+              },
+            },
+          );
+        } else {
+          linkResponse = await axios.post(
+            `${BACKEND_URL}/recruitment/${recruitmentContext.candidateId}/letters`,
+            linkPayload,
+            {
+              withCredentials: true,
+              headers: {
+                "x-org-id": extractedOrgId,
+              },
+            },
+          );
+        }
+
+        await fetchSavedLetters();
+        resetForm();
+
+        showAlert(
+          recruitmentContext.documentType === "OFFER_LETTER"
+            ? "Offer letter saved and linked to the candidate successfully."
+            : "Appointment letter saved and linked to the candidate successfully.",
+        );
+      } else {
+        const payload = {
+          letter_type: selectedTemplate.letter_type,
+          template_name: letterName.trim(),
+          body: livePreviewHtml,
+          raw_content: quillContent,
+          subject:
+            formData["Subject"] ||
+            formData["subject"] ||
+            selectedTemplate.letter_type,
+        };
+
+        Object.entries(formData).forEach(([displayKey, value]) => {
+          if (!value) return;
+
+          const normalizedKey = displayKey
+            .toLowerCase()
+            .trim()
+            .replace(/\s+/g, " ");
+
+          const dbColumn =
+            FIELD_MAPPING[normalizedKey] || normalizedKey.replace(/\s+/g, "_");
+
+          payload[dbColumn] = value;
+        });
+
+        if (isEditing && editingId) {
+          res = await axios.put(
+            `${BACKEND_URL}/api/letterheads/update/${editingId}`,
+            payload,
+            {
+              withCredentials: true,
+              headers: {
+                "x-org-id": extractedOrgId,
+              },
+            },
+          );
+
+          showAlert("Letter updated successfully!");
+        } else {
+          res = await axios.post(
+            `${BACKEND_URL}/api/letterheads/add`,
+            payload,
+            {
+              withCredentials: true,
+              headers: {
+                "x-org-id": extractedOrgId,
+              },
+            },
+          );
+
+          showAlert("Letter saved successfully!");
+        }
+
+        resetForm();
+        fetchSavedLetters();
+      }
     } catch (error) {
       console.error("Save/Update error:", error);
-      showAlert("Failed to save letter. Please try again.");
+
+      showAlert(
+        error.response?.data?.message ||
+          error.response?.data?.error ||
+          error.message ||
+          "Failed to save letter.",
+      );
     } finally {
       setSaving(false);
     }
   };
-const isCanvasSliceEmpty = (canvas) => {
-  const ctx = canvas.getContext("2d");
-  const { width, height } = canvas;
 
-  try {
-    const imageData = ctx.getImageData(0, 0, width, height).data;
+  const isCanvasSliceEmpty = (canvas) => {
+    const ctx = canvas.getContext("2d");
+    const { width, height } = canvas;
 
-    for (let i = 0; i < imageData.length; i += 4) {
-      const r = imageData[i];
-      const g = imageData[i + 1];
-      const b = imageData[i + 2];
+    try {
+      const imageData = ctx.getImageData(0, 0, width, height).data;
 
-      // if pixel is NOT white → content exists
-      if (!(r > 240 && g > 240 && b > 240)) {
-        return false;
+      for (let i = 0; i < imageData.length; i += 4) {
+        const r = imageData[i];
+        const g = imageData[i + 1];
+        const b = imageData[i + 2];
+
+        // if pixel is NOT white → content exists
+        if (!(r > 240 && g > 240 && b > 240)) {
+          return false;
+        }
       }
+
+      return true; // fully empty
+    } catch (e) {
+      return false; // fail safe → don't skip
     }
+  };
+  const generatePDF = async (
+    download = false,
+    savedLetter = null,
+    returnBlob = false,
+  ) => {
+    setGenerating(true);
 
-    return true; // fully empty
-  } catch (e) {
-    return false; // fail safe → don't skip
-  }
-};
-const generatePDF = async (download = false, savedLetter = null) => {
+    try {
+      let contentHtml = savedLetter ? savedLetter.body : livePreviewHtml;
 
-  setGenerating(true);
+      if (!contentHtml) {
+        showAlert("No content available");
+        return;
+      }
 
-  try {
-
-    let contentHtml =
-      savedLetter
-        ? savedLetter.body
-        : livePreviewHtml;
-
-    if (!contentHtml) {
-      showAlert("No content available");
-      return;
-    }
-
-  const pdfStyles = `
+      const pdfStyles = `
 <style>
 
 .pdf-outer-wrapper {
@@ -467,294 +725,310 @@ const generatePDF = async (download = false, savedLetter = null) => {
 </style>
 `;
 
-    const tempDiv = document.createElement("div");
+      const tempDiv = document.createElement("div");
 
-    tempDiv.innerHTML =
-      pdfStyles +
-      `<div class="pdf-outer-wrapper">
+      tempDiv.innerHTML =
+        pdfStyles +
+        `<div class="pdf-outer-wrapper">
         ${contentHtml}
       </div>`;
 
-    const replaceHyphensInText = (node) => {
-      if (node.nodeType === Node.TEXT_NODE) {
-        node.textContent = node.textContent.replace(/-/g, '\u2011');
-      } else {
-        node.childNodes.forEach(replaceHyphensInText);
-      }
-    };
+      const replaceHyphensInText = (node) => {
+        if (node.nodeType === Node.TEXT_NODE) {
+          node.textContent = node.textContent.replace(/-/g, "\u2011");
+        } else {
+          node.childNodes.forEach(replaceHyphensInText);
+        }
+      };
 
-    replaceHyphensInText(tempDiv);
+      replaceHyphensInText(tempDiv);
 
-    tempDiv.style.width = "794px";
-    tempDiv.style.padding = "40px";
-    tempDiv.style.boxSizing = "border-box";
-    tempDiv.style.fontFamily = "Arial";
-    tempDiv.style.fontSize = "12px";
-    tempDiv.style.lineHeight = "1.6";
-    tempDiv.style.wordWrap = "break-word";
-    tempDiv.style.overflowWrap = "anywhere";
-    tempDiv.style.whiteSpace = "normal";
-    tempDiv.style.position = "absolute";
-    tempDiv.style.left = "-9999px";
-    tempDiv.style.background = "#ffffff";
-    tempDiv.style.hyphens = "none";
+      tempDiv.style.width = "794px";
+      tempDiv.style.padding = "40px";
+      tempDiv.style.boxSizing = "border-box";
+      tempDiv.style.fontFamily = "Arial";
+      tempDiv.style.fontSize = "12px";
+      tempDiv.style.lineHeight = "1.6";
+      tempDiv.style.wordWrap = "break-word";
+      tempDiv.style.overflowWrap = "anywhere";
+      tempDiv.style.whiteSpace = "normal";
+      tempDiv.style.position = "absolute";
+      tempDiv.style.left = "-9999px";
+      tempDiv.style.background = "#ffffff";
+      tempDiv.style.hyphens = "none";
 
-    document.body.appendChild(tempDiv);
+      document.body.appendChild(tempDiv);
 
-    const pdfTables = tempDiv.querySelectorAll("table");
-    pdfTables.forEach(table => {
-      table.style.borderCollapse = "collapse";
-      table.style.borderSpacing = "0";
-      table.style.border = "1px solid #2b2b2b";
-      table.style.width = "100%";
-      const cells = table.querySelectorAll("th, td");
-      cells.forEach(cell => {
-        cell.style.border = "1px solid #2b2b2b";
-        cell.style.padding = "5px";
-        cell.style.textAlign = "left";
-        cell.style.verticalAlign = "top";
+      const pdfTables = tempDiv.querySelectorAll("table");
+      pdfTables.forEach((table) => {
+        table.style.borderCollapse = "collapse";
+        table.style.borderSpacing = "0";
+        table.style.border = "1px solid #2b2b2b";
+        table.style.width = "100%";
+        const cells = table.querySelectorAll("th, td");
+        cells.forEach((cell) => {
+          cell.style.border = "1px solid #2b2b2b";
+          cell.style.padding = "5px";
+          cell.style.textAlign = "left";
+          cell.style.verticalAlign = "top";
+        });
       });
-    });
 
-    await new Promise(r => setTimeout(r, 400));
+      await new Promise((r) => setTimeout(r, 400));
 
-    // Annexure detection
-    const annexureElement = tempDiv.querySelector(".annexure-break");
-    let annexureOffsetPx = annexureElement ? annexureElement.offsetTop : null;
+      // Annexure detection
+      const annexureElement = tempDiv.querySelector(".annexure-break");
+      let annexureOffsetPx = annexureElement ? annexureElement.offsetTop : null;
 
-    const fullCanvas = await html2canvas(tempDiv, {
-      scale: 2,
-      useCORS: true,
-      backgroundColor: "#ffffff"
-    });
+      const fullCanvas = await html2canvas(tempDiv, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: "#ffffff",
+      });
 
-    if (annexureOffsetPx) annexureOffsetPx *= 2;
+      if (annexureOffsetPx) annexureOffsetPx *= 2;
 
-    document.body.removeChild(tempDiv);
+      document.body.removeChild(tempDiv);
 
-    const pdf = new jsPDF("p", "mm", "a4");
+      const pdf = new jsPDF("p", "mm", "a4");
 
-    const pageWidth = pdf.internal.pageSize.getWidth();
-    const pageHeight = pdf.internal.pageSize.getHeight();
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
 
-    const headerHeight = 45;
-    const footerHeight = 60;
+      const headerHeight = 45;
+      const footerHeight = 60;
 
-    const usableHeight = pageHeight - headerHeight - footerHeight;
+      const usableHeight = pageHeight - headerHeight - footerHeight;
 
-    const imgWidth = pageWidth - 20;
+      const imgWidth = pageWidth - 20;
 
-    const pageCanvasHeight =
-      usableHeight * (fullCanvas.width / imgWidth);
+      const pageCanvasHeight = usableHeight * (fullCanvas.width / imgWidth);
 
-    let renderedHeight = 0;
-    let pageNumber = 0;
+      let renderedHeight = 0;
+      let pageNumber = 0;
 
-    // ✅ Safe break finder
-    const findSafeBreakPoint = (canvas, startY, maxHeight) => {
-      try {
-        const ctx = canvas.getContext("2d");
-        if (!ctx) return maxHeight;
+      // ✅ Safe break finder
+      const findSafeBreakPoint = (canvas, startY, maxHeight) => {
+        try {
+          const ctx = canvas.getContext("2d");
+          if (!ctx) return maxHeight;
 
-        const width = canvas.width;
+          const width = canvas.width;
 
-        for (let y = startY + maxHeight; y > startY; y -= 10) {
-          if (y <= 0 || y >= canvas.height) continue;
+          for (let y = startY + maxHeight; y > startY; y -= 10) {
+            if (y <= 0 || y >= canvas.height) continue;
 
-          const imageData = ctx.getImageData(0, y, width, 5).data;
+            const imageData = ctx.getImageData(0, y, width, 5).data;
 
-          let isWhite = true;
+            let isWhite = true;
 
-          for (let i = 0; i < imageData.length; i += 4) {
-            const r = imageData[i];
-            const g = imageData[i + 1];
-            const b = imageData[i + 2];
+            for (let i = 0; i < imageData.length; i += 4) {
+              const r = imageData[i];
+              const g = imageData[i + 1];
+              const b = imageData[i + 2];
 
-            if (!(r > 240 && g > 240 && b > 240)) {
-              isWhite = false;
-              break;
+              if (!(r > 240 && g > 240 && b > 240)) {
+                isWhite = false;
+                break;
+              }
+            }
+
+            if (isWhite) return y - startY;
+          }
+
+          return maxHeight;
+        } catch {
+          return maxHeight;
+        }
+      };
+
+      // ✅ Empty slice checker
+      const isCanvasSliceEmpty = (canvas) => {
+        try {
+          const ctx = canvas.getContext("2d");
+          if (!ctx) return false;
+
+          const data = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+
+          for (let i = 0; i < data.length; i += 4) {
+            if (!(data[i] > 240 && data[i + 1] > 240 && data[i + 2] > 240)) {
+              return false;
             }
           }
+          return true;
+        } catch {
+          return false;
+        }
+      };
 
-          if (isWhite) return y - startY;
+      // 🔥 MAIN LOOP
+      while (renderedHeight < fullCanvas.height) {
+        let maxSliceHeight = Math.min(
+          pageCanvasHeight,
+          fullCanvas.height - renderedHeight,
+        );
+
+        let sliceHeight = findSafeBreakPoint(
+          fullCanvas,
+          renderedHeight,
+          maxSliceHeight,
+        );
+
+        if (!sliceHeight || sliceHeight < 50) {
+          sliceHeight = maxSliceHeight;
         }
 
-        return maxHeight;
-
-      } catch {
-        return maxHeight;
-      }
-    };
-
-    // ✅ Empty slice checker
-    const isCanvasSliceEmpty = (canvas) => {
-      try {
-        const ctx = canvas.getContext("2d");
-        if (!ctx) return false;
-
-        const data = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
-
-        for (let i = 0; i < data.length; i += 4) {
-          if (!(data[i] > 240 && data[i+1] > 240 && data[i+2] > 240)) {
-            return false;
-          }
+        // Annexure page break
+        if (
+          annexureOffsetPx !== null &&
+          renderedHeight < annexureOffsetPx &&
+          renderedHeight + sliceHeight > annexureOffsetPx
+        ) {
+          sliceHeight = annexureOffsetPx - renderedHeight;
         }
-        return true;
-      } catch {
-        return false;
-      }
-    };
 
-    // 🔥 MAIN LOOP
-    while (renderedHeight < fullCanvas.height) {
+        if (renderedHeight + sliceHeight > fullCanvas.height) {
+          sliceHeight = fullCanvas.height - renderedHeight;
+        }
 
-      let maxSliceHeight = Math.min(
-        pageCanvasHeight,
-        fullCanvas.height - renderedHeight
-      );
+        // Create slice
+        const pageCanvas = document.createElement("canvas");
+        const context = pageCanvas.getContext("2d");
 
-      let sliceHeight = findSafeBreakPoint(
-        fullCanvas,
-        renderedHeight,
-        maxSliceHeight
-      );
+        pageCanvas.width = fullCanvas.width;
+        pageCanvas.height = sliceHeight;
 
-      if (!sliceHeight || sliceHeight < 50) {
-        sliceHeight = maxSliceHeight;
-      }
+        context.drawImage(
+          fullCanvas,
+          0,
+          renderedHeight,
+          fullCanvas.width,
+          sliceHeight,
+          0,
+          0,
+          fullCanvas.width,
+          sliceHeight,
+        );
 
-      // Annexure page break
-      if (
-        annexureOffsetPx !== null &&
-        renderedHeight < annexureOffsetPx &&
-        renderedHeight + sliceHeight > annexureOffsetPx
-      ) {
-        sliceHeight = annexureOffsetPx - renderedHeight;
-      }
+        // 🚨 SKIP EMPTY PAGE
+        if (isCanvasSliceEmpty(pageCanvas)) {
+          renderedHeight += sliceHeight;
+          continue;
+        }
 
-      if (renderedHeight + sliceHeight > fullCanvas.height) {
-        sliceHeight = fullCanvas.height - renderedHeight;
-      }
+        // ✅ Add page only if needed
+        if (pageNumber > 0) {
+          pdf.addPage();
+        }
 
-      // Create slice
-      const pageCanvas = document.createElement("canvas");
-      const context = pageCanvas.getContext("2d");
+        await drawHeader(pdf, extractedOrgId || 1);
 
-      pageCanvas.width = fullCanvas.width;
-      pageCanvas.height = sliceHeight;
+        const imgData = pageCanvas.toDataURL("image/png");
 
-      context.drawImage(
-        fullCanvas,
-        0,
-        renderedHeight,
-        fullCanvas.width,
-        sliceHeight,
-        0,
-        0,
-        fullCanvas.width,
-        sliceHeight
-      );
+        const imgHeight = (sliceHeight * imgWidth) / fullCanvas.width;
 
-      // 🚨 SKIP EMPTY PAGE
-      if (isCanvasSliceEmpty(pageCanvas)) {
+        pdf.addImage(imgData, "PNG", 10, headerHeight, imgWidth, imgHeight);
+
+        await drawWatermark(pdf, extractedOrgId || 1);
+
         renderedHeight += sliceHeight;
-        continue;
+        pageNumber++;
       }
 
-      // ✅ Add page only if needed
-      if (pageNumber > 0) {
-        pdf.addPage();
+      const totalPages = pdf.getNumberOfPages();
+
+      for (let i = 1; i <= totalPages; i++) {
+        pdf.setPage(i);
+        pdf.setFont("helvetica", "normal");
+        pdf.setFontSize(10);
+
+        await drawFooter(pdf, extractedOrgId || 1, i, totalPages);
       }
 
-      await drawHeader(pdf, extractedOrgId || 1);
-
-      const imgData = pageCanvas.toDataURL("image/png");
-
-      const imgHeight =
-        (sliceHeight * imgWidth) / fullCanvas.width;
-
-      pdf.addImage(
-        imgData,
-        "PNG",
-        10,
-        headerHeight,
-        imgWidth,
-        imgHeight
-      );
-
-      await drawWatermark(pdf, extractedOrgId || 1);
-
-      renderedHeight += sliceHeight;
-      pageNumber++;
-    }
-
-    const totalPages = pdf.getNumberOfPages();
-
-    for (let i = 1; i <= totalPages; i++) {
-      pdf.setPage(i);
-      pdf.setFont("helvetica", "normal");
-      pdf.setFontSize(10);
-
-      await drawFooter(
-        pdf,
-        extractedOrgId || 1,
-        i,
-        totalPages
-      );
-    }
-
-    const filename =
-      savedLetter
-        ? `${savedLetter.template_name || 'letter'}.pdf`
+      const filename = savedLetter
+        ? `${savedLetter.template_name || "letter"}.pdf`
         : `${letterName || "letter"}.pdf`;
 
-    if (download) {
-      pdf.save(filename);
-    } else {
       const blob = pdf.output("blob");
-      window.open(URL.createObjectURL(blob), "_blank");
-    }
 
-  } catch (error) {
-    console.error("PDF Error:", error);
-    showAlert("PDF generation failed");
-  } finally {
-    setGenerating(false);
-  }
-};
+      if (returnBlob) {
+        return blob;
+      }
+
+      if (download) {
+        pdf.save(filename);
+      } else {
+        const blobUrl = URL.createObjectURL(blob);
+
+        window.open(blobUrl, "_blank");
+
+        setTimeout(() => {
+          URL.revokeObjectURL(blobUrl);
+        }, 60000);
+      }
+    } catch (error) {
+      console.error("PDF Error:", error);
+      showAlert("PDF generation failed");
+    } finally {
+      setGenerating(false);
+    }
+  };
 
   const placeholderFields = useMemo(() => {
-  if (!quillContent) return [];
+    if (!quillContent) return [];
 
-  let textOnly = quillContent.replace(/<[^>]*>/g, '');
+    let textOnly = quillContent.replace(/<[^>]*>/g, "");
 
-  if (selectedTemplate?.letter_type === "Offer Letter") {
-    textOnly += getAnnexureTableHtml().replace(/<[^>]*>/g, '');
-  }
+    if (selectedTemplate?.letter_type === "Offer Letter") {
+      textOnly += getAnnexureTableHtml().replace(/<[^>]*>/g, "");
+    }
 
-  if (selectedTemplate?.letter_type === "Quotation") {
-    textOnly += getAvinyaQuotationHtml().replace(/<[^>]*>/g, '');
-  }
+    if (selectedTemplate?.letter_type === "Quotation") {
+      textOnly += getAvinyaQuotationHtml().replace(/<[^>]*>/g, "");
+    }
 
-  const regex = /\[([^\]]+)\]/g;
-  const matches = [...textOnly.matchAll(regex)];
+    const regex = /\[([^\]]+)\]/g;
+    const matches = [...textOnly.matchAll(regex)];
 
-  return [...new Set(matches.map(m => m[1].trim()))].sort();
-}, [quillContent, selectedTemplate]);
+    return [...new Set(matches.map((m) => m[1].trim()))].sort();
+  }, [quillContent, selectedTemplate]);
 
-  if (loading) return <div className="letterhead-no-template">Loading letter templates...</div>;
+  if (loading)
+    return (
+      <div className="letterhead-no-template">Loading letter templates...</div>
+    );
 
   return (
     <div className="letterhead-main">
+      {recruitmentContext && (
+        <button
+          type="button"
+          className="letterhead-btn letterhead-btn-save"
+          onClick={() =>
+            window.dispatchEvent(
+              new CustomEvent("app:navigate", {
+                detail: { path: "/RecruitmentFlow" },
+              }),
+            )
+          }
+        >
+          Return to Recruitment
+        </button>
+      )}
       <div className="letterhead-content-vertical">
-
         {/* Template Selection */}
         <div className="letterhead-top-section">
           <h3>Select Letter Type</h3>
-          <select onChange={handleTemplateSelect} className="letterhead-template-select" defaultValue="">
+          <select
+            value={selectedTemplate?.id || ""}
+            onChange={handleTemplateSelect}
+            className="letterhead-template-select"
+          >
             <option value="">-- Select Letter Type --</option>
-            {templates.map(t => (
-              <option key={t.id} value={t.id}>{t.letter_type}</option>
+            {templates.map((t) => (
+              <option key={t.id} value={t.id}>
+                {t.letter_type}
+              </option>
             ))}
           </select>
         </div>
@@ -764,91 +1038,96 @@ const generatePDF = async (download = false, savedLetter = null) => {
           <div className="letterhead-fields-section">
             <h3>Fill Details</h3>
             <div className="letterhead-dynamic-form">
-              {placeholderFields.map(field => {
+              {placeholderFields.map((field) => {
                 const lowerField = field.toLowerCase();
                 const isDateField = lowerField.includes("date");
-                const isEmailField = lowerField.includes("email") || lowerField.includes("mail");
+                const isEmailField =
+                  lowerField.includes("email") || lowerField.includes("mail");
                 const isTitleField = lowerField.includes("title");
-                
 
-  const isGenderField =
-  lowerField === "gender_pronoun";
-const isGenderPronounLowerField =
-  lowerField === "gender_pronoun_lower";
-const isGenderPossessiveField =
-  lowerField === "gender_possessive";
+                const isGenderField = lowerField === "gender_pronoun";
+                const isGenderPronounLowerField =
+                  lowerField === "gender_pronoun_lower";
+                const isGenderPossessiveField =
+                  lowerField === "gender_possessive";
 
                 const niceLabel = field
-  .replace(/_/g, ' ')
-  .replace(/\bctc\b/gi, 'CTC')
-  .replace(/\bhra\b/gi, 'HRA')
-  .replace(/\bpf\b/gi, 'PF')
-  .replace(/\besi\b/gi, 'ESI')
-  .replace(/\bpt\b/gi, 'PT')
-  .replace(/\bgstin\b/gi, 'GSTIN')
-  .replace(/\bcin\b/gi, 'CIN')
-  .replace(/\bid\b/gi, 'ID')
-  .replace(/\b\w/g, l => l.toUpperCase());
+                  .replace(/_/g, " ")
+                  .replace(/\bctc\b/gi, "CTC")
+                  .replace(/\bhra\b/gi, "HRA")
+                  .replace(/\bpf\b/gi, "PF")
+                  .replace(/\besi\b/gi, "ESI")
+                  .replace(/\bpt\b/gi, "PT")
+                  .replace(/\bgstin\b/gi, "GSTIN")
+                  .replace(/\bcin\b/gi, "CIN")
+                  .replace(/\bid\b/gi, "ID")
+                  .replace(/\b\w/g, (l) => l.toUpperCase());
 
                 return (
                   <div key={field} className="letterhead-form-group">
                     <label>{niceLabel}</label>
                     {isTitleField ? (
-
-  <select
-    value={formData[field] || ''}
-    onChange={(e) => handleFieldChange(field, e.target.value)}
-  >
-    <option value="">Select Title</option>
-    <option value="Mr.">Mr.</option>
-    <option value="Mrs.">Mrs.</option>
-    <option value="Ms.">Ms.</option>
-  </select>
-
-) : isGenderField ? (
-
-  <select
-    value={formData[field] || ''}
-    onChange={(e) => handleFieldChange(field, e.target.value)}
-  >
-    <option value="">Select</option>
-    <option value="He">He</option>
-    <option value="She">She</option>
-  </select>
-
-) : isGenderPronounLowerField ? (
-
-  <select
-    value={formData[field] || ''}
-    onChange={(e) => handleFieldChange(field, e.target.value)}
-  >
-    <option value="">Select</option>
-    <option value="he">he</option>
-    <option value="she">she</option>
-  </select>
-
-) : isGenderPossessiveField ? (
-
-  <select
-    value={formData[field] || ''}
-    onChange={(e) => handleFieldChange(field, e.target.value)}
-  >
-    <option value="">Select</option>
-    <option value="his">his</option>
-    <option value="her">her</option>
-  </select>
-
-) : (
-
-  <input
-    type={isDateField ? "date" : isEmailField ? "email" : "text"}
-    value={formData[field] || ''}
-    onChange={(e) => handleFieldChange(field, e.target.value)}
-    placeholder={`Enter ${niceLabel}`}
-  />
-
-)}
-                    {errors[field] && <span style={{ color: "red", fontSize: "12px" }}>{errors[field]}</span>}
+                      <select
+                        value={formData[field] || ""}
+                        onChange={(e) =>
+                          handleFieldChange(field, e.target.value)
+                        }
+                      >
+                        <option value="">Select Title</option>
+                        <option value="Mr.">Mr.</option>
+                        <option value="Mrs.">Mrs.</option>
+                        <option value="Ms.">Ms.</option>
+                      </select>
+                    ) : isGenderField ? (
+                      <select
+                        value={formData[field] || ""}
+                        onChange={(e) =>
+                          handleFieldChange(field, e.target.value)
+                        }
+                      >
+                        <option value="">Select</option>
+                        <option value="He">He</option>
+                        <option value="She">She</option>
+                      </select>
+                    ) : isGenderPronounLowerField ? (
+                      <select
+                        value={formData[field] || ""}
+                        onChange={(e) =>
+                          handleFieldChange(field, e.target.value)
+                        }
+                      >
+                        <option value="">Select</option>
+                        <option value="he">he</option>
+                        <option value="she">she</option>
+                      </select>
+                    ) : isGenderPossessiveField ? (
+                      <select
+                        value={formData[field] || ""}
+                        onChange={(e) =>
+                          handleFieldChange(field, e.target.value)
+                        }
+                      >
+                        <option value="">Select</option>
+                        <option value="his">his</option>
+                        <option value="her">her</option>
+                      </select>
+                    ) : (
+                      <input
+                        type={
+                          isDateField ? "date" : isEmailField ? "email" : "text"
+                        }
+                        value={formData[field] || ""}
+                        onChange={(e) =>
+                          handleFieldChange(field, e.target.value)
+                        }
+                        placeholder={`Enter ${niceLabel}`}
+                      />
+                    )}
+                    {errors[field] && (
+                      <span style={{ color: "red", fontSize: "12px" }}>
+                        {errors[field]}
+                      </span>
+                    )}
                   </div>
                 );
               })}
@@ -860,7 +1139,9 @@ const isGenderPossessiveField =
         {selectedTemplate && (
           <div className="letterhead-editor-vertical">
             <div className="letterhead-editor-header">
-              <h2>{selectedTemplate.letter_type} {isEditing && '(Editing)'}</h2>
+              <h2>
+                {selectedTemplate.letter_type} {isEditing && "(Editing)"}
+              </h2>
               <div className="letterhead-action-buttons">
                 <input
                   type="text"
@@ -869,21 +1150,25 @@ const isGenderPossessiveField =
                   onChange={(e) => setLetterName(e.target.value)}
                   className="letterhead-save-input"
                 />
-                <button 
+                <button
                   onClick={handleSaveOrUpdate}
                   disabled={saving || !letterName.trim()}
                   className="letterhead-btn letterhead-btn-save"
                 >
-                  {saving ? 'Saving...' : isEditing ? 'Update Letter' : 'Save Letter'}
+                  {saving
+                    ? "Saving..."
+                    : isEditing
+                      ? "Update Letter"
+                      : "Save Letter"}
                 </button>
-                <button 
+                <button
                   onClick={() => generatePDF(false)}
                   disabled={generating}
                   className="letterhead-btn letterhead-btn-preview"
                 >
                   Preview PDF
                 </button>
-                <button 
+                <button
                   onClick={() => generatePDF(true)}
                   disabled={generating}
                   className="letterhead-btn letterhead-btn-download"
@@ -900,19 +1185,19 @@ const isGenderPossessiveField =
                 modules={{
                   toolbar: [
                     [{ header: [1, 2, 3, false] }],
-                    ['bold', 'italic', 'underline'],
+                    ["bold", "italic", "underline"],
                     [{ background: [] }],
                     [{ align: [] }],
-                    [{ list: 'ordered' }, { list: 'bullet' }],
-                    ['clean']
-                  ]
+                    [{ list: "ordered" }, { list: "bullet" }],
+                    ["clean"],
+                  ],
                 }}
               />
             </div>
 
             <div className="letterhead-preview-section">
               <h3>Live Preview</h3>
-              <div 
+              <div
                 className="letterhead-live-preview-box ql-editor"
                 dangerouslySetInnerHTML={{ __html: livePreviewHtml }}
               />
@@ -929,37 +1214,37 @@ const isGenderPossessiveField =
             <table className="letterhead-saved-table">
               <thead>
                 <tr>
-                  <th>Letterhead Code</th>   {/* ← New Column */}
+                  <th>Letterhead Code</th> {/* ← New Column */}
                   <th>Letter Name</th>
                   <th>Type</th>
                   <th>Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {savedLetters.map(letter => (
+                {savedLetters.map((letter) => (
                   <tr key={letter.id}>
                     <td>
-                      <strong>{letter.letterhead_code || 'N/A'}</strong>
+                      <strong>{letter.letterhead_code || "N/A"}</strong>
                     </td>
                     <td>{letter.template_name}</td>
                     <td>{letter.letter_type}</td>
                     <td className="letterhead-table-actions">
-                      <button 
-                        onClick={() => generatePDF(false, letter)} 
+                      <button
+                        onClick={() => generatePDF(false, letter)}
                         className="letterhead-table-btn letterhead-table-btn-preview"
                       >
                         Preview
                       </button>
-                      <button 
-                        onClick={() => generatePDF(true, letter)} 
+                      <button
+                        onClick={() => generatePDF(true, letter)}
                         className="letterhead-table-btn letterhead-table-btn-download"
                       >
                         Download
                       </button>
-                      <button 
+                      <button
                         onClick={() => handleEditLetter(letter)}
                         className="letterhead-table-btn"
-                        style={{ backgroundColor: '#79c42b', color: 'white' }}
+                        style={{ backgroundColor: "#79c42b", color: "white" }}
                       >
                         Edit
                       </button>

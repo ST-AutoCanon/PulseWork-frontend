@@ -14,6 +14,10 @@ import {
 import { calculateLOPEffect } from "../../../utils/lopCalculations.client.jsx";
 import { calculateIncentives } from "../../../utils/IncentiveUtils.js";
 import Modal from "../../Modal/Modal.client";
+import AttendanceDeductionCells, {
+  getAttendanceDeductionAmounts,
+  getAttendanceDeductionExportValues,
+} from "./AttendanceDeductionCells.client";
 
 const SalaryDetails = () => {
   const { user } = useAuth();
@@ -27,6 +31,9 @@ const SalaryDetails = () => {
   const [overtimeRecords, setOvertimeRecords] = useState([]);
   const [bonusRecords, setBonusRecords] = useState([]);
   const [employeeLopData, setEmployeeLopData] = useState({});
+  const [attendanceDeductionData, setAttendanceDeductionData] = useState({});
+  const [attendanceDeductionLoading, setAttendanceDeductionLoading] = useState(false);
+  const [attendanceDeductionError, setAttendanceDeductionError] = useState("");
   const [employeeIncentiveData, setEmployeeIncentiveData] = useState({});
   const [personalMap, setPersonalMap] = useState({});
   const [validSelectedEmployees, setValidSelectedEmployees] = useState([]);
@@ -216,6 +223,46 @@ const SalaryDetails = () => {
   }, [meId, orgId]);
 
   useEffect(() => {
+    if (!employees.length || !hasValidCredentials()) return;
+
+    let isActive = true;
+    const fetchAttendanceDeductions = async () => {
+      setAttendanceDeductionLoading(true);
+      setAttendanceDeductionError("");
+      try {
+        const now = new Date();
+        const response = await axios.post(
+          `${BASE_URL}/api/salary-attendance-deductions/calculate`,
+          {
+            month: now.getMonth() + 1,
+            year: now.getFullYear(),
+            employees: employees.map((emp) => ({
+              employee_id: emp.employee_id,
+              annual_ctc: emp.ctc,
+            })),
+          },
+          { withCredentials: true, headers: requestHeaders }
+        );
+        if (isActive) setAttendanceDeductionData(response.data?.data || {});
+      } catch (error) {
+        console.error("Attendance salary deductions fetch failed:", error);
+        if (isActive) {
+          setAttendanceDeductionError(
+            error.response?.data?.error || "Failed to calculate attendance deductions."
+          );
+        }
+      } finally {
+        if (isActive) setAttendanceDeductionLoading(false);
+      }
+    };
+
+    fetchAttendanceDeductions();
+    return () => {
+      isActive = false;
+    };
+  }, [employees, meId, orgId]);
+
+  useEffect(() => {
     if (!employees.length || !meId) return;
 
     const loadAllLOP = async () => {
@@ -297,6 +344,13 @@ const SalaryDetails = () => {
   const handleProceed = async () => {
   if (!hasValidCredentials()) {
     showAlert("Missing credentials. Please log in again.");
+    return;
+  }
+  if (attendanceDeductionLoading || attendanceDeductionError) {
+    showAlert(
+      attendanceDeductionError ||
+        "Please wait for attendance deductions to finish calculating."
+    );
     return;
   }
   if (selectedEmployees.size === 0) {
@@ -395,7 +449,7 @@ const SalaryDetails = () => {
         }
 
         if (!salaryDetails) {
-          return Array(23).fill("N/A");
+          return Array(35).fill("N/A");
         }
 
         const monthlyBonusPay = calculateMonthlyBonusPay(emp.ctc, bonusRecords);
@@ -411,6 +465,15 @@ const SalaryDetails = () => {
           emp.plan_data,
           lopDeduction,
           advanceRecovery
+        );
+        const attendanceDeductions = attendanceDeductionData[emp.employee_id] || {};
+        const deductionAmounts = getAttendanceDeductionAmounts(attendanceDeductions);
+        const newNetSalary = Math.max(
+          0,
+          localNet -
+            deductionAmounts.lateLogin -
+            deductionAmounts.missPunchOut -
+            deductionAmounts.lessLoginHours
         );
 
         return [
@@ -438,6 +501,8 @@ const SalaryDetails = () => {
           localGross,
           Math.max(localNet, 0),
           calculateBaseNetSalary(emp.ctc, emp.plan_data, emp.employee_id),
+          ...getAttendanceDeductionExportValues(attendanceDeductions),
+          newNetSalary,
         ];
       });
 
@@ -465,6 +530,13 @@ const SalaryDetails = () => {
         "LOP Deduction",
         "Gross Salary",
         "Net Salary","Base Net Salary",
+        "Late Login Count",
+        "Late Login Amount",
+        "Miss Punch Out Count",
+        "Miss Punch Out Amount",
+        "Less Login Hours Count",
+        "Less Login Hours Amount",
+        "Net Salary After Attendance Deductions",
       ];
 
       const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
@@ -492,6 +564,14 @@ const SalaryDetails = () => {
         { wch: 10 },
         { wch: 12 },
         { wch: 12 },
+        { wch: 12 },
+        { wch: 12 },
+        { wch: 12 },
+        { wch: 12 },
+        { wch: 12 },
+        { wch: 12 },
+        { wch: 12 },
+        { wch: 18 },
       ];
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, "Salary Details");
@@ -542,6 +622,15 @@ const { localNet } = calculateLocalGrossNet(
   advanceRecovery
 );
       const netSalary = localNet > 0 ? localNet : 0;
+      const attendanceDeductions = attendanceDeductionData[emp.employee_id] || {};
+      const deductionAmounts = getAttendanceDeductionAmounts(attendanceDeductions);
+      const adjustedNetSalary = Math.max(
+        0,
+        netSalary -
+          deductionAmounts.lateLogin -
+          deductionAmounts.missPunchOut -
+          deductionAmounts.lessLoginHours
+      );
 
       const personalDetails = personalMap[emp.employee_id] || {
         pan_number: "N/A",
@@ -553,7 +642,7 @@ const { localNet } = calculateLocalGrossNet(
           emp.full_name,
           personalDetails.pan_number,
           personalDetails.uan_number,
-          netSalary > 0 ? `₹${netSalary.toLocaleString()}` : "N/A",
+          adjustedNetSalary > 0 ? `₹${adjustedNetSalary.toLocaleString()}` : "N/A",
         ],
         netSalary,
       };
@@ -678,6 +767,13 @@ const { localNet } = calculateLocalGrossNet(
     showAlert("Missing credentials. Please log in again.");
     return;
   }
+  if (attendanceDeductionLoading || attendanceDeductionError) {
+    showAlert(
+      attendanceDeductionError ||
+        "Please wait for attendance deductions to finish calculating."
+    );
+    return;
+  }
 
   try {
     if (validSelectedEmployees.length === 0) {
@@ -717,6 +813,15 @@ const { localGross, localNet } = calculateLocalGrossNet(
   lopDeduction, 
   advanceRecovery
 );
+const attendanceDeductions = attendanceDeductionData[emp.employee_id] || {};
+const deductionAmounts = getAttendanceDeductionAmounts(attendanceDeductions);
+const adjustedNetSalary = Math.max(
+  0,
+  localNet -
+    deductionAmounts.lateLogin -
+    deductionAmounts.missPunchOut -
+    deductionAmounts.lessLoginHours
+);
 
 const finalCTC = localGross +
   Number(salaryDetails.employerPF || 0) +
@@ -753,9 +858,16 @@ const finalCTC = localGross +
 
             lop_days: lopDays,
             lop_deduction: lopDeduction,
+            late_login_count: Number(attendanceDeductions.lateLogin?.count || 0),
+            late_login_deduction: deductionAmounts.lateLogin,
+            miss_punch_out_count: Number(attendanceDeductions.missPunchOut?.count || 0),
+            miss_punch_out_deduction: deductionAmounts.missPunchOut,
+            less_login_hours_count: Number(attendanceDeductions.lessLoginHours?.count || 0),
+            less_login_hours_deduction: deductionAmounts.lessLoginHours,
             gross_salary: Number(localGross || 0),
             final_ctc: Number(finalCTC || 0),
             net_salary: Number(localNet > 0 ? localNet : 0),
+            net_salary_after_attendance_deduction: adjustedNetSalary,
 
             status: "Approved",
             payslip_generation: "disabled",
@@ -866,8 +978,7 @@ const renderTableRows = (employeesToRender) => {
               <td className="sd-table-cell sd-align-right sd-sticky-col sd-sticky-ctc" style={{ left: "260px", zIndex: 10 }}>
                 {emp.ctc ? `₹${parseFloat(emp.ctc).toLocaleString()}` : "N/A"}
               </td>
-              <td colSpan="20" className="sd-table-cell">Calculation Error</td>
-              <td colSpan="21" className="sd-table-cell">Calculation Error</td>
+              <td colSpan="31" className="sd-table-cell">Calculation Error</td>
             </tr>
           );
         }
@@ -891,6 +1002,15 @@ const { localGross, localNet } =
         lopDeduction,
         advanceRecovery
     );
+        const attendanceDeductions = attendanceDeductionData[emp.employee_id] || {};
+        const deductionAmounts = getAttendanceDeductionAmounts(attendanceDeductions);
+        const adjustedNetSalary = Math.max(
+          0,
+          localNet -
+            deductionAmounts.lateLogin -
+            deductionAmounts.missPunchOut -
+            deductionAmounts.lessLoginHours
+        );
         const finalCTC = localGross +
           (salaryDetails.employerPF || 0) +
           (salaryDetails.gratuity || 0) +
@@ -952,7 +1072,12 @@ const { localGross, localNet } =
 {/* ✅ Base Net Salary at the end — matches header */}
 <td className="sd-table-cell sd-align-right">
   <strong>₹{baseNetSalary.toFixed(2)}</strong>
-</td>          </tr>
+</td>
+<AttendanceDeductionCells deductions={attendanceDeductions} />
+<td className="sd-table-cell sd-align-right">
+  <strong>₹{adjustedNetSalary.toFixed(2)}</strong>
+</td>
+          </tr>
         );
       })}
     </tbody>
@@ -992,6 +1117,15 @@ const { localNet } = calculateLocalGrossNet(
     advanceRecovery
 );
           const netSalary = localNet > 0 ? localNet : 0;
+          const attendanceDeductions = attendanceDeductionData[emp.employee_id] || {};
+          const deductionAmounts = getAttendanceDeductionAmounts(attendanceDeductions);
+          const adjustedNetSalary = Math.max(
+            0,
+            netSalary -
+              deductionAmounts.lateLogin -
+              deductionAmounts.missPunchOut -
+              deductionAmounts.lessLoginHours
+          );
 
           return (
             <tr key={emp.employee_id}>
@@ -1004,7 +1138,7 @@ const { localNet } = calculateLocalGrossNet(
                 {personalMap[emp.employee_id]?.uan_number || "N/A"}
               </td>
               <td className="sd-preview-table-cell sd-align-right">
-                {netSalary > 0 ? `₹${netSalary.toLocaleString()}` : "N/A"}
+                {adjustedNetSalary > 0 ? `₹${adjustedNetSalary.toLocaleString()}` : "N/A"}
               </td>
             </tr>
           );
@@ -1026,6 +1160,14 @@ const { localNet } = calculateLocalGrossNet(
         <div className="sd-working-days">
           Total Working Days: {workingDays !== null ? workingDays : "N/A"}
         </div>
+        {attendanceDeductionLoading && (
+          <div className="sd-working-days">Calculating attendance deductions...</div>
+        )}
+        {attendanceDeductionError && (
+          <div className="sd-deduction-error" role="alert">
+            {attendanceDeductionError}
+          </div>
+        )}
         <div className="sd-controls-right">
           <div className="sd-search-container">
             <input
@@ -1039,7 +1181,11 @@ const { localNet } = calculateLocalGrossNet(
           <button
             className="sd-proceed-button"
             onClick={handleProceed}
-            disabled={!hasValidCredentials()}
+            disabled={
+              !hasValidCredentials() ||
+              attendanceDeductionLoading ||
+              Boolean(attendanceDeductionError)
+            }
           >
             Proceed to Report
           </button>
@@ -1115,6 +1261,13 @@ const { localNet } = calculateLocalGrossNet(
     <th className="sd-table-header sd-align-right">Final CTC</th>
     <th className="sd-table-header sd-align-right">Net Salary</th>
     <th className="sd-table-header sd-align-right">Base Net Salary</th>
+    <th className="sd-table-header sd-align-right">Late Login Count</th>
+    <th className="sd-table-header sd-align-right">Late Login Amount</th>
+    <th className="sd-table-header sd-align-right">Miss Punch Out Count</th>
+    <th className="sd-table-header sd-align-right">Miss Punch Out Amount</th>
+    <th className="sd-table-header sd-align-right">Less Login Hours Count</th>
+    <th className="sd-table-header sd-align-right">Less Login Hours Amount</th>
+    <th className="sd-table-header sd-align-right">Net Salary After Attendance Deductions</th>
   </tr>
 </thead>
                 {renderTableRows(filteredEmployees)}

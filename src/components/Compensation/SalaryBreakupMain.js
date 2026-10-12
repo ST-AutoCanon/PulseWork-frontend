@@ -4,7 +4,7 @@ import debounce from "lodash/debounce";
 import Header from "./Header/Header.js";
 import TotalsContainer from "./TotalsContainer/TotalsContainer.js";
 import EmployeeTable from "./EmployeeTable/EmployeeTable.js";
-import SalaryDetails from "./SalaryDetails/SalaryDetails.js";
+import SalaryDetails from "./SalaryDetails/SalaryDetails.client";
 import AllDetailsView from "./AllDetailsView/AllDetailsView.js";
 import NoPlanDetails from "./NoPlanDetails/NoPlanDetails.js";
 import BonusModal from "./BonusModal/BonusModal.js";

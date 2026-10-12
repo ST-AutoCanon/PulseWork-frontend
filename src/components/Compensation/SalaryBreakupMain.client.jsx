@@ -8,7 +8,7 @@ import Header from "./Header/Header.client";
 
 import TotalsContainer from "./TotalsContainer/TotalsContainer.client";
 import EmployeeTable from "./EmployeeTable/EmployeeTable.client";
-import SalaryDetails from "./SalaryDetails/SalaryDetails.js";
+import SalaryDetails from "./SalaryDetails/SalaryDetails.client";
 import AllDetailsView from "./AllDetailsView/AllDetailsView.client";
 import NoPlanDetails from "./NoPlanDetails/NoPlanDetails.client";
 import BonusModal from "./BonusModal/BonusModal.client";

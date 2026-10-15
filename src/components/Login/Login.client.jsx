@@ -928,28 +928,32 @@ export default function Login({ onClose }) {
           yesterday.setHours(0, 0, 0, 0);
           yesterday.setDate(yesterday.getDate() - 1);
 
-          // Suppress reminder on Sunday / holiday / leave / regularisation
-          const suppress = await shouldSuppressMissedPunchAlert({
-            employeeId,
-            orgId,
-            targetDate: yesterday,
+          const attendanceUrl = `${process.env.NEXT_PUBLIC_BACKEND_URL}/attendance/employee/${encodeURIComponent(employeeId)}`;
+          const historyResponse = await fetch(attendanceUrl, {
+            credentials: "include",
             headers: attendanceHeaders,
           });
+          const historyResult = await historyResponse.json().catch(() => null);
+          const hasPriorAttendance =
+            historyResponse.ok && Array.isArray(historyResult?.data)
+              ? historyResult.data.length > 0
+              : historyResponse.status !== 404;
+
+          if (!hasPriorAttendance) {
+            sessionStorage.removeItem("attendanceReminder");
+          }
+
+          // Suppress reminder on Sunday / holiday / leave / regularisation
+          const suppress =
+            !hasPriorAttendance ||
+            (await shouldSuppressMissedPunchAlert({
+              employeeId,
+              orgId,
+              targetDate: yesterday,
+              headers: attendanceHeaders,
+            }));
 
           if (!suppress && hasPriorAttendance) {
-            const attendanceUrl = `${process.env.NEXT_PUBLIC_BACKEND_URL}/attendance/employee/${encodeURIComponent(employeeId)}`;
-            const historyResponse = await fetch(attendanceUrl, {
-              credentials: "include",
-              headers: attendanceHeaders,
-            });
-            const historyResult = await historyResponse
-              .json()
-              .catch(() => null);
-            const hasPriorAttendance =
-              historyResponse.ok && Array.isArray(historyResult?.data)
-                ? historyResult.data.length > 0
-                : true;
-
             const ymd = toDateKey(yesterday);
 
             const response = await fetch(
@@ -1267,8 +1271,6 @@ export default function Login({ onClose }) {
                 }
               }
             }
-          } else if (!hasPriorAttendance) {
-            sessionStorage.removeItem("attendanceReminder");
           }
         }
       } catch (err) {

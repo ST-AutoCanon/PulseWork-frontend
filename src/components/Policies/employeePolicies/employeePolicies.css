@@ -1044,9 +1044,26 @@
 }
 .viewer-content-protected {
   width: 100%;
-  height: 100%;
+  height: auto;
+  min-height: 0;
+  flex: 1 1 auto;
   transition: filter 0.2s ease;
   position: relative;
+}
+
+.viewer-file-message {
+  display: flex;
+  min-height: 100%;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  padding: 24px;
+  color: #475569;
+  text-align: center;
+}
+
+.viewer-file-error {
+  color: #b91c1c;
 }
 
 .viewer-content-protected.is-hidden {
@@ -1776,7 +1793,114 @@
   overflow: hidden;
 }
 
+@media (max-width: 768px) {
+  .employee-policy-page {
+    width: 100%;
+    min-height: 100vh;
+    min-height: 100dvh;
+    padding: 12px;
+    overflow-x: hidden;
+  }
 
+  .policy-grid,
+  .policy-grid.layout-one,
+  .policy-grid.layout-two,
+  .policy-grid.layout-three {
+    grid-template-columns: minmax(0, 1fr) !important;
+    grid-template-rows: auto;
+    align-content: start;
+    flex: none;
+    gap: 12px;
+  }
+
+  .policy-section,
+  .file-section,
+  .viewer-section {
+    width: 100%;
+    min-width: 0;
+    height: auto;
+  }
+
+  .file-section {
+    min-height: 0;
+  }
+
+  .viewer-section {
+    height: 65vh;
+    height: 65dvh;
+    min-height: 360px;
+    scroll-margin-top: 12px;
+  }
+
+  .viewer-body {
+    flex: 1 1 auto;
+    min-height: 0;
+  }
+
+  .viewer-content-protected {
+    height: 100% !important;
+    min-height: 0;
+  }
+
+  .viewer-header {
+    gap: 8px;
+    padding: 10px 12px;
+    font-size: 14px;
+  }
+
+  .viewer-header > span {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .viewer-header > div {
+    flex-shrink: 0;
+    gap: 6px !important;
+  }
+
+  .pdf-viewer-wrapper {
+    padding: 8px;
+  }
+
+  .pdf-page-wrapper {
+    display: flex;
+    justify-content: center;
+    width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .employee-policy-page {
+    padding: 8px;
+  }
+
+  .employee-policy-title,
+  .policies-title-emp {
+    font-size: 22px;
+  }
+
+  .policy-cards {
+    padding: 12px;
+  }
+
+  .file-card {
+    margin: 8px;
+    padding: 12px 10px;
+    gap: 8px;
+  }
+
+  .file-card span {
+    font-size: 13px;
+  }
+
+  .viewer-section {
+    height: 60vh;
+    height: 60dvh;
+    min-height: 320px;
+  }
+}
 
 .media-viewer-wrapper {
   flex: 1;

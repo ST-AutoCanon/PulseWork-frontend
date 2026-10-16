@@ -241,6 +241,7 @@ const [readSaving, setReadSaving] = useState(false);
 const pdfObserverRef = useRef(null);
 const pdfPageTimers = useRef({});
 const pdfWrapperRef = useRef(null);
+const fileSectionRef = useRef(null);
 const viewerSectionRef = useRef(null);
 const [videoProgress, setVideoProgress] = useState(0);       // 0 – 100
 const [videoDuration, setVideoDuration] = useState(0);
@@ -577,6 +578,17 @@ useEffect(() => {
     });
   });
 }, [selectedFile]);
+
+useEffect(() => {
+  if (!selectedPolicy || selectedFile || !window.matchMedia("(max-width: 768px)").matches) return;
+
+  requestAnimationFrame(() => {
+    fileSectionRef.current?.scrollIntoView({
+      behavior: "smooth",
+      block: "start",
+    });
+  });
+}, [selectedPolicy, selectedFile]);
   useEffect(() => {
     return () => {
       if (fileUrl) URL.revokeObjectURL(fileUrl);
@@ -1241,7 +1253,7 @@ const handleViewerScroll = (event) => {
 
       {/* MIDDLE – Files (only when a policy is selected) */}
       {selectedPolicy && (
-        <div className="file-section">
+        <div ref={fileSectionRef} className="file-section">
           <div className="section-title-with-close">
   <span>Files</span>
   <button
@@ -1384,7 +1396,16 @@ const handleViewerScroll = (event) => {
     </button>
   </div>
 </div>
-      <div className="viewer-body">
+    <div
+  className="viewer-body"
+  style={{
+    width: "100%",
+    minWidth: 0,
+    flex: "1 1 auto",
+    minHeight: 0,
+    position: "relative",
+  }}
+>
         
   {/* ========== READING INDICATOR (PDF + VIDEO only – hide for images) ========== */}
   {Number(selectedFile.allow_view) === 1 &&
@@ -1492,36 +1513,44 @@ const handleViewerScroll = (event) => {
         const name = getFileName(selectedFile);
 
         /* ===================== IMAGE ===================== */
-        if (isImage(name)) {
-          return (
-            <div
-              className="media-viewer-wrapper"
-              style={{
-                width: "100%",
-                height: "100%",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                background: "#f8fafc",
-                overflow: "auto",
-              }}
-            >
-              <img
-                src={fileUrl}
-                alt={name}
-                style={{
-                  maxWidth: "100%",
-                  maxHeight: "100%",
-                  objectFit: "contain",
-                  display: "block",
-                }}
-                onLoad={() => {
-                  markFileRead(selectedFile);
-                }}
-              />
-            </div>
-          );
-        }
+
+if (isImage(name)) {
+  return (
+    <div
+      className="media-viewer-wrapper"
+      style={{
+        width: "100%",
+        minWidth: 0,
+        minHeight: 200,
+        height: "100%",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        overflow: "auto",
+        boxSizing: "border-box",
+      }}
+    >
+      <img
+        src={fileUrl}
+        alt={name}
+        style={{
+          display: "block",
+          width: "100%",
+          height: "auto",
+          maxWidth: "100%",
+          maxHeight: "100%",
+          objectFit: "contain",
+          flexShrink: 0,
+        }}
+        onLoad={() => markFileRead(selectedFile)}
+        onError={() => {
+          console.error("Failed to display policy image:", fileUrl);
+        }}
+      />
+    </div>
+  );
+}
+
 
         /* ===================== PDF ===================== */
         if (isPdf(name)) {

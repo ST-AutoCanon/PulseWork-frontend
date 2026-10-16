@@ -369,6 +369,10 @@
 }
 
 /* Responsive */
+.admin-policy-mobile-add-btn {
+  display: none;
+}
+
 @media (max-width: 768px) {
   .admin-policy-card {
     padding: 20px;
@@ -763,6 +767,28 @@
 @media (max-width: 600px) {
   .policies-grid {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .admin-policy-mobile-add-btn {
+    display: block;
+    width: 100%;
+    min-height: 44px;
+    margin: 0 0 20px;
+    padding: 10px 14px;
+    border: 0;
+    border-radius: 8px;
+    background: #0f4c81;
+    color: #fff;
+    font: inherit;
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  .admin-policy-mobile-add-btn:disabled {
+    background: #94a3b8;
+    cursor: not-allowed;
   }
 }
 
@@ -2235,5 +2261,77 @@
   .file-replace-modal {
     margin: 10px;
     max-width: 100%;
+  }
+}
+
+@media (max-width: 600px) {
+  .admin-policy-modal-overlay {
+    align-items: flex-start;
+    padding: 8px;
+  }
+
+  .admin-policy-view-modal {
+    width: 100%;
+    max-width: none;
+    max-height: calc(100vh - 16px);
+    max-height: calc(100dvh - 16px);
+    border-radius: 10px;
+  }
+
+  .admin-policy-header {
+    gap: 10px;
+    padding: 14px 16px;
+  }
+
+  .admin-policy-form-title {
+    min-width: 0;
+    font-size: 1rem;
+    overflow-wrap: anywhere;
+  }
+
+  .admin-policy-view-body {
+    min-height: 0;
+    padding: 18px 14px;
+  }
+
+  .admin-policy-file-card {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 12px;
+    padding: 14px;
+  }
+
+  .admin-policy-file-actions {
+    width: 100%;
+  }
+
+  .admin-policy-file-actions .admin-policy-btn {
+    flex: 1;
+  }
+
+  .admin-policy-upload-card {
+    padding: 16px 12px;
+  }
+
+  .admin-policy-upload-row {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .admin-policy-upload-select,
+  .admin-policy-upload-input {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .admin-policy-footer {
+    gap: 8px;
+    padding: 12px;
+  }
+
+  .admin-policy-footer button {
+    flex: 1;
+    min-width: 0;
+    padding: 10px 8px;
   }
 }

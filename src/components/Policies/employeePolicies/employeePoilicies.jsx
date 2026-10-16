@@ -51,6 +51,16 @@ const Page = dynamic(
   }
 );
 
+const getPdfContentWidth = (wrapper) => {
+  if (!wrapper) return 1;
+
+  const styles = window.getComputedStyle(wrapper);
+  const horizontalPadding =
+    parseFloat(styles.paddingLeft) + parseFloat(styles.paddingRight);
+
+  return Math.max(1, Math.floor(wrapper.clientWidth - horizontalPadding));
+};
+
 export default function EmployeePolicies() {
   const { user, hydrated } = useAuth();
   
@@ -216,6 +226,7 @@ export default function EmployeePolicies() {
 const [activeTab, setActiveTab] = useState("all"); // "all" | "pending" | "acknowledged"
   const [fileUrl, setFileUrl] = useState(null);
   const [loadingFile, setLoadingFile] = useState(false);
+  const [fileLoadError, setFileLoadError] = useState("");
 const [searchTerm, setSearchTerm] = useState("");
 const [ackChecked, setAckChecked] = useState(false);
 const [isFullscreen, setIsFullscreen] = useState(false);
@@ -230,6 +241,7 @@ const [readSaving, setReadSaving] = useState(false);
 const pdfObserverRef = useRef(null);
 const pdfPageTimers = useRef({});
 const pdfWrapperRef = useRef(null);
+const viewerSectionRef = useRef(null);
 const [videoProgress, setVideoProgress] = useState(0);       // 0 – 100
 const [videoDuration, setVideoDuration] = useState(0);
 const [videoCurrentTime, setVideoCurrentTime] = useState(0);
@@ -270,10 +282,16 @@ useEffect(() => {
 useEffect(() => {
   if (!selectedFile) return;
 
+  const isMobile = window.matchMedia("(max-width: 768px)").matches;
+  const screenshotBlockedTitle = "Screenshot / Screen Recording Not Allowed";
   let hideTimeout = null;
-  let isCurrentlyHidden = false;
 
   const hideContentInstantly = () => {
+    if (hideTimeout) {
+      clearTimeout(hideTimeout);
+      hideTimeout = null;
+    }
+
     const protectedEl = document.querySelector(".viewer-content-protected");
     if (protectedEl) {
       protectedEl.style.filter = "blur(24px)";
@@ -283,15 +301,19 @@ useEffect(() => {
     }
     setIsContentProtected(false);
     setShowCaptureWarning(true);
-    isCurrentlyHidden = true;
   };
 
   const showContent = () => {
-    // Only allow showing content after a short cooldown
-    // (gives time for the user to stop recording)
     if (hideTimeout) clearTimeout(hideTimeout);
+    hideTimeout = null;
+
+    if (document.hidden || (!isMobile && !document.hasFocus())) return;
 
     hideTimeout = setTimeout(() => {
+      hideTimeout = null;
+
+      if (document.hidden || (!isMobile && !document.hasFocus())) return;
+
       const protectedEl = document.querySelector(".viewer-content-protected");
       if (protectedEl) {
         protectedEl.style.filter = "none";
@@ -300,14 +322,18 @@ useEffect(() => {
       }
       setIsContentProtected(true);
       setShowCaptureWarning(false);
-      isCurrentlyHidden = false;
-    }, 1500); // 1.5 s cooldown – adjust as needed
+      setAlertModal((current) =>
+        current.title === screenshotBlockedTitle
+          ? { isVisible: false, title: "", message: "" }
+          : current
+      );
+    }, 1500);
   };
 
   const showScreenshotBlockedPopup = () => {
     setAlertModal({
       isVisible: true,
-      title: "Screenshot / Screen Recording Not Allowed",
+      title: screenshotBlockedTitle,
       message:
         "Taking screenshots or recording the screen while viewing company policies is strictly prohibited.\n\n" +
         "Content will remain hidden until you return to this tab and stop any recording tools.",
@@ -362,11 +388,13 @@ useEffect(() => {
   };
 
   const handleBlur = () => {
+    if (isMobile) return;
     hideContentInstantly();
     showScreenshotBlockedPopup();
   };
 
   const handleFocus = () => {
+    if (isMobile) return;
     // Do NOT immediately show content – wait for cooldown
     showContent();
   };
@@ -401,8 +429,10 @@ useEffect(() => {
 
   // Attach
   document.addEventListener("visibilitychange", handleVisibilityChange);
-  window.addEventListener("blur", handleBlur);
-  window.addEventListener("focus", handleFocus);
+  if (!isMobile) {
+    window.addEventListener("blur", handleBlur);
+    window.addEventListener("focus", handleFocus);
+  }
   document.addEventListener("contextmenu", handleContextMenu);
   document.addEventListener("keydown", handleKeyDown, true);
   document.addEventListener("keyup", handleKeyUp, true);
@@ -410,8 +440,10 @@ useEffect(() => {
   return () => {
     if (hideTimeout) clearTimeout(hideTimeout);
     document.removeEventListener("visibilitychange", handleVisibilityChange);
-    window.removeEventListener("blur", handleBlur);
-    window.removeEventListener("focus", handleFocus);
+    if (!isMobile) {
+      window.removeEventListener("blur", handleBlur);
+      window.removeEventListener("focus", handleFocus);
+    }
     document.removeEventListener("contextmenu", handleContextMenu);
     document.removeEventListener("keydown", handleKeyDown, true);
     document.removeEventListener("keyup", handleKeyUp, true);
@@ -512,14 +544,12 @@ const isFileFullyRead = (file) => {
 
   // Clean up previous object URL
  useEffect(() => {
-  const wrapper = pdfWrapperRef.current;
-  if (!wrapper) return;
+   const wrapper = pdfWrapperRef.current;
+   if (!wrapper) return;
 
-  const updatePdfWidth = () => {
-    // small safety margin so pages never overflow
-    const width = wrapper.clientWidth;
-    setPdfWidth(Math.max(280, width - 48));
-  };
+   const updatePdfWidth = () => {
+     setPdfWidth(getPdfContentWidth(wrapper));
+   };
 
   // measure immediately
   updatePdfWidth();
@@ -536,6 +566,17 @@ const isFileFullyRead = (file) => {
     resizeObserver.disconnect();
   };
 }, [selectedFile, isFullscreen]);
+
+useEffect(() => {
+  if (!selectedFile || !window.matchMedia("(max-width: 768px)").matches) return;
+
+  requestAnimationFrame(() => {
+    viewerSectionRef.current?.scrollIntoView({
+      behavior: "smooth",
+      block: "start",
+    });
+  });
+}, [selectedFile]);
   useEffect(() => {
     return () => {
       if (fileUrl) URL.revokeObjectURL(fileUrl);
@@ -546,10 +587,11 @@ const isFileFullyRead = (file) => {
     if (!file || !user) return;
 
     setLoadingFile(true);
+    setFileLoadError("");
+    setFileUrl(null);
 
     if (fileUrl) {
       URL.revokeObjectURL(fileUrl);
-      setFileUrl(null);
     }
 
     try {
@@ -600,7 +642,7 @@ const isFileFullyRead = (file) => {
 }
     } catch (err) {
       console.error("Failed to load file:", err.response?.data || err);
-      setFileUrl(null);
+      setFileLoadError("Unable to load this file. Please try again.");
     } finally {
       setLoadingFile(false);
     }
@@ -1300,7 +1342,10 @@ const handleViewerScroll = (event) => {
 
       {/* RIGHT – Viewer (only when a file is selected) */}
      {selectedFile && (
-  <div className={`viewer-section ${isFullscreen ? "viewer-fullscreen" : ""}`}>
+  <div
+    ref={viewerSectionRef}
+    className={`viewer-section ${isFullscreen ? "viewer-fullscreen" : ""}`}
+  >
           <div className="viewer-header">
 <span title={getFileName(selectedFile) || "No File Selected"}>
   {getTruncatedFileName(getFileName(selectedFile))}
@@ -1411,7 +1456,9 @@ const handleViewerScroll = (event) => {
       userSelect: "none",
       WebkitUserSelect: "none",
       width: "100%",
-      height: "100%",
+      height: "auto",
+      minHeight: 0,
+      flex: "1 1 auto",
       position: "relative",
     }}
   >
@@ -1437,7 +1484,9 @@ const handleViewerScroll = (event) => {
         </p>
       </div>
     ) : loadingFile ? (
-      <p>Loading...</p>
+      <p className="viewer-file-message">Loading file...</p>
+    ) : fileLoadError ? (
+      <p className="viewer-file-message viewer-file-error">{fileLoadError}</p>
     ) : fileUrl && selectedFile ? (
       (() => {
         const name = getFileName(selectedFile);
@@ -1496,10 +1545,7 @@ const handleViewerScroll = (event) => {
                   }
 
                   requestAnimationFrame(() => {
-                    if (pdfWrapperRef.current) {
-                      const width = pdfWrapperRef.current.clientWidth;
-                      setPdfWidth(Math.max(280, width - 48));
-                    }
+                    setPdfWidth(getPdfContentWidth(pdfWrapperRef.current));
                     setTimeout(() => checkPdfPagesVisibility(), 100);
                   });
                 }}

@@ -376,6 +376,14 @@ const removeDepartment = (departmentId) => {
         );
       })}
     </select>
+    <button
+      type="button"
+      className="admin-policy-mobile-add-btn"
+      onClick={handleEmployeeDoubleClick}
+      disabled={!selectedEmployee}
+    >
+      Add employee
+    </button>
 
     <h4 className="admin-policy-selected-title">
       Selected Employees ({selectedEmployees.length})
@@ -440,6 +448,14 @@ const removeDepartment = (departmentId) => {
   );
 })}
             </select>
+            <button
+              type="button"
+              className="admin-policy-mobile-add-btn"
+              onClick={handleDepartmentDoubleClick}
+              disabled={!selectedDepartment}
+            >
+              Add department and employees
+            </button>
 
             <h4 className="admin-policy-selected-title">
               Selected Departments ({selectedDepartments.length})

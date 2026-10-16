@@ -1813,6 +1813,19 @@
     gap: 12px;
   }
 
+  .policy-grid.layout-three > .policy-section,
+  .policy-grid.layout-three > .file-section,
+  .policy-grid.layout-three > .viewer-section {
+    grid-column: 1 / -1;
+    grid-row: auto;
+  }
+
+  .policy-grid.layout-two > .policy-section,
+  .policy-grid.layout-three > .policy-section,
+  .policy-grid.layout-three > .file-section {
+    display: none;
+  }
+
   .policy-section,
   .file-section,
   .viewer-section {
@@ -1825,6 +1838,12 @@
     min-height: 0;
   }
 
+  .policy-grid.layout-two > .file-section {
+    height: 65vh;
+    height: 65dvh;
+    min-height: 280px;
+  }
+
   .viewer-section {
     height: 65vh;
     height: 65dvh;
@@ -1835,11 +1854,21 @@
   .viewer-body {
     flex: 1 1 auto;
     min-height: 0;
+    width: 100%;
+    min-width: 0;
   }
 
   .viewer-content-protected {
+    width: 100% !important;
     height: 100% !important;
     min-height: 0;
+    min-width: 0;
+    box-sizing: border-box;
+  }
+
+  .media-viewer-wrapper {
+    width: 100% !important;
+    min-width: 0;
   }
 
   .viewer-header {

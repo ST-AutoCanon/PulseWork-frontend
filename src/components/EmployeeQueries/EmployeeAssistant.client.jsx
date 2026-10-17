@@ -533,7 +533,7 @@ const EmployeeAssistant = () => {
     try {
       setLoading(true);
 
-      const response = await axios.get(
+      const assignedResponse = await axios.get(
         `${BACKEND_URL}/requests/assigned-history`,
         {
           headers,
@@ -541,7 +541,33 @@ const EmployeeAssistant = () => {
         },
       );
 
-      const list = response.data?.data || [];
+      let list = assignedResponse.data?.data || [];
+
+      // Admin, CEO, HR and travel operators must also see
+      // travel requests regardless of who raised or owns them.
+      if (isAdmin || isHR || isTravelOperator) {
+        const travelResponse = await axios.get(
+          `${BACKEND_URL}/requests/travel-operations`,
+          {
+            headers,
+            withCredentials: true,
+          },
+        );
+
+        const allTravelRequests = travelResponse.data?.data || [];
+
+        const uniqueRequests = new Map();
+
+        for (const request of [...list, ...allTravelRequests]) {
+          uniqueRequests.set(String(request.id), request);
+        }
+
+        list = [...uniqueRequests.values()].sort(
+          (a, b) =>
+            new Date(b.updated_at || b.created_at || 0) -
+            new Date(a.updated_at || a.created_at || 0),
+        );
+      }
 
       setAllAssignedRequests(Array.isArray(list) ? list : []);
     } catch (error) {
@@ -551,7 +577,15 @@ const EmployeeAssistant = () => {
     } finally {
       setLoading(false);
     }
-  }, [BACKEND_URL, employeeId, orgId, headers]);
+  }, [
+    BACKEND_URL,
+    employeeId,
+    orgId,
+    headers,
+    isAdmin,
+    isHR,
+    isTravelOperator,
+  ]);
 
   const loadRequest = useCallback(
     async (requestId) => {
@@ -2086,7 +2120,9 @@ function RequestConversation({
   const canRequestDateChange =
     request.request_type === "TRAVEL_BOOKING" &&
     request.current_status === "BOOKED" &&
-    (isRequester || request.isTravelParticipant) &&
+    (isRequester ||
+      request.isTravelParticipant ||
+      String(request.created_by_employee_id) === String(employeeId)) &&
     details.dateChangeRequest?.status !== "PENDING";
 
   const canResolveDateChange =
@@ -2197,10 +2233,18 @@ function RequestConversation({
               </div>
 
               <div>
-                <span>Requested by</span>
-
+                <span>Travel for</span>
                 <strong>{request.employee_name || request.employee_id}</strong>
               </div>
+
+              {request.created_by_employee_id &&
+                String(request.created_by_employee_id) !==
+                  String(request.employee_id) && (
+                  <div>
+                    <span>Submitted by (employee ID)</span>
+                    <strong>{request.created_by_employee_id}</strong>
+                  </div>
+                )}
 
               <div>
                 <span>Submitted on</span>

@@ -102,6 +102,7 @@ const EmployeeRequestForm = ({
     requiredDate: "",
     location: "",
     urgency: "",
+    travelForEmployeeId: employeeId || "",
   });
 
   const [file, setFile] = useState(null);
@@ -125,6 +126,14 @@ const EmployeeRequestForm = ({
     message: "",
     buttons: [],
   });
+
+  const normalizedUserRole = String(userRole || "")
+    .toLowerCase()
+    .replace(/[^a-z]/g, "");
+
+  const canRaiseTravelForOthers = ["admin", "hr", "humanresources"].includes(
+    normalizedUserRole,
+  );
 
   const getMinimumRecoveryMonths = () => {
     const requestedAmount = Number(form.amount);
@@ -158,28 +167,63 @@ const EmployeeRequestForm = ({
   };
 
   useEffect(() => {
-    if (type !== "TRAVEL_BOOKING" || !employeeId || !orgId) return;
+    if (!employeeId) return;
+
+    setForm((previous) => ({
+      ...previous,
+      travelForEmployeeId: previous.travelForEmployeeId || employeeId,
+    }));
+  }, [employeeId]);
+
+  useEffect(() => {
+    if (type !== "TRAVEL_BOOKING" || !employeeId || !orgId) {
+      return;
+    }
+
+    const contextEmployeeId = canRaiseTravelForOthers
+      ? form.travelForEmployeeId || employeeId
+      : employeeId;
 
     axios
-      .get(`${process.env.NEXT_PUBLIC_BACKEND_URL}/requests/travel-context`, {
-        headers: {
-          "x-api-key": process.env.NEXT_PUBLIC_API_KEY,
-          "x-org-id": orgId,
-          "x-employee-id": employeeId,
+      .get(
+        `${
+          process.env.NEXT_PUBLIC_BACKEND_URL
+        }/requests/travel-context?forEmployeeId=${encodeURIComponent(
+          contextEmployeeId,
+        )}`,
+        {
+          headers: {
+            "x-api-key": process.env.NEXT_PUBLIC_API_KEY,
+            "x-org-id": orgId,
+
+            // This remains the authenticated actor.
+            // Do not replace it with the selected employee.
+            "x-employee-id": employeeId,
+          },
+          withCredentials: true,
         },
-        withCredentials: true,
-      })
+      )
       .then((response) => {
         const context = response.data?.data || {};
+
         setTravelContext(context);
+
         setForm((previous) => ({
           ...previous,
           governmentId: context.governmentId || "",
           mobileNumber: context.mobileNumber || "",
         }));
       })
-      .catch(() => undefined);
-  }, [employeeId, orgId, type]);
+      .catch((error) => {
+        console.error("Travel context fetch failed:", error);
+      });
+  }, [
+    employeeId,
+    orgId,
+    type,
+    canRaiseTravelForOthers,
+    form.travelForEmployeeId,
+  ]);
 
   useEffect(() => {
     if (type !== "TRAVEL_BOOKING" || !orgId) return;
@@ -557,9 +601,6 @@ const EmployeeRequestForm = ({
           additionalInfo: form.additionalInfo,
           repaymentMonths: Number(form.repaymentMonths),
           recoveryStartMonth: form.recoveryStartMonth,
-
-          // Informational frontend calculation only.
-          // Backend must recalculate this before approval/payroll processing.
           minimumRecoveryMonths: getMinimumRecoveryMonths(),
 
           estimatedMonthlyRecovery: Number(
@@ -567,10 +608,6 @@ const EmployeeRequestForm = ({
           ),
           bankAccount: form.bankAccount,
 
-          /*
-           * These are informational snapshots only.
-           * The backend MUST recalculate them.
-           */
           baseNetSalary: Number(salaryContext.baseNetSalary || 0),
 
           standardMaximum: Number(salaryContext.maximumAdvance || 0),
@@ -626,6 +663,11 @@ const EmployeeRequestForm = ({
         title,
         details,
         file,
+
+        forEmployeeId:
+          type === "TRAVEL_BOOKING" && canRaiseTravelForOthers
+            ? form.travelForEmployeeId || employeeId
+            : employeeId,
       });
 
       onClose();
@@ -790,12 +832,29 @@ const EmployeeRequestForm = ({
         </div>
 
         <div className="request-modal-body">
-          {/* =================================================
-              TRAVEL
-          ================================================= */}
-
           {type === "TRAVEL_BOOKING" && (
             <div className="request-form-grid">
+              {canRaiseTravelForOthers && (
+                <RequestField label="Request travel for" required>
+                  <select
+                    value={form.travelForEmployeeId || employeeId || ""}
+                    onChange={(event) => {
+                      update("travelForEmployeeId", event.target.value);
+                    }}
+                  >
+                    <option value="">Select employee</option>
+
+                    {employees.map((employee) => (
+                      <option
+                        key={employee.employeeId}
+                        value={employee.employeeId}
+                      >
+                        {employee.employeeId} - {employee.name}
+                      </option>
+                    ))}
+                  </select>
+                </RequestField>
+              )}
               <RequestField label="From" required>
                 <InputWithIcon
                   icon={<FiMapPin />}
@@ -1150,10 +1209,6 @@ const EmployeeRequestForm = ({
             </div>
           )}
 
-          {/* =================================================
-              SALARY ADVANCE
-          ================================================= */}
-
           {type === "SALARY_ADVANCE" && (
             <div>
               <div className="salary-advance-limit full">
@@ -1432,10 +1487,6 @@ const EmployeeRequestForm = ({
             </div>
           )}
 
-          {/* =================================================
-              SUPPORTING DOCUMENT
-          ================================================= */}
-
           {type === "SUPPORTING_DOCUMENT" && (
             <div className="request-form-grid">
               <RequestField
@@ -1503,10 +1554,6 @@ const EmployeeRequestForm = ({
               </RequestField>
             </div>
           )}
-
-          {/* =================================================
-              ASSET
-          ================================================= */}
 
           {type === "ASSET_REQUEST" && (
             <div className="request-form-grid">

@@ -228,6 +228,14 @@ function isAdminRole(role) {
   );
 }
 
+function isHrRole(role) {
+  return ["hr", "humanresources"].includes(
+    String(role || "")
+      .toLowerCase()
+      .replace(/[^a-z]/g, ""),
+  );
+}
+
 function isTravelOperatorRole(role) {
   return ["traveldesk", "finance", "financeteam"].includes(
     String(role || "")
@@ -276,6 +284,8 @@ const EmployeeAssistant = () => {
   const [requestMessage, setRequestMessage] = useState("");
 
   const [messageAttachment, setMessageAttachment] = useState(null);
+
+  const isHR = isHrRole(userRole);
 
   const [sendingMessage, setSendingMessage] = useState(false);
   const [dialog, setDialog] = useState({
@@ -404,14 +414,8 @@ const EmployeeAssistant = () => {
         },
       );
 
-      /*
-       * Remove all notifications from the visible panel.
-       */
       setServiceNotifications([]);
 
-      /*
-       * Clear the unread badge.
-       */
       setServiceCounts((previous) => ({
         ...previous,
         notifications: 0,
@@ -433,18 +437,53 @@ const EmployeeAssistant = () => {
     try {
       setLoading(true);
 
-      const endpoint = isEmployee
-        ? `${BACKEND_URL}/requests/mine`
-        : isTravelOperator
-          ? `${BACKEND_URL}/requests/travel-operations`
-          : `${BACKEND_URL}/requests/pending`;
+      let list = [];
 
-      const response = await axios.get(endpoint, {
-        headers,
-        withCredentials: true,
-      });
+      if (isEmployee) {
+        const response = await axios.get(`${BACKEND_URL}/requests/mine`, {
+          headers,
+          withCredentials: true,
+        });
 
-      const list = response.data?.data || [];
+        list = response.data?.data || [];
+      } else if (isAdmin || isHR || isTravelOperator) {
+        const [pendingResponse, travelResponse] = await Promise.all([
+          axios.get(`${BACKEND_URL}/requests/pending`, {
+            headers,
+            withCredentials: true,
+          }),
+
+          axios.get(`${BACKEND_URL}/requests/travel-operations`, {
+            headers,
+            withCredentials: true,
+          }),
+        ]);
+
+        const pendingRequests = pendingResponse.data?.data || [];
+
+        const allTravelRequests = travelResponse.data?.data || [];
+
+        // Keep assigned requests of every type while adding
+        // all travel requests, with no duplicate request IDs.
+        const uniqueRequests = new Map();
+
+        for (const request of [...pendingRequests, ...allTravelRequests]) {
+          uniqueRequests.set(String(request.id), request);
+        }
+
+        list = [...uniqueRequests.values()].sort(
+          (a, b) =>
+            new Date(b.updated_at || b.created_at || 0) -
+            new Date(a.updated_at || a.created_at || 0),
+        );
+      } else {
+        const response = await axios.get(`${BACKEND_URL}/requests/pending`, {
+          headers,
+          withCredentials: true,
+        });
+
+        list = response.data?.data || [];
+      }
 
       setRequests(Array.isArray(list) ? list : []);
     } catch (error) {
@@ -454,7 +493,16 @@ const EmployeeAssistant = () => {
     } finally {
       setLoading(false);
     }
-  }, [BACKEND_URL, employeeId, orgId, headers, isEmployee, isTravelOperator]);
+  }, [
+    BACKEND_URL,
+    employeeId,
+    orgId,
+    headers,
+    isEmployee,
+    isAdmin,
+    isHR,
+    isTravelOperator,
+  ]);
 
   const fetchOwnRequests = useCallback(async () => {
     if (!employeeId || !orgId || !BACKEND_URL) return;
@@ -485,7 +533,7 @@ const EmployeeAssistant = () => {
     try {
       setLoading(true);
 
-      const response = await axios.get(
+      const assignedResponse = await axios.get(
         `${BACKEND_URL}/requests/assigned-history`,
         {
           headers,
@@ -493,7 +541,33 @@ const EmployeeAssistant = () => {
         },
       );
 
-      const list = response.data?.data || [];
+      let list = assignedResponse.data?.data || [];
+
+      // Admin, CEO, HR and travel operators must also see
+      // travel requests regardless of who raised or owns them.
+      if (isAdmin || isHR || isTravelOperator) {
+        const travelResponse = await axios.get(
+          `${BACKEND_URL}/requests/travel-operations`,
+          {
+            headers,
+            withCredentials: true,
+          },
+        );
+
+        const allTravelRequests = travelResponse.data?.data || [];
+
+        const uniqueRequests = new Map();
+
+        for (const request of [...list, ...allTravelRequests]) {
+          uniqueRequests.set(String(request.id), request);
+        }
+
+        list = [...uniqueRequests.values()].sort(
+          (a, b) =>
+            new Date(b.updated_at || b.created_at || 0) -
+            new Date(a.updated_at || a.created_at || 0),
+        );
+      }
 
       setAllAssignedRequests(Array.isArray(list) ? list : []);
     } catch (error) {
@@ -503,7 +577,15 @@ const EmployeeAssistant = () => {
     } finally {
       setLoading(false);
     }
-  }, [BACKEND_URL, employeeId, orgId, headers]);
+  }, [
+    BACKEND_URL,
+    employeeId,
+    orgId,
+    headers,
+    isAdmin,
+    isHR,
+    isTravelOperator,
+  ]);
 
   const loadRequest = useCallback(
     async (requestId) => {
@@ -539,9 +621,6 @@ const EmployeeAssistant = () => {
       try {
         if (!notification?.id) return;
 
-        /*
-         * Mark the notification as read on the server.
-         */
         if (!Number(notification.is_read)) {
           await axios.patch(
             `${BACKEND_URL}/requests/service-notifications/${notification.id}/read`,
@@ -553,18 +632,12 @@ const EmployeeAssistant = () => {
           );
         }
 
-        /*
-         * Immediately remove it from the visible notification panel.
-         */
         setServiceNotifications((previous) =>
           previous.filter(
             (item) => String(item.id) !== String(notification.id),
           ),
         );
 
-        /*
-         * Update the unread badge.
-         */
         setServiceCounts((previous) => ({
           ...previous,
           notifications: notification.is_read
@@ -572,14 +645,8 @@ const EmployeeAssistant = () => {
             : Math.max(0, previous.notifications - 1),
         }));
 
-        /*
-         * Close the notification panel.
-         */
         setShowNotifications(false);
 
-        /*
-         * Open the associated request.
-         */
         if (notification.request_id) {
           await loadRequest(notification.request_id);
         }
@@ -713,7 +780,13 @@ const EmployeeAssistant = () => {
     });
   };
 
-  const submitRequest = async ({ requestType, title, details, file }) => {
+  const submitRequest = async ({
+    requestType,
+    title,
+    details,
+    file,
+    forEmployeeId,
+  }) => {
     if (!employeeId || !orgId) {
       throw new Error("Employee or organization information is missing.");
     }
@@ -722,6 +795,9 @@ const EmployeeAssistant = () => {
     payload.append("requestType", requestType);
     payload.append("title", title);
     payload.append("details", JSON.stringify(details));
+    if (requestType === "TRAVEL_BOOKING") {
+      payload.append("forEmployeeId", String(forEmployeeId || employeeId));
+    }
     if (file) payload.append("attachment", file);
 
     const response = await axios.post(`${BACKEND_URL}/requests`, payload, {
@@ -853,13 +929,6 @@ const EmployeeAssistant = () => {
       "Do you want to continue?",
     ].join("\n");
 
-    /*
-     * Supervisor:
-     * show confirmation only for exception requests.
-     *
-     * Admin:
-     * always confirm because this activates payroll recovery.
-     */
     if (isException || isAdminFinal) {
       setDialog({
         isVisible: true,
@@ -924,7 +993,6 @@ const EmployeeAssistant = () => {
       return;
     }
 
-    // A new file OR an already-saved draft attachment is acceptable.
     if (!bookingForm.ticket && !bookingForm.ticketAttachment?.id) {
       showAlert("Please upload the e-ticket PDF.");
       return;
@@ -941,10 +1009,6 @@ const EmployeeAssistant = () => {
       formData.append("returnTime", bookingForm.returnTime || "");
       formData.append("message", bookingForm.message || "");
 
-      // Only send a file when the user selected a new file.
-      //
-      // If no new file was selected, the backend will reuse the
-      // already-saved E-Ticket attachment from the draft.
       if (bookingForm.ticket) {
         formData.append("e_ticket", bookingForm.ticket);
       }
@@ -1044,10 +1108,8 @@ const EmployeeAssistant = () => {
 
       message: details.bookingMessage || "",
 
-      // Browser security prevents restoring a File object.
       ticket: null,
 
-      // Keep the server-side attachment separately.
       ticketAttachment: savedTicket,
     }));
   }, [
@@ -1081,24 +1143,109 @@ const EmployeeAssistant = () => {
     }
   };
 
+  const requestTravelDateChange = async (payload) => {
+    if (!selectedRequest) return;
+
+    try {
+      await axios.post(
+        `${BACKEND_URL}/requests/${selectedRequest.id}/date-change`,
+        payload,
+        {
+          headers,
+          withCredentials: true,
+        },
+      );
+
+      await fetchRequests();
+      await loadRequest(selectedRequest.id);
+    } catch (error) {
+      console.error("[EmployeeAssistant] requestTravelDateChange:", error);
+
+      showAlert(
+        error.response?.data?.message ||
+          "Unable to submit the date-change request.",
+      );
+    }
+  };
+
+  const resolveTravelDateChange = async ({
+    decision,
+    comment = "",
+    ticket = null,
+  }) => {
+    if (!selectedRequest) return;
+
+    try {
+      const payload = new FormData();
+
+      payload.append("decision", decision);
+      payload.append("comment", comment);
+
+      if (ticket) {
+        payload.append("e_ticket", ticket);
+      }
+
+      await axios.post(
+        `${BACKEND_URL}/requests/${selectedRequest.id}/date-change/resolve`,
+        payload,
+        {
+          headers,
+          withCredentials: true,
+        },
+      );
+
+      await fetchRequests();
+      await loadRequest(selectedRequest.id);
+    } catch (error) {
+      console.error("[EmployeeAssistant] resolveTravelDateChange:", error);
+
+      showAlert(
+        error.response?.data?.message || "Unable to process the date change.",
+      );
+    }
+  };
+
   const cancelRequest = async () => {
     if (!selectedRequest) return;
 
+    const isBookedSharedTravel =
+      selectedRequest.request_type === "TRAVEL_BOOKING" &&
+      selectedRequest.current_status === "BOOKED";
+
+    const additionalTravellerCount =
+      selectedRequest.travelParticipants?.length || 0;
+
+    const message = isBookedSharedTravel
+      ? [
+          "This travel request has a booked ticket.",
+          "",
+          `The request includes the main traveller and ${additionalTravellerCount} additional internal traveller(s).`,
+          "",
+          "Cancelling this request will affect the shared travel request for the entire group.",
+          "",
+          "Airline, railway, or accommodation cancellation charges, refund restrictions, or forfeiture may apply according to the provider's rules.",
+          "",
+          "The HRMS records the cancellation but does not automatically cancel the provider's reservation. HR/Admin must coordinate the actual cancellation.",
+          "",
+          "Do you understand these consequences and want to cancel?",
+        ].join("\n")
+      : "Are you sure you want to cancel this request?";
+
     setDialog({
       isVisible: true,
-      title: "Cancel request",
-      message: "Are you sure you want to cancel this request?",
+      title: isBookedSharedTravel ? "Cancel booked travel" : "Cancel request",
+      message,
       buttons: [
         {
           label: "Keep request",
-          onClick: () => setDialog((prev) => ({ ...prev, isVisible: false })),
+          onClick: closeDialog,
         },
         {
           label: "Cancel request",
           className: "ac-modal-btn ac-modal-btn-danger",
           onClick: async () => {
-            setDialog((prev) => ({ ...prev, isVisible: false }));
-            await performCancelRequest();
+            closeDialog();
+            await performCancelRequest(isBookedSharedTravel);
           },
         },
       ],
@@ -1158,13 +1305,15 @@ const EmployeeAssistant = () => {
   const closeDialog = () =>
     setDialog({ isVisible: false, title: "", message: "", buttons: [] });
 
-  const performCancelRequest = async () => {
+  const performCancelRequest = async (confirmConsequences = false) => {
     if (!selectedRequest) return;
 
     try {
       await axios.post(
         `${BACKEND_URL}/requests/${selectedRequest.id}/cancel`,
-        {},
+        {
+          confirmConsequences,
+        },
         { headers, withCredentials: true },
       );
       await fetchRequests();
@@ -1498,10 +1647,6 @@ const EmployeeAssistant = () => {
 
   return (
     <div className="employee-assistant">
-      {/* ==================================================
-          HEADER
-      ================================================== */}
-
       <header className="assistant-header">
         <div className="assistant-brand">
           <div className="assistant-logo">✦</div>
@@ -1667,6 +1812,9 @@ const EmployeeAssistant = () => {
             setRequestMessage={setRequestMessage}
             sendRequestMessage={sendRequestMessage}
             sendingMessage={sendingMessage}
+            isHR={isHR}
+            requestTravelDateChange={requestTravelDateChange}
+            resolveTravelDateChange={resolveTravelDateChange}
             onBack={() => {
               setSelectedRequest(null);
               setShowRequestHistory(true);
@@ -1919,16 +2067,13 @@ function RequestHistory({
   );
 }
 
-/* ==========================================================
-   REQUEST CONVERSATION
-========================================================== */
-
 function RequestConversation({
   request,
   loading,
   employeeId,
   userRole,
   isAdmin,
+  isHR,
   isTravelOperator,
   actionComment,
   setActionComment,
@@ -1944,12 +2089,49 @@ function RequestConversation({
   processAssetRequest,
   assetAllocation,
   loadAssetCandidates,
+  requestTravelDateChange,
+  resolveTravelDateChange,
   onBack,
 }) {
   const details = normalizeDetails(request?.details_json);
+
+  const [dateChangeForm, setDateChangeForm] = useState({
+    travelDate: "",
+    returnDate: "",
+    reason: "",
+  });
+
+  const [dateChangeTicket, setDateChangeTicket] = useState(null);
+
+  useEffect(() => {
+    setDateChangeForm({
+      travelDate: details.travelDate || "",
+      returnDate: details.returnDate || "",
+      reason: "",
+    });
+
+    setDateChangeTicket(null);
+  }, [request?.id, details.travelDate, details.returnDate]);
+
   const [offlineAssetNote, setOfflineAssetNote] = useState("");
 
   const isRequester = String(request.employee_id) === String(employeeId);
+
+  const canRequestDateChange =
+    request.request_type === "TRAVEL_BOOKING" &&
+    request.current_status === "BOOKED" &&
+    (isRequester ||
+      request.isTravelParticipant ||
+      String(request.created_by_employee_id) === String(employeeId)) &&
+    details.dateChangeRequest?.status !== "PENDING";
+
+  const canResolveDateChange =
+    request.request_type === "TRAVEL_BOOKING" &&
+    request.current_status === "BOOKED" &&
+    details.dateChangeRequest?.status === "PENDING" &&
+    (isAdmin || isHR);
+
+  const dateChange = details.dateChangeRequest || null;
 
   const isCurrentAssignee =
     String(request.current_assignee_id) === String(employeeId);
@@ -1967,8 +2149,7 @@ function RequestConversation({
       : "Supervisor Approval";
 
   const canBookTravel =
-    (isAdmin || isTravelOperator) &&
-    isCurrentAssignee &&
+    (isAdmin || isHR || (isTravelOperator && isCurrentAssignee)) &&
     request.current_status === "PENDING_ADMIN_ACTION" &&
     request.request_type === "TRAVEL_BOOKING";
 
@@ -1978,8 +2159,11 @@ function RequestConversation({
     request.request_type === "TRAVEL_BOOKING";
 
   const canCancel =
-    isRequester &&
-    !["COMPLETED", "REJECTED", "CANCELLED"].includes(request.current_status);
+    !["COMPLETED", "REJECTED", "CANCELLED"].includes(request.current_status) &&
+    (isRequester ||
+      request.isTravelParticipant ||
+      String(request.created_by_employee_id) === String(employeeId) ||
+      (request.request_type === "TRAVEL_BOOKING" && (isAdmin || isHR)));
 
   const status = getStatus(request.current_status);
 
@@ -2024,8 +2208,6 @@ function RequestConversation({
             </div>
           </div>
 
-          {/* Request card */}
-
           <section className="request-detail-card">
             <div className="request-detail-header">
               <div className="request-detail-icon">
@@ -2051,10 +2233,18 @@ function RequestConversation({
               </div>
 
               <div>
-                <span>Requested by</span>
-
+                <span>Travel for</span>
                 <strong>{request.employee_name || request.employee_id}</strong>
               </div>
+
+              {request.created_by_employee_id &&
+                String(request.created_by_employee_id) !==
+                  String(request.employee_id) && (
+                  <div>
+                    <span>Submitted by (employee ID)</span>
+                    <strong>{request.created_by_employee_id}</strong>
+                  </div>
+                )}
 
               <div>
                 <span>Submitted on</span>
@@ -2087,8 +2277,6 @@ function RequestConversation({
                 Cancel request
               </button>
             )}
-
-            {/* Supervisor approval */}
 
             {canApprove && (
               <div className="workflow-action-card supervisor-action">
@@ -2130,8 +2318,6 @@ function RequestConversation({
                 </div>
               </div>
             )}
-
-            {/* Admin travel booking */}
 
             {canBookTravel && (
               <div className="workflow-action-card booking-action">
@@ -2290,8 +2476,6 @@ function RequestConversation({
               </div>
             )}
 
-            {/* Non-travel admin action */}
-
             {isAdmin &&
               isCurrentAssignee &&
               request.current_status === "PENDING_ADMIN_ACTION" &&
@@ -2381,8 +2565,6 @@ function RequestConversation({
                 </div>
               )}
 
-            {/* Booking details */}
-
             {request.current_status === "BOOKED" &&
               request.request_type === "TRAVEL_BOOKING" && (
                 <BookingDetails
@@ -2394,7 +2576,186 @@ function RequestConversation({
 
             <RequestAttachments request={request} employeeId={employeeId} />
 
-            {/* Final employee confirmation */}
+            {canRequestDateChange && (
+              <section className="booking-details-card">
+                <div className="summary-heading">
+                  <h3>Change Travel Dates</h3>
+                </div>
+
+                <p>
+                  Submit a prepone or postpone request. The current booking
+                  stays unchanged until HR/Admin reviews it.
+                </p>
+
+                <label>
+                  Proposed travel date
+                  <input
+                    type="date"
+                    value={dateChangeForm.travelDate}
+                    required
+                    onChange={(event) =>
+                      setDateChangeForm((previous) => ({
+                        ...previous,
+                        travelDate: event.target.value,
+                      }))
+                    }
+                  />
+                </label>
+
+                <label>
+                  Proposed return date
+                  <input
+                    type="date"
+                    min={dateChangeForm.travelDate || undefined}
+                    value={dateChangeForm.returnDate}
+                    onChange={(event) =>
+                      setDateChangeForm((previous) => ({
+                        ...previous,
+                        returnDate: event.target.value,
+                      }))
+                    }
+                  />
+                </label>
+
+                <label>
+                  Reason for changing the dates
+                  <textarea
+                    value={dateChangeForm.reason}
+                    required
+                    onChange={(event) =>
+                      setDateChangeForm((previous) => ({
+                        ...previous,
+                        reason: event.target.value,
+                      }))
+                    }
+                    placeholder="Explain why the dates need to change"
+                  />
+                </label>
+
+                <button
+                  type="button"
+                  className="upload-notify-button"
+                  disabled={
+                    !dateChangeForm.travelDate || !dateChangeForm.reason.trim()
+                  }
+                  onClick={() => requestTravelDateChange(dateChangeForm)}
+                >
+                  Submit date-change request
+                </button>
+              </section>
+            )}
+
+            {dateChange && (
+              <section className="booking-details-card">
+                <div className="summary-heading">
+                  <h3>Travel Date Change</h3>
+                </div>
+
+                <p>
+                  Status: <strong>{dateChange.status}</strong>
+                </p>
+
+                <p>Requested change: {dateChange.direction}</p>
+
+                <p>
+                  Original travel date:{" "}
+                  {formatShortDate(dateChange.previousTravelDate)}
+                </p>
+
+                <p>
+                  Proposed travel date:{" "}
+                  {formatShortDate(dateChange.requestedTravelDate)}
+                </p>
+
+                {dateChange.previousReturnDate && (
+                  <p>
+                    Original return date:{" "}
+                    {formatShortDate(dateChange.previousReturnDate)}
+                  </p>
+                )}
+
+                {dateChange.requestedReturnDate && (
+                  <p>
+                    Proposed return date:{" "}
+                    {formatShortDate(dateChange.requestedReturnDate)}
+                  </p>
+                )}
+
+                <p>Reason: {dateChange.reason || "—"}</p>
+
+                {dateChange.resolutionComment && (
+                  <p>HR/Admin comment: {dateChange.resolutionComment}</p>
+                )}
+              </section>
+            )}
+
+            {canResolveDateChange && (
+              <section className="booking-details-card">
+                <div className="summary-heading">
+                  <h3>Review Date Change</h3>
+                </div>
+
+                <p>
+                  A traveller has requested a date change. Approval requires a
+                  revised e-ticket.
+                </p>
+
+                <label>
+                  Upload revised e-ticket
+                  <input
+                    type="file"
+                    accept=".pdf,.png,.jpg,.jpeg"
+                    onChange={(event) =>
+                      setDateChangeTicket(event.target.files?.[0] || null)
+                    }
+                  />
+                </label>
+
+                <label>
+                  HR/Admin comment
+                  <textarea
+                    value={dateChangeForm.reason}
+                    onChange={(event) =>
+                      setDateChangeForm((previous) => ({
+                        ...previous,
+                        reason: event.target.value,
+                      }))
+                    }
+                    placeholder="Add the decision reason or comment"
+                  />
+                </label>
+
+                <div className="booking-action-buttons">
+                  <button
+                    type="button"
+                    className="cancel-request-button"
+                    onClick={() =>
+                      resolveTravelDateChange({
+                        decision: "REJECT",
+                        comment: dateChangeForm.reason,
+                      })
+                    }
+                  >
+                    Reject date change
+                  </button>
+
+                  <button
+                    type="button"
+                    className="upload-notify-button"
+                    disabled={!dateChangeTicket}
+                    onClick={() =>
+                      resolveTravelDateChange({
+                        decision: "APPROVE",
+                        comment: dateChangeForm.reason,
+                        ticket: dateChangeTicket,
+                      })
+                    }
+                  >
+                    Approve and upload ticket
+                  </button>
+                </div>
+              </section>
+            )}
 
             {canComplete && (
               <div className="workflow-action-card completion-action">
@@ -2423,8 +2784,6 @@ function RequestConversation({
               </div>
             )}
 
-            {/* Completed */}
-
             {request.current_status === "COMPLETED" && (
               <div className="workflow-success-card">
                 <FiCheckCircle />
@@ -2445,8 +2804,6 @@ function RequestConversation({
               </div>
             )}
 
-            {/* Rejected */}
-
             {request.current_status === "REJECTED" && (
               <div className="workflow-rejected-card">
                 <FiXCircle />
@@ -2463,11 +2820,7 @@ function RequestConversation({
             )}
           </section>
 
-          {/* Timeline */}
-
           <RequestTimeline events={request.events || []} />
-
-          {/* Messages */}
 
           <RequestMessages
             messages={request.messages || []}
@@ -2641,10 +2994,6 @@ function SalaryAdvanceReview({ request }) {
   );
 }
 
-/* ==========================================================
-   REQUEST SUMMARY
-========================================================== */
-
 function RequestSummary({ request }) {
   const details = normalizeDetails(request.details_json);
 
@@ -2794,10 +3143,6 @@ function SummaryField({ label, value, full = false }) {
   );
 }
 
-/* ==========================================================
-   BOOKING DETAILS
-========================================================== */
-
 function BookingDetails({ details, request, employeeId }) {
   return (
     <div className="booking-details-card">
@@ -2852,12 +3197,6 @@ function BookingDetails({ details, request, employeeId }) {
               const API_KEY = process.env.NEXT_PUBLIC_API_KEY;
 
               const url = `${base}/requests/${request.id}/attachments/${details.eTicketAttachmentId}`;
-
-              /*
-                The application's existing
-                auth middleware requires headers,
-                so download through fetch.
-              */
 
               fetch(url, {
                 headers: {
@@ -2987,10 +3326,6 @@ function AssetCandidateList({ title, assets, onAssign, emptyMessage }) {
     </div>
   );
 }
-
-/* ==========================================================
-   TIMELINE
-========================================================== */
 
 function RequestTimeline({ events }) {
   if (!events?.length) {

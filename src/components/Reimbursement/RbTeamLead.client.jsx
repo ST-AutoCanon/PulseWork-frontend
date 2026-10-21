@@ -118,6 +118,10 @@ const RbTeamLead = () => {
   const [comments, setComments] = useState({});
   const [statusFilter, setStatusFilter] = useState("pending");
   const [searchQuery, setSearchQuery] = useState("");
+  const [selectedClaims, setSelectedClaims] = useState({}); // { [claimId]: true }
+  const [bulkUpdating, setBulkUpdating] = useState(false);
+  const [bulkComment, setBulkComment] = useState("");
+  const [bulkProject, setBulkProject] = useState("");
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const [selectedPaymentClaim, setSelectedPaymentClaim] = useState(null);
   const [selectedPaymentOption, setSelectedPaymentOption] = useState("");
@@ -1182,6 +1186,160 @@ const RbTeamLead = () => {
       }
     }
   };
+
+  const isClaimPending = (claim) =>
+    String(claim?.status || "")
+      .toLowerCase()
+      .trim() === "pending";
+
+  const toggleClaimSelection = (claimId, claim) => {
+    if (!isClaimPending(claim)) return;
+    setSelectedClaims((prev) => {
+      const next = { ...prev };
+      if (next[claimId]) delete next[claimId];
+      else next[claimId] = true;
+      return next;
+    });
+  };
+
+  const getPendingClaimsForEmployee = (empClaims = []) =>
+    (empClaims || []).filter(isClaimPending);
+
+  const toggleSelectAllForEmployee = (empClaims = []) => {
+    const pending = getPendingClaimsForEmployee(empClaims);
+    if (!pending.length) return;
+    const allSelected = pending.every((c) => selectedClaims[c.id]);
+    setSelectedClaims((prev) => {
+      const next = { ...prev };
+      if (allSelected) {
+        pending.forEach((c) => delete next[c.id]);
+      } else {
+        pending.forEach((c) => {
+          next[c.id] = true;
+        });
+      }
+      return next;
+    });
+  };
+
+  const getSelectedPendingIdsForEmployee = (empClaims = []) =>
+    getPendingClaimsForEmployee(empClaims)
+      .filter((c) => selectedClaims[c.id])
+      .map((c) => c.id);
+
+  const clearSelectionForEmployee = (empClaims = []) => {
+    const ids = getPendingClaimsForEmployee(empClaims).map((c) => c.id);
+    setSelectedClaims((prev) => {
+      const next = { ...prev };
+      ids.forEach((id) => delete next[id]);
+      return next;
+    });
+  };
+
+  const bulkUpdateStatus = async (empClaims, status) => {
+    if (!status || !["approved", "rejected"].includes(status)) {
+      showAlert("Invalid bulk status.");
+      return;
+    }
+
+    const selectedIds = getSelectedPendingIdsForEmployee(empClaims);
+    if (!selectedIds.length) {
+      showAlert("Please select at least one pending claim.");
+      return;
+    }
+
+    const claimsById = {};
+    (empClaims || []).forEach((c) => {
+      claimsById[c.id] = c;
+    });
+
+    const resolveProjectForClaim = (claimId) => {
+      if (bulkProject && !isInvalidProject(bulkProject)) {
+        return String(bulkProject).trim();
+      }
+      const raw =
+        projectSelections[claimId] !== undefined &&
+        projectSelections[claimId] !== null &&
+        String(projectSelections[claimId]).trim() !== ""
+          ? projectSelections[claimId]
+          : claimsById[claimId]?.project || "";
+      return isInvalidProject(raw) ? "" : String(raw).trim();
+    };
+
+    // Project is preferred but not strictly required for team lead path if backend allows empty
+    // Still warn if all lack project when bulkProject not set
+    const missingProject = selectedIds.filter(
+      (id) => !resolveProjectForClaim(id),
+    );
+    if (missingProject.length && !bulkProject) {
+      // soft warn — allow proceed with empty project (matches single update which can send "")
+      console.warn("Some selected claims have no project set:", missingProject);
+    }
+
+    setBulkUpdating(true);
+    const actor = getEmployeeIdFromContextOrCookie(user) || teamLeadId || "";
+    const approverComment = bulkComment || "";
+    let successCount = 0;
+    let failCount = 0;
+
+    for (const id of selectedIds) {
+      const project = resolveProjectForClaim(id);
+      try {
+        const url = `${backendBase ? backendBase : ""}/reimbursement/${id}/status`;
+        const headers = {
+          ...buildHeaders(),
+          "Content-Type": "application/json",
+        };
+        if (!headers["x-employee-id"] && actor)
+          headers["x-employee-id"] = String(actor).trim();
+        if (!headers["x-org-id"] && orgId)
+          headers["x-org-id"] = String(orgId).trim();
+
+        await axios.put(
+          url,
+          {
+            status,
+            approver_comments: approverComment,
+            approver_id: actor || undefined,
+            project,
+          },
+          { withCredentials: true, headers },
+        );
+        successCount += 1;
+      } catch (error) {
+        failCount += 1;
+        console.error(
+          "Bulk status update failed for claim",
+          id,
+          error?.response?.data || error?.message || error,
+        );
+      }
+    }
+
+    if (successCount > 0) {
+      setSelectedClaims((prev) => {
+        const next = { ...prev };
+        selectedIds.forEach((id) => delete next[id]);
+        return next;
+      });
+      setBulkComment("");
+      setBulkProject("");
+      await fetchEmployees();
+    }
+
+    setBulkUpdating(false);
+
+    if (failCount === 0) {
+      showAlert(`${successCount} claim(s) ${status} successfully.`);
+    } else if (successCount === 0) {
+      showAlert("Bulk status update failed. Please try again.");
+    } else {
+      showAlert(
+        `${successCount} claim(s) ${status} successfully. ${failCount} failed.`,
+      );
+    }
+  };
+
   const updatePaymentStatus = async (claimIdParam, paymentOptionParam) => {
     try {
       const claimId =
@@ -1454,9 +1612,137 @@ const RbTeamLead = () => {
                   {expandedRows[employee.employee_id] && (
                     <div className="reimbursement-table-scroll">
                       <div className="rb-sub-container">
+                        {(() => {
+                          const pendingForEmp =
+                            getPendingClaimsForEmployee(filteredClaims);
+                          const selectedCount =
+                            getSelectedPendingIdsForEmployee(
+                              filteredClaims,
+                            ).length;
+                          const allPendingSelected =
+                            pendingForEmp.length > 0 &&
+                            pendingForEmp.every((c) => selectedClaims[c.id]);
+                          if (!pendingForEmp.length) return null;
+                          return (
+                            <div className="rb-bulk-bar">
+                              <label className="rb-bulk-select-all">
+                                <input
+                                  type="checkbox"
+                                  checked={allPendingSelected}
+                                  onChange={() =>
+                                    toggleSelectAllForEmployee(filteredClaims)
+                                  }
+                                  disabled={bulkUpdating}
+                                />
+                                Select all pending ({pendingForEmp.length})
+                              </label>
+                              {selectedCount > 0 && (
+                                <>
+                                  <span className="rb-bulk-count">
+                                    {selectedCount} selected
+                                  </span>
+                                  <select
+                                    className="rb-status-dropdown rb-bulk-project"
+                                    value={bulkProject}
+                                    onChange={(e) =>
+                                      setBulkProject(e.target.value)
+                                    }
+                                    disabled={bulkUpdating}
+                                    title="Optional: apply this project to all selected"
+                                  >
+                                    <option value="">
+                                      Project (optional override)
+                                    </option>
+                                    {orgClaimLabel && (
+                                      <option value={orgClaimLabel}>
+                                        {orgClaimLabel}
+                                      </option>
+                                    )}
+                                    {safeProjects.map((project, idx) => (
+                                      <option key={idx} value={project}>
+                                        {project}
+                                      </option>
+                                    ))}
+                                  </select>
+                                  <input
+                                    type="text"
+                                    className="rb-bulk-comment"
+                                    placeholder="Bulk comments (optional)"
+                                    value={bulkComment}
+                                    onChange={(e) =>
+                                      setBulkComment(e.target.value)
+                                    }
+                                    disabled={bulkUpdating}
+                                  />
+                                  <button
+                                    type="button"
+                                    className="rb-bulk-btn rb-bulk-approve"
+                                    disabled={bulkUpdating}
+                                    onClick={() =>
+                                      bulkUpdateStatus(
+                                        filteredClaims,
+                                        "approved",
+                                      )
+                                    }
+                                  >
+                                    {bulkUpdating
+                                      ? "Updating…"
+                                      : `Approve (${selectedCount})`}
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className="rb-bulk-btn rb-bulk-reject"
+                                    disabled={bulkUpdating}
+                                    onClick={() =>
+                                      bulkUpdateStatus(
+                                        filteredClaims,
+                                        "rejected",
+                                      )
+                                    }
+                                  >
+                                    {bulkUpdating
+                                      ? "Updating…"
+                                      : `Reject (${selectedCount})`}
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className="rb-bulk-btn rb-bulk-clear"
+                                    disabled={bulkUpdating}
+                                    onClick={() =>
+                                      clearSelectionForEmployee(filteredClaims)
+                                    }
+                                  >
+                                    Clear
+                                  </button>
+                                </>
+                              )}
+                            </div>
+                          );
+                        })()}
                         <table className="rb-sub-table">
                           <thead>
                             <tr>
+                              <th className="rb-checkbox-col">
+                                {getPendingClaimsForEmployee(filteredClaims)
+                                  .length > 0 ? (
+                                  <input
+                                    type="checkbox"
+                                    checked={
+                                      getPendingClaimsForEmployee(
+                                        filteredClaims,
+                                      ).length > 0 &&
+                                      getPendingClaimsForEmployee(
+                                        filteredClaims,
+                                      ).every((c) => selectedClaims[c.id])
+                                    }
+                                    onChange={() =>
+                                      toggleSelectAllForEmployee(filteredClaims)
+                                    }
+                                    disabled={bulkUpdating}
+                                    title="Select all pending"
+                                  />
+                                ) : null}
+                              </th>
                               <th>Sl No</th>
                               <th>Claim Type</th>
                               <th>Date</th>
@@ -1534,6 +1820,20 @@ const RbTeamLead = () => {
                                   }
                                 >
                                   <tr className="claim-main-row">
+                                    <td className="rb-checkbox-col">
+                                      {isClaimPending(rb) ? (
+                                        <input
+                                          type="checkbox"
+                                          checked={!!selectedClaims[rb.id]}
+                                          onChange={() =>
+                                            toggleClaimSelection(rb.id, rb)
+                                          }
+                                          disabled={bulkUpdating}
+                                          onClick={(e) => e.stopPropagation()}
+                                          title="Select for bulk action"
+                                        />
+                                      ) : null}
+                                    </td>
                                     <td>
                                       <button
                                         type="button"
@@ -1869,6 +2169,7 @@ const RbTeamLead = () => {
                                           key={`line-${rb.id}-${line.id ?? li}`}
                                           className="claim-line-row"
                                         >
+                                          <td className="rb-checkbox-col"></td>
                                           <td></td>
                                           <td></td>
                                           <td>

@@ -374,6 +374,111 @@ td:hover {
   right: auto;
 }
 
+/* Bulk approval / reject styles – append to RbAdmin.css / RbTeamLead.css */
+
+.rb-bulk-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  margin-bottom: 8px;
+  background: #f7faf5;
+  border: 1px solid #d4e8c2;
+  border-radius: 6px;
+}
+
+.rb-bulk-select-all {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.rb-bulk-count {
+  font-size: 13px;
+  color: #555;
+  font-weight: 500;
+}
+
+.rb-bulk-project {
+  min-width: 160px;
+  height: 32px;
+}
+
+.rb-bulk-comment {
+  min-width: 160px;
+  padding: 5px 8px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  height: 28px;
+  font-size: 13px;
+}
+
+.rb-bulk-btn {
+  border: none;
+  padding: 6px 14px;
+  border-radius: 5px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  height: 32px;
+  white-space: nowrap;
+}
+
+.rb-bulk-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.rb-bulk-approve {
+  background-color: #0f9d58;
+  color: #fff;
+}
+
+.rb-bulk-approve:hover:not(:disabled) {
+  background-color: #0b7a44;
+}
+
+.rb-bulk-reject {
+  background-color: #d32f2f;
+  color: #fff;
+}
+
+.rb-bulk-reject:hover:not(:disabled) {
+  background-color: #b71c1c;
+}
+
+.rb-bulk-clear {
+  background-color: #e0e0e0;
+  color: #333;
+}
+
+.rb-bulk-clear:hover:not(:disabled) {
+  background-color: #bdbdbd;
+}
+
+.rb-checkbox-col {
+  width: 36px;
+  min-width: 36px;
+  text-align: center !important;
+  vertical-align: middle;
+}
+
+.rb-checkbox-col input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  accent-color: #79c42b;
+}
+
+.claim-main-row:has(input[type="checkbox"]:checked) {
+  background-color: #f0f9e8;
+}
+
 @media (max-width: 600px) {
   .invoice-cell,
   .rb-sub-table .invoice-cell {

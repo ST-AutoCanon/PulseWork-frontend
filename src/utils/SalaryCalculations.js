@@ -615,16 +615,19 @@ if (planData.isOtherAllowance) {
 // ============================================================
 // OTHER ALLOWANCE + ESIC EMPLOYER (single balancing block)
 // ============================================================
+// ============================================================
+// OTHER ALLOWANCE + ESIC EMPLOYER (single balancing block)
+// ESI base = Basic + HRA + LTA + Other
+// (OT / Bonus / Incentive still excluded from ESI)
+// ============================================================
 if (planData.isOtherAllowance) {
   const fixedEmployer =
     (employerPF || 0) +
     (gratuity || 0) +
     (insuranceEmployer || 0);
 
-  const fixedEarnings =
-    basicSalary + hra + ltaAllowance;   // LTA included in earnings
-
-  const fixedTotal = fixedEarnings + fixedEmployer;
+  // Structural earnings that are part of CTC
+  const fixedEarnings = basicSalary + hra + ltaAllowance;
 
   if (
     planData.isESICEmployer &&
@@ -633,17 +636,19 @@ if (planData.isOtherAllowance) {
   ) {
     const rate = parseFloat(planData.esicEmployerPercentage) / 100;
 
-    // Solve: monthlyCtc = fixedTotal + Other + (fixedEarnings + Other) * rate
-    // → Other = (monthlyCtc - fixedTotal - fixedEarnings * rate) / (1 + rate)
+    // Solve:
+    // monthlyCtc = fixedEarnings + Other + fixedEmployer + rate * (fixedEarnings + Other)
+    // → Other = (monthlyCtc - fixedEarnings - fixedEmployer - rate * fixedEarnings) / (1 + rate)
     otherAllowances =
-      (monthlyCtc - fixedTotal - fixedEarnings * rate) / (1 + rate);
+      (monthlyCtc - fixedEarnings - fixedEmployer - rate * fixedEarnings) /
+      (1 + rate);
 
     otherAllowances = Math.max(0, otherAllowances);
 
-    // Now set real ESIC Employer
+    // Temporary value (will be overwritten by final ESI calculation below)
     esicEmployer = (fixedEarnings + otherAllowances) * rate;
   } else {
-    otherAllowances = monthlyCtc - fixedTotal;
+    otherAllowances = monthlyCtc - fixedEarnings - fixedEmployer;
     otherAllowances = Math.max(0, otherAllowances);
     esicEmployer = 0;
   }
@@ -670,72 +675,58 @@ if (planData.isOtherAllowance) {
   // IMPORTANT: LTA is deliberately excluded from ESI base as per requirement
   // ==================== GROSS FOR ESI ====================
 // ESI base should NOT include: Bonus, Overtime, Incentive, LTA
+// ==================== GROSS FOR ESI ====================
+// Includes LTA. Excludes OT / Bonus / Incentive (as required)
 const grossForESI =
   Number(basicSalary || 0) +
   Number(hra || 0) +
+  Number(ltaAllowance || 0) +
   Number(otherAllowances || 0);
-// Explicitly excluded: ltaAllowance, overtimePay, bonusPay, incentivePay
-  // Note: ltaAllowance is NOT added here
 
-  // ==================== ESIC (Employee & Employer) ====================
- // ==================== ESIC EMPLOYEE ====================
-// ==================== ESIC (Employee & Employer) ====================
-
-// Employee ESIC
+// ==================== ESIC EMPLOYEE ====================
 if (
   planData.isESICEmployee &&
   planData.esicEmployeeType === "percentage" &&
   planData.esicEmployeePercentage &&
   !isNaN(parseFloat(planData.esicEmployeePercentage))
 ) {
-  const rate =
-    parseFloat(planData.esicEmployeePercentage) / 100;
-
-  // ESIC base excludes Bonus, OT, Incentive and LTA
+  const rate = parseFloat(planData.esicEmployeePercentage) / 100;
   esic = grossForESI * rate;
-
   planData.esicEmployeeText =
-    `${planData.esicEmployeePercentage}% of Gross (excl. Bonus/OT/Incentive/LTA)`;
-
+    `${planData.esicEmployeePercentage}% of Gross (excl. Bonus/OT/Incentive)`;
 } else if (
   planData.esicEmployeeAmount &&
   !isNaN(parseFloat(planData.esicEmployeeAmount))
 ) {
   esic = parseFloat(planData.esicEmployeeAmount);
-
 } else {
   esic = 0;
   planData.esicEmployeeText = "Not Applicable";
 }
 
-
-// Employer ESIC
+// ==================== ESIC EMPLOYER ====================
 if (
   planData.isESICEmployer &&
   planData.esicEmployerType === "percentage" &&
   planData.esicEmployerPercentage &&
   !isNaN(parseFloat(planData.esicEmployerPercentage))
 ) {
-  const rate =
-    parseFloat(planData.esicEmployerPercentage) / 100;
-
-  // ESIC base excludes Bonus, OT, Incentive and LTA
-  esicEmployer = grossForESI * rate;
-
+  const rate = parseFloat(planData.esicEmployerPercentage) / 100;
+  esicEmployer = grossForESI * rate;   // final correct value
   planData.esicEmployerText =
-    `${planData.esicEmployerPercentage}% of Gross (excl. Bonus/OT/Incentive/LTA)`;
-
+    `${planData.esicEmployerPercentage}% of Gross (excl. Bonus/OT/Incentive)`;
 } else if (
   planData.isESICEmployer &&
   planData.esicEmployerAmount &&
   !isNaN(parseFloat(planData.esicEmployerAmount))
 ) {
   esicEmployer = parseFloat(planData.esicEmployerAmount);
-
 } else {
   esicEmployer = 0;
   planData.esicEmployerText = "Not Applicable";
-}  // ==================== RECALCULATE GROSS SALARY ====================
+}
+
+// ==================== RECALCULATE GROSS SALARY ====================
   grossSalary =
     basicSalary +
     hra +

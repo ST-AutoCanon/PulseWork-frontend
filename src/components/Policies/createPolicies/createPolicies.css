@@ -1,12 +1,8 @@
 @font-face {
   font-family: "Insignia Roman";
-  src:
-    url("https://db.onlinewebfonts.com/t/d7df8e9533ea8d42f47747a0f386ac0d.woff2")
-      format("woff2"),
-    url("https://db.onlinewebfonts.com/t/d7df8e9533ea8d42f47747a0f386ac0d.woff")
-      format("woff"),
-    url("https://db.onlinewebfonts.com/t/d7df8e9533ea8d42f47747a0f386ac0d.ttf")
-      format("truetype");
+  src: url("https://db.onlinewebfonts.com/t/d7df8e9533ea8d42f47747a0f386ac0d.woff2") format("woff2"),
+       url("https://db.onlinewebfonts.com/t/d7df8e9533ea8d42f47747a0f386ac0d.woff") format("woff"),
+       url("https://db.onlinewebfonts.com/t/d7df8e9533ea8d42f47747a0f386ac0d.ttf") format("truetype");
   font-weight: normal;
   font-style: normal;
   font-display: swap;
@@ -160,12 +156,12 @@
   align-items: center;
 
   cursor: pointer;
-  transition: 0.25s;
+  transition: .25s;
 }
 
-.policy-edit-btn:hover {
-  background: #1d4ed8;
-  transform: scale(1.05);
+.policy-edit-btn:hover{
+  background:#1d4ed8;
+  transform:scale(1.05);
 }
 
 .policy-reading-status-btn {
@@ -181,10 +177,7 @@
   font-size: 18px;
   line-height: 1;
   cursor: pointer;
-  transition:
-    background 0.2s,
-    color 0.2s,
-    transform 0.2s;
+  transition: background 0.2s, color 0.2s, transform 0.2s;
 }
 
 .policy-reading-status-btn:hover {
@@ -193,9 +186,9 @@
   transform: translateY(-1px);
 }
 
-.policy-edit-btn svg {
-  width: 15px;
-  height: 15px;
+.policy-edit-btn svg{
+  width:15px;
+  height:15px;
 }
 .admin-policy-department-header {
   display: flex;
@@ -384,6 +377,36 @@
   .admin-policy-card {
     padding: 20px;
     margin: 12px;
+  }
+
+  .admin-policy-modal,
+  .admin-policy-body,
+  .admin-policy-section {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .admin-policy-employee-select {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    min-height: 48px;
+    height: 48px;
+    padding: 0 14px;
+    border: 1px solid #cbd5e1;
+    border-radius: 10px;
+    background-color: #fff;
+    color: #1e293b;
+    font-size: 16px;
+    line-height: normal;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
+  }
+
+  .admin-policy-employee-select:focus {
+    border-color: #2563eb;
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.14);
   }
 }
 /* Header */
@@ -600,22 +623,20 @@
 
 .policies-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr); /* 4 cards per row */
+  grid-template-columns: repeat(4, 1fr);   /* 4 cards per row */
   gap: 20px;
 }
 .policy-card-item {
   background: #ffffff;
   border-radius: 16px;
-  padding: 20px; /* was 24px */
+  padding: 20px;          /* was 24px */
   box-shadow: 0 6px 20px rgba(10, 25, 47, 0.08);
-  transition:
-    transform 0.2s ease,
-    box-shadow 0.2s ease;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
 .policy-card-item h4 {
   margin: 0 0 10px 0;
-  font-size: 17px; /* slightly smaller so 4 fit nicely */
+  font-size: 17px;        /* slightly smaller so 4 fit nicely */
 }
 /* ===== Modal Overlay & Container ===== */
 .admin-policy-modal-overlay {
@@ -654,7 +675,7 @@
 
 /* ===== DARK BLUE HEADER ===== */
 .admin-policy-header {
-  background: #00468c; /* dark blue */
+  background: #00468c;          /* dark blue */
   color: #ffffff;
   padding: 18px 24px;
   display: flex;
@@ -806,9 +827,7 @@
   border-radius: 16px;
   padding: 24px;
   box-shadow: 0 6px 20px rgba(10, 25, 47, 0.08);
-  transition:
-    transform 0.2s ease,
-    box-shadow 0.2s ease;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
 .policy-card-item:hover {
@@ -890,242 +909,241 @@
   .policies-grid {
     grid-template-columns: 1fr;
   }
-}
-.policies-view-modal {
-  width: 900px;
-  max-width: 95%;
-  max-height: 90vh;
-  overflow-y: auto;
-  background: #fff;
-  border: none;
-  border-radius: 18px;
-  padding: 0;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.18);
-}
-
-.policies-view-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 22px 30px;
-  border-bottom: 1px solid #ececec;
-  background: #f8fafc;
+}.policies-view-modal{
+    width:900px;
+    max-width:95%;
+    max-height:90vh;
+    overflow-y:auto;
+    background:#fff;
+    border:none;
+    border-radius:18px;
+    padding:0;
+    box-shadow:0 20px 60px rgba(0,0,0,.18);
 }
 
-.policies-view-title {
-  font-size: 24px;
-  font-weight: 700;
+.policies-view-header{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    padding:22px 30px;
+    border-bottom:1px solid #ececec;
+    background:#f8fafc;
 }
 
-.policies-view-close {
-  border: none;
-  background: none;
-  font-size: 28px;
-  cursor: pointer;
+.policies-view-title{
+    font-size:24px;
+    font-weight:700;
 }
 
-.policies-view-body {
-  padding: 30px;
+.policies-view-close{
+    border:none;
+    background:none;
+    font-size:28px;
+    cursor:pointer;
 }
 
-.policies-section {
-  margin-bottom: 35px;
+.policies-view-body{
+    padding:30px;
 }
 
-.policies-section-title {
-  font-size: 19px;
-  font-weight: 700;
-  margin-bottom: 20px;
+.policies-section{
+    margin-bottom:35px;
 }
 
-.policies-files-grid {
-  display: grid;
-  gap: 18px;
+.policies-section-title{
+    font-size:19px;
+    font-weight:700;
+    margin-bottom:20px;
 }
 
-.policies-file-card {
-  border: 1px solid #e5e7eb;
-  border-radius: 14px;
-  padding: 18px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  transition: 0.25s;
+.policies-files-grid{
+    display:grid;
+    gap:18px;
 }
 
-.policies-file-card:hover {
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08);
+.policies-file-card{
+    border:1px solid #e5e7eb;
+    border-radius:14px;
+    padding:18px;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    transition:.25s;
 }
 
-.policies-file-header {
-  display: flex;
-  gap: 15px;
-  align-items: center;
+.policies-file-card:hover{
+    box-shadow:0 10px 25px rgba(0,0,0,.08);
 }
 
-.policies-file-icon {
-  font-size: 34px;
+.policies-file-header{
+    display:flex;
+    gap:15px;
+    align-items:center;
 }
 
-.policies-file-name {
-  font-weight: 600;
-  font-size: 16px;
+.policies-file-icon{
+    font-size:34px;
+}
+
+.policies-file-name{
+    font-weight:600;
+    font-size:16px;
 }
 
 .policies-file-type,
-.policies-file-date {
-  color: #64748b;
-  font-size: 14px;
+.policies-file-date{
+    color:#64748b;
+    font-size:14px;
 }
 
-.policies-file-actions {
-  display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
+.policies-file-actions{
+    display:flex;
+    gap:10px;
+    flex-wrap:wrap;
 }
 
-.policies-file-actions button {
-  border: none;
-  border-radius: 8px;
-  padding: 9px 15px;
-  cursor: pointer;
-  font-weight: 600;
+.policies-file-actions button{
+    border:none;
+    border-radius:8px;
+    padding:9px 15px;
+    cursor:pointer;
+    font-weight:600;
 }
 
-.policies-btn-view {
-  background: #00468c;
-  color: white;
+.policies-btn-view{
+    background:#00468c;
+    color:white;
 }
 
-.policies-btn-download {
-  background: #16a34a;
-  color: white;
+.policies-btn-download{
+    background:#16a34a;
+    color:white;
 }
 
-.policies-btn-replace {
-  background: #16a34a;
-  color: white;
+.policies-btn-replace{
+    background:#16a34a;
+    color:white;
 }
 
-.policies-btn-delete {
-  background: #16a34a;
-  color: white;
+.policies-btn-delete{
+    background:#16a34a;
+    color:white;
 }
 
-.policies-upload-card {
-  border: 1px solid #e5e7eb;
-  padding: 22px;
-  border-radius: 14px;
-  background: #fafafa;
+.policies-upload-card{
+    border:1px solid #e5e7eb;
+    padding:22px;
+    border-radius:14px;
+    background:#fafafa;
 }
 
-.policies-upload-row {
-  display: grid;
-  grid-template-columns: 1fr 1fr auto;
-  gap: 15px;
-  margin-bottom: 18px;
+.policies-upload-row{
+    display:grid;
+    grid-template-columns:1fr 1fr auto;
+    gap:15px;
+    margin-bottom:18px;
 }
 
 .policies-upload-select,
 .policies-upload-input,
-.policies-upload-message {
-  width: 100%;
-  padding: 12px;
-  border-radius: 10px;
-  border: 1px solid #d1d5db;
+.policies-upload-message{
+    width:100%;
+    padding:12px;
+    border-radius:10px;
+    border:1px solid #d1d5db;
 }
 
-.policies-upload-message {
-  min-height: 90px;
-  resize: vertical;
+.policies-upload-message{
+    min-height:90px;
+    resize:vertical;
 }
 
-.policies-upload-checkbox {
-  display: flex;
-  gap: 10px;
-  align-items: center;
-  margin: 15px 0;
+.policies-upload-checkbox{
+    display:flex;
+    gap:10px;
+    align-items:center;
+    margin:15px 0;
 }
 
-.policies-upload-add-btn {
-  background: #2563eb;
-  color: white;
-  border: none;
-  border-radius: 10px;
-  padding: 12px 24px;
-  cursor: pointer;
-  font-weight: 600;
+.policies-upload-add-btn{
+    background:#2563eb;
+    color:white;
+    border:none;
+    border-radius:10px;
+    padding:12px 24px;
+    cursor:pointer;
+    font-weight:600;
 }
 
-.policies-new-files {
-  display: grid;
-  gap: 15px;
-  margin-top: 25px;
+.policies-new-files{
+    display:grid;
+    gap:15px;
+    margin-top:25px;
 }
 
-.policies-new-file-card {
-  border: 1px solid #dbeafe;
-  background: #f8fbff;
-  border-radius: 12px;
-  padding: 18px;
+.policies-new-file-card{
+    border:1px solid #dbeafe;
+    background:#f8fbff;
+    border-radius:12px;
+    padding:18px;
 }
 
-.policies-new-file-header {
-  display: flex;
-  justify-content: space-between;
-  margin-bottom: 15px;
+.policies-new-file-header{
+    display:flex;
+    justify-content:space-between;
+    margin-bottom:15px;
 }
 
-.policies-new-file-name {
-  font-weight: 600;
+.policies-new-file-name{
+    font-weight:600;
 }
 
-.policies-new-file-type {
-  color: #00468c;
-  font-weight: 600;
+.policies-new-file-type{
+    color:#00468c;
+    font-weight:600;
 }
 
-.policies-new-file-message {
-  width: 100%;
-  margin-top: 12px;
-  min-height: 80px;
-  border: 1px solid #d1d5db;
-  border-radius: 10px;
-  padding: 12px;
+.policies-new-file-message{
+    width:100%;
+    margin-top:12px;
+    min-height:80px;
+    border:1px solid #d1d5db;
+    border-radius:10px;
+    padding:12px;
 }
 
-.policies-remove-file-btn {
-  margin-top: 12px;
-  background: #ef4444;
-  color: white;
-  border: none;
-  border-radius: 8px;
-  padding: 10px 18px;
-  cursor: pointer;
+.policies-remove-file-btn{
+    margin-top:12px;
+    background:#ef4444;
+    color:white;
+    border:none;
+    border-radius:8px;
+    padding:10px 18px;
+    cursor:pointer;
 }
 
-.policies-footer {
-  display: flex;
-  justify-content: flex-end;
-  gap: 15px;
-  padding: 25px 30px;
-  border-top: 1px solid #ececec;
+.policies-footer{
+    display:flex;
+    justify-content:flex-end;
+    gap:15px;
+    padding:25px 30px;
+    border-top:1px solid #ececec;
 }
 
-.policies-save-btn {
-  background: #00468c;
-  color: white;
-  border: none;
-  padding: 12px 24px;
-  border-radius: 10px;
-  font-weight: 600;
+.policies-save-btn{
+    background:#00468c;
+    color:white;
+    border:none;
+    padding:12px 24px;
+    border-radius:10px;
+    font-weight:600;
 }
 
-.policies-cancel-btn {
-  background: white;
-  border: 1px solid #d1d5db;
-  padding: 12px 24px;
-  border-radius: 10px;
+.policies-cancel-btn{
+    background:white;
+    border:1px solid #d1d5db;
+    padding:12px 24px;
+    border-radius:10px;
 }
 /* Add these for better professionalism */
 .policies-upload-box {
@@ -1158,10 +1176,7 @@
 }
 .modal-overlay {
   position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  top: 0; left: 0; right: 0; bottom: 0;
   background: rgba(0, 0, 0, 0.6);
   display: flex;
   align-items: center;
@@ -1284,56 +1299,56 @@
 }
 /* ==================== FILE EDIT STYLES ==================== */
 .policies-file-actions {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
 }
 
 .policies-btn-edit {
-  background: #f59e0b;
-  color: white;
+    background: #f59e0b;
+    color: white;
 }
 
 .policies-btn-edit:hover {
-  background: #d97706;
+    background: #d97706;
 }
 
 .file-edit-modal {
-  width: min(520px, 92vw);
-  background: white;
-  border-radius: 16px;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
-  overflow: hidden;
+    width: min(520px, 92vw);
+    background: white;
+    border-radius: 16px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
+    overflow: hidden;
 }
 
 .file-edit-header {
-  padding: 20px 24px;
-  border-bottom: 1px solid #e5e7eb;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  background: #f8fafc;
+    padding: 20px 24px;
+    border-bottom: 1px solid #e5e7eb;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #f8fafc;
 }
 
 .file-edit-body {
-  padding: 24px;
+    padding: 24px;
 }
 
 .file-edit-footer {
-  padding: 20px 24px;
-  border-top: 1px solid #e5e7eb;
-  display: flex;
-  justify-content: flex-end;
-  gap: 12px;
+    padding: 20px 24px;
+    border-top: 1px solid #e5e7eb;
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
 }
 
 /* Make acknowledgement more prominent */
 .ack-edit-section {
-  background: #f0f9ff;
-  border: 1px solid #bae6fd;
-  border-radius: 12px;
-  padding: 18px;
-  margin: 16px 0;
+    background: #f0f9ff;
+    border: 1px solid #bae6fd;
+    border-radius: 12px;
+    padding: 18px;
+    margin: 16px 0;
 }
 /* ==================== REPLACE FILE MODAL ==================== */
 
@@ -1473,7 +1488,7 @@
     transform: scale(1) translateY(0);
   }
 }
-.admin-policy-department-card {
+.admin-policy-department-card{
   border: 1px solid #e2e8f0;
   border-radius: 8px;
   padding: 12px;
@@ -1551,20 +1566,17 @@
   outline: none;
 }
 
-.permissions-section,
-.ac-selection-type {
+.permissions-section, .ac-selection-type {
   margin-bottom: 24px;
 }
 
-.checkbox-group,
-.radio-group {
+.checkbox-group, .radio-group {
   display: flex;
   flex-direction: column;
   gap: 12px;
 }
 
-.checkbox-label,
-.radio-label {
+.checkbox-label, .radio-label {
   display: flex;
   align-items: center;
   gap: 10px;
@@ -1596,8 +1608,7 @@
   box-sizing: border-box;
   resize: none;
 }
-.admin-policy-search-input,
-.selection-dropdown {
+.admin-policy-search-input, .selection-dropdown {
   width: 100%;
   padding: 12px;
   border: 2px solid #e2e8f0;
@@ -1622,8 +1633,7 @@
   background: #ffffff !important;
 }
 
-.selected-item,
-.admin-policy-department-card {
+.selected-item, .admin-policy-department-card{
   background: white;
   padding: 12px 16px;
   margin: 6px 0;
@@ -1685,8 +1695,7 @@
   justify-content: flex-end;
 }
 
-.cancel-btn,
-.submit-btn {
+.cancel-btn, .submit-btn {
   padding: 12px 24px;
   border-radius: 8px;
   font-weight: 500;
@@ -2304,6 +2313,16 @@
   .admin-policy-modal-overlay {
     align-items: flex-start;
     padding: 8px;
+  }
+
+  .admin-policy-modal {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .admin-policy-body {
+    padding-right: 14px;
+    padding-left: 14px;
   }
 
   .admin-policy-view-modal {

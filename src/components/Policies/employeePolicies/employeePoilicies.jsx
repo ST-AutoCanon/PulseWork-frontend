@@ -757,7 +757,10 @@ const handleDownload = async (file) => {
     );
 
     const fileName = getFileName(file);
-    const blob = new Blob([response.data]);
+    const contentType = response.headers["content-type"];
+    const blob = new Blob([response.data], {
+      type: contentType || "application/octet-stream",
+    });
     const url = URL.createObjectURL(blob);
 
     const a = document.createElement("a");
@@ -766,7 +769,8 @@ const handleDownload = async (file) => {
     document.body.appendChild(a);
     a.click();
     a.remove();
-    URL.revokeObjectURL(url);
+    // Safari may open the object URL asynchronously after the click.
+    window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
   } catch (err) {
     console.error("Download failed:", err.response?.data || err);
     showAlert("Failed to download file");
@@ -1805,7 +1809,11 @@ if (isImage(name)) {
     style={{ zIndex: 99999 }}
   >
     <div
-      className="screenshot-popup-modal"
+      className={`screenshot-popup-modal ${
+        alertModal.message === "Acknowledgement saved successfully."
+          ? "acknowledgement-success-modal"
+          : ""
+      }`}
       onClick={(e) => e.stopPropagation()}
       style={{ zIndex: 100000 }}
     >

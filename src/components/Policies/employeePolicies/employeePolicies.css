@@ -2024,3 +2024,32 @@
   background: #b91c1c;
   transform: scale(1.03);
 }
+
+.screenshot-popup-modal.acknowledgement-success-modal {
+  box-sizing: border-box;
+  width: min(90vw, 360px);
+  padding: 24px;
+  border-radius: 12px;
+}
+
+.screenshot-popup-modal.acknowledgement-success-modal h2 {
+  margin: 0 0 8px;
+  color: #047857;
+  font-size: 20px;
+}
+
+.screenshot-popup-modal.acknowledgement-success-modal p {
+  margin: 0 0 16px;
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.screenshot-popup-modal.acknowledgement-success-modal button {
+  padding: 9px 24px;
+  background: #047857;
+  font-size: 14px;
+}
+
+.screenshot-popup-modal.acknowledgement-success-modal button:hover {
+  background: #065f46;
+}

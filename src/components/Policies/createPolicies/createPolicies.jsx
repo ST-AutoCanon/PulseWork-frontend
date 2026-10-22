@@ -39,6 +39,7 @@ const CreatePolicyForm = ({
 }) => {
   const [selectedEmployee, setSelectedEmployee] = useState("");
   const [selectedDepartment, setSelectedDepartment] = useState("");
+  const [isMobile, setIsMobile] = useState(false);
 const [allEmployeesByDepartment, setAllEmployeesByDepartment] = useState({});
           // full data from new API
   const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
@@ -51,6 +52,15 @@ const [allEmployeesByDepartment, setAllEmployeesByDepartment] = useState({});
     "x-employee-id": meId,
     ...(orgId ? { "x-org-id": orgId } : {}),
   };
+
+  useEffect(() => {
+    const updateIsMobile = () =>
+      setIsMobile(window.matchMedia("(max-width: 768px)").matches);
+
+    updateIsMobile();
+    window.addEventListener("resize", updateIsMobile);
+    return () => window.removeEventListener("resize", updateIsMobile);
+  }, []);
 
   // Filtered lists
   const filteredEmployees = (employeeList || []).filter((emp) =>
@@ -346,11 +356,11 @@ const removeDepartment = (departmentId) => {
       onChange={(e) => setSearchTerm(e.target.value)}
     />
     <select
-      className="admin-policy-selection-dropdown"
+      className="admin-policy-selection-dropdown admin-policy-employee-select"
       value={selectedEmployee}
       onChange={(e) => setSelectedEmployee(e.target.value)}
       onDoubleClick={handleEmployeeDoubleClick}
-      size={6}
+      size={isMobile ? 1 : 6}
     >
       <option value="" disabled>
         Select an employee
@@ -646,6 +656,7 @@ replaceLoading,
 
                   <div className="admin-policy-file-actions">
                     <button
+                      type="button"
                       className="admin-policy-btn admin-policy-btn-replace"
                       onClick={() => handleReplaceFile(file)}
                     >
@@ -653,6 +664,7 @@ replaceLoading,
                     </button>
                     
                     <button
+                      type="button"
                       className="admin-policy-btn admin-policy-btn-delete"
                       onClick={() => handleDeleteFile(file.id)}
                     >
@@ -822,6 +834,7 @@ replaceLoading,
       </div>
     </div>
     <button
+      type="button"
       onClick={() => handleRemoveNewFile(index)}
       className="admin-policy-remove-file-btn"
     >
@@ -837,12 +850,14 @@ replaceLoading,
       {/* ===== FOOTER ===== */}
       <div className="admin-policy-footer">
         <button
+          type="button"
           className="admin-policy-cancel-btn"
           onClick={() => setViewPolicy(null)}
         >
           Cancel
         </button>
       <button
+  type="button"
   className="admin-policy-submit-btn"
   onClick={handleSaveEdits}
   disabled={loading}
@@ -909,12 +924,14 @@ replaceLoading,
 
             <div className="admin-policy-footer">
               <button
+                type="button"
                 className="admin-policy-cancel-btn"
                 onClick={() => setEditingFile(null)}
               >
                 Cancel
               </button>
               <button
+                type="button"
                 className="admin-policy-submit-btn"
                 onClick={handleSaveFileEdit}
                 disabled={loading}
@@ -1032,12 +1049,14 @@ replaceLoading,
 
             <div className="admin-policy-footer">
               <button
+                type="button"
                 className="admin-policy-cancel-btn"
                 onClick={() => setReplacingFile(null)}
               >
                 Cancel
               </button>
               <button
+    type="button"
     className="admin-policy-submit-btn"
     onClick={handleSaveReplace}
     disabled={!replaceNewFile?.file || replaceLoading}

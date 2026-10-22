@@ -733,6 +733,9 @@ export function AuthProvider({ children }) {
             safeGet(body, "org_prefix"),
             safeGet(body, "orgPrefix"),
           ),
+          location: body.location ?? null,
+          pincode: body.pincode ?? null,
+          isCommonLogin: Boolean(body.isCommonLogin),
           joining_date: joiningDate,
           joiningDate,
         };
@@ -801,6 +804,9 @@ export function AuthProvider({ children }) {
           safeGet(body, "org_prefix"),
           safeGet(body, "orgPrefix"),
         ),
+        location: body.location ?? null,
+        pincode: body.pincode ?? null,
+        isCommonLogin: Boolean(body.isCommonLogin),
         joining_date: joiningDate,
         joiningDate,
       };
@@ -836,6 +842,9 @@ export function AuthProvider({ children }) {
       raw: serverUser?.raw ?? {},
       orgId: serverUser?.orgId ?? null,
       orgPrefix: serverUser?.orgPrefix ?? null,
+      location: serverUser?.location ?? null,
+      pincode: serverUser?.pincode ?? null,
+      isCommonLogin: Boolean(serverUser?.isCommonLogin),
     };
 
     setUser(minimalUser);

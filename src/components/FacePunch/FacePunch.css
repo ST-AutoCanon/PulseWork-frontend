@@ -1,71 +1,217 @@
-.face-punch-container {
-  position: relative;
-  width: 520px;
-  height: 360px;
-  margin: 40px auto 0;
-  background-color: #f0edec0f;
-  border-radius: 12px;
+.face-punch-ui {
+  display: grid;
+  grid-template-columns: 240px 1fr 260px;
+  width: 100%;
+  max-width: 1100px;
+  margin: 30px auto;
+  background: #0d1b2a;
+  border-radius: 16px;
   overflow: hidden;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
-  transition: transform 0.3s ease;
+  min-height: 520px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.25);
+  position: relative;
 }
 
-.face-punch-container:hover {
-  transform: translateY(-4px);
+/* ===== LEFT PANEL ===== */
+.left-panel {
+  background: linear-gradient(180deg, #0a1628 0%, #0d2137 100%);
+  padding: 28px 22px;
+  display: flex;
+  flex-direction: column;
+  color: #fff;
 }
 
-#videoInput {
-  position: absolute;
+.logo-area {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 40px;
+}
+
+.brand-logo {
+  display: block;
+  width: 100%;
+  max-width: 190px;
+  height: 58px;
+  object-fit: contain;
+  object-position: left center;
+}
+
+.time-block {
+  margin-bottom: 32px;
+}
+
+.big-time {
+  font-size: 42px;
+  font-weight: 700;
+  letter-spacing: -1px;
+  line-height: 1;
+}
+
+.date {
+  font-size: 15px;
+  opacity: 0.75;
+  margin-top: 6px;
+}
+
+.weather {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: auto;
+}
+
+.weather-icon {
+  font-size: 28px;
+}
+
+.temp {
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.city {
+  font-size: 13px;
+  opacity: 0.7;
+}
+
+.slogan {
+  font-size: 13px;
+  opacity: 0.55;
+  line-height: 1.4;
+  margin-top: 30px;
+}
+
+/* ===== CENTER PANEL ===== */
+.center-panel {
+  position: relative;
+  background: #111;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.camera-container {
+  position: relative;
   width: 100%;
   height: 100%;
+  overflow: hidden;
+}
 
-  border-radius: 12px;
+.camera-container video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
 }
 
 .overlay-canvas {
   position: absolute;
-  width: 100%;
-  height: 100%;
   top: 0;
   left: 0;
+  width: 100%;
+  height: 100%;
   pointer-events: none;
 }
-.status-message {
-  position: relative;
-  margin: 12px auto 0;
-  width: fit-content;
-  background-color: rgba(40, 167, 69, 0.9);
-  color: #ffffff;
-  padding: 8px 16px;
-  border-radius: 8px;
-  font-family: "Inter", sans-serif;
-  font-size: 14px;
-  font-weight: 500;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-  animation: fadeIn 0.3s ease-in-out;
-  text-align: center;
+
+/* Face guide corners */
+.face-guide {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 220px;
+  height: 280px;
+  pointer-events: none;
 }
 
-.cooldown-message {
-  position: relative;
-  margin: 8px auto 16px;
-  width: fit-content;
-  background-color: rgba(220, 53, 69, 0.9);
-  color: #ffffff;
-  padding: 8px 16px;
-  border-radius: 8px;
-  font-family: "Inter", sans-serif;
-  font-size: 14px;
-  font-weight: 500;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-  animation: fadeIn 0.3s ease-in-out;
-  text-align: center;
+.corner {
+  position: absolute;
+  width: 28px;
+  height: 28px;
+  border: 3px solid #00e676;
 }
 
-@keyframes fadeIn {
+.corner.tl {
+  top: 0;
+  left: 0;
+  border-right: none;
+  border-bottom: none;
+  border-radius: 6px 0 0 0;
+}
+.corner.tr {
+  top: 0;
+  right: 0;
+  border-left: none;
+  border-bottom: none;
+  border-radius: 0 6px 0 0;
+}
+.corner.bl {
+  bottom: 0;
+  left: 0;
+  border-right: none;
+  border-top: none;
+  border-radius: 0 0 0 6px;
+}
+.corner.br {
+  bottom: 0;
+  right: 0;
+  border-left: none;
+  border-top: none;
+  border-radius: 0 0 6px 0;
+}
+
+/* Success overlay */
+.success-overlay {
+  position: absolute;
+  bottom: 30px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0, 200, 83, 0.92);
+  color: white;
+  padding: 16px 28px;
+  border-radius: 16px;
+  text-align: center;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  animation: slideUp 0.35s ease;
+  min-width: 260px;
+}
+
+.success-check {
+  width: 42px;
+  height: 42px;
+  background: white;
+  color: #00c853;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  font-weight: 700;
+  margin: 0 auto 10px;
+}
+
+.success-title {
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.success-name {
+  font-size: 22px;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+.success-time {
+  font-size: 13px;
+  opacity: 0.9;
+}
+
+@keyframes slideUp {
   from {
     opacity: 0;
-    transform: translateX(-50%) translateY(-10px);
+    transform: translateX(-50%) translateY(20px);
   }
   to {
     opacity: 1;
@@ -73,158 +219,169 @@
   }
 }
 
-#scanButton {
+/* ===== RIGHT PANEL ===== */
+.right-panel {
+  background: #0a1628;
+  padding: 24px 18px;
+  color: white;
+  display: flex;
+  flex-direction: column;
+}
+
+.recent-title {
+  font-size: 15px;
+  font-weight: 600;
+  margin-bottom: 18px;
+  opacity: 0.9;
+}
+
+.recent-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.recent-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: rgba(255, 255, 255, 0.05);
+  padding: 10px 12px;
+  border-radius: 12px;
+  transition: background 0.2s;
+}
+
+.recent-item:hover {
+  background: rgba(255, 255, 255, 0.09);
+}
+
+.avatar {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #00c6ff, #0072ff);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 16px;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.info {
+  flex: 1;
+  min-width: 0;
+}
+
+.info .name {
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.info .time {
+  font-size: 12px;
+  opacity: 0.65;
+  margin-top: 2px;
+}
+
+.check {
+  width: 26px;
+  height: 26px;
+  background: #00c853;
+  color: white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.empty-recent {
+  text-align: center;
+  opacity: 0.5;
+  font-size: 13px;
+  margin-top: 40px;
+}
+
+/* Cooldown */
+.cooldown-message {
   position: absolute;
-  bottom: 20px;
+  bottom: -50px;
   left: 50%;
   transform: translateX(-50%);
-  background-color: #28a745;
-  color: #ffffff;
-  padding: 10px 24px;
-  border: none;
+  background: rgba(220, 53, 69, 0.95);
+  color: white;
+  padding: 8px 20px;
   border-radius: 8px;
-  font-family: "Inter", sans-serif;
-  font-size: 16px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background-color 0.3s ease, transform 0.2s ease;
+  font-size: 14px;
+  font-weight: 500;
 }
-
-#scanButton:hover {
-  background-color: #0056b3;
-  transform: translateX(-50%) scale(1.05);
+.slogan {
+  font-size: 24px;
+  opacity: 0.9;
+  line-height: 1.55;
+  margin-top: 28px;
+  font-style: italic;
+  font-weight: 500;
 }
-
-#scanButton:active {
-  transform: translateX(-50%) scale(0.95);
-}
-
-.employee-info-message {
-  margin-top: 10px;
-  font-weight: bold;
-  color: #28a745;
-  font-size: 18px;
-  text-align: center;
-}
-
-@media (max-width: 480px) {
-  @media (max-width: 480px) {
-  .face-punch-container {
-    width: 92%;
-    height: auto;
-    aspect-ratio: 4/3;
-    margin-top: 240px;
-  }
-}
-
-  .status-message,
-  .cooldown-message {
-    width: 90%;
-    font-size: 13px;
-    margin-top: 16px;
-    padding: 10px 14px;
-    border-radius: 10px;
+/* ===== Responsive ===== */
+@media (max-width: 900px) {
+  .face-punch-ui {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto 380px auto;
+    max-width: 500px;
   }
 
-  .employee-info-message {
-    font-size: 16px;
-    margin-top: 8px;
+  .left-panel {
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 16px;
+    padding: 18px;
+    align-items: center;
   }
 
-  #scanButton {
-    position: relative;
-    margin: 20px auto 0;
-    display: block;
-    padding: 12px 28px;
-    font-size: 15px;
-    border-radius: 10px;
-    transform: none;
-  }
-}
-/* Replace your mobile section with this cleaner responsive version */
-
-@media (max-width: 768px) {
-  .face-punch-container {
-    width: 95%;
-    max-width: 420px;
-    height: auto;
-    aspect-ratio: 4 / 3;
-    margin: 120px auto 0;
-    border-radius: 14px;
-    overflow: hidden;
+  .logo-area {
+    margin-bottom: 0;
   }
 
-  .face-punch-container video {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    border-radius: 14px;
+  .time-block {
+    margin-bottom: 0;
   }
 
-  .overlay-canvas {
-    width: 100%;
-    height: 100%;
-    border-radius: 14px;
+  .weather {
+    margin-bottom: 0;
   }
 
-  .employee-info-message {
-    margin-top: 14px;
-    padding: 0 16px;
-    font-size: 15px;
-    font-weight: 600;
-    text-align: center;
-    line-height: 1.5;
+  .slogan {
+    display: none;
   }
 
-  .cooldown-message,
-  .status-message {
-    width: 90%;
-    max-width: 320px;
-    margin: 14px auto;
-    padding: 10px 14px;
-    font-size: 13px;
-    border-radius: 10px;
-    text-align: center;
-  }
-
-  #scanButton {
-    position: relative;
-    display: block;
-    margin: 20px auto 0;
-    padding: 12px 24px;
-    font-size: 14px;
-    border-radius: 10px;
-    transform: none;
-    left: auto;
-    bottom: auto;
-  }
-
-  #scanButton:hover,
-  #scanButton:active {
-    transform: scale(1.02);
+  .right-panel {
+    max-height: 280px;
   }
 }
 
-@media (max-width: 480px) {
-  .face-punch-container {
-    width: 94%;
-    margin-top: 100px;
-    aspect-ratio: 4 / 3;
+@media (max-width: 520px) {
+  .big-time {
+    font-size: 32px;
   }
 
-  .employee-info-message {
-    font-size: 14px;
-  }
-
-  .cooldown-message,
-  .status-message {
-    font-size: 12px;
-    padding: 9px 12px;
-  }
-
-  #scanButton {
-    width: 90%;
-    max-width: 280px;
-    font-size: 14px;
+  .face-guide {
+    width: 160px;
+    height: 200px;
   }
 }

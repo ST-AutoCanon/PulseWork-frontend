@@ -530,11 +530,11 @@ const SalaryDetails = () => {
         "LOP Deduction",
         "Gross Salary",
         "Net Salary","Base Net Salary",
-        "Late Login Count",
+        "Late Login Eligible Count (Total Violations)",
         "Late Login Amount",
-        "Miss Punch Out Count",
+        "Miss Punch Out Eligible Count (Total Violations)",
         "Miss Punch Out Amount",
-        "Less Login Hours Count",
+        "Less Login Hours Eligible Count (Total Violations)",
         "Less Login Hours Amount",
         "Net Salary After Attendance Deductions",
       ];
@@ -1261,11 +1261,11 @@ const { localNet } = calculateLocalGrossNet(
     <th className="sd-table-header sd-align-right">Final CTC</th>
     <th className="sd-table-header sd-align-right">Net Salary</th>
     <th className="sd-table-header sd-align-right">Base Net Salary</th>
-    <th className="sd-table-header sd-align-right">Late Login Count</th>
+    <th className="sd-table-header sd-align-right">Late Login Eligible Count (Total Violations)</th>
     <th className="sd-table-header sd-align-right">Late Login Amount</th>
-    <th className="sd-table-header sd-align-right">Miss Punch Out Count</th>
+    <th className="sd-table-header sd-align-right">Miss Punch Out Eligible Count (Total Violations)</th>
     <th className="sd-table-header sd-align-right">Miss Punch Out Amount</th>
-    <th className="sd-table-header sd-align-right">Less Login Hours Count</th>
+    <th className="sd-table-header sd-align-right">Less Login Hours Eligible Count (Total Violations)</th>
     <th className="sd-table-header sd-align-right">Less Login Hours Amount</th>
     <th className="sd-table-header sd-align-right">Net Salary After Attendance Deductions</th>
   </tr>

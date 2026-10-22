@@ -16,21 +16,28 @@ export function getAttendanceDeductionAmounts(deductions = {}) {
 
 export function getAttendanceDeductionExportValues(deductions = {}) {
   const amount = getAttendanceDeductionAmounts(deductions);
+  const formatCount = (deduction) =>
+    `${Number(deduction?.eligibleCount ?? deduction?.count ?? 0)} (${Number(
+      deduction?.count || 0,
+    )})`;
   return [
-    Number(deductions.lateLogin?.count || 0),
+    formatCount(deductions.lateLogin),
     amount.lateLogin,
-    Number(deductions.missPunchOut?.count || 0),
+    formatCount(deductions.missPunchOut),
     amount.missPunchOut,
-    Number(deductions.lessLoginHours?.count || 0),
+    formatCount(deductions.lessLoginHours),
     amount.lessLoginHours,
   ];
 }
 
 function DeductionCells({ deduction }) {
+  const totalCount = Number(deduction?.count || 0);
+  const eligibleCount = Number(deduction?.eligibleCount ?? totalCount);
+
   return (
     <>
       <td className="sd-table-cell sd-align-right sd-deduction">
-        {Number(deduction?.count || 0)}
+        {eligibleCount} ({totalCount})
       </td>
       <td className="sd-table-cell sd-align-right sd-deduction">
         ₹{getAmount(deduction).toFixed(2)}

@@ -2459,7 +2459,7 @@ export default function Login({ onClose }) {
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.message || "Invalid credentials");
 
-      const u = data.message || {};
+           const u = data.message || {};
       const minimalUser = {
         id: u.id ?? u.employeeId ?? u.employee_id ?? null,
         employeeId: u.employeeId ?? u.employee_id ?? u.id ?? null,
@@ -2469,7 +2469,12 @@ export default function Login({ onClose }) {
         orgPrefix: u.org_prefix ?? u.orgPrefix ?? null,
         joining_date: u.joining_date ?? u.joiningDate ?? null,
         joiningDate: u.joining_date ?? u.joiningDate ?? null,
+        isCommonLogin: !!u.isCommonLogin,   // ← add this
+        location: u.location || null,       // ← optional but useful
+        pincode: u.pincode || null,         // ← optional but useful
       };
+
+      await login(minimalUser);
 
       await login(minimalUser);
 
@@ -2857,15 +2862,17 @@ export default function Login({ onClose }) {
         console.warn("Attendance reminder check after login failed:", err);
       }
 
-      closeModal();
+          closeModal();
       window.parent?.postMessage(
         { type: "login-success", payload: minimalUser },
         parentOrigin || parentOriginRef.current || "*",
       );
 
-      const role = minimalUser.role?.toLowerCase();
+      const role = String(minimalUser.role ?? "").toLowerCase();
+      const isCommonLogin = !!minimalUser.isCommonLogin;
 
-      if (role === "general") {
+      // Common login users OR general role → FacePunch
+      if (isCommonLogin || role === "general" || role === "common") {
         router.push("/FacePunch");
       } else {
         router.push("/dashboard");

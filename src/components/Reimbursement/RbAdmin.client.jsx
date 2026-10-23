@@ -44,6 +44,7 @@ const RbAdmin = () => {
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const [selectedPaymentClaim, setSelectedPaymentClaim] = useState(null);
   const [selectedPaymentOption, setSelectedPaymentOption] = useState("");
+  const [paymentDate, setPaymentDate] = useState("");
   const [view, setView] = useState("all");
   const [projects, setProjects] = useState([]);
   const [projectSelections, setProjectSelections] = useState({});
@@ -1254,11 +1255,32 @@ const RbAdmin = () => {
   const closeAlert = () =>
     setAlertModal({ isVisible: false, title: "", message: "" });
 
+  const toInputDate = (raw) => {
+    if (!raw) return "";
+    const d = raw instanceof Date ? raw : new Date(raw);
+    if (isNaN(d)) {
+      // already YYYY-MM-DD?
+      const s = String(raw).trim();
+      if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+      return "";
+    }
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${y}-${m}-${day}`;
+  };
+
+  const todayInputDate = () => toInputDate(new Date());
+
   const openPaymentModal = (claim) => {
     if (!claim) return;
     setSelectedPaymentClaim(claim);
     const current = (claim.payment_status || "").toLowerCase().trim();
     setSelectedPaymentOption(current || "pending");
+    const existingPaid = toInputDate(claim.paid_date || claim.payment_date);
+    setPaymentDate(
+      existingPaid || (current === "paid" ? todayInputDate() : ""),
+    );
     setIsPaymentModalOpen(true);
   };
 
@@ -2113,7 +2135,10 @@ const RbAdmin = () => {
         <Modal
           title={"Update Payment Status"}
           isVisible={isPaymentModalOpen}
-          onClose={() => setIsPaymentModalOpen(false)}
+          onClose={() => {
+            setIsPaymentModalOpen(false);
+            setPaymentDate("");
+          }}
           buttons={[]}
         >
           <div className="payment-modal-content">
@@ -2124,77 +2149,127 @@ const RbAdmin = () => {
                   name="paymentOption"
                   value="rejected"
                   checked={selectedPaymentOption === "rejected"}
-                  onChange={(e) => setSelectedPaymentOption(e.target.value)}
+                  onChange={(e) => {
+                    setSelectedPaymentOption(e.target.value);
+                    setPaymentDate("");
+                  }}
                 />{" "}
                 Reject
               </label>
-              <label style={{ marginLeft: "20px" }}>
+              <label>
                 <input
                   type="radio"
                   name="paymentOption"
                   value="pending"
                   checked={selectedPaymentOption === "pending"}
-                  onChange={(e) => setSelectedPaymentOption(e.target.value)}
+                  onChange={(e) => {
+                    setSelectedPaymentOption(e.target.value);
+                    setPaymentDate("");
+                  }}
                 />{" "}
                 Pending
               </label>
-              <label style={{ marginLeft: "20px" }}>
+              <label>
                 <input
                   type="radio"
                   name="paymentOption"
                   value="paid"
                   checked={selectedPaymentOption === "paid"}
-                  onChange={(e) => setSelectedPaymentOption(e.target.value)}
+                  onChange={(e) => {
+                    setSelectedPaymentOption(e.target.value);
+                    if (!paymentDate) setPaymentDate(todayInputDate());
+                  }}
                 />{" "}
                 Payable
               </label>
             </div>
-            <p>I'll make sure to process the payment today</p>
-            <button
-              className="modal-cross-btn"
-              onClick={() => setIsPaymentModalOpen(false)}
-            >
-              Cancel
-            </button>
-            <button
-              className="submit-payment-btn"
-              onClick={async () => {
-                if (!selectedPaymentOption) {
-                  showAlert("Please select an option.");
-                  return;
-                }
-                if (!selectedPaymentClaim) {
-                  showAlert("No claim selected.");
-                  return;
-                }
-                try {
-                  const url =
-                    (backendBase ? `${backendBase}` : "") +
-                    `/reimbursement/payment-status/${selectedPaymentClaim.id}`;
-                  await axios.put(
-                    url,
-                    {
+            <div className="payment-date-row">
+              <div className="payment-date-field">
+                <label htmlFor="payment-date-input">
+                  Payment date
+                  {selectedPaymentOption === "paid" ? " *" : ""}
+                </label>
+                <input
+                  id="payment-date-input"
+                  type="date"
+                  className="payment-date-input"
+                  value={paymentDate}
+                  onChange={(e) => setPaymentDate(e.target.value)}
+                  disabled={
+                    selectedPaymentOption !== "paid" &&
+                    selectedPaymentOption !== "rejected"
+                  }
+                />
+              </div>
+              <span className="payment-date-hint">
+                {selectedPaymentOption === "paid"
+                  ? "Required when marking as Payable"
+                  : selectedPaymentOption === "rejected"
+                    ? "Optional rejection / reference date"
+                    : "Select Payable to set a payment date"}
+              </span>
+            </div>
+            <div className="payment-modal-actions">
+              <button
+                type="button"
+                className="modal-cross-btn"
+                onClick={() => {
+                  setIsPaymentModalOpen(false);
+                  setPaymentDate("");
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="submit-payment-btn"
+                onClick={async () => {
+                  if (!selectedPaymentOption) {
+                    showAlert("Please select an option.");
+                    return;
+                  }
+                  if (!selectedPaymentClaim) {
+                    showAlert("No claim selected.");
+                    return;
+                  }
+                  if (selectedPaymentOption === "paid" && !paymentDate) {
+                    showAlert("Please select a payment date.");
+                    return;
+                  }
+                  try {
+                    const url =
+                      (backendBase ? `${backendBase}` : "") +
+                      `/reimbursement/payment-status/${selectedPaymentClaim.id}`;
+                    const body = {
                       payment_status: selectedPaymentOption,
                       user_role: "admin",
-                    },
-                    { withCredentials: true, headers: buildHeaders() },
-                  );
-                  showAlert("Payment status updated successfully.");
-                  setIsPaymentModalOpen(false);
-                  fetchEmployees();
-                } catch (error) {
-                  console.error(
-                    "Error updating payment status:",
-                    error?.response?.data || error?.message || error,
-                  );
-                  showAlert(
-                    "Could not update payment status. Please try again.",
-                  );
-                }
-              }}
-            >
-              Submit
-            </button>
+                    };
+                    if (paymentDate) {
+                      body.paid_date = paymentDate;
+                      body.payment_date = paymentDate;
+                    }
+                    await axios.put(url, body, {
+                      withCredentials: true,
+                      headers: buildHeaders(),
+                    });
+                    showAlert("Payment status updated successfully.");
+                    setIsPaymentModalOpen(false);
+                    setPaymentDate("");
+                    fetchEmployees();
+                  } catch (error) {
+                    console.error(
+                      "Error updating payment status:",
+                      error?.response?.data || error?.message || error,
+                    );
+                    showAlert(
+                      "Could not update payment status. Please try again.",
+                    );
+                  }
+                }}
+              >
+                Submit
+              </button>
+            </div>
           </div>
         </Modal>
       )}

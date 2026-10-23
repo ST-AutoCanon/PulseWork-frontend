@@ -1,47 +1,152 @@
 /* ============================================================
-   COMMON LOGIN
+   COMMON LOGIN – Admin color palette
    ============================================================ */
 
 .common-login-page {
   width: 100%;
   padding: 24px;
   box-sizing: border-box;
-}
-
-.common-login-card {
-  width: 100%;
-  max-width: 900px;
-  margin: 24px auto 0;
-  background: #ffffff;
-  border: 1px solid #e1eeee;
-  border-radius: 12px;
-  box-shadow: 0 3px 14px rgba(2, 79, 85, 0.08);
-  overflow: hidden;
+  font-family: Arial, sans-serif;
 }
 
 /* ============================================================
-   HEADER
+   SEARCH
+   ============================================================ */
+
+.common-login-list-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 16px;
+}
+
+.common-login-search-wrapper {
+  position: relative;
+  width: 100%;
+  max-width: 400px;
+}
+
+.common-login-search-icon {
+  position: absolute;
+  left: 13px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #666;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.common-login-list-toolbar input[type="text"] {
+  height: 40px;
+  padding: 0 14px 0 40px !important;
+  box-sizing: border-box;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  outline: none;
+  background: #ffffff;
+  color: #333;
+  font-size: 13px;
+  line-height: 40px;
+}
+
+.common-login-list-toolbar input[type="text"]:focus {
+  border-color: #00468c;
+  box-shadow: 0 0 0 2px rgba(0, 70, 140, 0.15);
+}
+
+.common-login-list-toolbar span {
+  flex-shrink: 0;
+  color: #555;
+  font-size: 12px;
+}
+
+/* ============================================================
+   PASSWORD TOGGLE (EYE ICON)
+   ============================================================ */
+
+.common-login-password-wrapper {
+  position: relative;
+  width: 100%;
+}
+
+.common-login-password-wrapper input {
+  width: 100%;
+  height: 42px;
+  padding: 0 42px 0 13px;
+  box-sizing: border-box;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  outline: none;
+  background: #ffffff;
+  color: #333;
+  font-size: 13px;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.common-login-password-wrapper input:focus {
+  border-color: #00468c;
+  box-shadow: 0 0 0 2px rgba(0, 70, 140, 0.15);
+}
+
+.common-login-password-wrapper input:disabled {
+  background: #f5f5f5;
+  color: #888;
+  cursor: not-allowed;
+}
+
+.common-login-password-toggle {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: #666;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: color 0.15s ease, background 0.15s ease;
+}
+
+.common-login-password-toggle:hover {
+  color: #00468c;
+  background: #f0f4f8;
+}
+
+.common-login-password-toggle:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ============================================================
+   HEADER (modal)
    ============================================================ */
 
 .common-login-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 22px 26px;
-  background: #f1f9fb;
-  border-bottom: 1px solid #d5f2f8;
+  padding: 18px 22px;
+  background: #fafafa;
+  border-bottom: 1px solid #eee;
 }
 
 .common-login-header h2 {
   margin: 0;
-  color: #024f55;
-  font-size: 22px;
+  color: #222;
+  font-size: 20px;
   font-weight: 700;
 }
 
 .common-login-header p {
   margin: 5px 0 0;
-  color: #668184;
+  color: #555;
   font-size: 13px;
 }
 
@@ -50,48 +155,44 @@
    ============================================================ */
 
 .common-login-message {
-  margin: 20px 26px 0;
+  margin: 16px 22px 0;
   padding: 11px 14px;
-  border-radius: 7px;
+  border-radius: 6px;
   font-size: 13px;
   font-weight: 500;
 }
 
 .common-login-message.success {
-  background: #eef9e8;
-  border: 1px solid #c9e9b9;
-  color: #4e8b24;
+  background: #d7f2ce;
+  border: 1px solid #b8e0a8;
+  color: #2d6a1f;
 }
 
 .common-login-message.error {
-  background: #fff1f1;
-  border: 1px solid #f0caca;
-  color: #c13d3d;
+  background: #ffe5d2;
+  border: 1px solid #f0c4a8;
+  color: #b33a00;
 }
 
 /* ============================================================
-   FORM
+   FORM FIELDS
    ============================================================ */
-
-.common-login-card form {
-  padding: 26px;
-}
 
 .common-login-field {
   display: flex;
   flex-direction: column;
   gap: 7px;
-  margin-bottom: 20px;
+  margin-bottom: 18px;
 }
 
 .common-login-field label {
-  color: #234b4f;
+  color: #333;
   font-size: 13px;
   font-weight: 600;
 }
 
 .common-login-field label span {
-  color: #d34c4c;
+  color: #dc3545;
 }
 
 .common-login-field input,
@@ -100,36 +201,30 @@
   height: 42px;
   box-sizing: border-box;
   padding: 0 13px;
-  border: 1px solid #cfe0e2;
-  border-radius: 7px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
   outline: none;
   background: #ffffff;
-  color: #183f43;
+  color: #333;
   font-size: 13px;
-  transition: border-color 0.2s ease,
-    box-shadow 0.2s ease;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 .common-login-field input:focus,
 .common-login-field select:focus {
-  border-color: #3c949e;
-  box-shadow: 0 0 0 3px rgba(60, 148, 158, 0.1);
+  border-color: #00468c;
+  box-shadow: 0 0 0 2px rgba(0, 70, 140, 0.15);
 }
 
 .common-login-field input:disabled,
 .common-login-field select:disabled {
-  background: #f5f8f8;
-  color: #829294;
+  background: #f5f5f5;
+  color: #888;
   cursor: not-allowed;
 }
 
-.common-login-field input[readonly] {
-  background: #f5f8f8;
-  color: #5c7477;
-}
-
 /* ============================================================
-   TWO COLUMN
+   TWO COLUMN GRID
    ============================================================ */
 
 .common-login-grid {
@@ -139,7 +234,7 @@
 }
 
 /* ============================================================
-   STATUS
+   STATUS SWITCH
    ============================================================ */
 
 .common-login-status {
@@ -147,28 +242,24 @@
   align-items: center;
   gap: 12px;
   margin-top: 4px;
-  margin-bottom: 25px;
+  margin-bottom: 22px;
   padding: 14px;
-  background: #f8fbfb;
-  border: 1px solid #e2eeee;
-  border-radius: 8px;
+  background: #f8f8f8;
+  border: 1px solid #e5e5e5;
+  border-radius: 6px;
 }
 
 .common-login-status strong {
   display: block;
-  color: #234b4f;
+  color: #333;
   font-size: 13px;
 }
 
 .common-login-status p {
   margin: 3px 0 0;
-  color: #788c8e;
+  color: #666;
   font-size: 11px;
 }
-
-/* ============================================================
-   SWITCH
-   ============================================================ */
 
 .common-login-switch {
   position: relative;
@@ -187,7 +278,7 @@
   position: absolute;
   inset: 0;
   cursor: pointer;
-  background: #c7d4d5;
+  background: #ccc;
   border-radius: 20px;
   transition: 0.2s ease;
 }
@@ -205,18 +296,16 @@
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
 }
 
-.common-login-switch input:checked
-  + .common-login-slider {
-  background: #79c42b;
+.common-login-switch input:checked + .common-login-slider {
+  background: #7fbd2c;
 }
 
-.common-login-switch input:checked
-  + .common-login-slider::before {
+.common-login-switch input:checked + .common-login-slider::before {
   transform: translateX(19px);
 }
 
 /* ============================================================
-   ACTIONS
+   ACTIONS (modal buttons)
    ============================================================ */
 
 .common-login-actions {
@@ -230,7 +319,7 @@
 .common-login-actions button {
   min-width: 110px;
   height: 40px;
-  border-radius: 7px;
+  border-radius: 5px;
   padding: 0 18px;
   font-size: 13px;
   font-weight: 600;
@@ -239,24 +328,23 @@
 }
 
 .common-login-reset {
-  border: 1px solid #cbdcde;
+  border: 1px solid #ddd;
   background: #ffffff;
-  color: #49676a;
+  color: #333;
 }
 
 .common-login-reset:hover {
-  background: #f3f8f8;
+  background: #f5f5f5;
 }
 
 .common-login-save {
-  border: 1px solid #3c949e;
-  background: #3c949e;
+  border: none;
+  background: #00468c;
   color: #ffffff;
 }
 
 .common-login-save:hover {
-  background: #024f55;
-  border-color: #024f55;
+  background: #003a70;
 }
 
 .common-login-actions button:disabled {
@@ -265,7 +353,7 @@
 }
 
 /* ============================================================
-   COMMON LOGIN LIST
+   LIST CARD
    ============================================================ */
 
 .common-login-list-card {
@@ -275,9 +363,9 @@
   padding: 24px;
   box-sizing: border-box;
   background: #ffffff;
-  border: 1px solid #e1eeee;
-  border-radius: 12px;
-  box-shadow: 0 3px 14px rgba(2, 79, 85, 0.08);
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
 }
 
 .common-login-list-header {
@@ -290,18 +378,17 @@
 
 .common-login-list-header h2 {
   margin: 0;
-  color: #024f55;
+  color: #333;
   font-size: 20px;
   font-weight: 700;
 }
 
 .common-login-list-header p {
   margin: 5px 0 0;
-  color: #668184;
+  color: #555;
   font-size: 13px;
 }
 
-/* Header action buttons (Refresh + Create) */
 .common-login-list-header-actions {
   display: flex;
   align-items: center;
@@ -312,10 +399,10 @@
 .common-login-refresh {
   min-height: 38px;
   padding: 0 16px;
-  border: 1px solid #3c949e;
-  border-radius: 7px;
+  border: 1px solid #00468c;
+  border-radius: 5px;
   background: #ffffff;
-  color: #024f55;
+  color: #00468c;
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
@@ -323,7 +410,7 @@
 }
 
 .common-login-refresh:hover {
-  background: #f1f9fb;
+  background: #f0f4f8;
 }
 
 .common-login-refresh:disabled {
@@ -334,9 +421,9 @@
 .common-login-create {
   min-height: 38px;
   padding: 0 16px;
-  border: 1px solid #3c949e;
-  border-radius: 7px;
-  background: #3c949e;
+  border: none;
+  border-radius: 5px;
+  background: #00468c;
   color: #ffffff;
   font-size: 13px;
   font-weight: 600;
@@ -346,8 +433,7 @@
 }
 
 .common-login-create:hover {
-  background: #024f55;
-  border-color: #024f55;
+  background: #003a70;
 }
 
 .common-login-create:disabled {
@@ -355,62 +441,25 @@
   cursor: not-allowed;
 }
 
-/* Message shown above the list (when form is closed) */
+/* Message above list */
 .common-login-list-message {
   margin: 0 0 16px;
   padding: 11px 14px;
-  border-radius: 7px;
+  border-radius: 6px;
   font-size: 13px;
   font-weight: 500;
 }
 
 .common-login-list-message.success {
-  background: #eef9e8;
-  border: 1px solid #c9e9b9;
-  color: #4e8b24;
+  background: #d7f2ce;
+  border: 1px solid #b8e0a8;
+  color: #2d6a1f;
 }
 
 .common-login-list-message.error {
-  background: #fff1f1;
-  border: 1px solid #f0caca;
-  color: #c13d3d;
-}
-
-/* ============================================================
-   SEARCH
-   ============================================================ */
-
-.common-login-list-toolbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 14px;
-  margin-bottom: 16px;
-}
-
-.common-login-list-toolbar input {
-  width: 100%;
-  max-width: 400px;
-  height: 40px;
-  padding: 0 13px;
-  box-sizing: border-box;
-  border: 1px solid #cfe0e2;
-  border-radius: 7px;
-  outline: none;
-  background: #ffffff;
-  color: #183f43;
-  font-size: 13px;
-}
-
-.common-login-list-toolbar input:focus {
-  border-color: #3c949e;
-  box-shadow: 0 0 0 3px rgba(60, 148, 158, 0.1);
-}
-
-.common-login-list-toolbar span {
-  flex-shrink: 0;
-  color: #668184;
-  font-size: 12px;
+  background: #ffe5d2;
+  border: 1px solid #f0c4a8;
+  color: #b33a00;
 }
 
 /* ============================================================
@@ -420,8 +469,8 @@
 .common-login-table-wrapper {
   width: 100%;
   overflow-x: auto;
-  border: 1px solid #e1eeee;
-  border-radius: 8px;
+  border: 1px solid #cccbce;
+  border-radius: 6px;
 }
 
 .common-login-table {
@@ -432,38 +481,36 @@
 }
 
 .common-login-table thead {
-  background: #f1f9fb;
+  background: #f2f2f2;
 }
 
 .common-login-table th {
-  padding: 14px;
-  color: #024f55;
-  font-size: 12px;
+  padding: 12px 14px;
+  color: #333;
+  font-size: 13px;
   font-weight: 700;
   white-space: nowrap;
-  border-bottom: 1px solid #d5f2f8;
+  border: 1px solid #cccbce;
+  text-align: center;
 }
 
 .common-login-table td {
-  padding: 13px 14px;
-  color: #36575a;
-  font-size: 13px;
+  padding: 11px 14px;
+  color: #333;
+  font-size: 14px;
   vertical-align: middle;
-  border-bottom: 1px solid #edf3f3;
+  border: 1px solid #cccbce;
+  background: #fff;
 }
 
-.common-login-table tbody tr:last-child td {
-  border-bottom: none;
-}
-
-.common-login-table tbody tr:hover {
-  background: #f8fcfc;
+.common-login-table tbody tr:hover td {
+  background: #f1f1f1;
 }
 
 .common-login-empty {
   height: 75px;
   text-align: center;
-  color: #788c8e !important;
+  color: #666 !important;
 }
 
 /* ============================================================
@@ -475,20 +522,20 @@
   align-items: center;
   justify-content: center;
   padding: 5px 10px;
-  border-radius: 20px;
-  font-size: 11px;
+  border-radius: 4px;
+  font-size: 12px;
   font-weight: 600;
   white-space: nowrap;
 }
 
 .common-login-status-badge.active {
-  background: #eef9e8;
-  color: #4e8b24;
+  background: #d7f2ce;
+  color: #2d6a1f;
 }
 
 .common-login-status-badge.inactive {
-  background: #f0f2f3;
-  color: #68777a;
+  background: #f0f0f0;
+  color: #555;
 }
 
 /* ============================================================
@@ -503,8 +550,8 @@
 
 .common-login-row-actions button {
   min-height: 32px;
-  padding: 0 10px;
-  border-radius: 6px;
+  padding: 0 12px;
+  border-radius: 4px;
   font-size: 12px;
   font-weight: 600;
   white-space: nowrap;
@@ -513,19 +560,19 @@
 }
 
 .common-login-edit {
-  border: 1px solid #3c949e;
+  border: 1px solid #00468c;
   background: #ffffff;
-  color: #176b73;
+  color: #00468c;
 }
 
 .common-login-edit:hover {
-  background: #f1f9fb;
+  background: #f0f4f8;
 }
 
 .common-login-deactivate {
-  border: 1px solid #e8c2c2;
+  border: 1px solid #dc3545;
   background: #ffffff;
-  color: #b23b3b;
+  color: #dc3545;
 }
 
 .common-login-deactivate:hover {
@@ -533,13 +580,13 @@
 }
 
 .common-login-activate {
-  border: 1px solid #c9e9b9;
-  background: #ffffff;
-  color: #4e8b24;
+  border: none;
+  background: #7fbd2c;
+  color: #ffffff;
 }
 
 .common-login-activate:hover {
-  background: #eef9e8;
+  background: #218838;
 }
 
 .common-login-row-actions button:disabled {
@@ -547,6 +594,135 @@
   cursor: not-allowed;
 }
 
+/* ============================================================
+   MODAL POPUP
+   ============================================================ */
+
+.common-login-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(0, 0, 0, 0.45);
+  box-sizing: border-box;
+}
+
+.common-login-modal {
+  width: 100%;
+  max-width: 720px;
+  max-height: 90vh;
+  overflow-y: auto;
+  background: #ffffff;
+  border-radius: 10px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+}
+
+.common-login-modal .common-login-header {
+  position: relative;
+  padding-right: 52px;
+}
+
+.common-login-modal-close {
+  position: absolute;
+  top: 50%;
+  right: 16px;
+  transform: translateY(-50%);
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: #666;
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+  transition: 0.15s ease;
+}
+
+.common-login-modal-close:hover {
+  background: rgba(0, 0, 0, 0.04);
+  color: #111;
+}
+
+.common-login-modal-close:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.common-login-modal form {
+  padding: 22px;
+}
+/* ============================================================
+   ROW ACTIONS
+   ============================================================ */
+/* ============================================================
+   ROW ACTIONS
+   ============================================================ */
+
+.common-login-row-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.common-login-row-actions button {
+  min-height: 32px;
+  min-width: 110px;          /* same width for both */
+  padding: 0 12px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  box-sizing: border-box;
+}
+
+.common-login-edit {
+  border: 1px solid #00468c;
+  background: #ffffff;
+  color: #00468c;
+}
+
+.common-login-edit:hover {
+  background: #f0f4f8;
+}
+
+.common-login-deactivate {
+  border: 1px solid #dc3545;
+  background: #ffffff;
+  color: #dc3545;
+}
+
+.common-login-deactivate:hover {
+  background: #fff1f1;
+}
+
+.common-login-activate {
+  border: 1px solid #7fbd2c;   /* same 1px border */
+  background: #7fbd2c;
+  color: #ffffff;
+}
+
+.common-login-activate:hover {
+  background: #218838;
+  border-color: #218838;
+}
+
+.common-login-row-actions button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
 /* ============================================================
    MOBILE
    ============================================================ */
@@ -557,15 +733,11 @@
   }
 
   .common-login-header {
-    padding: 18px;
+    padding: 16px;
   }
 
   .common-login-header h2 {
-    font-size: 19px;
-  }
-
-  .common-login-card form {
-    padding: 18px;
+    font-size: 18px;
   }
 
   .common-login-grid {
@@ -610,7 +782,7 @@
     flex-direction: column;
   }
 
-  .common-login-list-toolbar input {
+  .common-login-search-wrapper {
     max-width: none;
   }
 
@@ -621,74 +793,7 @@
   .common-login-table {
     min-width: 760px;
   }
-}
-/* ============================================================
-   MODAL POPUP
-   ============================================================ */
 
-.common-login-modal-overlay {
-  position: fixed;
-  inset: 0;
-  z-index: 1000;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 20px;
-  background: rgba(2, 79, 85, 0.45);
-  box-sizing: border-box;
-}
-
-.common-login-modal {
-  width: 100%;
-  max-width: 720px;
-  max-height: 90vh;
-  overflow-y: auto;
-  background: #ffffff;
-  border: 1px solid #e1eeee;
-  border-radius: 12px;
-  box-shadow: 0 12px 40px rgba(2, 79, 85, 0.18);
-}
-
-.common-login-modal .common-login-header {
-  position: relative;
-  padding-right: 52px;
-}
-
-.common-login-modal-close {
-  position: absolute;
-  top: 50%;
-  right: 18px;
-  transform: translateY(-50%);
-  width: 32px;
-  height: 32px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: none;
-  border-radius: 6px;
-  background: transparent;
-  color: #668184;
-  font-size: 24px;
-  line-height: 1;
-  cursor: pointer;
-  transition: 0.15s ease;
-}
-
-.common-login-modal-close:hover {
-  background: #e8f4f6;
-  color: #024f55;
-}
-
-.common-login-modal-close:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.common-login-modal form {
-  padding: 26px;
-}
-
-@media (max-width: 700px) {
   .common-login-modal-overlay {
     padding: 12px;
     align-items: flex-start;
@@ -699,6 +804,6 @@
   }
 
   .common-login-modal form {
-    padding: 18px;
+    padding: 16px;
   }
 }

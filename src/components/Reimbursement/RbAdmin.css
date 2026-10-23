@@ -374,7 +374,110 @@ td:hover {
   right: auto;
 }
 
-/* Bulk approval / reject styles – append to RbAdmin.css / RbTeamLead.css */
+/* Bulk approval / reject styles – append to RbAdmin.css / RbTeamLead.css
+
+.rb-bulk-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  margin-bottom: 8px;
+  background: #f7faf5;
+  border: 1px solid #d4e8c2;
+  border-radius: 6px;
+}
+
+.rb-bulk-select-all {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.rb-bulk-count {
+  font-size: 13px;
+  color: #555;
+  font-weight: 500;
+}
+
+.rb-bulk-project {
+  min-width: 160px;
+  height: 32px;
+}
+
+.rb-bulk-comment {
+  min-width: 160px;
+  padding: 5px 8px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  height: 28px;
+  font-size: 13px;
+}
+
+.rb-bulk-btn {
+  border: none;
+  padding: 6px 14px;
+  border-radius: 5px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  height: 32px;
+  white-space: nowrap;
+}
+
+.rb-bulk-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.rb-bulk-approve {
+  background-color: #0f9d58;
+  color: #fff;
+}
+
+.rb-bulk-approve:hover:not(:disabled) {
+  background-color: #0b7a44;
+}
+
+.rb-bulk-reject {
+  background-color: #d32f2f;
+  color: #fff;
+}
+
+.rb-bulk-reject:hover:not(:disabled) {
+  background-color: #b71c1c;
+}
+
+.rb-bulk-clear {
+  background-color: #e0e0e0;
+  color: #333;
+}
+
+.rb-bulk-clear:hover:not(:disabled) {
+  background-color: #bdbdbd;
+}
+
+.rb-checkbox-col {
+  width: 36px;
+  min-width: 36px;
+  text-align: center !important;
+  vertical-align: middle;
+}
+
+.rb-checkbox-col input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  accent-color: #79c42b;
+}
+
+.claim-main-row:has(input[type="checkbox"]:checked) {
+  background-color: #f0f9e8;
+} */
 
 .rb-bulk-bar {
   display: flex;
@@ -478,6 +581,129 @@ td:hover {
 .claim-main-row:has(input[type="checkbox"]:checked) {
   background-color: #f0f9e8;
 }
+/* Payment status modal */
+.payment-modal-content {
+  width: 100%;
+  max-width: 420px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  box-sizing: border-box;
+  padding: 8px 8px 16px;
+}
+
+.payment-options {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px 24px;
+  padding: 12px 8px 4px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.payment-options label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 !important;
+  cursor: pointer;
+  font-size: 14px;
+  white-space: nowrap;
+}
+
+.payment-date-row {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  margin: 16px 0 4px;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+.payment-date-field {
+  display: grid;
+  grid-template-columns: auto 180px;
+  align-items: center;
+  column-gap: 12px;
+  justify-content: center;
+}
+
+.payment-date-field label,
+.payment-date-row label {
+  font-weight: 400;
+  font-size: 14px;
+  margin: 0;
+  color: #333;
+  white-space: nowrap;
+  text-align: right;
+}
+
+.payment-date-input {
+  padding: 6px 10px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  height: 36px;
+  font-size: 14px;
+  width: 180px;
+  max-width: 180px;
+  box-sizing: border-box;
+}
+
+.payment-date-input:disabled {
+  background: #f5f5f5;
+  color: #999;
+  cursor: not-allowed;
+}
+
+.payment-date-hint {
+  font-size: 12px;
+  color: #888;
+  margin: 0;
+  text-align: center;
+  line-height: 1.4;
+}
+
+.payment-modal-actions {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  margin-top: 20px;
+  flex-wrap: wrap;
+}
+
+.payment-modal-actions .modal-cross-btn {
+  margin: 0 !important;
+  min-width: 96px;
+  height: 36px;
+  padding: 8px 16px;
+}
+
+.payment-modal-actions .submit-payment-btn {
+  margin: 0 !important;
+  margin-top: 0 !important;
+  min-width: 96px;
+  height: 36px;
+  padding: 8px 16px;
+}
+
+@media (max-width: 420px) {
+  .payment-date-field {
+    grid-template-columns: 1fr;
+    justify-items: center;
+    row-gap: 8px;
+  }
+  .payment-date-field label {
+    text-align: center;
+  }
+}
 
 @media (max-width: 600px) {
   .invoice-cell,
@@ -490,3 +716,4 @@ td:hover {
     left: 5vw;
   }
 }
+

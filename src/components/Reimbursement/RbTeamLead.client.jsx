@@ -125,6 +125,7 @@ const RbTeamLead = () => {
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const [selectedPaymentClaim, setSelectedPaymentClaim] = useState(null);
   const [selectedPaymentOption, setSelectedPaymentOption] = useState("");
+  const [paymentDate, setPaymentDate] = useState("");
   const [projects, setProjects] = useState([]);
   const [projectSelections, setProjectSelections] = useState({});
   const [employeeOptions, setEmployeeOptions] = useState([]);
@@ -1340,6 +1341,22 @@ const RbTeamLead = () => {
     }
   };
 
+  const toInputDate = (raw) => {
+    if (!raw) return "";
+    const d = raw instanceof Date ? raw : new Date(raw);
+    if (isNaN(d)) {
+      const s = String(raw).trim();
+      if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+      return "";
+    }
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${y}-${m}-${day}`;
+  };
+
+  const todayInputDate = () => toInputDate(new Date());
+
   const updatePaymentStatus = async (claimIdParam, paymentOptionParam) => {
     try {
       const claimId =
@@ -1360,6 +1377,10 @@ const RbTeamLead = () => {
         showAlert("Select a payment status before submitting.");
         return;
       }
+      if (paymentOption === "paid" && !paymentDate) {
+        showAlert("Please select a payment date.");
+        return;
+      }
 
       const url =
         (backendBase ? `${backendBase}` : "") +
@@ -1372,22 +1393,25 @@ const RbTeamLead = () => {
       if (!headers["x-org-id"] && orgId)
         headers["x-org-id"] = String(orgId).trim();
 
-      await axios.put(
-        url,
-        {
-          payment_status: paymentOption,
-          user_role: user?.role || user?.raw?.role || undefined,
-        },
-        {
-          withCredentials: true,
-          headers,
-        },
-      );
+      const body = {
+        payment_status: paymentOption,
+        user_role: user?.role || user?.raw?.role || undefined,
+      };
+      if (paymentDate) {
+        body.paid_date = paymentDate;
+        body.payment_date = paymentDate;
+      }
+
+      await axios.put(url, body, {
+        withCredentials: true,
+        headers,
+      });
 
       showAlert("Payment status updated.");
       setIsPaymentModalOpen(false);
       setSelectedPaymentClaim(null);
       setSelectedPaymentOption("");
+      setPaymentDate("");
       fetchEmployees();
     } catch (err) {
       console.error("updatePaymentStatus failed:", err);
@@ -1406,16 +1430,24 @@ const RbTeamLead = () => {
         if (orgId) minimalHeaders["x-org-id"] = String(orgId).trim();
         minimalHeaders["Content-Type"] = "application/json";
 
-        await axios.put(
-          url,
-          { payment_status: paymentOptionParam || selectedPaymentOption || "" },
-          { withCredentials: true, headers: minimalHeaders },
-        );
+        const fallbackBody = {
+          payment_status: paymentOptionParam || selectedPaymentOption || "",
+        };
+        if (paymentDate) {
+          fallbackBody.paid_date = paymentDate;
+          fallbackBody.payment_date = paymentDate;
+        }
+
+        await axios.put(url, fallbackBody, {
+          withCredentials: true,
+          headers: minimalHeaders,
+        });
 
         showAlert("Payment status updated (fallback).");
         setIsPaymentModalOpen(false);
         setSelectedPaymentClaim(null);
         setSelectedPaymentOption("");
+        setPaymentDate("");
         fetchEmployees();
       } catch (err2) {
         console.error("Fallback updatePaymentStatus failed:", err2);
@@ -2068,6 +2100,15 @@ const RbTeamLead = () => {
                                                     .trim()
                                                 : "pending";
                                               setSelectedPaymentOption(current);
+                                              const existingPaid = toInputDate(
+                                                rb.paid_date || rb.payment_date,
+                                              );
+                                              setPaymentDate(
+                                                existingPaid ||
+                                                  (current === "paid"
+                                                    ? todayInputDate()
+                                                    : ""),
+                                              );
                                               setIsPaymentModalOpen(true);
                                             }}
                                           >
@@ -2379,7 +2420,10 @@ const RbTeamLead = () => {
         <Modal
           title={"Update Payment Status"}
           isVisible={isPaymentModalOpen}
-          onClose={() => setIsPaymentModalOpen(false)}
+          onClose={() => {
+            setIsPaymentModalOpen(false);
+            setPaymentDate("");
+          }}
           buttons={[]}
         >
           <div className="payment-modal-content">
@@ -2390,7 +2434,10 @@ const RbTeamLead = () => {
                   name="paymentOption"
                   value="rejected"
                   checked={selectedPaymentOption === "rejected"}
-                  onChange={(e) => setSelectedPaymentOption(e.target.value)}
+                  onChange={(e) => {
+                    setSelectedPaymentOption(e.target.value);
+                    setPaymentDate("");
+                  }}
                 />{" "}
                 Reject
               </label>
@@ -2400,7 +2447,10 @@ const RbTeamLead = () => {
                   name="paymentOption"
                   value="paid"
                   checked={selectedPaymentOption === "paid"}
-                  onChange={(e) => setSelectedPaymentOption(e.target.value)}
+                  onChange={(e) => {
+                    setSelectedPaymentOption(e.target.value);
+                    if (!paymentDate) setPaymentDate(todayInputDate());
+                  }}
                 />{" "}
                 Payable
               </label>
@@ -2410,16 +2460,47 @@ const RbTeamLead = () => {
                   name="paymentOption"
                   value="pending"
                   checked={selectedPaymentOption === "pending"}
-                  onChange={(e) => setSelectedPaymentOption(e.target.value)}
+                  onChange={(e) => {
+                    setSelectedPaymentOption(e.target.value);
+                    setPaymentDate("");
+                  }}
                 />{" "}
                 Pending
               </label>
             </div>
-            <p>I'll make sure to process the payment today</p>
+            <div className="payment-date-row">
+              <div className="payment-date-field">
+                <label htmlFor="tl-payment-date-input">
+                  Payment date
+                  {selectedPaymentOption === "paid" ? " *" : ""}
+                </label>
+                <input
+                  id="tl-payment-date-input"
+                  type="date"
+                  className="payment-date-input"
+                  value={paymentDate}
+                  onChange={(e) => setPaymentDate(e.target.value)}
+                  disabled={
+                    selectedPaymentOption !== "paid" &&
+                    selectedPaymentOption !== "rejected"
+                  }
+                />
+              </div>
+              <span className="payment-date-hint">
+                {selectedPaymentOption === "paid"
+                  ? "Required when marking as Payable"
+                  : selectedPaymentOption === "rejected"
+                    ? "Optional rejection / reference date"
+                    : "Select Payable to set a payment date"}
+              </span>
+            </div>
 
             <button
               className="modal-cross-btn"
-              onClick={() => setIsPaymentModalOpen(false)}
+              onClick={() => {
+                setIsPaymentModalOpen(false);
+                setPaymentDate("");
+              }}
             >
               Cancel
             </button>
@@ -2431,7 +2512,10 @@ const RbTeamLead = () => {
                   selectedPaymentOption,
                 )
               }
-              disabled={!selectedPaymentOption}
+              disabled={
+                !selectedPaymentOption ||
+                (selectedPaymentOption === "paid" && !paymentDate)
+              }
             >
               Submit
             </button>

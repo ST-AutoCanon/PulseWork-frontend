@@ -1988,9 +1988,9 @@ import {
 import { useAuth } from "../../context/AuthProvider.client";
 import "./PunchPolicyModal.css";
 
-const emptyShift = () => ({
+const emptyShift = (index = 1) => ({
   id: Date.now().toString() + Math.random().toString(36).slice(2, 6),
-  name: "",
+  name: `Shift ${index}`,
   punchInTime: "09:00",
   bufferTime: "15",
   punchOutTime: "18:00",
@@ -2486,6 +2486,8 @@ export default function PunchPolicyModal({ isOpen, onClose }) {
     setEditingId(null);
     setDeleteConfirmId(null);
     setSearchText("");
+    setEmpSearch("");
+    setAssignmentTab("groups");
     clearMessages();
     fetchPolicies();
   }, [isOpen]);
@@ -2500,13 +2502,19 @@ export default function PunchPolicyModal({ isOpen, onClose }) {
     if (!isOpen || view !== "form") return;
     fetchAssignmentData();
     buildEmployeePolicyMap(editingId);
-  }, [isOpen, view, editingId]);
+  }, [isOpen, view, editingId, buildEmployeePolicyMap]);
 
   useEffect(() => {
     if (!isOpen || view !== "form" || assignmentTab !== "employees") return;
     const t = setTimeout(() => fetchAssignmentData(empSearch), 300);
     return () => clearTimeout(t);
   }, [empSearch]);
+
+  useEffect(() => {
+    if (!successMsg) return;
+    const t = setTimeout(() => setSuccessMsg(""), 2000);
+    return () => clearTimeout(t);
+  }, [successMsg]);
 
   const filteredPolicies = useMemo(() => {
     const q = listSearch.trim().toLowerCase();
@@ -2664,6 +2672,9 @@ export default function PunchPolicyModal({ isOpen, onClose }) {
   const handleOpenEdit = async (policy) => {
     clearMessages();
     setEditingId(policy.id);
+    setSearchText("");
+    setEmpSearch("");
+    setAssignmentTab("groups");
     loadFormFromPolicy(policy);
     setView("form");
     if (!BACKEND_URL || !orgId) return;
@@ -2689,6 +2700,9 @@ export default function PunchPolicyModal({ isOpen, onClose }) {
     setView("list");
     setEditingId(null);
     setDeleteConfirmId(null);
+    setSearchText("");
+    setEmpSearch("");
+    setAssignmentTab("groups");
     clearMessages();
   };
 
@@ -2727,8 +2741,7 @@ export default function PunchPolicyModal({ isOpen, onClose }) {
     setShifts((prev) => [
       ...prev,
       {
-        ...emptyShift(),
-        name: `Shift ${prev.length + 1}`,
+        ...emptyShift(prev.length + 1),
         bufferTime: minDuration || bufferTime || "15",
       },
     ]);
@@ -2914,20 +2927,24 @@ export default function PunchPolicyModal({ isOpen, onClose }) {
 
   const getEmployeeExistingPolicy = (empId) => {
     const key = String(empId);
+    // Only block if already on another policy of the SAME type
     return employeePolicyMap[key]?.[normalizePolicyType(policyType)] || null;
   };
 
   const toggleEmployee = (emp) => {
-    const exists = selectedEmployees.some((e) => e.id === emp.id);
+    const empId = String(emp.id);
+    const exists = selectedEmployees.some((e) => String(e.id) === empId);
     if (exists) {
-      setSelectedEmployees((prev) => prev.filter((e) => e.id !== emp.id));
+      setSelectedEmployees((prev) =>
+        prev.filter((e) => String(e.id) !== empId),
+      );
       return;
     }
 
-    const existing = getEmployeeExistingPolicy(emp.id);
+    const existing = getEmployeeExistingPolicy(empId);
     if (existing) {
       window.alert(
-        `${emp.name || emp.id} is already assigned to another ${policyTypeLabel} policy: “${existing.policyName}”.\n\nAn employee can only be in one policy of the same type. Remove them from that policy first, then assign here.`,
+        `${emp.name || emp.id} is already assigned to another ${policyTypeLabel} policy: “${existing.policyName}”.\n\nAn employee can only be in one policy of the same type. They can still be added to a different type (Late Login, Miss Punch Out, or Less Login Hours).`,
       );
       return;
     }
@@ -2935,7 +2952,8 @@ export default function PunchPolicyModal({ isOpen, onClose }) {
     setSelectedEmployees((prev) => [...prev, { id: emp.id, name: emp.name }]);
   };
 
-  const isEmployeeSelected = (id) => selectedEmployees.some((e) => e.id === id);
+  const isEmployeeSelected = (id) =>
+    selectedEmployees.some((e) => String(e.id) === String(id));
 
   const policyTypeLabel =
     policyType === "late_login"
@@ -3973,7 +3991,8 @@ export default function PunchPolicyModal({ isOpen, onClose }) {
                       paddingLeft: 2,
                     }}
                   >
-                    Employees already on another policy cannot be selected.
+                    Employees already on another policy of the same type cannot
+                    be selected. Different types are allowed.
                   </p>
                   <div className="pp-group-list" style={{ maxHeight: 280 }}>
                     {assignmentLoading ? (

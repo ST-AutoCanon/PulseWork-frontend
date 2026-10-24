@@ -12,6 +12,7 @@ const REASONS = [
     value: "missed_apply_leave",
     label: "Missed Apply Leave / Missed Punch In",
   },
+  { value: "deficit_in_punch_hours", label: "Less Login Hours" },
 ];
 
 function pad(n) {

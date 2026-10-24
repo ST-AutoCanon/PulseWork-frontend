@@ -1397,6 +1397,7 @@ const REGULARISATION_TYPE_LABELS = {
   missed_punch_out: "Missed Punch Out",
   late_login: "Late Login",
   missed_apply_leave: "Missed Apply Leave / Missed Punch In",
+  deficit_in_punch_hours: "Less Login Hours",
 };
 
 function parseSelectedDates(value) {

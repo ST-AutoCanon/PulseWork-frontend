@@ -1,221 +1,273 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
 import axios from "axios";
 import { useAuth } from "../../../context/AuthProvider.client";
 import "./salaryCalculationPeriod.css";
 
-const SalaryCalculationPeriod = ({ onClose, showAlert }) => {
+const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
+const API_KEY = process.env.NEXT_PUBLIC_API_KEY;
+
+export default function SalaryCalculationPeriod({ onClose, showAlert }) {
   const { user } = useAuth();
-
-  const meId = user?.employeeId ?? user?.id ?? user?.employee_id ?? null;
-  const orgId = user?.orgId ?? user?.raw?.org_id ?? null;
-
-  const API_KEY = process.env.NEXT_PUBLIC_API_KEY;
-  const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
+  const orgId = user?.orgId ?? user?.raw?.org_id ?? user?.org_id ?? null;
+  const employeeId = user?.employeeId ?? user?.id ?? user?.employee_id ?? null;
 
   const [periods, setPeriods] = useState([]);
-  const [isEditing, setIsEditing] = useState(false);
+  const [cutoffDate, setCutoffDate] = useState("");
   const [editingId, setEditingId] = useState(null);
-  const [formData, setFormData] = useState({ cutoff_date: "" });
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
 
-  const ENDPOINTS = {
-    list: `${BACKEND_URL}/api/salaryCalculationperiods`,
-    add: `${BACKEND_URL}/api/addSalaryCalculationperiod`,
-    update: (id) => `${BACKEND_URL}/api/updateSalaryCalculationperiod/${id}`,
-  };
+  const getHeaders = useCallback(
+    () => ({
+      "x-api-key": API_KEY || "",
+      ...(orgId ? { "x-org-id": String(orgId) } : {}),
+      ...(employeeId ? { "x-employee-id": String(employeeId) } : {}),
+    }),
+    [employeeId, orgId],
+  );
 
-  const headers = {
-    "x-api-key": API_KEY,
-    "x-employee-id": meId,
-    ...(orgId ? { "x-org-id": orgId } : {}),
-  };
-
-  useEffect(() => {
+  const fetchPeriods = useCallback(async () => {
+    if (!BACKEND_URL) {
+      throw new Error("Backend URL is not configured.");
+    }
     if (!orgId) {
-      showAlert?.("Organization not resolved. Please login again.");
-      return;
+      throw new Error("Organization information is unavailable.");
     }
 
-    if (meId) fetchPeriods();
-  }, [meId, orgId]);
-
-  const fetchPeriods = async () => {
-    if (!BACKEND_URL || !meId) {
-      showAlert?.("Please login to continue");
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const res = await axios.get(ENDPOINTS.list, {
-        withCredentials: true,
-        headers,
-      });
-      if (res.data.success) {
-        const data = res.data.data || [];
-        setPeriods(data);
-        if (data.length === 0) {
-          setFormData({ cutoff_date: new Date().getDate().toString() });
-        }
-      }
-    } catch (err) {
-      console.error("Fetch error:", err);
-      showAlert?.("Failed to load salary periods");
-      setPeriods([]);
-    } finally {
-      setLoading(false);
-    }
-  };
+    const response = await axios.get(
+      `${BACKEND_URL}/api/salaryCalculationperiods`,
+      { headers: getHeaders(), withCredentials: true },
+    );
+    return response.data?.data || [];
+  }, [getHeaders, orgId]);
 
   useEffect(() => {
-    if (meId) fetchPeriods();
-  }, [meId]);
+    let active = true;
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    const num = parseInt(formData.cutoff_date);
-    if (isNaN(num) || num < 1 || num > 31) {
-      showAlert?.("Please enter a valid day between 1 and 31");
+    const loadPeriods = async () => {
+      setLoading(true);
+      try {
+        const loadedPeriods = await fetchPeriods();
+        if (active) {
+          setPeriods(loadedPeriods);
+          setErrorMessage("");
+        }
+      } catch (error) {
+        console.error("[Salary Periods Error]", error);
+        if (active) {
+          setErrorMessage(
+            error.response?.data?.error ||
+              error.message ||
+              "Failed to load salary periods.",
+          );
+        }
+      } finally {
+        if (active) setLoading(false);
+      }
+    };
+
+    void loadPeriods();
+    return () => {
+      active = false;
+    };
+  }, [fetchPeriods]);
+
+  const resetForm = () => {
+    setEditingId(null);
+    setCutoffDate("");
+    setErrorMessage("");
+  };
+
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+    const cutoff = Number(cutoffDate);
+    if (!Number.isInteger(cutoff) || cutoff < 1 || cutoff > 31) {
+      setErrorMessage("Cutoff date must be between 1 and 31.");
+      return;
+    }
+    if (!BACKEND_URL || !orgId) {
+      setErrorMessage("Organization information or backend URL is unavailable.");
       return;
     }
 
-    setLoading(true);
+    setSaving(true);
+    setErrorMessage("");
     try {
-      const payload = { cutoff_date: num };
+      const request = {
+        headers: getHeaders(),
+        withCredentials: true,
+      };
+      const payload = { cutoff_date: cutoff };
 
-      let res;
-      if (isEditing) {
-        res = await axios.put(ENDPOINTS.update(editingId), payload, {
-          withCredentials: true,
-          headers,
-        });
-      } else {
-        res = await axios.post(ENDPOINTS.add, payload, {
-          withCredentials: true,
-          headers,
-        });
-      }
-
-      if (res.data.success) {
-        showAlert?.(
-          isEditing ? "Updated successfully!" : "Added successfully!"
+      if (editingId == null) {
+        await axios.post(
+          `${BACKEND_URL}/api/salaryCalculationperiods/addSalaryCalculationperiod`,
+          payload,
+          request,
         );
-        fetchPeriods();
-        toggleModal();
+      } else {
+        await axios.put(
+          `${BACKEND_URL}/api/salaryCalculationperiods/updateSalaryCalculationperiod/${editingId}`,
+          payload,
+          request,
+        );
       }
-    } catch (err) {
-      const msg =
-        err.response?.data?.error ||
-        err.response?.data?.message ||
-        "Save failed";
-      showAlert?.(msg);
+
+      setPeriods(await fetchPeriods());
+      resetForm();
+      showAlert?.(
+        editingId == null
+          ? "Salary calculation period saved successfully."
+          : "Salary calculation period updated successfully.",
+      );
+    } catch (error) {
+      console.error("[Save Salary Period Error]", error);
+      const message =
+        error.response?.data?.error ||
+        error.message ||
+        "Failed to save the salary calculation period.";
+      setErrorMessage(message);
+      showAlert?.(message);
     } finally {
-      setLoading(false);
+      setSaving(false);
     }
   };
 
-  const handleEdit = (period) => {
-    setIsEditing(true);
+  const startEditing = (period) => {
     setEditingId(period.id);
-    setFormData({ cutoff_date: period.cutoff_date.toString() });
+    setCutoffDate(String(period.cutoff_date));
+    setErrorMessage("");
   };
 
-  const toggleModal = () => {
-    setIsEditing(false);
-    setEditingId(null);
-    setFormData({ cutoff_date: "" });
-    onClose?.();
-  };
+  let submitLabel = editingId == null ? "Save Period" : "Update Period";
+  if (saving) submitLabel = "Saving...";
+
+  let periodsContent;
+  if (loading) {
+    periodsContent = (
+      <p className="salary-period-no-data">Loading periods...</p>
+    );
+  } else if (periods.length === 0) {
+    periodsContent = (
+      <p className="salary-period-no-data">No salary periods found.</p>
+    );
+  } else {
+    periodsContent = (
+      <div className="salary-period-table-wrapper">
+        <table className="salary-period-table">
+          <thead>
+            <tr>
+              <th>Cutoff date</th>
+              <th>Created</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {periods.map((period, index) => (
+              <tr
+                className={index % 2 === 0 ? "even-row" : ""}
+                key={period.id}
+              >
+                <td>{period.cutoff_date}</td>
+                <td>
+                  {period.created_at
+                    ? new Date(period.created_at).toLocaleDateString()
+                    : "-"}
+                </td>
+                <td className="salary-period-actions">
+                  <button
+                    className="salary-period-edit-btn"
+                    type="button"
+                    onClick={() => startEditing(period)}
+                  >
+                    Edit
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    );
+  }
 
   return (
     <div className="salary-period-overlay">
-      <div className="salary-period-modal">
-        <div className="salary-period-header">
-          <h2>{isEditing ? "Edit" : "Set"} Salary Cutoff Date</h2>
-          <button onClick={toggleModal} className="salary-period-close">
-            ×
+      <dialog
+        open
+        className="salary-period-modal"
+        aria-labelledby="salary-period-title"
+      >
+        <header className="salary-period-header">
+          <h2 id="salary-period-title">Salary Calculation Period</h2>
+          <button
+            className="salary-period-close"
+            type="button"
+            onClick={onClose}
+            aria-label="Close"
+          >
+            &times;
           </button>
-        </div>
+        </header>
 
         <div className="salary-period-content">
-          <div className="salary-period-form-section">
+          <section className="salary-period-form-section">
             <p className="salary-period-note">
-              Salary will be calculated every month on this date (1-31)
+              Set the monthly payroll cutoff day (1-31).
             </p>
-
-            <form onSubmit={handleSubmit}>
+            <form className="salary-period-form" onSubmit={handleSubmit}>
               <div className="salary-period-form-group">
-                <label className="salary-period-label">Cutoff Date</label>
+                <label className="salary-period-label" htmlFor="cutoff-date">
+                  Cutoff date
+                </label>
                 <input
+                  className="salary-period-input"
+                  id="cutoff-date"
                   type="number"
                   min="1"
                   max="31"
-                  value={formData.cutoff_date}
-                  onChange={(e) => setFormData({ cutoff_date: e.target.value })}
-                  placeholder="25"
+                  step="1"
+                  value={cutoffDate}
+                  onChange={(event) => setCutoffDate(event.target.value)}
                   required
-                  disabled={loading}
-                  className="salary-period-input"
                 />
               </div>
 
+              {errorMessage && (
+                <p className="salary-period-error general" role="alert">
+                  {errorMessage}
+                </p>
+              )}
+
               <button
+                className="compensation-create-button"
                 type="submit"
-                className="salary-period-submit"
-                disabled={loading || !formData.cutoff_date}
+                disabled={saving || loading}
               >
-                {loading ? "Saving..." : isEditing ? "Update" : "Save"}
+                {submitLabel}
               </button>
+              {editingId != null && (
+                <button
+                  className="salary-period-edit-btn"
+                  type="button"
+                  onClick={resetForm}
+                  disabled={saving}
+                >
+                  Cancel edit
+                </button>
+              )}
             </form>
-          </div>
+          </section>
 
-          <div className="salary-period-list-section">
-            <h3>Current Cutoff Date</h3>
-
-            {loading && periods.length === 0 ? (
-              <p>Loading...</p>
-            ) : periods.length === 0 ? (
-              <p className="salary-period-no-data">No cutoff date set yet</p>
-            ) : (
-              <table className="salary-period-table">
-                <thead>
-                  <tr>
-                    <th>ID</th>
-                    <th>Cutoff Date</th>
-                    <th>Updated On</th>
-                    <th>Action</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {periods.map((p) => (
-                    <tr key={p.id}>
-                      <td>{p.id}</td>
-                      <td>{p.cutoff_date}</td>
-                      <td>
-                        {p.updated_at
-                          ? new Date(p.updated_at).toLocaleDateString()
-                          : "-"}
-                      </td>
-                      <td>
-                        <button
-                          onClick={() => handleEdit(p)}
-                          className="salary-period-edit-btn"
-                        >
-                          Edit
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-          </div>
+          <section className="salary-period-list-section">
+            <h3>Saved periods</h3>
+            {periodsContent}
+          </section>
         </div>
-      </div>
+      </dialog>
     </div>
   );
-};
-
-export default SalaryCalculationPeriod;
+}

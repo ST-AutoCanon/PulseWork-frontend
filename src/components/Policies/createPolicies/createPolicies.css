@@ -119,6 +119,56 @@
   gap: 6px;
 }
 
+.admin-policy-employee-results {
+  display: flex;
+  flex-direction: column;
+  max-height: 260px;
+  margin: -8px 0 16px;
+  overflow-y: auto;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.admin-policy-employee-result {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 12px;
+  border: 0;
+  border-bottom: 1px solid #f1f5f9;
+  background: #fff;
+  color: #1e293b;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.admin-policy-employee-result:last-child {
+  border-bottom: 0;
+}
+
+.admin-policy-employee-result:hover:not(:disabled),
+.admin-policy-employee-result:focus-visible:not(:disabled) {
+  background: #eff6ff;
+  outline: none;
+}
+
+.admin-policy-employee-result:disabled {
+  color: #047857;
+  cursor: default;
+}
+
+.admin-policy-employee-result-status {
+  flex: 0 0 auto;
+  color: #047857;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
 .admin-policy-selected-item {
   background: white;
   padding: 12px 16px;

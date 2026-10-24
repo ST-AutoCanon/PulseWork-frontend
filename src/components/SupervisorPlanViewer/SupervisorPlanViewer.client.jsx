@@ -1225,40 +1225,53 @@ const SupervisorPlanViewer = () => {
                                   />
                                 </label>
                               )}
-                              {effectiveReviewStatus !== "pending" && (
-                                <label>
-                                  Rating:
-                                  <div className="supervisor-plan-star-rating">
-                                    {[1, 2, 3, 4, 5].map((star) => (
-                                      <span
-                                        key={star}
-                                        className={`supervisor-plan-star ${
-                                          task.star_rating >= star
-                                            ? "filled"
-                                            : ""
-                                        }`}
-                                        onClick={() =>
-                                          editable &&
-                                          !isFrozen &&
-                                          updateTaskField(
-                                            task.task_id,
-                                            "star_rating",
-                                            star
-                                          )
-                                        }
-                                        style={{
-                                          cursor:
-                                            editable && !isFrozen
-                                              ? "pointer"
-                                              : "not-allowed",
-                                        }}
-                                      >
-                                        ★
-                                      </span>
-                                    ))}
-                                  </div>
-                                </label>
-                              )}
+                            {effectiveReviewStatus !== "pending" && (
+  <label>
+    Rating:
+
+    <div className="supervisor-plan-rating-wrapper">
+      <div className="supervisor-plan-star-rating">
+        {[1, 2, 3, 4, 5].map((star) => {
+          const currentRating = Number(task.star_rating) || 0;
+
+          return (
+            <button
+              key={star}
+              type="button"
+              className={`supervisor-plan-star ${
+                currentRating >= star ? "filled" : ""
+              }`}
+              onClick={() => {
+                if (!editable || isFrozen) return;
+                updateTaskField(task.task_id, "star_rating", star);
+              }}
+              disabled={!editable || isFrozen}
+              aria-label={`Rate ${star} out of 5`}
+              title={`${star} star${star > 1 ? "s" : ""}`}
+            >
+              ★
+            </button>
+          );
+        })}
+      </div>
+
+      <button
+        type="button"
+        className="supervisor-plan-clear-rating"
+        onClick={() =>
+          updateTaskField(task.task_id, "star_rating", 0)
+        }
+        disabled={
+          !editable ||
+          isFrozen ||
+          Number(task.star_rating || 0) === 0
+        }
+      >
+        Clear
+      </button>
+    </div>
+  </label>
+)}
                               <button
                                 className="supervisor-plan-update-task-button"
                                 onClick={() => saveTaskField(task.task_id)}

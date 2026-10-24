@@ -13,6 +13,10 @@
 }
 
 .salary-period-modal {
+  position: relative;
+  margin: 0;
+  padding: 0;
+  border: 0;
   background: #ffffff;
   border-radius: 12px;
   width: 100%;

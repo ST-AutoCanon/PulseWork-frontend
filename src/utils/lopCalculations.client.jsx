@@ -163,32 +163,13 @@ console.log("================================");
         ...(orgId ? { "x-org-id": orgId } : {}),
       };
 
-      const [employeeRes, workingDaysRes] =
-        await Promise.all([
-          axios.get(
-            `${BACKEND_URL}/api/compensation/assigned`,
-            {
-              withCredentials: true,
-              headers,
-            }
-          ),
-
-          axios
-            .get(
-              `${BACKEND_URL}/api/compensation/working-days`,
-              {
-                withCredentials: true,
-                headers,
-              }
-            )
-            .catch(() => ({
-              data: {
-                data: {
-                  totalWorkingDays: 22,
-                },
-              },
-            })),
-        ]);
+      const employeeRes = await axios.get(
+        `${BACKEND_URL}/api/compensation/assigned`,
+        {
+          withCredentials: true,
+          headers,
+        }
+      );
 
       const employee = (
         employeeRes.data?.data || []
@@ -198,21 +179,13 @@ console.log("================================");
           String(employeeId)
       );
 
-      const workingDays =
-        workingDaysRes.data?.data?.totalWorkingDays
-          ? Number(
-              workingDaysRes.data.data.totalWorkingDays
-            )
-          : 22;
-
       const monthlyCTC =
         employee && employee.ctc
           ? Number(employee.ctc) / 12
           : 0;
 
-      const lopPerDay = workingDays
-        ? monthlyCTC / workingDays
-        : 0;
+      const daysInMonth = new Date(refYear, refMonth, 0).getDate();
+      const lopPerDay = daysInMonth ? monthlyCTC / daysInMonth : 0;
 
       const computedValue =
         Number(effectiveLOP.total_lop || 0) *

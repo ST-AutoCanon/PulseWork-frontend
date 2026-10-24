@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import axios from "axios";
 import { useAuth } from "../../../context/AuthProvider.client";
 import "./createPolicies.css";
@@ -37,11 +37,8 @@ const CreatePolicyForm = ({
   isEditing,
   showAlert,
 }) => {
-  const [selectedEmployee, setSelectedEmployee] = useState("");
   const [selectedDepartment, setSelectedDepartment] = useState("");
-  const [isMobile, setIsMobile] = useState(false);
-const [allEmployeesByDepartment, setAllEmployeesByDepartment] = useState({});
-          // full data from new API
+  const [allEmployeesByDepartment, setAllEmployeesByDepartment] = useState({});
   const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
   const API_KEY = process.env.NEXT_PUBLIC_API_KEY;
   const meId = user?.employeeId ?? user?.id ?? user?.employee_id ?? null;
@@ -53,21 +50,16 @@ const [allEmployeesByDepartment, setAllEmployeesByDepartment] = useState({});
     ...(orgId ? { "x-org-id": orgId } : {}),
   };
 
-  useEffect(() => {
-    const updateIsMobile = () =>
-      setIsMobile(window.matchMedia("(max-width: 768px)").matches);
-
-    updateIsMobile();
-    window.addEventListener("resize", updateIsMobile);
-    return () => window.removeEventListener("resize", updateIsMobile);
-  }, []);
-
   // Filtered lists
-  const filteredEmployees = (employeeList || []).filter((emp) =>
-  (emp?.full_name || "")
-    .toLowerCase()
-    .includes((searchTerm || "").toLowerCase())
-);
+  const normalizedEmployeeSearch = (searchTerm || "").trim().toLowerCase();
+  const filteredEmployees = (employeeList || []).filter((emp) => {
+    const name = String(emp?.full_name || "").toLowerCase();
+    const id = String(emp?.employee_id ?? "").toLowerCase();
+    return (
+      name.includes(normalizedEmployeeSearch) ||
+      id.includes(normalizedEmployeeSearch)
+    );
+  });
 
   const filteredDepartments = departmentList.filter(dept =>
     dept?.name?.toLowerCase().includes(departmentSearchTerm.toLowerCase())
@@ -150,6 +142,21 @@ const handleDepartmentDoubleClick = async () => {
     showAlert("Failed to load employees for this department.");
   }
 };
+
+const addEmployee = (employee) => {
+  const employeeId = employee?.employee_id ?? employee?.id;
+  if (employeeId == null) {
+    showAlert("Invalid employee (missing id)", "Error");
+    return;
+  }
+
+  setSelectedEmployees((previous) =>
+    previous.some((selected) => String(selected.employee_id) === String(employeeId))
+      ? previous
+      : [{ ...employee, employee_id: employeeId }, ...previous],
+  );
+};
+
 const appendFilesToFormData = (filesArray, formData) => {
   filesArray.forEach((nf, index) => {
     formData.append("file", nf.file);
@@ -160,22 +167,6 @@ const appendFilesToFormData = (filesArray, formData) => {
     formData.append(`allow_download_${index}`, nf.allowDownload ? "1" : "0");
   });
 };
- const handleEmployeeDoubleClick = () => {
-  if (!selectedEmployee || selectionType !== "employee") return;
-
-  const employee = employeeList.find(
-    (emp) => String(emp.employee_id) === String(selectedEmployee)
-  );
-  if (!employee?.employee_id) {
-    showAlert("Invalid employee (missing id)", "Error");
-    return;
-  }
-  if (!selectedEmployees.some((e) => String(e.employee_id) === String(employee.employee_id))) {
-    setSelectedEmployees((prev) => [employee, ...prev]);
-    setSelectedEmployee("");
-  }
-};
-
   const removeEmployee = (employeeId) => {
     setSelectedEmployees(prev => prev.filter(emp => emp.employee_id !== employeeId));
   };
@@ -349,51 +340,49 @@ const removeDepartment = (departmentId) => {
   <div className="admin-policy-section">
     <h4 className="admin-policy-section-subtitle">Select Employees</h4>
     <input
-      type="text"
+      type="search"
       className="admin-policy-search-input"
       placeholder="Search employee..."
+      aria-label="Search employees by name or employee ID"
+      autoComplete="off"
       value={searchTerm}
       onChange={(e) => setSearchTerm(e.target.value)}
     />
-    <select
-      className="admin-policy-selection-dropdown admin-policy-employee-select"
-      value={selectedEmployee}
-      onChange={(e) => setSelectedEmployee(e.target.value)}
-      onDoubleClick={handleEmployeeDoubleClick}
-      size={isMobile ? 1 : 6}
+    <div
+      className="admin-policy-employee-results"
+      role="list"
+      aria-label="Employee search results"
     >
-      <option value="" disabled>
-        Select an employee
-      </option>
-      {filteredEmployees.map((emp) => {
-        const isAlreadySelected = selectedEmployees.some(
-          (e) => String(e.employee_id) === String(emp.employee_id)
-        );
-        return (
-          <option
-            key={emp.employee_id}
-            value={emp.employee_id}
-            style={
-              isAlreadySelected
-                ? { fontWeight: "bold", color: "#0a7" }
-                : {}
-            }
-          >
-            {isAlreadySelected ? "✓ " : ""}
-            {emp.full_name}
-            {isAlreadySelected ? " (Assigned)" : ""}
-          </option>
-        );
-      })}
-    </select>
-    <button
-      type="button"
-      className="admin-policy-mobile-add-btn"
-      onClick={handleEmployeeDoubleClick}
-      disabled={!selectedEmployee}
-    >
-      Add employee
-    </button>
+      {filteredEmployees.length > 0 ? (
+        filteredEmployees.map((emp) => {
+          const isAlreadySelected = selectedEmployees.some(
+            (selected) =>
+              String(selected.employee_id) === String(emp.employee_id),
+          );
+          return (
+            <button
+              key={emp.employee_id}
+              type="button"
+              className="admin-policy-employee-result"
+              onClick={() => addEmployee(emp)}
+              disabled={isAlreadySelected}
+              aria-label={`${emp.full_name}${isAlreadySelected ? ", already assigned" : ", add employee"}`}
+            >
+              <span>{emp.full_name}</span>
+              <span className="admin-policy-employee-result-status">
+                {isAlreadySelected ? "Assigned" : "Add"}
+              </span>
+            </button>
+          );
+        })
+      ) : (
+        <p className="admin-policy-empty-state">
+          {normalizedEmployeeSearch
+            ? "No employees match your search."
+            : "No employees available."}
+        </p>
+      )}
+    </div>
 
     <h4 className="admin-policy-selected-title">
       Selected Employees ({selectedEmployees.length})
@@ -666,7 +655,11 @@ replaceLoading,
                     <button
                       type="button"
                       className="admin-policy-btn admin-policy-btn-delete"
-                      onClick={() => handleDeleteFile(file.id)}
+                      onClick={(event) => {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        handleDeleteFile(file.id);
+                      }}
                     >
                       Delete
                     </button>
@@ -835,7 +828,11 @@ replaceLoading,
     </div>
     <button
       type="button"
-      onClick={() => handleRemoveNewFile(index)}
+      onClick={(event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        handleRemoveNewFile(index);
+      }}
       className="admin-policy-remove-file-btn"
     >
       Remove

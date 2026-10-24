@@ -38,6 +38,7 @@ const SalaryDetails = () => {
   const [personalMap, setPersonalMap] = useState({});
   const [validSelectedEmployees, setValidSelectedEmployees] = useState([]);
   const [workingDays, setWorkingDays] = useState(null);
+  const [payrollPeriod, setPayrollPeriod] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedEmployees, setSelectedEmployees] = useState(new Set());
@@ -243,7 +244,14 @@ const SalaryDetails = () => {
           },
           { withCredentials: true, headers: requestHeaders }
         );
-        if (isActive) setAttendanceDeductionData(response.data?.data || {});
+        if (isActive) {
+          const deductionData = response.data?.data || {};
+          setAttendanceDeductionData(deductionData);
+          setPayrollPeriod(
+            Object.values(deductionData).find((employeeData) => employeeData?.period)
+              ?.period || null
+          );
+        }
       } catch (error) {
         console.error("Attendance salary deductions fetch failed:", error);
         if (isActive) {
@@ -273,6 +281,7 @@ const SalaryDetails = () => {
           employeeId: emp.employee_id,
           meId,
           orgId,
+          referenceMonthYear: payrollPeriod?.endDate?.slice(0, 7) || null,
         });
 
         lopMap[emp.employee_id] = lopResult;
@@ -282,7 +291,7 @@ const SalaryDetails = () => {
     };
 
     loadAllLOP();
-  }, [employees, meId, orgId]);
+  }, [employees, meId, orgId, payrollPeriod]);
 
   const filteredEmployees = (employees || []).filter(
     (emp) =>
@@ -449,7 +458,7 @@ const SalaryDetails = () => {
         }
 
         if (!salaryDetails) {
-          return Array(35).fill("N/A");
+          return Array(31).fill("N/A");
         }
 
         const monthlyBonusPay = calculateMonthlyBonusPay(emp.ctc, bonusRecords);
@@ -468,6 +477,8 @@ const SalaryDetails = () => {
         );
         const attendanceDeductions = attendanceDeductionData[emp.employee_id] || {};
         const deductionAmounts = getAttendanceDeductionAmounts(attendanceDeductions);
+        const attendanceExportValues =
+          getAttendanceDeductionExportValues(attendanceDeductions);
         const newNetSalary = Math.max(
           0,
           localNet -
@@ -496,12 +507,14 @@ const SalaryDetails = () => {
           salaryDetails.professionalTax || 0,
           salaryDetails.tds || 0,
           salaryDetails.insurance || 0,
-          lopDays,
-          lopDeduction,
           localGross,
           Math.max(localNet, 0),
           calculateBaseNetSalary(emp.ctc, emp.plan_data, emp.employee_id),
-          ...getAttendanceDeductionExportValues(attendanceDeductions),
+          attendanceExportValues[0],
+          attendanceExportValues[1],
+          `${Number(attendanceDeductions.approvedLeaveCount || 0)} (${lopDays.toFixed(2)})`,
+          lopDeduction,
+          ...attendanceExportValues.slice(2),
           newNetSalary,
         ];
       });
@@ -526,12 +539,12 @@ const SalaryDetails = () => {
         "Professional Tax",
         "TDS",
         "Insurance",
-        "LOP Days",
-        "LOP Deduction",
         "Gross Salary",
         "Net Salary","Base Net Salary",
         "Late Login Eligible Count (Total Violations)",
         "Late Login Amount",
+        "Approved Leave Count (LOP Days)",
+        "LOP Deduction",
         "Miss Punch Out Eligible Count (Total Violations)",
         "Miss Punch Out Amount",
         "Less Login Hours Eligible Count (Total Violations)",
@@ -1062,8 +1075,6 @@ const { localGross, localNet } =
 <td className="sd-table-cell sd-align-right sd-deduction">₹{Number(salaryDetails.professionalTax || 0).toFixed(2)}</td>
 <td className="sd-table-cell sd-align-right sd-deduction">₹{Number(salaryDetails.tds || 0).toFixed(2)}</td>
 <td className="sd-table-cell sd-align-right sd-deduction">₹{Number(salaryDetails.insurance || 0).toFixed(2)}</td>
-<td className="sd-table-cell sd-align-right sd-deduction">{lopDays > 0 ? lopDays.toFixed(0) : "0"}</td>
-<td className="sd-table-cell sd-align-right sd-deduction">₹{lopDeduction.toFixed(2)}</td>
 
 {/* Totals */}
 <td className="sd-table-cell sd-align-right"><strong>₹{localGross.toFixed(2)}</strong></td>
@@ -1073,7 +1084,12 @@ const { localGross, localNet } =
 <td className="sd-table-cell sd-align-right">
   <strong>₹{baseNetSalary.toFixed(2)}</strong>
 </td>
-<AttendanceDeductionCells deductions={attendanceDeductions} />
+<AttendanceDeductionCells
+  deductions={attendanceDeductions}
+  approvedLeaveCount={attendanceDeductions.approvedLeaveCount}
+  lopDays={lopDays}
+  lopDeduction={lopDeduction}
+/>
 <td className="sd-table-cell sd-align-right">
   <strong>₹{adjustedNetSalary.toFixed(2)}</strong>
 </td>
@@ -1147,6 +1163,22 @@ const { localNet } = calculateLocalGrossNet(
     );
   };
 
+  const formatPayrollPeriodDate = (dateValue) => {
+    if (!dateValue) return "";
+    const date = new Date(`${dateValue}T00:00:00Z`);
+    return Number.isNaN(date.getTime())
+      ? ""
+      : date.toLocaleDateString("en-US", {
+          month: "long",
+          day: "numeric",
+          timeZone: "UTC",
+        });
+  };
+  const payrollPeriodLabel =
+    payrollPeriod?.startDate && payrollPeriod?.endDate
+      ? `${formatPayrollPeriodDate(payrollPeriod.startDate)} to ${formatPayrollPeriodDate(payrollPeriod.endDate)}`
+      : null;
+
   if (isLoading) {
     return <div className="sd-loading">Loading...</div>;
   }
@@ -1157,8 +1189,14 @@ const { localNet } = calculateLocalGrossNet(
         <div className="sd-header-title">Employee Salary Overview</div>
       </div>
       <div className="sd-info-bar">
-        <div className="sd-working-days">
-          Total Working Days: {workingDays !== null ? workingDays : "N/A"}
+        <div className="sd-period-details">
+          <div className="sd-working-days">
+            Total Working Days: {workingDays !== null ? workingDays : "N/A"}
+          </div>
+          <div className="sd-payroll-period-note">
+            Attendance deductions shown are based on records from{" "}
+            {payrollPeriodLabel || "the configured payroll period"}.
+          </div>
         </div>
         {attendanceDeductionLoading && (
           <div className="sd-working-days">Calculating attendance deductions...</div>
@@ -1253,8 +1291,6 @@ const { localNet } = calculateLocalGrossNet(
     <th className="sd-table-header sd-align-right">Prof. Tax</th>
     <th className="sd-table-header sd-align-right">TDS</th>
     <th className="sd-table-header sd-align-right">Insurance (Emp)</th>
-    <th className="sd-table-header sd-align-right">LOP Days</th>
-    <th className="sd-table-header sd-align-right">LOP Deduction</th>
 
     {/* === TOTALS === */}
     <th className="sd-table-header sd-align-right">Gross Salary</th>
@@ -1263,6 +1299,8 @@ const { localNet } = calculateLocalGrossNet(
     <th className="sd-table-header sd-align-right">Base Net Salary</th>
     <th className="sd-table-header sd-align-right">Late Login Eligible Count (Total Violations)</th>
     <th className="sd-table-header sd-align-right">Late Login Amount</th>
+    <th className="sd-table-header sd-align-right">Approved Leave Count (LOP Days)</th>
+    <th className="sd-table-header sd-align-right">LOP Deduction</th>
     <th className="sd-table-header sd-align-right">Miss Punch Out Eligible Count (Total Violations)</th>
     <th className="sd-table-header sd-align-right">Miss Punch Out Amount</th>
     <th className="sd-table-header sd-align-right">Less Login Hours Eligible Count (Total Violations)</th>

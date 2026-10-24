@@ -1663,6 +1663,38 @@
     font-size: 12px;
   }
 }
+
+@media (max-width: 768px) {
+  .viewer-section.viewer-fullscreen {
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    border-radius: 0;
+  }
+}
+
+.viewer-section.viewer-fullscreen .ack-floating-wrapper {
+  right: 16px;
+  bottom: 20px;
+}
+
+.viewer-section.viewer-fullscreen .ack-floating-popup {
+  box-sizing: border-box;
+  max-width: calc(100vw - 112px);
+}
+
+.viewer-section.viewer-fullscreen .ack-floating-popup .ack-checkbox-label span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 768px) {
+  .viewer-section.viewer-fullscreen .ack-floating-popup {
+    max-width: calc(100vw - 32px);
+  }
+}
+
 /* ========== Media (Image / Video / Audio) – always fit properly ========== */
 .media-viewer-wrapper {
   position: absolute;

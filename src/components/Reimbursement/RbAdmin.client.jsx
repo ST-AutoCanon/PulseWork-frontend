@@ -51,8 +51,8 @@ const RbAdmin = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedClaims, setSelectedClaims] = useState({}); // { [claimId]: true }
   const [bulkUpdating, setBulkUpdating] = useState(false);
+  const [bulkAction, setBulkAction] = useState(null); // "approved" | "rejected" | null
   const [bulkComment, setBulkComment] = useState("");
-  const [bulkProject, setBulkProject] = useState("");
 
   const orgPrefix = useMemo(() => {
     const candidates = [
@@ -860,7 +860,17 @@ const RbAdmin = () => {
     });
   };
 
-  const bulkUpdateStatus = async (empClaims, status) => {
+  const bulkUpdateStatus = async (empClaims, status, event) => {
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+    // Prevent double-submit of the same bulk run (other button stays enabled visually)
+    if (bulkUpdating) {
+      showAlert("Please wait for the current bulk action to finish.");
+      return;
+    }
+
     if (isHR) {
       showAlert("HR users cannot approve or reject claims.");
       return;
@@ -881,11 +891,8 @@ const RbAdmin = () => {
       claimsById[c.id] = c;
     });
 
-    // Resolve project: prefer bulkProject, else per-claim selection / existing project
+    // Project from each claim's row dropdown / existing project only (no bulk project)
     const resolveProjectForClaim = (claimId) => {
-      if (bulkProject && !isInvalidProject(bulkProject)) {
-        return String(bulkProject).trim();
-      }
       const raw =
         projectSelections[claimId] !== undefined &&
         projectSelections[claimId] !== null
@@ -899,12 +906,13 @@ const RbAdmin = () => {
     );
     if (missingProject.length) {
       showAlert(
-        "Please select a project for all selected claims (use the bulk project dropdown or set project on each claim).",
+        "Please select a project on each selected claim (Projects column) before bulk approve/reject.",
       );
       return;
     }
 
     setBulkUpdating(true);
+    setBulkAction(status);
     const actorId = getActorId();
     const approverComment = bulkComment || "";
     let successCount = 0;
@@ -939,13 +947,12 @@ const RbAdmin = () => {
       }
     }
 
-    // Refresh local state for successful ones
     if (successCount > 0) {
       setEmployees((prevEmployees) =>
         prevEmployees.map((emp) => ({
           ...emp,
           claims: (emp.claims || []).map((claim) =>
-            selectedIds.includes(claim.id) && resolveProjectForClaim(claim.id)
+            selectedIds.includes(claim.id)
               ? {
                   ...claim,
                   status,
@@ -956,17 +963,16 @@ const RbAdmin = () => {
           ),
         })),
       );
-      // Clear selection for processed claims
       setSelectedClaims((prev) => {
         const next = { ...prev };
         selectedIds.forEach((id) => delete next[id]);
         return next;
       });
       setBulkComment("");
-      setBulkProject("");
     }
 
     setBulkUpdating(false);
+    setBulkAction(null);
 
     if (failCount === 0) {
       showAlert(`${successCount} claim(s) ${status} successfully.`);
@@ -1437,29 +1443,6 @@ const RbAdmin = () => {
                                   <span className="rb-bulk-count">
                                     {selectedCount} selected
                                   </span>
-                                  <select
-                                    className="rb-status-dropdown rb-bulk-project"
-                                    value={bulkProject}
-                                    onChange={(e) =>
-                                      setBulkProject(e.target.value)
-                                    }
-                                    disabled={bulkUpdating}
-                                    title="Optional: apply this project to all selected"
-                                  >
-                                    <option value="">
-                                      Project (optional override)
-                                    </option>
-                                    {orgClaimLabel && (
-                                      <option value={orgClaimLabel}>
-                                        {orgClaimLabel}
-                                      </option>
-                                    )}
-                                    {safeProjects.map((project, idx) => (
-                                      <option key={idx} value={project}>
-                                        {project}
-                                      </option>
-                                    ))}
-                                  </select>
                                   <input
                                     type="text"
                                     className="rb-bulk-comment"
@@ -1473,40 +1456,48 @@ const RbAdmin = () => {
                                   <button
                                     type="button"
                                     className="rb-bulk-btn rb-bulk-approve"
-                                    disabled={bulkUpdating}
-                                    onClick={() =>
+                                    disabled={
+                                      bulkUpdating && bulkAction === "approved"
+                                    }
+                                    onClick={(e) =>
                                       bulkUpdateStatus(
                                         filteredClaims,
                                         "approved",
+                                        e,
                                       )
                                     }
                                   >
-                                    {bulkUpdating
-                                      ? "Updating…"
+                                    {bulkUpdating && bulkAction === "approved"
+                                      ? "Approving…"
                                       : `Approve (${selectedCount})`}
                                   </button>
                                   <button
                                     type="button"
                                     className="rb-bulk-btn rb-bulk-reject"
-                                    disabled={bulkUpdating}
-                                    onClick={() =>
+                                    disabled={
+                                      bulkUpdating && bulkAction === "rejected"
+                                    }
+                                    onClick={(e) =>
                                       bulkUpdateStatus(
                                         filteredClaims,
                                         "rejected",
+                                        e,
                                       )
                                     }
                                   >
-                                    {bulkUpdating
-                                      ? "Updating…"
+                                    {bulkUpdating && bulkAction === "rejected"
+                                      ? "Rejecting…"
                                       : `Reject (${selectedCount})`}
                                   </button>
                                   <button
                                     type="button"
                                     className="rb-bulk-btn rb-bulk-clear"
                                     disabled={bulkUpdating}
-                                    onClick={() =>
-                                      clearSelectionForEmployee(filteredClaims)
-                                    }
+                                    onClick={(e) => {
+                                      e.preventDefault();
+                                      e.stopPropagation();
+                                      clearSelectionForEmployee(filteredClaims);
+                                    }}
                                   >
                                     Clear
                                   </button>

@@ -131,7 +131,7 @@ const EmployeeRequestForm = ({
     .toLowerCase()
     .replace(/[^a-z]/g, "");
 
-  const canRaiseTravelForOthers = ["admin", "hr", "humanresources"].includes(
+  const canRaiseTravelForOthers = ["admin", "hr", "support"].includes(
     normalizedUserRole,
   );
 

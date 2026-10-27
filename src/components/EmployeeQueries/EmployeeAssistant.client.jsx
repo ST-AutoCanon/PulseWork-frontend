@@ -224,7 +224,8 @@ function isEmployeeRole(role) {
 function isAdminRole(role) {
   return (
     String(role || "").toLowerCase() === "admin" ||
-    String(role || "").toLowerCase() === "ceo"
+    String(role || "").toLowerCase() === "ceo" ||
+    String(role || "").toLowerCase() === "support"
   );
 }
 

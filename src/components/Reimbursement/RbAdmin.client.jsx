@@ -98,8 +98,7 @@ const RbAdmin = () => {
       return true;
     });
   };
-  const backendBase =
-    process.env.NEXT_PUBLIC_BACKEND_URL || process.env.REACT_APP_BACKEND_URL;
+  const backendBase = process.env.NEXT_PUBLIC_BACKEND_URL;
 
   const apiKey =
     process.env.NEXT_PUBLIC_API_KEY || process.env.REACT_APP_API_KEY || "";
@@ -999,7 +998,7 @@ const RbAdmin = () => {
         url,
         {
           payment_status: updatedPaymentStatus,
-          user_role: "admin",
+          user_role: "admin" || "support",
         },
         {
           withCredentials: true,
@@ -2233,7 +2232,7 @@ const RbAdmin = () => {
                       `/reimbursement/payment-status/${selectedPaymentClaim.id}`;
                     const body = {
                       payment_status: selectedPaymentOption,
-                      user_role: "admin",
+                      user_role: "admin" || "support",
                     };
                     if (paymentDate) {
                       body.paid_date = paymentDate;

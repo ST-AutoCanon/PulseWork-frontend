@@ -186,9 +186,7 @@ export default function ReportPanel() {
   const rawRole = user?.role ? String(user.role).trim() : null;
   const lowerRawRole = rawRole ? rawRole.toLowerCase() : null;
   const effectiveRole =
-    lowerRawRole === "hr" || lowerRawRole === "human resources"
-      ? "admin"
-      : rawRole;
+    lowerRawRole === "hr" || lowerRawRole === "support" ? "admin" : rawRole;
 
   const userRole = effectiveRole || null;
   const managerDepartmentIdRaw =
@@ -205,9 +203,7 @@ export default function ReportPanel() {
 
   const isAdmin = Boolean(
     userRole &&
-    (lowerRole === "admin" ||
-      lowerRole === "hr" ||
-      lowerRole === "human resources"),
+    (lowerRole === "admin" || lowerRole === "hr" || lowerRole === "support"),
   );
 
   const [filterEmployeeId, setFilterEmployeeId] = useState(null);

@@ -2190,10 +2190,10 @@ const Sidebar = ({ setActiveContent }) => {
           icon: "MdLocationOn",
         },
         {
-    label: "Common Login",
-    path: "/CommonLoginForm",
-    icon: "MdLogin",
-  },
+          label: "Common Login",
+          path: "/CommonLoginForm",
+          icon: "MdLogin",
+        },
         {
           label: "Email Management",
           path: "/EmailManagement",
@@ -2252,10 +2252,11 @@ const Sidebar = ({ setActiveContent }) => {
         if (role === "Admin" || role === "CEO") return <RbAdmin />;
         if (role === "Manager") return <RbTeamLead />;
         if (role === "HR") return <RbAdmin />;
+        if (role === "Support") return <RbAdmin />;
         return <Reimbursement />;
       },
       "/EmailManagement": () => <EmailManagement />,
-    "/CommonLoginForm": () => <CommonLoginForm />,
+      "/CommonLoginForm": () => <CommonLoginForm />,
 
       "/employeeQueries": () => <EmployeeAssistant />,
       "/TemplateBuilder": () => <TemplateBuilder />,

@@ -469,8 +469,29 @@ const EmployeeRequestForm = ({
         (!form.accommodationPlace ||
           (form.accommodationPlace === "Other" &&
             !form.otherAccommodationPlace.trim()))
-      )
+      ) {
         nextErrors.accommodationPlace = "Select a guest house";
+      }
+
+      // Accommodation dates must not be earlier than today.
+      if (form.accommodationRequired) {
+        if (form.accommodationFrom && form.accommodationFrom < today) {
+          nextErrors.accommodationFrom =
+            "Accommodation start date cannot be in the past.";
+        }
+        if (form.accommodationTo && form.accommodationTo < today) {
+          nextErrors.accommodationTo =
+            "Accommodation end date cannot be in the past.";
+        }
+        if (
+          form.accommodationFrom &&
+          form.accommodationTo &&
+          form.accommodationTo < form.accommodationFrom
+        ) {
+          nextErrors.accommodationTo =
+            "Accommodation end date cannot be before the start date.";
+        }
+      }
     }
     if (type === "SALARY_ADVANCE") {
       const amount = Number(form.amount);
@@ -1087,18 +1108,36 @@ const EmployeeRequestForm = ({
                       />
                     )}
                   </RequestField>
-                  <RequestField label="Accommodation from">
+                  <RequestField
+                    label="Accommodation from"
+                    error={errors.accommodationFrom}
+                  >
                     <InputWithIcon
                       icon={<FiCalendar />}
                       type="date"
+                      min={currentDateKey()}
                       value={form.accommodationFrom}
-                      onChange={(value) => update("accommodationFrom", value)}
+                      onChange={(value) => {
+                        update("accommodationFrom", value);
+                        // Clear the end date if it becomes earlier than the new start date.
+                        if (
+                          value &&
+                          form.accommodationTo &&
+                          form.accommodationTo < value
+                        ) {
+                          update("accommodationTo", "");
+                        }
+                      }}
                     />
                   </RequestField>
-                  <RequestField label="Accommodation to">
+                  <RequestField
+                    label="Accommodation to"
+                    error={errors.accommodationTo}
+                  >
                     <InputWithIcon
                       icon={<FiCalendar />}
                       type="date"
+                      min={form.accommodationFrom || currentDateKey()}
                       value={form.accommodationTo}
                       onChange={(value) => update("accommodationTo", value)}
                     />

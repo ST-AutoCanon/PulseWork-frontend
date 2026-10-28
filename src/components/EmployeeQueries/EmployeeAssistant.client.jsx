@@ -2103,6 +2103,9 @@ function RequestConversation({
   });
 
   const [dateChangeTicket, setDateChangeTicket] = useState(null);
+  const [showDateChangeReasonModal, setShowDateChangeReasonModal] =
+    useState(false);
+  const [dateChangeReasonError, setDateChangeReasonError] = useState("");
 
   useEffect(() => {
     setDateChangeForm({
@@ -2112,7 +2115,36 @@ function RequestConversation({
     });
 
     setDateChangeTicket(null);
+    setShowDateChangeReasonModal(false);
+    setDateChangeReasonError("");
   }, [request?.id, details.travelDate, details.returnDate]);
+
+  const originalTravelDate = details.travelDate || "";
+  const originalReturnDate = details.returnDate || "";
+  const hasProposedDateChange =
+    dateChangeForm.travelDate !== originalTravelDate ||
+    dateChangeForm.returnDate !== originalReturnDate;
+
+  const openDateChangeReasonModal = () => {
+    if (!dateChangeForm.travelDate || !hasProposedDateChange) return;
+    setDateChangeReasonError("");
+    setDateChangeForm((previous) => ({ ...previous, reason: "" }));
+    setShowDateChangeReasonModal(true);
+  };
+
+  const submitDateChangeWithReason = async () => {
+    const reason = dateChangeForm.reason.trim();
+    if (!reason) {
+      setDateChangeReasonError(
+        "A reason is required to submit a date-change request.",
+      );
+      return;
+    }
+
+    setDateChangeReasonError("");
+    setShowDateChangeReasonModal(false);
+    await requestTravelDateChange({ ...dateChangeForm, reason });
+  };
 
   const [offlineAssetNote, setOfflineAssetNote] = useState("");
 
@@ -2166,7 +2198,19 @@ function RequestConversation({
       String(request.created_by_employee_id) === String(employeeId) ||
       (request.request_type === "TRAVEL_BOOKING" && (isAdmin || isHR)));
 
-  const status = getStatus(request.current_status);
+  const dateChangeStatus =
+    request.request_type === "TRAVEL_BOOKING"
+      ? normalizeDetails(request.details_json).dateChangeRequest?.status
+      : null;
+
+  const hasPendingDateChange = dateChangeStatus?.toUpperCase() === "PENDING";
+
+  const status = hasPendingDateChange
+    ? {
+        label: "DATE CHANGE REQUESTED",
+        className: "pending",
+      }
+    : getStatus(request.current_status);
 
   const RequestIcon = getRequestIcon(request.request_type);
 
@@ -2194,17 +2238,19 @@ function RequestConversation({
               <strong>Request Update</strong>
 
               <span>
-                {request.current_status === "PENDING_APPROVAL"
-                  ? "Your request is pending approval."
-                  : request.current_status === "PENDING_ADMIN_ACTION"
-                    ? "Your request is being processed by Admin."
-                    : request.current_status === "BOOKED"
-                      ? "Your travel tickets have been booked."
-                      : request.current_status === "COMPLETED"
-                        ? "Your request has been completed."
-                        : request.current_status === "REJECTED"
-                          ? "Your request was rejected."
-                          : "Here is the current status of your request."}
+                {hasPendingDateChange
+                  ? "Your travel date-change request is awaiting HR/Admin review."
+                  : request.current_status === "PENDING_APPROVAL"
+                    ? "Your request is pending approval."
+                    : request.current_status === "PENDING_ADMIN_ACTION"
+                      ? "Your request is being processed by Admin."
+                      : request.current_status === "BOOKED"
+                        ? "Your travel tickets have been booked."
+                        : request.current_status === "COMPLETED"
+                          ? "Your request has been completed."
+                          : request.current_status === "REJECTED"
+                            ? "Your request was rejected."
+                            : "Here is the current status of your request."}
               </span>
             </div>
           </div>
@@ -2592,14 +2638,22 @@ function RequestConversation({
                   Proposed travel date
                   <input
                     type="date"
+                    style={{ margin: "10px" }}
                     value={dateChangeForm.travelDate}
                     required
-                    onChange={(event) =>
+                    onChange={(event) => {
+                      const travelDate = event.target.value;
                       setDateChangeForm((previous) => ({
                         ...previous,
-                        travelDate: event.target.value,
-                      }))
-                    }
+                        travelDate,
+                        returnDate:
+                          previous.returnDate &&
+                          travelDate &&
+                          previous.returnDate < travelDate
+                            ? ""
+                            : previous.returnDate,
+                      }));
+                    }}
                   />
                 </label>
 
@@ -2607,6 +2661,7 @@ function RequestConversation({
                   Proposed return date
                   <input
                     type="date"
+                    style={{ margin: "10px" }}
                     min={dateChangeForm.travelDate || undefined}
                     value={dateChangeForm.returnDate}
                     onChange={(event) =>
@@ -2618,28 +2673,17 @@ function RequestConversation({
                   />
                 </label>
 
-                <label>
-                  Reason for changing the dates
-                  <textarea
-                    value={dateChangeForm.reason}
-                    required
-                    onChange={(event) =>
-                      setDateChangeForm((previous) => ({
-                        ...previous,
-                        reason: event.target.value,
-                      }))
-                    }
-                    placeholder="Explain why the dates need to change"
-                  />
-                </label>
+                <p className="date-change-reason-hint">
+                  A reason is required when you submit a travel date change.
+                </p>
 
                 <button
                   type="button"
                   className="upload-notify-button"
                   disabled={
-                    !dateChangeForm.travelDate || !dateChangeForm.reason.trim()
+                    !dateChangeForm.travelDate || !hasProposedDateChange
                   }
-                  onClick={() => requestTravelDateChange(dateChangeForm)}
+                  onClick={openDateChangeReasonModal}
                 >
                   Submit date-change request
                 </button>
@@ -2704,6 +2748,7 @@ function RequestConversation({
                 <label>
                   Upload revised e-ticket
                   <input
+                    style={{ marginLeft: "10px" }}
                     type="file"
                     accept=".pdf,.png,.jpg,.jpeg"
                     onChange={(event) =>
@@ -2711,10 +2756,15 @@ function RequestConversation({
                     }
                   />
                 </label>
-
-                <label>
+                <br />
+                <label style={{ display: "flex", marginTop: "10px" }}>
                   HR/Admin comment
                   <textarea
+                    style={{
+                      width: "400px",
+                      margin: "0 0 0 10px",
+                      padding: "5px",
+                    }}
                     value={dateChangeForm.reason}
                     onChange={(event) =>
                       setDateChangeForm((previous) => ({
@@ -2726,7 +2776,16 @@ function RequestConversation({
                   />
                 </label>
 
-                <div className="booking-action-buttons">
+                <div
+                  className="booking-action-buttons"
+                  style={{
+                    width: "40%",
+                    display: "flex",
+                    justifyContent: "flex-start",
+                    gap: "10px",
+                    marginTop: "10px",
+                  }}
+                >
                   <button
                     type="button"
                     className="cancel-request-button"
@@ -2742,6 +2801,7 @@ function RequestConversation({
 
                   <button
                     type="button"
+                    style={{ marginTop: "15px" }}
                     className="upload-notify-button"
                     disabled={!dateChangeTicket}
                     onClick={() =>
@@ -2830,6 +2890,60 @@ function RequestConversation({
           />
         </>
       )}
+
+      <Modal
+        isVisible={showDateChangeReasonModal}
+        title="Reason for travel date change"
+        onClose={() => {
+          setShowDateChangeReasonModal(false);
+          setDateChangeReasonError("");
+        }}
+        buttons={[
+          {
+            label: "Cancel",
+            onClick: () => {
+              setShowDateChangeReasonModal(false);
+              setDateChangeReasonError("");
+            },
+          },
+          {
+            label: "Submit request",
+            className: "upload-notify-button",
+            onClick: submitDateChangeWithReason,
+          },
+        ]}
+      >
+        <p>
+          Please provide a reason for changing the booked travel dates. This
+          field is mandatory.
+        </p>
+        <label
+          className="date-change-reason-modal-field"
+          style={{ display: "flex", marginTop: "10px" }}
+        >
+          Reason <span className="required-marker">*</span>
+          <textarea
+            style={{ width: "400px", margin: "0 0 0 10px", padding: "5px" }}
+            autoFocus
+            value={dateChangeForm.reason}
+            onChange={(event) => {
+              setDateChangeForm((previous) => ({
+                ...previous,
+                reason: event.target.value,
+              }));
+              if (event.target.value.trim()) setDateChangeReasonError("");
+            }}
+            placeholder="Explain why the travel dates need to change"
+            rows={2}
+            required
+          />
+        </label>
+        {dateChangeReasonError && (
+          <small className="request-field-error" role="alert">
+            {dateChangeReasonError}
+          </small>
+        )}
+      </Modal>
     </div>
   );
 }

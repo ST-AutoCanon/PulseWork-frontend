@@ -1608,8 +1608,8 @@
 
 .traveler-row select,
 .traveler-row input {
-  flex: 1 1 50%;
-  width: 0;
+  flex: 1 1 10%;
+  width: 100%;
   min-width: 0;
 }
 

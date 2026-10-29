@@ -16,6 +16,283 @@ import {
 } from "react-icons/fi";
 import { MdOutlineCurrencyRupee } from "react-icons/md";
 
+function SearchableEmployeeDropdown({ employees, selectedId, onChange }) {
+  const [search, setSearch] = useState("");
+  const [isOpen, setIsOpen] = useState(false);
+
+  useEffect(() => {
+    // While the list is open, preserve the text the user is typing.
+    // When it closes, show the selected employee's label again.
+    if (isOpen) return;
+
+    const selectedEmployee = employees.find(
+      (employee) => String(employee.employeeId) === String(selectedId),
+    );
+
+    setSearch(
+      selectedEmployee
+        ? `${selectedEmployee.employeeId} - ${selectedEmployee.name}`
+        : "",
+    );
+  }, [employees, selectedId, isOpen]);
+
+  const normalizedSearch = search.trim().toLowerCase();
+  const filteredEmployees = employees.filter((employee) =>
+    `${employee.employeeId} ${employee.name}`
+      .toLowerCase()
+      .includes(normalizedSearch),
+  );
+
+  const selectEmployee = (employee) => {
+    onChange(String(employee.employeeId));
+    setSearch(`${employee.employeeId} - ${employee.name}`);
+    setIsOpen(false);
+  };
+
+  return (
+    <div
+      className="searchable-employee-dropdown"
+      style={{ position: "relative", width: "100%" }}
+    >
+      <input
+        type="text"
+        className="searchable-employee-input"
+        role="combobox"
+        aria-label="Search employee to raise travel request for"
+        aria-autocomplete="list"
+        aria-expanded={isOpen}
+        aria-controls="travel-employee-options"
+        autoComplete="off"
+        placeholder="Search by employee ID or name"
+        value={search}
+        onFocus={() => {
+          setSearch("");
+          setIsOpen(true);
+        }}
+        onBlur={() => setIsOpen(false)}
+        onChange={(event) => {
+          const value = event.target.value;
+          setSearch(value);
+          setIsOpen(true);
+
+          // Clear the current selection while the user searches, so typed text
+          // cannot accidentally submit the previously selected employee.
+          if (selectedId) onChange("");
+        }}
+      />
+
+      {isOpen && (
+        <div
+          id="travel-employee-options"
+          className="searchable-employee-options"
+          role="listbox"
+          style={{
+            position: "absolute",
+            top: "calc(100% + 4px)",
+            left: 0,
+            right: 0,
+            zIndex: 1000,
+            maxHeight: 240,
+            overflowY: "auto",
+            background: "#ffffff",
+            color: "#1f2937",
+            border: "1px solid #d1d5db",
+            borderRadius: 8,
+            boxShadow: "0 8px 20px rgba(0, 0, 0, 0.12)",
+          }}
+        >
+          {filteredEmployees.length > 0 ? (
+            filteredEmployees.map((employee) => (
+              <button
+                type="button"
+                role="option"
+                aria-selected={
+                  String(employee.employeeId) === String(selectedId)
+                }
+                key={employee.employeeId}
+                onMouseDown={(event) => event.preventDefault()}
+                onClick={() => selectEmployee(employee)}
+                style={{
+                  display: "block",
+                  width: "100%",
+                  padding: "10px 12px",
+                  border: 0,
+                  background:
+                    String(employee.employeeId) === String(selectedId)
+                      ? "#eef2ff"
+                      : "#ffffff",
+                  color: "inherit",
+                  textAlign: "left",
+                  cursor: "pointer",
+                  font: "inherit",
+                }}
+              >
+                <span style={{ fontWeight: 600 }}>{employee.employeeId}</span>
+                <span> - {employee.name}</span>
+              </button>
+            ))
+          ) : (
+            <div style={{ padding: "10px 12px", color: "#6b7280" }}>
+              No employees found. Try another name or employee ID.
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function SearchableTravelerDropdown({ employees, value, onChange, rowIndex }) {
+  const [search, setSearch] = useState("");
+  const [isOpen, setIsOpen] = useState(false);
+
+  const selectedEmployee = employees.find(
+    (employee) => String(employee.employeeId) === String(value),
+  );
+
+  useEffect(() => {
+    if (isOpen) return;
+
+    setSearch(
+      selectedEmployee
+        ? `${selectedEmployee.employeeId} - ${selectedEmployee.name}`
+        : "",
+    );
+  }, [employees, value, isOpen]);
+
+  const normalizedSearch = search.trim().toLowerCase();
+  const filteredEmployees = employees.filter((employee) =>
+    `${employee.employeeId} ${employee.name}`
+      .toLowerCase()
+      .includes(normalizedSearch),
+  );
+  const optionsId = `traveler-employee-options-${rowIndex}`;
+
+  const selectEmployee = (employee) => {
+    onChange(String(employee.employeeId));
+    setSearch(`${employee.employeeId} - ${employee.name}`);
+    setIsOpen(false);
+  };
+
+  const selectOther = () => {
+    // Keep the original external-traveller data model: an empty value here
+    // reveals the separate external traveller name input in the parent row.
+    onChange("");
+    setSearch("");
+    setIsOpen(false);
+  };
+
+  return (
+    <div
+      className="traveler-employee-dropdown"
+      style={{ position: "relative", flex: "1 1 0", minWidth: 0 }}
+    >
+      <input
+        type="text"
+        className="searchable-employee-input"
+        role="combobox"
+        aria-label={`Search employee travelling in row ${rowIndex + 1}`}
+        aria-autocomplete="list"
+        aria-expanded={isOpen}
+        aria-controls={optionsId}
+        autoComplete="off"
+        placeholder="Select or search employee"
+        value={search}
+        onFocus={() => {
+          setSearch("");
+          setIsOpen(true);
+        }}
+        onBlur={() => setIsOpen(false)}
+        onChange={(event) => {
+          setSearch(event.target.value);
+          setIsOpen(true);
+
+          // Do not leave a previous employee selected while the user searches.
+          if (selectedEmployee) onChange("");
+        }}
+      />
+
+      {isOpen && (
+        <div
+          id={optionsId}
+          className="searchable-employee-options"
+          role="listbox"
+          style={{
+            position: "absolute",
+            top: "calc(100% + 4px)",
+            left: 0,
+            right: 0,
+            zIndex: 1000,
+            maxHeight: 240,
+            overflowY: "auto",
+            background: "#ffffff",
+            color: "#1f2937",
+            border: "1px solid #d1d5db",
+            borderRadius: 8,
+            boxShadow: "0 8px 20px rgba(0, 0, 0, 0.12)",
+          }}
+        >
+          {filteredEmployees.map((employee) => (
+            <button
+              type="button"
+              role="option"
+              aria-selected={String(employee.employeeId) === String(value)}
+              key={employee.employeeId}
+              onMouseDown={(event) => event.preventDefault()}
+              onClick={() => selectEmployee(employee)}
+              style={{
+                display: "block",
+                width: "100%",
+                padding: "10px 12px",
+                border: 0,
+                background:
+                  String(employee.employeeId) === String(value)
+                    ? "#eef2ff"
+                    : "#ffffff",
+                color: "inherit",
+                textAlign: "left",
+                cursor: "pointer",
+                font: "inherit",
+              }}
+            >
+              <span style={{ fontWeight: 600 }}>{employee.employeeId}</span>
+              <span> - {employee.name}</span>
+            </button>
+          ))}
+
+          {filteredEmployees.length === 0 && (
+            <div style={{ padding: "10px 12px", color: "#6b7280" }}>
+              No matching employees. Choose Other for an external traveller.
+            </div>
+          )}
+
+          <button
+            type="button"
+            role="option"
+            aria-selected={!selectedEmployee && !value}
+            onMouseDown={(event) => event.preventDefault()}
+            onClick={selectOther}
+            style={{
+              display: "block",
+              width: "100%",
+              padding: "10px 12px",
+              border: 0,
+              borderTop: "1px solid #e5e7eb",
+              background: "#ffffff",
+              color: "inherit",
+              textAlign: "left",
+              cursor: "pointer",
+              font: "inherit",
+            }}
+          >
+            Other
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 const TRANSPORT_OPTIONS = {
   LOWER: ["Bus", "Train"],
   UPPER: ["Airbus", "Train", "Bus"],
@@ -857,23 +1134,11 @@ const EmployeeRequestForm = ({
             <div className="request-form-grid">
               {canRaiseTravelForOthers && (
                 <RequestField label="Request travel for" required>
-                  <select
-                    value={form.travelForEmployeeId || employeeId || ""}
-                    onChange={(event) => {
-                      update("travelForEmployeeId", event.target.value);
-                    }}
-                  >
-                    <option value="">Select employee</option>
-
-                    {employees.map((employee) => (
-                      <option
-                        key={employee.employeeId}
-                        value={employee.employeeId}
-                      >
-                        {employee.employeeId} - {employee.name}
-                      </option>
-                    ))}
-                  </select>
+                  <SearchableEmployeeDropdown
+                    employees={employees}
+                    selectedId={form.travelForEmployeeId}
+                    onChange={(value) => update("travelForEmployeeId", value)}
+                  />
                 </RequestField>
               )}
               <RequestField label="From" required>
@@ -1178,36 +1443,12 @@ const EmployeeRequestForm = ({
                     <div className="traveler-row" key={index}>
                       <FiUser />
 
-                      <select
-                        value={
-                          employees.some(
-                            (employee) =>
-                              String(employee.employeeId) === String(traveler),
-                          )
-                            ? traveler
-                            : ""
-                        }
-                        onChange={(event) => {
-                          updateTraveler(
-                            index,
-                            event.target.value === "__OTHER__"
-                              ? ""
-                              : event.target.value,
-                          );
-                        }}
-                        aria-label="Select employee traveler"
-                      >
-                        <option value="">Select an employee</option>
-                        {employees.map((employee) => (
-                          <option
-                            key={employee.employeeId}
-                            value={employee.employeeId}
-                          >
-                            {employee.employeeId} - {employee.name}
-                          </option>
-                        ))}
-                        <option value="__OTHER__">Other</option>
-                      </select>
+                      <SearchableTravelerDropdown
+                        employees={employees}
+                        value={traveler}
+                        rowIndex={index}
+                        onChange={(value) => updateTraveler(index, value)}
+                      />
 
                       {!employees.some(
                         (employee) =>

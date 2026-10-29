@@ -2158,6 +2158,10 @@ function RequestConversation({
   });
 
   const [dateChangeTicket, setDateChangeTicket] = useState(null);
+  // Keep the HR/Admin decision comment separate from the employee's original
+  // date-change reason so the resolution box always starts blank.
+  const [dateChangeResolutionComment, setDateChangeResolutionComment] =
+    useState("");
   const [showDateChangeReasonModal, setShowDateChangeReasonModal] =
     useState(false);
   const [dateChangeReasonError, setDateChangeReasonError] = useState("");
@@ -2170,9 +2174,17 @@ function RequestConversation({
     });
 
     setDateChangeTicket(null);
+    setDateChangeResolutionComment("");
     setShowDateChangeReasonModal(false);
     setDateChangeReasonError("");
-  }, [request?.id, details.travelDate, details.returnDate]);
+  }, [
+    request?.id,
+    details.travelDate,
+    details.returnDate,
+    details.dateChangeRequest?.status,
+    details.dateChangeRequest?.requestedTravelDate,
+    details.dateChangeRequest?.requestedReturnDate,
+  ]);
 
   const originalTravelDate = details.travelDate || "";
   const originalReturnDate = details.returnDate || "";
@@ -2823,12 +2835,9 @@ function RequestConversation({
                       margin: "0 0 0 10px",
                       padding: "5px",
                     }}
-                    value={dateChangeForm.reason}
+                    value={dateChangeResolutionComment}
                     onChange={(event) =>
-                      setDateChangeForm((previous) => ({
-                        ...previous,
-                        reason: event.target.value,
-                      }))
+                      setDateChangeResolutionComment(event.target.value)
                     }
                     placeholder="Add the decision reason or comment"
                   />
@@ -2850,7 +2859,7 @@ function RequestConversation({
                     onClick={() =>
                       resolveTravelDateChange({
                         decision: "REJECT",
-                        comment: dateChangeForm.reason,
+                        comment: dateChangeResolutionComment.trim(),
                       })
                     }
                   >
@@ -2865,7 +2874,7 @@ function RequestConversation({
                     onClick={() =>
                       resolveTravelDateChange({
                         decision: "APPROVE",
-                        comment: dateChangeForm.reason,
+                        comment: dateChangeResolutionComment.trim(),
                         ticket: dateChangeTicket,
                       })
                     }

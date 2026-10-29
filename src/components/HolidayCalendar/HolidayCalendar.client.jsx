@@ -26,17 +26,15 @@ const HolidayCalendar = ({ closeCalendar }) => {
 
   const currentYear = new Date().getFullYear();
 
-  const API_KEY = process.env.NEXT_PUBLIC_API_KEY;
   const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
   const role = user?.role || "Employee";
 
   const headers = useMemo(() => {
     return {
-      "x-api-key": API_KEY ?? "",
       ...(user?.employeeId ? { "x-employee-id": user.employeeId } : {}),
       ...(user?.orgId ? { "x-org-id": user.orgId } : {}),
     };
-  }, [API_KEY, user?.employeeId, user?.orgId]);
+  }, [user?.employeeId, user?.orgId]);
 
   const fetchHolidays = async (cancelToken) => {
     try {
@@ -66,38 +64,9 @@ const HolidayCalendar = ({ closeCalendar }) => {
     };
   }, [BACKEND_URL, headers]);
 
-  useEffect(() => {
-    const source = axios.CancelToken.source();
-
-    const fetchWithCancel = async () => {
-      try {
-        const res = await axios.get(`${BACKEND_URL}/holidays${orgQuery}`, {
-          withCredentials: true,
-          headers,
-          cancelToken: source.token,
-        });
-        const data = res?.data?.message ?? res?.data ?? [];
-        setHolidays(Array.isArray(data) ? data : []);
-      } catch (err) {
-        if (axios.isCancel(err)) return;
-        console.error("Error fetching holidays:", err);
-        if (Array.isArray(user?.holidays) && user.holidays.length > 0) {
-          setHolidays(user.holidays);
-          return;
-        }
-        setHolidays([]);
-      }
-    };
-
-    fetchWithCancel();
-    return () => {
-      source.cancel("HolidayCalendar unmounted");
-    };
-  }, [BACKEND_URL, user?.orgId, user?.holidays]);
-
   const getHoliday = (d) =>
     holidays.find(
-      (h) => new Date(h.date).toDateString() === new Date(d).toDateString()
+      (h) => new Date(h.date).toDateString() === new Date(d).toDateString(),
     );
 
   const hasOptionalHolidays = holidays.some((h) => h.type === "Optional");
@@ -187,7 +156,7 @@ const HolidayCalendar = ({ closeCalendar }) => {
       }
 
       const incomingHeaders = Object.keys(rows[0]).map((h) =>
-        String(h).trim().toLowerCase()
+        String(h).trim().toLowerCase(),
       );
       const incomingSet = new Set(incomingHeaders);
       const requiredSet = new Set(REQUIRED_HEADERS);
@@ -197,8 +166,8 @@ const HolidayCalendar = ({ closeCalendar }) => {
       ) {
         setErrorMessage(
           `Invalid columns. Template must have exactly these columns (case-insensitive, any order): ${REQUIRED_HEADERS.join(
-            ", "
-          )}. Found: ${incomingHeaders.join(", ")}`
+            ", ",
+          )}. Found: ${incomingHeaders.join(", ")}`,
         );
         setSelectedFile(null);
         return;
@@ -223,7 +192,7 @@ const HolidayCalendar = ({ closeCalendar }) => {
           if (converted && converted.y) {
             isDateValid = true;
             dateCell = new Date(
-              Date.UTC(converted.y, converted.m - 1, converted.d)
+              Date.UTC(converted.y, converted.m - 1, converted.d),
             );
           }
         } else if (typeof dateCell === "string") {
@@ -286,13 +255,13 @@ const HolidayCalendar = ({ closeCalendar }) => {
       setValidatedRowCount(normalizedRows.length);
       setSelectedFile(f);
       setFileNote(
-        `File valid — ${normalizedRows.length} row(s). Ready to upload.`
+        `File valid — ${normalizedRows.length} row(s). Ready to upload.`,
       );
       setErrorMessage("");
     } catch (err) {
       console.error("Parse/validation error:", err);
       setErrorMessage(
-        "Failed to parse file. Ensure it's a valid Excel (.xls/.xlsx) or CSV with columns: date, occasion, type."
+        "Failed to parse file. Ensure it's a valid Excel (.xls/.xlsx) or CSV with columns: date, occasion, type.",
       );
       setSelectedFile(null);
       parsedRowsRef.current = null;
@@ -315,7 +284,6 @@ const HolidayCalendar = ({ closeCalendar }) => {
       const uploadHeaders = {
         ...(user?.orgId ? { "x-org-id": user.user?.orgId ?? user.orgId } : {}),
         ...(user?.employeeId ? { "x-employee-id": user.employeeId } : {}),
-        "x-api-key": API_KEY ?? "",
       };
 
       const res = await axios.post(`${BACKEND_URL}/holidays/upload`, formData, {
@@ -375,7 +343,6 @@ const HolidayCalendar = ({ closeCalendar }) => {
         withCredentials: true,
         responseType: "blob",
         headers: {
-          "x-api-key": API_KEY ?? "",
           ...(user?.orgId ? { "x-org-id": user.orgId } : {}),
         },
       });
@@ -400,7 +367,7 @@ const HolidayCalendar = ({ closeCalendar }) => {
     } catch (err) {
       console.warn(
         "Template download from backend failed, falling back to CSV template",
-        err
+        err,
       );
       const headersCsv = ["date", "occasion", "type"].join(",") + "\n";
       const sampleRow =
@@ -489,8 +456,8 @@ const HolidayCalendar = ({ closeCalendar }) => {
               uploading
                 ? "Uploading..."
                 : selectedFile
-                ? "Click to start upload"
-                : "Upload Excel (choose file)"
+                  ? "Click to start upload"
+                  : "Upload Excel (choose file)"
             }
             aria-label={selectedFile ? "Start upload" : "Upload Excel"}
           >

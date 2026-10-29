@@ -245,6 +245,50 @@ function isTravelOperatorRole(role) {
   );
 }
 
+function isManagerOrSupervisorRole(role) {
+  const normalizedRole = String(role || "")
+    .toLowerCase()
+    .replace(/[^a-z]/g, "");
+
+  return (
+    normalizedRole.includes("manager") || normalizedRole.includes("supervisor")
+  );
+}
+
+function getRequestDisplayStatus(request) {
+  if (request?.request_type === "TRAVEL_BOOKING") {
+    const details = normalizeDetails(
+      request.details_json ?? request.details ?? request.request_details,
+    );
+    const dateChangeStatus = String(
+      details?.dateChangeRequest?.status ?? request?.date_change_status ?? "",
+    ).toUpperCase();
+
+    if (dateChangeStatus === "PENDING") {
+      return {
+        label: "DATE CHANGE REQUESTED",
+        className: "pending",
+      };
+    }
+  }
+
+  return getStatus(request?.current_status);
+}
+
+function isOwnedByEmployee(request, employeeId) {
+  if (employeeId == null) return false;
+
+  const requestOwnerId =
+    request?.employee_id ??
+    request?.for_employee_id ??
+    request?.requester_employee_id ??
+    request?.requested_for_employee_id;
+
+  return (
+    requestOwnerId != null && String(requestOwnerId) === String(employeeId)
+  );
+}
+
 const EmployeeAssistant = () => {
   const { user } = useAuth();
 
@@ -1490,6 +1534,8 @@ const EmployeeAssistant = () => {
           setRequestFilter={setRequestFilter}
           loading={loading}
           isEmployee={isEmployee}
+          employeeId={employeeId}
+          excludeOwnRequestsFromAssigned={isManagerOrSupervisorRole(userRole)}
           showTabs={!isEmployee}
           activeTab={requestHistoryTab}
           onTabChange={(tab) => {
@@ -1916,6 +1962,8 @@ function RequestHistory({
   setRequestFilter,
   loading,
   isEmployee,
+  employeeId,
+  excludeOwnRequestsFromAssigned,
   showTabs,
   activeTab,
   onTabChange,
@@ -1923,6 +1971,19 @@ function RequestHistory({
 }) {
   const isMineTab = isEmployee || activeTab === "mine";
   const isAllTab = activeTab === "all";
+  const visibleRequests = (Array.isArray(requests) ? requests : []).filter(
+    (request) => {
+      const matchesCategory =
+        requestFilter === "ALL" || request.request_type === requestFilter;
+
+      const shouldExcludeOwnAssignedRequest =
+        activeTab === "assigned" &&
+        excludeOwnRequestsFromAssigned &&
+        isOwnedByEmployee(request, employeeId);
+
+      return matchesCategory && !shouldExcludeOwnAssignedRequest;
+    },
+  );
 
   return (
     <main className="assistant-history-body">
@@ -1981,7 +2042,7 @@ function RequestHistory({
           </p>
         </div>
 
-        <span className="history-count">{requests.length}</span>
+        <span className="history-count">{visibleRequests.length}</span>
       </div>
 
       {requests.length > 0 && (
@@ -2006,15 +2067,12 @@ function RequestHistory({
 
       {loading ? (
         <div className="request-loading">Loading requests...</div>
-      ) : requests.length > 0 ? (
+      ) : visibleRequests.length > 0 ? (
         <div className="history-list">
-          {requests
-            .filter(
-              (request) =>
-                requestFilter === "ALL" ||
-                request.request_type === requestFilter,
-            )
-            .map((request) => (
+          {visibleRequests.map((request) => {
+            const displayStatus = getRequestDisplayStatus(request);
+
+            return (
               <button
                 type="button"
                 key={request.id}
@@ -2035,15 +2093,12 @@ function RequestHistory({
                   <small>{request.employee_name}</small>
                 </div>
 
-                <span
-                  className={`history-status ${
-                    getStatus(request.current_status).className
-                  }`}
-                >
-                  {getStatus(request.current_status).label}
+                <span className={`history-status ${displayStatus.className}`}>
+                  {displayStatus.label}
                 </span>
               </button>
-            ))}
+            );
+          })}
         </div>
       ) : (
         <div className="empty-request-state">
@@ -2700,7 +2755,10 @@ function RequestConversation({
                   Status: <strong>{dateChange.status}</strong>
                 </p>
 
-                <p>Requested change: {dateChange.direction}</p>
+                <p>
+                  Requested change:{" "}
+                  {String(dateChange.direction || "—").replace(/_/g, " ")}
+                </p>
 
                 <p>
                   Original travel date:{" "}

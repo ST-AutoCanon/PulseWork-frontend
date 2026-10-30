@@ -78,7 +78,7 @@
 .letterhead-dynamic-form {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: 24px 28px;           /* row gap | column gap - balanced */
+  gap: 24px 28px; /* row gap | column gap - balanced */
   width: 100%;
 }
 
@@ -87,7 +87,7 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
-  min-width: 0;                    /* Important: prevents overflow in grid */
+  min-width: 0; /* Important: prevents overflow in grid */
   box-sizing: border-box;
 }
 
@@ -98,7 +98,7 @@
   border-radius: 8px;
   border: 1px solid #d1d5db;
   font-size: 0.98rem;
-  box-sizing: border-box;          /* Critical for grid */
+  box-sizing: border-box; /* Critical for grid */
   transition: all 0.2s ease;
   background: #fff;
 }
@@ -113,7 +113,7 @@
   font-size: 0.95rem;
   font-weight: 600;
   color: #374151;
-  white-space: nowrap;             /* Prevents label wrapping awkwardly */
+  white-space: nowrap; /* Prevents label wrapping awkwardly */
   overflow: hidden;
   text-overflow: ellipsis;
 }
@@ -141,8 +141,7 @@
 .letterhead-form-group input:focus {
   border-color: #00468c;
 
-  box-shadow: 
-    0 0 0 3px rgba(59, 130, 246, 0.12);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.12);
 
   outline: none;
 }
@@ -155,8 +154,8 @@
 }
 /* Custom Font Import */
 @font-face {
-  font-family: 'Insignia Roman';
-  src: url('/fonts/Insignia Roman.ttf') format('truetype');
+  font-family: "Insignia Roman";
+  src: url("/fonts/Insignia Roman.ttf") format("truetype");
   font-weight: normal;
   font-style: normal;
 }
@@ -164,15 +163,19 @@
 .letterhead-main {
   padding: 30px 20px;
 
-  max-width: 1000px;   /* ⭐ reduce width */
+  max-width: 1000px; /* ⭐ reduce width */
 
-  margin: 0 auto;      /* center content */
+  margin: 0 auto; /* center content */
 
   background: #f8fafc;
 
   min-height: 100vh;
 
-  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  font-family:
+    "Segoe UI",
+    system-ui,
+    -apple-system,
+    sans-serif;
 }
 
 .letterhead-header {
@@ -342,7 +345,7 @@
   padding: 20px;
   background: white;
   border-radius: 12px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
 }
 
 .letterhead-save-input-group {
@@ -408,7 +411,7 @@
 
 .letterhead-table-btn:hover {
   transform: translateY(-1px);
-  box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
 }
 
 .letterhead-no-saved {
@@ -447,7 +450,7 @@
 /* Live Preview */
 .letterhead-preview-section h3 {
   margin: 35px 0 16px 0;
-  color: #00468c;;
+  color: #00468c;
   font-size: 1.3rem;
 }
 
@@ -540,7 +543,6 @@
   break-inside: avoid;
 }
 .pdf-page {
-
   position: relative;
 
   width: 210mm;
@@ -549,8 +551,7 @@
 
   background: white;
 
-  overflow: hidden;   /* prevents bleed */
-
+  overflow: hidden; /* prevents bleed */
 }
 
 /* HEADER */
@@ -580,8 +581,7 @@
 /* BODY CONTENT */
 
 .pdf-body {
-
-  padding: 120px 25mm 100px 25mm;  /* FIXED */
+  padding: 120px 25mm 100px 25mm; /* FIXED */
 
   min-height: 200mm;
 
@@ -589,10 +589,8 @@
 
   word-wrap: break-word;
   overflow-wrap: break-word;
-
 }
 .pdf-body p {
-
   margin-bottom: 12px;
 
   text-align: justify;
@@ -600,16 +598,13 @@
   word-break: break-word;
 
   overflow-wrap: break-word;
-
 }
 .ql-editor {
-
   white-space: normal !important;
 
   word-break: break-word;
 
   overflow-wrap: break-word;
-
 }
 
 /* WATERMARK */
@@ -656,7 +651,7 @@
 }
 
 .letterhead-saved-section h3 {
-  color: #00468c;;
+  color: #00468c;
   margin-bottom: 20px;
 }
 
@@ -731,26 +726,39 @@
   font-size: inherit !important;
 }
 
+.return-to-recruitment-btn {
+  background: #79c42b;
+  color: white;
+  padding: 12px 26px;
+  margin-bottom: 20px;
+  border: none;
+  border-radius: 10px;
+  font-size: 1.05rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.25s ease;
+}
+
 /* Responsive Design */
 @media (max-width: 1150px) {
   .letterhead-content {
     flex-direction: column;
   }
-  
+
   .letterhead-sidebar {
     width: 100%;
     position: static;
   }
-  
+
   .letterhead-editor-header {
     flex-direction: column;
     align-items: flex-start;
   }
-  
+
   .letterhead-action-buttons {
     width: 100%;
   }
-  
+
   .letterhead-btn {
     margin-bottom: 8px;
     width: 100%;
@@ -761,7 +769,7 @@
   .letterhead-main {
     padding: 20px 15px;
   }
-  
+
   .letterhead-editor {
     padding: 25px 20px;
   }

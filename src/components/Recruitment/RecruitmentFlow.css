@@ -342,6 +342,126 @@
   opacity: 1;
 }
 
+.rf-icon-btn:disabled {
+  opacity: 0.55;
+  cursor: wait;
+}
+
+.rf-recruitment-letter-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  margin-top: 0.75rem;
+  padding: 0.8rem;
+  border: 1px solid #dbe5d2;
+  border-radius: 8px;
+  background: #fbfef8;
+}
+
+.rf-recruitment-letter-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.rf-recruitment-letter-header strong {
+  color: #243b17;
+}
+
+.rf-recruitment-letter-header span:not(.rf-letter-status) {
+  display: inline-block;
+  margin-top: 0.2rem;
+  color: #64705e;
+  font-size: 0.82rem;
+  overflow-wrap: anywhere;
+}
+
+.rf-letter-status {
+  flex: 0 0 auto;
+  padding: 0.2rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+
+.rf-letter-status-draft {
+  background: #fff7db;
+  color: #8a5b00;
+}
+
+.rf-letter-status-sent {
+  background: #e6f7e9;
+  color: #18752a;
+}
+
+.rf-recruitment-letter-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.rf-recruitment-letter-actions .rf-icon-btn {
+  flex: 0 0 38px;
+}
+
+.rf-letter-action-status,
+.rf-letter-action-error {
+  margin: 0;
+  font-size: 0.78rem;
+}
+
+.rf-letter-action-status {
+  color: #53634a;
+}
+
+.rf-letter-action-error {
+  color: #b42318;
+}
+
+.rf-letter-email-modal {
+  width: min(680px, 94vw);
+  max-height: 88vh;
+}
+
+.rf-letter-email-modal .rf-modal-header {
+  padding: 0.75rem 1.25rem;
+}
+
+.rf-letter-email-modal .rf-modal-header h3 {
+  margin: 0;
+}
+
+.rf-letter-email-modal .rf-close-icon {
+  display: inline-flex;
+  padding: 0.25rem;
+  border: 0;
+  background: transparent;
+}
+
+.rf-letter-email-modal .rf-form {
+  padding: 1.25rem;
+}
+
+.rf-letter-email-modal textarea {
+  min-height: 180px;
+  resize: vertical;
+  font-family: inherit;
+}
+
+.rf-letter-email-attachment {
+  color: #53634a;
+  font-size: 0.85rem;
+  line-height: 1.5;
+}
+
+.rf-letter-email-modal button:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
 .rf-icon-danger {
   border-color: #dc2626;
   color: #dc2626;
@@ -1254,7 +1374,7 @@
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
-  margin-top: 0.85rem;
+  margin: 0.85rem 0;
   padding: 0.9rem;
   border: 1px solid #bfdbfe;
   border-radius: 10px;
@@ -1502,6 +1622,10 @@
   .candidate-actions button {
     width: 100%;
     justify-content: center;
+  }
+
+  .rf-recruitment-letter-actions {
+    justify-content: flex-start;
   }
 
   .candidate-card-footer {

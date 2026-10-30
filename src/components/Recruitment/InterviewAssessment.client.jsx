@@ -412,7 +412,7 @@ export default function InterviewAssessment({
           ? formatDateTimeForInput(latestAssessment.interview_date)
           : "",
         interview_link: latestAssessment?.interview_link || "",
-        send_interview_email: !!latestAssessment?.send_interview_email,
+        send_interview_email: false,
         email_subject: latestAssessment?.email_subject || "",
         email_body: latestAssessment?.email_body || "",
 
@@ -438,7 +438,7 @@ export default function InterviewAssessment({
 
       interview_link: latestAssessment?.interview_link || "",
 
-      send_interview_email: !!latestAssessment?.send_interview_email,
+      send_interview_email: false,
 
       email_subject: latestAssessment?.email_subject || "",
 

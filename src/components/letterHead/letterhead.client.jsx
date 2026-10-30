@@ -18,6 +18,7 @@ import jsPDF from "jspdf";
 
 const BACKEND_URL =
   process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000";
+const MAX_RECRUITMENT_LETTER_PDF_BYTES = 14_000_000;
 
 import { drawHeader, drawFooter, drawWatermark } from "./header";
 import { useAuth } from "../../context/AuthProvider.client";
@@ -124,10 +125,20 @@ const LetterheadClient = ({ recruitmentContext = null }) => {
       return;
     }
 
+    const documentTypeToLetterType = {
+      OFFER_LETTER: "Offer Letter",
+      APPOINTMENT_LETTER: "Appointment Letter",
+    };
+
     const targetLetterType =
-      recruitmentContext.documentType === "OFFER_LETTER"
-        ? "Offer Letter"
-        : "Appointment Letter";
+      documentTypeToLetterType[recruitmentContext.documentType];
+
+    if (!targetLetterType) {
+      showAlert(
+        `Unsupported recruitment document type: ${recruitmentContext.documentType}`,
+      );
+      return;
+    }
 
     const template = templates.find((t) => t.letter_type === targetLetterType);
 
@@ -160,22 +171,64 @@ const LetterheadClient = ({ recruitmentContext = null }) => {
 
     const today = new Date().toISOString().slice(0, 10);
 
+    const normalizePlaceholder = (key) =>
+      key.trim().replace(/_/g, " ").replace(/\s+/g, " ").toLowerCase();
+
     const candidateValues = {
-      "Recipient Name": candidate.name || "",
-      "Employee Name": candidate.name || "",
-      Email: candidate.email || "",
-      "Mobile Number": candidate.phone || "",
-      "Phone Number": candidate.phone || "",
-      Position: candidate.applied_position || "",
-      "Annual Salary":
+      recipient_name: candidate.name || "",
+      employee_name: candidate.name || "",
+
+      email: candidate.email || "",
+      recipient_email: candidate.email || "",
+
+      mobile_number: candidate.phone || "",
+      phone_number: candidate.phone || "",
+      contact_number: candidate.phone || "",
+      recipient_mobile_number: candidate.phone || "",
+
+      position: candidate.applied_position || candidate.position || "",
+
+      employee_designation:
+        candidate.applied_position || candidate.position || "",
+
+      recipient_department:
+        candidate.department || candidate.applied_department || "",
+
+      recipient_address: candidate.address || candidate.current_address || "",
+
+      title: candidate.title || "",
+
+      annual_salary:
         candidate.offer_ctc ||
         candidate.expected_ctc ||
         candidate.current_ctc ||
         "",
-      Date: today,
-      "Date of Appointment":
+
+      date: today,
+      letter_generation_date: today,
+
+      date_of_appointment:
+        candidate.joining_date || candidate.date_of_appointment || "",
+
+      joining_date:
         candidate.joining_date || candidate.date_of_appointment || "",
     };
+
+    Object.entries(candidateValues).forEach(([key, value]) => {
+      const matchingPlaceholder = Object.keys(initialData).find(
+        (placeholder) =>
+          normalizePlaceholder(placeholder) === normalizePlaceholder(key),
+      );
+
+      if (
+        matchingPlaceholder &&
+        value !== undefined &&
+        value !== null &&
+        String(value).trim() !== ""
+      ) {
+        initialData[matchingPlaceholder] = String(value);
+      }
+    });
 
     Object.entries(candidateValues).forEach(([key, value]) => {
       if (initialData[key] !== undefined) {
@@ -353,12 +406,36 @@ const LetterheadClient = ({ recruitmentContext = null }) => {
       return;
     }
 
+    let savedDynamicFields = letter.dynamic_fields || {};
+    if (typeof savedDynamicFields === "string") {
+      try {
+        savedDynamicFields = JSON.parse(savedDynamicFields);
+      } catch (error) {
+        console.error("Failed to parse saved letter fields:", error);
+        showAlert("Saved letter details could not be loaded.");
+        return;
+      }
+    }
+
+    if (
+      !savedDynamicFields ||
+      typeof savedDynamicFields !== "object" ||
+      Array.isArray(savedDynamicFields)
+    ) {
+      showAlert("Saved letter details could not be loaded.");
+      return;
+    }
+
     setSelectedTemplate(template);
     setLetterName(letter.template_name || letter.letter_type || "");
     setEditingId(letter.id);
     setIsEditing(true);
 
-    let initialContent = letter.raw_content || template.content || "";
+    let initialContent =
+      savedDynamicFields.raw_content ||
+      letter.raw_content ||
+      template.content ||
+      "";
     setQuillContent(initialContent);
 
     let contentForMatches = initialContent;
@@ -381,13 +458,19 @@ const LetterheadClient = ({ recruitmentContext = null }) => {
       restoredFormData[fieldName] = "";
     });
 
-    Object.keys(letter).forEach((dbKey) => {
+    const savedValues = { ...savedDynamicFields, ...letter };
+
+    Object.keys(savedValues).forEach((dbKey) => {
       if (
         [
           "id",
           "body",
           "raw_content",
+          "dynamic_fields",
+          "attachment",
+          "org_id",
           "created_at",
+          "updated_at",
           "template_name",
           "letterhead_code",
         ].includes(dbKey)
@@ -402,10 +485,10 @@ const LetterheadClient = ({ recruitmentContext = null }) => {
 
       if (matchedField) {
         restoredFormData[matchedField] = dbKey.includes("date")
-          ? letter[dbKey]
-            ? letter[dbKey].split("T")[0]
+          ? savedValues[dbKey]
+            ? String(savedValues[dbKey]).split("T")[0]
             : ""
-          : letter[dbKey];
+          : savedValues[dbKey];
       }
     });
 
@@ -436,6 +519,12 @@ const LetterheadClient = ({ recruitmentContext = null }) => {
 
         if (!pdfBlob || pdfBlob.size === 0) {
           throw new Error("Failed to generate the PDF.");
+        }
+
+        if (pdfBlob.size > MAX_RECRUITMENT_LETTER_PDF_BYTES) {
+          throw new Error(
+            "This PDF is still too large to email. Reduce the letter content and save again; the email attachment must be under 14 MB.",
+          );
         }
 
         const safeName = letterName.trim().replace(/[^\w.-]+/g, "_");
@@ -779,14 +868,15 @@ const LetterheadClient = ({ recruitmentContext = null }) => {
       // Annexure detection
       const annexureElement = tempDiv.querySelector(".annexure-break");
       let annexureOffsetPx = annexureElement ? annexureElement.offsetTop : null;
+      const canvasScale = 1.25;
 
       const fullCanvas = await html2canvas(tempDiv, {
-        scale: 2,
+        scale: canvasScale,
         useCORS: true,
         backgroundColor: "#ffffff",
       });
 
-      if (annexureOffsetPx) annexureOffsetPx *= 2;
+      if (annexureOffsetPx) annexureOffsetPx *= canvasScale;
 
       document.body.removeChild(tempDiv);
 
@@ -923,11 +1013,20 @@ const LetterheadClient = ({ recruitmentContext = null }) => {
 
         await drawHeader(pdf, extractedOrgId || 1);
 
-        const imgData = pageCanvas.toDataURL("image/png");
+        const imgData = pageCanvas.toDataURL("image/jpeg", 0.55);
 
         const imgHeight = (sliceHeight * imgWidth) / fullCanvas.width;
 
-        pdf.addImage(imgData, "PNG", 10, headerHeight, imgWidth, imgHeight);
+        pdf.addImage(
+          imgData,
+          "JPEG",
+          10,
+          headerHeight,
+          imgWidth,
+          imgHeight,
+          undefined,
+          "FAST",
+        );
 
         await drawWatermark(pdf, extractedOrgId || 1);
 
@@ -1003,7 +1102,7 @@ const LetterheadClient = ({ recruitmentContext = null }) => {
       {recruitmentContext && (
         <button
           type="button"
-          className="letterhead-btn letterhead-btn-save"
+          className="return-to-recruitment-btn"
           onClick={() =>
             window.dispatchEvent(
               new CustomEvent("app:navigate", {
@@ -1214,7 +1313,7 @@ const LetterheadClient = ({ recruitmentContext = null }) => {
             <table className="letterhead-saved-table">
               <thead>
                 <tr>
-                  <th>Letterhead Code</th> {/* ← New Column */}
+                  <th>Letterhead Code</th>
                   <th>Letter Name</th>
                   <th>Type</th>
                   <th>Actions</th>

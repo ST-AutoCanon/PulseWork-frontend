@@ -13,6 +13,8 @@ import {
   MdDescription,
   MdOutlineCancel,
   MdVisibility,
+  MdDownload,
+  MdOutlineEmail,
 } from "react-icons/md";
 
 import "./RecruitmentFlow.css";
@@ -98,14 +100,22 @@ const STAGE_COLORS = {
   },
 };
 
-function IconActionButton({ label, onClick, children, className = "" }) {
+function IconActionButton({
+  label,
+  onClick,
+  children,
+  className = "",
+  disabled = false,
+}) {
   return (
     <button
       type="button"
       className={`rf-icon-btn ${className}`}
       onClick={onClick}
       aria-label={label}
+      title={label}
       data-tooltip={label}
+      disabled={disabled}
     >
       {children}
     </button>
@@ -235,6 +245,37 @@ People & Culture Team`,
   }
 }
 
+function getRecruitmentLetterEmailDefaults(candidate, document) {
+  const candidateName = candidate?.name || "Candidate";
+  const organizationName = "People & Culture";
+
+  if (document?.document_type === "OFFER_LETTER") {
+    return {
+      subject: `${organizationName} | Your Offer Letter | ${candidateName}`,
+      body: `Dear ${candidateName},
+
+Please find your offer letter attached for your review.
+
+Use the secure button in this email to review and respond to your offer. If you have any questions, please contact our HR team.
+
+Warm regards,
+People & Culture Team`,
+    };
+  }
+
+  return {
+    subject: `${organizationName} | Your Appointment Letter | ${candidateName}`,
+    body: `Dear ${candidateName},
+
+Congratulations on your appointment. Please find your appointment letter attached. Kindly review it and retain a copy for your records.
+
+If you have any questions, please contact our HR team.
+
+Warm regards,
+People & Culture Team`,
+  };
+}
+
 function RecruitmentLetterCard({
   document,
   onEdit,
@@ -242,11 +283,30 @@ function RecruitmentLetterCard({
   onDownload,
   onSend,
 }) {
+  const [busy, setBusy] = useState(false);
+  const [actionError, setActionError] = useState("");
+
   if (!document) {
     return null;
   }
 
   const isDraft = document.status === "DRAFT";
+  const runAction = async (action) => {
+    setBusy(true);
+    setActionError("");
+    try {
+      await action();
+    } catch (error) {
+      console.error("Recruitment letter action failed:", error);
+      setActionError(
+        error.response?.data?.message ||
+          error.message ||
+          "Unable to complete this letter action.",
+      );
+    } finally {
+      setBusy(false);
+    }
+  };
 
   return (
     <div className="rf-recruitment-letter-card">
@@ -257,6 +317,7 @@ function RecruitmentLetterCard({
               ? "Offer Letter"
               : "Appointment Letter"}
           </strong>
+          <br />
 
           <span>{document.letter?.template_name || "Letter"}</span>
         </div>
@@ -273,16 +334,47 @@ function RecruitmentLetterCard({
       </div>
 
       <div className="rf-recruitment-letter-actions">
-        <button onClick={onPreview}>Preview</button>
+        <IconActionButton
+          label="Preview"
+          onClick={() => runAction(onPreview)}
+          disabled={busy}
+        >
+          <MdVisibility />
+        </IconActionButton>
 
-        <button onClick={onDownload}>Download</button>
+        <IconActionButton
+          label="Download"
+          onClick={() => runAction(onDownload)}
+          disabled={busy}
+        >
+          <MdDownload />
+        </IconActionButton>
 
-        {isDraft && <button onClick={onEdit}>Edit Draft</button>}
+        {isDraft && (
+          <IconActionButton
+            label="Edit Draft"
+            onClick={() => runAction(onEdit)}
+            disabled={busy}
+          >
+            <MdOutlineEdit />
+          </IconActionButton>
+        )}
 
-        <button onClick={onSend}>
-          {isDraft ? "Send to Candidate" : "Resend"}
-        </button>
+        <IconActionButton
+          label={isDraft ? "Send to Candidate" : "Resend"}
+          onClick={() => runAction(onSend)}
+          disabled={busy}
+        >
+          <MdOutlineEmail />
+        </IconActionButton>
       </div>
+
+      {busy && <small className="rf-letter-action-status">Working...</small>}
+      {actionError && (
+        <small className="rf-letter-action-error" role="alert">
+          {actionError}
+        </small>
+      )}
 
       {document.sent_at && (
         <small>Sent on {new Date(document.sent_at).toLocaleString()}</small>
@@ -320,6 +412,15 @@ export default function AdminRecruitmentDashboard() {
   const [assessmentRound, setAssessmentRound] = useState("");
 
   const [candidateLetters, setCandidateLetters] = useState({});
+  const [letterEmailModal, setLetterEmailModal] = useState({
+    visible: false,
+    candidate: null,
+    document: null,
+    subject: "",
+    body: "",
+    sending: false,
+    error: "",
+  });
 
   const openRecruitmentLetter = (
     candidate,
@@ -353,7 +454,7 @@ export default function AdminRecruitmentDashboard() {
     candidate: null,
     nextStatus: null,
     offerDecision: "Pending",
-    sendStatusEmail: true,
+    sendStatusEmail: false,
     emailSubject: "",
     emailBody: "",
   });
@@ -484,7 +585,7 @@ export default function AdminRecruitmentDashboard() {
     }
 
     return axios.get(
-      `${BASE_URL}/letterheads/download/${encodeURIComponent(filename)}`,
+      `${BASE_URL}/api/letterheads/download/${encodeURIComponent(filename)}`,
       {
         headers,
         withCredentials: true,
@@ -497,6 +598,10 @@ export default function AdminRecruitmentDashboard() {
     let previewWindow = null;
 
     try {
+      if (!document?.letter?.attachment) {
+        throw new Error("PDF attachment not found for this letter.");
+      }
+
       previewWindow = window.open("", "_blank");
 
       const res = await getRecruitmentLetterFile(document);
@@ -518,11 +623,16 @@ export default function AdminRecruitmentDashboard() {
       }
 
       console.error("previewRecruitmentLetter error:", err);
+      throw err;
     }
   };
 
   const downloadRecruitmentLetter = async (recruitmentLetter) => {
     try {
+      if (!recruitmentLetter?.letter?.attachment) {
+        throw new Error("PDF attachment not found for this letter.");
+      }
+
       const res = await getRecruitmentLetterFile(recruitmentLetter);
 
       const filename =
@@ -544,9 +654,7 @@ export default function AdminRecruitmentDashboard() {
       }, 1000);
     } catch (err) {
       console.error("downloadRecruitmentLetter error:", err);
-      window.alert(
-        err.response?.data?.message || "Unable to download the letter.",
-      );
+      throw err;
     }
   };
 
@@ -654,7 +762,7 @@ export default function AdminRecruitmentDashboard() {
         candidate,
         nextStatus,
         offerDecision: "Pending",
-        sendStatusEmail: true,
+        sendStatusEmail: false,
         emailSubject: defaults.subject,
         emailBody: defaults.body,
       });
@@ -713,7 +821,7 @@ export default function AdminRecruitmentDashboard() {
         candidate: null,
         nextStatus: null,
         offerDecision: "Pending",
-        sendStatusEmail: true,
+        sendStatusEmail: false,
         emailSubject: "",
         emailBody: "",
       });
@@ -731,7 +839,7 @@ export default function AdminRecruitmentDashboard() {
       candidate,
       nextStatus: "Offer Acceptance",
       offerDecision: "Pending",
-      sendStatusEmail: true,
+      sendStatusEmail: false,
       emailSubject: defaults.subject,
       emailBody: defaults.body,
     });
@@ -743,6 +851,7 @@ export default function AdminRecruitmentDashboard() {
       candidate: null,
       nextStatus: null,
       offerDecision: "Pending",
+      sendStatusEmail: false,
     });
   };
 
@@ -807,16 +916,136 @@ export default function AdminRecruitmentDashboard() {
     setAssessmentRound(candidate.status || "Technical Round");
   };
 
-  const sendRecruitmentLetter = async (candidate, document) => {
+  const openRecruitmentLetterEmail = (candidate, document) => {
+    const defaults = getRecruitmentLetterEmailDefaults(candidate, document);
+    setLetterEmailModal({
+      visible: true,
+      candidate,
+      document,
+      subject: defaults.subject,
+      body: defaults.body,
+      sending: false,
+      error: "",
+    });
+  };
+
+  const closeRecruitmentLetterEmail = () => {
+    if (letterEmailModal.sending) return;
+    setLetterEmailModal({
+      visible: false,
+      candidate: null,
+      document: null,
+      subject: "",
+      body: "",
+      sending: false,
+      error: "",
+    });
+  };
+
+  const compressRecruitmentLetter = async (document) => {
+    const response = await getRecruitmentLetterFile(document);
+    const [{ pdfjs }, { jsPDF }] = await Promise.all([
+      import("react-pdf"),
+      import("jspdf"),
+    ]);
+
+    pdfjs.GlobalWorkerOptions.workerSrc = new URL(
+      "pdfjs-dist/build/pdf.worker.min.mjs",
+      import.meta.url,
+    ).toString();
+
+    const sourceBytes = new Uint8Array(await response.data.arrayBuffer());
+    const loadingTask = pdfjs.getDocument({ data: sourceBytes });
+    const sourcePdf = await loadingTask.promise;
+    let compressedPdf = null;
+
+    try {
+      for (
+        let pageNumber = 1;
+        pageNumber <= sourcePdf.numPages;
+        pageNumber += 1
+      ) {
+        const sourcePage = await sourcePdf.getPage(pageNumber);
+        const pageSize = sourcePage.getViewport({ scale: 1 });
+        const viewport = sourcePage.getViewport({ scale: 1.25 });
+        const canvas = window.document.createElement("canvas");
+        const context = canvas.getContext("2d");
+
+        if (!context) {
+          throw new Error("Unable to prepare the letter PDF for email.");
+        }
+
+        canvas.width = Math.ceil(viewport.width);
+        canvas.height = Math.ceil(viewport.height);
+
+        await sourcePage.render({ canvasContext: context, viewport }).promise;
+
+        const imageData = canvas.toDataURL("image/jpeg", 0.5);
+        if (!compressedPdf) {
+          compressedPdf = new jsPDF({
+            orientation:
+              pageSize.width > pageSize.height ? "landscape" : "portrait",
+            unit: "pt",
+            format: [pageSize.width, pageSize.height],
+            compress: true,
+          });
+        } else {
+          compressedPdf.addPage(
+            [pageSize.width, pageSize.height],
+            pageSize.width > pageSize.height ? "landscape" : "portrait",
+          );
+        }
+
+        compressedPdf.addImage(
+          imageData,
+          "JPEG",
+          0,
+          0,
+          pageSize.width,
+          pageSize.height,
+          undefined,
+          "FAST",
+        );
+        canvas.width = 0;
+        canvas.height = 0;
+        sourcePage.cleanup();
+      }
+    } finally {
+      await loadingTask.destroy();
+    }
+
+    if (!compressedPdf) {
+      throw new Error("The letter PDF has no pages to attach.");
+    }
+
+    const blob = compressedPdf.output("blob");
+    if (blob.size > 14_000_000) {
+      throw new Error(
+        "The compressed PDF is still too large to email. Edit the letter and reduce its content before sending.",
+      );
+    }
+
+    const filename =
+      document?.letter?.template_name?.trim().replace(/[^\w.-]+/g, "_") ||
+      "recruitment-letter";
+    return new File([blob], `${filename}.pdf`, { type: "application/pdf" });
+  };
+
+  const sendRecruitmentLetter = async (candidate, document, subject, body) => {
     if (!document?.id) {
-      console.error("Recruitment letter record is missing.");
-      return;
+      throw new Error("Recruitment letter record is missing.");
     }
 
     try {
-      await axios.post(
+      const compressedPdf = await compressRecruitmentLetter(document);
+      const payload = new FormData();
+      payload.append("email_subject", subject);
+      payload.append("email_body", body);
+      payload.append("letter_pdf", compressedPdf);
+
+      const response = await axios.post(
         `${BASE_URL}/recruitment/${candidate.id}/letters/${document.id}/send`,
-        {},
+        payload,
         {
           headers,
           withCredentials: true,
@@ -824,11 +1053,60 @@ export default function AdminRecruitmentDashboard() {
       );
 
       await fetchCandidates();
+      const candidateStatus = response.data?.data?.candidateStatus;
+      if (candidateStatus) {
+        setCandidates((currentCandidates) =>
+          currentCandidates.map((currentCandidate) =>
+            String(currentCandidate.id) === String(candidate.id)
+              ? { ...currentCandidate, status: candidateStatus }
+              : currentCandidate,
+          ),
+        );
+      }
 
       setExpandedCandidateId(candidate.id);
     } catch (err) {
       console.error("sendRecruitmentLetter error:", err);
-      console.error("Response:", err.response?.data);
+      throw err;
+    }
+  };
+
+  const submitRecruitmentLetterEmail = async (event) => {
+    event.preventDefault();
+    const { candidate, document, subject, body } = letterEmailModal;
+
+    if (!candidate || !document || !subject.trim() || !body.trim()) {
+      setLetterEmailModal((prev) => ({
+        ...prev,
+        error: "Enter an email subject and message before sending.",
+      }));
+      return;
+    }
+
+    setLetterEmailModal((prev) => ({ ...prev, sending: true, error: "" }));
+
+    try {
+      await sendRecruitmentLetter(candidate, document, subject.trim(), body.trim());
+      setLetterEmailModal({
+        visible: false,
+        candidate: null,
+        document: null,
+        subject: "",
+        body: "",
+        sending: false,
+        error: "",
+      });
+      setExpandedCandidateId(candidate.id);
+    } catch (error) {
+      console.error("sendRecruitmentLetter error:", error);
+      setLetterEmailModal((prev) => ({
+        ...prev,
+        sending: false,
+        error:
+          error.response?.data?.message ||
+          error.message ||
+          "Unable to send the letter.",
+      }));
     }
   };
 
@@ -1080,7 +1358,7 @@ export default function AdminRecruitmentDashboard() {
                                       )
                                     }
                                     onSend={() =>
-                                      sendRecruitmentLetter(
+                                      openRecruitmentLetterEmail(
                                         candidate,
                                         candidateLetters[candidate.id].offer,
                                       )
@@ -1105,7 +1383,7 @@ export default function AdminRecruitmentDashboard() {
                                     type="button"
                                     className="rf-primary-btn"
                                     onClick={() =>
-                                      sendRecruitmentLetter(
+                                      openRecruitmentLetterEmail(
                                         candidate,
                                         candidateLetters[candidate.id].offer,
                                       )
@@ -1130,7 +1408,7 @@ export default function AdminRecruitmentDashboard() {
                                       )
                                     }
                                     onSend={() =>
-                                      sendRecruitmentLetter(
+                                      openRecruitmentLetterEmail(
                                         candidate,
                                         candidateLetters[candidate.id]
                                           .appointment,
@@ -1265,6 +1543,118 @@ export default function AdminRecruitmentDashboard() {
             fetchCandidates();
           }}
         />
+      )}
+
+      {letterEmailModal.visible && (
+        <div className="rf-modal-overlay">
+          <div className="rf-modal rf-form-modal rf-letter-email-modal">
+            <div className="rf-modal-header">
+              <h3>
+                Send{" "}
+                {letterEmailModal.document?.document_type === "OFFER_LETTER"
+                  ? "Offer Letter"
+                  : "Appointment Letter"}
+              </h3>
+              <button
+                type="button"
+                className="rf-close-icon"
+                aria-label="Close email composer"
+                onClick={closeRecruitmentLetterEmail}
+                disabled={letterEmailModal.sending}
+              >
+                <MdOutlineCancel />
+              </button>
+            </div>
+
+            <form
+              className="rf-form"
+              onSubmit={submitRecruitmentLetterEmail}
+            >
+              <div className="rf-grid">
+                <div className="rf-field rf-full">
+                  <label htmlFor="recruitment-letter-recipient">To</label>
+                  <input
+                    id="recruitment-letter-recipient"
+                    type="email"
+                    value={letterEmailModal.candidate?.email || ""}
+                    readOnly
+                  />
+                </div>
+
+                <div className="rf-field rf-full">
+                  <label htmlFor="recruitment-letter-subject">Subject</label>
+                  <input
+                    id="recruitment-letter-subject"
+                    type="text"
+                    value={letterEmailModal.subject}
+                    onChange={(event) =>
+                      setLetterEmailModal((prev) => ({
+                        ...prev,
+                        subject: event.target.value,
+                      }))
+                    }
+                    maxLength={200}
+                    required
+                  />
+                </div>
+
+                <div className="rf-field rf-full">
+                  <label htmlFor="recruitment-letter-body">Email message</label>
+                  <textarea
+                    id="recruitment-letter-body"
+                    rows={10}
+                    value={letterEmailModal.body}
+                    onChange={(event) =>
+                      setLetterEmailModal((prev) => ({
+                        ...prev,
+                        body: event.target.value,
+                      }))
+                    }
+                    required
+                  />
+                </div>
+
+                <div className="rf-field rf-full">
+                  <span className="rf-letter-email-attachment">
+                    Attachment:{" "}
+                    {letterEmailModal.document?.letter?.template_name || "Letter"}.pdf
+                    {" — "}
+                    PDF will be compressed before sending.
+                    {letterEmailModal.document?.document_type ===
+                      "OFFER_LETTER" &&
+                      " The secure offer-response button is added automatically."}
+                  </span>
+                </div>
+              </div>
+
+              {letterEmailModal.error && (
+                <div className="rf-error-banner" role="alert">
+                  {letterEmailModal.error}
+                </div>
+              )}
+
+              <div className="rf-actions">
+                <button
+                  type="button"
+                  className="rf-secondary-btn2"
+                  onClick={closeRecruitmentLetterEmail}
+                  disabled={letterEmailModal.sending}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="rf-primary-btn"
+                  disabled={letterEmailModal.sending}
+                >
+                  {letterEmailModal.sending
+                    ? "Compressing and sending..."
+                    : "Send Email"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
       )}
 
       {offerDecisionModal.visible && offerDecisionModal.candidate && (

@@ -3,7 +3,7 @@ import React, { useState, useEffect } from "react";
 import * as XLSX from "xlsx";
 import axios from "axios";
 import Modal from "../Modal/Modal.client";
-import { VALID_SALARY_HEADERS } from "../constants/salarystatement";
+import { SALARY_STATEMENT_TEMPLATE_HEADERS } from "../constants/salarystatement";
 import { useAuth } from "../../context/AuthProvider.client";
 import "./Salary_Statement.css";
 
@@ -55,8 +55,32 @@ const Salary_Statement = () => {
   const [isTemplateEnabled, setIsTemplateEnabled] = useState(false);
   const [templateLoading, setTemplateLoading] = useState(true);
 
- const templateUrl =
-  "/templates/EmpDetails_AUG_2026_Full.xlsx";
+  const downloadTemplate = () => {
+    const sampleRows = [
+      [
+        "STS-000012", "Arun Kumar", 600000, 30000, 12000, 3000, 3000, 2000, 1000, 1500, 1000,
+        2000, 3600, 3600, 1500, 1500, 1500, 200, 500, 500, 500, 30000, 600000,
+        55500, 48600, "0 (0)", 0, "0 (0.00)", 0, "0 (0)", 0, "0 (0)", 0, 48600,
+      ],
+      [
+        "STS-000013", "Priya Sharma", 720000, 36000, 14400, 3600, 3600, 2500, 1200, 1800, 1200,
+        2500, 4320, 4320, 1800, 1800, 1800, 200, 600, 600, 600, 36000, 720000,
+        66800, 58500, "0 (0)", 0, "0 (0.00)", 0, "0 (0)", 0, "0 (0)", 0, 58500,
+      ],
+    ];
+
+    const worksheet = XLSX.utils.aoa_to_sheet([
+      SALARY_STATEMENT_TEMPLATE_HEADERS,
+      ...sampleRows,
+    ]);
+    worksheet["!cols"] = SALARY_STATEMENT_TEMPLATE_HEADERS.map((header) => ({
+      wch: Math.max(12, header.length + 2),
+    }));
+
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Salary Statement");
+    XLSX.writeFile(workbook, "Salary_Statement_Template.xlsx");
+  };
 
   const parseNumeric = (val) => {
     if (val === "" || val === null || val === undefined) return 0;
@@ -75,18 +99,20 @@ const Salary_Statement = () => {
       setError("❌ No headers found in the uploaded file.");
       return false;
     }
-    const formattedUploadedHeaders = uploadedHeaders.map((header) =>
-      header ? header.trim().toLowerCase() : ""
-    );
-    const formattedValidHeaders = VALID_SALARY_HEADERS.map((header) =>
-      header.trim().toLowerCase()
-    );
-    return (
-      formattedUploadedHeaders.length === formattedValidHeaders.length &&
-      formattedUploadedHeaders.every(
-        (header, index) => header === formattedValidHeaders[index]
-      )
-    );
+
+    const normalizedHeaders = uploadedHeaders
+      .map((header) => String(header || "").trim().toLowerCase())
+      .filter(Boolean);
+
+    const hasEmployeeColumn = normalizedHeaders.includes("employee id") || normalizedHeaders.includes("id");
+    if (!hasEmployeeColumn) {
+      setError("❌ The uploaded file must contain an Employee ID or ID column.");
+      return false;
+    }
+
+    // Base Salary Details exports and customized uploads both supply additional columns.
+    // Accept non-empty extra columns while keeping the Employee ID column mandatory.
+    return normalizedHeaders.length > 0;
   };
 
   const handleFileChange = (event) => {
@@ -278,9 +304,19 @@ const Salary_Statement = () => {
             "Professional Tax",
             "TDS",
             "Insurance",
+            "Insurance Employee",
+            "Insurance Employer",
+            "ESIC Employee",
+            "ESIC Employer",
+            "Final CTC",
+            "Base Net Salary",
             "LOP Deduction",
             "Gross Salary",
             "Net Salary",
+            "Net Salary After Attendance Deductions",
+            "Late Login Amount",
+            "Miss Punch Out Amount",
+            "Less Login Hours Amount",
           ].includes(columnName)
         ) {
           if (isNaN(parseFloat(cell)) || cell === "") {
@@ -803,8 +839,43 @@ const handleTemplateChange = async (e) => {
   };
 
   const formatHeader = (header) => {
+    const knownHeaders = {
+      employee_id: "Employee ID",
+      full_name: "Full Name",
+      annual_ctc: "Annual CTC",
+      basic_salary: "Basic Salary",
+      other_allowances: "Other Allowances",
+      statutory_bonus: "Statutory Bonus",
+      advance_recovery: "Advance Recovery",
+      employee_pf: "Employee PF",
+      employer_pf: "Employer PF",
+      esic_employee: "ESIC Employee",
+      esic_employer: "ESIC Employer",
+      professional_tax: "Professional Tax",
+      insurance_employee: "Insurance Employee",
+      insurance_employer: "Insurance Employer",
+      final_ctc: "Final CTC",
+      lop_days: "LOP Days",
+      lop_deduction: "LOP Deduction",
+      gross_salary: "Gross Salary",
+      net_salary: "Net Salary",
+      base_net_salary: "Base Net Salary",
+      late_login_count: "Late Login Eligible Count (Total Violations)",
+      late_login_deduction: "Late Login Amount",
+      approved_leave_count: "Approved Leave Count",
+      miss_punch_out_count: "Miss Punch Out Eligible Count (Total Violations)",
+      miss_punch_out_deduction: "Miss Punch Out Amount",
+      less_login_hours_count: "Less Login Hours Eligible Count (Total Violations)",
+      less_login_hours_deduction: "Less Login Hours Amount",
+      net_salary_after_attendance_deduction: "Net Salary After Attendance Deductions",
+      payslip_generation: "Payslip Generation",
+    };
+
     const h = String(header ?? "");
-    return h.charAt(0).toUpperCase() + h.slice(1).toLowerCase();
+    if (knownHeaders[h]) return knownHeaders[h];
+    return h
+      .replace(/_/g, " ")
+      .replace(/\b\w/g, (char) => char.toUpperCase());
   };
 
   return (
@@ -895,14 +966,7 @@ const handleTemplateChange = async (e) => {
             <p className="reference-text">Reference Template</p>
             <button
               className="download-template-btn"
-              onClick={() => {
-                const link = document.createElement("a");
-                link.href = templateUrl;
-                link.download = "Salary_Statement_Template.xlsx";
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-              }}
+              onClick={downloadTemplate}
             >
               ⬇️ Download
             </button>

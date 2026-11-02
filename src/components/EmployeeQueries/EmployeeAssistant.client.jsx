@@ -3180,6 +3180,38 @@ function RequestSummary({ request }) {
   const details = normalizeDetails(request.details_json);
 
   if (request.request_type === "TRAVEL_BOOKING") {
+    const travelerDetails = Array.isArray(details.travelerDetails)
+      ? details.travelerDetails
+      : [];
+    const travelParticipants = Array.isArray(request.travelParticipants)
+      ? request.travelParticipants
+      : [];
+    const travelers = Array.isArray(details.travelers)
+      ? details.travelers
+      : details.travelers
+        ? [details.travelers]
+        : [];
+    const travelerSummary = travelers
+      .map((traveler) => {
+        const detail = travelerDetails.find(
+          (item) => String(item?.traveler) === String(traveler),
+        );
+        const participant = travelParticipants.find(
+          (item) => String(item.employee_id) === String(traveler),
+        );
+        const isPrimaryTraveler =
+          String(traveler) === String(request.employee_id);
+        const age = isPrimaryTraveler
+          ? details.primaryTravelerAge
+          : (detail?.age ?? participant?.age);
+        const name = isPrimaryTraveler
+          ? request.employee_name || traveler
+          : participant?.employee_name || detail?.name || traveler;
+
+        return `${name}${age !== null && age !== undefined ? ` (Age: ${age})` : " (Age unavailable)"}`;
+      })
+      .join(", ");
+
     return (
       <div className="request-summary-card">
         <div className="summary-heading">
@@ -3202,6 +3234,11 @@ function RequestSummary({ request }) {
           />
 
           <SummaryField label="Project" value={details.project} />
+
+          <SummaryField
+            label="Primary traveler age"
+            value={details.primaryTravelerAge}
+          />
 
           <SummaryField
             label="Government ID (Aadhar)"
@@ -3260,12 +3297,8 @@ function RequestSummary({ request }) {
           )}
 
           <SummaryField
-            label="Travelers"
-            value={
-              Array.isArray(details.travelers)
-                ? details.travelers.join(", ")
-                : details.travelers
-            }
+            label="Additional travelers"
+            value={travelerSummary}
             full
           />
 

@@ -1602,6 +1602,23 @@
   gap: 8px;
 }
 
+.travel-employee-age,
+.traveler-age {
+  color: #53617a;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.external-traveler-age-field {
+  flex: 0 1 110px;
+  min-width: 80px;
+}
+
+.external-traveler-age-field .request-field-error {
+  display: block;
+  margin-top: 3px;
+}
+
 .traveler-row > svg {
   color: #66718a;
 }
@@ -2225,6 +2242,18 @@
 
   .request-detail-header {
     flex-wrap: wrap;
+  }
+
+  .traveler-row {
+    flex-wrap: wrap;
+  }
+
+  .traveler-row .traveler-employee-dropdown {
+    flex-basis: calc(100% - 48px);
+  }
+
+  .traveler-row > input {
+    flex-basis: calc(100% - 48px);
   }
 
   .request-status {

@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import axios from "axios";
-import "./onboarding-documents.css";
+import "./OnboardingDocuments.css";
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
 

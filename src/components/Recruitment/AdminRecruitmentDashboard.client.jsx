@@ -37,6 +37,11 @@ const PIPELINE = [
   "Rejected",
 ];
 
+const normalizeRecruitmentDocumentType = (documentType) =>
+  String(documentType || "")
+    .trim()
+    .toUpperCase();
+
 const STAGE_COLORS = {
   Applied: {
     bg: "#eff6ff",
@@ -249,7 +254,9 @@ function getRecruitmentLetterEmailDefaults(candidate, document) {
   const candidateName = candidate?.name || "Candidate";
   const organizationName = "People & Culture";
 
-  if (document?.document_type === "OFFER_LETTER") {
+  if (
+    normalizeRecruitmentDocumentType(document?.document_type) === "OFFER_LETTER"
+  ) {
     return {
       subject: `${organizationName} | Your Offer Letter | ${candidateName}`,
       body: `Dear ${candidateName},
@@ -313,7 +320,8 @@ function RecruitmentLetterCard({
       <div className="rf-recruitment-letter-header">
         <div>
           <strong>
-            {document.document_type === "OFFER_LETTER"
+            {normalizeRecruitmentDocumentType(document.document_type) ===
+            "OFFER_LETTER"
               ? "Offer Letter"
               : "Appointment Letter"}
           </strong>
@@ -557,8 +565,18 @@ export default function AdminRecruitmentDashboard() {
           grouped[candidateId] = {};
         }
 
-        const key =
-          document.document_type === "OFFER_LETTER" ? "offer" : "appointment";
+        const documentType = normalizeRecruitmentDocumentType(
+          document.document_type,
+        );
+        if (!["OFFER_LETTER", "APPOINTMENT_LETTER"].includes(documentType)) {
+          console.error(
+            "Ignoring recruitment letter with an unsupported document type:",
+            document.document_type,
+          );
+          return;
+        }
+
+        const key = documentType === "OFFER_LETTER" ? "offer" : "appointment";
 
         const existing = grouped[candidateId][key];
 
@@ -1086,7 +1104,12 @@ export default function AdminRecruitmentDashboard() {
     setLetterEmailModal((prev) => ({ ...prev, sending: true, error: "" }));
 
     try {
-      await sendRecruitmentLetter(candidate, document, subject.trim(), body.trim());
+      await sendRecruitmentLetter(
+        candidate,
+        document,
+        subject.trim(),
+        body.trim(),
+      );
       setLetterEmailModal({
         visible: false,
         candidate: null,
@@ -1551,7 +1574,9 @@ export default function AdminRecruitmentDashboard() {
             <div className="rf-modal-header">
               <h3>
                 Send{" "}
-                {letterEmailModal.document?.document_type === "OFFER_LETTER"
+                {normalizeRecruitmentDocumentType(
+                  letterEmailModal.document?.document_type,
+                ) === "OFFER_LETTER"
                   ? "Offer Letter"
                   : "Appointment Letter"}
               </h3>
@@ -1566,10 +1591,7 @@ export default function AdminRecruitmentDashboard() {
               </button>
             </div>
 
-            <form
-              className="rf-form"
-              onSubmit={submitRecruitmentLetterEmail}
-            >
+            <form className="rf-form" onSubmit={submitRecruitmentLetterEmail}>
               <div className="rf-grid">
                 <div className="rf-field rf-full">
                   <label htmlFor="recruitment-letter-recipient">To</label>
@@ -1617,11 +1639,14 @@ export default function AdminRecruitmentDashboard() {
                 <div className="rf-field rf-full">
                   <span className="rf-letter-email-attachment">
                     Attachment:{" "}
-                    {letterEmailModal.document?.letter?.template_name || "Letter"}.pdf
+                    {letterEmailModal.document?.letter?.template_name ||
+                      "Letter"}
+                    .pdf
                     {" — "}
                     PDF will be compressed before sending.
-                    {letterEmailModal.document?.document_type ===
-                      "OFFER_LETTER" &&
+                    {normalizeRecruitmentDocumentType(
+                      letterEmailModal.document?.document_type,
+                    ) === "OFFER_LETTER" &&
                       " The secure offer-response button is added automatically."}
                   </span>
                 </div>

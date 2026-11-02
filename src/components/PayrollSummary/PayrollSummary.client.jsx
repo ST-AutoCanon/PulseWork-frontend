@@ -322,16 +322,16 @@ const buildAdvanceDetailText = (
       const employeeName = payrollData.full_name || employeeDetails?.full_name || employeeDetails?.name || "N/A";
       const empId = payrollData.employee_id || employeeId || "N/A";
       const designation = payrollData.designation || employeeDetails?.designation || "N/A";
-      const gender = employeeDetails?.gender || "N/A";
-      const dojRaw = employeeDetails?.joining_date || "N/A";
+      const gender = employeeDetails?.gender || payrollData?.gender || "N/A";
+      const dojRaw = employeeDetails?.joining_date || employeeDetails?.date_of_joining || payrollData?.date_of_joining || payrollData?.joining_date || "N/A";
       const doj = dojRaw !== "N/A"
         ? new Date(dojRaw).toLocaleDateString("en-IN", { day: "2-digit", month: "2-digit", year: "numeric" })
         : "N/A";
 
       const pfNo = employeeDetails?.pf_number || bankDetails?.pf_number || payrollData?.pf_number || "N/A";
       const esiNo = employeeDetails?.esi_number || bankDetails?.esi_number || payrollData?.esi_number || "N/A";
-      const panNo = employeeDetails?.pan_number || bankDetails?.pan_number || "N/A";
-      const uanNo = employeeDetails?.uan_number || bankDetails?.uin_number || "N/A";
+      const panNo = employeeDetails?.pan_number || bankDetails?.pan_number || payrollData?.pan_number || "N/A";
+      const uanNo = employeeDetails?.uan_number || employeeDetails?.uin_number || bankDetails?.uin_number || bankDetails?.uan_number || payrollData?.uan_number || "N/A";
       const accountNo = bankDetails?.account_number || "N/A";
       const bankName = bankDetails?.bank_name || "N/A";
 
@@ -382,9 +382,17 @@ const employerInsurance = Number(payrollData.insurance_employer || 0);
 
       const netSalary = Number(payrollData.net_salary || grossSalary - totalDeductions);
 
-      const leavesTaken = Number(payrollData.lop_days || 0);
+      const leavesTaken = Number(
+        payrollData.approved_leave_count ??
+        payrollData.leave_count ??
+        payrollData.lop_days ??
+        0
+      );
       const totalWorkingDays =
-        attendance?.total_working_days || (leavesTaken > 0 ? 30 - leavesTaken : 30);
+        attendance?.total_working_days ||
+        payrollData?.working_days ||
+        payrollData?.total_working_days ||
+        (leavesTaken > 0 ? 30 - leavesTaken : 30);
 
       const monthNames = [
         "January", "February", "March", "April", "May", "June", "July", "August",
@@ -437,60 +445,51 @@ const employerInsurance = Number(payrollData.insurance_employer || 0);
                 ${employeeName.toUpperCase()}
               </div>
               <div style="margin-bottom: 10px;">
-                <strong style="display: inline-block; width: 130px; color: #333;">Employee ID:</strong>
-                ${empId}
-              </div>
-              ${designation && designation !== "N/A" ? `
-              <div style="margin-bottom: 10px;">
-                <strong style="display: inline-block; width: 130px; color: #333;">Designation:</strong>
-                ${designation.toUpperCase()}
-              </div>` : ''}
-              ${pfNo && pfNo !== "N/A" ? `
-              <div style="margin-bottom: 10px;">
-                <strong style="display: inline-block; width: 130px; color: #333;">PF No:</strong>
-                ${pfNo}
-              </div>` : ''}
-              ${esiNo && esiNo !== "N/A" ? `
-              <div style="margin-bottom: 10px;">
-                <strong style="display: inline-block; width: 130px; color: #333;">ESI No:</strong>
-                ${esiNo}
-              </div>` : ''}
-              ${gender && gender !== "N/A" ? `
-              <div style="margin-bottom: 10px;">
                 <strong style="display: inline-block; width: 130px; color: #333;">Gender:</strong>
-                ${gender}
-              </div>` : ''}
-            </div>
-            <div style="flex: 1; min-width: 48%; box-sizing: border-box;">
-              ${panNo && panNo !== "N/A" ? `
+                ${String(gender).toUpperCase()}
+              </div>
               <div style="margin-bottom: 10px;">
-                <strong style="display: inline-block; width: 130px; color: #333;">PAN:</strong>
-                ${panNo}
-              </div>` : ''}
-              ${uanNo && uanNo !== "N/A" ? `
-              <div style="margin-bottom: 10px;">
-                <strong style="display: inline-block; width: 130px; color: #333;">UAN:</strong>
-                ${uanNo}
-              </div>` : ''}
-              ${accountNo && accountNo !== "N/A" ? `
-              <div style="margin-bottom: 10px;">
-                <strong style="display: inline-block; width: 130px; color: #333;">Account No:</strong>
-                ${accountNo}${bankName && bankName !== "N/A" ? ` (${bankName})` : ''}
-              </div>` : ''}
+                <strong style="display: inline-block; width: 130px; color: #333;">Date of Joining:</strong>
+                ${doj}
+              </div>
               <div style="margin-bottom: 10px;">
                 <strong style="display: inline-block; width: 130px; color: #333;">Working Days:</strong>
                 ${totalWorkingDays}
               </div>
-              ${leavesTaken > 0 ? `
               <div style="margin-bottom: 10px;">
-                <strong style="display: inline-block; width: 130px; color: #333;">LOP Days:</strong>
+                <strong style="display: inline-block; width: 130px; color: #333;">UAN No:</strong>
+                ${uanNo}
+              </div>
+              <div style="margin-bottom: 10px;">
+                <strong style="display: inline-block; width: 130px; color: #333;">ESI Number:</strong>
+                ${esiNo}
+              </div>
+            </div>
+            <div style="flex: 1; min-width: 48%; box-sizing: border-box;">
+              <div style="margin-bottom: 10px;">
+                <strong style="display: inline-block; width: 130px; color: #333;">Employee ID:</strong>
+                ${empId}
+              </div>
+              <div style="margin-bottom: 10px;">
+                <strong style="display: inline-block; width: 130px; color: #333;">Designation:</strong>
+                ${designation && designation !== "N/A" ? String(designation).toUpperCase() : "N/A"}
+              </div>
+              <div style="margin-bottom: 10px;">
+                <strong style="display: inline-block; width: 130px; color: #333;">Account No:</strong>
+                ${accountNo}
+              </div>
+              <div style="margin-bottom: 10px;">
+                <strong style="display: inline-block; width: 130px; color: #333;">No of leaves :</strong>
                 ${leavesTaken}
-              </div>` : ''}
-              ${doj && doj !== "N/A" ? `
+              </div>
               <div style="margin-bottom: 10px;">
-                <strong style="display: inline-block; width: 130px; color: #333;">Date of Joining:</strong>
-                ${doj}
-              </div>` : ''}
+                <strong style="display: inline-block; width: 130px; color: #333;">PAN Number:</strong>
+                ${panNo}
+              </div>
+              <div style="margin-bottom: 10px;">
+                <strong style="display: inline-block; width: 130px; color: #333;">PF Number:</strong>
+                ${pfNo}
+              </div>
             </div>
           </div>
         </div>
@@ -978,7 +977,52 @@ const previewEmployerInsurance = Number(
   const previewNet = Number(payrollData?.net_salary || previewGross - previewTotalDed);
   const previewTotalWorkingDays =
     attendance?.total_working_days ??
+    payrollData?.working_days ??
+    payrollData?.total_working_days ??
     (Number(payrollData?.lop_days || 0) > 0 ? 30 - Number(payrollData?.lop_days || 0) : 30);
+  const previewGender = employeeDetails?.gender || payrollData?.gender || "N/A";
+  const previewDesignation = payrollData?.designation || employeeDetails?.designation || "N/A";
+  const previewDojRaw =
+    employeeDetails?.joining_date ||
+    employeeDetails?.date_of_joining ||
+    payrollData?.joining_date ||
+    payrollData?.date_of_joining ||
+    "N/A";
+  const previewDoj = previewDojRaw !== "N/A"
+    ? new Date(previewDojRaw).toLocaleDateString("en-IN", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+      })
+    : "N/A";
+  const previewAccountNo = bankDetails?.account_number || "N/A";
+  const previewLeaves =
+    payrollData?.approved_leave_count ??
+    payrollData?.leave_count ??
+    payrollData?.lop_days ??
+    0;
+  const previewUan =
+    employeeDetails?.uan_number ||
+    employeeDetails?.uin_number ||
+    bankDetails?.uin_number ||
+    bankDetails?.uan_number ||
+    payrollData?.uan_number ||
+    "N/A";
+  const previewPan =
+    employeeDetails?.pan_number ||
+    bankDetails?.pan_number ||
+    payrollData?.pan_number ||
+    "N/A";
+  const previewEsi =
+    employeeDetails?.esi_number ||
+    bankDetails?.esi_number ||
+    payrollData?.esi_number ||
+    "N/A";
+  const previewPfNumber =
+    employeeDetails?.pf_number ||
+    bankDetails?.pf_number ||
+    payrollData?.pf_number ||
+    "N/A";
 
   const previewEarningsRows = [
     { label: "Basic Salary", amount: previewBasic },
@@ -1041,8 +1085,24 @@ const previewEmployerInsurance = Number(
                 <td style={{ padding: "8px" }}><strong>Employee ID:</strong> {employeeId}</td>
               </tr>
               <tr>
-                <td style={{ padding: "8px" }}><strong>Bank:</strong> {bankDetails?.bank_name || "N/A"}</td>
-                <td style={{ padding: "8px" }}><strong>Account No:</strong> {bankDetails?.account_number || "N/A"}</td>
+                <td style={{ padding: "8px" }}><strong>Gender:</strong> {String(previewGender).toUpperCase()}</td>
+                <td style={{ padding: "8px" }}><strong>Designation:</strong> {String(previewDesignation).toUpperCase()}</td>
+              </tr>
+              <tr>
+                <td style={{ padding: "8px" }}><strong>Date of Joining:</strong> {previewDoj}</td>
+                <td style={{ padding: "8px" }}><strong>Account No:</strong> {previewAccountNo}</td>
+              </tr>
+              <tr>
+                <td style={{ padding: "8px" }}><strong>Working Days:</strong> {previewTotalWorkingDays}</td>
+                <td style={{ padding: "8px" }}><strong>No of leaves :</strong> {previewLeaves}</td>
+              </tr>
+              <tr>
+                <td style={{ padding: "8px" }}><strong>UAN No:</strong> {previewUan}</td>
+                <td style={{ padding: "8px" }}><strong>PAN Number:</strong> {previewPan}</td>
+              </tr>
+              <tr>
+                <td style={{ padding: "8px" }}><strong>ESI Number:</strong> {previewEsi}</td>
+                <td style={{ padding: "8px" }}><strong>PF Number:</strong> {previewPfNumber}</td>
               </tr>
             </tbody>
           </table>

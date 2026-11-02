@@ -350,6 +350,7 @@ const EmployeeRequestForm = ({
     recoveryStartMonth: currentMonthKey(),
     additionalInfo: "",
     travelers: [""],
+    travelerAges: [""],
     accommodationRequired: false,
     accommodationPlace: "",
     otherAccommodationPlace: "",
@@ -388,7 +389,10 @@ const EmployeeRequestForm = ({
   const [errors, setErrors] = useState({});
   const [employees, setEmployees] = useState([]);
   const [projects, setProjects] = useState([]);
-  const [travelContext, setTravelContext] = useState({ cadreBand: "LOWER" });
+  const [travelContext, setTravelContext] = useState({
+    cadreBand: "LOWER",
+    age: null,
+  });
   const [guestHouses, setGuestHouses] = useState([]);
   const [salaryContext, setSalaryContext] = useState({
     baseNetSalary: 0,
@@ -588,6 +592,10 @@ const EmployeeRequestForm = ({
                 [employee.first_name, employee.middle_name, employee.last_name]
                   .filter(Boolean)
                   .join(" "),
+              age:
+                employee.age === null || employee.age === undefined
+                  ? null
+                  : Number(employee.age),
             }))
             .filter((employee) => employee.employeeId),
         );
@@ -655,6 +663,7 @@ const EmployeeRequestForm = ({
     setForm((prev) => ({
       ...prev,
       travelers: [...prev.travelers, ""],
+      travelerAges: [...prev.travelerAges, ""],
     }));
   };
 
@@ -662,6 +671,7 @@ const EmployeeRequestForm = ({
     setForm((prev) => ({
       ...prev,
       travelers: prev.travelers.filter((_, i) => i !== index),
+      travelerAges: prev.travelerAges.filter((_, i) => i !== index),
     }));
   };
 
@@ -669,8 +679,31 @@ const EmployeeRequestForm = ({
     setForm((prev) => ({
       ...prev,
       travelers: prev.travelers.map((name, i) => (i === index ? value : name)),
+      travelerAges: employees.some(
+        (employee) => String(employee.employeeId) === String(value),
+      )
+        ? prev.travelerAges.map((age, i) => (i === index ? "" : age))
+        : prev.travelerAges,
     }));
   };
+
+  const updateTravelerAge = (index, value) => {
+    setForm((prev) => ({
+      ...prev,
+      travelerAges: prev.travelerAges.map((age, i) =>
+        i === index ? value : age,
+      ),
+    }));
+  };
+
+  const getTravelForEmployee = () =>
+    employees.find(
+      (employee) =>
+        String(employee.employeeId) === String(form.travelForEmployeeId),
+    );
+
+  const getTravelForEmployeeAge = () =>
+    getTravelForEmployee()?.age ?? travelContext.age ?? null;
 
   const config = useMemo(() => {
     const configs = {
@@ -741,6 +774,22 @@ const EmployeeRequestForm = ({
         nextErrors.distanceKm = "Enter a valid travel distance";
       if (!form.tripType) nextErrors.tripType = "Trip type is required";
       if (!form.purpose) nextErrors.purpose = "Purpose is required";
+      form.travelers.forEach((traveler, index) => {
+        const isEmployee = employees.some(
+          (employee) => String(employee.employeeId) === String(traveler),
+        );
+        if (!traveler.trim() || isEmployee) return;
+
+        const age = Number(form.travelerAges[index]);
+        if (
+          form.travelerAges[index] === "" ||
+          !Number.isInteger(age) ||
+          age < 0 ||
+          age > 120
+        ) {
+          nextErrors[`travelerAge${index}`] = "Enter an age between 0 and 120.";
+        }
+      });
       if (
         form.accommodationRequired &&
         (!form.accommodationPlace ||
@@ -854,6 +903,26 @@ const EmployeeRequestForm = ({
         requestType = "TRAVEL_BOOKING";
         title = "Travel Ticket Request";
 
+        const travelers = form.travelers
+          .map((traveler) => traveler.trim())
+          .filter(Boolean);
+        const travelerDetails = form.travelers
+          .map((traveler, index) => {
+            const normalizedTraveler = traveler.trim();
+            if (!normalizedTraveler) return null;
+
+            const employee = employees.find(
+              (item) => String(item.employeeId) === String(normalizedTraveler),
+            );
+
+            return {
+              traveler: normalizedTraveler,
+              employeeId: employee?.employeeId || null,
+              age: employee ? employee.age : Number(form.travelerAges[index]),
+            };
+          })
+          .filter(Boolean);
+
         details = {
           from: form.from,
           to: form.to,
@@ -872,7 +941,9 @@ const EmployeeRequestForm = ({
           tripType: form.tripType,
           purpose: form.purpose,
           additionalInfo: form.additionalInfo,
-          travelers: form.travelers.filter(Boolean),
+          primaryTravelerAge: getTravelForEmployeeAge(),
+          travelers,
+          travelerDetails,
           accommodationRequired: form.accommodationRequired,
           accommodationPlace:
             form.accommodationPlace === "Other"
@@ -1138,6 +1209,23 @@ const EmployeeRequestForm = ({
                     employees={employees}
                     selectedId={form.travelForEmployeeId}
                     onChange={(value) => update("travelForEmployeeId", value)}
+                  />
+                  <small className="travel-employee-age">
+                    {getTravelForEmployeeAge() !== null
+                      ? `Traveller age: ${getTravelForEmployeeAge()}`
+                      : "Traveller age is unavailable"}
+                  </small>
+                </RequestField>
+              )}
+              {!canRaiseTravelForOthers && (
+                <RequestField label="Your age">
+                  <input
+                    value={
+                      getTravelForEmployeeAge() !== null
+                        ? getTravelForEmployeeAge()
+                        : "Unavailable"
+                    }
+                    readOnly
                   />
                 </RequestField>
               )}
@@ -1437,44 +1525,84 @@ const EmployeeRequestForm = ({
                 />
               </RequestField>
 
-              <RequestField label="Who will be traveling?" full>
+              <RequestField label="Additional travelers" full>
                 <div className="traveler-list">
-                  {form.travelers.map((traveler, index) => (
-                    <div className="traveler-row" key={index}>
-                      <FiUser />
+                  {form.travelers.map((traveler, index) => {
+                    const selectedEmployee = employees.find(
+                      (employee) =>
+                        String(employee.employeeId) === String(traveler),
+                    );
 
-                      <SearchableTravelerDropdown
-                        employees={employees}
-                        value={traveler}
-                        rowIndex={index}
-                        onChange={(value) => updateTraveler(index, value)}
-                      />
+                    return (
+                      <div className="traveler-row" key={index}>
+                        <FiUser />
 
-                      {!employees.some(
-                        (employee) =>
-                          String(employee.employeeId) === String(traveler),
-                      ) && (
-                        <input
+                        <SearchableTravelerDropdown
+                          employees={employees}
                           value={traveler}
-                          onChange={(e) =>
-                            updateTraveler(index, e.target.value)
-                          }
-                          placeholder="External traveler name"
-                          aria-label="External traveler name"
+                          rowIndex={index}
+                          onChange={(value) => updateTraveler(index, value)}
                         />
-                      )}
 
-                      {form.travelers.length > 1 && (
-                        <button
-                          type="button"
-                          className="traveler-remove"
-                          onClick={() => removeTraveler(index)}
-                        >
-                          <FiX />
-                        </button>
-                      )}
-                    </div>
-                  ))}
+                        {selectedEmployee ? (
+                          <span className="traveler-age">
+                            {selectedEmployee.age !== null &&
+                            selectedEmployee.age !== undefined
+                              ? `Age: ${selectedEmployee.age}`
+                              : "Age unavailable"}
+                          </span>
+                        ) : (
+                          <>
+                            <input
+                              value={traveler}
+                              onChange={(event) =>
+                                updateTraveler(index, event.target.value)
+                              }
+                              placeholder="External traveler name"
+                              aria-label="External traveler name"
+                            />
+                            {traveler.trim() && (
+                              <div className="external-traveler-age-field">
+                                <input
+                                  type="number"
+                                  min="0"
+                                  max="120"
+                                  step="1"
+                                  value={form.travelerAges[index] || ""}
+                                  onChange={(event) =>
+                                    updateTravelerAge(index, event.target.value)
+                                  }
+                                  placeholder="Age"
+                                  aria-label={`Age of external traveler in row ${
+                                    index + 1
+                                  }`}
+                                  aria-invalid={Boolean(
+                                    errors[`travelerAge${index}`],
+                                  )}
+                                />
+                                {errors[`travelerAge${index}`] && (
+                                  <span className="request-field-error">
+                                    {errors[`travelerAge${index}`]}
+                                  </span>
+                                )}
+                              </div>
+                            )}
+                          </>
+                        )}
+
+                        {form.travelers.length > 1 && (
+                          <button
+                            type="button"
+                            className="traveler-remove"
+                            onClick={() => removeTraveler(index)}
+                            aria-label={`Remove traveler ${index + 1}`}
+                          >
+                            <FiX />
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
 
                 <button

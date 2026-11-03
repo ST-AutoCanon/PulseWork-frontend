@@ -845,6 +845,8 @@ export function AuthProvider({ children }) {
       location: serverUser?.location ?? null,
       pincode: serverUser?.pincode ?? null,
       isCommonLogin: Boolean(serverUser?.isCommonLogin),
+      joining_date: serverUser?.joining_date ?? serverUser?.joiningDate ?? null,
+      joiningDate: serverUser?.joining_date ?? serverUser?.joiningDate ?? null,
     };
 
     setUser(minimalUser);

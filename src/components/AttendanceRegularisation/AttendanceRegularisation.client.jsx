@@ -1611,7 +1611,6 @@ export default function AttendanceRegularisation() {
   const isAdmin = role === "admin" || role === "ceo";
   const isHr = role === "hr";
   const isManagerOrSupervisor = role === "manager" || role === "supervisor";
-  const canManageLoginHours = isAdmin;
   const canShowTabs = isHr || isManagerOrSupervisor;
 
   const [viewMode, setViewMode] = useState(isAdmin ? "all" : "self");
@@ -1639,7 +1638,7 @@ export default function AttendanceRegularisation() {
   const [modalLoading, setModalLoading] = useState(false);
   const [editingRow, setEditingRow] = useState(null);
   const [drafts, setDrafts] = useState({});
-  const [showLoginHourSettingsModal, setShowLoginHourSettingsModal] =
+  const [showGeneralPunchHoursModal, setShowGeneralPunchHoursModal] =
     useState(false);
   const [showPunchPolicyModal, setShowPunchPolicyModal] = useState(false);
 
@@ -2406,15 +2405,6 @@ export default function AttendanceRegularisation() {
           </div>
 
           <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
-            {canManageLoginHours ? (
-              <button
-                type="button"
-                className="ar-secondary-btn"
-                onClick={() => setShowLoginHourSettingsModal(true)}
-              >
-                Configure Punch Hours
-              </button>
-            ) : null}
             <button
               type="button"
               className="ar-primary-btn"
@@ -2518,7 +2508,7 @@ export default function AttendanceRegularisation() {
                 ? "All Employees Attendance Regularisation"
                 : "Team Attendance Regularisation"}
           </h3>
-          {canManageLoginHours ? (
+          {isAdmin ? (
             <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
               <button
                 type="button"
@@ -2530,9 +2520,9 @@ export default function AttendanceRegularisation() {
               <button
                 type="button"
                 className="ar-secondary-btn"
-                onClick={() => setShowLoginHourSettingsModal(true)}
+                onClick={() => setShowGeneralPunchHoursModal(true)}
               >
-                Configure Punch Hours
+                General Punch Hours
               </button>
             </div>
           ) : null}
@@ -2749,8 +2739,8 @@ export default function AttendanceRegularisation() {
       />
 
       <LoginHourSettingsModal
-        isOpen={showLoginHourSettingsModal}
-        onClose={() => setShowLoginHourSettingsModal(false)}
+        isOpen={showGeneralPunchHoursModal}
+        onClose={() => setShowGeneralPunchHoursModal(false)}
       />
 
       <PunchPolicyModal

@@ -322,6 +322,18 @@ const buildAdvanceDetailText = (
       const employeeName = payrollData.full_name || employeeDetails?.full_name || employeeDetails?.name || "N/A";
       const empId = payrollData.employee_id || employeeId || "N/A";
       const designation = payrollData.designation || employeeDetails?.designation || "N/A";
+      const department =
+        payrollData.department_name ||
+        payrollData.departmentName ||
+        payrollData.department ||
+        employeeDetails?.department_name ||
+        employeeDetails?.departmentName ||
+        employeeDetails?.department ||
+        "N/A";
+      const designationDisplay =
+        designation && designation !== "N/A"
+          ? `${String(designation).toUpperCase()}${department && department !== "N/A" ? ` (${String(department).toUpperCase()})` : ""}`
+          : "N/A";
       const gender = employeeDetails?.gender || payrollData?.gender || "N/A";
       const dojRaw = employeeDetails?.joining_date || employeeDetails?.date_of_joining || payrollData?.date_of_joining || payrollData?.joining_date || "N/A";
       const doj = dojRaw !== "N/A"
@@ -472,7 +484,7 @@ const employerInsurance = Number(payrollData.insurance_employer || 0);
               </div>
               <div style="margin-bottom: 10px;">
                 <strong style="display: inline-block; width: 130px; color: #333;">Designation:</strong>
-                ${designation && designation !== "N/A" ? String(designation).toUpperCase() : "N/A"}
+                ${designationDisplay}
               </div>
               <div style="margin-bottom: 10px;">
                 <strong style="display: inline-block; width: 130px; color: #333;">Account No:</strong>
@@ -868,7 +880,64 @@ if (lopDeduction > 0)
           headers,
           withCredentials: true,
         });
-        setEmployeeDetails(empRes.data || null);
+        let resolvedEmployeeDetails = empRes.data || null;
+
+        // If the employee-details response does not include the department
+        // name, resolve it through the compensation department APIs used for
+        // department-based employee selection.
+        if (
+          resolvedEmployeeDetails &&
+          !resolvedEmployeeDetails.department_name &&
+          resolvedEmployeeDetails.department_id
+        ) {
+          try {
+            const departmentEmployeesRes = await axios.get(
+              `${BACKEND_URL}/api/compensations/employees/by-department/${resolvedEmployeeDetails.department_id}`,
+              { headers, withCredentials: true }
+            );
+            const departmentEmployee = (
+              Array.isArray(departmentEmployeesRes.data?.data)
+                ? departmentEmployeesRes.data.data
+                : []
+            ).find(
+              (employee) =>
+                String(employee.employee_id) === String(employeeId)
+            );
+
+            if (departmentEmployee) {
+              const departmentsRes = await axios.get(
+                `${BACKEND_URL}/api/compensations/departments/names`,
+                { headers, withCredentials: true }
+              );
+              const department = (
+                Array.isArray(departmentsRes.data?.data)
+                  ? departmentsRes.data.data
+                  : []
+              ).find(
+                (item) =>
+                  String(item.id) ===
+                  String(resolvedEmployeeDetails.department_id)
+              );
+
+              resolvedEmployeeDetails = {
+                ...resolvedEmployeeDetails,
+                department_name:
+                  departmentEmployee.department_name ||
+                  departmentEmployee.departmentName ||
+                  department?.name ||
+                  department?.department_name ||
+                  "",
+              };
+            }
+          } catch (departmentError) {
+            console.warn(
+              "Department employee API fallback failed:",
+              departmentError
+            );
+          }
+        }
+
+        setEmployeeDetails(resolvedEmployeeDetails);
 
         try {
           const attendanceRes = await axios.get(
@@ -982,6 +1051,18 @@ const previewEmployerInsurance = Number(
     (Number(payrollData?.lop_days || 0) > 0 ? 30 - Number(payrollData?.lop_days || 0) : 30);
   const previewGender = employeeDetails?.gender || payrollData?.gender || "N/A";
   const previewDesignation = payrollData?.designation || employeeDetails?.designation || "N/A";
+  const previewDepartment =
+    payrollData?.department_name ||
+    payrollData?.departmentName ||
+    payrollData?.department ||
+    employeeDetails?.department_name ||
+    employeeDetails?.departmentName ||
+    employeeDetails?.department ||
+    "N/A";
+  const previewDesignationDisplay =
+    previewDesignation && previewDesignation !== "N/A"
+      ? `${String(previewDesignation).toUpperCase()}${previewDepartment && previewDepartment !== "N/A" ? ` (${String(previewDepartment).toUpperCase()})` : ""}`
+      : "N/A";
   const previewDojRaw =
     employeeDetails?.joining_date ||
     employeeDetails?.date_of_joining ||
@@ -1086,7 +1167,7 @@ const previewEmployerInsurance = Number(
               </tr>
               <tr>
                 <td style={{ padding: "8px" }}><strong>Gender:</strong> {String(previewGender).toUpperCase()}</td>
-                <td style={{ padding: "8px" }}><strong>Designation:</strong> {String(previewDesignation).toUpperCase()}</td>
+                <td style={{ padding: "8px" }}><strong>Designation:</strong> {previewDesignationDisplay}</td>
               </tr>
               <tr>
                 <td style={{ padding: "8px" }}><strong>Date of Joining:</strong> {previewDoj}</td>

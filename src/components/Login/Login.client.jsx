@@ -2459,7 +2459,7 @@ export default function Login({ onClose }) {
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.message || "Invalid credentials");
 
-           const u = data.message || {};
+      const u = data.message || {};
       const minimalUser = {
         id: u.id ?? u.employeeId ?? u.employee_id ?? null,
         employeeId: u.employeeId ?? u.employee_id ?? u.id ?? null,
@@ -2469,9 +2469,9 @@ export default function Login({ onClose }) {
         orgPrefix: u.org_prefix ?? u.orgPrefix ?? null,
         joining_date: u.joining_date ?? u.joiningDate ?? null,
         joiningDate: u.joining_date ?? u.joiningDate ?? null,
-        isCommonLogin: !!u.isCommonLogin,   // ← add this
-        location: u.location || null,       // ← optional but useful
-        pincode: u.pincode || null,         // ← optional but useful
+        isCommonLogin: !!u.isCommonLogin, // ← add this
+        location: u.location || null, // ← optional but useful
+        pincode: u.pincode || null, // ← optional but useful
       };
 
       await login(minimalUser);
@@ -2494,38 +2494,22 @@ export default function Login({ onClose }) {
           "common login",
         ].includes(role);
 
-        const yesterday = new Date();
-        yesterday.setHours(0, 0, 0, 0);
-        yesterday.setDate(yesterday.getDate() - 1);
-        const targetDateKey = toDateKey(yesterday);
-        const joiningDateKey = String(
-          minimalUser?.joining_date ?? minimalUser?.joiningDate ?? "",
-        ).slice(0, 10);
-        const isBeforeJoiningDate =
-          /^\d{4}-\d{2}-\d{2}$/.test(joiningDateKey) &&
-          targetDateKey < joiningDateKey;
-
         if (shouldSuppressAlerts) {
           try {
             sessionStorage.removeItem("attendanceReminder");
           } catch {}
         }
 
-        if (isBeforeJoiningDate) {
-          sessionStorage.removeItem("attendanceReminder");
-        }
-
-        if (
-          !shouldSuppressAlerts &&
-          !isBeforeJoiningDate &&
-          employeeId &&
-          orgId
-        ) {
+        if (!shouldSuppressAlerts && employeeId && orgId) {
           const attendanceHeaders = {
             "x-api-key": process.env.NEXT_PUBLIC_API_KEY,
             "x-org-id": String(orgId),
             "x-employee-id": String(employeeId),
           };
+
+          const yesterday = new Date();
+          yesterday.setHours(0, 0, 0, 0);
+          yesterday.setDate(yesterday.getDate() - 1);
 
           const attendanceUrl = `${process.env.NEXT_PUBLIC_BACKEND_URL}/attendance/employee/${encodeURIComponent(employeeId)}`;
           const historyResponse = await fetch(attendanceUrl, {
@@ -2878,7 +2862,7 @@ export default function Login({ onClose }) {
         console.warn("Attendance reminder check after login failed:", err);
       }
 
-          closeModal();
+      closeModal();
       window.parent?.postMessage(
         { type: "login-success", payload: minimalUser },
         parentOrigin || parentOriginRef.current || "*",
@@ -3161,7 +3145,11 @@ export default function Login({ onClose }) {
         </div>
 
         <div className="footer-text">
-          © 2025 Sukalpa Tech. All Rights Reserved.
+          <span>© 2025 Sukalpa Tech. All Rights Reserved.</span>
+
+          <a href="/privacy-policy" className="privacy-footer-link">
+            Privacy Policy
+          </a>
         </div>
 
         {alertModal.isVisible && (

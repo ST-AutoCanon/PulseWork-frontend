@@ -77,6 +77,18 @@ const generatePayslipPDF = async (
   const employeeId = payrollData.employee_id || "N/A";
   const designation =
     payrollData.designation || employeeDetails?.designation || "N/A";
+  const department =
+    payrollData.department_name ||
+    payrollData.departmentName ||
+    payrollData.department ||
+    employeeDetails?.department_name ||
+    employeeDetails?.departmentName ||
+    employeeDetails?.department ||
+    "N/A";
+  const designationDisplay =
+    designation !== "N/A"
+      ? `${designation}${department !== "N/A" ? ` (${department})` : ""}`
+      : "N/A";
 
   const basicSalary = Number(payrollData.basic_salary || 0);
   const hra = Number(payrollData.hra || 0);
@@ -163,7 +175,7 @@ const generatePayslipPDF = async (
     const placeholders = {
       "{{employee_name}}": employeeName.toUpperCase(),
       "{{employee_id}}": employeeId,
-      "{{designation}}": designation.toUpperCase(),
+      "{{designation}}": designationDisplay.toUpperCase(),
       "{{joining_date}}": joiningDate,
       "{{uin}}": uin,
       "{{esi_number}}": esiNumber,

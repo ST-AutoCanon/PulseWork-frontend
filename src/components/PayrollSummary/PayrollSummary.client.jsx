@@ -880,64 +880,7 @@ if (lopDeduction > 0)
           headers,
           withCredentials: true,
         });
-        let resolvedEmployeeDetails = empRes.data || null;
-
-        // If the employee-details response does not include the department
-        // name, resolve it through the compensation department APIs used for
-        // department-based employee selection.
-        if (
-          resolvedEmployeeDetails &&
-          !resolvedEmployeeDetails.department_name &&
-          resolvedEmployeeDetails.department_id
-        ) {
-          try {
-            const departmentEmployeesRes = await axios.get(
-              `${BACKEND_URL}/api/compensations/employees/by-department/${resolvedEmployeeDetails.department_id}`,
-              { headers, withCredentials: true }
-            );
-            const departmentEmployee = (
-              Array.isArray(departmentEmployeesRes.data?.data)
-                ? departmentEmployeesRes.data.data
-                : []
-            ).find(
-              (employee) =>
-                String(employee.employee_id) === String(employeeId)
-            );
-
-            if (departmentEmployee) {
-              const departmentsRes = await axios.get(
-                `${BACKEND_URL}/api/compensations/departments/names`,
-                { headers, withCredentials: true }
-              );
-              const department = (
-                Array.isArray(departmentsRes.data?.data)
-                  ? departmentsRes.data.data
-                  : []
-              ).find(
-                (item) =>
-                  String(item.id) ===
-                  String(resolvedEmployeeDetails.department_id)
-              );
-
-              resolvedEmployeeDetails = {
-                ...resolvedEmployeeDetails,
-                department_name:
-                  departmentEmployee.department_name ||
-                  departmentEmployee.departmentName ||
-                  department?.name ||
-                  department?.department_name ||
-                  "",
-              };
-            }
-          } catch (departmentError) {
-            console.warn(
-              "Department employee API fallback failed:",
-              departmentError
-            );
-          }
-        }
-
-        setEmployeeDetails(resolvedEmployeeDetails);
+        setEmployeeDetails(empRes.data || null);
 
         try {
           const attendanceRes = await axios.get(

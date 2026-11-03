@@ -189,9 +189,11 @@ const Salary_Statement = () => {
         return;
       }
 
-      const extractedHeaders = jsonData[0].map((h) =>
-  typeof h === "string" ? h.trim() : String(h).trim()
-);
+      const extractedHeaders = jsonData[0]
+        .map((h) =>
+          typeof h === "string" ? h.trim() : String(h).trim()
+        )
+        .filter((header) => header !== "");
       if (!validateHeaders(extractedHeaders)) {
         setError("❌ Headers not matched");
         setTableData([]);

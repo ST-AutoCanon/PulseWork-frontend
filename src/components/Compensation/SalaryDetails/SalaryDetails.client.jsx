@@ -458,7 +458,7 @@ const SalaryDetails = () => {
         }
 
         if (!salaryDetails) {
-          return Array(31).fill("N/A");
+          return Array(35).fill("N/A");
         }
 
         const monthlyBonusPay = calculateMonthlyBonusPay(emp.ctc, bonusRecords);

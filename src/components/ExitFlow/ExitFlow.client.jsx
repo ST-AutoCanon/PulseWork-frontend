@@ -1159,6 +1159,8 @@ const filteredAllTeamRequests = allTeamRequests.filter((req) => {
     (req.employee_id || "").toLowerCase().includes(term) ||
     (req.reason || "").toLowerCase().includes(term) ||
     (req.withdrawal_reason || "").toLowerCase().includes(term) ||
+    (req.assigned_supervisor_id || "").toLowerCase().includes(term) ||
+    (req.supervisor_name || "").toLowerCase().includes(term) ||
     (req.supervisor_status || "").toLowerCase().includes(term) ||
     (req.hr_status || "").toLowerCase().includes(term) ||
     (req.final_outcome || "").toLowerCase().includes(term) ||
@@ -1628,7 +1630,7 @@ const filteredAllTeamRequests = allTeamRequests.filter((req) => {
                               <th>Emp ID</th>
                               <th>Name</th>
                               <th>Reason</th>
-                              <th>Date</th>
+                              <th>last working Date</th>
                               <th>Supervisor</th>
                               <th>HR</th>
                               <th>Status</th>
@@ -1887,7 +1889,7 @@ const filteredAllTeamRequests = allTeamRequests.filter((req) => {
                           <th>Emp ID</th>
                           <th>Name</th>
                           <th>Reason</th>
-                          <th>Date</th>
+                          <th>last working Date</th>
                           <th>Supervisor</th>
                           <th>HR</th>
                           <th>Outcome</th>
@@ -1983,6 +1985,12 @@ const filteredAllTeamRequests = allTeamRequests.filter((req) => {
                                     ? req.withdrawal_supervisor_status || "Pending"
                                     : req.supervisor_status || "Pending"}
                                 </span>
+                                {(req.assigned_supervisor_id || req.supervisor_name) && (
+                                  <div className="mt-1 text-xs text-gray-600">
+                                    {req.assigned_supervisor_id && <div>ID: {req.assigned_supervisor_id}</div>}
+                                    {req.supervisor_name && <div>{req.supervisor_name}</div>}
+                                  </div>
+                                )}
                               </td>
                               <td>
                                 <span

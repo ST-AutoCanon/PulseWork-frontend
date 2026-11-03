@@ -2194,6 +2194,92 @@ function getApiErrorMessage(err, fallback = "Something went wrong.") {
   return err?.message || fallback;
 }
 
+const DEFAULT_LOGIN_HOURS_SETTINGS = {
+  punchInStart: "",
+  punchOutStart: "",
+  bufferMinutes: "15",
+  lateLoginEnabled: true,
+  missedPunchNotificationEnabled: false,
+  lateStreakDays: "3",
+  autoMarkLate: true,
+  escalationMode: "mail_notify",
+  actionRoles: { admin: true, hr: true },
+};
+
+function settingEnabled(value, fallback) {
+  if (value === undefined || value === null || value === "") return fallback;
+  return ![false, 0, "0", "false"].includes(
+    typeof value === "string" ? value.toLowerCase() : value,
+  );
+}
+
+function normalizeActionRoles(value) {
+  let roles = value;
+  if (typeof roles === "string") {
+    try {
+      roles = JSON.parse(roles);
+    } catch {
+      roles = roles.split(",").map((role) => role.trim());
+    }
+  }
+  if (Array.isArray(roles)) {
+    return {
+      admin: roles.some((role) => String(role).toLowerCase() === "admin"),
+      hr: roles.some((role) => String(role).toLowerCase() === "hr"),
+    };
+  }
+  if (roles && typeof roles === "object") {
+    return {
+      admin: settingEnabled(roles.admin, false),
+      hr: settingEnabled(roles.hr, false),
+    };
+  }
+  return { ...DEFAULT_LOGIN_HOURS_SETTINGS.actionRoles };
+}
+
+function normalizeLoginHoursSettings(config = {}) {
+  return {
+    punchInStart: String(config.punch_in_start ?? config.punchInStart ?? "")
+      .trim()
+      .slice(0, 5),
+    punchOutStart: String(config.punch_out_start ?? config.punchOutStart ?? "")
+      .trim()
+      .slice(0, 5),
+    bufferMinutes: String(
+      config.buffer_minutes ??
+        config.bufferMinutes ??
+        DEFAULT_LOGIN_HOURS_SETTINGS.bufferMinutes,
+    ),
+    lateLoginEnabled: settingEnabled(
+      config.late_login_enabled ?? config.lateLoginEnabled,
+      DEFAULT_LOGIN_HOURS_SETTINGS.lateLoginEnabled,
+    ),
+    missedPunchNotificationEnabled: settingEnabled(
+      config.missed_punch_notification_enabled ??
+        config.missedPunchNotificationEnabled,
+      DEFAULT_LOGIN_HOURS_SETTINGS.missedPunchNotificationEnabled,
+    ),
+    lateStreakDays: String(
+      config.late_streak_days ??
+        config.lateStreakDays ??
+        DEFAULT_LOGIN_HOURS_SETTINGS.lateStreakDays,
+    ),
+    autoMarkLate: settingEnabled(
+      config.auto_mark_late ?? config.autoMarkLate,
+      DEFAULT_LOGIN_HOURS_SETTINGS.autoMarkLate,
+    ),
+    escalationMode:
+      config.escalation_mode ??
+      config.escalationMode ??
+      DEFAULT_LOGIN_HOURS_SETTINGS.escalationMode,
+    actionRoles: normalizeActionRoles(
+      config.action_roles ??
+        config.late_action_roles ??
+        DEFAULT_LOGIN_HOURS_SETTINGS.actionRoles,
+    ),
+  };
+}
+
 function DeductionConfig({ title, name, basis, setBasis, value, setValue }) {
   return (
     <div className="pp-field">
@@ -2327,6 +2413,14 @@ export default function PunchPolicyModal({ isOpen, onClose }) {
   const [selectedGroups, setSelectedGroups] = useState([]);
   const [selectedEmployees, setSelectedEmployees] = useState([]);
   const [searchText, setSearchText] = useState("");
+  const [loginHoursSettings, setLoginHoursSettings] = useState(
+    DEFAULT_LOGIN_HOURS_SETTINGS,
+  );
+  const [lateLoginSettings, setLateLoginSettings] = useState(
+    DEFAULT_LOGIN_HOURS_SETTINGS,
+  );
+  const [loginHoursLoaded, setLoginHoursLoaded] = useState(false);
+  const [loginHoursLoading, setLoginHoursLoading] = useState(false);
 
   // Assignment
   const [assignmentTab, setAssignmentTab] = useState("groups");
@@ -2346,6 +2440,37 @@ export default function PunchPolicyModal({ isOpen, onClose }) {
     setError("");
     setSuccessMsg("");
   };
+
+  const fetchLoginHoursSettings = useCallback(async () => {
+    if (!orgId || !BACKEND_URL) {
+      setError("Missing backend configuration.");
+      return null;
+    }
+
+    try {
+      setLoginHoursLoading(true);
+      const res = await axios.get(
+        `${BACKEND_URL}/attendance/login-hours-config`,
+        { headers, withCredentials: true },
+      );
+      if (res?.data?.success === false) {
+        throw new Error(
+          res.data.message || "Failed to load punch-hour settings.",
+        );
+      }
+      const settings = normalizeLoginHoursSettings(res.data?.data || {});
+      setLoginHoursSettings(settings);
+      setLateLoginSettings(settings);
+      setLoginHoursLoaded(true);
+      return settings;
+    } catch (err) {
+      console.error("[PunchPolicyModal] fetchLoginHoursSettings:", err);
+      setError(getApiErrorMessage(err, "Failed to load punch-hour settings."));
+      return null;
+    } finally {
+      setLoginHoursLoading(false);
+    }
+  }, [BACKEND_URL, headers, orgId]);
 
   /** Keep Min Duration and Buffer Time always the same */
   const setMinDurationAndBuffer = (value) => {
@@ -2490,7 +2615,9 @@ export default function PunchPolicyModal({ isOpen, onClose }) {
     setAssignmentTab("groups");
     clearMessages();
     fetchPolicies();
-  }, [isOpen]);
+    setLoginHoursLoaded(false);
+    fetchLoginHoursSettings();
+  }, [isOpen, fetchLoginHoursSettings]);
 
   useEffect(() => {
     if (!isOpen || view !== "list") return;
@@ -2583,8 +2710,8 @@ export default function PunchPolicyModal({ isOpen, onClose }) {
       policy.fullDayDeductionValue ?? policy.deductionValue ?? "",
     );
 
-    const sharedBuf = policy.bufferTime || policy.minDuration || "15";
-    setMinDuration(policy.minDuration || sharedBuf);
+    const sharedBuf = String(policy.bufferTime ?? policy.minDuration ?? "15");
+    setMinDuration(String(policy.minDuration ?? sharedBuf));
     setBufferTime(sharedBuf);
 
     setLimitWeekly(policy.limitWeekly || "2");
@@ -2624,7 +2751,7 @@ export default function PunchPolicyModal({ isOpen, onClose }) {
     setSelectedEmployees(policy.selectedEmployees || []);
   };
 
-  const resetForm = () => {
+  const resetForm = (settings = loginHoursSettings) => {
     const empty = emptyFormState();
     setPolicyName(empty.policyName);
     setDescription(empty.description);
@@ -2647,9 +2774,21 @@ export default function PunchPolicyModal({ isOpen, onClose }) {
     setLateCountLimit(empty.lateCountLimit);
     setLateWithinDays(empty.lateWithinDays);
     setShiftMode(empty.shiftMode);
-    setPunchInTime(empty.punchInTime);
-    setPunchOutTime(empty.punchOutTime);
-    setShifts([{ ...emptyShift(), bufferTime: empty.bufferTime }]);
+    const configuredPunchIn = settings.punchInStart || empty.punchInTime;
+    const configuredPunchOut = settings.punchOutStart || empty.punchOutTime;
+    const configuredBuffer = settings.bufferMinutes || empty.bufferTime;
+    setPunchInTime(configuredPunchIn);
+    setPunchOutTime(configuredPunchOut);
+    setMinDuration(configuredBuffer);
+    setBufferTime(configuredBuffer);
+    setShifts([
+      {
+        ...emptyShift(),
+        punchInTime: configuredPunchIn,
+        punchOutTime: configuredPunchOut,
+        bufferTime: configuredBuffer,
+      },
+    ]);
     setSkipIfRegularised(empty.skipIfRegularised);
     setPolicyStatus(empty.policyStatus);
     setEffectiveFrom(empty.effectiveFrom);
@@ -2662,9 +2801,13 @@ export default function PunchPolicyModal({ isOpen, onClose }) {
     setAssignmentTab("groups");
   };
 
-  const handleOpenCreate = () => {
+  const handleOpenCreate = async () => {
+    const settings = loginHoursLoaded
+      ? loginHoursSettings
+      : await fetchLoginHoursSettings();
+    if (!settings) return;
     setEditingId(null);
-    resetForm();
+    resetForm(settings);
     clearMessages();
     setView("form");
   };
@@ -2865,6 +3008,40 @@ export default function PunchPolicyModal({ isOpen, onClose }) {
       setError("Deduction values must be non-negative numbers.");
       return;
     }
+    if (
+      isLateLogin &&
+      (Number(minDuration) < 0 ||
+        Number(minDuration) > 120 ||
+        Number.isNaN(Number(minDuration)))
+    ) {
+      setError("Buffer time must be between 0 and 120 minutes.");
+      return;
+    }
+    if (
+      isLateLogin &&
+      (Number(lateLoginSettings.lateStreakDays) < 1 ||
+        Number(lateLoginSettings.lateStreakDays) > 30 ||
+        Number.isNaN(Number(lateLoginSettings.lateStreakDays)))
+    ) {
+      setError("Late streak days must be between 1 and 30.");
+      return;
+    }
+    if (
+      isLateLogin &&
+      !Object.values(lateLoginSettings.actionRoles).some(Boolean)
+    ) {
+      setError("Select at least one role for escalation actions.");
+      return;
+    }
+    if (
+      isLateLogin &&
+      !["mail_notify", "attendance_regularisation"].includes(
+        lateLoginSettings.escalationMode,
+      )
+    ) {
+      setError("Select an escalation method.");
+      return;
+    }
     if (!BACKEND_URL || !orgId) {
       setError("Missing backend configuration.");
       return;
@@ -2898,6 +3075,55 @@ export default function PunchPolicyModal({ isOpen, onClose }) {
               : "Failed to create policy."),
         );
         return;
+      }
+      if (isLateLogin) {
+        const settingsPayload = {
+          ...loginHoursSettings,
+          punch_in_start: loginHoursSettings.punchInStart || "",
+          punch_out_start: loginHoursSettings.punchOutStart || "",
+          buffer_minutes: Number(loginHoursSettings.bufferMinutes) || 0,
+          late_login_enabled: loginHoursSettings.lateLoginEnabled ? 1 : 0,
+          missed_punch_notification_enabled:
+            lateLoginSettings.missedPunchNotificationEnabled ? 1 : 0,
+          late_streak_days: Number(lateLoginSettings.lateStreakDays),
+          auto_mark_late: loginHoursSettings.autoMarkLate ? 1 : 0,
+          escalation_mode: lateLoginSettings.escalationMode,
+          action_roles: Object.entries(lateLoginSettings.actionRoles)
+            .filter(([, enabled]) => enabled)
+            .map(([role]) => role),
+        };
+        try {
+          const settingsRes = await axios.post(
+            `${BACKEND_URL}/attendance/login-hours-config`,
+            settingsPayload,
+            { headers, withCredentials: true },
+          );
+          if (settingsRes?.data?.success === false) {
+            throw new Error(
+              settingsRes.data.message ||
+                "Failed to save Late Login escalation settings.",
+            );
+          }
+          const savedSettings = normalizeLoginHoursSettings(settingsPayload);
+          setLoginHoursSettings(savedSettings);
+          setLateLoginSettings(savedSettings);
+        } catch (settingsErr) {
+          const savedPolicyId =
+            res?.data?.data?.id || res?.data?.data?.data?.id;
+          if (!editingId && savedPolicyId) {
+            setEditingId(String(savedPolicyId));
+          }
+          await fetchPolicies();
+          setError(
+            `The policy was ${
+              editingId ? "updated" : "created"
+            }, but its escalation and missed-punch settings could not be saved: ${getApiErrorMessage(
+              settingsErr,
+              "Failed to save Late Login escalation settings.",
+            )}`,
+          );
+          return;
+        }
       }
       setSuccessMsg(
         res?.data?.message ||
@@ -3030,9 +3256,10 @@ export default function PunchPolicyModal({ isOpen, onClose }) {
                 type="button"
                 className="pp-btn pp-btn-primary"
                 onClick={handleOpenCreate}
+                disabled={loginHoursLoading}
               >
                 <Plus size={16} style={{ marginRight: 6 }} />
-                New Policy
+                {loginHoursLoading ? "Loading Settings..." : "New Policy"}
               </button>
             </div>
           </div>
@@ -3614,7 +3841,8 @@ export default function PunchPolicyModal({ isOpen, onClose }) {
                   <p className="pp-section-desc">
                     Configure shift timings. Buffer Time is linked to Min
                     Duration (count as late after). Late count limits are set in
-                    Deduction Configuration.
+                    Deduction Configuration. These timings apply only to
+                    employees assigned to this policy.
                   </p>
 
                   <div className="pp-field" style={{ marginBottom: 16 }}>
@@ -3811,6 +4039,108 @@ export default function PunchPolicyModal({ isOpen, onClose }) {
                       </button>
                     </div>
                   )}
+
+                  <div className="pp-section" style={{ padding: 0 }}>
+                    <h4 className="pp-section-title">Escalation handling</h4>
+                    <p className="pp-section-desc">
+                      Configure missed-punch alerts and late-login escalation
+                      for this organization.
+                    </p>
+                    <div className="pp-grid pp-grid-two">
+                      <label className="pp-flag-row">
+                        <input
+                          type="checkbox"
+                          checked={
+                            lateLoginSettings.missedPunchNotificationEnabled
+                          }
+                          onChange={(e) =>
+                            setLateLoginSettings((prev) => ({
+                              ...prev,
+                              missedPunchNotificationEnabled: e.target.checked,
+                            }))
+                          }
+                        />
+                        <span>Enable missed-punch alerts</span>
+                      </label>
+                      <div className="pp-field">
+                        <label>Late streak days before escalation</label>
+                        <div
+                          className="pp-short-input"
+                          style={{ width: "100%" }}
+                        >
+                          <input
+                            type="number"
+                            min="1"
+                            max="30"
+                            value={lateLoginSettings.lateStreakDays}
+                            onChange={(e) =>
+                              setLateLoginSettings((prev) => ({
+                                ...prev,
+                                lateStreakDays: e.target.value,
+                              }))
+                            }
+                          />
+                          <span>days</span>
+                        </div>
+                      </div>
+                      <div className="pp-field">
+                        <label>Who can take escalation action</label>
+                        <div className="pp-grid pp-grid-two">
+                          <label className="pp-flag-row">
+                            <input
+                              type="checkbox"
+                              checked={lateLoginSettings.actionRoles.admin}
+                              onChange={(e) =>
+                                setLateLoginSettings((prev) => ({
+                                  ...prev,
+                                  actionRoles: {
+                                    ...prev.actionRoles,
+                                    admin: e.target.checked,
+                                  },
+                                }))
+                              }
+                            />
+                            <span>Admin</span>
+                          </label>
+                          <label className="pp-flag-row">
+                            <input
+                              type="checkbox"
+                              checked={lateLoginSettings.actionRoles.hr}
+                              onChange={(e) =>
+                                setLateLoginSettings((prev) => ({
+                                  ...prev,
+                                  actionRoles: {
+                                    ...prev.actionRoles,
+                                    hr: e.target.checked,
+                                  },
+                                }))
+                              }
+                            />
+                            <span>HR</span>
+                          </label>
+                        </div>
+                      </div>
+                      <div className="pp-field">
+                        <label>Escalation method</label>
+                        <select
+                          value={lateLoginSettings.escalationMode}
+                          onChange={(e) =>
+                            setLateLoginSettings((prev) => ({
+                              ...prev,
+                              escalationMode: e.target.value,
+                            }))
+                          }
+                        >
+                          <option value="mail_notify">
+                            Send email and notification
+                          </option>
+                          <option value="attendance_regularisation">
+                            Mark in attendance regularisation
+                          </option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
 
                   <div className="pp-field">
                     <label>Policy Status</label>

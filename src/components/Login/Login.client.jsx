@@ -2494,22 +2494,38 @@ export default function Login({ onClose }) {
           "common login",
         ].includes(role);
 
+        const yesterday = new Date();
+        yesterday.setHours(0, 0, 0, 0);
+        yesterday.setDate(yesterday.getDate() - 1);
+        const targetDateKey = toDateKey(yesterday);
+        const joiningDateKey = String(
+          minimalUser?.joining_date ?? minimalUser?.joiningDate ?? "",
+        ).slice(0, 10);
+        const isBeforeJoiningDate =
+          /^\d{4}-\d{2}-\d{2}$/.test(joiningDateKey) &&
+          targetDateKey < joiningDateKey;
+
         if (shouldSuppressAlerts) {
           try {
             sessionStorage.removeItem("attendanceReminder");
           } catch {}
         }
 
-        if (!shouldSuppressAlerts && employeeId && orgId) {
+        if (isBeforeJoiningDate) {
+          sessionStorage.removeItem("attendanceReminder");
+        }
+
+        if (
+          !shouldSuppressAlerts &&
+          !isBeforeJoiningDate &&
+          employeeId &&
+          orgId
+        ) {
           const attendanceHeaders = {
             "x-api-key": process.env.NEXT_PUBLIC_API_KEY,
             "x-org-id": String(orgId),
             "x-employee-id": String(employeeId),
           };
-
-          const yesterday = new Date();
-          yesterday.setHours(0, 0, 0, 0);
-          yesterday.setDate(yesterday.getDate() - 1);
 
           const attendanceUrl = `${process.env.NEXT_PUBLIC_BACKEND_URL}/attendance/employee/${encodeURIComponent(employeeId)}`;
           const historyResponse = await fetch(attendanceUrl, {

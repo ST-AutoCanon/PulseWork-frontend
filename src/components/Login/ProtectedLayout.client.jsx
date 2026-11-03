@@ -1169,6 +1169,20 @@ export default function ProtectedLayout({ children }) {
         yesterday.setHours(0, 0, 0, 0);
         yesterday.setDate(yesterday.getDate() - 1);
         const targetDateKey = toDateKey(yesterday);
+        const joiningDateKey = String(
+          user?.joining_date ?? user?.joiningDate ?? "",
+        ).slice(0, 10);
+        const isBeforeJoiningDate =
+          /^\d{4}-\d{2}-\d{2}$/.test(joiningDateKey) &&
+          targetDateKey < joiningDateKey;
+
+        if (isBeforeJoiningDate) {
+          try {
+            sessionStorage.removeItem("attendanceReminder");
+          } catch {}
+          if (!cancelled) setPunchAlert(null);
+          return;
+        }
 
         const historyResponse = await axios.get(
           `${process.env.NEXT_PUBLIC_BACKEND_URL}/attendance/employee/${encodeURIComponent(employeeId)}`,
@@ -1389,6 +1403,8 @@ export default function ProtectedLayout({ children }) {
     user?.orgId,
     user?.org_id,
     user?.Org_id,
+    user?.joining_date,
+    user?.joiningDate,
     user?.role,
   ]);
 

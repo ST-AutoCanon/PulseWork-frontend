@@ -1112,10 +1112,10 @@ export default function LoginHourSettingsModal({ isOpen, onClose }) {
               <Sparkles className="h-3.5 w-3.5" />
               Attendance control center
             </div>
-            <h3 className="attendance-modal__title">Configure punch hours</h3>
+            <h3 className="attendance-modal__title">General Punch Hours</h3>
             <p className="attendance-modal__subtitle">
-              Set punch-in and punch-out timing, buffer time, late streak days,
-              and escalation handling from one admin screen.
+              Set the default punch timings for employees without an assigned
+              Late Login policy, plus late streak and escalation handling.
             </p>
           </div>
 
@@ -1385,7 +1385,8 @@ export default function LoginHourSettingsModal({ isOpen, onClose }) {
 
         <div className="attendance-modal__footer">
           <p className="attendance-modal__footer-note">
-            Changes apply to the selected organization.
+            Default punch timings apply only to employees without an assigned
+            Late Login policy.
           </p>
 
           <div className="attendance-actions">

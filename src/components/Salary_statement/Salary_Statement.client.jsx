@@ -87,13 +87,6 @@ const Salary_Statement = () => {
     return isNaN(Number(val)) ? 0 : Number(val);
   };
 
-  const getCurrentMonthYear = () => {
-    const date = new Date();
-    const month = date.toLocaleString("default", { month: "short" });
-    const year = date.getFullYear();
-    return { month, year };
-  };
-
   const validateHeaders = (uploadedHeaders) => {
     if (!uploadedHeaders || uploadedHeaders.length === 0) {
       setError("❌ No headers found in the uploaded file.");
@@ -125,24 +118,6 @@ const Salary_Statement = () => {
     }
     setShowNote(false);
     event.target.value = "";
-    const { month, year } = getCurrentMonthYear();
-    const fileNameLower = selectedFile.name.toLowerCase();
-    if (!fileNameLower.includes(year.toString())) {
-      setError(`❌ Wrong year in filename. Expected: ${year}`);
-      setFileName("Invalid file");
-      setTableData([]);
-      setInvalidCells(new Map());
-      setUpdatedCells(new Map());
-      return;
-    }
-    if (!fileNameLower.includes(month.toLowerCase())) {
-      setError(`❌ Wrong month in filename. Expected: ${month}`);
-      setFileName("Invalid file");
-      setTableData([]);
-      setInvalidCells(new Map());
-      setUpdatedCells(new Map());
-      return;
-    }
     setFile(selectedFile);
     setFileName(selectedFile.name);
     setError("");
@@ -263,23 +238,19 @@ const Salary_Statement = () => {
         let formattedCell = cell;
                const columnName = headers?.[colIndex];
 
-        // === Employee ID (now "ID") ===
-        if (columnName === "ID") {
-          const value = String(cell ?? "")
-            .trim()
-            .replace(/\s+/g, "");
-          const empIdPattern = /^STS-\d{6}$/;
-          if (!empIdPattern.test(value)) {
+        // === Employee ID ===
+        if (columnName === "ID" || columnName === "Employee ID") {
+          const value = String(cell ?? "").trim();
+          if (!value) {
             isInvalid = true;
           } else {
             row[colIndex] = value; // normalize
           }
         }
 
-        // === Name (now "Name") ===
-        if (columnName === "Name") {
-          const namePattern = /^[A-Za-z\s.]+$/;
-          if (!namePattern.test(String(cell)) || String(cell).trim() === "") {
+        // === Name ===
+        if (columnName === "Name" || columnName === "Full Name") {
+          if (String(cell ?? "").trim() === "") {
             isInvalid = true;
           }
         }
@@ -518,6 +489,8 @@ const Salary_Statement = () => {
 
     if (response.data.message) {
       const successMessage = response.data.message;
+      const uploadedMonth = response.data.month || selectedMonth;
+      const uploadedYear = response.data.year || selectedYear;
       setError("");
       showAlert(successMessage, "Upload Successful");
       setIsFileUploaded(true);
@@ -531,9 +504,13 @@ const Salary_Statement = () => {
       setPrevTableData([]);
       setShowNote(true);
       setUploadMessage(successMessage);
+      setSearchTerm("");
+      setSelectedMonth(formatMonthShort(uploadedMonth));
+      setSelectedYear(uploadedYear);
+      await savePreferences(formatMonthShort(uploadedMonth), uploadedYear);
 
       // Optional: refresh the displayed salary data after upload
-      await fetchSalaryData(selectedMonth, selectedYear);
+      await fetchSalaryData(uploadedMonth, uploadedYear);
     } else if (response.data.error) {
       const errorMsg = response.data.error;
       setError(`❌ Upload failed: ${errorMsg}`);
@@ -586,10 +563,24 @@ const Salary_Statement = () => {
     return totalSalary.toFixed(2);
   };
 
+  const formatMonthShort = (month) => {
+    const value = String(month ?? "").trim().toLowerCase();
+    if (!value) return "";
+    if (/^\d{1,2}$/.test(value)) {
+      const monthIndex = Number(value) - 1;
+      return new Date(2000, monthIndex, 1).toLocaleString("default", { month: "short" });
+    }
+    const months = ["jan","feb","mar","apr","may","jun","jul","aug","sep","oct","nov","dec"];
+    const monthIndex = months.findIndex((item) => item === value.slice(0, 3));
+    return monthIndex >= 0
+      ? new Date(2000, monthIndex, 1).toLocaleString("default", { month: "short" })
+      : String(month).slice(0, 3);
+  };
+
   const generateMonthYearOptions = () => {
     const options = [];
     const current = new Date();
-    for (let i = 0; i < 12; i++) {
+    for (let i = 0; i < 3; i++) {
       const date = new Date(current.getFullYear(), current.getMonth() - i, 1);
       const month = date.toLocaleString("default", { month: "short" });
       const year = date.getFullYear();
@@ -610,6 +601,12 @@ const Salary_Statement = () => {
     setIsMonthYearSelected(true);
     setIsFileUploaded(false);
     setError("");
+    setTableData([]);
+    setTableHeaders([]);
+    setInvalidCells(new Map());
+    setUpdatedCells(new Map());
+    setSearchTerm("");
+    setFilteredData([]);
     await fetchSalaryData(month, year);
     await savePreferences(month, year);
   };
@@ -709,7 +706,7 @@ const handleTemplateChange = async (e) => {
       });
       const prefs = response.data;
       if (prefs && prefs.selected_month && prefs.selected_year) {
-        setSelectedMonth(prefs.selected_month);
+        setSelectedMonth(formatMonthShort(prefs.selected_month));
         setSelectedYear(prefs.selected_year);
         setIsMonthYearSelected(true);
         await fetchSalaryData(prefs.selected_month, prefs.selected_year);

@@ -16,6 +16,35 @@ import {
 } from "react-icons/fi";
 import { MdOutlineCurrencyRupee } from "react-icons/md";
 
+function getEmployeeAge(employee) {
+  const providedAge = Number(employee.age);
+  if (
+    employee.age !== null &&
+    employee.age !== undefined &&
+    employee.age !== "" &&
+    Number.isFinite(providedAge)
+  ) {
+    return providedAge;
+  }
+
+  if (!employee.dob) return null;
+
+  const birthDate = new Date(employee.dob);
+  if (Number.isNaN(birthDate.getTime())) return null;
+
+  const today = new Date();
+  let age = today.getFullYear() - birthDate.getFullYear();
+  if (
+    today.getMonth() < birthDate.getMonth() ||
+    (today.getMonth() === birthDate.getMonth() &&
+      today.getDate() < birthDate.getDate())
+  ) {
+    age -= 1;
+  }
+
+  return age >= 0 ? age : null;
+}
+
 function SearchableEmployeeDropdown({ employees, selectedId, onChange }) {
   const [search, setSearch] = useState("");
   const [isOpen, setIsOpen] = useState(false);
@@ -592,10 +621,7 @@ const EmployeeRequestForm = ({
                 [employee.first_name, employee.middle_name, employee.last_name]
                   .filter(Boolean)
                   .join(" "),
-              age:
-                employee.age === null || employee.age === undefined
-                  ? null
-                  : Number(employee.age),
+              age: getEmployeeAge(employee),
             }))
             .filter((employee) => employee.employeeId),
         );

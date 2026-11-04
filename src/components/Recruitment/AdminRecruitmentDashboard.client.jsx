@@ -298,6 +298,8 @@ function RecruitmentLetterCard({
   }
 
   const isDraft = document.status === "DRAFT";
+  const isOfferLetter =
+    normalizeRecruitmentDocumentType(document.document_type) === "OFFER_LETTER";
   const runAction = async (action) => {
     setBusy(true);
     setActionError("");
@@ -358,9 +360,9 @@ function RecruitmentLetterCard({
           <MdDownload />
         </IconActionButton>
 
-        {isDraft && (
+        {(isDraft || isOfferLetter) && (
           <IconActionButton
-            label="Edit Draft"
+            label={isDraft ? "Edit Draft" : "Edit Offer Letter"}
             onClick={() => runAction(onEdit)}
             disabled={busy}
           >

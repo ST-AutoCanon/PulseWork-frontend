@@ -5,6 +5,7 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import generatePayslipPDF from "../../utils/generatePayslipPDF";
+import generatePayslipPDFDefault from "../generate_payslip/generatePayslipPDFDefault";
 import { useAuth } from "../../context/AuthProvider.client";
 import "./PayrollSummary.css";
 
@@ -294,6 +295,122 @@ const buildAdvanceDetailText = (
     try {
       if (!payrollData) {
         alert("No payroll data available to download.");
+        return;
+      }
+
+      if (String(orgId) === "1") {
+        const defaultEmployeeName =
+          payrollData.full_name ||
+          employeeDetails?.full_name ||
+          employeeDetails?.name ||
+          "N/A";
+        const defaultEmployeeId =
+          payrollData.employee_id || employeeId || "N/A";
+        const defaultDesignation =
+          payrollData.designation ||
+          employeeDetails?.designation ||
+          "N/A";
+        const defaultDepartment =
+          payrollData.department_name ||
+          payrollData.departmentName ||
+          payrollData.department ||
+          employeeDetails?.department_name ||
+          employeeDetails?.departmentName ||
+          employeeDetails?.department ||
+          "N/A";
+        const defaultDesignationDisplay =
+          defaultDesignation !== "N/A"
+            ? `${defaultDesignation}${defaultDepartment !== "N/A" ? ` (${defaultDepartment})` : ""}`
+            : "N/A";
+        const defaultDojRaw =
+          employeeDetails?.joining_date ||
+          employeeDetails?.date_of_joining ||
+          payrollData?.date_of_joining ||
+          payrollData?.joining_date ||
+          "N/A";
+        const defaultDoj =
+          defaultDojRaw !== "N/A"
+            ? new Date(defaultDojRaw).toLocaleDateString("en-IN", {
+                day: "2-digit",
+                month: "2-digit",
+                year: "numeric",
+              })
+            : "N/A";
+        const leavesTaken = Number(
+          payrollData.approved_leave_count ??
+          payrollData.leave_count ??
+          payrollData.lop_days ??
+          0
+        );
+        const tableData = {
+          employeeName: defaultEmployeeName,
+          employeeId: defaultEmployeeId,
+          gender:
+            employeeDetails?.gender || payrollData?.gender || "N/A",
+          designation: defaultDesignationDisplay,
+          dateOfJoining: defaultDoj,
+          accountNo: bankDetails?.account_number || "N/A",
+          workingDays:
+            attendance?.total_working_days ||
+            payrollData?.working_days ||
+            payrollData?.total_working_days ||
+            (leavesTaken > 0 ? 30 - leavesTaken : 30),
+          leavesTaken,
+          uinNo:
+            employeeDetails?.uan_number ||
+            employeeDetails?.uin_number ||
+            bankDetails?.uan_number ||
+            bankDetails?.uin_number ||
+            payrollData?.uan_number ||
+            "N/A",
+          panNumber:
+            employeeDetails?.pan_number ||
+            bankDetails?.pan_number ||
+            payrollData?.pan_number ||
+            "N/A",
+          esiNumber:
+            employeeDetails?.esi_number ||
+            bankDetails?.esi_number ||
+            payrollData?.esi_number ||
+            "N/A",
+          pfNumber:
+            employeeDetails?.pf_number ||
+            bankDetails?.pf_number ||
+            payrollData?.pf_number ||
+            "N/A",
+          basic: Number(payrollData.basic_salary || 0),
+          hra: Number(payrollData.hra || 0),
+          otherAllowance: Number(
+            payrollData.other_allowances ||
+            payrollData.allowance ||
+            0
+          ),
+          pf: Number(
+            payrollData.employee_pf || payrollData.pf || 0
+          ),
+          esi: Number(payrollData.esic_employee || payrollData.esic || 0),
+          insurance: Number(
+            payrollData.insurance_employee ||
+            payrollData.insurance ||
+            0
+          ),
+          professionalTax: Number(payrollData.professional_tax || 0),
+          tds: Number(payrollData.tds || 0),
+        };
+
+        const pdfBlob = generatePayslipPDFDefault(
+          tableData,
+          Number(selectedDate.month),
+          Number(selectedDate.year)
+        );
+        const url = URL.createObjectURL(pdfBlob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = `Payslip_${defaultEmployeeId}_${String(
+          selectedDate.month
+        ).padStart(2, "0")}_${selectedDate.year}.pdf`;
+        link.click();
+        URL.revokeObjectURL(url);
         return;
       }
       console.log("🚀 DOWNLOAD STARTED");
@@ -1159,7 +1276,7 @@ const previewEmployerInsurance = Number(
             Payslip for {new Date(selectedDate.year, selectedDate.month - 1).toLocaleString("default", { month: "long", year: "numeric" })}
           </h2>
 
-          <table style={{ width: "100%", marginBottom: "20px", borderCollapse: "collapse", fontSize: "14px" }}>
+          <table className="preview-employee-details" style={{ width: "100%", marginBottom: "20px", borderCollapse: "collapse", tableLayout: "fixed", fontSize: "14px" }}>
             <tbody>
               <tr>
                 <td style={{ padding: "8px" }}><strong>Employee Name:</strong> {previewName}</td>

@@ -276,7 +276,10 @@ html {
   padding: 8px 12px;
   font-size: 15px;
   border-radius: 25px;
-  transition: background 0.15s, transform 0.12s, color 0.12s;
+  transition:
+    background 0.15s,
+    transform 0.12s,
+    color 0.12s;
   cursor: pointer;
 }
 
@@ -294,7 +297,9 @@ html {
   font-weight: 600;
   border-radius: 25px;
   cursor: pointer;
-  transition: background 0.3s, transform 0.2s;
+  transition:
+    background 0.3s,
+    transform 0.2s;
 }
 
 .purchase-btn:hover {
@@ -358,7 +363,9 @@ html {
   background-color: #ffffff;
   color: #1a3c34;
   outline: none;
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
   appearance: none;
   -webkit-appearance: none;
   -moz-appearance: none;
@@ -386,6 +393,30 @@ html {
   margin-top: 6px;
   margin-left: -20%;
   z-index: 1000;
+}
+
+.privacy-footer-link {
+  display: inline-block;
+  color: #074857;
+  background-color: #b0ea00;
+  text-decoration: none;
+  margin-left: 12px;
+  padding: 5px 12px;
+  font-size: 12px;
+  font-weight: 700;
+  border-radius: 20px;
+  transition: all 0.25s ease;
+}
+
+.privacy-footer-link:hover {
+  background-color: #ffffff;
+  color: #074857;
+  text-decoration: none;
+}
+
+.privacy-footer-link:focus-visible {
+  outline: 2px solid #ffffff;
+  outline-offset: 3px;
 }
 
 @media (max-width: 768px) {

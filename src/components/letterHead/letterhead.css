@@ -659,7 +659,7 @@
 .letterhead-table-actions {
   display: flex;
   gap: 8px;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
 }
 
 .letterhead-save-input {
@@ -698,7 +698,7 @@
 .letterhead-table-actions {
   display: flex;
   gap: 8px;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
 }
 
 .letterhead-save-input {

@@ -992,10 +992,6 @@ export default function LoginHourSettingsModal({ isOpen, onClose }) {
       errors.push("Late streak days must be between 1 and 30.");
     }
 
-    const selectedRoles = Object.values(actionRoles).some(Boolean);
-    if (!selectedRoles)
-      errors.push("Select at least one role for escalation actions.");
-
     if (!values.escalationMode) errors.push("Select an escalation method.");
 
     return errors;
@@ -1056,19 +1052,13 @@ export default function LoginHourSettingsModal({ isOpen, onClose }) {
     const missedPunchAlerts = values.missedPunchNotificationEnabled
       ? "enabled"
       : "disabled";
-    const selectedRoles =
-      Object.entries(actionRoles)
-        .filter(([, checked]) => checked)
-        .map(([role]) => role.toUpperCase())
-        .join(", ") || "None";
-
     const modeText =
       values.escalationMode === "mail_notify"
         ? "Email + Notification"
         : "Attendance Regularisation";
 
-    return `Punch-in starts at ${start} (+${buffer} min buffer). Missed punch alerts: ${missedPunchAlerts}. Late login auto-mark: ${autoLate}. Escalation after ${streak} consecutive late days. Action roles: ${selectedRoles}. Mode: ${modeText}.`;
-  }, [values, actionRoles]);
+    return `Punch-in starts at ${start} (+${buffer} min buffer). Missed punch alerts: ${missedPunchAlerts}. Late login auto-mark: ${autoLate}. Escalation after ${streak} consecutive late days. Mode: ${modeText}.`;
+  }, [values]);
 
   if (!isOpen) return null;
 
@@ -1243,49 +1233,6 @@ export default function LoginHourSettingsModal({ isOpen, onClose }) {
                 <div className="attendance-card__grid">
                   <div className="field">
                     <div className="field__label">
-                      <Users className="h-4 w-4" />
-                      <span>Who can take action</span>
-                    </div>
-
-                    <div
-                      style={{
-                        display: "grid",
-                        gap: "10px",
-                        gridTemplateColumns:
-                          "repeat(auto-fit, minmax(180px, 1fr))",
-                      }}
-                    >
-                      <CheckboxRow
-                        label="Admin"
-                        checked={actionRoles.admin}
-                        onChange={(checked) =>
-                          setActionRoles((prev) => ({
-                            ...prev,
-                            admin: checked,
-                          }))
-                        }
-                        disabled={isFetching || isSaving}
-                      />
-                      <CheckboxRow
-                        label="HR"
-                        checked={actionRoles.hr}
-                        onChange={(checked) =>
-                          setActionRoles((prev) => ({
-                            ...prev,
-                            hr: checked,
-                          }))
-                        }
-                        disabled={isFetching || isSaving}
-                      />
-                    </div>
-                    <p className="field__hint">
-                      Only HR and Admin receive a mail when the configured late
-                      streak threshold is reached.
-                    </p>
-                  </div>
-
-                  <div className="field">
-                    <div className="field__label">
                       <Bell className="h-4 w-4" />
                       <span>Missed punch alerts</span>
                     </div>
@@ -1375,7 +1322,8 @@ export default function LoginHourSettingsModal({ isOpen, onClose }) {
                   </li>
                   <li>Keeps late-login rules simple and easy to manage.</li>
                   <li>
-                    Lets you control who can act and how escalation works.
+                    Keeps late-login escalation and missed-punch alerts
+                    configured.
                   </li>
                 </ul>
               </section>

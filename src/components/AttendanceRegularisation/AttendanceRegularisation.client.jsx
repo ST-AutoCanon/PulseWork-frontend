@@ -1380,9 +1380,11 @@
 import React, { useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import {
+  MdOutlineEdit,
   MdOutlineUpdate,
   MdSearch,
   MdOutlineEventAvailable,
+  MdDeleteOutline,
 } from "react-icons/md";
 import { useAuth } from "../../context/AuthProvider.client";
 import LeaveRegularisationModal from "./LeaveRegularisationModal.client";
@@ -1637,6 +1639,8 @@ export default function AttendanceRegularisation() {
   const [modalOpen, setModalOpen] = useState(false);
   const [modalLoading, setModalLoading] = useState(false);
   const [editingRow, setEditingRow] = useState(null);
+  const [deleteRequest, setDeleteRequest] = useState(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
   const [drafts, setDrafts] = useState({});
   const [showGeneralPunchHoursModal, setShowGeneralPunchHoursModal] =
     useState(false);
@@ -2021,8 +2025,79 @@ export default function AttendanceRegularisation() {
   };
 
   const handleEdit = (row) => {
+    if (String(row?.status || "Pending").trim().toLowerCase() !== "pending") {
+      return;
+    }
     setEditingRow(row);
     setModalOpen(true);
+  };
+
+  const closeDeleteConfirmation = () => setDeleteRequest(null);
+
+  const handleDeleteRequest = async () => {
+    if (deleteLoading) return;
+
+    if (
+      String(deleteRequest?.status || "Pending")
+        .trim()
+        .toLowerCase() !== "pending"
+    ) {
+      closeDeleteConfirmation();
+      showAlert("Only pending requests can be deleted.", "Error");
+      return;
+    }
+
+    const rowId = getRowId(deleteRequest);
+    if (!rowId) {
+      const message = "Missing request id.";
+      setError(message);
+      showAlert(message, "Error");
+      return;
+    }
+
+    try {
+      setDeleteLoading(true);
+      setError("");
+
+      const res = await axios.delete(
+        `${BACKEND_URL}/api/leave-regularisation/${rowId}`,
+        { headers, withCredentials: true },
+      );
+
+      if (!isSuccessfulResponse(res)) {
+        const message = res.data?.message || "Delete failed.";
+        setError(message);
+        showAlert(message, "Error");
+        return;
+      }
+
+      setRowOverrides((prev) => {
+        const next = { ...prev };
+        delete next[String(rowId)];
+        return next;
+      });
+      setDrafts((prev) => {
+        const next = { ...prev };
+        delete next[String(rowId)];
+        return next;
+      });
+      closeDeleteConfirmation();
+      showAlert(
+        res.data?.message || "Regularisation request deleted successfully.",
+        "Success",
+      );
+      await fetchRequests();
+    } catch (err) {
+      console.error("Delete regularisation request error:", err);
+      const message = getApiErrorMessage(
+        err,
+        "Failed to delete regularisation request.",
+      );
+      setError(message);
+      showAlert(message, "Error");
+    } finally {
+      setDeleteLoading(false);
+    }
   };
 
   const handleRowDraftChange = (rowId, key, value) => {
@@ -2447,6 +2522,10 @@ export default function AttendanceRegularisation() {
                     );
                     const datesText = formatSelectedDates(selectedDates);
                     const approverText = row.approver_comments || "-";
+                    const actionsLocked =
+                      String(row.status || "Pending")
+                        .trim()
+                        .toLowerCase() !== "pending";
 
                     return (
                       <tr key={row.id || idx}>
@@ -2465,11 +2544,33 @@ export default function AttendanceRegularisation() {
                         <td>
                           <button
                             type="button"
-                            className="ar-update-btn"
+                            className="ar-action-btn"
                             onClick={() => handleEdit(row)}
-                            title="Edit request"
+                            disabled={actionsLocked}
+                            aria-disabled={actionsLocked}
+                            title={
+                              actionsLocked
+                                ? "Only pending requests can be edited"
+                                : "Edit request"
+                            }
+                            aria-label={`Edit regularisation request ${getRowId(row)}`}
                           >
-                            <MdOutlineUpdate />
+                            <MdOutlineEdit />
+                          </button>
+                          <button
+                            type="button"
+                            className="ar-action-btn ar-delete-btn"
+                            onClick={() => setDeleteRequest(row)}
+                            disabled={actionsLocked}
+                            aria-disabled={actionsLocked}
+                            title={
+                              actionsLocked
+                                ? "Only pending requests can be deleted"
+                                : "Delete request"
+                            }
+                            aria-label={`Delete regularisation request ${getRowId(row)}`}
+                          >
+                            <MdDeleteOutline />
                           </button>
                         </td>
                       </tr>
@@ -2754,6 +2855,26 @@ export default function AttendanceRegularisation() {
         buttons={[{ label: "OK", onClick: closeAlert }]}
       >
         <div>{alertModal.message}</div>
+      </Modal>
+
+      <Modal
+        isVisible={Boolean(deleteRequest)}
+        onClose={deleteLoading ? undefined : closeDeleteConfirmation}
+        buttons={[
+          {
+            label: "Cancel",
+            onClick: () => {
+              if (!deleteLoading) closeDeleteConfirmation();
+            },
+          },
+          {
+            label: deleteLoading ? "Deleting..." : "Yes, Delete",
+            onClick: handleDeleteRequest,
+          },
+        ]}
+      >
+        <h3>Delete Attendance Regularisation</h3>
+        <p>Are you sure you want to delete this regularisation request?</p>
       </Modal>
     </div>
   );

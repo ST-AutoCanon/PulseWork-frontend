@@ -233,7 +233,38 @@
 
 .ar-self-card .ar-table th:nth-child(7),
 .ar-self-card .ar-table td:nth-child(7) {
-  width: 76px;
+  width: 100px;
+}
+
+.ar-action-btn {
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: #1f4db8;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px;
+  font-size: 20px;
+}
+
+.ar-action-btn:hover:not(:disabled) {
+  background: #edf2ff;
+}
+
+.ar-action-btn:disabled {
+  color: #9ca3af;
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.ar-action-btn.ar-delete-btn {
+  color: #b91c1c;
+}
+
+.ar-action-btn.ar-delete-btn:disabled {
+  color: #9ca3af;
 }
 
 /* Team/Admin table column sizing */

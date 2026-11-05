@@ -1189,12 +1189,18 @@ export default function ProtectedLayout({ children }) {
           { withCredentials: true, headers: dateHeaders },
         );
         const history = historyResponse?.data?.data;
-        const hasRecordedPunchIn =
+        const hasPriorPunchRecord =
           Array.isArray(history) &&
           history.some((record) =>
-            Boolean(record?.punchin_time ?? record?.punchinTime),
+            [
+              record?.punchin_time ?? record?.punchinTime,
+              record?.punchout_time ?? record?.punchoutTime,
+            ].some(
+              (punchTime) =>
+                punchTime && String(punchTime).slice(0, 10) < targetDateKey,
+            ),
           );
-        if (!hasRecordedPunchIn) {
+        if (!hasPriorPunchRecord) {
           try {
             sessionStorage.removeItem("attendanceReminder");
           } catch {}
@@ -1309,10 +1315,6 @@ export default function ProtectedLayout({ children }) {
           if (cancelled) return;
 
           if (!records.length) {
-            console.info(
-              "[missed-punch] no records for yesterday; showing punch-in reminder",
-              { employeeId, targetDateKey },
-            );
             setPunchAlert({
               title: "Attendance reminder",
               message:

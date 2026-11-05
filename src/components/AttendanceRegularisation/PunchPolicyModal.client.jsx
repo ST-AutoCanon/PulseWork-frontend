@@ -3028,13 +3028,6 @@ export default function PunchPolicyModal({ isOpen, onClose }) {
     }
     if (
       isLateLogin &&
-      !Object.values(lateLoginSettings.actionRoles).some(Boolean)
-    ) {
-      setError("Select at least one role for escalation actions.");
-      return;
-    }
-    if (
-      isLateLogin &&
       !["mail_notify", "attendance_regularisation"].includes(
         lateLoginSettings.escalationMode,
       )
@@ -4081,43 +4074,6 @@ export default function PunchPolicyModal({ isOpen, onClose }) {
                             }
                           />
                           <span>days</span>
-                        </div>
-                      </div>
-                      <div className="pp-field">
-                        <label>Who can take escalation action</label>
-                        <div className="pp-grid pp-grid-two">
-                          <label className="pp-flag-row">
-                            <input
-                              type="checkbox"
-                              checked={lateLoginSettings.actionRoles.admin}
-                              onChange={(e) =>
-                                setLateLoginSettings((prev) => ({
-                                  ...prev,
-                                  actionRoles: {
-                                    ...prev.actionRoles,
-                                    admin: e.target.checked,
-                                  },
-                                }))
-                              }
-                            />
-                            <span>Admin</span>
-                          </label>
-                          <label className="pp-flag-row">
-                            <input
-                              type="checkbox"
-                              checked={lateLoginSettings.actionRoles.hr}
-                              onChange={(e) =>
-                                setLateLoginSettings((prev) => ({
-                                  ...prev,
-                                  actionRoles: {
-                                    ...prev.actionRoles,
-                                    hr: e.target.checked,
-                                  },
-                                }))
-                              }
-                            />
-                            <span>HR</span>
-                          </label>
                         </div>
                       </div>
                       <div className="pp-field">

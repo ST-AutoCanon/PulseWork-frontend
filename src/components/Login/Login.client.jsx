@@ -2494,22 +2494,38 @@ export default function Login({ onClose }) {
           "common login",
         ].includes(role);
 
+        const yesterday = new Date();
+        yesterday.setHours(0, 0, 0, 0);
+        yesterday.setDate(yesterday.getDate() - 1);
+        const targetDateKey = toDateKey(yesterday);
+        const joiningDateKey = String(
+          minimalUser?.joining_date ?? minimalUser?.joiningDate ?? "",
+        ).slice(0, 10);
+        const isBeforeJoiningDate =
+          /^\d{4}-\d{2}-\d{2}$/.test(joiningDateKey) &&
+          targetDateKey < joiningDateKey;
+
         if (shouldSuppressAlerts) {
           try {
             sessionStorage.removeItem("attendanceReminder");
           } catch {}
         }
 
-        if (!shouldSuppressAlerts && employeeId && orgId) {
+        if (isBeforeJoiningDate) {
+          sessionStorage.removeItem("attendanceReminder");
+        }
+
+        if (
+          !shouldSuppressAlerts &&
+          !isBeforeJoiningDate &&
+          employeeId &&
+          orgId
+        ) {
           const attendanceHeaders = {
             "x-api-key": process.env.NEXT_PUBLIC_API_KEY,
             "x-org-id": String(orgId),
             "x-employee-id": String(employeeId),
           };
-
-          const yesterday = new Date();
-          yesterday.setHours(0, 0, 0, 0);
-          yesterday.setDate(yesterday.getDate() - 1);
 
           const attendanceUrl = `${process.env.NEXT_PUBLIC_BACKEND_URL}/attendance/employee/${encodeURIComponent(employeeId)}`;
           const historyResponse = await fetch(attendanceUrl, {
@@ -2517,20 +2533,26 @@ export default function Login({ onClose }) {
             headers: attendanceHeaders,
           });
           const historyResult = await historyResponse.json().catch(() => null);
-          const hasRecordedPunchIn =
+          const hasPriorPunchRecord =
             historyResponse.ok &&
             Array.isArray(historyResult?.data) &&
             historyResult.data.some((record) =>
-              Boolean(record?.punchin_time ?? record?.punchinTime),
+              [
+                record?.punchin_time ?? record?.punchinTime,
+                record?.punchout_time ?? record?.punchoutTime,
+              ].some(
+                (punchTime) =>
+                  punchTime && String(punchTime).slice(0, 10) < targetDateKey,
+              ),
             );
 
-          if (!hasRecordedPunchIn) {
+          if (!hasPriorPunchRecord) {
             sessionStorage.removeItem("attendanceReminder");
           }
 
           // Suppress reminder on Sunday / holiday / leave / regularisation
           const suppress =
-            !hasRecordedPunchIn ||
+            !hasPriorPunchRecord ||
             (await shouldSuppressMissedPunchAlert({
               employeeId,
               orgId,
@@ -2538,7 +2560,7 @@ export default function Login({ onClose }) {
               headers: attendanceHeaders,
             }));
 
-          if (!suppress && hasRecordedPunchIn) {
+          if (!suppress && hasPriorPunchRecord) {
             const ymd = toDateKey(yesterday);
 
             const response = await fetch(
@@ -3145,11 +3167,7 @@ export default function Login({ onClose }) {
         </div>
 
         <div className="footer-text">
-          <span>© 2025 Sukalpa Tech. All Rights Reserved.</span>
-
-          <a href="/privacy-policy" className="privacy-footer-link">
-            Privacy Policy
-          </a>
+          © 2025 Sukalpa Tech. All Rights Reserved.
         </div>
 
         {alertModal.isVisible && (

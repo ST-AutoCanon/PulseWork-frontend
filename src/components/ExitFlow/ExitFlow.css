@@ -1,7 +1,7 @@
 
 .exf-resignation-wrapper-1 {
   margin: 2.5rem ;
-  
+ 
   background: white;
   border-radius: 16px;
 }
@@ -393,7 +393,7 @@
 
 /* ── Table Container ── */
 .exf-table-container {
-  
+ 
     overflow-x: auto;
   border-radius: 10px;
   border: 1px solid #e5e7eb;
@@ -433,6 +433,57 @@
   padding: 1rem 1.25rem;
   color: #374151;
   border-bottom: 1px solid #f1f5f9;
+}
+
+.exf-all-employees-table {
+  width: 100%;
+  min-width: 100%;
+  table-layout: fixed;
+  font-size: 0.8rem;
+}
+
+.exf-all-employees-table th,
+.exf-all-employees-table td {
+  padding: 0.65rem 0.5rem;
+  overflow-wrap: anywhere;
+}
+
+.exf-all-employees-table th {
+  white-space: normal;
+  font-size: 0.72rem;
+  letter-spacing: 0.2px;
+}
+
+.exf-all-employees-table th:nth-child(1),
+.exf-all-employees-table td:nth-child(1) { width: 8%; }
+.exf-all-employees-table th:nth-child(2),
+.exf-all-employees-table td:nth-child(2) { width: 10%; }
+.exf-all-employees-table th:nth-child(3),
+.exf-all-employees-table td:nth-child(3) { width: 12%; }
+.exf-all-employees-table th:nth-child(4),
+.exf-all-employees-table td:nth-child(4),
+.exf-all-employees-table th:nth-child(5),
+.exf-all-employees-table td:nth-child(5),
+.exf-all-employees-table th:nth-child(6),
+.exf-all-employees-table td:nth-child(6) { width: 8%; }
+.exf-all-employees-table th:nth-child(7),
+.exf-all-employees-table td:nth-child(7) { width: 16%; }
+.exf-all-employees-table th:nth-child(8),
+.exf-all-employees-table td:nth-child(8) { width: 8%; }
+.exf-all-employees-table th:nth-child(9),
+.exf-all-employees-table td:nth-child(9) { width: 10%; }
+.exf-all-employees-table th:nth-child(10),
+.exf-all-employees-table td:nth-child(10) { width: 12%; }
+
+.exf-all-employees-table .exf-badge {
+  max-width: 100%;
+  padding: 0.25rem 0.45rem;
+  font-size: 0.7rem;
+  white-space: normal;
+}
+
+.exf-all-employees-table .reason-truncated {
+  max-width: 100%;
 }
 
 .exf-table tr:hover {
@@ -500,14 +551,93 @@
 /* ── Clearance Panel ── */
 
 /* Restore white background to ALL tables in the component */
+/* ── Prevent horizontal scroll on all exit tables ── */
 .exf-table-container,
-.exf-table-wrapper,
-.exf-data-table,
+.exf-team-view .exf-table-container,
+.exf-team-panel .exf-table-container {
+  overflow-x: hidden !important;   /* was auto */
+  width: 100%;
+  max-width: 100%;
+}
+
 .exf-table,
-.exf-clearance-table,
 .exf-team-view table,
-.exf-team-panel table {
-  background: #ffffff !important;
+.exf-team-panel table,
+.exf-all-employees-table {
+  width: 100% !important;
+  min-width: 0 !important;         /* kill min-width: 100% that forced overflow */
+  table-layout: fixed;             /* force columns to share space */
+  border-collapse: collapse;
+  font-size: 0.82rem;              /* slightly smaller for more room */
+}
+
+/* Make every cell wrap instead of forcing width */
+.exf-table th,
+.exf-table td,
+.exf-team-view table th,
+.exf-team-view table td,
+.exf-team-panel table th,
+.exf-team-panel table td {
+  white-space: normal !important;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+  padding: 0.65rem 0.5rem !important;
+  vertical-align: top;
+}
+
+/* Reason / long text columns – never force overflow */
+.reason-tooltip-wrapper,
+.reason-truncated,
+.exf-table td.max-w-xs,
+.exf-table .max-w-xs {
+  max-width: 100% !important;
+  white-space: normal !important;
+  overflow: visible !important;
+  text-overflow: unset !important;
+}
+
+/* Optional: tighter column proportions for the 10-column “All Employees” table */
+.exf-all-employees-table th:nth-child(1),
+.exf-all-employees-table td:nth-child(1) { width: 7%; }   /* Emp ID */
+.exf-all-employees-table th:nth-child(2),
+.exf-all-employees-table td:nth-child(2) { width: 11%; }  /* Name */
+.exf-all-employees-table th:nth-child(3),
+.exf-all-employees-table td:nth-child(3) { width: 14%; }  /* Reason */
+.exf-all-employees-table th:nth-child(4),
+.exf-all-employees-table td:nth-child(4),
+.exf-all-employees-table th:nth-child(5),
+.exf-all-employees-table td:nth-child(5),
+.exf-all-employees-table th:nth-child(6),
+.exf-all-employees-table td:nth-child(6) { width: 8%; }   /* dates */
+.exf-all-employees-table th:nth-child(7),
+.exf-all-employees-table td:nth-child(7) { width: 14%; }  /* Supervisor */
+.exf-all-employees-table th:nth-child(8),
+.exf-all-employees-table td:nth-child(8) { width: 9%; }   /* HR */
+.exf-all-employees-table th:nth-child(9),
+.exf-all-employees-table td:nth-child(9) { width: 11%; }  /* Outcome */
+.exf-all-employees-table th:nth-child(10),
+.exf-all-employees-table td:nth-child(10) { width: 10%; } /* Action */
+
+/* Keep badges and buttons from expanding the row */
+.exf-badge,
+.exf-btn-review,
+.exf-btn.exf-btn-sm {
+  white-space: nowrap;
+  max-width: 100%;
+  font-size: 0.75rem;
+  padding: 0.3rem 0.55rem;
+}
+
+/* On smaller desktops / large tablets still prefer wrapping over scroll */
+@media (max-width: 1400px) {
+  .exf-table,
+  .exf-all-employees-table {
+    font-size: 0.78rem;
+  }
+  .exf-table th,
+  .exf-table td {
+    padding: 0.55rem 0.4rem !important;
+  }
 }
 
 .exf-table tbody tr,
@@ -613,13 +743,13 @@
     align-items: flex-start;
     gap: 1rem;
   }
-  
+ 
   .exf-card .flex.gap-2 {
     width: 100%;
     justify-content: flex-end;
     gap: 0.75rem;
   }
-  
+ 
   .exf-card .exf-btn.exf-btn-sm {
     flex: 1;
     min-width: unset;
@@ -852,7 +982,7 @@
   .exf-info-grid {
     grid-template-columns: 140px 1fr; /* your original label + value layout */
   }
-  
+ 
   .exf-info-grid > div.mt-6 {
     grid-column: 1 / -1;              /* still full width */
   }
@@ -3181,7 +3311,7 @@
   font-weight: 500;
   border-radius: 0.375rem;
   transition: background-color 0.2s;
-  
+ 
 }
 
 
@@ -3364,8 +3494,8 @@
 .mt-6
   {
      margin-top: 1.5rem;
-    
-    
+   
+   
     }
 
 .mb-3  { margin-bottom: 0.75rem; }
@@ -3395,7 +3525,7 @@
     grid-template-columns: 1fr;
   }
 
-  
+ 
 
   .exf-tab {
     padding: 0.7rem 1.25rem;
@@ -3450,7 +3580,7 @@
   }
 }
 
-/* ========================================================================== 
+/* ==========================================================================
    Enhanced KT & Asset Section Styling (After Resignation Approval)
    ========================================================================== */
 
@@ -3845,7 +3975,7 @@
     top: 100%;
     transform: translateX(-50%) translateY(-8px);
   }
-  
+ 
   .reason-tooltip::after {
     top: auto;
     bottom: 100%;
@@ -3917,7 +4047,7 @@
     gap: 0.75rem;
     padding: 1rem;
   }
-  
+ 
   .pagination-controls button {
     width: 100%;
     min-width: unset;
@@ -4588,7 +4718,7 @@
     {
       width: 94% ;
       align-items: left;
-      
+     
     }
   }
 }

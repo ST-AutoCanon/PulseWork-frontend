@@ -336,12 +336,17 @@ const buildAdvanceDetailText = (
                 year: "numeric",
               })
             : "N/A";
-        const leavesTaken = Number(
+        const leavesTaken = Math.round(Number(
           payrollData.approved_leave_count ??
           payrollData.leave_count ??
           payrollData.lop_days ??
           0
-        );
+        ) || 0);
+        const monthWorkingDays = new Date(
+          Number(selectedDate.year),
+          Number(selectedDate.month),
+          0
+        ).getDate();
         const tableData = {
           employeeName: defaultEmployeeName,
           employeeId: defaultEmployeeId,
@@ -350,11 +355,7 @@ const buildAdvanceDetailText = (
           designation: defaultDesignationDisplay,
           dateOfJoining: defaultDoj,
           accountNo: bankDetails?.account_number || "N/A",
-          workingDays:
-            attendance?.total_working_days ||
-            payrollData?.working_days ||
-            payrollData?.total_working_days ||
-            (leavesTaken > 0 ? 30 - leavesTaken : 30),
+          workingDays: monthWorkingDays,
           leavesTaken,
           uinNo:
             employeeDetails?.uan_number ||
@@ -511,17 +512,17 @@ const employerInsurance = Number(payrollData.insurance_employer || 0);
 
       const netSalary = Number(payrollData.net_salary || grossSalary - totalDeductions);
 
-      const leavesTaken = Number(
+      const leavesTaken = Math.round(Number(
         payrollData.approved_leave_count ??
         payrollData.leave_count ??
         payrollData.lop_days ??
         0
-      );
-      const totalWorkingDays =
-        attendance?.total_working_days ||
-        payrollData?.working_days ||
-        payrollData?.total_working_days ||
-        (leavesTaken > 0 ? 30 - leavesTaken : 30);
+      ) || 0);
+      const totalWorkingDays = new Date(
+        Number(selectedDate.year),
+        Number(selectedDate.month),
+        0
+      ).getDate();
 
       const monthNames = [
         "January", "February", "March", "April", "May", "June", "July", "August",
@@ -712,7 +713,7 @@ if (lopDeduction > 0)
             ${detailRows}
             <tr style="background-color: #f0f0f0;">
               <td style="border: 1px solid #000; padding: 8px;"><strong>Gross Salary</strong></td>
-              <td style="border: 1px solid #000; padding: 8px; text-align: right;"><strong>${grossSalary.toFixed(2)}</strong></td>
+              <td style="border: 1px solid #000; padding: 8px; text-align: right;"><strong>${Math.round(grossSalary).toFixed(0)}</strong></td>
               <td style="border: 1px solid #000; padding: 8px;"><strong>Total Deductions</strong></td>
               <td style="border: 1px solid #000; padding: 8px; text-align: right;"><strong>${totalDeductions.toFixed(2)}</strong></td>
             </tr>
@@ -725,7 +726,7 @@ if (lopDeduction > 0)
                 Net Salary Payable
               </td>
               <td colspan="2" style="border: 1px solid #000; padding: 15px 12px; text-align: right; font-weight: bold; color: #1a3c6d;">
-                ₹${netSalary.toFixed(2)}
+                ₹${Math.round(netSalary).toFixed(0)}
               </td>
             </tr>
             <tr style="background-color: #e0e0e0; font-size: 14px;">
@@ -1161,11 +1162,11 @@ const previewEmployerInsurance = Number(
   previewAdvanceRecovery +
   previewLopDeduction;
   const previewNet = Number(payrollData?.net_salary || previewGross - previewTotalDed);
-  const previewTotalWorkingDays =
-    attendance?.total_working_days ??
-    payrollData?.working_days ??
-    payrollData?.total_working_days ??
-    (Number(payrollData?.lop_days || 0) > 0 ? 30 - Number(payrollData?.lop_days || 0) : 30);
+  const previewTotalWorkingDays = new Date(
+    Number(selectedDate.year),
+    Number(selectedDate.month),
+    0
+  ).getDate();
   const previewGender = employeeDetails?.gender || payrollData?.gender || "N/A";
   const previewDesignation = payrollData?.designation || employeeDetails?.designation || "N/A";
   const previewDepartment =
@@ -1194,11 +1195,12 @@ const previewEmployerInsurance = Number(
       })
     : "N/A";
   const previewAccountNo = bankDetails?.account_number || "N/A";
-  const previewLeaves =
+  const previewLeaves = Math.round(Number(
     payrollData?.approved_leave_count ??
     payrollData?.leave_count ??
     payrollData?.lop_days ??
-    0;
+    0
+  ) || 0);
   const previewUan =
     employeeDetails?.uan_number ||
     employeeDetails?.uin_number ||
@@ -1276,31 +1278,31 @@ const previewEmployerInsurance = Number(
             Payslip for {new Date(selectedDate.year, selectedDate.month - 1).toLocaleString("default", { month: "long", year: "numeric" })}
           </h2>
 
-          <table className="preview-employee-details" style={{ width: "100%", marginBottom: "20px", borderCollapse: "collapse", tableLayout: "fixed", fontSize: "14px" }}>
+          <table className="preview-employee-details">
             <tbody>
               <tr>
-                <td style={{ padding: "8px" }}><strong>Employee Name:</strong> {previewName}</td>
-                <td style={{ padding: "8px" }}><strong>Employee ID:</strong> {employeeId}</td>
+                <td><strong>Employee Name:</strong> {previewName}</td>
+                <td><strong>Employee ID:</strong> {employeeId}</td>
               </tr>
               <tr>
-                <td style={{ padding: "8px" }}><strong>Gender:</strong> {String(previewGender).toUpperCase()}</td>
-                <td style={{ padding: "8px" }}><strong>Designation:</strong> {previewDesignationDisplay}</td>
+                <td><strong>Gender:</strong> {String(previewGender).toUpperCase()}</td>
+                <td><strong>Designation:</strong> {previewDesignationDisplay}</td>
               </tr>
               <tr>
-                <td style={{ padding: "8px" }}><strong>Date of Joining:</strong> {previewDoj}</td>
-                <td style={{ padding: "8px" }}><strong>Account No:</strong> {previewAccountNo}</td>
+                <td><strong>Date of Joining:</strong> {previewDoj}</td>
+                <td><strong>Account No:</strong> {previewAccountNo}</td>
               </tr>
               <tr>
-                <td style={{ padding: "8px" }}><strong>Working Days:</strong> {previewTotalWorkingDays}</td>
-                <td style={{ padding: "8px" }}><strong>No of leaves :</strong> {previewLeaves}</td>
+                <td><strong>Working Days:</strong> {previewTotalWorkingDays}</td>
+                <td><strong>No of leaves :</strong> {previewLeaves}</td>
               </tr>
               <tr>
-                <td style={{ padding: "8px" }}><strong>UAN No:</strong> {previewUan}</td>
-                <td style={{ padding: "8px" }}><strong>PAN Number:</strong> {previewPan}</td>
+                <td><strong>UAN No:</strong> {previewUan}</td>
+                <td><strong>PAN Number:</strong> {previewPan}</td>
               </tr>
               <tr>
-                <td style={{ padding: "8px" }}><strong>ESI Number:</strong> {previewEsi}</td>
-                <td style={{ padding: "8px" }}><strong>PF Number:</strong> {previewPfNumber}</td>
+                <td><strong>ESI Number:</strong> {previewEsi}</td>
+                <td><strong>PF Number:</strong> {previewPfNumber}</td>
               </tr>
             </tbody>
           </table>
@@ -1326,7 +1328,7 @@ const previewEmployerInsurance = Number(
 
     <tr style={{ backgroundColor: "#f0f0f0" }}>
       <td><strong>Gross Salary</strong></td>
-      <td><strong>₹{previewGross.toFixed(2)}</strong></td>
+      <td><strong>₹{Math.round(previewGross).toFixed(0)}</strong></td>
       <td><strong>Total Deductions</strong></td>
       <td><strong>₹{previewTotalDed.toFixed(2)}</strong></td>
     </tr>
@@ -1348,7 +1350,7 @@ const previewEmployerInsurance = Number(
 
     <tr className="net-salary-row">
       <td colSpan="2"><strong>Net Salary</strong></td>
-      <td colSpan="2"><strong>₹{previewNet.toFixed(2)}</strong></td>
+      <td colSpan="2"><strong>₹{Math.round(previewNet).toFixed(0)}</strong></td>
     </tr>
   </tbody>
 </table>

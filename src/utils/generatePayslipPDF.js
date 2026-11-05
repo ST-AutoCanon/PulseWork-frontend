@@ -122,11 +122,17 @@ const generatePayslipPDF = async (
     payrollData.net_salary || grossSalary - totalDeductions
   );
 
-  const totalWorkingDays =
-    attendance?.total_working_days || payrollData.lop_days
-      ? 30 - payrollData.lop_days
-      : "N/A";
-  const leavesTaken = payrollData.lop_days || 0;
+  const totalWorkingDays = new Date(
+    Number(selectedDate.year),
+    Number(selectedDate.month),
+    0
+  ).getDate();
+  const leavesTaken = Math.round(Number(
+    payrollData.approved_leave_count ??
+    payrollData.leave_count ??
+    payrollData.lop_days ??
+    0
+  ) || 0);
 
   const monthNames = [
     "January",
@@ -196,9 +202,9 @@ const generatePayslipPDF = async (
       "{{professional_tax}}": professionalTax.toFixed(2),
       "{{tds}}": tds.toFixed(2),
       "{{insurance}}": insurance.toFixed(2),
-      "{{gross_salary}}": grossSalary.toFixed(2),
+      "{{gross_salary}}": Math.round(grossSalary).toFixed(0),
       "{{total_deductions}}": totalDeductions.toFixed(2),
-      "{{net_salary}}": netSalary.toFixed(2),
+      "{{net_salary}}": Math.round(netSalary).toFixed(0),
       "{{net_salary_words}}": netSalaryWords,
       "{{month_year}}": monthYear,
       // New placeholders for advance detail

@@ -378,7 +378,7 @@ useEffect(() => {
     showAlert("Employee has been directly exited successfully", "Success", "success");
     setShowDirectExitModal(false);
     setDirectExitForm({ employeeId: "", hr_final_lwd: "", hr_rating: "", hr_evaluation_comments: "", reason: "Direct Exit by HR" });
-    
+   
     await fetchAllTeamRequests(); // refresh list
   } catch (err) {
     showAlert(err.response?.data?.error || "Failed to perform direct exit", "Error", "error");
@@ -654,7 +654,7 @@ useEffect(() => {
 //   });
 
 //   if (selectedRequest.type === "clearance" || selectedRequest.final_outcome === "RESIGNED") {
-    
+   
 //     // FIXED: Extract only YYYY-MM-DD part for date input
 //     let finalLwdValue = "";
 
@@ -670,10 +670,10 @@ useEffect(() => {
 //     const ratingValue = selectedRequest.hr_rating || "";
 //     const commentsValue = selectedRequest.hr_evaluation_comments || selectedRequest.hr_comments || "";
 
-//     console.log("[CLEARANCE DEBUG] Final values being set:", { 
-//       finalLwd: finalLwdValue, 
-//       rating: ratingValue, 
-//       comments: commentsValue 
+//     console.log("[CLEARANCE DEBUG] Final values being set:", {
+//       finalLwd: finalLwdValue,
+//       rating: ratingValue,
+//       comments: commentsValue
 //     });
 
 //     setTimeout(() => {
@@ -688,7 +688,7 @@ useEffect(() => {
 //     setRecommendedLwd("");
 //     setLeavePolicy("");
 //   }
-// }, [selectedRequest]);   
+// }, [selectedRequest]);  
 
 // Replace the entire date extraction block inside the useEffect with this:
 
@@ -712,13 +712,13 @@ useEffect(() => {
   });
 
   if (selectedRequest.type === "clearance" || selectedRequest.final_outcome === "RESIGNED") {
-    
+   
     let finalLwdValue = "";
 
     // Helper function to safely extract YYYY-MM-DD without timezone shift
     const extractDateOnly = (dateStr) => {
       if (!dateStr) return "";
-      
+     
       // Method 1: Use Date object and format manually (most reliable)
       const date = new Date(dateStr);
       if (isNaN(date.getTime())) return "";
@@ -726,7 +726,7 @@ useEffect(() => {
       const year = date.getFullYear();
       const month = String(date.getMonth() + 1).padStart(2, '0');
       const day = String(date.getDate()).padStart(2, '0');
-      
+     
       return `${year}-${month}-${day}`;
     };
 
@@ -740,13 +740,13 @@ useEffect(() => {
     }
 
     const ratingValue = selectedRequest.hr_rating || "";
-    const commentsValue = selectedRequest.hr_evaluation_comments || 
+    const commentsValue = selectedRequest.hr_evaluation_comments ||
                          selectedRequest.hr_comments || "";
 
-    console.log("[CLEARANCE DEBUG] Final values being set:", { 
-      finalLwd: finalLwdValue, 
-      rating: ratingValue, 
-      comments: commentsValue 
+    console.log("[CLEARANCE DEBUG] Final values being set:", {
+      finalLwd: finalLwdValue,
+      rating: ratingValue,
+      comments: commentsValue
     });
 
     // Use setTimeout to avoid React batching issues with modal
@@ -878,7 +878,7 @@ useEffect(() => {
 
 const fetchAllActiveEmployees = async () => {
   if (!isHr && !isAdmin) return;
-  
+ 
   setLoadingActiveEmployees(true);
   try {
     const res = await axios.get(`${BACKEND_URL}/api/exit/all-active-employees`, {
@@ -1052,7 +1052,7 @@ const handleReviewAction = async (reviewType, action) => {
           methodPayload = { ...payload, status: action };
         }
       }
-    } 
+    }
     else if (reviewType === "withdrawal") {
       if (isTeamTab) {
         // Supervisor action on withdrawal
@@ -1217,7 +1217,7 @@ const filteredAllTeamRequests = allTeamRequests.filter((req) => {
                   {selfRequest.withdrawal_requested_at ? (
                     // ── WITHDRAWAL IN PROGRESS ────────────────────────────────
                     <>
-      
+     
                       <h2 className="exf-title">Withdrawal Request In Progress</h2>
                       <div className="withdrawal-focused-card bg-white p-6 rounded-lg border border-gray-200 shadow-sm">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -1606,7 +1606,7 @@ const filteredAllTeamRequests = allTeamRequests.filter((req) => {
                  <div className="exf-team-panel">
   <div className="flex justify-between items-center mb-4">
     <h2 className="exf-panel-title">Exit & Withdrawal Requests from My Team</h2>
-    
+   
     <div className="relative w-72">
       <input
         type="text"
@@ -1630,7 +1630,9 @@ const filteredAllTeamRequests = allTeamRequests.filter((req) => {
                               <th>Emp ID</th>
                               <th>Name</th>
                               <th>Reason</th>
-                              <th>last working Date</th>
+                              <th>Proposed LWD</th>
+                              <th>Final LWD</th>
+                              <th>Applied Date</th>
                               <th>Supervisor</th>
                               <th>HR</th>
                               <th>Status</th>
@@ -1699,13 +1701,19 @@ const filteredAllTeamRequests = allTeamRequests.filter((req) => {
                                     </div>
                                   </td>
                                   <td>
-                                    {isWithdrawal
-                                      ? req.withdrawal_requested_at
-                                        ? new Date(req.withdrawal_requested_at).toLocaleDateString("en-GB")
-                                        : "—"
-                                      : req.proposed_lwd
-                                        ? new Date(req.proposed_lwd).toLocaleDateString("en-GB")
-                                        : "—"}
+                                    {req.proposed_lwd
+                                      ? new Date(req.proposed_lwd).toLocaleDateString("en-GB")
+                                      : "—"}
+                                  </td>
+                                  <td>
+                                    {req.hr_final_lwd || req.final_lwd
+                                      ? new Date(req.hr_final_lwd || req.final_lwd).toLocaleDateString("en-GB")
+                                      : "—"}
+                                  </td>
+                                  <td>
+                                    {req.applied_at
+                                      ? new Date(req.applied_at).toLocaleDateString("en-GB")
+                                      : "—"}
                                   </td>
                                   <td>
                                     <span
@@ -1889,7 +1897,9 @@ const filteredAllTeamRequests = allTeamRequests.filter((req) => {
                           <th>Emp ID</th>
                           <th>Name</th>
                           <th>Reason</th>
-                          <th>last working Date</th>
+                          <th>Proposed LWD</th>
+                          <th>Final LWD</th>
+                          <th>Applied Date</th>
                           <th>Supervisor</th>
                           <th>HR</th>
                           <th>Outcome</th>
@@ -1964,13 +1974,19 @@ const filteredAllTeamRequests = allTeamRequests.filter((req) => {
                                 </div>
                               </td>
                               <td>
-                                {isWithdrawal
-                                  ? req.withdrawal_requested_at
-                                    ? new Date(req.withdrawal_requested_at).toLocaleDateString("en-GB")
-                                    : "—"
-                                  : req.proposed_lwd
-                                    ? new Date(req.proposed_lwd).toLocaleDateString("en-GB")
-                                    : "—"}
+                                {req.proposed_lwd
+                                  ? new Date(req.proposed_lwd).toLocaleDateString("en-GB")
+                                  : "—"}
+                              </td>
+                              <td>
+                                {req.hr_final_lwd || req.final_lwd
+                                  ? new Date(req.hr_final_lwd || req.final_lwd).toLocaleDateString("en-GB")
+                                  : "—"}
+                              </td>
+                              <td>
+                                {req.applied_at
+                                  ? new Date(req.applied_at).toLocaleDateString("en-GB")
+                                  : "—"}
                               </td>
                               <td>
                                 <span
@@ -2269,7 +2285,7 @@ const finalLwdValue = req.hr_final_lwd || req.final_lwd || req.proposed_lwd || "
                     ? "Withdrawal Review"
                     : "Clearance Review"}
                 </h3>
-                <button 
+                <button
                   className="modal-close-btn"
                   onClick={() => {
                     setSelectedRequest(null);
@@ -2317,7 +2333,7 @@ const finalLwdValue = req.hr_final_lwd || req.final_lwd || req.proposed_lwd || "
                         <div className="info-label">Resignation Reason</div>
                         <div className="reason-content">
                           {selectedRequest.reason || "—"}
-                          {selectedRequest.reason === "Other" && selectedRequest.other_reason && 
+                          {selectedRequest.reason === "Other" && selectedRequest.other_reason &&
                             ` (${selectedRequest.other_reason})`}
                         </div>
                       </div>
@@ -2334,12 +2350,12 @@ const finalLwdValue = req.hr_final_lwd || req.final_lwd || req.proposed_lwd || "
                       <div className="info-card small-info">
                         <div className="info-label">Proposed LWD</div>
                         <div className="info-value">
-                          {selectedRequest.proposed_lwd 
+                          {selectedRequest.proposed_lwd
                             ? new Date(selectedRequest.proposed_lwd).toLocaleDateString("en-GB", {
                                 day: "2-digit",
                                 month: "short",
                                 year: "numeric",
-                              }) 
+                              })
                             : "—"}
                         </div>
                       </div>
@@ -2438,7 +2454,7 @@ const finalLwdValue = req.hr_final_lwd || req.final_lwd || req.proposed_lwd || "
     <div className="section-block">
       <div className="flex justify-between items-center mb-4">
         <h4 className="section-title">Knowledge Transfer Plans</h4>
-        
+       
         {/* Add KT Button - ONLY visible to the employee themselves (not for supervisor review) */}
         {selectedRequest.employee_id === employeeId && (
           <button
@@ -2492,7 +2508,7 @@ const finalLwdValue = req.hr_final_lwd || req.final_lwd || req.proposed_lwd || "
   <span className="status-label">Status:</span>
   <span className="status-value font-medium">
     {kt.status?.trim() || "Pending"}
-    
+   
   </span>
 </div>
 
@@ -2536,9 +2552,9 @@ const finalLwdValue = req.hr_final_lwd || req.final_lwd || req.proposed_lwd || "
                     />
                     <span className="font-medium">HR Approved</span>
                   </label>
-                  
+                 
                 )}
-                
+               
               </div>
 
               {/* Edit KT Button - ONLY for the employee themselves */}

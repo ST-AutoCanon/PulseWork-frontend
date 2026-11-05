@@ -237,7 +237,7 @@ drawRow(
     ["Other Allowance", getAmt(otherAllowance).toString(), "Insurance", getAmt(insurance).toString()],
     ["", "", "Professional Tax", getAmt(professionalTax).toString()],
     ["", "", "TDS", getAmt(tds).toString()],
-    ["Gross Earnings", grossEarnings.toString(), "Total Deductions", totalDeductions.toString()],
+    ["Gross Earnings", Math.round(grossEarnings).toString(), "Total Deductions", totalDeductions.toString()],
   ];
 
   // Inside the autoTable for salary table

@@ -58,6 +58,11 @@ const PayrollSummary = () => {
     "x-org-id": orgId ?? "",
   };
 
+  const isPayslipDownloadEnabled =
+    payrollData?.payslip_generated === 1 ||
+    payrollData?.payslip_generated === "1" ||
+    payrollData?.payslip_generated === true;
+
   const protectedImgCache = new Map();
 const buildAdvanceDetailText = (
   advances,
@@ -296,6 +301,11 @@ const buildAdvanceDetailText = (
     try {
       if (!payrollData) {
         alert("No payroll data available to download.");
+        return;
+      }
+
+      if (!isPayslipDownloadEnabled) {
+        alert("Payslip download is not enabled for this employee and month.");
         return;
       }
 
@@ -1364,7 +1374,11 @@ const previewEmployerInsurance = Number(
   </tbody>
 </table>
 
-          <button onClick={handleDownload} className="payroll-download-btn">
+          <button
+            onClick={handleDownload}
+            className="payroll-download-btn"
+            disabled={!isPayslipDownloadEnabled}
+          >
             Download PDF
           </button>
         </div>

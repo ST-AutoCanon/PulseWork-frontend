@@ -66,7 +66,8 @@ const generatePayslipPDF = async (
   bankDetails = {},
   attendance = {},
   employeeDetails = {},
-  template = null
+  template = null,
+  approvedLeaveCount = null
 ) => {
   if (!payrollData || !selectedDate) {
     console.error("Missing required data");
@@ -127,12 +128,16 @@ const generatePayslipPDF = async (
     Number(selectedDate.month),
     0
   ).getDate();
-  const leavesTaken = Math.round(Number(
-    payrollData.approved_leave_count ??
-    payrollData.leave_count ??
-    payrollData.lop_days ??
-    0
-  ) || 0);
+  const leavesTaken = Math.max(0,
+    approvedLeaveCount !== null
+      ? approvedLeaveCount
+      : Math.round(Number(
+          payrollData.approved_leave_count ??
+          payrollData.leave_count ??
+          payrollData.lop_days ??
+          0
+        ) || 0)
+  );
 
   const monthNames = [
     "January",

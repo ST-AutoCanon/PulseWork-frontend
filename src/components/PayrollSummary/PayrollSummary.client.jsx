@@ -21,6 +21,7 @@ const PayrollSummary = () => {
   const [payrollData, setPayrollData] = useState(null);
   const [bankDetails, setBankDetails] = useState(null);
   const [attendance, setAttendance] = useState(null);
+  const [approvedLeaveCount, setApprovedLeaveCount] = useState(0);
   const [employeeDetails, setEmployeeDetails] = useState(null);
   const [templateHtml, setTemplateHtml] = useState(null);
   const [templateCss, setTemplateCss] = useState(null);
@@ -336,12 +337,7 @@ const buildAdvanceDetailText = (
                 year: "numeric",
               })
             : "N/A";
-        const leavesTaken = Math.round(Number(
-          payrollData.approved_leave_count ??
-          payrollData.leave_count ??
-          payrollData.lop_days ??
-          0
-        ) || 0);
+        const leavesTaken = Math.max(0, Number(approvedLeaveCount || 0));
         const monthWorkingDays = new Date(
           Number(selectedDate.year),
           Number(selectedDate.month),
@@ -512,12 +508,7 @@ const employerInsurance = Number(payrollData.insurance_employer || 0);
 
       const netSalary = Number(payrollData.net_salary || grossSalary - totalDeductions);
 
-      const leavesTaken = Math.round(Number(
-        payrollData.approved_leave_count ??
-        payrollData.leave_count ??
-        payrollData.lop_days ??
-        0
-      ) || 0);
+      const leavesTaken = Math.max(0, Number(approvedLeaveCount || 0));
       const totalWorkingDays = new Date(
         Number(selectedDate.year),
         Number(selectedDate.month),
@@ -829,7 +820,8 @@ if (lopDeduction > 0)
         bankDetails || {},
         attendance || {},
         employeeDetails || {},
-        processedTemplate
+        processedTemplate,
+        approvedLeaveCount
       );
 
       if (!blob) {
@@ -992,6 +984,7 @@ if (lopDeduction > 0)
       setError(null);
       setPayrollData(null);
       setAdvances([]);
+      setApprovedLeaveCount(0);
 
       try {
         const empRes = await axios.get(`${BACKEND_URL}/api/employee-details/${employeeId}`, {
@@ -1081,6 +1074,19 @@ if (lopDeduction > 0)
           setBankDetails({});
         }
 
+        try {
+          const leaveCountRes = await axios.get(
+            `${BACKEND_URL}/api/approved-payroll-leave-count/${encodeURIComponent(employeeId)}?month=${selectedDate.month}&year=${selectedDate.year}`,
+            { headers, withCredentials: true }
+          );
+          setApprovedLeaveCount(
+            Number(leaveCountRes.data?.approved_leave_count || 0)
+          );
+        } catch (leaveErr) {
+          console.warn("Approved leave count fetch failed:", leaveErr);
+          setApprovedLeaveCount(0);
+        }
+
        try {
   const advRes = await axios.get(
     `${BACKEND_URL}/api/compensation/advance-details`,
@@ -1115,6 +1121,14 @@ if (lopDeduction > 0)
             { headers, withCredentials: true }
           );
           setPayrollData(salaryRes.data || null);
+          if (
+            salaryRes.data?.approved_leave_count !== undefined &&
+            salaryRes.data?.approved_leave_count !== null
+          ) {
+            setApprovedLeaveCount(
+              Number(salaryRes.data.approved_leave_count || 0)
+            );
+          }
         } catch (salaryErr) {
           if (salaryErr.response?.status === 404 || salaryErr.response?.data?.error === "Not found") {
             setPayrollData(null);
@@ -1195,12 +1209,7 @@ const previewEmployerInsurance = Number(
       })
     : "N/A";
   const previewAccountNo = bankDetails?.account_number || "N/A";
-  const previewLeaves = Math.round(Number(
-    payrollData?.approved_leave_count ??
-    payrollData?.leave_count ??
-    payrollData?.lop_days ??
-    0
-  ) || 0);
+  const previewLeaves = Math.max(0, Number(approvedLeaveCount || 0));
   const previewUan =
     employeeDetails?.uan_number ||
     employeeDetails?.uin_number ||

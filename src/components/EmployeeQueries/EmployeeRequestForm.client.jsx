@@ -2,6 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import axios from "axios";
+import { City } from "country-state-city";
 import Modal from "../Modal/Modal.client";
 
 import {
@@ -15,6 +16,16 @@ import {
   FiX,
 } from "react-icons/fi";
 import { MdOutlineCurrencyRupee } from "react-icons/md";
+
+const TRAVEL_CITY_OPTIONS = Array.from(
+  new Set(
+    (City.getCitiesOfCountry("IN") || [])
+      .map(
+        (city) => `${city.name}${city.stateCode ? `, ${city.stateCode}` : ""}`,
+      )
+      .filter(Boolean),
+  ),
+).sort((a, b) => a.localeCompare(b));
 
 function getEmployeeAge(employee) {
   const providedAge = Number(employee.age);
@@ -43,6 +54,89 @@ function getEmployeeAge(employee) {
   }
 
   return age >= 0 ? age : null;
+}
+
+function SearchableCityDropdown({ value, onChange, label, placeholder }) {
+  const [search, setSearch] = useState(value || "");
+  const [isOpen, setIsOpen] = useState(false);
+
+  useEffect(() => {
+    if (!isOpen) setSearch(value || "");
+  }, [value, isOpen]);
+
+  const normalizedSearch = search.trim().toLowerCase();
+  const filteredCities = TRAVEL_CITY_OPTIONS.filter((city) =>
+    city.toLowerCase().includes(normalizedSearch),
+  ).slice(0, 20);
+
+  return (
+    <div style={{ position: "relative", width: "100%" }}>
+      <input
+        type="text"
+        role="combobox"
+        aria-label={label}
+        aria-autocomplete="list"
+        aria-expanded={isOpen}
+        autoComplete="off"
+        placeholder={placeholder}
+        value={search}
+        onFocus={() => setIsOpen(true)}
+        onBlur={() => setIsOpen(false)}
+        onChange={(event) => {
+          setSearch(event.target.value);
+          onChange(event.target.value);
+          setIsOpen(true);
+        }}
+      />
+      {isOpen && filteredCities.length > 0 && (
+        <div
+          role="listbox"
+          style={{
+            position: "absolute",
+            top: "calc(100% + 4px)",
+            left: 0,
+            right: 0,
+            zIndex: 1000,
+            maxHeight: 220,
+            overflowY: "auto",
+            background: "#ffffff",
+            color: "#1f2937",
+            border: "1px solid #d1d5db",
+            borderRadius: 8,
+            boxShadow: "0 8px 20px rgba(0, 0, 0, 0.12)",
+          }}
+        >
+          {filteredCities.map((city) => (
+            <button
+              type="button"
+              role="option"
+              aria-selected={city === value}
+              key={city}
+              onMouseDown={(event) => event.preventDefault()}
+              onClick={() => {
+                onChange(city);
+                setSearch(city);
+                setIsOpen(false);
+              }}
+              style={{
+                display: "block",
+                width: "100%",
+                padding: "10px 12px",
+                border: 0,
+                background: city === value ? "#eef2ff" : "#ffffff",
+                color: "inherit",
+                textAlign: "left",
+                cursor: "pointer",
+                font: "inherit",
+              }}
+            >
+              {city}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
 }
 
 function SearchableEmployeeDropdown({ employees, selectedId, onChange }) {
@@ -367,6 +461,8 @@ const EmployeeRequestForm = ({
     to: "",
     travelDate: "",
     returnDate: "",
+    preferredDepartureTime: "",
+    preferredReturnTime: "",
     project: "",
     governmentId: "",
     mobileNumber: "",
@@ -382,6 +478,7 @@ const EmployeeRequestForm = ({
     travelerAges: [""],
     accommodationRequired: false,
     accommodationPlace: "",
+    accommodationLocation: "",
     otherAccommodationPlace: "",
     accommodationFrom: "",
     accommodationTo: "",
@@ -418,6 +515,7 @@ const EmployeeRequestForm = ({
   const [errors, setErrors] = useState({});
   const [employees, setEmployees] = useState([]);
   const [projects, setProjects] = useState([]);
+  const [projectLoadError, setProjectLoadError] = useState("");
   const [travelContext, setTravelContext] = useState({
     cadreBand: "LOWER",
     age: null,
@@ -560,8 +658,16 @@ const EmployeeRequestForm = ({
             )
             .filter(Boolean),
         );
+        setProjectLoadError("");
       })
-      .catch(() => setProjects([]));
+      .catch((error) => {
+        console.error("Travel project options fetch failed:", error);
+        setProjects([]);
+        setProjectLoadError(
+          error.response?.data?.message ||
+            "Unable to load project options. Refresh and try again.",
+        );
+      });
   }, [employeeId, orgId, type]);
 
   useEffect(() => {
@@ -824,6 +930,18 @@ const EmployeeRequestForm = ({
       ) {
         nextErrors.accommodationPlace = "Select a guest house";
       }
+      if (form.accommodationRequired) {
+        if (!form.accommodationLocation.trim()) {
+          nextErrors.accommodationLocation =
+            "Select the accommodation location.";
+        } else if (
+          form.to.trim().toLowerCase() !==
+          form.accommodationLocation.trim().toLowerCase()
+        ) {
+          nextErrors.accommodationLocation =
+            "Accommodation location must match the travel destination.";
+        }
+      }
 
       // Accommodation dates must not be earlier than today.
       if (form.accommodationRequired) {
@@ -954,6 +1072,8 @@ const EmployeeRequestForm = ({
           to: form.to,
           travelDate: form.travelDate,
           returnDate: form.returnDate,
+          preferredDepartureTime: form.preferredDepartureTime,
+          preferredReturnTime: form.preferredReturnTime,
           project: form.project,
           governmentId: form.governmentId,
           mobileNumber: form.mobileNumber,
@@ -971,6 +1091,7 @@ const EmployeeRequestForm = ({
           travelers,
           travelerDetails,
           accommodationRequired: form.accommodationRequired,
+          accommodationLocation: form.accommodationLocation,
           accommodationPlace:
             form.accommodationPlace === "Other"
               ? form.otherAccommodationPlace
@@ -1256,20 +1377,29 @@ const EmployeeRequestForm = ({
                 </RequestField>
               )}
               <RequestField label="From" required>
-                <InputWithIcon
-                  icon={<FiMapPin />}
+                <SearchableCityDropdown
+                  label="Departure city"
+                  placeholder="Search departure city"
                   value={form.from}
                   onChange={(value) => update("from", value)}
-                  placeholder="Select departure city"
                 />
               </RequestField>
 
               <RequestField label="To" required>
-                <InputWithIcon
-                  icon={<FiMapPin />}
+                <SearchableCityDropdown
+                  label="Travel destination"
+                  placeholder="Search destination city"
                   value={form.to}
-                  onChange={(value) => update("to", value)}
-                  placeholder="Select destination city"
+                  onChange={(value) => {
+                    update("to", value);
+                    if (
+                      form.accommodationRequired &&
+                      (!form.accommodationLocation ||
+                        form.accommodationLocation === form.to)
+                    ) {
+                      update("accommodationLocation", value);
+                    }
+                  }}
                 />
               </RequestField>
 
@@ -1366,6 +1496,26 @@ const EmployeeRequestForm = ({
                 />
               </RequestField>
 
+              <RequestField label="Preferred departure time">
+                <input
+                  type="time"
+                  value={form.preferredDepartureTime}
+                  onChange={(event) =>
+                    update("preferredDepartureTime", event.target.value)
+                  }
+                />
+              </RequestField>
+
+              <RequestField label="Preferred return time">
+                <input
+                  type="time"
+                  value={form.preferredReturnTime}
+                  onChange={(event) =>
+                    update("preferredReturnTime", event.target.value)
+                  }
+                />
+              </RequestField>
+
               <RequestField label="Project" required error={errors.project}>
                 <select
                   value={form.project}
@@ -1383,6 +1533,11 @@ const EmployeeRequestForm = ({
                     </option>
                   ))}
                 </select>
+                {projectLoadError && (
+                  <small className="request-field-error" role="alert">
+                    {projectLoadError}
+                  </small>
+                )}
               </RequestField>
 
               <RequestField label="Government ID (Aadhar)">
@@ -1448,9 +1603,12 @@ const EmployeeRequestForm = ({
                   <input
                     type="checkbox"
                     checked={form.accommodationRequired}
-                    onChange={(event) =>
-                      update("accommodationRequired", event.target.checked)
-                    }
+                    onChange={(event) => {
+                      update("accommodationRequired", event.target.checked);
+                      if (event.target.checked && !form.accommodationLocation) {
+                        update("accommodationLocation", form.to);
+                      }
+                    }}
                   />
                   <span>Accommodation required</span>
                 </label>
@@ -1458,6 +1616,20 @@ const EmployeeRequestForm = ({
 
               {form.accommodationRequired && (
                 <>
+                  <RequestField
+                    label="Accommodation location"
+                    required
+                    error={errors.accommodationLocation}
+                  >
+                    <SearchableCityDropdown
+                      label="Accommodation location"
+                      placeholder="Search accommodation city"
+                      value={form.accommodationLocation}
+                      onChange={(value) =>
+                        update("accommodationLocation", value)
+                      }
+                    />
+                  </RequestField>
                   <RequestField
                     label="Guest house"
                     required

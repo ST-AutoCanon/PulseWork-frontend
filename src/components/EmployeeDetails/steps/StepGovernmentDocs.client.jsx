@@ -55,8 +55,6 @@ export default function StepGovernmentDocs({ data, onChange }) {
           name="passport_number"
           value={data.passport_number || ""}
           onChange={(e) => onChange("passport_number", e.target.value)}
-          pattern="^[A-Z][0-9]{7}$"
-          title="1 letter followed by 7 digits"
         />
       </label>
       <FileInput

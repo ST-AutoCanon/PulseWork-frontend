@@ -125,6 +125,7 @@ const eventLabels = {
   ADMIN_APPROVED: "Approved by Admin",
   BOOKING_CONFIRMED: "Tickets Booked by Admin",
   TRIP_COMPLETED: "Trip Completed",
+  TRAVEL_FEEDBACK_SUBMITTED: "Travel Feedback Submitted",
   REQUEST_REJECTED: "Request Rejected",
   REQUEST_CANCELLED: "Request Cancelled",
 };
@@ -256,22 +257,6 @@ function isManagerOrSupervisorRole(role) {
 }
 
 function getRequestDisplayStatus(request) {
-  if (request?.request_type === "TRAVEL_BOOKING") {
-    const details = normalizeDetails(
-      request.details_json ?? request.details ?? request.request_details,
-    );
-    const dateChangeStatus = String(
-      details?.dateChangeRequest?.status ?? request?.date_change_status ?? "",
-    ).toUpperCase();
-
-    if (dateChangeStatus === "PENDING") {
-      return {
-        label: "DATE CHANGE REQUESTED",
-        className: "pending",
-      };
-    }
-  }
-
   return getStatus(request?.current_status);
 }
 
@@ -865,7 +850,7 @@ const EmployeeAssistant = () => {
     return created;
   };
 
-  const performApproveRequest = async () => {
+  const performApproveRequest = async (project = "") => {
     if (!selectedRequest) return;
 
     try {
@@ -873,6 +858,7 @@ const EmployeeAssistant = () => {
         `${BACKEND_URL}/requests/${selectedRequest.id}/approve`,
         {
           comment: actionComment.trim(),
+          ...(project ? { project } : {}),
         },
         {
           headers,
@@ -892,13 +878,13 @@ const EmployeeAssistant = () => {
     }
   };
 
-  const approveRequest = async () => {
+  const approveRequest = async (project = "") => {
     if (!selectedRequest) {
       return;
     }
 
     if (selectedRequest.request_type !== "SALARY_ADVANCE") {
-      await performApproveRequest();
+      await performApproveRequest(project);
       return;
     }
 
@@ -1140,6 +1126,13 @@ const EmployeeAssistant = () => {
         ) || null
       : null;
 
+    const preferredDeparture = details.preferredDepartureTime
+      ? `${details.travelDate || ""}T${details.preferredDepartureTime}`
+      : "";
+    const preferredReturn = details.preferredReturnTime
+      ? `${details.returnDate || details.travelDate || ""}T${details.preferredReturnTime}`
+      : "";
+
     setBookingForm((previous) => ({
       ...previous,
 
@@ -1147,9 +1140,9 @@ const EmployeeAssistant = () => {
 
       pnr: details.pnr || "",
 
-      departureTime: details.departureTime || "",
+      departureTime: details.departureTime || preferredDeparture,
 
-      returnTime: details.returnTime || "",
+      returnTime: details.returnTime || preferredReturn,
 
       message: details.bookingMessage || "",
 
@@ -1188,13 +1181,13 @@ const EmployeeAssistant = () => {
     }
   };
 
-  const requestTravelDateChange = async (payload) => {
+  const submitTravelFeedback = async ({ rating, comment }) => {
     if (!selectedRequest) return;
 
     try {
       await axios.post(
-        `${BACKEND_URL}/requests/${selectedRequest.id}/date-change`,
-        payload,
+        `${BACKEND_URL}/requests/${selectedRequest.id}/feedback`,
+        { rating, comment },
         {
           headers,
           withCredentials: true,
@@ -1203,50 +1196,11 @@ const EmployeeAssistant = () => {
 
       await fetchRequests();
       await loadRequest(selectedRequest.id);
+      return true;
     } catch (error) {
-      console.error("[EmployeeAssistant] requestTravelDateChange:", error);
-
-      showAlert(
-        error.response?.data?.message ||
-          "Unable to submit the date-change request.",
-      );
-    }
-  };
-
-  const resolveTravelDateChange = async ({
-    decision,
-    comment = "",
-    ticket = null,
-  }) => {
-    if (!selectedRequest) return;
-
-    try {
-      const payload = new FormData();
-
-      payload.append("decision", decision);
-      payload.append("comment", comment);
-
-      if (ticket) {
-        payload.append("e_ticket", ticket);
-      }
-
-      await axios.post(
-        `${BACKEND_URL}/requests/${selectedRequest.id}/date-change/resolve`,
-        payload,
-        {
-          headers,
-          withCredentials: true,
-        },
-      );
-
-      await fetchRequests();
-      await loadRequest(selectedRequest.id);
-    } catch (error) {
-      console.error("[EmployeeAssistant] resolveTravelDateChange:", error);
-
-      showAlert(
-        error.response?.data?.message || "Unable to process the date change.",
-      );
+      console.error("[EmployeeAssistant] submitTravelFeedback:", error);
+      showAlert(error.response?.data?.message || "Unable to submit feedback.");
+      return false;
     }
   };
 
@@ -1838,6 +1792,8 @@ const EmployeeAssistant = () => {
             request={selectedRequest}
             loading={loadingDetail}
             employeeId={employeeId}
+            backendUrl={BACKEND_URL}
+            apiHeaders={headers}
             userRole={userRole}
             isAdmin={isAdmin}
             isTravelOperator={isTravelOperator}
@@ -1851,6 +1807,7 @@ const EmployeeAssistant = () => {
             saveTravelBookingDraft={saveTravelBookingDraft}
             submitTravelBooking={submitTravelBooking}
             completeTrip={completeTrip}
+            submitTravelFeedback={submitTravelFeedback}
             cancelRequest={cancelRequest}
             processAssetRequest={processAssetRequest}
             assetAllocation={assetAllocation}
@@ -1860,8 +1817,6 @@ const EmployeeAssistant = () => {
             sendRequestMessage={sendRequestMessage}
             sendingMessage={sendingMessage}
             isHR={isHR}
-            requestTravelDateChange={requestTravelDateChange}
-            resolveTravelDateChange={resolveTravelDateChange}
             onBack={() => {
               setSelectedRequest(null);
               setShowRequestHistory(true);
@@ -2127,6 +2082,8 @@ function RequestConversation({
   request,
   loading,
   employeeId,
+  backendUrl,
+  apiHeaders,
   userRole,
   isAdmin,
   isHR,
@@ -2141,97 +2098,85 @@ function RequestConversation({
   saveTravelBookingDraft,
   submitTravelBooking,
   completeTrip,
+  submitTravelFeedback,
   cancelRequest,
   processAssetRequest,
   assetAllocation,
   loadAssetCandidates,
-  requestTravelDateChange,
-  resolveTravelDateChange,
   onBack,
 }) {
   const details = normalizeDetails(request?.details_json);
 
-  const [dateChangeForm, setDateChangeForm] = useState({
-    travelDate: "",
-    returnDate: "",
-    reason: "",
-  });
-
-  const [dateChangeTicket, setDateChangeTicket] = useState(null);
-  // Keep the HR/Admin decision comment separate from the employee's original
-  // date-change reason so the resolution box always starts blank.
-  const [dateChangeResolutionComment, setDateChangeResolutionComment] =
-    useState("");
-  const [showDateChangeReasonModal, setShowDateChangeReasonModal] =
-    useState(false);
-  const [dateChangeReasonError, setDateChangeReasonError] = useState("");
+  const [projectOptions, setProjectOptions] = useState([]);
+  const [selectedProject, setSelectedProject] = useState(details.project || "");
+  const [projectLoadError, setProjectLoadError] = useState("");
+  const [projectOptionsLoading, setProjectOptionsLoading] = useState(false);
+  const [feedbackRating, setFeedbackRating] = useState("");
+  const [feedbackComment, setFeedbackComment] = useState("");
+  const [feedbackError, setFeedbackError] = useState("");
+  const [feedbackSubmitting, setFeedbackSubmitting] = useState(false);
 
   useEffect(() => {
-    setDateChangeForm({
-      travelDate: details.travelDate || "",
-      returnDate: details.returnDate || "",
-      reason: "",
-    });
+    setSelectedProject(details.project || "");
+    setProjectLoadError("");
+  }, [request?.id, details.project]);
 
-    setDateChangeTicket(null);
-    setDateChangeResolutionComment("");
-    setShowDateChangeReasonModal(false);
-    setDateChangeReasonError("");
-  }, [
-    request?.id,
-    details.travelDate,
-    details.returnDate,
-    details.dateChangeRequest?.status,
-    details.dateChangeRequest?.requestedTravelDate,
-    details.dateChangeRequest?.requestedReturnDate,
-  ]);
-
-  const originalTravelDate = details.travelDate || "";
-  const originalReturnDate = details.returnDate || "";
-  const hasProposedDateChange =
-    dateChangeForm.travelDate !== originalTravelDate ||
-    dateChangeForm.returnDate !== originalReturnDate;
-
-  const openDateChangeReasonModal = () => {
-    if (!dateChangeForm.travelDate || !hasProposedDateChange) return;
-    setDateChangeReasonError("");
-    setDateChangeForm((previous) => ({ ...previous, reason: "" }));
-    setShowDateChangeReasonModal(true);
-  };
-
-  const submitDateChangeWithReason = async () => {
-    const reason = dateChangeForm.reason.trim();
-    if (!reason) {
-      setDateChangeReasonError(
-        "A reason is required to submit a date-change request.",
-      );
+  useEffect(() => {
+    if (
+      request?.request_type !== "TRAVEL_BOOKING" ||
+      request.current_status !== "PENDING_APPROVAL" ||
+      String(request.current_assignee_id) !== String(employeeId)
+    ) {
       return;
     }
 
-    setDateChangeReasonError("");
-    setShowDateChangeReasonModal(false);
-    await requestTravelDateChange({ ...dateChangeForm, reason });
-  };
+    setProjectOptionsLoading(true);
+    setProjectLoadError("");
+    axios
+      .get(`${backendUrl}/projectdrop`, {
+        headers: apiHeaders,
+        withCredentials: true,
+      })
+      .then((response) => {
+        const raw = Array.isArray(response.data)
+          ? response.data
+          : response.data?.data || [];
+        setProjectOptions(
+          raw
+            .map((item) =>
+              typeof item === "string"
+                ? item
+                : item?.project || item?.project_name || item?.name || "",
+            )
+            .filter(Boolean),
+        );
+        setProjectLoadError("");
+        setProjectOptionsLoading(false);
+      })
+      .catch((error) => {
+        console.error(
+          "[EmployeeAssistant] project options fetch failed:",
+          error,
+        );
+        setProjectOptionsLoading(false);
+        setProjectLoadError(
+          error.response?.data?.message ||
+            "Unable to load project options. Refresh and try again.",
+        );
+      });
+  }, [
+    apiHeaders,
+    backendUrl,
+    employeeId,
+    request?.current_assignee_id,
+    request?.current_status,
+    request?.id,
+    request?.request_type,
+  ]);
 
   const [offlineAssetNote, setOfflineAssetNote] = useState("");
 
   const isRequester = String(request.employee_id) === String(employeeId);
-
-  const canRequestDateChange =
-    request.request_type === "TRAVEL_BOOKING" &&
-    request.current_status === "BOOKED" &&
-    (isRequester ||
-      request.isTravelParticipant ||
-      String(request.created_by_employee_id) === String(employeeId)) &&
-    details.dateChangeRequest?.status !== "PENDING";
-
-  const canResolveDateChange =
-    request.request_type === "TRAVEL_BOOKING" &&
-    request.current_status === "BOOKED" &&
-    details.dateChangeRequest?.status === "PENDING" &&
-    (isAdmin || isHR);
-
-  const dateChange = details.dateChangeRequest || null;
 
   const isCurrentAssignee =
     String(request.current_assignee_id) === String(employeeId);
@@ -2265,19 +2210,34 @@ function RequestConversation({
       String(request.created_by_employee_id) === String(employeeId) ||
       (request.request_type === "TRAVEL_BOOKING" && (isAdmin || isHR)));
 
-  const dateChangeStatus =
-    request.request_type === "TRAVEL_BOOKING"
-      ? normalizeDetails(request.details_json).dateChangeRequest?.status
-      : null;
+  const myFeedback = (
+    Array.isArray(details.travelFeedback) ? details.travelFeedback : []
+  ).find((feedback) => String(feedback.employeeId) === String(employeeId));
 
-  const hasPendingDateChange = dateChangeStatus?.toUpperCase() === "PENDING";
+  const submitFeedbackForm = async () => {
+    const comment = feedbackComment.trim();
+    if (!feedbackRating || !comment) {
+      setFeedbackError("Select a rating and enter your feedback.");
+      return;
+    }
 
-  const status = hasPendingDateChange
-    ? {
-        label: "DATE CHANGE REQUESTED",
-        className: "pending",
+    setFeedbackError("");
+    setFeedbackSubmitting(true);
+    try {
+      const submitted = await submitTravelFeedback({
+        rating: Number(feedbackRating),
+        comment,
+      });
+      if (submitted) {
+        setFeedbackComment("");
+        setFeedbackRating("");
       }
-    : getStatus(request.current_status);
+    } finally {
+      setFeedbackSubmitting(false);
+    }
+  };
+
+  const status = getStatus(request.current_status);
 
   const RequestIcon = getRequestIcon(request.request_type);
 
@@ -2305,19 +2265,17 @@ function RequestConversation({
               <strong>Request Update</strong>
 
               <span>
-                {hasPendingDateChange
-                  ? "Your travel date-change request is awaiting HR/Admin review."
-                  : request.current_status === "PENDING_APPROVAL"
-                    ? "Your request is pending approval."
-                    : request.current_status === "PENDING_ADMIN_ACTION"
-                      ? "Your request is being processed by Admin."
-                      : request.current_status === "BOOKED"
-                        ? "Your travel tickets have been booked."
-                        : request.current_status === "COMPLETED"
-                          ? "Your request has been completed."
-                          : request.current_status === "REJECTED"
-                            ? "Your request was rejected."
-                            : "Here is the current status of your request."}
+                {request.current_status === "PENDING_APPROVAL"
+                  ? "Your request is pending approval."
+                  : request.current_status === "PENDING_ADMIN_ACTION"
+                    ? "Your request is being processed by Admin."
+                    : request.current_status === "BOOKED"
+                      ? "Your travel tickets have been booked."
+                      : request.current_status === "COMPLETED"
+                        ? "Your request has been completed."
+                        : request.current_status === "REJECTED"
+                          ? "Your request was rejected."
+                          : "Here is the current status of your request."}
               </span>
             </div>
           </div>
@@ -2404,6 +2362,40 @@ function RequestConversation({
                   <span className="action-pill warning">Pending Approval</span>
                 </div>
 
+                {request.request_type === "TRAVEL_BOOKING" && (
+                  <div className="assistant-field">
+                    <label>Project</label>
+                    <select
+                      value={selectedProject}
+                      onChange={(event) =>
+                        setSelectedProject(event.target.value)
+                      }
+                      required
+                    >
+                      <option value="">Select project</option>
+                      {selectedProject &&
+                        !projectOptions.includes(selectedProject) && (
+                          <option value={selectedProject}>
+                            {selectedProject}
+                          </option>
+                        )}
+                      {projectOptions.map((project, index) => (
+                        <option key={`${project}-${index}`} value={project}>
+                          {project}
+                        </option>
+                      ))}
+                    </select>
+                    {projectLoadError && (
+                      <small className="request-field-error" role="alert">
+                        {projectLoadError}
+                      </small>
+                    )}
+                    {projectOptionsLoading && (
+                      <small>Loading project options...</small>
+                    )}
+                  </div>
+                )}
+
                 <textarea
                   value={actionComment}
                   onChange={(e) => setActionComment(e.target.value)}
@@ -2424,7 +2416,19 @@ function RequestConversation({
                   <button
                     type="button"
                     className="approve-action"
-                    onClick={approveRequest}
+                    disabled={
+                      request.request_type === "TRAVEL_BOOKING" &&
+                      (!selectedProject.trim() ||
+                        projectOptionsLoading ||
+                        Boolean(projectLoadError))
+                    }
+                    onClick={() =>
+                      approveRequest(
+                        request.request_type === "TRAVEL_BOOKING"
+                          ? selectedProject
+                          : "",
+                      )
+                    }
                   >
                     <FiCheckCircle />
                     Approve
@@ -2690,201 +2694,6 @@ function RequestConversation({
 
             <RequestAttachments request={request} employeeId={employeeId} />
 
-            {canRequestDateChange && (
-              <section className="booking-details-card">
-                <div className="summary-heading">
-                  <h3>Change Travel Dates</h3>
-                </div>
-
-                <p>
-                  Submit a prepone or postpone request. The current booking
-                  stays unchanged until HR/Admin reviews it.
-                </p>
-
-                <label>
-                  Proposed travel date
-                  <input
-                    type="date"
-                    style={{ margin: "10px" }}
-                    value={dateChangeForm.travelDate}
-                    required
-                    onChange={(event) => {
-                      const travelDate = event.target.value;
-                      setDateChangeForm((previous) => ({
-                        ...previous,
-                        travelDate,
-                        returnDate:
-                          previous.returnDate &&
-                          travelDate &&
-                          previous.returnDate < travelDate
-                            ? ""
-                            : previous.returnDate,
-                      }));
-                    }}
-                  />
-                </label>
-
-                <label>
-                  Proposed return date
-                  <input
-                    type="date"
-                    style={{ margin: "10px" }}
-                    min={dateChangeForm.travelDate || undefined}
-                    value={dateChangeForm.returnDate}
-                    onChange={(event) =>
-                      setDateChangeForm((previous) => ({
-                        ...previous,
-                        returnDate: event.target.value,
-                      }))
-                    }
-                  />
-                </label>
-
-                <p className="date-change-reason-hint">
-                  A reason is required when you submit a travel date change.
-                </p>
-
-                <button
-                  type="button"
-                  className="upload-notify-button"
-                  disabled={
-                    !dateChangeForm.travelDate || !hasProposedDateChange
-                  }
-                  onClick={openDateChangeReasonModal}
-                >
-                  Submit date-change request
-                </button>
-              </section>
-            )}
-
-            {dateChange && (
-              <section className="booking-details-card">
-                <div className="summary-heading">
-                  <h3>Travel Date Change</h3>
-                </div>
-
-                <p>
-                  Status: <strong>{dateChange.status}</strong>
-                </p>
-
-                <p>
-                  Requested change:{" "}
-                  {String(dateChange.direction || "—").replace(/_/g, " ")}
-                </p>
-
-                <p>
-                  Original travel date:{" "}
-                  {formatShortDate(dateChange.previousTravelDate)}
-                </p>
-
-                <p>
-                  Proposed travel date:{" "}
-                  {formatShortDate(dateChange.requestedTravelDate)}
-                </p>
-
-                {dateChange.previousReturnDate && (
-                  <p>
-                    Original return date:{" "}
-                    {formatShortDate(dateChange.previousReturnDate)}
-                  </p>
-                )}
-
-                {dateChange.requestedReturnDate && (
-                  <p>
-                    Proposed return date:{" "}
-                    {formatShortDate(dateChange.requestedReturnDate)}
-                  </p>
-                )}
-
-                <p>Reason: {dateChange.reason || "—"}</p>
-
-                {dateChange.resolutionComment && (
-                  <p>HR/Admin comment: {dateChange.resolutionComment}</p>
-                )}
-              </section>
-            )}
-
-            {canResolveDateChange && (
-              <section className="booking-details-card">
-                <div className="summary-heading">
-                  <h3>Review Date Change</h3>
-                </div>
-
-                <p>
-                  A traveller has requested a date change. Approval requires a
-                  revised e-ticket.
-                </p>
-
-                <label>
-                  Upload revised e-ticket
-                  <input
-                    style={{ marginLeft: "10px" }}
-                    type="file"
-                    accept=".pdf,.png,.jpg,.jpeg"
-                    onChange={(event) =>
-                      setDateChangeTicket(event.target.files?.[0] || null)
-                    }
-                  />
-                </label>
-                <br />
-                <label style={{ display: "flex", marginTop: "10px" }}>
-                  HR/Admin comment
-                  <textarea
-                    style={{
-                      width: "400px",
-                      margin: "0 0 0 10px",
-                      padding: "5px",
-                    }}
-                    value={dateChangeResolutionComment}
-                    onChange={(event) =>
-                      setDateChangeResolutionComment(event.target.value)
-                    }
-                    placeholder="Add the decision reason or comment"
-                  />
-                </label>
-
-                <div
-                  className="booking-action-buttons"
-                  style={{
-                    width: "40%",
-                    display: "flex",
-                    justifyContent: "flex-start",
-                    gap: "10px",
-                    marginTop: "10px",
-                  }}
-                >
-                  <button
-                    type="button"
-                    className="cancel-request-button"
-                    onClick={() =>
-                      resolveTravelDateChange({
-                        decision: "REJECT",
-                        comment: dateChangeResolutionComment.trim(),
-                      })
-                    }
-                  >
-                    Reject date change
-                  </button>
-
-                  <button
-                    type="button"
-                    style={{ marginTop: "15px" }}
-                    className="upload-notify-button"
-                    disabled={!dateChangeTicket}
-                    onClick={() =>
-                      resolveTravelDateChange({
-                        decision: "APPROVE",
-                        comment: dateChangeResolutionComment.trim(),
-                        ticket: dateChangeTicket,
-                      })
-                    }
-                  >
-                    Approve and upload ticket
-                  </button>
-                </div>
-              </section>
-            )}
-
             {canComplete && (
               <div className="workflow-action-card completion-action">
                 <div className="workflow-action-heading">
@@ -2932,6 +2741,78 @@ function RequestConversation({
               </div>
             )}
 
+            {request.current_status === "COMPLETED" &&
+              request.request_type === "TRAVEL_BOOKING" &&
+              (isRequester ||
+                request.isTravelParticipant ||
+                String(request.created_by_employee_id) ===
+                  String(employeeId)) && (
+                <section className="booking-details-card">
+                  <div className="summary-heading">
+                    <h3>Trip feedback</h3>
+                  </div>
+                  {myFeedback ? (
+                    <>
+                      <p>
+                        Thanks for your feedback. Your rating:{" "}
+                        <strong>{myFeedback.rating}/5</strong>
+                      </p>
+                      <p>{myFeedback.comment}</p>
+                    </>
+                  ) : (
+                    <>
+                      <p>Share your feedback after completing your trip.</p>
+                      <div className="assistant-field">
+                        <label htmlFor="travel-feedback-rating">Rating</label>
+                        <select
+                          id="travel-feedback-rating"
+                          value={feedbackRating}
+                          onChange={(event) =>
+                            setFeedbackRating(event.target.value)
+                          }
+                        >
+                          <option value="">Select rating</option>
+                          {[5, 4, 3, 2, 1].map((rating) => (
+                            <option key={rating} value={rating}>
+                              {rating}/5
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="assistant-field">
+                        <label htmlFor="travel-feedback-comment">
+                          Feedback
+                        </label>
+                        <textarea
+                          id="travel-feedback-comment"
+                          value={feedbackComment}
+                          onChange={(event) =>
+                            setFeedbackComment(event.target.value)
+                          }
+                          maxLength={2000}
+                          placeholder="Tell us about your travel experience"
+                        />
+                      </div>
+                      {feedbackError && (
+                        <small className="request-field-error" role="alert">
+                          {feedbackError}
+                        </small>
+                      )}
+                      <button
+                        type="button"
+                        className="upload-notify-button"
+                        onClick={submitFeedbackForm}
+                        disabled={feedbackSubmitting}
+                      >
+                        {feedbackSubmitting
+                          ? "Submitting..."
+                          : "Submit feedback"}
+                      </button>
+                    </>
+                  )}
+                </section>
+              )}
+
             {request.current_status === "REJECTED" && (
               <div className="workflow-rejected-card">
                 <FiXCircle />
@@ -2957,60 +2838,6 @@ function RequestConversation({
           />
         </>
       )}
-
-      <Modal
-        isVisible={showDateChangeReasonModal}
-        title="Reason for travel date change"
-        onClose={() => {
-          setShowDateChangeReasonModal(false);
-          setDateChangeReasonError("");
-        }}
-        buttons={[
-          {
-            label: "Cancel",
-            onClick: () => {
-              setShowDateChangeReasonModal(false);
-              setDateChangeReasonError("");
-            },
-          },
-          {
-            label: "Submit request",
-            className: "upload-notify-button",
-            onClick: submitDateChangeWithReason,
-          },
-        ]}
-      >
-        <p>
-          Please provide a reason for changing the booked travel dates. This
-          field is mandatory.
-        </p>
-        <label
-          className="date-change-reason-modal-field"
-          style={{ display: "flex", marginTop: "10px" }}
-        >
-          Reason <span className="required-marker">*</span>
-          <textarea
-            style={{ width: "400px", margin: "0 0 0 10px", padding: "5px" }}
-            autoFocus
-            value={dateChangeForm.reason}
-            onChange={(event) => {
-              setDateChangeForm((previous) => ({
-                ...previous,
-                reason: event.target.value,
-              }));
-              if (event.target.value.trim()) setDateChangeReasonError("");
-            }}
-            placeholder="Explain why the travel dates need to change"
-            rows={2}
-            required
-          />
-        </label>
-        {dateChangeReasonError && (
-          <small className="request-field-error" role="alert">
-            {dateChangeReasonError}
-          </small>
-        )}
-      </Modal>
     </div>
   );
 }
@@ -3233,6 +3060,16 @@ function RequestSummary({ request }) {
             value={formatShortDate(details.returnDate)}
           />
 
+          <SummaryField
+            label="Preferred departure time"
+            value={details.preferredDepartureTime}
+          />
+
+          <SummaryField
+            label="Preferred return time"
+            value={details.preferredReturnTime}
+          />
+
           <SummaryField label="Project" value={details.project} />
 
           <SummaryField
@@ -3269,6 +3106,11 @@ function RequestSummary({ request }) {
 
           {details.accommodationRequired && (
             <>
+              <SummaryField
+                label="Accommodation Location"
+                value={details.accommodationLocation}
+              />
+
               <SummaryField
                 label="Accommodation Place"
                 value={details.accommodationPlace}

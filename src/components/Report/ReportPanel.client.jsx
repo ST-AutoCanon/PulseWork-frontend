@@ -182,6 +182,7 @@ export default function ReportPanel() {
   const [previewMessage, setPreviewMessage] = useState("");
 
   const employeeId = user?.employeeId ?? user?.id ?? null;
+  const orgId = user?.orgId ?? user?.org_id ?? null;
 
   const rawRole = user?.role ? String(user.role).trim() : null;
   const lowerRawRole = rawRole ? rawRole.toLowerCase() : null;
@@ -209,7 +210,12 @@ export default function ReportPanel() {
   const [filterEmployeeId, setFilterEmployeeId] = useState(null);
   const [filterEmployeeName, setFilterEmployeeName] = useState("");
   const [filterDepartmentId, setFilterDepartmentId] = useState(null);
+  const [filterLeaveType, setFilterLeaveType] = useState("");
   const [isTypingSearch, setIsTypingSearch] = useState(false);
+
+  const [leaveTypes, setLeaveTypes] = useState([]);
+  const [leaveTypesLoading, setLeaveTypesLoading] = useState(false);
+  const [leaveTypesError, setLeaveTypesError] = useState("");
 
   const [availableFields, setAvailableFields] = useState([]);
   const [selectedFields, setSelectedFields] = useState([]);
@@ -367,6 +373,7 @@ export default function ReportPanel() {
       setPreviewMessage("");
       setFilterEmployeeId(null);
       setFilterEmployeeName("");
+      setFilterLeaveType("");
       if (!isTeamRole) setFilterDepartmentId(null);
       setIsTypingSearch(false);
       return;
@@ -433,6 +440,81 @@ export default function ReportPanel() {
     }
     setIsTypingSearch(false);
   }, [component, isTeamRole, managerDepartmentIdRaw]);
+
+  useEffect(() => {
+    if (component !== "leaves") {
+      setLeaveTypes([]);
+      setLeaveTypesError("");
+      setLeaveTypesLoading(false);
+      return;
+    }
+
+    let active = true;
+    setLeaveTypesLoading(true);
+    setLeaveTypesError("");
+    axios
+      .get(`${getApiBase()}/types`, {
+        withCredentials: true,
+        headers: {
+          "x-api-key":
+            process.env.NEXT_PUBLIC_API_KEY ||
+            process.env.REACT_APP_API_KEY ||
+            "",
+          "x-employee-id": employeeId || "",
+          "x-org-id": orgId || "",
+          Accept: "application/json",
+        },
+      })
+      .then((res) => {
+        const responseData = res?.data;
+        const rawTypes =
+          responseData?.data ??
+          responseData?.results ??
+          (Array.isArray(responseData) ? responseData : []);
+        const options = Array.isArray(rawTypes)
+          ? rawTypes
+              .filter((type) => type && Number(type.is_active ?? 1) !== 0)
+              .map((type) => {
+                const key = String(
+                  type.key ??
+                    type.type ??
+                    type.type_key ??
+                    type.type_name ??
+                    type.name ??
+                    "",
+                ).trim();
+                return {
+                  key,
+                  label: String(
+                    type.label ?? type.display_name ?? type.name ?? key,
+                  ).trim(),
+                };
+              })
+              .filter((type) => type.key && type.label)
+          : [];
+        if (active) {
+          setLeaveTypes(
+            Array.from(
+              new Map(options.map((type) => [type.key, type])).values(),
+            ).sort((a, b) => a.label.localeCompare(b.label)),
+          );
+        }
+      })
+      .catch((error) => {
+        console.error("Failed to fetch leave types for reports:", error);
+        if (active) {
+          setLeaveTypes([]);
+          setLeaveTypesError("Unable to load leave types.");
+        }
+      })
+      .finally(() => {
+        if (active) setLeaveTypesLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [component, employeeId, orgId]);
 
   const presetRange = (days) => {
     const end = new Date();
@@ -551,21 +633,18 @@ export default function ReportPanel() {
 
     if (preview) params.append("preview", "true");
 
-    const MAX_CLIENT_FIELDS_SEND = 60;
     if (selectedFields && selectedFields.length > 0) {
       const forbidden = new Set([
         "__asset_lifecycle_status",
         "raw_status",
         "lifecycle",
       ]);
-      let fieldsToSend = selectedFields.filter((k) => !forbidden.has(k));
-      if (fieldsToSend.length > MAX_CLIENT_FIELDS_SEND) {
-        console.warn(
-          `[ReportPanel] selectedFields length (${fieldsToSend.length}) exceeds MAX_CLIENT_FIELDS_SEND (${MAX_CLIENT_FIELDS_SEND}). Truncating for transport.`,
-        );
-        fieldsToSend = fieldsToSend.slice(0, MAX_CLIENT_FIELDS_SEND);
-      }
+      const fieldsToSend = selectedFields.filter((k) => !forbidden.has(k));
       if (fieldsToSend.length) params.append("fields", fieldsToSend.join(","));
+    }
+
+    if (component === "leaves" && filterLeaveType) {
+      params.append("leave_type", filterLeaveType);
     }
 
     // Always include employee-friendly and id values where applicable (employees component)
@@ -605,12 +684,9 @@ export default function ReportPanel() {
   const ensureClientDownloadFieldLimit = (format) => {
     if (!selectedFields || !Array.isArray(selectedFields)) return true;
     const fmt = (format || "").toLowerCase();
-    if (
-      (fmt === "pdf" || fmt === "xlsx") &&
-      selectedFields.length > MAX_DOWNLOAD_FIELDS
-    ) {
+    if (fmt === "pdf" && selectedFields.length > MAX_DOWNLOAD_FIELDS) {
       showAlert(
-        `You have selected ${selectedFields.length} fields. Downloads (PDF/XLSX) are limited to ${MAX_DOWNLOAD_FIELDS} fields. Please reduce your selection or use Preview.`,
+        `You have selected ${selectedFields.length} fields. PDF downloads are limited to ${MAX_DOWNLOAD_FIELDS} fields. Please reduce your selection or use Preview.`,
       );
       return false;
     }
@@ -900,8 +976,8 @@ export default function ReportPanel() {
                         : "#666",
                   }}
                 >
-                  {selectedFields.length} selected (max {MAX_DOWNLOAD_FIELDS}{" "}
-                  for downloads)
+                  {selectedFields.length} selected (PDF max{" "}
+                  {MAX_DOWNLOAD_FIELDS})
                 </span>
               )}
             </div>
@@ -934,6 +1010,39 @@ export default function ReportPanel() {
                 ))
               )}
             </select>
+          </div>
+        )}
+
+        {component === "leaves" && (
+          <div className="rp-row">
+            <label className="rp-label" htmlFor="leave-type-filter">
+              Leave Type
+            </label>
+            <div className="rp-date-field">
+              <select
+                id="leave-type-filter"
+                className="rep-select"
+                value={filterLeaveType}
+                onChange={(e) => setFilterLeaveType(e.target.value)}
+                disabled={leaveTypesLoading || leaveTypes.length === 0}
+                aria-label="Filter leaves by leave type"
+              >
+                <option value="">All leave types</option>
+                {leaveTypes.map((type) => (
+                  <option key={type.key} value={type.key}>
+                    {type.label}
+                  </option>
+                ))}
+              </select>
+              {leaveTypesLoading && (
+                <div className="rp-typeahead-subtext">Loading leave types…</div>
+              )}
+              {leaveTypesError && (
+                <div className="rp-typeahead-subtext" role="alert">
+                  {leaveTypesError}
+                </div>
+              )}
+            </div>
           </div>
         )}
 

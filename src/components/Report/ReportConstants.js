@@ -62,7 +62,7 @@ export const SUB_OPTIONS = {
     { key: "H_F_day", label: "Half/Full Day" },
     {
       key: "leave_balance_summary",
-      label: "Leave Balance (Credited | Used | Remaining)",
+      label: "Leave Balance Summary (All Types)",
     },
     { key: "start_date", label: "Start Date" },
     { key: "end_date", label: "End Date" },

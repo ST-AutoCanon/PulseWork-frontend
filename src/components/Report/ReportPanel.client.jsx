@@ -305,6 +305,7 @@ export default function ReportPanel() {
         headers: {
           "x-api-key": process.env.REACT_APP_API_KEY || "",
           "x-employee-id": employeeId || "",
+          "x-org-id": orgId || "",
           Accept: "application/json",
         },
       })
@@ -733,6 +734,7 @@ export default function ReportPanel() {
         headers: {
           "x-api-key": process.env.REACT_APP_API_KEY || "",
           "x-employee-id": employeeId || "",
+          "x-org-id": orgId || "",
           Accept: acceptHeader,
         },
         timeout: 2 * 60 * 1000,
@@ -816,6 +818,7 @@ export default function ReportPanel() {
         headers: {
           "x-api-key": process.env.REACT_APP_API_KEY || "",
           "x-employee-id": employeeId || "",
+          "x-org-id": orgId || "",
           Accept: "application/json",
         },
       });

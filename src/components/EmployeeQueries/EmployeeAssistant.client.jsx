@@ -2210,9 +2210,16 @@ function RequestConversation({
       String(request.created_by_employee_id) === String(employeeId) ||
       (request.request_type === "TRAVEL_BOOKING" && (isAdmin || isHR)));
 
-  const myFeedback = (
-    Array.isArray(details.travelFeedback) ? details.travelFeedback : []
-  ).find((feedback) => String(feedback.employeeId) === String(employeeId));
+  const travelFeedback = Array.isArray(details.travelFeedback)
+    ? details.travelFeedback
+    : [];
+  const myFeedback = travelFeedback.find(
+    (feedback) => String(feedback.employeeId) === String(employeeId),
+  );
+  const canSubmitFeedback =
+    isRequester ||
+    request.isTravelParticipant ||
+    String(request.created_by_employee_id) === String(employeeId);
 
   const submitFeedbackForm = async () => {
     const comment = feedbackComment.trim();
@@ -2743,25 +2750,29 @@ function RequestConversation({
 
             {request.current_status === "COMPLETED" &&
               request.request_type === "TRAVEL_BOOKING" &&
-              (isRequester ||
-                request.isTravelParticipant ||
-                String(request.created_by_employee_id) ===
-                  String(employeeId)) && (
+              (canSubmitFeedback || travelFeedback.length > 0) && (
                 <section className="booking-details-card">
                   <div className="summary-heading">
                     <h3>Trip feedback</h3>
                   </div>
-                  {myFeedback ? (
-                    <>
+                  {myFeedback && <p>Thanks for sharing your feedback.</p>}
+                  {travelFeedback.map((feedback) => (
+                    <div
+                      key={`${feedback.employeeId}-${feedback.submittedAt}`}
+                      className="trip-feedback-entry"
+                    >
                       <p>
-                        Thanks for your feedback. Your rating:{" "}
-                        <strong>{myFeedback.rating}/5</strong>
+                        Employee {feedback.employeeId} -{" "}
+                        <strong>{feedback.rating}/5</strong>
                       </p>
-                      <p>{myFeedback.comment}</p>
-                    </>
-                  ) : (
+                      <p>{feedback.comment}</p>
+                    </div>
+                  ))}
+                  {canSubmitFeedback && !myFeedback && (
                     <>
-                      <p>Share your feedback after completing your trip.</p>
+                      {travelFeedback.length === 0 && (
+                        <p>Share your feedback after completing your trip.</p>
+                      )}
                       <div className="assistant-field">
                         <label htmlFor="travel-feedback-rating">Rating</label>
                         <select

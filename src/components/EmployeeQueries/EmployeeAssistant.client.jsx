@@ -184,6 +184,45 @@ function formatShortDate(value) {
   }
 }
 
+function formatTimeWithMeridiem(value) {
+  if (!value) return "—";
+
+  const text = String(value).trim();
+  const match = text.match(
+    /(\d{1,2}):(\d{2})(?::\d{2}(?:\.\d+)?)?\s*(AM|PM)?(?:Z|[+-]\d{2}:?\d{2})?$/i,
+  );
+  if (!match) return text;
+
+  const hour = Number(match[1]);
+  const minute = Number(match[2]);
+  const meridiem = match[3]?.toUpperCase();
+  if (minute > 59 || (meridiem ? hour < 1 || hour > 12 : hour > 23)) {
+    return text;
+  }
+
+  const period = meridiem || (hour >= 12 ? "PM" : "AM");
+  const displayHour = meridiem ? hour : hour % 12 || 12;
+  return `${displayHour}:${String(minute).padStart(2, "0")} ${period}`;
+}
+
+function formatTravelDateTime(value) {
+  if (!value) return "—";
+
+  const text = String(value).trim();
+  const time = formatTimeWithMeridiem(text);
+  const dateMatch = text.match(/^(\d{4})-(\d{2})-(\d{2})[T\s]/);
+  if (!dateMatch) return time;
+
+  const [, year, month, day] = dateMatch;
+  const date = new Date(Number(year), Number(month) - 1, Number(day));
+  const formattedDate = date.toLocaleDateString("en-IN", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
+  return `${formattedDate}, ${time}`;
+}
+
 function getStatus(status) {
   return (
     statusMap[status] || {
@@ -3073,12 +3112,12 @@ function RequestSummary({ request }) {
 
           <SummaryField
             label="Preferred departure time"
-            value={details.preferredDepartureTime}
+            value={formatTimeWithMeridiem(details.preferredDepartureTime)}
           />
 
           <SummaryField
             label="Preferred return time"
-            value={details.preferredReturnTime}
+            value={formatTimeWithMeridiem(details.preferredReturnTime)}
           />
 
           <SummaryField label="Project" value={details.project} />
@@ -3239,9 +3278,15 @@ function BookingDetails({ details, request, employeeId }) {
 
         <SummaryField label="PNR" value={details.pnr} />
 
-        <SummaryField label="Departure" value={details.departureTime} />
+        <SummaryField
+          label="Departure"
+          value={formatTravelDateTime(details.departureTime)}
+        />
 
-        <SummaryField label="Return" value={details.returnTime} />
+        <SummaryField
+          label="Return"
+          value={formatTravelDateTime(details.returnTime)}
+        />
 
         <SummaryField
           label="Route"

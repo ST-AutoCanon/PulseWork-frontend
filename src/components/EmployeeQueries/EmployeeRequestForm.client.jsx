@@ -455,7 +455,6 @@ const EmployeeRequestForm = ({
   userRole,
   employeeId,
   orgId,
-  orgPrefix,
   onClose,
   onSubmit,
 }) => {
@@ -639,8 +638,18 @@ const EmployeeRequestForm = ({
   useEffect(() => {
     if (type !== "TRAVEL_BOOKING" || !orgId) return;
 
+    const isEmployee = normalizedUserRole === "employee";
+    if (isEmployee && !employeeId) return;
+    const projectsUrl = isEmployee
+      ? `${
+          process.env.NEXT_PUBLIC_BACKEND_URL
+        }/projects/employeeProjects?employeeId=${encodeURIComponent(
+          employeeId,
+        )}`
+      : `${process.env.NEXT_PUBLIC_BACKEND_URL}/projects`;
+
     axios
-      .get(`${process.env.NEXT_PUBLIC_BACKEND_URL}/projectdrop`, {
+      .get(projectsUrl, {
         headers: {
           "x-api-key": process.env.NEXT_PUBLIC_API_KEY,
           "x-org-id": orgId,
@@ -649,9 +658,7 @@ const EmployeeRequestForm = ({
         withCredentials: true,
       })
       .then((response) => {
-        const raw = Array.isArray(response.data)
-          ? response.data
-          : response.data?.data || [];
+        const raw = response.data?.projects || [];
         setProjects(
           raw
             .map((item) =>
@@ -671,7 +678,12 @@ const EmployeeRequestForm = ({
             "Unable to load project options. Refresh and try again.",
         );
       });
-  }, [employeeId, orgId, type]);
+  }, [
+    employeeId,
+    normalizedUserRole,
+    orgId,
+    type,
+  ]);
 
   useEffect(() => {
     if (
@@ -907,7 +919,6 @@ const EmployeeRequestForm = ({
       ) {
         nextErrors.returnDate = "Return date cannot be before the travel date.";
       }
-      if (!form.project) nextErrors.project = "Project is required";
       if (requiresPickupDropPoints(form.transportMode)) {
         if (!form.baseLocation.trim())
           nextErrors.baseLocation = "Pickup Point is required";
@@ -1530,17 +1541,12 @@ const EmployeeRequestForm = ({
                 />
               </RequestField>
 
-              <RequestField label="Project" required error={errors.project}>
+              <RequestField label="Project">
                 <select
                   value={form.project}
                   onChange={(event) => update("project", event.target.value)}
                 >
                   <option value="">Select project</option>
-                  {orgPrefix && (
-                    <option value={`${orgPrefix} CLAIM`}>
-                      {orgPrefix} CLAIM
-                    </option>
-                  )}
                   {projects.map((project, index) => (
                     <option key={`${project}-${index}`} value={project}>
                       {project}

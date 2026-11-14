@@ -3167,7 +3167,11 @@ export default function Login({ onClose }) {
         </div>
 
         <div className="footer-text">
-          © 2025 Sukalpa Tech. All Rights Reserved.
+         <span>© 2025 Sukalpa Tech. All Rights Reserved.</span>
+
+          <a href="/privacy-policy" className="privacy-footer-link">
+            Privacy Policy
+          </a>
         </div>
 
         {alertModal.isVisible && (

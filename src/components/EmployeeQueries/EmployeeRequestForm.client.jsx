@@ -421,6 +421,9 @@ const TRANSPORT_OPTIONS = {
   UPPER: ["Airbus", "Train", "Bus"],
 };
 
+const requiresPickupDropPoints = (transportMode) =>
+  !["Train", "Airbus"].includes(transportMode);
+
 const currentMonthKey = () => {
   const date = new Date();
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
@@ -789,6 +792,15 @@ const EmployeeRequestForm = ({
       ...prev,
       [key]: value,
     }));
+
+    if (key === "transportMode" && !requiresPickupDropPoints(value)) {
+      setErrors((prev) => {
+        const next = { ...prev };
+        delete next.baseLocation;
+        delete next.travelLocation;
+        return next;
+      });
+    }
   };
 
   const addTraveler = () => {
@@ -896,10 +908,12 @@ const EmployeeRequestForm = ({
         nextErrors.returnDate = "Return date cannot be before the travel date.";
       }
       if (!form.project) nextErrors.project = "Project is required";
-      if (!form.baseLocation.trim())
-        nextErrors.baseLocation = "Pickup Point is required";
-      if (!form.travelLocation.trim())
-        nextErrors.travelLocation = "Drop Point is required";
+      if (requiresPickupDropPoints(form.transportMode)) {
+        if (!form.baseLocation.trim())
+          nextErrors.baseLocation = "Pickup Point is required";
+        if (!form.travelLocation.trim())
+          nextErrors.travelLocation = "Drop Point is required";
+      }
       if (!form.transportMode)
         nextErrors.transportMode = "Select a mode of transport";
       if (!form.distanceKm || Number(form.distanceKm) < 0)
@@ -1438,7 +1452,7 @@ const EmployeeRequestForm = ({
 
               <RequestField
                 label="Pickup Point"
-                required
+                required={requiresPickupDropPoints(form.transportMode)}
                 error={errors.baseLocation}
               >
                 <input
@@ -1452,7 +1466,7 @@ const EmployeeRequestForm = ({
 
               <RequestField
                 label="Drop Point"
-                required
+                required={requiresPickupDropPoints(form.transportMode)}
                 error={errors.travelLocation}
               >
                 <input

@@ -880,6 +880,7 @@
 .assistant-field input,
 .assistant-field select {
   padding: 10px 12px;
+  margin-bottom: 1%;
 }
 
 .workflow-action-card textarea:focus,
@@ -997,6 +998,7 @@
   background: #15995b;
   border: 0;
   color: #fff;
+  margin: 1% 0;
 }
 
 .workflow-info-card,

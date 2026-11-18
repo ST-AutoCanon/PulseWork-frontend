@@ -383,7 +383,7 @@ function buildEmployeeExcelRow(emp) {
     "PG Year": emp.pg_year ?? "",
     "PG Board": emp.pg_board ?? "",
     "PG Score": emp.pg_score ?? "",
-    "Sub Org": emp.sub_org_id ?? "",
+    "Sub Org": emp.sub_org_name ?? emp.sub_org_id ?? "",
     "Employee Type": emp.employee_type ?? "",
     Department: emp.department ?? "",
     Position: emp.position ?? "",

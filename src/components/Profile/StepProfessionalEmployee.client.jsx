@@ -247,6 +247,25 @@ export default function StepProfessionalEmployee({
   const selectedSubOrgId = String(
     data.sub_org_id ?? data.sub_org ?? data.subOrgId ?? "",
   );
+  const departmentName = String(data.department || data.department_name || "")
+    .trim()
+    .toLowerCase();
+  const matchingDepartment =
+    departments.find(
+      (department) => String(department.id) === String(data.department_id),
+    ) ||
+    departments.find(
+      (department) =>
+        String(department.name || "")
+          .trim()
+          .toLowerCase() === departmentName,
+    );
+  const selectedDepartmentId = String(
+    data.department_id || matchingDepartment?.id || data.department || "",
+  );
+  const departmentIsInOptions = departments.some(
+    (department) => String(department.id) === selectedDepartmentId,
+  );
 
   return (
     <div className="step-professional">
@@ -338,7 +357,7 @@ export default function StepProfessionalEmployee({
           Department<span className="required">*</span>
           <select
             name="department_id"
-            value={data.department_id || ""}
+            value={selectedDepartmentId}
             onChange={(e) =>
               !isReadOnly("department_id") &&
               onChange("department_id", e.target.value)
@@ -347,6 +366,12 @@ export default function StepProfessionalEmployee({
             disabled={isReadOnly("department_id")}
           >
             <option value="">Select</option>
+
+            {!departmentIsInOptions && selectedDepartmentId && (
+              <option value={selectedDepartmentId}>
+                {data.department || data.department_name || selectedDepartmentId}
+              </option>
+            )}
 
             {departments.map((d) => (
               <option key={d.id} value={d.id}>

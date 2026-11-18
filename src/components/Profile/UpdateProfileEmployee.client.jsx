@@ -7,12 +7,14 @@ import "./Profile.css";
 import { MdOutlineCancel } from "react-icons/md";
 import { useAuth } from "../../context/AuthProvider.client";
 
+const EMPTY_DEPARTMENTS = [];
+
 export default function UpdateProfileEmployee({
   profile,
   isVisible,
   onClose,
   onSaved,
-  departments = [],
+  departments = EMPTY_DEPARTMENTS,
   employeeId: propEmployeeId,
 }) {
   const { user } = useAuth();
@@ -22,10 +24,37 @@ export default function UpdateProfileEmployee({
   const employeeId =
     propEmployeeId || user?.employeeId || profile?.employee_id || null;
   const orgId = user?.orgId || profile?.org_id || null;
+  const [departmentOptions, setDepartmentOptions] = useState(departments);
 
   const [alert, setAlert] = useState({ isVisible: false, message: "" });
   const showAlert = (msg) => setAlert({ isVisible: true, message: msg });
   const closeAlert = () => setAlert({ isVisible: false, message: "" });
+
+  useEffect(() => {
+    if (departments.length) {
+      setDepartmentOptions(departments);
+      return;
+    }
+
+    const loadDepartments = async () => {
+      try {
+        const response = await axios.get(`${BASE_URL}/departments`, {
+          withCredentials: true,
+          headers: {
+            "x-api-key": API_KEY ?? "",
+            "x-employee-id": employeeId ?? "",
+            "x-org-id": orgId ?? "",
+          },
+        });
+        setDepartmentOptions(response.data?.departments || []);
+      } catch (error) {
+        console.error("Failed to load departments for profile update:", error);
+        setDepartmentOptions([]);
+      }
+    };
+
+    loadDepartments();
+  }, [API_KEY, BASE_URL, departments, employeeId, orgId]);
 
   useEffect(() => {
     if (!isVisible) return;
@@ -92,7 +121,7 @@ export default function UpdateProfileEmployee({
               }
               onSubmit={handleSubmit}
               onCancel={onClose}
-              departments={departments}
+              departments={departmentOptions}
             />
           </div>
         </div>

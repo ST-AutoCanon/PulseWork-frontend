@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import StepPersonal from "../EmployeeDetails/steps/StepPersonal.client";
 import StepGovernmentDocs from "../EmployeeDetails/steps/StepGovernmentDocs.client";
 import StepEducation from "../EmployeeDetails/steps/StepEducation.client";
@@ -58,6 +58,26 @@ export default function EmployeeFormEmployee({
   });
 
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (formData.department_id || !initialData.department) return;
+
+    const departmentName = String(initialData.department).trim().toLowerCase();
+    const matchingDepartment = departments.find(
+      (department) =>
+        String(department.name || "")
+          .trim()
+          .toLowerCase() === departmentName,
+    );
+
+    if (matchingDepartment) {
+      setFormData((previous) =>
+        previous.department_id
+          ? previous
+          : { ...previous, department_id: String(matchingDepartment.id) },
+      );
+    }
+  }, [departments, formData.department_id, initialData.department]);
 
   const handleChange = (name, value) =>
     setFormData((prev) => ({ ...prev, [name]: value }));

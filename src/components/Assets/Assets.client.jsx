@@ -1,16 +1,5 @@
 
 
-
-
-
-
-
-
-
-
-
-
-
 "use client";
 import React, { useState, useEffect } from "react";
 import "./assets.css";
@@ -19,21 +8,45 @@ import { useParams } from "next/navigation";
 import { UserCheck } from "lucide-react";
 import { Eye } from "lucide-react";
 import { FaNetworkWired } from "react-icons/fa";
-import { Monitor, Wrench, Package } from "lucide-react";
-import { GiOfficeChair, GiTable, GiArchiveRegister } from "react-icons/gi";
-import { Laptop2, Computer, Server } from "lucide-react";
-import { FaDesktop, FaServer } from "react-icons/fa";
-import { FaChair } from "react-icons/fa";
-import { MdStorage } from "react-icons/md";
-import { FaHdd, FaMouse, FaPlug, FaTools } from "react-icons/fa";
-import { MdLaptop } from "react-icons/md";
 import { Download } from "lucide-react";
 import Modal from "../Modal/Modal.client";
-import { TableProperties, Chair, Archive, Plug, Hammer } from "lucide-react";
-import { Boxes } from "lucide-react";
-import { LayoutPanelLeft, LayoutDashboard } from "lucide-react";
+import {
+  Armchair,
+  Archive,
+  Computer,
+  Hammer,
+  Laptop2,
+  Monitor,
+  Package,
+  Plug,
+  Server,
+  TableProperties,
+  Wrench,
+} from "lucide-react";
 import { MdOutlineCancel } from "react-icons/md";
 import { useAuth } from "../../context/AuthProvider.client";
+
+const getCategoryIcon = (name = "") => {
+  const normalizedName = name.toLowerCase();
+  if (/\b(system|computer|technology|it)\b/.test(normalizedName))
+    return Monitor;
+  if (/furniture|chair/.test(normalizedName)) return Armchair;
+  if (/equipment|tool/.test(normalizedName)) return Wrench;
+  return Package;
+};
+
+const getSubcategoryIcon = (name = "") => {
+  const normalizedName = name.toLowerCase();
+  if (/laptop|notebook/.test(normalizedName)) return Laptop2;
+  if (/desktop|workstation/.test(normalizedName)) return Computer;
+  if (/server/.test(normalizedName)) return Server;
+  if (/table|desk/.test(normalizedName)) return TableProperties;
+  if (/chair|seat/.test(normalizedName)) return Armchair;
+  if (/drawer|cupboard|cabinet|storage/.test(normalizedName)) return Archive;
+  if (/electrical|power|plug/.test(normalizedName)) return Plug;
+  if (/tool|repair|maintenance/.test(normalizedName)) return Hammer;
+  return Package;
+};
 
 const Assets = () => {
   const { user, hydrated } = useAuth();
@@ -76,7 +89,11 @@ const Assets = () => {
 
   const [showPopup, setShowPopup] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState("");
+  const [selectedCategoryId, setSelectedCategoryId] = useState("");
   const [selectedSubCategory, setSelectedSubCategory] = useState("");
+  const [assetCategories, setAssetCategories] = useState([]);
+  const [categoriesLoading, setCategoriesLoading] = useState(false);
+  const [categoriesError, setCategoriesError] = useState("");
   const [assetName, setAssetName] = useState("");
   const [configuration, setConfiguration] = useState("");
   const [valuationDate, setValuationDate] = useState("");
@@ -268,7 +285,8 @@ const Assets = () => {
   };
 
   const handleCategoryChange = (category) => {
-    setSelectedCategory(category);
+    setSelectedCategory(category.category_name);
+    setSelectedCategoryId(String(category.category_id));
     setSelectedSubCategory("");
   };
 
@@ -381,6 +399,34 @@ const Assets = () => {
     }
   };
 
+  const fetchAssetCategories = async () => {
+    if (!isReadyForApi()) return;
+    setCategoriesLoading(true);
+    setCategoriesError("");
+
+    try {
+      const response = await axios.get(`${BACKEND}/api/assets/categories`, {
+        withCredentials: true,
+        headers: getHeaders(),
+      });
+      const categories = response.data?.data ?? [];
+      if (!Array.isArray(categories)) {
+        throw new Error("Invalid asset categories response");
+      }
+      setAssetCategories(categories);
+    } catch (error) {
+      console.error(
+        "Error fetching asset categories:",
+        error.response?.data || error.message
+      );
+      setCategoriesError(
+        error.response?.data?.message || "Failed to load asset categories."
+      );
+    } finally {
+      setCategoriesLoading(false);
+    }
+  };
+
   const fetchAssets = async () => {
     if (!isReadyForApi()) return;
     try {
@@ -404,10 +450,7 @@ const Assets = () => {
 
   useEffect(() => {
     if (!isReadyForApi()) return;
-    (async () => {
-      await fetchAssets();
-      await fetchAssetCounts();
-    })();
+    Promise.all([fetchAssets(), fetchAssetCounts(), fetchAssetCategories()]);
   }, [user, BACKEND]);
 
   useEffect(() => {
@@ -430,6 +473,7 @@ const Assets = () => {
     setAssignedTo("");
     setDocument(null);
     setSelectedCategory("");
+    setSelectedCategoryId("");
     setSelectedSubCategory("");
     setStatus("In Use");
   };
@@ -1003,6 +1047,9 @@ if (rows.length > 0) {
     return acc;
   }, {});
   const [searchTerm, setSearchTerm] = useState("");
+  const selectedCategoryRecord = assetCategories.find(
+    (category) => String(category.category_id) === selectedCategoryId
+  );
 
   const sortedAssets = [...assets].sort((a, b) => {
     const numA = parseInt(a.asset_code?.split("-")[2] || "0", 10);
@@ -1087,125 +1134,56 @@ if (rows.length > 0) {
             </button>
 
             <div className="sticky-options">
-              <button
-                className={selectedCategory === "System" ? "active" : ""}
-                onClick={() => handleCategoryChange("System")}
-              >
-                {" "}
-                <div className="icon-group">
-                  {" "}
-                  <Monitor className="icon" /> <span> System</span>
-                </div>{" "}
-              </button>
-              <button
-                className={selectedCategory === "Furniture" ? "active" : ""}
-                onClick={() => handleCategoryChange("Furniture")}
-              >
-                <div className="icon-group">
-                  <GiOfficeChair className="icon" />
-                </div>
-                <span>Furniture</span>
-              </button>
-              <button
-                className={selectedCategory === "Equipment" ? "active" : ""}
-                onClick={() => handleCategoryChange("Equipment")}
-              >
-                <div className="icon-group">
-                  <Wrench className="icon" />
-                </div>
-                Equipment
-              </button>
-              <button
-                className={selectedCategory === "Others" ? "active" : ""}
-                onClick={() => handleCategoryChange("Others")}
-              >
-                <Package className="icon" />
-                Others
-              </button>
+              {categoriesLoading ? (
+                <p>Loading asset categories...</p>
+              ) : categoriesError ? (
+                <p role="alert">{categoriesError}</p>
+              ) : assetCategories.length === 0 ? (
+                <p>No active asset categories configured.</p>
+              ) : (
+                assetCategories.map((category) => {
+                  const CategoryIcon = getCategoryIcon(category.category_name);
+                  return (
+                    <button
+                      key={category.category_id}
+                      className={
+                        selectedCategoryId === String(category.category_id)
+                          ? "active"
+                          : ""
+                      }
+                      onClick={() => handleCategoryChange(category)}
+                    >
+                      <CategoryIcon className="icon" />
+                      <span>{category.category_name}</span>
+                    </button>
+                  );
+                })
+              )}
             </div>
 
-            {selectedCategory === "System" && (
+            {selectedCategoryRecord?.subcategories?.length > 0 && (
               <div className="sticky-suboptions">
-                <button
-                  className={selectedSubCategory === "Laptop" ? "active" : ""}
-                  onClick={() => setSelectedSubCategory("Laptop")}
-                >
-                  {" "}
-                  <MdLaptop className="icon" /> Laptop
-                </button>
-                <button
-                  className={selectedSubCategory === "Desktop" ? "active" : ""}
-                  onClick={() => setSelectedSubCategory("Desktop")}
-                >
-                  {" "}
-                  <FaDesktop className="icon" />
-                  Desktop
-                </button>
-                <button
-                  className={selectedSubCategory === "Server" ? "active" : ""}
-                  onClick={() => setSelectedSubCategory("Server")}
-                >
-                  {" "}
-                  <Server className="icon" />
-                  Server
-                </button>
-              </div>
-            )}
-
-            {selectedCategory === "Furniture" && (
-              <div className="sticky-suboptions">
-                <button
-                  className={selectedSubCategory === "Table" ? "active" : ""}
-                  onClick={() => setSelectedSubCategory("Table")}
-                >
-                  {" "}
-                  <GiTable className="icon" /> Table
-                </button>
-                <button
-                  className={selectedSubCategory === "Chair" ? "active" : ""}
-                  onClick={() => setSelectedSubCategory("Chair")}
-                >
-                  {" "}
-                  <FaChair className="icon" /> Chair
-                </button>
-                <button
-                  className={selectedSubCategory === "Drawers" ? "active" : ""}
-                  onClick={() => setSelectedSubCategory("Drawers")}
-                >
-                  {" "}
-                  <MdStorage className="icon" />
-                  Drawers
-                </button>
-                <button
-                  className={selectedSubCategory === "cupboard" ? "active" : ""}
-                  onClick={() => setSelectedSubCategory("cupboard")}
-                >
-                  {" "}
-                  <LayoutPanelLeft className="icon" /> Cupboard
-                </button>
-              </div>
-            )}
-
-            {selectedCategory === "Equipment" && (
-              <div className="sticky-suboptions">
-                <button
-                  className={
-                    selectedSubCategory === "Electrical" ? "active" : ""
-                  }
-                  onClick={() => setSelectedSubCategory("Electrical")}
-                >
-                  <FaPlug className="icon" />
-                  <span>Electrical</span>
-                </button>
-                <button
-                  className={
-                    selectedSubCategory === "Non-Electrical" ? "active" : ""
-                  }
-                  onClick={() => setSelectedSubCategory("Non-Electrical")}
-                >
-                  <FaTools className="icon" />
-                  <span>Non-Electrical</span>
-                </button>
+                {selectedCategoryRecord.subcategories.map((subcategory) => {
+                  const SubcategoryIcon = getSubcategoryIcon(
+                    subcategory.subcategory_name
+                  );
+                  return (
+                    <button
+                      key={subcategory.subcategory_id}
+                      className={
+                        selectedSubCategory === subcategory.subcategory_name
+                          ? "active"
+                          : ""
+                      }
+                      onClick={() =>
+                        setSelectedSubCategory(subcategory.subcategory_name)
+                      }
+                    >
+                      <SubcategoryIcon className="icon" />
+                      <span>{subcategory.subcategory_name}</span>
+                    </button>
+                  );
+                })}
               </div>
             )}
 
@@ -1813,4 +1791,3 @@ if (rows.length > 0) {
 };
 
 export default Assets;
-

@@ -18,6 +18,7 @@ import AttendanceDeductionCells, {
   getAttendanceDeductionAmounts,
   getAttendanceDeductionExportValues,
 } from "./AttendanceDeductionCells.client";
+import WorkedDaysTable from "./WorkedDaysTable.client";
 
 const SalaryDetails = () => {
   const { user } = useAuth();
@@ -39,6 +40,11 @@ const SalaryDetails = () => {
   const [validSelectedEmployees, setValidSelectedEmployees] = useState([]);
   const [workingDays, setWorkingDays] = useState(null);
   const [payrollPeriod, setPayrollPeriod] = useState(null);
+  const [tableView, setTableView] = useState("salary");
+  const [workedDaysData, setWorkedDaysData] = useState(null);
+  const [workedDaysLoading, setWorkedDaysLoading] = useState(false);
+  const [workedDaysError, setWorkedDaysError] = useState("");
+  const [workedDaysRefresh, setWorkedDaysRefresh] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedEmployees, setSelectedEmployees] = useState(new Set());
@@ -269,6 +275,58 @@ const SalaryDetails = () => {
       isActive = false;
     };
   }, [employees, meId, orgId]);
+
+  useEffect(() => {
+    if (
+      tableView !== "workedDays" ||
+      !employees.length ||
+      !hasValidCredentials()
+    ) {
+      return;
+    }
+
+    let isActive = true;
+    const fetchWorkedDays = async () => {
+      setWorkedDaysLoading(true);
+      setWorkedDaysError("");
+      try {
+        const now = new Date();
+        const response = await axios.post(
+          `${BASE_URL}/api/salary-attendance-deductions/worked-days`,
+          {
+            month: now.getMonth() + 1,
+            year: now.getFullYear(),
+            asOfDate: `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`,
+            employees: employees.map((emp) => ({
+              employee_id: emp.employee_id,
+            })),
+          },
+          { withCredentials: true, headers: requestHeaders },
+        );
+        const data = response.data?.data;
+        if (!data || !Array.isArray(data.employees)) {
+          throw new Error("Worked days response did not include employee data.");
+        }
+        if (isActive) setWorkedDaysData(data);
+      } catch (error) {
+        console.error("Worked days fetch failed:", error);
+        if (isActive) {
+          setWorkedDaysError(
+            error.response?.data?.error ||
+              error.message ||
+              "Failed to calculate worked days.",
+          );
+        }
+      } finally {
+        if (isActive) setWorkedDaysLoading(false);
+      }
+    };
+
+    fetchWorkedDays();
+    return () => {
+      isActive = false;
+    };
+  }, [employees, meId, orgId, tableView, workedDaysRefresh]);
 
   useEffect(() => {
     if (!employees.length || !meId) return;
@@ -1188,6 +1246,134 @@ const { localNet } = calculateLocalGrossNet(
       ? `${formatPayrollPeriodDate(payrollPeriod.startDate)} to ${formatPayrollPeriodDate(payrollPeriod.endDate)}`
       : null;
 
+  const currentMonthDays = new Date(
+    new Date().getFullYear(),
+    new Date().getMonth() + 1,
+    0,
+  ).getDate();
+  const workedDaysByEmployee = new Map(
+    (workedDaysData?.employees || []).map((employeeData) => [
+      String(employeeData.employee_id),
+      employeeData,
+    ]),
+  );
+  const workedDaysSalaryRows =
+    tableView === "workedDays"
+      ? filteredEmployees.map((emp) => {
+          const attendance =
+            workedDaysByEmployee.get(String(emp.employee_id)) || {};
+          const workedDayCount = Number(attendance.workedDays || 0);
+          const prorationFactor =
+            Number.isFinite(currentMonthDays) &&
+            currentMonthDays > 0
+              ? workedDayCount / currentMonthDays
+              : 0;
+          const prorate = (value) => Number(value || 0) * prorationFactor;
+
+          try {
+            const fullSalaryDetails = calculateSalaryDetails(
+              emp.ctc,
+              emp.plan_data,
+              emp.employee_id,
+              overtimeRecords || [],
+              bonusRecords || [],
+              advances || [],
+              employeeIncentiveData || {},
+              employeeLopData,
+            );
+            if (!fullSalaryDetails) {
+              return {
+                employee_id: emp.employee_id,
+                prorationFactor,
+                attendanceDeductions:
+                  attendanceDeductionData[emp.employee_id] || {},
+              };
+            }
+
+            const proratedSalaryDetails = {
+              ...fullSalaryDetails,
+              basicSalary: prorate(fullSalaryDetails.basicSalary),
+              hra: prorate(fullSalaryDetails.hra),
+              ltaAllowance: prorate(fullSalaryDetails.ltaAllowance),
+              otherAllowances: prorate(fullSalaryDetails.otherAllowances),
+              incentivePay: prorate(fullSalaryDetails.incentivePay),
+              overtimePay: prorate(fullSalaryDetails.overtimePay),
+              statutoryBonus: prorate(fullSalaryDetails.statutoryBonus),
+              bonusPay: prorate(fullSalaryDetails.bonusPay),
+              advanceRecovery: prorate(fullSalaryDetails.advanceRecovery),
+              employeePF: prorate(fullSalaryDetails.employeePF),
+              employerPF: prorate(fullSalaryDetails.employerPF),
+              esic: prorate(fullSalaryDetails.esic),
+              esicEmployer: prorate(fullSalaryDetails.esicEmployer),
+              gratuity: prorate(fullSalaryDetails.gratuity),
+              professionalTax: prorate(fullSalaryDetails.professionalTax),
+              tds: prorate(fullSalaryDetails.tds),
+              insurance: prorate(fullSalaryDetails.insurance),
+              insuranceEmployer: prorate(fullSalaryDetails.insuranceEmployer),
+            };
+            const fullLopData = employeeLopData[emp.employee_id] || {
+              yearly: { days: 0, value: "0.00" },
+            };
+            const lopDays = Number(fullLopData.yearly?.days || 0);
+            const lopDeduction = prorate(fullLopData.yearly?.value);
+            const advanceRecovery = proratedSalaryDetails.advanceRecovery;
+            const { localGross, localNet } = calculateLocalGrossNet(
+              proratedSalaryDetails,
+              emp.plan_data,
+              lopDeduction,
+              advanceRecovery,
+            );
+            const finalCTC =
+              localGross +
+              proratedSalaryDetails.employerPF +
+              proratedSalaryDetails.gratuity +
+              proratedSalaryDetails.insuranceEmployer +
+              proratedSalaryDetails.esicEmployer;
+            const attendanceDeductions =
+              attendanceDeductionData[emp.employee_id] || {};
+            const deductionAmounts =
+              getAttendanceDeductionAmounts(attendanceDeductions);
+            const adjustedNetSalary = Math.max(
+              0,
+              localNet -
+                deductionAmounts.lateLogin -
+                deductionAmounts.missPunchOut -
+                deductionAmounts.lessLoginHours,
+            );
+
+            return {
+              employee_id: emp.employee_id,
+              prorationFactor,
+              attendanceDeductions,
+              ...proratedSalaryDetails,
+              monthlyBonusPay: prorate(
+                calculateMonthlyBonusPay(emp.ctc, bonusRecords),
+              ),
+              lopDays,
+              lopDeduction,
+              localGross,
+              localNet,
+              finalCTC,
+              baseNetSalary:
+                calculateBaseNetSalary(emp.ctc, emp.plan_data, emp.employee_id) *
+                prorationFactor,
+              adjustedNetSalary,
+            };
+          } catch (error) {
+            console.error(
+              `Worked-days salary calculation failed for ${emp.employee_id}:`,
+              error,
+            );
+            return {
+              employee_id: emp.employee_id,
+              prorationFactor,
+              attendanceDeductions:
+                attendanceDeductionData[emp.employee_id] || {},
+            };
+          }
+        })
+      : [];
+
   if (isLoading) {
     return <div className="sd-loading">Loading...</div>;
   }
@@ -1238,7 +1424,41 @@ const { localNet } = calculateLocalGrossNet(
           </button>
         </div>
       </div>
-      {filteredEmployees.length > 0 ? (
+      <div className="sd-table-view-selector" role="radiogroup" aria-label="Salary table view">
+        <label>
+          <input
+            type="radio"
+            name="salary-table-view"
+            value="salary"
+            checked={tableView === "salary"}
+            onChange={() => setTableView("salary")}
+          />
+          Current payroll table
+        </label>
+        <label>
+          <input
+            type="radio"
+            name="salary-table-view"
+            value="workedDays"
+            checked={tableView === "workedDays"}
+            onChange={() => setTableView("workedDays")}
+          />
+          Worked days to date
+        </label>
+      </div>
+      {tableView === "workedDays" ? (
+        <WorkedDaysTable
+          employees={filteredEmployees}
+          data={workedDaysData}
+          salaryRows={workedDaysSalaryRows}
+          monthlyDayCount={
+            currentMonthDays > 0 ? currentMonthDays : null
+          }
+          isLoading={workedDaysLoading}
+          error={workedDaysError}
+          onRetry={() => setWorkedDaysRefresh((count) => count + 1)}
+        />
+      ) : filteredEmployees.length > 0 ? (
         <div className="sd-table-section">
           <div className="sd-table-container">
             <div className="sd-table-wrapper">

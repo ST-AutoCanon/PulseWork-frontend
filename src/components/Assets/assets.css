@@ -231,7 +231,9 @@
 
 .sticky-options {
   display: flex;
-  justify-content: space-around;
+  justify-content: flex-start;
+  flex-wrap: wrap;
+  gap: 8px;
   width: auto;
   padding: 12px 0;
   font-size: 18px;
@@ -306,7 +308,9 @@
 
 .sticky-suboptions {
   display: flex;
-  justify-content: space-around;
+  justify-content: flex-start;
+  flex-wrap: wrap;
+  gap: 12px;
   padding: 10px 0;
 }
 

@@ -471,7 +471,6 @@ const EmployeeRequestForm = ({
     baseLocation: "",
     travelLocation: "",
     transportMode: "",
-    distanceKm: "",
     tripType: "",
     purpose: "",
     recoveryStartMonth: currentMonthKey(),
@@ -678,12 +677,7 @@ const EmployeeRequestForm = ({
             "Unable to load project options. Refresh and try again.",
         );
       });
-  }, [
-    employeeId,
-    normalizedUserRole,
-    orgId,
-    type,
-  ]);
+  }, [employeeId, normalizedUserRole, orgId, type]);
 
   useEffect(() => {
     if (
@@ -927,8 +921,6 @@ const EmployeeRequestForm = ({
       }
       if (!form.transportMode)
         nextErrors.transportMode = "Select a mode of transport";
-      if (!form.distanceKm || Number(form.distanceKm) < 0)
-        nextErrors.distanceKm = "Enter a valid travel distance";
       if (!form.tripType) nextErrors.tripType = "Trip type is required";
       if (!form.purpose) nextErrors.purpose = "Purpose is required";
       form.travelers.forEach((traveler, index) => {
@@ -1105,10 +1097,6 @@ const EmployeeRequestForm = ({
           baseLocation: form.baseLocation,
           travelLocation: form.travelLocation,
           transportMode: form.transportMode,
-          distanceKm: Number(form.distanceKm),
-          beyondEligibility:
-            travelContext.cadreBand === "LOWER" &&
-            Number(form.distanceKm) > 1000,
           tripType: form.tripType,
           purpose: form.purpose,
           additionalInfo: form.additionalInfo,
@@ -1444,20 +1432,6 @@ const EmployeeRequestForm = ({
                       update("returnDate", "");
                     }
                   }}
-                />
-              </RequestField>
-
-              <RequestField
-                label="Travel distance (km)"
-                required
-                error={errors.distanceKm}
-              >
-                <input
-                  type="number"
-                  min="0"
-                  value={form.distanceKm}
-                  onChange={(event) => update("distanceKm", event.target.value)}
-                  placeholder="e.g. 850"
                 />
               </RequestField>
 

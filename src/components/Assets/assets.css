@@ -301,6 +301,37 @@
   border-radius: 4px;
 }
 
+.asset-accessories {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 8px 0;
+}
+
+.asset-accessories p {
+  margin: 0;
+  color: #555;
+}
+
+.asset-accessory-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+}
+
+.asset-accessory-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+}
+
+.asset-accessory-option input[type="checkbox"] {
+  flex: none;
+  width: auto;
+  margin: 0;
+}
+
 .sticky-options button.active {
   border-bottom: none;
   background: #b0b0b0;

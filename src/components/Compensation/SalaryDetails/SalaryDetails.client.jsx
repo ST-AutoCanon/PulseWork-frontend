@@ -60,6 +60,36 @@ const SalaryDetails = () => {
 
   const hasValidCredentials = () => Boolean(meId && orgId);
 
+  const getEmployeeLopCalculation = (employee) => {
+    const employeeId = String(employee?.employee_id || "").trim().toUpperCase();
+    const attendanceDeductions =
+      attendanceDeductionData[employee?.employee_id] ||
+      attendanceDeductionData[employeeId] ||
+      {};
+    const days = Math.max(0, Number(attendanceDeductions.approvedLopDays) || 0);
+    const periodEnd = payrollPeriod?.endDate;
+    const periodEndMatch = /^(\d{4})-(\d{2})-\d{2}$/.exec(
+      String(periodEnd || ""),
+    );
+    const currentDate = new Date();
+    const year = periodEndMatch
+      ? Number(periodEndMatch[1])
+      : currentDate.getFullYear();
+    const month = periodEndMatch
+      ? Number(periodEndMatch[2])
+      : currentDate.getMonth() + 1;
+    const daysInMonth = new Date(Date.UTC(year, month, 0)).getUTCDate();
+    const monthlySalary = Number(employee?.ctc || 0) / 12;
+
+    return {
+      days,
+      deduction:
+        daysInMonth > 0
+          ? Number(((days * monthlySalary) / daysInMonth).toFixed(2))
+          : 0,
+    };
+  };
+
   const isApproved = (empId) => approvedIds.includes(String(empId));
   const calculateMonthlyBonusPay = (empCtc, bonusRecords) => {
     if (!empCtc) return 0;
@@ -238,24 +268,56 @@ const SalaryDetails = () => {
       setAttendanceDeductionError("");
       try {
         const now = new Date();
-        const response = await axios.post(
-          `${BASE_URL}/api/salary-attendance-deductions/calculate`,
-          {
-            month: now.getMonth() + 1,
-            year: now.getFullYear(),
-            employees: employees.map((emp) => ({
-              employee_id: emp.employee_id,
-              annual_ctc: emp.ctc,
-            })),
-          },
-          { withCredentials: true, headers: requestHeaders }
-        );
+        const periodRequest = {
+          month: now.getMonth() + 1,
+          year: now.getFullYear(),
+        };
+        const employeeRequest = employees.map((emp) => ({
+          employee_id: emp.employee_id,
+          annual_ctc: emp.ctc,
+        }));
+        const [response, approvedLopResponse] = await Promise.all([
+          axios.post(
+            `${BASE_URL}/api/salary-attendance-deductions/calculate`,
+            { ...periodRequest, employees: employeeRequest },
+            { withCredentials: true, headers: requestHeaders }
+          ),
+          axios.post(
+            `${BASE_URL}/api/salary-attendance-deductions/approved-lop-summary`,
+            {
+              ...periodRequest,
+              employees: employeeRequest.map(({ employee_id }) => ({
+                employee_id,
+              })),
+            },
+            { withCredentials: true, headers: requestHeaders }
+          ),
+        ]);
         if (isActive) {
           const deductionData = response.data?.data || {};
-          setAttendanceDeductionData(deductionData);
+          const approvedLopData =
+            approvedLopResponse.data?.data?.employees || {};
+          const mergedDeductionData = Object.fromEntries(
+            Object.entries(deductionData).map(([employeeId, deductions]) => {
+              const normalizedEmployeeId = String(employeeId)
+                .trim()
+                .toUpperCase();
+              return [
+                employeeId,
+                {
+                  ...deductions,
+                  ...(approvedLopData[normalizedEmployeeId] || {}),
+                },
+              ];
+            })
+          );
+          setAttendanceDeductionData(mergedDeductionData);
           setPayrollPeriod(
-            Object.values(deductionData).find((employeeData) => employeeData?.period)
-              ?.period || null
+            approvedLopResponse.data?.data?.period ||
+              Object.values(deductionData).find(
+                (employeeData) => employeeData?.period
+              )?.period ||
+              null
           );
         }
       } catch (error) {
@@ -520,11 +582,8 @@ const SalaryDetails = () => {
         }
 
         const monthlyBonusPay = calculateMonthlyBonusPay(emp.ctc, bonusRecords);
-        const lopData = employeeLopData[emp.employee_id] || {
-          yearly: { days: 0, value: "0.00" },
-        };
-        const lopDays = Number.parseFloat(lopData.yearly?.days || 0);
-        const lopDeduction = Number.parseFloat(lopData.yearly?.value || "0.00");
+        const { days: lopDays, deduction: lopDeduction } =
+          getEmployeeLopCalculation(emp);
         const advanceRecovery = Number.parseFloat(salaryDetails.advanceRecovery || 0);
 
         const { localGross, localNet } = calculateLocalGrossNet(
@@ -573,7 +632,9 @@ const SalaryDetails = () => {
           Math.max(localNet, 0),
           attendanceExportValues[0],
           attendanceExportValues[1],
-          `${Number(attendanceDeductions.approvedLeaveCount || 0)} (${lopDays.toFixed(2)})`,
+          `${Number(attendanceDeductions.approvedLeaveCount || 0)} (${Number(
+            attendanceDeductions.approvedLopDays || 0
+          ).toFixed(2)})`,
           lopDeduction,
           ...attendanceExportValues.slice(2),
           newNetSalary,
@@ -687,10 +748,7 @@ const SalaryDetails = () => {
       }
 
       const monthlyBonusPay = calculateMonthlyBonusPay(emp.ctc, bonusRecords);
-      const lopData = employeeLopData[emp.employee_id] || {
-        currentMonth: { days: 0, value: "0.00", currency: "INR" },
-      };
-     const lopDeduction = parseFloat(lopData.yearly?.value || "0.00");
+      const { deduction: lopDeduction } = getEmployeeLopCalculation(emp);
 const advanceRecovery = parseFloat(salaryDetails.advanceRecovery || 0);
 
 const { localNet } = calculateLocalGrossNet(
@@ -880,9 +938,8 @@ const { localNet } = calculateLocalGrossNet(
           if (!salaryDetails) return null;
 
          const monthlyBonusPay = calculateMonthlyBonusPay(emp.ctc, bonusRecords);
-const lopData = employeeLopData[emp.employee_id] || { yearly: { days: 0, value: "0.00" } };
-const lopDays = parseFloat(lopData.yearly?.days || 0);
-const lopDeduction = parseFloat(lopData.yearly?.value || "0.00");
+const { days: lopDays, deduction: lopDeduction } =
+  getEmployeeLopCalculation(emp);
 const advanceRecovery = Number(salaryDetails.advanceRecovery || 0);
 
 const { localGross, localNet } = calculateLocalGrossNet(
@@ -1064,9 +1121,8 @@ const renderTableRows = (employeesToRender) => {
         }
 
         const monthlyBonusPay = calculateMonthlyBonusPay(emp.ctc, bonusRecords);
-        const lopData = employeeLopData[emp.employee_id] || { yearly: { days: 0, value: "0.00" } };
-        const lopDays = parseFloat(lopData.yearly?.days || 0);
-        const lopDeduction = parseFloat(lopData.yearly?.value || 0);
+        const { days: lopDays, deduction: lopDeduction } =
+          getEmployeeLopCalculation(emp);
 
 const advanceRecovery = Number(salaryDetails.advanceRecovery || 0);
 // ===== NEW: Base Net Salary (stable, no OT/Bonus/LOP/Advance) =====
@@ -1154,7 +1210,7 @@ const { localGross, localNet } =
 <AttendanceDeductionCells
   deductions={attendanceDeductions}
   approvedLeaveCount={attendanceDeductions.approvedLeaveCount}
-  lopDays={lopDays}
+  lopDays={attendanceDeductions.approvedLopDays}
   lopDeduction={lopDeduction}
 />
 <td className="sd-table-cell sd-align-right">
@@ -1175,10 +1231,8 @@ const { localGross, localNet } =
             emp.ctc,
             bonusRecords
           );
-          const lopData = employeeLopData[emp.employee_id] || {
-            currentMonth: { days: 0, value: "0.00", currency: "INR" },
-          };
-          const lopDeduction = parseFloat(lopData.yearly?.value || "0.00");
+          const { deduction: lopDeduction } =
+            getEmployeeLopCalculation(emp);
 
           const salaryDetails = calculateSalaryDetails(
             emp.ctc,
@@ -1311,11 +1365,8 @@ const { localNet } = calculateLocalGrossNet(
               insurance: prorate(fullSalaryDetails.insurance),
               insuranceEmployer: prorate(fullSalaryDetails.insuranceEmployer),
             };
-            const fullLopData = employeeLopData[emp.employee_id] || {
-              yearly: { days: 0, value: "0.00" },
-            };
-            const lopDays = Number(fullLopData.yearly?.days || 0);
-            const lopDeduction = prorate(fullLopData.yearly?.value);
+            const { days: lopDays, deduction: lopDeduction } =
+              getEmployeeLopCalculation(emp);
             const advanceRecovery = proratedSalaryDetails.advanceRecovery;
             const { localGross, localNet } = calculateLocalGrossNet(
               proratedSalaryDetails,

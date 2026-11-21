@@ -65,6 +65,25 @@ const Assets = () => {
     return !!BACKEND && !!user && !!hydrated;
   };
 
+  const fetchAccessories = async (
+    categoryId,
+    subcategoryId,
+    assetId = null
+  ) => {
+    const query = new URLSearchParams({ category_id: String(categoryId) });
+    if (subcategoryId) query.set("subcategory_id", String(subcategoryId));
+    if (assetId) query.set("asset_id", String(assetId));
+    const response = await axios.get(
+      `${BACKEND}/api/assets/accessories?${query.toString()}`,
+      { withCredentials: true, headers: getHeaders() }
+    );
+    const accessories = response.data?.data;
+    if (!Array.isArray(accessories)) {
+      throw new Error("Invalid asset accessories response");
+    }
+    return accessories;
+  };
+
   const getHeaders = (opts = {}) => {
     const base = {
       "x-api-key": API_KEY,
@@ -94,6 +113,18 @@ const Assets = () => {
   const [assetCategories, setAssetCategories] = useState([]);
   const [categoriesLoading, setCategoriesLoading] = useState(false);
   const [categoriesError, setCategoriesError] = useState("");
+  const [assetAccessories, setAssetAccessories] = useState([]);
+  const [assetAccessoriesLoading, setAssetAccessoriesLoading] = useState(false);
+  const [assetAccessoriesError, setAssetAccessoriesError] = useState("");
+  const [selectedAccessoryIds, setSelectedAccessoryIds] = useState([]);
+  const [assignmentAccessories, setAssignmentAccessories] = useState([]);
+  const [assignmentAccessoriesLoading, setAssignmentAccessoriesLoading] =
+    useState(false);
+  const [assignmentAccessoriesError, setAssignmentAccessoriesError] =
+    useState("");
+  const [assignedAccessoryIds, setAssignedAccessoryIds] = useState([]);
+  const [assignmentAccessoriesReady, setAssignmentAccessoriesReady] =
+    useState(false);
   const [assetName, setAssetName] = useState("");
   const [configuration, setConfiguration] = useState("");
   const [valuationDate, setValuationDate] = useState("");
@@ -288,6 +319,7 @@ const Assets = () => {
     setSelectedCategory(category.category_name);
     setSelectedCategoryId(String(category.category_id));
     setSelectedSubCategory("");
+    setSelectedAccessoryIds([]);
   };
 
   const handleFileChange = (e) => {
@@ -454,6 +486,59 @@ const Assets = () => {
   }, [user, BACKEND]);
 
   useEffect(() => {
+    let active = true;
+    const category = assetCategories.find(
+      (item) => String(item.category_id) === selectedCategoryId
+    );
+    const subcategory = category?.subcategories?.find(
+      (item) => item.subcategory_name === selectedSubCategory
+    );
+
+    if (
+      !selectedCategoryId ||
+      (category?.subcategories?.length > 0 && !selectedSubCategory)
+    ) {
+      setAssetAccessories([]);
+      setAssetAccessoriesLoading(false);
+      setAssetAccessoriesError("");
+      return () => {
+        active = false;
+      };
+    }
+
+    setAssetAccessoriesLoading(true);
+    setAssetAccessoriesError("");
+    fetchAccessories(
+      selectedCategoryId,
+      subcategory?.subcategory_id || null
+    )
+      .then((accessories) => {
+        if (active) setAssetAccessories(accessories);
+      })
+      .catch((error) => {
+        if (active) {
+          setAssetAccessories([]);
+          setAssetAccessoriesError(
+            error.response?.data?.message || "Failed to load accessories."
+          );
+        }
+      })
+      .finally(() => {
+        if (active) setAssetAccessoriesLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [
+    selectedCategoryId,
+    selectedSubCategory,
+    assetCategories,
+    BACKEND,
+    user,
+  ]);
+
+  useEffect(() => {
     if (selectedAsset) {
       fetchAssignedData(selectedAsset.asset_id);
     }
@@ -475,6 +560,7 @@ const Assets = () => {
     setSelectedCategory("");
     setSelectedCategoryId("");
     setSelectedSubCategory("");
+    setSelectedAccessoryIds([]);
     setStatus("In Use");
   };
 
@@ -580,11 +666,55 @@ if (rows.length > 0) {
 
   setShowAssignPopup(true);
   setSelectedAsset(asset);
+  setAssignmentAccessories([]);
+  setAssignedAccessoryIds([]);
+  setAssignmentAccessoriesError("");
+  setAssignmentAccessoriesReady(false);
+
+  const category = assetCategories.find(
+    (item) => item.category_name === asset.category
+  );
+  const subcategory = category?.subcategories?.find(
+    (item) => item.subcategory_name === asset.sub_category
+  );
+  if (!category || (asset.sub_category && !subcategory)) {
+    setAssignmentAccessoriesError(
+      "Accessories are unavailable because this asset category is not configured."
+    );
+    setAssignmentAccessoriesLoading(false);
+    return;
+  }
+
+  setAssignmentAccessoriesLoading(true);
+  fetchAccessories(
+    category.category_id,
+    subcategory?.subcategory_id || null,
+    asset.asset_id
+  )
+    .then((accessories) => {
+      setAssignmentAccessories(accessories);
+      setAssignedAccessoryIds(
+        accessories
+          .filter((accessory) => accessory.is_selected)
+          .map((accessory) => Number(accessory.accessory_id))
+      );
+      setAssignmentAccessoriesReady(true);
+    })
+    .catch((error) => {
+      console.error("Error fetching assigned accessories:", error);
+      setAssignmentAccessoriesError(
+        error.response?.data?.message || "Failed to load accessories."
+      );
+    })
+    .finally(() => setAssignmentAccessoriesLoading(false));
 };
 
   const closeAssignPopup = () => {
     setShowAssignPopup(false);
     setSelectedAsset(null);
+    setAssignmentAccessories([]);
+    setAssignedAccessoryIds([]);
+    setAssignmentAccessoriesReady(false);
     setAssignedTo("");
     setStartDate("");
     setReturnDate("");
@@ -620,6 +750,9 @@ if (rows.length > 0) {
         status: rows[0].assigningStatus,
         comments: rows[0].comments || "",
       };
+      if (assignmentAccessoriesReady) {
+        firstAssignment.accessory_ids = assignedAccessoryIds;
+      }
 
       const requiredFields = ["assetId", "assignedTo", "startDate", "status"];
       for (const field of requiredFields) {
@@ -650,7 +783,11 @@ if (rows.length > 0) {
         "❌ Error assigning asset:",
         error.response?.data || error.message
       );
-      showAlert(error.response?.data?.error || "Assignment failed");
+      showAlert(
+        error.response?.data?.message ||
+          error.response?.data?.error ||
+          "Assignment failed"
+      );
     }
   };
 
@@ -733,6 +870,20 @@ if (rows.length > 0) {
     formData.append("valuation_date", valuationDate);
     formData.append("category", selectedCategory);
     formData.append("sub_category", selectedSubCategory);
+    formData.append("category_id", selectedCategoryId);
+    const categoryRecord = assetCategories.find(
+      (item) => String(item.category_id) === selectedCategoryId
+    );
+    const subcategoryRecord = categoryRecord?.subcategories?.find(
+      (item) => item.subcategory_name === selectedSubCategory
+    );
+    formData.append(
+      "subcategory_id",
+      subcategoryRecord?.subcategory_id
+        ? String(subcategoryRecord.subcategory_id)
+        : ""
+    );
+    formData.append("accessory_ids", JSON.stringify(selectedAccessoryIds));
     formData.append("status", status);
 
     let assignedToArray = [];
@@ -1092,13 +1243,13 @@ if (rows.length > 0) {
               <button className="category-button">
                 {category} ({data.categoryTotal})
               </button>
-              <div className="subcategory-tooltip">
-                {data.subcategories.map((sub, i) => (
-                  <div className="subcategory-item" key={i}>
-                    {sub.sub_category} {sub.sub_category_count}
-                  </div>
-                ))}
-              </div>
+                <div className="subcategory-tooltip">
+                  {data.subcategories.map((sub, i) => (
+                    <div className="subcategory-item" key={i}>
+                      {sub.sub_category} {sub.sub_category_count}
+                    </div>
+                  ))}
+                </div>
             </div>
           ))}
         </div>
@@ -1176,7 +1327,10 @@ if (rows.length > 0) {
                           : ""
                       }
                       onClick={() =>
-                        setSelectedSubCategory(subcategory.subcategory_name)
+                        {
+                          setSelectedSubCategory(subcategory.subcategory_name);
+                          setSelectedAccessoryIds([]);
+                        }
                       }
                     >
                       <SubcategoryIcon className="icon" />
@@ -1276,8 +1430,43 @@ if (rows.length > 0) {
                   )}
                 </div>
 
-               
-                
+                <div className="asset-accessories">
+                  <strong>Accessories</strong>
+                  {assetAccessoriesLoading ? (
+                    <p>Loading accessories...</p>
+                  ) : assetAccessoriesError ? (
+                    <p role="alert">{assetAccessoriesError}</p>
+                  ) : assetAccessories.length > 0 ? (
+                    <div className="asset-accessory-list">
+                      {assetAccessories.map((accessory) => {
+                        const accessoryId = Number(accessory.accessory_id);
+                        return (
+                          <label
+                            className="asset-accessory-option"
+                            key={accessoryId}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={selectedAccessoryIds.includes(
+                                accessoryId
+                              )}
+                              onChange={(event) =>
+                                setSelectedAccessoryIds((current) =>
+                                  event.target.checked
+                                    ? [...current, accessoryId]
+                                    : current.filter((id) => id !== accessoryId)
+                                )
+                              }
+                            />
+                            <span>{accessory.accessory_name}</span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <p>No accessories configured for this asset type.</p>
+                  )}
+                </div>
 
                 <div className="row">
                   <label>Upload Document</label>
@@ -1287,7 +1476,11 @@ if (rows.length > 0) {
                   <button onClick={togglePopup} className="cancel-btn">
                     Cancel
                   </button>
-                  <button className="save-btn" onClick={handleSave}>
+                  <button
+                    className="save-btn"
+                    onClick={handleSave}
+                    disabled={assetAccessoriesLoading}
+                  >
                     Save
                   </button>
                 </div>
@@ -1586,7 +1779,11 @@ if (rows.length > 0) {
                 <button className="assigncancel-btn" onClick={closeAssignPopup}>
                   Cancel
                 </button>
-                <button className="assignsave-btn" onClick={handleAssign}>
+                <button
+                  className="assignsave-btn"
+                  onClick={handleAssign}
+                  disabled={assignmentAccessoriesLoading}
+                >
                   Assign
                 </button>
               </div>
@@ -1707,6 +1904,41 @@ if (rows.length > 0) {
     />
   </div>
 ))}
+              <div className="asset-accessories">
+                <strong>Accessories</strong>
+                {assignmentAccessoriesLoading ? (
+                  <p>Loading accessories...</p>
+                ) : assignmentAccessoriesError ? (
+                  <p role="alert">{assignmentAccessoriesError}</p>
+                ) : assignmentAccessories.length > 0 ? (
+                  <div className="asset-accessory-list">
+                    {assignmentAccessories.map((accessory) => {
+                      const accessoryId = Number(accessory.accessory_id);
+                      return (
+                        <label
+                          className="asset-accessory-option"
+                          key={accessoryId}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={assignedAccessoryIds.includes(accessoryId)}
+                            onChange={(event) =>
+                              setAssignedAccessoryIds((current) =>
+                                event.target.checked
+                                  ? [...current, accessoryId]
+                                  : current.filter((id) => id !== accessoryId)
+                              )
+                            }
+                          />
+                          <span>{accessory.accessory_name}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <p>No accessories configured for this asset type.</p>
+                )}
+              </div>
             </div>
           </div>
 

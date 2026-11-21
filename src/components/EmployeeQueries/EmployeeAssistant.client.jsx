@@ -3140,11 +3140,6 @@ function RequestSummary({ request }) {
 
           <SummaryField label="Transport" value={details.transportMode} />
 
-          <SummaryField
-            label="Distance"
-            value={details.distanceKm ? `${details.distanceKm} km` : "—"}
-          />
-
           <SummaryField label="Trip Type" value={details.tripType} />
 
           <SummaryField label="Purpose" value={details.purpose} full />

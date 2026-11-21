@@ -2,7 +2,6 @@
 
 import React from "react";
 import * as XLSX from "xlsx";
-import { Maximize2, Minimize2 } from "lucide-react";
 
 function formatDate(dateValue) {
   const date = new Date(`${dateValue}T00:00:00Z`);
@@ -32,46 +31,42 @@ function formatDayCount(value) {
 }
 
 function DailyAttendanceDetails({ attendance, expanded, onToggle }) {
-  const dailyStatus = (attendance?.dailyStatus || []).filter(
-    ({ status }) => status === "Absent" || status === "Pending Leave",
-  );
-  const pendingLeaveCount = dailyStatus.filter(
-    ({ status }) => status === "Pending Leave",
-  ).length;
+  const dailyStatus = attendance?.dailyStatus || [];
   return (
     <div className="sd-worked-days-daily-details">
       <div className="sd-worked-days-attendance-summary">
-        <strong>
-          Absent (incl. pending): {formatDayCount(attendance?.absentDays)} days
-          {pendingLeaveCount > 0 && ` | Pending leaves: ${pendingLeaveCount}`}
-        </strong>
+        <strong>Absent: {formatDayCount(attendance?.absentDays)} days</strong>
         <button
           type="button"
           className="sd-worked-days-expand"
           onClick={onToggle}
           aria-expanded={expanded}
           aria-label={`${expanded ? "Hide" : "Show"} daily attendance details`}
-          title={expanded ? "Hide daily attendance details" : "Show daily attendance details"}
         >
-          {expanded ? <Minimize2 size={16} aria-hidden="true" /> : <Maximize2 size={16} aria-hidden="true" />}
+          {expanded ? "Minimize" : "Maximize"}
         </button>
       </div>
       {expanded && (
         <div className="sd-worked-days-daily-list">
-          <strong className="sd-worked-days-count-summary">
-            Present: {formatDayCount(attendance?.workedDays)} | Absent:{" "}
-            {formatDayCount(attendance?.absentDays)} | Leaves:{" "}
-            {formatDayCount(attendance?.approvedLeaveDays)} | Pending leaves:{" "}
-            {pendingLeaveCount}
+          <strong>
+            Worked: {formatDayCount(attendance?.workedDays)} | Leaves: {formatDayCount(attendance?.approvedLeaveDays)} | Absent: {formatDayCount(attendance?.absentDays)}
           </strong>
-          {dailyStatus.length ? dailyStatus.map(({ date, status }) => (
-            <div key={date}>
-              {formatDate(date)}:{" "}
-              <span className={`sd-worked-days-status sd-worked-days-status-${status === "Absent" ? "absent" : "pending"}`}>
-                {status}
-              </span>
-            </div>
-          )) : <div>No absent or pending leave records</div>}
+          {dailyStatus.length ? dailyStatus.map(({ date, status, leaveDays, punchIn, punchOut }) => {
+            const leaveText =
+              status === "Approved Leave"
+                ? ` (${formatDayCount(leaveDays)} leave day${Number(leaveDays) === 1 ? "" : "s"})`
+                : "";
+            const punchText = punchIn
+              ? ` (In ${punchIn}${punchOut ? `, Out ${punchOut}` : ""})`
+              : punchOut
+                ? ` (Out ${punchOut})`
+                : "";
+            return (
+              <div key={date}>
+                {formatDate(date)}: {status}{leaveText}{punchText}
+              </div>
+            );
+          }) : <div>No daily attendance records</div>}
         </div>
       )}
     </div>
@@ -97,7 +92,7 @@ export default function WorkedDaysTable({
   employees,
   data,
   salaryRows,
-  monthlyDayCount,
+  monthlyWorkingDays,
   isLoading,
   error,
   onRetry,
@@ -134,6 +129,9 @@ export default function WorkedDaysTable({
     salaryRows.map((row) => [String(row.employee_id), row]),
   );
   const periodLabel = formatPayrollPeriod(data?.period);
+  const completedThrough = data?.period?.endDate
+    ? formatDate(data.period.endDate)
+    : "today";
   const selectedEmployees = employees.filter((employee) =>
     selectedIds.has(String(employee.employee_id)),
   );
@@ -186,18 +184,14 @@ export default function WorkedDaysTable({
       "Late Login Amount", "Approved Leave Count (LOP Days)", "LOP Deduction",
       "Miss Punch Out Eligible Count (Total Violations)", "Miss Punch Out Amount",
       "Less Login Hours Eligible Count (Total Violations)", "Less Login Hours Amount",
-      "Net Salary After Attendance Deductions",
-      "Payroll Period", "Period Days", "Worked Days",
-      "Approved Leave Days", "Absent Days", "Current Month Days",
-      "Daily Attendance Details",
+      "Approved Leave Days", "Absent Days", "Net Salary After Attendance Deductions",
+      "Payroll Period", "Period Working Days", "Worked Days",
+      "Current Month Working Days", "Proration", "Daily Attendance Details",
     ];
     const summaryRows = selectedEmployees.map((employee) => {
       const attendance = rowsByEmployee.get(String(employee.employee_id));
       const salary = salaryByEmployee.get(String(employee.employee_id));
       const deductions = salary?.attendanceDeductions || {};
-      const pendingLeaveCount = (attendance?.dailyStatus || []).filter(
-        ({ status }) => status === "Pending Leave",
-      ).length;
       const count = (deduction) => {
         const total = Number(deduction?.count || 0);
         const eligible = Number(deduction?.eligibleCount ?? total);
@@ -231,20 +225,23 @@ export default function WorkedDaysTable({
         Number(salary?.baseNetSalary || 0),
         count(deductions.lateLogin),
         Number(deductions.lateLogin?.amount || 0),
-        `${Number(deductions.approvedLeaveCount || 0)} (${Number(salary?.lopDays || 0).toFixed(2)})`,
+        `${Number(deductions.approvedLeaveCount || 0)} (${Number(
+          deductions.approvedLopDays || 0,
+        ).toFixed(2)})`,
         Number(salary?.lopDeduction || 0),
         count(deductions.missPunchOut),
         Number(deductions.missPunchOut?.amount || 0),
         count(deductions.lessLoginHours),
         Number(deductions.lessLoginHours?.amount || 0),
+        Number(attendance?.approvedLeaveDays || 0),
+        Number(attendance?.absentDays || 0),
         Number(salary?.adjustedNetSalary || 0),
         periodLabel,
         Number(attendance?.totalWorkingDays || 0),
         Number(attendance?.workedDays || 0),
-        Number(attendance?.approvedLeaveDays || 0),
-        Number(attendance?.absentDays || 0),
-        Number(monthlyDayCount || 0),
-        `Present: ${formatDayCount(attendance?.workedDays)} | Absent: ${formatDayCount(attendance?.absentDays)} | Leaves: ${formatDayCount(attendance?.approvedLeaveDays)} | Pending leaves: ${pendingLeaveCount}`,
+        Number(monthlyWorkingDays || 0),
+        `${((salary?.prorationFactor || 0) * 100).toFixed(2)}%`,
+        `Absent: ${formatDayCount(attendance?.absentDays)} days`,
       ];
     });
     const summarySheet = XLSX.utils.aoa_to_sheet([headers, ...summaryRows]);
@@ -263,9 +260,7 @@ export default function WorkedDaysTable({
     ];
     const attendanceRows = selectedEmployees.flatMap((employee) => {
       const attendance = rowsByEmployee.get(String(employee.employee_id));
-      const dailyStatus = (attendance?.dailyStatus || []).filter(
-        ({ status }) => status === "Absent" || status === "Pending Leave",
-      );
+      const dailyStatus = attendance?.dailyStatus || [];
       return dailyStatus.length
         ? dailyStatus.map((day) => [
             employee.employee_id,
@@ -306,6 +301,11 @@ export default function WorkedDaysTable({
     <div className="sd-table-section">
       <div className="sd-worked-days-summary">
         <strong>Payroll period:</strong> {periodLabel}
+        <span>
+          Amounts are prorated using worked days ÷ current-month working days
+          ({monthlyWorkingDays || "N/A"}). Workdays are counted through{" "}
+          {completedThrough}; Sundays and configured holidays are excluded.
+        </span>
         <div className="sd-worked-days-actions">
           <span>{selectedEmployees.length} selected</span>
           <button
@@ -364,13 +364,14 @@ export default function WorkedDaysTable({
                 <th>Miss Punch Out Amount</th>
                 <th>Less Login Hours Eligible Count (Total Violations)</th>
                 <th>Less Login Hours Amount</th>
-                <th>Net Salary After Attendance Deductions</th>
-                <th>Payroll Period</th>
-                <th>Period Days</th>
-                <th>Worked Days</th>
                 <th>Approved Leave Days</th>
                 <th>Absent Days</th>
-                <th>Current Month Days</th>
+                <th>Net Salary After Attendance Deductions</th>
+                <th>Payroll Period</th>
+                <th>Period Working Days</th>
+                <th>Worked Days</th>
+                <th>Current Month Working Days</th>
+                <th>Proration</th>
                 <th>Daily Attendance Details</th>
               </tr>
             </thead>
@@ -423,13 +424,19 @@ export default function WorkedDaysTable({
                     <DeductionCells deduction={deductions.lateLogin} />
                     <td className="sd-align-right sd-deduction">
                       {Number(deductions.approvedLeaveCount || 0)} (
-                      {Number(salary?.lopDays || 0).toFixed(2)})
+                      {Number(deductions.approvedLopDays || 0).toFixed(2)})
                     </td>
                     <td className="sd-align-right sd-deduction">
                       {formatAmount(salary?.lopDeduction)}
                     </td>
                     <DeductionCells deduction={deductions.missPunchOut} />
                     <DeductionCells deduction={deductions.lessLoginHours} />
+                    <td className="sd-align-right">
+                      {formatDayCount(attendance?.approvedLeaveDays)}
+                    </td>
+                    <td className="sd-align-right">
+                      {formatDayCount(attendance?.absentDays)}
+                    </td>
                     <td className="sd-align-right">
                       <strong>{formatAmount(salary?.adjustedNetSalary)}</strong>
                     </td>
@@ -440,13 +447,10 @@ export default function WorkedDaysTable({
                     <td className="sd-align-right">
                       {attendance?.workedDays ?? "N/A"}
                     </td>
+                    <td className="sd-align-right">{monthlyWorkingDays || "N/A"}</td>
                     <td className="sd-align-right">
-                      {formatDayCount(attendance?.approvedLeaveDays)}
+                      {salary ? `${(salary.prorationFactor * 100).toFixed(2)}%` : "N/A"}
                     </td>
-                    <td className="sd-align-right">
-                      {formatDayCount(attendance?.absentDays)}
-                    </td>
-                    <td className="sd-align-right">{monthlyDayCount || "N/A"}</td>
                     <td>
                       <DailyAttendanceDetails
                         attendance={attendance}

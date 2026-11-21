@@ -490,28 +490,8 @@
 
 .sd-worked-days-expand {
   flex: 0 0 auto;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 30px;
-  height: 30px;
-  padding: 0;
-  border-color: #bfdbfe;
-  background: #eff6ff;
-  color: #2563eb;
-  transition: background-color 0.15s ease, color 0.15s ease;
-}
-
-.sd-worked-days-expand:hover,
-.sd-worked-days-expand:focus-visible {
-  border-color: #2563eb;
-  background: #2563eb;
-  color: #fff;
-}
-
-.sd-worked-days-expand:focus-visible {
-  outline: 2px solid #93c5fd;
-  outline-offset: 2px;
+  padding: 3px 7px;
+  font-size: 12px;
 }
 
 .sd-worked-days-daily-list {
@@ -523,24 +503,6 @@
 
 .sd-worked-days-daily-list > div {
   padding-top: 3px;
-}
-
-.sd-worked-days-status {
-  display: inline-block;
-  padding: 1px 7px;
-  border-radius: 999px;
-  font-size: 12px;
-  font-weight: 600;
-}
-
-.sd-worked-days-status-absent {
-  background: #fee2e2;
-  color: #b91c1c;
-}
-
-.sd-worked-days-status-pending {
-  background: #fef3c7;
-  color: #92400e;
 }
 
 .sd-worked-days-message {

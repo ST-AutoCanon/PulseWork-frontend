@@ -20,6 +20,36 @@ import AttendanceDeductionCells, {
 } from "./AttendanceDeductionCells.client";
 import WorkedDaysTable from "./WorkedDaysTable.client";
 
+function getPayrollPeriodProrationFactor(period) {
+  const datePattern = /^\d{4}-\d{2}-\d{2}$/;
+  if (
+    !datePattern.test(String(period?.startDate || "")) ||
+    !datePattern.test(String(period?.endDate || ""))
+  ) {
+    return 0;
+  }
+
+  const current = new Date(`${period.startDate}T00:00:00Z`);
+  const end = new Date(`${period.endDate}T00:00:00Z`);
+  if (
+    Number.isNaN(current.getTime()) ||
+    Number.isNaN(end.getTime()) ||
+    current > end
+  ) {
+    return 0;
+  }
+
+  let factor = 0;
+  while (current <= end) {
+    const daysInMonth = new Date(
+      Date.UTC(current.getUTCFullYear(), current.getUTCMonth() + 1, 0),
+    ).getUTCDate();
+    factor += 1 / daysInMonth;
+    current.setUTCDate(current.getUTCDate() + 1);
+  }
+  return factor;
+}
+
 const SalaryDetails = () => {
   const { user } = useAuth();
   const meId = user?.employeeId ?? user?.id ?? user?.employee_id ?? null;
@@ -1305,6 +1335,9 @@ const { localNet } = calculateLocalGrossNet(
     new Date().getMonth() + 1,
     0,
   ).getDate();
+  const payrollPeriodProrationFactor = getPayrollPeriodProrationFactor(
+    workedDaysData?.period,
+  );
   const workedDaysByEmployee = new Map(
     (workedDaysData?.employees || []).map((employeeData) => [
       String(employeeData.employee_id),
@@ -1316,12 +1349,7 @@ const { localNet } = calculateLocalGrossNet(
       ? filteredEmployees.map((emp) => {
           const attendance =
             workedDaysByEmployee.get(String(emp.employee_id)) || {};
-          const workedDayCount = Number(attendance.workedDays || 0);
-          const prorationFactor =
-            Number.isFinite(currentMonthDays) &&
-            currentMonthDays > 0
-              ? workedDayCount / currentMonthDays
-              : 0;
+          const prorationFactor = payrollPeriodProrationFactor;
           const prorate = (value) => Number(value || 0) * prorationFactor;
 
           try {
@@ -1354,7 +1382,7 @@ const { localNet } = calculateLocalGrossNet(
               overtimePay: prorate(fullSalaryDetails.overtimePay),
               statutoryBonus: prorate(fullSalaryDetails.statutoryBonus),
               bonusPay: prorate(fullSalaryDetails.bonusPay),
-              advanceRecovery: prorate(fullSalaryDetails.advanceRecovery),
+              advanceRecovery: Number(fullSalaryDetails.advanceRecovery || 0),
               employeePF: prorate(fullSalaryDetails.employeePF),
               employerPF: prorate(fullSalaryDetails.employerPF),
               esic: prorate(fullSalaryDetails.esic),
@@ -1502,7 +1530,7 @@ const { localNet } = calculateLocalGrossNet(
           employees={filteredEmployees}
           data={workedDaysData}
           salaryRows={workedDaysSalaryRows}
-          monthlyDayCount={
+          monthlyCalendarDays={
             currentMonthDays > 0 ? currentMonthDays : null
           }
           isLoading={workedDaysLoading}

@@ -59,9 +59,8 @@ const PayrollSummary = () => {
   };
 
   const isPayslipDownloadEnabled =
-    payrollData?.payslip_generated === 1 ||
-    payrollData?.payslip_generated === "1" ||
-    payrollData?.payslip_generated === true;
+    payrollData?.payslip_generated === true ||
+    Number(payrollData?.payslip_generated) === 1;
 
   const protectedImgCache = new Map();
 const buildAdvanceDetailText = (

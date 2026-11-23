@@ -20,34 +20,41 @@ import AttendanceDeductionCells, {
 } from "./AttendanceDeductionCells.client";
 import WorkedDaysTable from "./WorkedDaysTable.client";
 
-function getPayrollPeriodProrationFactor(period) {
-  const datePattern = /^\d{4}-\d{2}-\d{2}$/;
-  if (
-    !datePattern.test(String(period?.startDate || "")) ||
-    !datePattern.test(String(period?.endDate || ""))
-  ) {
-    return 0;
-  }
+function getCalendarDayProrationFactor(dateKeys) {
+  return dateKeys.reduce((factor, dateKey) => {
+    const match = /^(\d{4})-(\d{2})-\d{2}$/.exec(String(dateKey || ""));
+    if (!match) return factor;
 
-  const current = new Date(`${period.startDate}T00:00:00Z`);
-  const end = new Date(`${period.endDate}T00:00:00Z`);
-  if (
-    Number.isNaN(current.getTime()) ||
-    Number.isNaN(end.getTime()) ||
-    current > end
-  ) {
-    return 0;
-  }
-
-  let factor = 0;
-  while (current <= end) {
     const daysInMonth = new Date(
-      Date.UTC(current.getUTCFullYear(), current.getUTCMonth() + 1, 0),
+      Date.UTC(Number(match[1]), Number(match[2]), 0),
     ).getUTCDate();
-    factor += 1 / daysInMonth;
-    current.setUTCDate(current.getUTCDate() + 1);
-  }
-  return factor;
+    return daysInMonth > 0 ? factor + 1 / daysInMonth : factor;
+  }, 0);
+}
+
+function getPendingLeaveCalculation(annualCtc, dailyStatus = []) {
+  const monthlyCtc = Number(annualCtc || 0) / 12;
+  return dailyStatus.reduce(
+    (result, day) => {
+      if (day.status !== "Pending Leave") return result;
+
+      const match = /^(\d{4})-(\d{2})-\d{2}$/.exec(String(day.date || ""));
+      if (!match) return result;
+
+      const daysInMonth = new Date(
+        Date.UTC(Number(match[1]), Number(match[2]), 0),
+      ).getUTCDate();
+      const leaveDays = Number(day.pendingLeaveDays ?? 1);
+      if (daysInMonth <= 0 || !Number.isFinite(leaveDays) || leaveDays <= 0) {
+        return result;
+      }
+
+      result.days += leaveDays;
+      result.amount += (monthlyCtc / daysInMonth) * leaveDays;
+      return result;
+    },
+    { days: 0, amount: 0 },
+  );
 }
 
 const SalaryDetails = () => {
@@ -1335,9 +1342,6 @@ const { localNet } = calculateLocalGrossNet(
     new Date().getMonth() + 1,
     0,
   ).getDate();
-  const payrollPeriodProrationFactor = getPayrollPeriodProrationFactor(
-    workedDaysData?.period,
-  );
   const workedDaysByEmployee = new Map(
     (workedDaysData?.employees || []).map((employeeData) => [
       String(employeeData.employee_id),
@@ -1349,7 +1353,15 @@ const { localNet } = calculateLocalGrossNet(
       ? filteredEmployees.map((emp) => {
           const attendance =
             workedDaysByEmployee.get(String(emp.employee_id)) || {};
-          const prorationFactor = payrollPeriodProrationFactor;
+          const workedDates = (attendance.dailyStatus || [])
+            .filter((day) => day.status === "Present")
+            .map((day) => day.date);
+          const prorationFactor =
+            getCalendarDayProrationFactor(workedDates);
+          const pendingLeave = getPendingLeaveCalculation(
+            emp.ctc,
+            attendance.dailyStatus,
+          );
           const prorate = (value) => Number(value || 0) * prorationFactor;
 
           try {
@@ -1430,6 +1442,8 @@ const { localNet } = calculateLocalGrossNet(
               ),
               lopDays,
               lopDeduction,
+              pendingLeaveDays: Number(pendingLeave.days.toFixed(2)),
+              pendingAmount: Number(pendingLeave.amount.toFixed(2)),
               localGross,
               localNet,
               finalCTC,

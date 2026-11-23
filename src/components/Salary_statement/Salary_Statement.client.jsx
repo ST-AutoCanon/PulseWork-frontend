@@ -55,6 +55,8 @@ const Salary_Statement = () => {
   const [isTemplateEnabled, setIsTemplateEnabled] = useState(false);
   const [templateLoading, setTemplateLoading] = useState(true);
 
+  const isPayslipEnabled = (value) => value === true || Number(value) === 1;
+
   const downloadTemplate = () => {
     const sampleRows = [
       [
@@ -399,7 +401,7 @@ const Salary_Statement = () => {
   };
 
   const handleTogglePayslip = async (employeeId, currentValue) => {
-    const newValue = currentValue === 0 || currentValue === "0" ? 1 : 0;
+    const newValue = isPayslipEnabled(currentValue) ? 0 : 1;
     const action = newValue === 1 ? "enable" : "disable";
 
     try {
@@ -1086,7 +1088,9 @@ const handleTemplateChange = async (e) => {
                             )
                           }
                         >
-                          {row.payslip_generated == 1 ? "Disable" : "Enable"}
+                          {isPayslipEnabled(row.payslip_generated)
+                            ? "Disable"
+                            : "Enable"}
                         </button>
                       </td>
                     </tr>

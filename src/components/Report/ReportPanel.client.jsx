@@ -169,6 +169,7 @@ export default function ReportPanel() {
   const [endDate, setEndDate] = useState("");
   const [component, setComponent] = useState("select");
   const [status, setStatus] = useState("All");
+  const [leaveApplicationFilter, setLeaveApplicationFilter] = useState("All");
   const [statusOptions, setStatusOptions] = useState([]);
   const [downloadingXlsx, setDownloadingXlsx] = useState(false);
   const [downloadingPdf, setDownloadingPdf] = useState(false);
@@ -207,8 +208,7 @@ export default function ReportPanel() {
     (lowerRole === "admin" || lowerRole === "hr" || lowerRole === "support"),
   );
 
-  const [filterEmployeeId, setFilterEmployeeId] = useState(null);
-  const [filterEmployeeName, setFilterEmployeeName] = useState("");
+  const [selectedEmployees, setSelectedEmployees] = useState([]);
   const [filterDepartmentId, setFilterDepartmentId] = useState(null);
   const [filterLeaveType, setFilterLeaveType] = useState("");
   const [isTypingSearch, setIsTypingSearch] = useState(false);
@@ -366,14 +366,14 @@ export default function ReportPanel() {
     if (!component || component === "select") {
       setStatusOptions([]);
       setStatus("All");
+      setLeaveApplicationFilter("All");
       setAvailableFields([]);
       setSelectedFields([]);
       setPreviewOpen(false);
       setPreviewRows([]);
       setPreviewError("");
       setPreviewMessage("");
-      setFilterEmployeeId(null);
-      setFilterEmployeeName("");
+      setSelectedEmployees([]);
       setFilterLeaveType("");
       if (!isTeamRole) setFilterDepartmentId(null);
       setIsTypingSearch(false);
@@ -386,6 +386,7 @@ export default function ReportPanel() {
     );
     setStatusOptions(trimmedStatusOpts);
     setStatus("All");
+    setLeaveApplicationFilter("All");
 
     const subs = SUB_OPTIONS[component] || [];
     let subsFiltered = subs;
@@ -396,19 +397,16 @@ export default function ReportPanel() {
           s.key !== "department_name" &&
           s.key !== "department_id",
       );
-      setFilterEmployeeId(null);
-      setFilterEmployeeName("");
+      setSelectedEmployees([]);
       setFilterDepartmentId(null);
     }
 
     if (component === "recruitment") {
-      setFilterEmployeeId(null);
-      setFilterEmployeeName("");
+      setSelectedEmployees([]);
       setFilterDepartmentId(null);
     }
     if (component !== "vendors" && component !== "recruitment") {
-      setFilterEmployeeId(null);
-      setFilterEmployeeName("");
+      setSelectedEmployees([]);
     }
 
     setAvailableFields(subsFiltered);
@@ -436,8 +434,7 @@ export default function ReportPanel() {
     }
 
     if (component !== "vendors") {
-      setFilterEmployeeId(null);
-      setFilterEmployeeName("");
+      setSelectedEmployees([]);
     }
     setIsTypingSearch(false);
   }, [component, isTeamRole, managerDepartmentIdRaw]);
@@ -599,26 +596,34 @@ export default function ReportPanel() {
     const employeeNameRaw =
       item.employee_name || item.name || item.email || item.employeeName || "";
 
-    setFilterEmployeeId(employeeIdRaw || employeeNameRaw);
-    setFilterEmployeeName(employeeNameRaw);
-    if (item.department_id) setFilterDepartmentId(item.department_id);
+    if (!employeeIdRaw) return;
+    setSelectedEmployees((current) =>
+      current.some(
+        (employee) => String(employee.employee_id) === String(employeeIdRaw),
+      )
+        ? current
+        : [
+            ...current,
+            {
+              employee_id: String(employeeIdRaw),
+              employee_name: employeeNameRaw || String(employeeIdRaw),
+            },
+          ],
+    );
     setIsTypingSearch(false);
   }, []);
   const onEmployeeClear = useCallback(() => {
-    setFilterEmployeeId(null);
-    setFilterEmployeeName("");
+    setIsTypingSearch(false);
   }, []);
   const onDepartmentChange = useCallback((ev) => {
     const val = ev.target.value;
     const v = val === "" ? null : val;
     setFilterDepartmentId(v);
-    setFilterEmployeeId(null);
-    setFilterEmployeeName("");
+    setSelectedEmployees([]);
   }, []);
   const onDepartmentSelectFromDropdown = useCallback((dept) => {
     setFilterDepartmentId(dept ? String(dept.department_id) : null);
-    setFilterEmployeeId(null);
-    setFilterEmployeeName("");
+    setSelectedEmployees([]);
   }, []);
 
   const buildParams = ({ includeFormat = false, preview = false } = {}) => {
@@ -648,10 +653,18 @@ export default function ReportPanel() {
       params.append("leave_type", filterLeaveType);
     }
 
+    if (component === "leaves" && leaveApplicationFilter !== "All") {
+      params.append("leave_application", leaveApplicationFilter);
+    }
+
     // Always include employee-friendly and id values where applicable (employees component)
     if (component !== "vendors" && component !== "recruitment") {
-      if (filterEmployeeId) params.append("employee_id", filterEmployeeId);
-      if (filterEmployeeName) params.append("employee", filterEmployeeName);
+      if (selectedEmployees.length) {
+        params.append(
+          "employee_id",
+          selectedEmployees.map((employee) => employee.employee_id).join(","),
+        );
+      }
 
       if (isTeamRole) {
         const deptToSend = effectiveManagerDepartmentId || "";
@@ -1018,6 +1031,25 @@ export default function ReportPanel() {
 
         {component === "leaves" && (
           <div className="rp-row">
+            <label className="rp-label" htmlFor="leave-application-filter">
+              Leave Application
+            </label>
+            <select
+              id="leave-application-filter"
+              className="rep-select"
+              value={leaveApplicationFilter}
+              onChange={(e) => setLeaveApplicationFilter(e.target.value)}
+              aria-label="Filter employees by leave application"
+            >
+              <option value="All">All</option>
+              <option value="Applied Leaves">Applied Leaves</option>
+              <option value="Not Applied Leaves">Not Applied Leaves</option>
+            </select>
+          </div>
+        )}
+
+        {component === "leaves" && (
+          <div className="rp-row">
             <label className="rp-label" htmlFor="leave-type-filter">
               Leave Type
             </label>
@@ -1076,8 +1108,11 @@ export default function ReportPanel() {
 
           {component !== "vendors" && component !== "recruitment" ? (
             <div className="rp-date-field rp-typeahead-field">
-              <label className="rp-label">Employee Name</label>
+              <label className="rp-label">Employees</label>
               <EmployeeTypeahead
+                key={`employee-search-${selectedEmployees
+                  .map((employee) => employee.employee_id)
+                  .join("|")}`}
                 onSelect={onEmployeeSelect}
                 onTyping={onTypeStart}
                 onClear={onEmployeeClear}
@@ -1086,14 +1121,67 @@ export default function ReportPanel() {
                   isTeamRole ? effectiveManagerDepartmentId : filterDepartmentId
                 }
                 limit={10}
-                selectedValue={filterEmployeeName}
+                selectedValue=""
                 isTyping={isTypingSearch}
               />
+              {selectedEmployees.length > 0 && (
+                <div
+                  className="rp-selected-employees"
+                  aria-label="Selected employees"
+                  style={{
+                    display: "flex",
+                    flexWrap: "wrap",
+                    gap: 6,
+                    marginTop: 8,
+                  }}
+                >
+                  {selectedEmployees.map((employee) => (
+                    <span
+                      key={employee.employee_id}
+                      style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: 5,
+                        padding: "4px 8px",
+                        borderRadius: 14,
+                        background: "#eef2f7",
+                      }}
+                    >
+                      {employee.employee_name} ({employee.employee_id})
+                      <button
+                        type="button"
+                        aria-label={`Remove ${employee.employee_name}`}
+                        onClick={() =>
+                          setSelectedEmployees((current) =>
+                            current.filter(
+                              (item) =>
+                                item.employee_id !== employee.employee_id,
+                            ),
+                          )
+                        }
+                        style={{
+                          border: 0,
+                          background: "transparent",
+                          cursor: "pointer",
+                          padding: 0,
+                        }}
+                      >
+                        ×
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
               <div className="rp-typeahead-subtext">
-                {filterEmployeeId ? (
-                  <em>Filtering by employee: {filterEmployeeId}</em>
+                {selectedEmployees.length ? (
+                  <em>
+                    Filtering by {selectedEmployees.length} employee
+                    {selectedEmployees.length === 1 ? "" : "s"}
+                  </em>
                 ) : (
-                  <em>Search by name or email</em>
+                  <em>
+                    Search and select one or more employees by name or email
+                  </em>
                 )}
               </div>
             </div>

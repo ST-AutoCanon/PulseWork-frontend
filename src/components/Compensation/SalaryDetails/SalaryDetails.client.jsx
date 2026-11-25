@@ -57,6 +57,31 @@ function getPendingLeaveCalculation(annualCtc, dailyStatus = []) {
   );
 }
 
+function getAbsentAmount(annualCtc, dailyStatus = []) {
+  const monthlyCtc = Number(annualCtc || 0) / 12;
+  return dailyStatus.reduce((amount, day) => {
+    const match = /^(\d{4})-(\d{2})-\d{2}$/.exec(String(day.date || ""));
+    if (!match) return amount;
+
+    const daysInMonth = new Date(
+      Date.UTC(Number(match[1]), Number(match[2]), 0),
+    ).getUTCDate();
+    if (daysInMonth <= 0) return amount;
+
+    let absentDays = 0;
+    if (day.status === "Absent") {
+      absentDays = 1;
+    } else if (day.status === "Approved Leave") {
+      absentDays = Math.max(0, 1 - Number(day.leaveDays || 0));
+    } else if (day.status === "Pending Leave") {
+      absentDays = Number(day.pendingLeaveDays ?? 1);
+    }
+
+    if (!Number.isFinite(absentDays) || absentDays <= 0) return amount;
+    return amount + (monthlyCtc / daysInMonth) * absentDays;
+  }, 0);
+}
+
 const SalaryDetails = () => {
   const { user } = useAuth();
   const meId = user?.employeeId ?? user?.id ?? user?.employee_id ?? null;
@@ -1362,6 +1387,7 @@ const { localNet } = calculateLocalGrossNet(
             emp.ctc,
             attendance.dailyStatus,
           );
+          const absentAmount = getAbsentAmount(emp.ctc, attendance.dailyStatus);
           const prorate = (value) => Number(value || 0) * prorationFactor;
 
           try {
@@ -1444,6 +1470,7 @@ const { localNet } = calculateLocalGrossNet(
               lopDeduction,
               pendingLeaveDays: Number(pendingLeave.days.toFixed(2)),
               pendingAmount: Number(pendingLeave.amount.toFixed(2)),
+              absentAmount: Number(absentAmount.toFixed(2)),
               localGross,
               localNet,
               finalCTC,

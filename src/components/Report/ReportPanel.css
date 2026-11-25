@@ -654,6 +654,22 @@
   font-size: 13px;
 }
 
+.rp-selected-employees {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+  padding: 8px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  background: #fff;
+}
+
+.rp-selected-employees-scrollable {
+  max-height: 180px;
+  overflow-y: auto;
+}
+
 .rp-row.rp-dates .rp-typeahead-field > div {
   width: 100%;
 }

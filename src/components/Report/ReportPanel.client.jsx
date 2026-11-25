@@ -1126,14 +1126,12 @@ export default function ReportPanel() {
               />
               {selectedEmployees.length > 0 && (
                 <div
-                  className="rp-selected-employees"
+                  className={`rp-selected-employees${
+                    selectedEmployees.length > 5
+                      ? " rp-selected-employees-scrollable"
+                      : ""
+                  }`}
                   aria-label="Selected employees"
-                  style={{
-                    display: "flex",
-                    flexWrap: "wrap",
-                    gap: 6,
-                    marginTop: 8,
-                  }}
                 >
                   {selectedEmployees.map((employee) => (
                     <span

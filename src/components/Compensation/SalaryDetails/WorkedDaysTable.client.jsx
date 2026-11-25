@@ -184,7 +184,8 @@ export default function WorkedDaysTable({
       "Late Login Amount", "Approved Leave Count (LOP Days)", "LOP Deduction",
       "Miss Punch Out Eligible Count (Total Violations)", "Miss Punch Out Amount",
       "Less Login Hours Eligible Count (Total Violations)", "Less Login Hours Amount",
-      "Approved LOP Days", "Absent Days", "Net Salary After Attendance Deductions",
+      "Approved LOP Days", "Absent Days", "Absent Amount (Not Deducted)",
+      "Net Salary After Attendance Deductions",
       "Pending Leave Days", "Pending Amount (Not Deducted)",
       "Payroll Period", "Period Working Days", "Worked Days",
       "Current Month Calendar Days", "Daily Attendance Details",
@@ -236,6 +237,7 @@ export default function WorkedDaysTable({
         Number(deductions.lessLoginHours?.amount || 0),
         Number(salary?.lopDays ?? deductions.approvedLopDays ?? 0),
         Number(attendance?.absentDays || 0),
+        Number(salary?.absentAmount || 0),
         Number(salary?.adjustedNetSalary || 0),
         Number(salary?.pendingLeaveDays || 0),
         Number(salary?.pendingAmount || 0),
@@ -305,7 +307,7 @@ export default function WorkedDaysTable({
         <strong>Payroll period:</strong> {periodLabel}
         <span>
           Compensation amounts are based on days worked through {completedThrough}.
-          Pending leave amounts are estimates and are not deducted from net pay.
+          Absent and pending leave amounts are estimates and are not deducted from net pay.
         </span>
         <div className="sd-worked-days-actions">
           <span>{selectedEmployees.length} selected</span>
@@ -367,6 +369,7 @@ export default function WorkedDaysTable({
                 <th>Less Login Hours Amount</th>
                 <th>Approved LOP Days</th>
                 <th>Absent Days</th>
+                <th>Absent Amount (Not Deducted)</th>
                 <th>Net Salary After Attendance Deductions</th>
                 <th>Pending Leave Days</th>
                 <th>Pending Amount (Not Deducted)</th>
@@ -440,6 +443,9 @@ export default function WorkedDaysTable({
                     </td>
                     <td className="sd-align-right">
                       {formatDayCount(attendance?.absentDays)}
+                    </td>
+                    <td className="sd-align-right">
+                      {formatAmount(salary?.absentAmount)}
                     </td>
                     <td className="sd-align-right">
                       <strong>{formatAmount(salary?.adjustedNetSalary)}</strong>

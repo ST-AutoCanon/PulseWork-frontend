@@ -58,15 +58,10 @@ function getPendingLeaveCalculation(annualCtc, dailyStatus = []) {
 }
 
 function getAbsentAmount(annualCtc, dailyStatus = []) {
-  const monthlyCtc = Number(annualCtc || 0) / 12;
+  const dailyCtc = Number(annualCtc || 0) / 12 / 30;
   return dailyStatus.reduce((amount, day) => {
     const match = /^(\d{4})-(\d{2})-\d{2}$/.exec(String(day.date || ""));
     if (!match) return amount;
-
-    const daysInMonth = new Date(
-      Date.UTC(Number(match[1]), Number(match[2]), 0),
-    ).getUTCDate();
-    if (daysInMonth <= 0) return amount;
 
     let absentDays = 0;
     if (day.status === "Absent") {
@@ -78,7 +73,7 @@ function getAbsentAmount(annualCtc, dailyStatus = []) {
     }
 
     if (!Number.isFinite(absentDays) || absentDays <= 0) return amount;
-    return amount + (monthlyCtc / daysInMonth) * absentDays;
+    return amount + dailyCtc * absentDays;
   }, 0);
 }
 
@@ -1463,9 +1458,7 @@ const { localNet } = calculateLocalGrossNet(
               prorationFactor,
               attendanceDeductions,
               ...proratedSalaryDetails,
-              monthlyBonusPay: prorate(
-                calculateMonthlyBonusPay(emp.ctc, bonusRecords),
-              ),
+              monthlyBonusPay: calculateMonthlyBonusPay(emp.ctc, bonusRecords),
               lopDays,
               lopDeduction,
               pendingLeaveDays: Number(pendingLeave.days.toFixed(2)),

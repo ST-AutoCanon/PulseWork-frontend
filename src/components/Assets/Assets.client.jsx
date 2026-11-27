@@ -1,5 +1,16 @@
 
 
+
+
+
+
+
+
+
+
+
+
+
 "use client";
 import React, { useState, useEffect } from "react";
 import "./assets.css";
@@ -8,45 +19,21 @@ import { useParams } from "next/navigation";
 import { UserCheck } from "lucide-react";
 import { Eye } from "lucide-react";
 import { FaNetworkWired } from "react-icons/fa";
+import { Monitor, Wrench, Package } from "lucide-react";
+import { GiOfficeChair, GiTable, GiArchiveRegister } from "react-icons/gi";
+import { Laptop2, Computer, Server } from "lucide-react";
+import { FaDesktop, FaServer } from "react-icons/fa";
+import { FaChair } from "react-icons/fa";
+import { MdStorage } from "react-icons/md";
+import { FaHdd, FaMouse, FaPlug, FaTools } from "react-icons/fa";
+import { MdLaptop } from "react-icons/md";
 import { Download } from "lucide-react";
 import Modal from "../Modal/Modal.client";
-import {
-  Armchair,
-  Archive,
-  Computer,
-  Hammer,
-  Laptop2,
-  Monitor,
-  Package,
-  Plug,
-  Server,
-  TableProperties,
-  Wrench,
-} from "lucide-react";
+import { TableProperties, Chair, Archive, Plug, Hammer } from "lucide-react";
+import { Boxes } from "lucide-react";
+import { LayoutPanelLeft, LayoutDashboard } from "lucide-react";
 import { MdOutlineCancel } from "react-icons/md";
 import { useAuth } from "../../context/AuthProvider.client";
-
-const getCategoryIcon = (name = "") => {
-  const normalizedName = name.toLowerCase();
-  if (/\b(system|computer|technology|it)\b/.test(normalizedName))
-    return Monitor;
-  if (/furniture|chair/.test(normalizedName)) return Armchair;
-  if (/equipment|tool/.test(normalizedName)) return Wrench;
-  return Package;
-};
-
-const getSubcategoryIcon = (name = "") => {
-  const normalizedName = name.toLowerCase();
-  if (/laptop|notebook/.test(normalizedName)) return Laptop2;
-  if (/desktop|workstation/.test(normalizedName)) return Computer;
-  if (/server/.test(normalizedName)) return Server;
-  if (/table|desk/.test(normalizedName)) return TableProperties;
-  if (/chair|seat/.test(normalizedName)) return Armchair;
-  if (/drawer|cupboard|cabinet|storage/.test(normalizedName)) return Archive;
-  if (/electrical|power|plug/.test(normalizedName)) return Plug;
-  if (/tool|repair|maintenance/.test(normalizedName)) return Hammer;
-  return Package;
-};
 
 const Assets = () => {
   const { user, hydrated } = useAuth();
@@ -63,25 +50,6 @@ const Assets = () => {
 
   const isReadyForApi = () => {
     return !!BACKEND && !!user && !!hydrated;
-  };
-
-  const fetchAccessories = async (
-    categoryId,
-    subcategoryId,
-    assetId = null
-  ) => {
-    const query = new URLSearchParams({ category_id: String(categoryId) });
-    if (subcategoryId) query.set("subcategory_id", String(subcategoryId));
-    if (assetId) query.set("asset_id", String(assetId));
-    const response = await axios.get(
-      `${BACKEND}/api/assets/accessories?${query.toString()}`,
-      { withCredentials: true, headers: getHeaders() }
-    );
-    const accessories = response.data?.data;
-    if (!Array.isArray(accessories)) {
-      throw new Error("Invalid asset accessories response");
-    }
-    return accessories;
   };
 
   const getHeaders = (opts = {}) => {
@@ -108,23 +76,7 @@ const Assets = () => {
 
   const [showPopup, setShowPopup] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState("");
-  const [selectedCategoryId, setSelectedCategoryId] = useState("");
   const [selectedSubCategory, setSelectedSubCategory] = useState("");
-  const [assetCategories, setAssetCategories] = useState([]);
-  const [categoriesLoading, setCategoriesLoading] = useState(false);
-  const [categoriesError, setCategoriesError] = useState("");
-  const [assetAccessories, setAssetAccessories] = useState([]);
-  const [assetAccessoriesLoading, setAssetAccessoriesLoading] = useState(false);
-  const [assetAccessoriesError, setAssetAccessoriesError] = useState("");
-  const [selectedAccessoryIds, setSelectedAccessoryIds] = useState([]);
-  const [assignmentAccessories, setAssignmentAccessories] = useState([]);
-  const [assignmentAccessoriesLoading, setAssignmentAccessoriesLoading] =
-    useState(false);
-  const [assignmentAccessoriesError, setAssignmentAccessoriesError] =
-    useState("");
-  const [assignedAccessoryIds, setAssignedAccessoryIds] = useState([]);
-  const [assignmentAccessoriesReady, setAssignmentAccessoriesReady] =
-    useState(false);
   const [assetName, setAssetName] = useState("");
   const [configuration, setConfiguration] = useState("");
   const [valuationDate, setValuationDate] = useState("");
@@ -316,10 +268,8 @@ const Assets = () => {
   };
 
   const handleCategoryChange = (category) => {
-    setSelectedCategory(category.category_name);
-    setSelectedCategoryId(String(category.category_id));
+    setSelectedCategory(category);
     setSelectedSubCategory("");
-    setSelectedAccessoryIds([]);
   };
 
   const handleFileChange = (e) => {
@@ -431,34 +381,6 @@ const Assets = () => {
     }
   };
 
-  const fetchAssetCategories = async () => {
-    if (!isReadyForApi()) return;
-    setCategoriesLoading(true);
-    setCategoriesError("");
-
-    try {
-      const response = await axios.get(`${BACKEND}/api/assets/categories`, {
-        withCredentials: true,
-        headers: getHeaders(),
-      });
-      const categories = response.data?.data ?? [];
-      if (!Array.isArray(categories)) {
-        throw new Error("Invalid asset categories response");
-      }
-      setAssetCategories(categories);
-    } catch (error) {
-      console.error(
-        "Error fetching asset categories:",
-        error.response?.data || error.message
-      );
-      setCategoriesError(
-        error.response?.data?.message || "Failed to load asset categories."
-      );
-    } finally {
-      setCategoriesLoading(false);
-    }
-  };
-
   const fetchAssets = async () => {
     if (!isReadyForApi()) return;
     try {
@@ -482,61 +404,11 @@ const Assets = () => {
 
   useEffect(() => {
     if (!isReadyForApi()) return;
-    Promise.all([fetchAssets(), fetchAssetCounts(), fetchAssetCategories()]);
+    (async () => {
+      await fetchAssets();
+      await fetchAssetCounts();
+    })();
   }, [user, BACKEND]);
-
-  useEffect(() => {
-    let active = true;
-    const category = assetCategories.find(
-      (item) => String(item.category_id) === selectedCategoryId
-    );
-    const subcategory = category?.subcategories?.find(
-      (item) => item.subcategory_name === selectedSubCategory
-    );
-
-    if (
-      !selectedCategoryId ||
-      (category?.subcategories?.length > 0 && !selectedSubCategory)
-    ) {
-      setAssetAccessories([]);
-      setAssetAccessoriesLoading(false);
-      setAssetAccessoriesError("");
-      return () => {
-        active = false;
-      };
-    }
-
-    setAssetAccessoriesLoading(true);
-    setAssetAccessoriesError("");
-    fetchAccessories(
-      selectedCategoryId,
-      subcategory?.subcategory_id || null
-    )
-      .then((accessories) => {
-        if (active) setAssetAccessories(accessories);
-      })
-      .catch((error) => {
-        if (active) {
-          setAssetAccessories([]);
-          setAssetAccessoriesError(
-            error.response?.data?.message || "Failed to load accessories."
-          );
-        }
-      })
-      .finally(() => {
-        if (active) setAssetAccessoriesLoading(false);
-      });
-
-    return () => {
-      active = false;
-    };
-  }, [
-    selectedCategoryId,
-    selectedSubCategory,
-    assetCategories,
-    BACKEND,
-    user,
-  ]);
 
   useEffect(() => {
     if (selectedAsset) {
@@ -558,9 +430,7 @@ const Assets = () => {
     setAssignedTo("");
     setDocument(null);
     setSelectedCategory("");
-    setSelectedCategoryId("");
     setSelectedSubCategory("");
-    setSelectedAccessoryIds([]);
     setStatus("In Use");
   };
 
@@ -666,55 +536,11 @@ if (rows.length > 0) {
 
   setShowAssignPopup(true);
   setSelectedAsset(asset);
-  setAssignmentAccessories([]);
-  setAssignedAccessoryIds([]);
-  setAssignmentAccessoriesError("");
-  setAssignmentAccessoriesReady(false);
-
-  const category = assetCategories.find(
-    (item) => item.category_name === asset.category
-  );
-  const subcategory = category?.subcategories?.find(
-    (item) => item.subcategory_name === asset.sub_category
-  );
-  if (!category || (asset.sub_category && !subcategory)) {
-    setAssignmentAccessoriesError(
-      "Accessories are unavailable because this asset category is not configured."
-    );
-    setAssignmentAccessoriesLoading(false);
-    return;
-  }
-
-  setAssignmentAccessoriesLoading(true);
-  fetchAccessories(
-    category.category_id,
-    subcategory?.subcategory_id || null,
-    asset.asset_id
-  )
-    .then((accessories) => {
-      setAssignmentAccessories(accessories);
-      setAssignedAccessoryIds(
-        accessories
-          .filter((accessory) => accessory.is_selected)
-          .map((accessory) => Number(accessory.accessory_id))
-      );
-      setAssignmentAccessoriesReady(true);
-    })
-    .catch((error) => {
-      console.error("Error fetching assigned accessories:", error);
-      setAssignmentAccessoriesError(
-        error.response?.data?.message || "Failed to load accessories."
-      );
-    })
-    .finally(() => setAssignmentAccessoriesLoading(false));
 };
 
   const closeAssignPopup = () => {
     setShowAssignPopup(false);
     setSelectedAsset(null);
-    setAssignmentAccessories([]);
-    setAssignedAccessoryIds([]);
-    setAssignmentAccessoriesReady(false);
     setAssignedTo("");
     setStartDate("");
     setReturnDate("");
@@ -750,9 +576,6 @@ if (rows.length > 0) {
         status: rows[0].assigningStatus,
         comments: rows[0].comments || "",
       };
-      if (assignmentAccessoriesReady) {
-        firstAssignment.accessory_ids = assignedAccessoryIds;
-      }
 
       const requiredFields = ["assetId", "assignedTo", "startDate", "status"];
       for (const field of requiredFields) {
@@ -783,11 +606,7 @@ if (rows.length > 0) {
         "❌ Error assigning asset:",
         error.response?.data || error.message
       );
-      showAlert(
-        error.response?.data?.message ||
-          error.response?.data?.error ||
-          "Assignment failed"
-      );
+      showAlert(error.response?.data?.error || "Assignment failed");
     }
   };
 
@@ -870,20 +689,6 @@ if (rows.length > 0) {
     formData.append("valuation_date", valuationDate);
     formData.append("category", selectedCategory);
     formData.append("sub_category", selectedSubCategory);
-    formData.append("category_id", selectedCategoryId);
-    const categoryRecord = assetCategories.find(
-      (item) => String(item.category_id) === selectedCategoryId
-    );
-    const subcategoryRecord = categoryRecord?.subcategories?.find(
-      (item) => item.subcategory_name === selectedSubCategory
-    );
-    formData.append(
-      "subcategory_id",
-      subcategoryRecord?.subcategory_id
-        ? String(subcategoryRecord.subcategory_id)
-        : ""
-    );
-    formData.append("accessory_ids", JSON.stringify(selectedAccessoryIds));
     formData.append("status", status);
 
     let assignedToArray = [];
@@ -1198,9 +1003,6 @@ if (rows.length > 0) {
     return acc;
   }, {});
   const [searchTerm, setSearchTerm] = useState("");
-  const selectedCategoryRecord = assetCategories.find(
-    (category) => String(category.category_id) === selectedCategoryId
-  );
 
   const sortedAssets = [...assets].sort((a, b) => {
     const numA = parseInt(a.asset_code?.split("-")[2] || "0", 10);
@@ -1243,13 +1045,13 @@ if (rows.length > 0) {
               <button className="category-button">
                 {category} ({data.categoryTotal})
               </button>
-                <div className="subcategory-tooltip">
-                  {data.subcategories.map((sub, i) => (
-                    <div className="subcategory-item" key={i}>
-                      {sub.sub_category} {sub.sub_category_count}
-                    </div>
-                  ))}
-                </div>
+              <div className="subcategory-tooltip">
+                {data.subcategories.map((sub, i) => (
+                  <div className="subcategory-item" key={i}>
+                    {sub.sub_category} {sub.sub_category_count}
+                  </div>
+                ))}
+              </div>
             </div>
           ))}
         </div>
@@ -1285,59 +1087,125 @@ if (rows.length > 0) {
             </button>
 
             <div className="sticky-options">
-              {categoriesLoading ? (
-                <p>Loading asset categories...</p>
-              ) : categoriesError ? (
-                <p role="alert">{categoriesError}</p>
-              ) : assetCategories.length === 0 ? (
-                <p>No active asset categories configured.</p>
-              ) : (
-                assetCategories.map((category) => {
-                  const CategoryIcon = getCategoryIcon(category.category_name);
-                  return (
-                    <button
-                      key={category.category_id}
-                      className={
-                        selectedCategoryId === String(category.category_id)
-                          ? "active"
-                          : ""
-                      }
-                      onClick={() => handleCategoryChange(category)}
-                    >
-                      <CategoryIcon className="icon" />
-                      <span>{category.category_name}</span>
-                    </button>
-                  );
-                })
-              )}
+              <button
+                className={selectedCategory === "System" ? "active" : ""}
+                onClick={() => handleCategoryChange("System")}
+              >
+                {" "}
+                <div className="icon-group">
+                  {" "}
+                  <Monitor className="icon" /> <span> System</span>
+                </div>{" "}
+              </button>
+              <button
+                className={selectedCategory === "Furniture" ? "active" : ""}
+                onClick={() => handleCategoryChange("Furniture")}
+              >
+                <div className="icon-group">
+                  <GiOfficeChair className="icon" />
+                </div>
+                <span>Furniture</span>
+              </button>
+              <button
+                className={selectedCategory === "Equipment" ? "active" : ""}
+                onClick={() => handleCategoryChange("Equipment")}
+              >
+                <div className="icon-group">
+                  <Wrench className="icon" />
+                </div>
+                Equipment
+              </button>
+              <button
+                className={selectedCategory === "Others" ? "active" : ""}
+                onClick={() => handleCategoryChange("Others")}
+              >
+                <Package className="icon" />
+                Others
+              </button>
             </div>
 
-            {selectedCategoryRecord?.subcategories?.length > 0 && (
+            {selectedCategory === "System" && (
               <div className="sticky-suboptions">
-                {selectedCategoryRecord.subcategories.map((subcategory) => {
-                  const SubcategoryIcon = getSubcategoryIcon(
-                    subcategory.subcategory_name
-                  );
-                  return (
-                    <button
-                      key={subcategory.subcategory_id}
-                      className={
-                        selectedSubCategory === subcategory.subcategory_name
-                          ? "active"
-                          : ""
-                      }
-                      onClick={() =>
-                        {
-                          setSelectedSubCategory(subcategory.subcategory_name);
-                          setSelectedAccessoryIds([]);
-                        }
-                      }
-                    >
-                      <SubcategoryIcon className="icon" />
-                      <span>{subcategory.subcategory_name}</span>
-                    </button>
-                  );
-                })}
+                <button
+                  className={selectedSubCategory === "Laptop" ? "active" : ""}
+                  onClick={() => setSelectedSubCategory("Laptop")}
+                >
+                  {" "}
+                  <MdLaptop className="icon" /> Laptop
+                </button>
+                <button
+                  className={selectedSubCategory === "Desktop" ? "active" : ""}
+                  onClick={() => setSelectedSubCategory("Desktop")}
+                >
+                  {" "}
+                  <FaDesktop className="icon" />
+                  Desktop
+                </button>
+                <button
+                  className={selectedSubCategory === "Server" ? "active" : ""}
+                  onClick={() => setSelectedSubCategory("Server")}
+                >
+                  {" "}
+                  <Server className="icon" />
+                  Server
+                </button>
+              </div>
+            )}
+
+            {selectedCategory === "Furniture" && (
+              <div className="sticky-suboptions">
+                <button
+                  className={selectedSubCategory === "Table" ? "active" : ""}
+                  onClick={() => setSelectedSubCategory("Table")}
+                >
+                  {" "}
+                  <GiTable className="icon" /> Table
+                </button>
+                <button
+                  className={selectedSubCategory === "Chair" ? "active" : ""}
+                  onClick={() => setSelectedSubCategory("Chair")}
+                >
+                  {" "}
+                  <FaChair className="icon" /> Chair
+                </button>
+                <button
+                  className={selectedSubCategory === "Drawers" ? "active" : ""}
+                  onClick={() => setSelectedSubCategory("Drawers")}
+                >
+                  {" "}
+                  <MdStorage className="icon" />
+                  Drawers
+                </button>
+                <button
+                  className={selectedSubCategory === "cupboard" ? "active" : ""}
+                  onClick={() => setSelectedSubCategory("cupboard")}
+                >
+                  {" "}
+                  <LayoutPanelLeft className="icon" /> Cupboard
+                </button>
+              </div>
+            )}
+
+            {selectedCategory === "Equipment" && (
+              <div className="sticky-suboptions">
+                <button
+                  className={
+                    selectedSubCategory === "Electrical" ? "active" : ""
+                  }
+                  onClick={() => setSelectedSubCategory("Electrical")}
+                >
+                  <FaPlug className="icon" />
+                  <span>Electrical</span>
+                </button>
+                <button
+                  className={
+                    selectedSubCategory === "Non-Electrical" ? "active" : ""
+                  }
+                  onClick={() => setSelectedSubCategory("Non-Electrical")}
+                >
+                  <FaTools className="icon" />
+                  <span>Non-Electrical</span>
+                </button>
               </div>
             )}
 
@@ -1430,43 +1298,8 @@ if (rows.length > 0) {
                   )}
                 </div>
 
-                <div className="asset-accessories">
-                  <strong>Accessories</strong>
-                  {assetAccessoriesLoading ? (
-                    <p>Loading accessories...</p>
-                  ) : assetAccessoriesError ? (
-                    <p role="alert">{assetAccessoriesError}</p>
-                  ) : assetAccessories.length > 0 ? (
-                    <div className="asset-accessory-list">
-                      {assetAccessories.map((accessory) => {
-                        const accessoryId = Number(accessory.accessory_id);
-                        return (
-                          <label
-                            className="asset-accessory-option"
-                            key={accessoryId}
-                          >
-                            <input
-                              type="checkbox"
-                              checked={selectedAccessoryIds.includes(
-                                accessoryId
-                              )}
-                              onChange={(event) =>
-                                setSelectedAccessoryIds((current) =>
-                                  event.target.checked
-                                    ? [...current, accessoryId]
-                                    : current.filter((id) => id !== accessoryId)
-                                )
-                              }
-                            />
-                            <span>{accessory.accessory_name}</span>
-                          </label>
-                        );
-                      })}
-                    </div>
-                  ) : (
-                    <p>No accessories configured for this asset type.</p>
-                  )}
-                </div>
+               
+                
 
                 <div className="row">
                   <label>Upload Document</label>
@@ -1476,11 +1309,7 @@ if (rows.length > 0) {
                   <button onClick={togglePopup} className="cancel-btn">
                     Cancel
                   </button>
-                  <button
-                    className="save-btn"
-                    onClick={handleSave}
-                    disabled={assetAccessoriesLoading}
-                  >
+                  <button className="save-btn" onClick={handleSave}>
                     Save
                   </button>
                 </div>
@@ -1779,11 +1608,7 @@ if (rows.length > 0) {
                 <button className="assigncancel-btn" onClick={closeAssignPopup}>
                   Cancel
                 </button>
-                <button
-                  className="assignsave-btn"
-                  onClick={handleAssign}
-                  disabled={assignmentAccessoriesLoading}
-                >
+                <button className="assignsave-btn" onClick={handleAssign}>
                   Assign
                 </button>
               </div>
@@ -1904,41 +1729,6 @@ if (rows.length > 0) {
     />
   </div>
 ))}
-              <div className="asset-accessories">
-                <strong>Accessories</strong>
-                {assignmentAccessoriesLoading ? (
-                  <p>Loading accessories...</p>
-                ) : assignmentAccessoriesError ? (
-                  <p role="alert">{assignmentAccessoriesError}</p>
-                ) : assignmentAccessories.length > 0 ? (
-                  <div className="asset-accessory-list">
-                    {assignmentAccessories.map((accessory) => {
-                      const accessoryId = Number(accessory.accessory_id);
-                      return (
-                        <label
-                          className="asset-accessory-option"
-                          key={accessoryId}
-                        >
-                          <input
-                            type="checkbox"
-                            checked={assignedAccessoryIds.includes(accessoryId)}
-                            onChange={(event) =>
-                              setAssignedAccessoryIds((current) =>
-                                event.target.checked
-                                  ? [...current, accessoryId]
-                                  : current.filter((id) => id !== accessoryId)
-                              )
-                            }
-                          />
-                          <span>{accessory.accessory_name}</span>
-                        </label>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <p>No accessories configured for this asset type.</p>
-                )}
-              </div>
             </div>
           </div>
 
@@ -2023,3 +1813,4 @@ if (rows.length > 0) {
 };
 
 export default Assets;
+

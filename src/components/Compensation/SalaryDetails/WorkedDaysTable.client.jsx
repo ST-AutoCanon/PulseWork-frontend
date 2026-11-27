@@ -32,6 +32,12 @@ function formatDayCount(value) {
 
 function DailyAttendanceDetails({ attendance, expanded, onToggle }) {
   const dailyStatus = attendance?.dailyStatus || [];
+  const absenceAndLeaveStatus = dailyStatus.filter(
+    ({ status }) =>
+      status === "Absent" ||
+      status === "Approved Leave" ||
+      status === "Pending Leave",
+  );
   return (
     <div className="sd-worked-days-daily-details">
       <div className="sd-worked-days-attendance-summary">
@@ -49,24 +55,29 @@ function DailyAttendanceDetails({ attendance, expanded, onToggle }) {
       {expanded && (
         <div className="sd-worked-days-daily-list">
           <strong>
-            Worked: {formatDayCount(attendance?.workedDays)} | Leaves: {formatDayCount(attendance?.approvedLeaveDays)} | Absent: {formatDayCount(attendance?.absentDays)}
+            Leaves: {formatDayCount(attendance?.approvedLeaveDays)} approved,{" "}
+            {formatDayCount(attendance?.pendingLeaveDays)} pending | Absent:{" "}
+            {formatDayCount(attendance?.absentDays)}
           </strong>
-          {dailyStatus.length ? dailyStatus.map(({ date, status, leaveDays, punchIn, punchOut }) => {
-            const leaveText =
-              status === "Approved Leave"
-                ? ` (${formatDayCount(leaveDays)} leave day${Number(leaveDays) === 1 ? "" : "s"})`
-                : "";
-            const punchText = punchIn
-              ? ` (In ${punchIn}${punchOut ? `, Out ${punchOut}` : ""})`
-              : punchOut
-                ? ` (Out ${punchOut})`
-                : "";
-            return (
-              <div key={date}>
-                {formatDate(date)}: {status}{leaveText}{punchText}
-              </div>
-            );
-          }) : <div>No daily attendance records</div>}
+          {absenceAndLeaveStatus.length ? (
+            absenceAndLeaveStatus.map(
+              ({ date, status, leaveDays, pendingLeaveDays }) => {
+                const leaveDayCount =
+                  status === "Approved Leave" ? leaveDays : pendingLeaveDays;
+                const leaveText =
+                  status === "Absent"
+                    ? ""
+                    : ` (${formatDayCount(leaveDayCount)} leave day${Number(leaveDayCount) === 1 ? "" : "s"})`;
+                return (
+                  <div key={date}>
+                    {formatDate(date)}: {status}{leaveText}
+                  </div>
+                );
+              },
+            )
+          ) : (
+            <div>No absent or leave records</div>
+          )}
         </div>
       )}
     </div>
